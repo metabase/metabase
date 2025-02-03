@@ -4,19 +4,18 @@ import { t } from "ttag";
 import { Group, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { useFilterModalContext } from "../../context";
+
 interface FilterColumnNameProps {
-  query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  isSearching: boolean;
 }
 
 export function FilterColumnName({
-  query,
   stageIndex,
   column,
-  isSearching,
 }: FilterColumnNameProps) {
+  const { isSearching, query } = useFilterModalContext();
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
     [query, stageIndex, column],

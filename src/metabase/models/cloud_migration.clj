@@ -134,8 +134,8 @@
   See https://github.com/quartz-scheduler/quartz/issues/733"
   []
   (>= (t2/count (if (= (mdb/db-type) :postgres)
-                  'qrtz_scheduler_state
-                  'QRTZ_SCHEDULER_STATE))
+                  "qrtz_scheduler_state"
+                  "QRTZ_SCHEDULER_STATE"))
       2))
 
 (defn- progress-file-input-stream

@@ -1,4 +1,4 @@
-import type { Story } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 import * as jose from "jose";
 
 import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
@@ -44,7 +44,7 @@ export const storybookSdkAuthDefaultConfig: MetabaseAuthConfig = {
   },
 };
 
-export const CommonSdkStoryWrapper = (Story: Story, context: any) => {
+export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
   const sdkTheme = context.globals.sdkTheme;
   const theme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
   return (

@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util.i18n.plural-test
+(ns metabase.util.i18n.plural-test
   (:require
    [clojure.test :refer :all]
    [instaparse.core :as insta]

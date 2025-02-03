@@ -6,8 +6,16 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
+import Table from "metabase/visualizations/visualizations/Table";
 import Question from "metabase-lib/v1/Question";
-import { createMockVisualizationSettings } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+  createMockSingleSeries,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
@@ -144,6 +152,53 @@ const setup = ({ display, visualization_settings = {} }) => {
           [JSON.stringify(["name", "SUBTOTAL"])]: { column_title: "Subtotal2" },
         },
       });
+    });
+  });
+});
+
+describe("table.pivot", () => {
+  describe("getHidden", () => {
+    const createMockSeriesWithCols = cols => [
+      createMockSingleSeries(
+        createMockCard(),
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: cols.map(name => createMockColumn({ name })),
+          }),
+        }),
+      ),
+    ];
+
+    const threeCols = createMockSeriesWithCols(["dim1", "dim2", "metric"]);
+    const fourCols = createMockSeriesWithCols([
+      "dim1",
+      "dim2",
+      "dim3",
+      "metric",
+    ]);
+
+    it("should be hidden when table.pivot is false and cols.length is not 3", () => {
+      const isHidden = Table.settings["table.pivot"].getHidden(fourCols, {
+        "table.pivot": false,
+      });
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should not be hidden when table.pivot is true, regardless of cols.length", () => {
+      const isHidden = Table.settings["table.pivot"].getHidden(fourCols, {
+        "table.pivot": true,
+      });
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should not be hidden when cols.length is 3 and table.pivot is false", () => {
+      const isHidden = Table.settings["table.pivot"].getHidden(threeCols, {
+        "table.pivot": false,
+      });
+
+      expect(isHidden).toBe(false);
     });
   });
 });

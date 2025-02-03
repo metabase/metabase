@@ -1,4 +1,4 @@
-import type { MetabasePluginsConfig } from "embedding-sdk/lib/plugins";
+import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import type Question from "metabase-lib/v1/Question";
 
 import { Mode } from "../Mode";

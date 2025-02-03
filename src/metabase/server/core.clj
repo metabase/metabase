@@ -37,5 +37,5 @@
   ;; depends on [[metabase.api.routes]] and thus would make a big old circular deps MESS...
   ;;
   ;; TODO -- we should clean this up somehow. Need to think about how. This is only used in one
-  ;; place, [[metabase.core/start-normally]].
+  ;; place, [[metabase.core.core/start-normally]].
   (requiring-resolve 'metabase.server.handler/app))

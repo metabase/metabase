@@ -23,7 +23,8 @@ export default class LeafletMap extends Component {
       const element = this.mapRef.current;
 
       const map = (this.map = L.map(element, {
-        scrollWheelZoom: false,
+        scrollWheelZoom: true,
+        wheelPxPerZoomLevel: 30,
         minZoom: 2,
         drawControlTooltips: false,
         zoomSnap: false,

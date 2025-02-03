@@ -37,13 +37,13 @@
                                               [:context :map]
                                               [:payload :map]])
               renders           (atom [])]
-          (mt/with-dynamic-redefs [channel/render-notification (fn [channel-type notification-payload template recipients]
-                                                                 (swap! renders conj {:channel-type channel-type
-                                                                                      :notification-payload notification-payload
-                                                                                      :template template
-                                                                                      :recipients recipients})
+          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [channel-type notification-payload template recipients]
+                                                                    (swap! renders conj {:channel-type channel-type
+                                                                                         :notification-payload notification-payload
+                                                                                         :template template
+                                                                                         :recipients recipients})
                                                                  ;; rendered messages are recipients
-                                                                 recipients)]
+                                                                    recipients)]
             (testing "channel/send! are called on rendered messages"
               (is (=? {:channel/metabase-test [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}
                                                {:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}

@@ -245,7 +245,7 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperatorName =
+export type ExpressionOperator =
   | "+"
   | "-"
   | "*"
@@ -278,7 +278,7 @@ export type ExpressionOperatorName =
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
 export type ExpressionParts = {
-  operator: ExpressionOperatorName;
+  operator: ExpressionOperator;
   args: (ExpressionArg | ExpressionParts)[];
   options: ExpressionOptions;
 };

@@ -80,7 +80,7 @@
                         (filter ns-symbols))
         orphans    (remove (set sorted) ns-symbols)
         all        (concat orphans sorted)]
-    (assert (contains? (set all) 'metabase.bootstrap))
+    (assert (contains? (set all) 'metabase.core.bootstrap))
     (when (contains? ns-symbols 'metabase-enterprise.core)
       (assert (contains? (set all) 'metabase-enterprise.core)))
     all))
@@ -147,7 +147,7 @@
    "Multi-Release"    "true"
    "Created-By"       "Metabase build.clj"
    "Build-Jdk-Spec"   (System/getProperty "java.specification.version")
-   "Main-Class"       "metabase.bootstrap"})
+   "Main-Class"       "metabase.core.bootstrap"})
 
 (defn- manifest ^Manifest []
   (doto (Manifest.)

@@ -17,7 +17,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
    [metabase.premium-features.core :as premium-features]
-   [metabase.setup :as setup]
+   [metabase.setup.core :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]

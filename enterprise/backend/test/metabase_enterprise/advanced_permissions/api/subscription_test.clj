@@ -1,13 +1,13 @@
-(ns ^:mb/once metabase-enterprise.advanced-permissions.api.subscription-test
+(ns metabase-enterprise.advanced-permissions.api.subscription-test
   "Permisisons tests for API that needs to be enforced by Application Permissions to create and edit alerts/subscriptions."
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.test :refer :all]
    [metabase.api.alert :as api.alert]
    [metabase.api.alert-test :as alert-test]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as models.pulse]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.send-test :as pulse.send-test]
    [metabase.test :as mt]
    [metabase.util :as u]

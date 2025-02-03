@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 function checkFavicon(url) {
@@ -347,7 +347,7 @@ H.describeEE("formatting > whitelabel", () => {
           });
           H.undoToast().findByText("Changes saved").should("be.visible");
 
-          cy.createDashboardWithQuestions({
+          H.createDashboardWithQuestions({
             dashboardName: "No results dashboard",
             questions: [
               {

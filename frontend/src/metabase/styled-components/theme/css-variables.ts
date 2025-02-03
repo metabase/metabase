@@ -1,8 +1,8 @@
 import { css } from "@emotion/react";
 import { getIn } from "icepick";
 
-import type { MetabaseComponentTheme } from "embedding-sdk";
-import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "embedding-sdk/lib/theme/embedding-color-palette";
+import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
+import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import type { MantineTheme } from "metabase/ui";
 
 /** Maps the CSS variable name to the corresponding theme key in the Embedding SDK theme. */

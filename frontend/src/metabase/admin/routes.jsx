@@ -44,6 +44,7 @@ import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
+import { MetabaseReduxContext } from "metabase/lib/redux";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_TOOLS,
@@ -72,6 +73,7 @@ const UserCanAccessTools = connectedReduxRedirect({
     return !hasLoadedSettings || isModelPersistenceEnabled;
   },
   redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
 });
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (

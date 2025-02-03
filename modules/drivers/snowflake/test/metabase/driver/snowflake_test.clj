@@ -25,7 +25,8 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
@@ -65,6 +66,55 @@
            (mt/first-row
             (mt/run-mbql-query venues
               {:aggregation [[:count]]}))))))
+
+(deftest ^:parallel describe-fields-test
+  (mt/test-driver
+    :snowflake
+    (is (=? [{:name "id"
+              :database-type "NUMBER"
+              :database-required false
+              :database-is-auto-increment true
+              :base-type :type/Number
+              :json-unfolding false
+              :database-position 0
+              :pk? true}
+             {:name "name"
+              :database-type "VARCHAR"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Text
+              :json-unfolding false
+              :database-position 1}
+             {:name "category_id"
+              :database-type "NUMBER"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Number
+              :json-unfolding false
+              :database-position 2}
+             {:name "latitude"
+              :database-type "DOUBLE"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Float
+              :json-unfolding false
+              :database-position 3}
+             {:name "longitude"
+              :database-type "DOUBLE"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Float
+              :json-unfolding false
+              :database-position 4}
+             {:name "price"
+              :database-type "NUMBER"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Number
+              :json-unfolding false
+              :database-position 5}]
+            (sort-by :database-position
+                     (into [] (fetch-metadata/fields-metadata (mt/db) {:table-names ["venues"]})))))))
 
 (deftest ^:parallel quote-name-test
   (is (nil? (#'driver.snowflake/quote-name nil)))
@@ -433,20 +483,34 @@
 
         (when (and pk-key pk-user)
           (mt/with-temp-file [pk-path]
-            (mt/with-temp [:model/Secret {secret-id :id} {:name   "Private key for Snowflake"
-                                                          :kind   :pem-cert
-                                                          :source "file-path"
-                                                          :value  pk-path}]
+            (mt/with-temp [:model/Secret {path-secret-id :id} {:name "Private key for Snowflake"
+                                                               :kind :pem-cert
+                                                               :source "file-path"
+                                                               :value pk-path}
+                           :model/Secret {upload-secret-id :id} {:name "Private key upload for Snowflake"
+                                                                 :kind :pem-cert
+                                                                 :source "uploaded"
+                                                                 :value (u/string-to-bytes pk-key)}
+                           :model/Secret {base64-upload-secret-id :id} {:name "Private key base64 upload for Snowflake"
+                                                                        :kind :pem-cert
+                                                                        :source "uploaded"
+                                                                        :value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))}]
               (testing "private key authentication via uploaded keys or local key with path stored in a secret"
                 (spit pk-path pk-key)
-                (doseq [to-merge [{:private-key-value pk-key                      ;; uploaded string
+                (doseq [to-merge [;; uploaded string
+                                  {:private-key-value pk-key
                                    :private-key-options "uploaded"}
-                                  {:private-key-value (.getBytes pk-key "UTF-8")
-                                   :private-key-options "uploaded"}               ;; uploaded byte array
-                                  {:private-key-value (.getBytes pk-key "UTF-8")} ;; uploaded byte array without private-key-options
-                                  {:private-key-options "local"
-                                   :private-key-source "file-path"
-                                   :private-key-id secret-id}]]              ;; local file path
+                                  ;; uploaded byte array
+                                  {:private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))
+                                   :private-key-options "uploaded"}
+                                  ;; uploaded byte array without private-key-options
+                                  {:private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))}
+                                  ;; saved local path
+                                  {:private-key-id path-secret-id}
+                                  ;; saved uploaded bytes
+                                  {:private-key-id upload-secret-id}
+                                  ;; saved base64
+                                  {:private-key-id base64-upload-secret-id}]]
                   (let [details (-> (:details (mt/db))
                                     (dissoc :password)
                                     (merge {:db pk-db :user pk-user} to-merge))]
@@ -472,8 +536,7 @@
                                        :advanced-options    false
                                        :schema-filters-type "all"
                                        :account             account
-                                       :private-key-value   (str "data:application/octet-stream;base64,"
-                                                                 (u/encode-base64 private-key-value))
+                                       :private-key-value   (mt/bytes->base64-data-uri (u/string-to-bytes private-key-value))
                                        :tunnel-enabled      false
                                        :user                user}}]
      ;; TODO: We should make those message returned when role is incorrect more descriptive!
@@ -532,8 +595,7 @@
                                        :advanced-options    false
                                        :schema-filters-type "all"
                                        :account             account
-                                       :private-key-value   (str "data:application/octet-stream;base64,"
-                                                                 (u/encode-base64 private-key-value))
+                                       :private-key-value   (mt/bytes->base64-data-uri (u/string-to-bytes private-key-value))
                                        :tunnel-enabled      false
                                        :user                user}}]
       (testing "Database can be created using _default_ `nil` role"
@@ -890,6 +952,21 @@
                       {:field-name "JUST_LTZ"
                        :base-type {:native "timestampltz"}}]
     (rows-for-good-datetimes-in-belize)]])
+
+(deftest ^:parallel sync-datetime-types
+  (mt/test-driver
+    :snowflake
+    (mt/dataset
+      good-datetimes-in-belize
+      (is (= [["id" "NUMBER" :type/Number 0]
+              ["IN_Z_OFFSET" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 1]
+              ["IN_VARIOUS_OFFSETS" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 2]
+              ["JUST_NTZ" "TIMESTAMPNTZ" :type/DateTime 3]
+              ["JUST_LTZ" "TIMESTAMPLTZ" :type/DateTimeWithTZ 4]]
+             (sort-by last
+                      (into []
+                            (map (juxt :name :database-type :base-type :database-position))
+                            (fetch-metadata/fields-metadata (mt/db)))))))))
 
 ;; The test needs user with no report timezone set and database timezone other than UTC. That's the reason for redefs
 ;; prior to dataset generation.

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { PureComponent } from "react";
+import { PureComponent, forwardRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -357,10 +357,9 @@ class Visualization extends PureComponent {
     const loading = this.isLoading(series);
 
     // don't try to load settings unless data is loaded
-    let settings = this.props.settings || {};
+    let settings = this.props.settings || this.state.computedSettings;
 
     if (!loading && !error) {
-      settings = this.props.settings || this.state.computedSettings;
       if (!visualization) {
         error = t`Could not find visualization`;
       } else {
@@ -455,11 +454,15 @@ class Visualization extends PureComponent {
       (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
 
     return (
-      <ErrorBoundary onError={this.onErrorBoundaryError}>
+      <ErrorBoundary
+        onError={this.onErrorBoundaryError}
+        ref={this.props.forwardedRef}
+      >
         <VisualizationRoot
           className={className}
           style={style}
           data-testid="visualization-root"
+          ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
             <VisualizationHeader>
@@ -551,11 +554,18 @@ class Visualization extends PureComponent {
 
 Visualization.defaultProps = defaultProps;
 
+const VisualizationMemoized = memoizeClass("_getQuestionForCardCached")(
+  Visualization,
+);
+
 export default _.compose(
+  connect(mapStateToProps),
   ExplicitSize({
     selector: ".CardVisualization",
     refreshMode: props => (props.isVisible ? "throttle" : "debounceLeading"),
   }),
-  connect(mapStateToProps),
-  memoizeClass("_getQuestionForCardCached"),
-)(Visualization);
+)(
+  forwardRef(function VisualizationForwardRef(props, ref) {
+    return <VisualizationMemoized {...props} forwardedRef={ref} />;
+  }),
+);

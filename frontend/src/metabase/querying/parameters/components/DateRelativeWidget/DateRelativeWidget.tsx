@@ -3,35 +3,34 @@ import { match } from "ts-pattern";
 
 import { RelativeDateShortcutPicker } from "metabase/querying/filters/components/RelativeDateShortcutPicker";
 import type { RelativeDatePickerValue } from "metabase/querying/filters/types";
-import {
-  deserializeDateFilter,
-  serializeDateFilter,
-} from "metabase/querying/parameters/utils/dates";
+import { serializeDateParameterValue } from "metabase/querying/parameters/utils/dates";
+import { normalizeDateParameterValue } from "metabase/querying/parameters/utils/normalize";
+import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateRelativePickerProps = {
-  value: string | undefined;
+  value: ParameterValueOrArray | null | undefined;
   onChange: (value: string) => void;
 };
 
 export function DateRelativeWidget({
-  value: valueText,
+  value,
   onChange,
 }: DateRelativePickerProps) {
-  const value = useMemo(() => getPickerValue(valueText), [valueText]);
+  const pickerValue = useMemo(() => getPickerValue(value), [value]);
 
-  const handleChange = (value: RelativeDatePickerValue) => {
-    onChange(serializeDateFilter(value));
+  const handleChange = (newPickerValue: RelativeDatePickerValue) => {
+    onChange(serializeDateParameterValue(newPickerValue));
   };
 
-  return <RelativeDateShortcutPicker value={value} onChange={handleChange} />;
+  return (
+    <RelativeDateShortcutPicker value={pickerValue} onChange={handleChange} />
+  );
 }
 
 function getPickerValue(
-  valueText: string | undefined,
+  value: ParameterValueOrArray | null | undefined,
 ): RelativeDatePickerValue | undefined {
-  const value =
-    valueText != null ? deserializeDateFilter(valueText) : undefined;
-  return match(value)
+  return match(normalizeDateParameterValue(value))
     .returnType<RelativeDatePickerValue | undefined>()
     .with({ type: "relative" }, value => value)
     .otherwise(() => undefined);

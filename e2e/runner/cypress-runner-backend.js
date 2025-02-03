@@ -29,7 +29,6 @@ const CypressBackend = {
         "-Duser.timezone=US/Pacific",
         // if you comment this line 👇 you can get (very noisy) backend console logs in the terminal for e2e tests
         `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
-        "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}",
       ];
 
       const metabaseConfig = {
@@ -81,6 +80,7 @@ const CypressBackend = {
             process.env["DISABLE_LOGGING_BACKEND"]
               ? "ignore"
               : "inherit",
+          detached: true,
         },
       );
     }
@@ -100,6 +100,10 @@ const CypressBackend = {
     }
 
     console.log(`Backend ready host=${server.host}, dbFile=${server.dbFile}`);
+
+    if (process.env.CI) {
+      server.process.unref(); // detach console
+    }
 
     // Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
     function delay(duration) {

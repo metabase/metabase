@@ -193,7 +193,7 @@ You can preview appearance settings from your question or dashboard's embedded a
 | `font`\*                   | [font name](../configuring-metabase/fonts.md)                                                                                                  |
 | `downloads`\*\*            | true (default), false.                                                                                                                         |
 
-\* Avalable on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans
+\* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans
 
 \*\* Disabling downloads is available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 

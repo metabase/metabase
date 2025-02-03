@@ -9,6 +9,7 @@ import {
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -480,6 +481,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
     });
 
     await waitForLoaderToBeRemoved();
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`action-item-${actions2[0].name}`),
+      ).toBeInTheDocument();
+    });
 
     const queryAction = screen.getByTestId(`action-item-${actions2[0].name}`);
     const implicitAction = screen.getByTestId(

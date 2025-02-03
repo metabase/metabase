@@ -13,3 +13,9 @@
   :feature :cache-granular-controls
   []
   #{"deletable" "off"})
+
+(defenterprise default-persistent-info-state
+  "EE Version doesn't auto-persist models like the OSS version does. So default to 'off'"
+  :feature :cache-granular-controls
+  []
+  "off")

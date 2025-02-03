@@ -4,12 +4,20 @@ import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import {
-  SdkError,
+  QuestionNotFoundError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { Box, Divider, Group, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Group,
+  PopoverBackButton,
+  Stack,
+} from "metabase/ui";
 
 import {
   FlexibleSizeComponent,
@@ -41,6 +49,7 @@ export const InteractiveQuestionResult = ({
     useDisclosure(false);
 
   const {
+    originalId,
     question,
     queryResults,
     isQuestionLoading,
@@ -49,20 +58,23 @@ export const InteractiveQuestionResult = ({
     onSave,
     isSaveEnabled,
     saveToCollectionId,
+    isCardIdError,
   } = useInteractiveQuestionContext();
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
 
   // When visualizing a question for the first time, there is no query result yet.
-  const isQueryResultLoading = question && !queryResults;
+  const isQueryResultLoading =
+    question && shouldRunCardQuery(question) && !queryResults;
 
   if (isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 
-  if (!question) {
-    return <SdkError message={t`Question not found`} />;
+  // `isCardError: true` when the entity ID couldn't be resolved
+  if ((!question || isCardIdError) && originalId) {
+    return <QuestionNotFoundError id={originalId} />;
   }
 
   const showSaveButton =
@@ -94,20 +106,36 @@ export const InteractiveQuestionResult = ({
           style={{ borderRadius: "0.5rem" }}
         >
           <Group spacing="xs">
-            {withChartTypeSelector && (
+            {isEditorOpen ? (
+              <PopoverBackButton
+                onClick={toggleEditor}
+                color="brand"
+                fz="md"
+                ml="sm"
+              >
+                {t`Back to visualization`}
+              </PopoverBackButton>
+            ) : (
               <>
-                <InteractiveQuestion.ChartTypeDropdown />
-                <Divider
-                  mx="xs"
-                  orientation="vertical"
-                  // we have to do this for now because Mantine's divider overrides this color no matter what
-                  color="var(--mb-color-border) !important"
-                />
+                {withChartTypeSelector && (
+                  <>
+                    <Button.Group>
+                      <InteractiveQuestion.ChartTypeDropdown />
+                      <InteractiveQuestion.QuestionSettingsDropdown />
+                    </Button.Group>
+                    <Divider
+                      mx="xs"
+                      orientation="vertical"
+                      // we have to do this for now because Mantine's divider overrides this color no matter what
+                      color="var(--mb-color-border) !important"
+                    />
+                  </>
+                )}
+                <InteractiveQuestion.FilterDropdown />
+                <InteractiveQuestion.SummarizeDropdown />
+                <InteractiveQuestion.BreakoutDropdown />
               </>
             )}
-            <InteractiveQuestion.FilterDropdown />
-            <InteractiveQuestion.SummarizeDropdown />
-            <InteractiveQuestion.BreakoutDropdown />
           </Group>
           <InteractiveQuestion.EditorButton
             isOpen={isEditorOpen}

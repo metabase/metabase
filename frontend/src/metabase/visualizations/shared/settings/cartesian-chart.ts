@@ -392,7 +392,6 @@ function getDefaultLineAreaBarColumns(series: RawSeries) {
 export function getAvailableAdditionalColumns(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
-  metricsOnly: boolean,
 ): DatasetColumn[] {
   const alreadyIncludedColumns = new Set<DatasetColumn>();
 
@@ -419,11 +418,7 @@ export function getAvailableAdditionalColumns(
     .flatMap(singleSeries => {
       return singleSeries.data.cols;
     })
-    .filter(
-      column =>
-        (isMetric(column) || !metricsOnly) &&
-        !alreadyIncludedColumns.has(column),
-    );
+    .filter(column => !alreadyIncludedColumns.has(column));
 }
 
 export function getComputedAdditionalColumnsValue(
@@ -433,7 +428,7 @@ export function getComputedAdditionalColumnsValue(
   const isScatter = rawSeries[0].card.display === "scatter";
 
   const availableAdditionalColumnKeys = new Set(
-    getAvailableAdditionalColumns(rawSeries, settings, !isScatter).map(column =>
+    getAvailableAdditionalColumns(rawSeries, settings).map(column =>
       getColumnKey(column),
     ),
   );

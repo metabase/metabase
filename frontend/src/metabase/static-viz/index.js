@@ -6,6 +6,7 @@ import ReactDOMServer from "react-dom/server";
 
 import "metabase/lib/dayjs";
 
+import { updateStartOfWeek } from "metabase/lib/i18n";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
@@ -42,8 +43,12 @@ function getRawSeriesWithDashcardSettings(rawSeries, dashcardSettings) {
   });
 }
 
-export function RenderChart(rawSeries, dashcardSettings, colors) {
-  const renderingContext = createStaticRenderingContext(colors);
+export function RenderChart(rawSeries, dashcardSettings, options) {
+  const renderingContext = createStaticRenderingContext(
+    options.applicationColors,
+  );
+
+  updateStartOfWeek(options.startOfWeek);
 
   const rawSeriesWithDashcardSettings = getRawSeriesWithDashcardSettings(
     rawSeries,

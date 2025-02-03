@@ -1,4 +1,4 @@
-import type { EmbeddingThemeOptions } from "embedding-sdk/types/theme/private";
+import type { EmbeddingThemeOptions } from "metabase/embedding-sdk/theme/private";
 
 declare module "@mantine/core" {
   /**

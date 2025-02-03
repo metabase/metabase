@@ -1,6 +1,6 @@
 import FakeTimers from "@sinonjs/fake-timers";
-import type { ComponentMeta, Story, StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/testing-library";
+import type { Meta, StoryFn } from "@storybook/react";
+import { userEvent, within } from "@storybook/test";
 import { merge } from "icepick";
 import { type ComponentProps, useEffect } from "react";
 
@@ -13,7 +13,7 @@ import "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 export default {
   title: "Parameters/DatePicker",
   component: DatePicker,
-} as ComponentMeta<typeof DatePicker>;
+} as Meta<typeof DatePicker>;
 
 let clock: FakeTimers.InstalledClock | undefined;
 function withMockDate(StoryFn: StoryFn) {
@@ -42,7 +42,7 @@ type CustomStoryProps = {
     height: number;
   };
 };
-const Template: Story<
+const Template: StoryFn<
   ComponentProps<typeof DatePicker> & CustomStoryProps
 > = args => {
   const isDarkTheme = args.theme === "dark";

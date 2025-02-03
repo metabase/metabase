@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util.memoize-test
+(ns metabase.util.memoize-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]

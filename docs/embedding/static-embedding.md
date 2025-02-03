@@ -12,7 +12,7 @@ Also known as: standalone embedding, or signed embedding.
 
 In general, embedding works by displaying a Metabase URL inside an iframe in your website. A **static embed** (or signed embed) is an iframe that's loading a Metabase URL secured with a signed JSON Web Token (JWT). Metabase will only load the URL if the request supplies a JWT signed with the secret shared between your app and your Metabase. The JWT also includes a reference to the resource to load, e.g., the dashboard ID, and any values for locked parameters.
 
-You can can't use static embeds with [data sandboxes](../permissions/data-sandboxes.md), [drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through), and user-specific data isn't captured in [usage analytics](../usage-and-performance-tools/usage-analytics.md) because signed JWTs don't create user sessions (server-side sessions). For those features, check out [interactive embedding](./interactive-embedding.md).
+You can't use static embeds with [data sandboxes](../permissions/data-sandboxes.md), [drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through), and user-specific data isn't captured in [usage analytics](../usage-and-performance-tools/usage-analytics.md) because signed JWTs don't create user sessions (server-side sessions). For those features, check out [interactive embedding](./interactive-embedding.md).
 
 You can, however, restrict data in static embeds for specific people or groups by [locking parameters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters).
 

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "./LoadingAndErrorWrapper";
 
 export type LoadingAndErrorWrapperProps = {
   className?: string;

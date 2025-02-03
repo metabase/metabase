@@ -1,10 +1,9 @@
-import type * as React from "react";
 import { useState } from "react";
 
 import AutocompleteInput from "metabase/core/components/AutocompleteInput";
 
 interface ChartSettingLinkUrlInputProps {
-  value: string;
+  value: string | undefined | null;
   onChange: (value: string) => void;
   id?: string;
   options?: string[];
@@ -26,26 +25,34 @@ const filterOptions = (value: string | undefined, options: string[]) => {
 };
 
 const ChartSettingLinkUrlInput = ({
-  value: initialValue,
+  value,
   onChange,
   options,
   ...props
 }: ChartSettingLinkUrlInputProps) => {
-  const [value, setValue] = useState(initialValue);
+  const valueOrDefault = value ?? "";
+  const [isFocused, setIsFocused] = useState(false);
+  const [focusedValue, setFocusedValue] = useState(valueOrDefault);
 
   const handleSuggestionClick = (suggestion: string) => {
-    const match = value.match(linkVariablePattern);
+    const match = focusedValue.match(linkVariablePattern);
     const partial = match?.[1];
 
     if (partial) {
-      setValue(v => v.replace(`{{${partial}`, `{{${suggestion}}}`));
+      setFocusedValue(v => v.replace(`{{${partial}`, `{{${suggestion}}}`));
     } else if (partial === "") {
-      setValue(v => `${v}${suggestion}}}`);
+      setFocusedValue(v => `${v}${suggestion}}}`);
     }
   };
 
-  const handleBlur = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
+  const handleFocus = () => {
+    setIsFocused(true);
+    setFocusedValue(valueOrDefault);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    onChange(focusedValue);
   };
 
   return (
@@ -53,8 +60,9 @@ const ChartSettingLinkUrlInput = ({
       {...props}
       data-testid={props.id}
       options={options}
-      onChange={setValue}
-      value={value}
+      onChange={setFocusedValue}
+      value={isFocused ? focusedValue : valueOrDefault}
+      onFocus={handleFocus}
       onBlur={handleBlur}
       onOptionSelect={handleSuggestionClick}
       filterOptions={filterOptions}

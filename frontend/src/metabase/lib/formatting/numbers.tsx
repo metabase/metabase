@@ -183,8 +183,10 @@ export function numberFormatterForOptions(options: FormatNumberOptionsType) {
 }
 
 function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
+  const separators = options["number_separators"];
+
   if (options.number_style === "percent") {
-    return formatNumberCompactWithoutOptions(value * 100) + "%";
+    return formatNumberCompactWithoutOptions(value * 100, separators) + "%";
   }
   if (options.number_style === "currency") {
     try {
@@ -205,11 +207,11 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
       return (
         valueSign +
         currency +
-        formatNumberCompactWithoutOptions(Math.abs(value))
+        formatNumberCompactWithoutOptions(Math.abs(value), separators)
       );
     } catch (e) {
       // Intl.NumberFormat failed, so we fall back to a non-currency number
-      return formatNumberCompactWithoutOptions(value);
+      return formatNumberCompactWithoutOptions(value, separators);
     }
   }
   if (options.number_style === "scientific") {
@@ -220,21 +222,28 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
       minimumFractionDigits: 1,
     });
   }
-  return formatNumberCompactWithoutOptions(value);
+  return formatNumberCompactWithoutOptions(value, separators);
 }
 
-function formatNumberCompactWithoutOptions(value: number) {
+function formatNumberCompactWithoutOptions(value: number, separators?: string) {
   if (value === 0) {
     // 0 => 0
     return "0";
-  } else if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
+  }
+
+  let formatted;
+  if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
     // 0.1 => 0.1
-    return PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
+    formatted = PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
   } else {
     // 1 => 1
     // 1000 => 1K
-    return Humanize.compactInteger(Math.round(value), 1);
+    formatted = Humanize.compactInteger(Math.round(value), 1);
   }
+
+  return separators !== DEFAULT_NUMBER_SEPARATORS
+    ? replaceNumberSeparators(formatted, separators)
+    : formatted;
 }
 
 // replaces the decimal and grouping separators with those specified by a NumberSeparators option

@@ -10,7 +10,8 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
    [metabase.api.card :as api.card]
-   [metabase.api.pivots :as api.pivots]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.driver :as driver]
@@ -20,21 +21,22 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.card.metadata :as card.metadata]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.request.core :as request]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task :as task]
    [metabase.task.persist-refresh :as task.persist-refresh]
-   [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
@@ -702,13 +704,32 @@
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest ^:parallel docstring-test
+(deftest ^:parallel doc-test
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
-    (let [doc (-> #'api.card/POST_ meta :doc)]
+    (let [openapi-object             (open-api/open-api-spec (api.macros/ns-handler 'metabase.api.card) "/api/card")
+          schemas                    (get-in openapi-object [:components :schemas])
+          body-properties            (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
+          _                          (is (some? body-properties))
+          type-schema-ref            (some-> (get-in body-properties ["type" :$ref])
+                                             (str/replace #"^#/components/schemas/" "")
+                                             (str/replace #"\Q~1\E" "/"))
+          _                          (is (some? type-schema-ref))
+          type-schema                (get schemas type-schema-ref)
+          result-metadata-schema-ref (some-> (get-in body-properties ["result_metadata" :$ref])
+                                             (str/replace #"^#/components/schemas/" "")
+                                             (str/replace #"\Q~1\E" "/"))
+          _                          (is (some? result-metadata-schema-ref))
+          result-metadata-schema     (get schemas result-metadata-schema-ref)]
       (testing 'type
-        (is (str/includes? doc "**`type`** nullable enum of :question, :metric, :model.")))
+        (testing (pr-str type-schema-ref)
+          (is (=? {:type :string, :enum [:question :metric :model]}
+                  type-schema))))
       (testing 'result_metadata
-        (is (str/includes? doc "**`result_metadata`** nullable value must be an array of valid results column metadata maps."))))))
+        (testing (pr-str result-metadata-schema-ref)
+          (is (=? {:type        :array
+                   :description "value must be an array of valid results column metadata maps."
+                   :optional    true}
+                  result-metadata-schema)))))))
 
 (deftest create-a-card
   (testing "POST /api/card"
@@ -770,14 +791,28 @@
 
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
-    (is (= {:errors          {:visualization_settings "Value must be a map."}
-            :specific-errors {:visualization_settings ["Value must be a map., received: \"ABC\""]}}
-           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
+    (is (=? {:errors {:name                   "value must be a non-blank string."
+                      :dataset_query          "Value must be a map."
+                      :display                "value must be a non-blank string."
+                      :visualization_settings "Value must be a map."}
+             :specific-errors {:name                   ["missing required key, received: nil"]
+                               :dataset_query          ["missing required key, received: nil"]
+                               :display                ["missing required key, received: nil"]
+                               :visualization_settings ["Value must be a map., received: \"ABC\""]}}
+            (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))))
 
-    (is (= {:errors          {:parameters "nullable sequence of parameter must be a map with :id and :type keys"}
-            :specific-errors {:parameters ["invalid type, received: \"abc\""]}}
-           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
-                                                              :parameters             "abc"})))))
+(deftest ^:parallel create-card-validation-test-1b
+  (testing "POST /api/card"
+    (is (=? {:errors {:name          "value must be a non-blank string."
+                      :dataset_query "Value must be a map."
+                      :parameters    "nullable sequence of parameter must be a map with :id and :type keys"
+                      :display       "value must be a non-blank string."}
+             :specific-errors {:name          ["missing required key, received: nil"]
+                               :dataset_query ["missing required key, received: nil"]
+                               :parameters    ["invalid type, received: \"abc\""]
+                               :display       ["missing required key, received: nil"]}}
+            (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
+                                                               :parameters             "abc"})))))
 
 (deftest create-card-validation-test-2
   (testing "POST /api/card"
@@ -2019,42 +2054,46 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
-(def ^:private ^:const ^String encoded-params
-  (json/encode [{:type   :number
-                 :target [:variable [:template-tag :category]]
-                 :value  2}]))
+(def ^:private ^String test-params
+  [{:type   :number
+    :target [:variable [:template-tag :category]]
+    :value  2}])
 
 (deftest csv-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection! card
-        (is (= ["COUNT(*)"
-                "75"]
-               (str/split-lines
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
-                                                               (u/the-id card)))))))))
+        (let [response (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card)))]
+          (is (= ["COUNT(*)"
+                  "75"]
+                 (cond-> response
+                   (string? response) str/split-lines))))))))
+
+(deftest csv-download-test-2
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
-        (is (= ["COUNT(*)"
-                "8"]
-               (str/split-lines
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
-                                                               (u/the-id card))
-                                      :parameters encoded-params))))))))
+        (let [response (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))
+                                             {:parameters test-params})]
+          (is (= ["COUNT(*)"
+                  "8"]
+                 (cond-> response
+                   (string? response) str/split-lines))))))))
 
 (deftest json-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "75"}]
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) :format_rows true))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) {:format_rows true})))))))
+
+(deftest json-download-test-2
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "8"}]
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) :format_rows true
-                                     :parameters encoded-params)))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
+                                     {:format_rows true, :parameters test-params})))))))
 
 (deftest renamed-column-names-are-applied-to-json-test
   (testing "JSON downloads should have the same columns as displayed in Metabase (#18572)"
@@ -2129,7 +2168,7 @@
           (letfn [(col-names [card-id]
                     (->> (mt/user-http-request :crowberto :post 200
                                                (format "card/%d/query/json" card-id)
-                                               :format_rows true)
+                                               {:format_rows true})
                          first keys (map name) set))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= #{"THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"}
@@ -2157,14 +2196,16 @@
       (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+
+(deftest xlsx-download-test-2
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 8.0}]
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      :parameters encoded-params))))))))
+                                      {:parameters test-params}))))))))
 
 (defn- parse-xlsx-results-to-strings
   "Parse an excel response into a 2-D array of formatted values"
@@ -2192,7 +2233,7 @@
         (is (= [["T"] ["2023-1-1"]]
                (parse-xlsx-results-to-strings
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      :format_rows true))))))))
+                                      {:format_rows true}))))))))
 
 (deftest xlsx-default-currency-formatting-test
   (testing "The default currency is USD"
@@ -2207,7 +2248,7 @@
               ["[$$]123.45"]]
              (parse-xlsx-results-to-strings
               (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                    :format_rows true)))))))
+                                    {:format_rows true})))))))
 
 (deftest xlsx-default-currency-formatting-test-2
   (testing "Default localization settings take effect"
@@ -2224,7 +2265,7 @@
                 ["[$€]123.45"]]
                (parse-xlsx-results-to-strings
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      :format_rows true))))))))
+                                      {:format_rows true}))))))))
 
 (deftest xlsx-currency-formatting-test
   (testing "Currencies are applied correctly in Excel files"
@@ -2247,165 +2288,171 @@
                   ["[$$]123.45" "[$CA$]123.45" "[$€]123.45" "[$¥]123.45"]]
                  (parse-xlsx-results-to-strings
                   (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                        :format_rows true)))))))))
+                                        {:format_rows true})))))))))
+
+(def ^:private excel-data-query
+  "with t1 as (
+               select *
+               FROM (
+                VALUES
+                  (1234.05, 1234.05, 2345.05, 4321.05, 7180.643352291768, 1234.00, 0.053010935820623994, 0.1920, TIMESTAMP '2023-01-01 12:34:56'),
+                  (2345.30, 2345.30, 3456.30, 2931.30, 17180.643352291768, 0.00, 8.01623207863001, 0.00, TIMESTAMP '2023-01-01 12:34:56'),
+                  (3456.00, 3456.00, 2300.00, 2250.00, 127180.643352291768, 122.00, 95.40200874663908, 0.1158, TIMESTAMP '2023-01-01 12:34:56')
+                )
+              ),
+              t2 as (
+              select
+                  c1 as default_currency,
+                  c2 as currency1,
+                  c3 as currency2,
+                  c4 as currency3,
+                  c5 as scientific,
+                  c6 as hide_me,
+                  c7 as percent1,
+                  c8 as percent2,
+                  c9 as og_creation_timestamp,
+                  c9 as creation_timestamp,
+                  c9 as creation_timestamp_dup,
+                  CAST(c9 AS DATE) as creation_date,
+                  CAST(c9 AS TIME) as creation_time,
+                  from t1
+              )
+              select * from t2")
+
+(def ^:private excel-viz-settings
+  {:table.pivot_column "SCIENTIFIC"
+   :table.cell_column  "CURRENCY1"
+   :table.columns      [{:name     "OG_CREATION_TIMESTAMP"
+                         :fieldRef [:field "OG_CREATION_TIMESTAMP" {:base-type :type/DateTime}]
+                         :enabled  true}
+                        {:name     "CREATION_TIMESTAMP"
+                         :fieldRef [:field "CREATION_TIMESTAMP" {:base-type :type/DateTime}]
+                         :enabled  true}
+                        {:name     "CREATION_TIMESTAMP_DUP"
+                         :fieldRef [:field "CREATION_TIMESTAMP_DUP" {:base-type :type/DateTime}]
+                         :enabled  true}
+                        {:name     "CREATION_DATE"
+                         :fieldRef [:field "CREATION_DATE" {:base-type :type/Date}]
+                         :enabled  true}
+                        {:name     "CREATION_TIME"
+                         :fieldRef [:field "CREATION_TIME" {:base-type :type/Time}]
+                         :enabled  true}
+                        {:name     "DEFAULT_CURRENCY"
+                         :fieldRef [:field "DEFAULT_CURRENCY" {:base-type :type/Decimal}]
+                         :enabled  true}
+                        {:name     "CURRENCY1"
+                         :fieldRef [:field "CURRENCY1" {:base-type :type/Decimal}]
+                         :enabled  true}
+                        {:name     "CURRENCY2"
+                         :fieldRef [:field "CURRENCY2" {:base-type :type/Decimal}]
+                         :enabled  true}
+                        {:name     "CURRENCY3"
+                         :fieldRef [:field "CURRENCY3" {:base-type :type/Decimal}]
+                         :enabled  true}
+                        {:name     "SCIENTIFIC"
+                         :fieldRef [:field "SCIENTIFIC" {:base-type :type/Decimal}]
+                         :enabled  true}
+                        {:name     "HIDE_ME"
+                         :fieldRef [:field "HIDE_ME" {:base-type :type/Decimal}]
+                         :enabled  false}
+                        {:name     "PERCENT1"
+                         :fieldRef [:field "PERCENT1" {:base-type :type/Decimal}]
+                         :enabled  true}
+                        {:name     "PERCENT2"
+                         :fieldRef [:field "PERCENT2" {:base-type :type/Decimal}]
+                         :enabled  true}]
+   :column_settings    {"[\"name\",\"OG_CREATION_TIMESTAMP\"]"  {:column_title "No Formatting TS"}
+                        "[\"name\",\"SCIENTIFIC\"]"             {:number_style "scientific"
+                                                                 :column_title "EXPO"}
+                        "[\"name\",\"CREATION_TIME\"]"          {:column_title "Time"}
+                        "[\"name\",\"CURRENCY3\"]"              {:number_style       "currency"
+                                                                 :currency_style     "name"
+                                                                 :number_separators  ".’"
+                                                                 :column_title       "DOL Col"
+                                                                 :currency_in_header false}
+                        "[\"name\",\"PERCENT2\"]"               {:number_style "percent"
+                                                                 :column_title "3D PCT"
+                                                                 :decimals     3}
+                        "[\"name\",\"CURRENCY1\"]"              {:number_style       "currency"
+                                                                 :currency_in_header false
+                                                                 :column_title       "Col $"}
+                        "[\"name\",\"CREATION_TIMESTAMP\"]"     {:time_enabled   nil
+                                                                 :time_style     "HH:mm"
+                                                                 :date_style     "YYYY/M/D"
+                                                                 :date_separator "-"
+                                                                 :column_title   "DATE-ONLY TS"}
+                        "[\"name\",\"CREATION_TIMESTAMP_DUP\"]" {:time_enabled   "milliseconds",
+                                                                 :time_style     "HH:mm",
+                                                                 :date_style     "D/M/YYYY",
+                                                                 :date_separator "-",
+                                                                 :column_title   "TS W/FORMATTING"}
+                        "[\"name\",\"PERCENT1\"]"               {:number_style "percent"
+                                                                 :scale        0.01
+                                                                 :column_title "Scaled PCT"}
+                        "[\"name\",\"CURRENCY2\"]"              {:number_style       "currency"
+                                                                 :currency_style     "code"
+                                                                 :currency_in_header false
+                                                                 :number_separators  "."
+                                                                 :column_title       "USD Col"}
+                        "[\"name\",\"CREATION_DATE\"]"          {:column_title "Date"}
+                        "[\"name\",\"DEFAULT_CURRENCY\"]"       {:number_style "currency"
+                                                                 :column_title "Plain Currency"}}})
 
 (deftest xlsx-full-formatting-test
   (testing "Formatting should be applied correctly for all types, including numbers, currencies, exponents, and times. (relates to #14393)"
-    (let [excel-data-query
-          "with t1 as (
-                      select *
-                      FROM (
-                       VALUES
-                         (1234.05, 1234.05, 2345.05, 4321.05, 7180.643352291768, 1234.00, 0.053010935820623994, 0.1920, TIMESTAMP '2023-01-01 12:34:56'),
-                         (2345.30, 2345.30, 3456.30, 2931.30, 17180.643352291768, 0.00, 8.01623207863001, 0.00, TIMESTAMP '2023-01-01 12:34:56'),
-                         (3456.00, 3456.00, 2300.00, 2250.00, 127180.643352291768, 122.00, 95.40200874663908, 0.1158, TIMESTAMP '2023-01-01 12:34:56')
-                       )
-                     ),
-                     t2 as (
-                     select
-                         c1 as default_currency,
-                         c2 as currency1,
-                         c3 as currency2,
-                         c4 as currency3,
-                         c5 as scientific,
-                         c6 as hide_me,
-                         c7 as percent1,
-                         c8 as percent2,
-                         c9 as og_creation_timestamp,
-                         c9 as creation_timestamp,
-                         c9 as creation_timestamp_dup,
-                         CAST(c9 AS DATE) as creation_date,
-                         CAST(c9 AS TIME) as creation_time,
-                         from t1
-                     )
-                     select * from t2"
-          viz-settings {:table.pivot_column "SCIENTIFIC"
-                        :table.cell_column  "CURRENCY1"
-                        :table.columns      [{:name     "OG_CREATION_TIMESTAMP"
-                                              :fieldRef [:field "OG_CREATION_TIMESTAMP" {:base-type :type/DateTime}]
-                                              :enabled  true}
-                                             {:name     "CREATION_TIMESTAMP"
-                                              :fieldRef [:field "CREATION_TIMESTAMP" {:base-type :type/DateTime}]
-                                              :enabled  true}
-                                             {:name     "CREATION_TIMESTAMP_DUP"
-                                              :fieldRef [:field "CREATION_TIMESTAMP_DUP" {:base-type :type/DateTime}]
-                                              :enabled  true}
-                                             {:name     "CREATION_DATE"
-                                              :fieldRef [:field "CREATION_DATE" {:base-type :type/Date}]
-                                              :enabled  true}
-                                             {:name     "CREATION_TIME"
-                                              :fieldRef [:field "CREATION_TIME" {:base-type :type/Time}]
-                                              :enabled  true}
-                                             {:name     "DEFAULT_CURRENCY"
-                                              :fieldRef [:field "DEFAULT_CURRENCY" {:base-type :type/Decimal}]
-                                              :enabled  true}
-                                             {:name     "CURRENCY1"
-                                              :fieldRef [:field "CURRENCY1" {:base-type :type/Decimal}]
-                                              :enabled  true}
-                                             {:name     "CURRENCY2"
-                                              :fieldRef [:field "CURRENCY2" {:base-type :type/Decimal}]
-                                              :enabled  true}
-                                             {:name     "CURRENCY3"
-                                              :fieldRef [:field "CURRENCY3" {:base-type :type/Decimal}]
-                                              :enabled  true}
-                                             {:name     "SCIENTIFIC"
-                                              :fieldRef [:field "SCIENTIFIC" {:base-type :type/Decimal}]
-                                              :enabled  true}
-                                             {:name     "HIDE_ME"
-                                              :fieldRef [:field "HIDE_ME" {:base-type :type/Decimal}]
-                                              :enabled  false}
-                                             {:name     "PERCENT1"
-                                              :fieldRef [:field "PERCENT1" {:base-type :type/Decimal}]
-                                              :enabled  true}
-                                             {:name     "PERCENT2"
-                                              :fieldRef [:field "PERCENT2" {:base-type :type/Decimal}]
-                                              :enabled  true}]
-                        :column_settings    {"[\"name\",\"OG_CREATION_TIMESTAMP\"]"  {:column_title "No Formatting TS"}
-                                             "[\"name\",\"SCIENTIFIC\"]"             {:number_style "scientific"
-                                                                                      :column_title "EXPO"}
-                                             "[\"name\",\"CREATION_TIME\"]"          {:column_title "Time"}
-                                             "[\"name\",\"CURRENCY3\"]"              {:number_style       "currency"
-                                                                                      :currency_style     "name"
-                                                                                      :number_separators  ".’"
-                                                                                      :column_title       "DOL Col"
-                                                                                      :currency_in_header false}
-                                             "[\"name\",\"PERCENT2\"]"               {:number_style "percent"
-                                                                                      :column_title "3D PCT"
-                                                                                      :decimals     3}
-                                             "[\"name\",\"CURRENCY1\"]"              {:number_style       "currency"
-                                                                                      :currency_in_header false
-                                                                                      :column_title       "Col $"}
-                                             "[\"name\",\"CREATION_TIMESTAMP\"]"     {:time_enabled   nil
-                                                                                      :time_style     "HH:mm"
-                                                                                      :date_style     "YYYY/M/D"
-                                                                                      :date_separator "-"
-                                                                                      :column_title   "DATE-ONLY TS"}
-                                             "[\"name\",\"CREATION_TIMESTAMP_DUP\"]" {:time_enabled   "milliseconds",
-                                                                                      :time_style     "HH:mm",
-                                                                                      :date_style     "D/M/YYYY",
-                                                                                      :date_separator "-",
-                                                                                      :column_title   "TS W/FORMATTING"}
-                                             "[\"name\",\"PERCENT1\"]"               {:number_style "percent"
-                                                                                      :scale        0.01
-                                                                                      :column_title "Scaled PCT"}
-                                             "[\"name\",\"CURRENCY2\"]"              {:number_style       "currency"
-                                                                                      :currency_style     "code"
-                                                                                      :currency_in_header false
-                                                                                      :number_separators  "."
-                                                                                      :column_title       "USD Col"}
-                                             "[\"name\",\"CREATION_DATE\"]"          {:column_title "Date"}
-                                             "[\"name\",\"DEFAULT_CURRENCY\"]"       {:number_style "currency"
-                                                                                      :column_title "Plain Currency"}}}]
-      (testing "The default settings (USD) are applied correctly"
-        (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}}]
-          (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
-                                                                    :type     :native
-                                                                    :native   {:query excel-data-query}}
-                                           :display                :table
-                                           :visualization_settings viz-settings}]
-            ;; The following formatting has been applied:
-            ;; - All columns renamed
-            ;; - Column reordering
-            ;; - Column hiding (See "HIDE_ME") above
-            ;; - Base formatting ("No Formatting TS") conforms to standard datetime format
-            ;; - "DATE-ONLY TS" shows only a date-formatted timestamp
-            ;; - "TS W/FORMATTING" shows a timestamp with custom date and time formatting
-            ;; - "Date" shows simple date formatting
-            ;; - "Time" shows simple time formatting
-            ;; - "Plain Currency ($)" formats numbers as regular numbers with no dollar sign in the number column
-            ;; - "Col $" formats currency with leading $. Note that the strings as presented aren't as you'd see in Excel. Excel properly just adds a leading $.
-            ;; - "USD Col" has a leading USD. Again, the formatting of this output is an artifact of POI rendering. It is correct in Excel as "USD 1.23"
-            ;; - "DOL Col" has trailing US dollars
-            ;; - "EXPO" has exponentiated values
-            ;; - "Scaled PCT" multiplies values by 0.01 and presents as percentages
-            ;; - "3D PCT" is a standard percentage with a customization of 3 significant digits
-            (testing "All formatting is applied correctly in a complex situation."
-              (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency ($)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
-                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$$]1,234.05" "[$USD] 2345.05" "4,321.05 US dollars" "7180.64E+0" "0.05%" "19.200%"]
-                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$$]2,345.30" "[$USD] 3456.30" "2,931.30 US dollars" "1.71806E+4" "8.02%" "0.000%"]
-                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
-                     (parse-xlsx-results-to-strings
-                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                            :format_rows true))))))))
-      (testing "Global currency settings are applied correctly"
-        (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
-                                                              :type/Currency {:currency "EUR", :currency_style "symbol"}}]
-          (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
-                                                                    :type     :native
-                                                                    :native   {:query excel-data-query}}
-                                           :display                :table
-                                           :visualization_settings viz-settings}]
-            (testing "All formatting is applied correctly in a complex situation."
-              (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency (€)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
-                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$€]1,234.05" "[$EUR] 2345.05" "4,321.05 euros" "7180.64E+0" "0.05%" "19.200%"]
-                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$€]2,345.30" "[$EUR] 3456.30" "2,931.30 euros" "1.71806E+4" "8.02%" "0.000%"]
-                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$€]3,456.00" "[$EUR] 2300.00" "2,250.00 euros" "12.7181E+4" "95.40%" "11.580%"]]
-                     (parse-xlsx-results-to-strings
-                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                            :format_rows true)))))
-            (parse-xlsx-results-to-strings
-             (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                   :format_rows true))))))))
+    (testing "The default settings (USD) are applied correctly"
+      (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}}]
+        (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
+                                                                  :type     :native
+                                                                  :native   {:query excel-data-query}}
+                                         :display                :table
+                                         :visualization_settings excel-viz-settings}]
+          ;; The following formatting has been applied:
+          ;; - All columns renamed
+          ;; - Column reordering
+          ;; - Column hiding (See "HIDE_ME") above
+          ;; - Base formatting ("No Formatting TS") conforms to standard datetime format
+          ;; - "DATE-ONLY TS" shows only a date-formatted timestamp
+          ;; - "TS W/FORMATTING" shows a timestamp with custom date and time formatting
+          ;; - "Date" shows simple date formatting
+          ;; - "Time" shows simple time formatting
+          ;; - "Plain Currency ($)" formats numbers as regular numbers with no dollar sign in the number column
+          ;; - "Col $" formats currency with leading $. Note that the strings as presented aren't as you'd see in Excel. Excel properly just adds a leading $.
+          ;; - "USD Col" has a leading USD. Again, the formatting of this output is an artifact of POI rendering. It is correct in Excel as "USD 1.23"
+          ;; - "DOL Col" has trailing US dollars
+          ;; - "EXPO" has exponentiated values
+          ;; - "Scaled PCT" multiplies values by 0.01 and presents as percentages
+          ;; - "3D PCT" is a standard percentage with a customization of 3 significant digits
+          (testing "All formatting is applied correctly in a complex situation."
+            (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency ($)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
+                    ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$$]1,234.05" "[$USD] 2345.05" "4,321.05 US dollars" "7180.64E+0" "0.05%" "19.200%"]
+                    ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$$]2,345.30" "[$USD] 3456.30" "2,931.30 US dollars" "1.71806E+4" "8.02%" "0.000%"]
+                    ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
+                   (parse-xlsx-results-to-strings
+                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                          {:format_rows true}))))))))))
+
+(deftest xlsx-full-formatting-test-2
+  (testing "Formatting should be applied correctly for all types, including numbers, currencies, exponents, and times. (relates to #14393)"
+    (testing "Global currency settings are applied correctly"
+      (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
+                                                            :type/Currency {:currency "EUR", :currency_style "symbol"}}]
+        (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
+                                                                  :type     :native
+                                                                  :native   {:query excel-data-query}}
+                                         :display                :table
+                                         :visualization_settings excel-viz-settings}]
+          (testing "All formatting is applied correctly in a complex situation."
+            (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency (€)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
+                    ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$€]1,234.05" "[$EUR] 2345.05" "4,321.05 euros" "7180.64E+0" "0.05%" "19.200%"]
+                    ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$€]2,345.30" "[$EUR] 3456.30" "2,931.30 euros" "1.71806E+4" "8.02%" "0.000%"]
+                    ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$€]3,456.00" "[$EUR] 2300.00" "2,250.00 euros" "12.7181E+4" "95.40%" "11.580%"]]
+                   (parse-xlsx-results-to-strings
+                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                          {:format_rows true})))))
+          (parse-xlsx-results-to-strings
+           (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                 {:format_rows true})))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -2637,7 +2684,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-     ;; testing that we aren't just adding a nil moderation each time we update a card
+        ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -3389,7 +3436,7 @@
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
 
-(defn upload-example-csv-via-api!
+(defn- upload-example-csv-via-api!
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
   [& {:as args}]
   (mt/with-current-user (mt/user->id :rasta)
@@ -3514,7 +3561,7 @@
                 (t2/update! :model/Database other-db-id {:uploads_enabled false})
                 (is (nil? (:based_on_upload (request card))))))))))))
 
-(deftest ^:mb/once based-on-upload-test
+(deftest based-on-upload-test
   (run-based-on-upload-test!
    (fn [card]
      (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))))
@@ -3598,7 +3645,7 @@
                    (->> (mt/user-http-request
                          :crowberto :post 200
                          (format "card/%s/query/%s" card-id (name export-format))
-                         :format_rows apply-formatting?)
+                         {:format_rows apply-formatting?})
                         ((get output-helper export-format)))))))))))
 
 (deftest ^:parallel can-restore
@@ -3690,7 +3737,7 @@
               (is (mi/can-read? card)))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
 
-(deftest query-metadata-test
+(deftest ^:parallel query-metadata-test
   (mt/with-temp
     [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
                                   :database_id (mt/id)}
@@ -3896,7 +3943,7 @@
       (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
       (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id)))))
 
-(deftest moving-dashboard-questions
+(deftest move-question-to-collection-test
   (testing "We can move a dashboard question to a collection"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3908,8 +3955,9 @@
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:collection_id coll-id
                                                                            :dashboard_id  nil})))
       (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
-      ;; the old dashboardcard is still there (we don't remove the card from the dashboard it was in)
-      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+
+(deftest move-question-to-collection-remove-reference-test
   (testing "We can move a dashboard question to a collection and remove the old reference to it"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3918,11 +3966,13 @@
                                            :card_id      card-id}]
       (is (=? {:collection_id coll-id
                :dashboard_id  nil}
-              (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:collection_id coll-id
-                                                                                                        :dashboard_id  nil})))
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true")
+                                    {:collection_id coll-id
+                                     :dashboard_id  nil})))
       (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
-      ;; we remove the card from the dashboard it was in
-      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))))
+
+(deftest move-question-to-existing-dashboard-test
   (testing "We can move a question from a collection to a dashboard it is already in"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3931,7 +3981,9 @@
                                            :card_id      card-id}]
       (is (=? {:collection_id coll-id
                :dashboard_id  dash-id}
-              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))))
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id}))))))
+
+(deftest move-question-to-new-dashboard-test
   (testing "We can move a question from a collection to a dashboard it is NOT already in"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3941,7 +3993,9 @@
                :dashboard_id  dash-id}
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
       (is (=? {:dashboard_id dash-id :card_id card-id}
-              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id))))))
+
+(deftest move-question-to-dashboard-with-tabs
   (testing "We can move a question from a collection to a dashboard with tabs"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3952,7 +4006,9 @@
                :dashboard_id  dash-id}
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
       (is (=? {:dashboard_id dash-id :card_id card-id :dashboard_tab_id dash-tab-id}
-              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id))))))
+
+(deftest move-question-between-dashboards-test
   (testing "We can move a question from one dashboard to another"
     (mt/with-temp [:model/Collection {source-coll-id :id} {}
                    :model/Collection {dest-coll-id :id} {}
@@ -3965,7 +4021,9 @@
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dest-dash-id})))
       (testing "old dashcards are deleted, a new one is created"
         (is (=? #{dest-dash-id}
-                (set (map :dashboard_id (t2/select :model/DashboardCard :card_id card-id))))))))
+                (set (map :dashboard_id (t2/select :model/DashboardCard :card_id card-id)))))))))
+
+(deftest cant-move-question-to-dashboard-if-in-another-test
   (testing "We can't move a question from a collection to a dashboard if it's in another dashboard"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3973,7 +4031,9 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id other-dash-id
                                            :card_id      card-id}]
-      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id})))
+      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id}))))
+
+(deftest can-move-with-delete-old-dashcards-test
   (testing "... unless we pass `delete_old_dashcards=true`"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3982,8 +4042,9 @@
                    :model/DashboardCard _ {:dashboard_id other-dash-id
                                            :card_id      card-id}]
       (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
-      (is (= #{dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))
+      (is (= #{dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))
 
+(deftest cant-move-question-if-in-dashboard-as-series-test
   (testing "We can't move a question from a collection to a dashboard if it's in another dashboard AS A SERIES"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3993,8 +4054,9 @@
                    :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
       (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id})
       (testing "... again, unless we pass `delete_old_dashcards=true`"
-        (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id}))))
+        (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})))))
 
+(deftest move-fails-without-permissions-test
   (testing "And, if we don't have permissions on the other dashboard, it fails even when we pass `delete_old_dashcards`"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Collection {forbidden-coll-id :id} {}
@@ -4006,11 +4068,13 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
         (testing "We get a 403 back, because we don't have permissions"
           (is (= "You don't have permissions to do that."
-                 ;; regardless of the `delete_old_dashcards` value, same response
+                ;; regardless of the `delete_old_dashcards` value, same response
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
         (testing "The card is still in the old dashboard and not the new one"
-          (is (= #{other-dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))))
+          (is (= #{other-dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))))
+
+(deftest move-fails-without-permissions-series-test
   (testing "The above includes when a card is 'in' a dashboard in a series"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Collection {forbidden-coll-id :id} {}
@@ -4023,13 +4087,19 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
         (testing "We get a 403 back, because we don't have permissions"
           (is (= "You don't have permissions to do that."
-                 ;; regardless of the `delete_old_dashcards` value, same response
+                ;; regardless of the `delete_old_dashcards` value, same response
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
         (testing "The card is still in the old dashboard and not the new one"
-          (is (= [{:name other-dash-name :collection_id forbidden-coll-id :id other-dash-id}]
+          (is (= [{:name other-dash-name
+                   :collection_id forbidden-coll-id
+                   :id other-dash-id
+                   :description nil
+                   :archived false}]
                  (:in_dashboards (t2/hydrate (t2/select-one :model/Card :id card-id) :in_dashboards))))
-          (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))))
+          (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))))
+
+(deftest moving-archived-card-test
   (testing "Moving an archived card to a Dashboard unarchives and autoplaces it"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:archived true}]
@@ -4040,7 +4110,9 @@
       (testing "it got unarchived"
         (is (not (:archived (t2/select-one :model/Card :id card-id)))))
       (testing "it got autoplaced"
-        (is (= dash-id (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :card_id card-id))))))
+        (is (= dash-id (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :card_id card-id)))))))
+
+(deftest cant-archive-and-move-test
   (testing "You can't mark a card as archived *and* move it to a dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {}]
@@ -4051,7 +4123,8 @@
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (is (= [{:id dash-id :name "My Dashboard"}]
+      (is (= [{:id dash-id
+               :name "My Dashboard"}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
 
   (testing "card in no dashboards"

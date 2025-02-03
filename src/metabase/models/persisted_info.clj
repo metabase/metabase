@@ -121,10 +121,17 @@
               ;; TODO perhaps we should immediately kick off a recalculation of these caches
               {:active false, :state "creating", :state_change_at :%now}))
 
+(defenterprise default-persistent-info-state
+  "The default state for a new PersistedInfo record. Defaults to 'creating' for OSS"
+  metabase-enterprise.cache.config
+  []
+  "creating")
+
 (defn- create-row
-  "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
+  "Creates a mew PersistedInfo with the default state. If `creating`, these will at some point be persisted by the PersistRefresh task."
   [user-id card]
   (let [slug (-> card :name slug-name)
+        default-state (default-persistent-info-state)
         {:keys [database_id]} card
         card-id (u/the-id card)]
     {:card_id         card-id
@@ -134,7 +141,7 @@
      :active          false
      :refresh_begin   :%now
      :refresh_end     nil
-     :state           "creating"
+     :state           default-state
      :state_change_at :%now
      :creator_id      user-id}))
 
@@ -167,7 +174,7 @@
     persisted-info))
 
 (defn ready-database!
-  "Sets PersistedInfo state to `creating` for models without a PeristedInfo or those in a `deletable` state.
+  "Sets PersistedInfo state to the default state for models without a PeristedInfo or those in a `deletable` state.
    Will ignore explicitly set `off` models."
   [database-id]
   (t2/query-one
@@ -176,6 +183,6 @@
             [:= :database_id database-id]
             [:= :state "deletable"]]
     :set {:active false,
-          :state "creating",
+          :state (default-persistent-info-state),
           :state_change_at :%now}})
   (ready-unpersisted-models! database-id))

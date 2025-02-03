@@ -29,8 +29,9 @@ export const colors = {
   "admin-navbar": "#7172AD",
   white: "#FFFFFF",
   success: "#84BB4C",
-  danger: "#ED6E6E",
-  error: "#ED6E6E",
+  // --mb-base-color-lobster-50
+  danger: "hsla(358, 71%, 62%, 1)",
+  error: "hsla(358, 71%, 62%, 1)",
   warning: "#F9CF48",
   "text-dark": "#4C5773",
   "text-medium": "#696E7B",
@@ -43,7 +44,8 @@ export const colors = {
   "bg-white": "#FFFFFF",
   "bg-yellow": "#FFFCF2",
   "bg-night": "#42484E",
-  "bg-error": "#ED6E6E55",
+  // --mb-base-color-lobster-10
+  "bg-error": "hsla(0, 76%, 97%, 1)",
   shadow: "rgba(0,0,0,0.08)",
   border: "#EEECEC",
 

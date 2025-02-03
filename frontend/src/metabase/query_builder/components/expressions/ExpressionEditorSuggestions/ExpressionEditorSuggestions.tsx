@@ -34,7 +34,7 @@ import type {
 } from "metabase-lib/v1/expressions/suggest";
 import { GROUPS } from "metabase-lib/v1/expressions/suggest";
 
-import { ExpressionEditorHelpTextContent } from "../ExpressionEditorHelpText";
+import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
 import type {
   SuggestionFooter,
   SuggestionShortcut,
@@ -301,7 +301,7 @@ function ExpressionEditorSuggestionsListItem({
         {helpText && (
           <InfoPopover
             position="right"
-            content={<ExpressionEditorHelpTextContent helpText={helpText} />}
+            content={<ExpressionEditorHelpText helpText={helpText} />}
             width={450}
           >
             <PopoverHoverTarget

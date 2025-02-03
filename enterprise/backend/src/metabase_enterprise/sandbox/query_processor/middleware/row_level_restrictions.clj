@@ -1,7 +1,7 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
   "Apply segmented a.k.a. sandboxing anti-permissions to the query, i.e. replace sandboxed Tables with the
   appropriate [[metabase-enterprise.sandbox.models.group-table-access-policy]]s (GTAPs). See dox
-  for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
+  for [[metabase.permissions.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require
    [clojure.core.memoize :as memoize]
    [medley.core :as m]
@@ -10,14 +10,15 @@
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db :as mdb]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
@@ -124,8 +125,9 @@
     (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                         :type     :query
                         :query    source-query}
-          preprocessed (request/as-admin
-                         ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))]
+          preprocessed (binding [lib.convert/*clean-query* false]
+                         (request/as-admin
+                           ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query)))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
       (throw (ex-info (tru "Error preprocessing source query when applying GTAP: {0}" (ex-message e))

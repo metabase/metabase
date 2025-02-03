@@ -7,7 +7,7 @@
    [metabase.driver.mysql :as mysql]
    [metabase.models.action :as action]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [toucan2.core :as t2]))

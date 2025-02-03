@@ -86,7 +86,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 11 }}"
+          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
 
       - name: Build uberjar with ./bin/build.sh
         run: ./bin/build.sh
@@ -129,18 +129,13 @@ jobs:
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
-      - name: Get the version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
-
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
-      - name: Prepare JDK ${{ needs.get-build-requirements.outputs.java_version || 11 }}
+      - name: Prepare JDK ${{ needs.get-build-requirements.outputs.java_version || 21 }}
         uses: actions/setup-java@v4
         with:
-          java-version: ${{ needs.get-build-requirements.outputs.java_version || 11 }}
+          java-version: ${{ needs.get-build-requirements.outputs.java_version || 21 }}
           distribution: "temurin"
 
       - name: Prepare Cypress environment
@@ -190,12 +185,14 @@ jobs:
         with:
           script: | #js
             const {
+               generateReport,
                parseReport,
                formatSummary
              } = require("./.github/scripts/handle-mochawesome-report.js");
 
-             const report = parseReport();
-             const summary = formatSummary(report);
+             const report = await generateReport();
+             const results = parseReport(report);
+             const summary = formatSummary(results);
 
              await core.summary.addRaw(summary).write();
 

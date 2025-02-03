@@ -15,7 +15,7 @@ import QuestionEditorS from "./QuestionEditor.module.css";
 const QuestionEditorInner = () => {
   const {
     queryResults,
-    runQuestion,
+    queryQuestion,
     isSaveEnabled,
     question,
     originalQuestion,
@@ -31,7 +31,7 @@ const QuestionEditorInner = () => {
 
   const onOpenVisualizationTab = async () => {
     setActiveTab("visualization");
-    await runQuestion();
+    await queryQuestion();
   };
 
   const [isVisualizationSelectorOpen, { toggle: toggleVisualizationSelector }] =

@@ -7,7 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]

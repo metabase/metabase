@@ -40,7 +40,7 @@
         (search.tu/search-results search-string (assoc raw-ctx :search-engine "appdb"))))
 
 (defmacro with-weights [weight-map & body]
-  `(mt/with-dynamic-redefs [search.config/weights (constantly ~weight-map)]
+  `(mt/with-dynamic-fn-redefs [search.config/weights (constantly ~weight-map)]
      ~@body))
 
 (defn search-results

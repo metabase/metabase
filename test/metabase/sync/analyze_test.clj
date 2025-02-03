@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.sync.analyze-test
+(ns metabase.sync.analyze-test
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.category :as classifiers.category]
@@ -232,7 +232,7 @@
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
-    (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
+    (with-redefs [sync.concurrent/submit-task! (fn [task] (task))]
       (mt/with-temp [:model/Table table (fake-table)
                      :model/Field field (fake-field table)]
         (set-table-visibility-type-via-api! table "hidden")

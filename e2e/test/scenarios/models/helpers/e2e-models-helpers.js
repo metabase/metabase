@@ -1,9 +1,9 @@
 import {
+  NativeEditor,
   entityPickerModal,
   entityPickerModalTab,
   interceptIfNotPreviouslyDefined,
   modal,
-  nativeEditor,
   openQuestionActions,
   popover,
 } from "e2e/support/helpers";
@@ -74,7 +74,7 @@ export function assertIsModel() {
 
   // For native
   cy.findByText("This question is written in SQL.").should("not.exist");
-  nativeEditor().should("not.exist");
+  NativeEditor.get().should("not.exist");
 }
 
 // Requires question actions to be open
@@ -103,6 +103,7 @@ export function turnIntoModel() {
 }
 
 export function selectFromDropdown(option, clickOpts) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   popover().last().findByText(option).click(clickOpts);
 }
 

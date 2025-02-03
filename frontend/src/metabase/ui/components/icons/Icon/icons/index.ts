@@ -265,6 +265,8 @@ import pause_component from "./pause.svg?component";
 import pause_source from "./pause.svg?source";
 import pencil_component from "./pencil.svg?component";
 import pencil_source from "./pencil.svg?source";
+import pencil_lines_component from "./pencil_lines.svg?component";
+import pencil_lines_source from "./pencil_lines.svg?source";
 import permissions_limited_component from "./permissions_limited.svg?component";
 import permissions_limited_source from "./permissions_limited.svg?source";
 import person_component from "./person.svg?component";
@@ -928,6 +930,10 @@ export const Icons = {
   pencil: {
     component: pencil_component,
     source: pencil_source,
+  },
+  pencil_lines: {
+    component: pencil_lines_component,
+    source: pencil_lines_source,
   },
   permissions_limited: {
     component: permissions_limited_component,

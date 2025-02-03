@@ -10450,6 +10450,25 @@ databaseChangeLog:
             columnDataType: ${boolean.type}
             defaultNullValue: false
 
+  - changeSet:
+      id: v53.2025-01-03T19:07:39
+      author: noahmoss
+      comment: Add `deactivated_at` column to the `core_user` table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: core_user
+                columnName: deactivated_at
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: deactivated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp at which a user was deactivated
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
