@@ -1237,5 +1237,5 @@
   :hierarchy #'hierarchy)
 
 (defmethod dynamic-database-types-lookup ::driver
-  [_driver _database]
+  [_driver _database _database-types]
   nil)
