@@ -1,9 +1,9 @@
 import { css } from "@emotion/react";
 import { getIn } from "icepick";
 
+import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
 import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/sdk-theme-to-css-vars";
 import type { MantineTheme } from "metabase/ui";
 
 /**
