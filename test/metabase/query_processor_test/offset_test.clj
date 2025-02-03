@@ -322,7 +322,7 @@
 (deftest external-remapping-with-offset-test
   (testing "External remapping works correctly with offset (#45348)"
     (mt/with-column-remappings [orders.product_id products.title]
-      (doseq [[multiple-breakouts? ofs-col-index] 
+      (doseq [[multiple-breakouts? ofs-col-index]
               [[false 2] [true 3]]]
         (testing (format "multiple-breakouts? `%s`" multiple-breakouts?)
           (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
