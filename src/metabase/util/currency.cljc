@@ -726,7 +726,7 @@
           :rounding 0,
           :code "SDG",
           :name_plural "Sudanese pounds"}],
-   [:SEK {:symbol "Skr",
+   [:SEK {:symbol "kr",
           :name "Swedish Krona",
           :symbol_native "kr",
           :decimal_digits 2,
