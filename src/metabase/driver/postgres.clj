@@ -840,27 +840,19 @@
    (keyword "timestamp with time zone")    :type/DateTimeWithLocalTZ
    (keyword "timestamp without time zone") :type/DateTime})
 
-(defn- check-for-enum-type
-  "Check wheter `database-type` is mapped to enum."
-  [database-type]
-  (when (try (and (qp.store/initialized?)
-                  (let [typname (-> database-type name (str/split #"\.") last (str/replace #"^\"|\"$" ""))]
-                    (seq (jdbc/query (-> (qp.store/metadata-provider)
-                                         lib.metadata/database
-                                         sql-jdbc.conn/db->pooled-connection-spec)
-                                     [(str "SELECT NULL\n"
-                                           "FROM pg_type t\n"
-                                           "WHERE t.typname = ? AND t.typtype = 'e'")
-                                      typname]))))
-             (catch Throwable t
-               (log/debug "Failed to check enum type")
-               (log/trace t)
-               nil))
-    :type/PostgresEnum))
+(defmethod driver/dynamic-database-types-lookup :postgres
+  [_driver database database-types]
+  (let [ts (enum-types database)]
+    (not-empty
+     (into {}
+           (comp
+            (filter ts)
+            (map #(vector % :type/PostgresEnum)))
+           database-types))))
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
   [_driver database-type]
-  ((some-fn default-base-types check-for-enum-type) database-type))
+  (default-base-types database-type))
 
 (defmethod sql-jdbc.sync/column->semantic-type :postgres
   [_driver database-type _column-name]
