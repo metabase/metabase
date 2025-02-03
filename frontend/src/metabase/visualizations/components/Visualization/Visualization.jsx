@@ -100,7 +100,10 @@ class Visualization extends PureComponent {
         prevProps.selectedTimelineEventIds,
       )
     ) {
-      this.setState(this.transformPropsToState(this.props));
+      this.setState({
+        ...prevState,
+        ...this.transformPropsToState(this.props),
+      });
     }
 
     if (!equals(this.getWarnings(prevProps, prevState), this.getWarnings())) {
