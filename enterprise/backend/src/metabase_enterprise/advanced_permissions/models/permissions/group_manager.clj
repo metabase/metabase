@@ -30,7 +30,7 @@
           (nil? (:is_group_manager %))
           (assoc :is_group_manager
                  (boolean (-> % :id old-user-info :is_group_manager))))
-    new-user-info))
+       new-user-info))
 
 (defn set-user-group-memberships!
   "Update Groups Memberships of a User when `advanced-permissions` is enabled.
