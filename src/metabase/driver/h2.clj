@@ -277,7 +277,7 @@
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
 (defn- dateadd [unit amount expr]
-  (let [expr (h2x/cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone"} expr)]
+  (let [expr (h2x/cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone" "date"} expr)]
     (-> [:dateadd
          (h2x/literal unit)
          (if (number? amount)

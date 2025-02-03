@@ -27,7 +27,6 @@ The result will be summarized by week number (as opposed to week _dates_, like w
 
 By default, when you group by Week of year in the query builder, Metabase will find the first Sunday of the year and call that week “week 1”. Any day before the first Sunday is considered to be part of the last week of the previous year (week 52 or 53).
 
-
 ### Using a different first week of the year
 
 Even if your instance has a different first day of the week set in [localization settings](../../../configuring-metabase/localization.md), the query builder's default week of year grouping will _always_ use Sunday as the start of the week.
@@ -63,6 +62,24 @@ Where:
   - `"Instance"`: The first week of the year starts on January 1. Weeks start on the day of the week specified in [localization settings](../../../configuring-metabase/localization.md). In most years, the first week will be a partial week.
 
 Note that none of the three currently available modes match the first week algorithm used in summarizing by week of the year in the query builder.
+
+### Comparing how different algorithms calculate the first and last weeks
+
+- In the query builder when using **Group by Week of year**:
+
+  ![How the week numbers are calculated for Group by Week of year](../../images/group-by-week-of-year.png)
+
+- `week(column)` or `week(column, "ISO")`:
+
+  ![How the week numbers are calculated by ISO](../../images/week-iso.png)
+
+- `week(column, "US")`:
+
+  ![How the week numbers are calculated by US method](../../images/week-us.png)
+
+- `week(column, "Instance")` if the instance's first day of the week is Monday:
+
+  ![How the week numbers are calculated by Instance method](../../images/week-instance.png)
 
 ## SQL
 
