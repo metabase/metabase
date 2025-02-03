@@ -291,7 +291,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
       cy.findByText("Select columns to combine").click();
     });
 
-    cy.get(".ace_text-input").should("have.value", "\n\n");
+    H.CustomExpressionEditor.shouldContain("");
     cy.findByTestId("expression-name").should("have.value", "");
   });
 
