@@ -5,8 +5,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.events :as events]
    [metabase.models.api-key :as api-key]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -70,7 +70,7 @@
                                                    :last_name  ""
                                                    :type       :api-key
                                                    :password (str (random-uuid))}))]
-        (user/set-permissions-groups! user [(perms-group/all-users) group_id])
+        (user/set-permissions-groups! user [(perms/all-users-group) group_id])
         (let [api-key (-> (t2/insert-returning-instance! :model/ApiKey
                                                          (-> {:user_id       (u/the-id user)
                                                               :name          name
@@ -105,7 +105,7 @@
     (t2/with-transaction [_conn]
       (when group_id
         (let [user (-> api-key-before (t2/hydrate :user) :user)]
-          (user/set-permissions-groups! user [(perms-group/all-users) {:id group_id}])))
+          (user/set-permissions-groups! user [(perms/all-users-group) {:id group_id}])))
       (when name
         ;; A bit of a pain to keep these in sync, but oh well.
         (t2/update! :model/User (:user_id api-key-before) {:first_name name
@@ -162,5 +162,3 @@
                            {:object api-key
                             :user-id api/*current-user-id*})
     api/generic-204-no-content))
-
-(api/define-routes)
