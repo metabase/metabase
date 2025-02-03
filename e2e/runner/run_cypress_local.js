@@ -2,9 +2,9 @@ const CypressBackend = require("./cypress-runner-backend");
 const runCypress = require("./cypress-runner-run-tests");
 const { printBold, shell } = require("./cypress-runner-utils");
 
-// if you want to change these, set them in your shell
+// if you want to change these, set them as environment variables in your shell
 const options = {
-  TEST_SUITE: "e2e", // e2e | component | visual
+  TEST_SUITE: "e2e", // e2e | component
   MB_EDITION: "ee",
   ENTERPRISE_TOKEN: null,
   START_CONTAINERS: true,
@@ -27,7 +27,6 @@ process.env = {
   MB_SNOWPLOW_URL: "http://localhost:9090",
   CYPRESS_IS_EMBEDDING_SDK: options.TEST_SUITE === "component",
   ...options,
-  ...process.env,
 };
 
 if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {

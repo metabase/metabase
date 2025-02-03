@@ -2,13 +2,17 @@ const cypress = require("cypress");
 
 const { parseArguments, args } = require("./cypress-runner-utils");
 
+const DEFAULT_PORT = 4000;
+const getHost = () =>
+  `http://localhost:${process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
+
 const configs = {
   e2e: async () => {
     const defaultConfig = {
       browser: "chrome",
       configFile: "e2e/support/cypress.config.js",
       config: {
-        baseUrl: `http://localhost:${process.env.BACKEND_PORT}`,
+        baseUrl: getHost(),
       },
       testingType: "e2e",
       openMode: args["--open"] || process.env.OPEN_UI,
@@ -28,7 +32,7 @@ const configs = {
       browser: browser ?? "chrome",
       configFile: "e2e/support/cypress-snapshots.config.js",
       config: {
-        baseUrl: `http://localhost:${process.env.BACKEND_PORT}`,
+        baseUrl: getHost(),
       },
       testingType: "e2e",
       openMode: false,
@@ -43,7 +47,7 @@ const configs = {
       browser: browser ?? "chrome",
       configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
       config: {
-        baseUrl: `http://localhost:${process.env.BACKEND_PORT}`,
+        baseUrl: getHost(),
       },
       testingType: "component",
       openMode: args["--open"] || process.env.OPEN_UI,
