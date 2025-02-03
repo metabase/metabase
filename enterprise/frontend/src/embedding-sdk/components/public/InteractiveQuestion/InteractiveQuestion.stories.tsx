@@ -40,7 +40,7 @@ export default {
 
 const Template: StoryFn<InteractiveQuestionComponentProps> = args => {
   return (
-    <Box bg="var(--mb-color-background)">
+    <Box bg="var(--mb-color-background)" mih="100vh">
       <InteractiveQuestion {...args} />
     </Box>
   );
@@ -61,9 +61,11 @@ export const Default = {
 export const EditorOnly = {
   render(args: InteractiveQuestionComponentProps) {
     return (
-      <InteractiveQuestion {...args}>
-        <InteractiveQuestion.Editor />
-      </InteractiveQuestion>
+      <Box bg="var(--mb-color-background)" mih="100vh">
+        <InteractiveQuestion {...args}>
+          <InteractiveQuestion.Editor />
+        </InteractiveQuestion>
+      </Box>
     );
   },
 
