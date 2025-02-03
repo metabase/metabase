@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.channel.core :as channel]
+   [metabase.config :as config]
    [metabase.events :as events]
    [metabase.models.notification :as models.notification]
    [metabase.models.setting :as setting]
@@ -27,7 +28,7 @@
 
 (setting/defsetting notification-thread-pool-size
   "The size of the thread pool used to send notifications."
-  :default    2
+  :default    3
   :export?    false
   :type       :integer
   :visibility :internal)
@@ -40,7 +41,7 @@
              (.namingPattern "send-notification-thread-pool-%d"))))))
 
 (def ^:private default-retry-config
-  {:max-attempts            7
+  {:max-attempts            (if config/is-dev? 2 7)
    :initial-interval-millis 500
    :multiplier              2.0
    :randomization-factor    0.1
@@ -96,41 +97,23 @@
     (catch Throwable e
       (log/errorf e "[Notification %d] Error sending notification!" notification-id))))
 
-(defn- maybe-hydrate-notification
-  [notification-info]
-  ;; skip hydrating if we already have the necessary keys
-  (let [already-included? (some #{:subscriptions :handlers} (keys notification-info))]
-    (cond-> notification-info
-      ;; always included creator because it's not part of the notification models
-      already-included?       (t2/hydrate :creator)
-      (not already-included?) models.notification/hydrate-notification)))
-
 (defn- hydrate-notification
   [notification-info]
   (case (:payload_type notification-info)
     (:notification/system-event :notification/testing :notification/card)
-    (maybe-hydrate-notification notification-info)
+    (cond-> notification-info
+      (t2/instance? notification-info)
+      models.notification/hydrate-notification)
     ;; :notification/dashboard is still on pulse, so we expect it to self-contained. see [[metabase.pulse.send]]
     notification-info))
 
-;; TODO: should this be a multimethod?
-(defn- do-after-notification-sent
-  [{:keys [payload_type] :as notification-info}]
-  (u/ignore-exceptions
-    (when (and (= :notification/card payload_type)
-               (-> notification-info :payload :send_once))
-      (t2/delete! :model/Pulse (-> notification-info :payload :id)))
-    ;; TODO check how this is used, maybe we need to rework this
-    (when (#{:notification/card :notification/dashboard} payload_type)
-      (let [event-type (if (= :notification/dashboard payload_type)
-                         :event/subscription-send
-                         :event/alert-send)]
-        (events/publish-event! event-type {:id      (:id notification-info)
-                                           :user-id (:creator_id notification-info)
-                                           :object  {:recipients (->> notification-info :handlers (mapcat :recipients) (map #(or (:user %)
-                                                                                                                                 (:email %))))
-                                                     :filters    (when (= :notification/dashboard payload_type)
-                                                                   (-> notification-info :dashboard_subscription :parameters))}})))))
+(defmulti do-after-notification-sent
+  "Performs post-notification actions based on the notification type."
+  {:arglists '([notification-info notification-payload])}
+  (fn [notification-info _notification-payload]
+    (:payload_type notification-info)))
+
+(defmethod do-after-notification-sent :default [_notification-info _notification-payload] nil)
 
 (mu/defn send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
@@ -139,7 +122,7 @@
     (log/infof "[Notification %d] Sending" notification-id)
     (let [hydrated-notification (hydrate-notification notification-info)
           handlers              (:handlers hydrated-notification)]
-      (task-history/with-task-history {:task          "notification-send"
+      (task-history/with-task-history {:task         "notification-send"
                                        :task_details {:notification_id       notification-id
                                                       :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
         (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))]
@@ -155,19 +138,19 @@
                                       (:template handler)
                                       (:recipients handler))]
                     (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
-                                notification-id (count messages)
+                                (:id notification-info) (count messages)
                                 (handler->channel-name handler)
                                 (-> handler :template :id))
                     (doseq [message messages]
                       (log/infof "[Notification %d] Sending message to channel %s"
-                                 notification-id (:channel_type handler))
-                      (channel-send-retrying! notification-id (:payload_type hydrated-notification) handler message)))
+                                 (:id notification-info) (:channel_type handler))
+                      (channel-send-retrying! (:id notification-info) (:payload_type notification-info) handler message)))
                   (catch Exception e
                     (log/warnf e "[Notification %d] Error sending to channel %s"
                                notification-id (handler->channel-name handler)))))
-              (do-after-notification-sent hydrated-notification)
-              (log/infof "[Notification %d] Sent successfully" notification-id))
-            (log/infof "[Notification %d] Skipping" notification-id)))))
+              (do-after-notification-sent notification-info notification-payload)
+              (log/infof "[Notification %d] Sent successfully" (:id notification-info)))
+            (log/infof "[Notification %d] Skipping" (:id notification-info))))))
     (catch Exception e
       (log/errorf e "[Notification %d] Failed to send" notification-id)
       (throw e)))

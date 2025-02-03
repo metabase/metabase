@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { StaticDashboard } from "embedding-sdk";
 import { CommonSdkStoryCorsWrapper } from "embedding-sdk/test/CommonSdkCorsStoryWrapper";
@@ -14,7 +14,7 @@ export default {
   decorators: [CommonSdkStoryCorsWrapper],
 };
 
-const Template: ComponentStory<typeof StaticDashboard> = args => {
+const Template: StoryFn<typeof StaticDashboard> = args => {
   return <StaticDashboard {...args} />;
 };
 

@@ -15,13 +15,13 @@
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.timeline-event :as timeline-event]
+   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.test-util :as premium-features.test-util]
@@ -622,6 +622,8 @@
                  #(u/round-to-decimals decimal-place %)
                  data))
 
+;;; TODO -- we should generalize this to `let-testing` (`testing-let`?) that is a version of `let` that adds `testing`
+;;; context
 (defmacro let-url
   "Like normal `let`, but adds `testing` context with the `url` you've bound."
   {:style/indent 1}

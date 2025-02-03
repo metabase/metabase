@@ -2,9 +2,10 @@
   "/api/notification endpoints"
   (:require
    [clojure.data :refer [diff]]
-   [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
+   [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
@@ -28,16 +29,18 @@
   [notification]
   (= :notification/card (:payload_type notification)))
 
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "List notifications.
   - `creator_id`: if provided returns only notifications created by this user
   - `recipient_id`: if provided returns only notification that has recipient_id as a recipient
   - `card_id`: if provided returns only notification that has card_id as payload"
-  [creator_id recipient_id card_id include_inactive]
-  {creator_id       [:maybe ms/PositiveInt]
-   recipient_id     [:maybe ms/PositiveInt]
-   card_id          [:maybe ms/PositiveInt]
-   include_inactive [:maybe ms/BooleanValue]}
+  [_route-params
+   {:keys [creator_id recipient_id card_id include_inactive]} :-
+   [:map
+    [:creator_id       {:optional true} ms/PositiveInt]
+    [:recipient_id     {:optional true} ms/PositiveInt]
+    [:card_id          {:optional true} ms/PositiveInt]
+    [:include_inactive {:optional true} ms/BooleanValue]]]
   (->> (t2/reducible-select :model/Notification
                             (cond-> {}
                               creator_id
@@ -65,10 +68,9 @@
                  (filter mi/can-read?)))
        models.notification/hydrate-notification))
 
-(api/defendpoint GET "/:id"
+(api.macros/defendpoint :get "/:id"
   "Get a notification by id."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (-> (get-notification id)
       api/read-check))
 
@@ -89,10 +91,9 @@
     (messages/send-you-were-added-card-notification-email!
      (update notification :payload t2/hydrate :card) (all-email-recipients notification) @api/*current-user*)))
 
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Create a new notification, return the created notification."
-  [:as {body :body}]
-  {body ::models.notification/FullyHydratedNotification}
+  [_route _query body :- ::models.notification/FullyHydratedNotification]
   (api/create-check :model/Notification body)
   (let [notification (models.notification/hydrate-notification
                       (models.notification/create-notification!
@@ -132,12 +133,12 @@
           (when (seq added-recipients)
             (messages/send-you-were-added-card-notification-email! notification added-recipients @api/*current-user*)))))))
 
-(api/defendpoint PUT "/:id"
+(api.macros/defendpoint :put "/:id"
   "Update a notification, can also update its subscriptions, handlers.
   Return the updated notification."
-  [id :as {body :body}]
-  {id   ms/PositiveInt
-   body ::models.notification/FullyHydratedNotification}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query
+   body :- ::models.notification/FullyHydratedNotification]
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
     (models.notification/update-notification! existing-notification body)
@@ -148,11 +149,11 @@
                                                          :previous-object existing-notification
                                                          :user-id         api/*current-user-id*}))))
 
-(api/defendpoint POST "/:id/send"
+(api.macros/defendpoint :post "/:id/send"
   "Send a notification by id."
-  [id :as {{:keys [handler_ids]} :body}]
-  {id          ms/PositiveInt
-   handler_ids [:maybe [:sequential ms/PositiveInt]]}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query
+   {:keys [handler_ids]} :- [:map [:handler_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (let [notification (get-notification id)]
     (api/read-check notification)
     (cond-> notification
@@ -162,17 +163,29 @@
       true
       (notification/send-notification! :notification/sync? true))))
 
-(api/defendpoint POST "/send"
-  "Send an unsaved notification."
-  [:as {body :body}]
-  {body ::models.notification/FullyHydratedNotification}
-  (api/create-check :model/Notification body)
-  (notification/send-notification! body :notification/sync? true))
+(defn- promote-to-t2-instance
+  [notification]
+  (->  (t2/instance :model/Notification notification)
+       (m/update-existing :handlers #(map (fn [x]
+                                            (-> (t2/instance :model/NotificationHandler x)
+                                                (m/update-existing :channel (fn [c] (t2/instance :model/Channel) c))
+                                                (m/update-existing :template (fn [t] (t2/instance :model/ChannelTemplate) t))
+                                                (m/update-existing :recipients (fn [recipients] (map (fn [r] (t2/instance :model/NotificationRecipient r)) recipients)))))
+                                          %))
+       (m/update-existing :subscriptions #(map (fn [x] (t2/instance :model/NotificationSubscription x)) %))))
 
-(api/defendpoint POST "/:id/unsubscribe"
+(api.macros/defendpoint :post "/send"
+  "Send an unsaved notification."
+  [_route _query body :- ::models.notification/FullyHydratedNotification]
+  (api/create-check :model/Notification body)
+  (-> body
+      (assoc :creator_id api/*current-user-id*)
+      promote-to-t2-instance
+      (notification/send-notification! :notification/sync? true)))
+
+(api.macros/defendpoint :post "/:id/unsubscribe"
   "Unsubscribe current user from a notification."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [notification (get-notification id)]
     (api/check-403 (models.notification/current-user-is-recipient? notification))
     (models.notification/unsubscribe-user! id api/*current-user-id*)
@@ -184,5 +197,3 @@
            [(:email @api/*current-user*)])))
       (events/publish-event! :event/notification-unsubscribe {:object {:id id}
                                                               :user-id api/*current-user-id*}))))
-
-(api/define-routes)

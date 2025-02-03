@@ -61,7 +61,7 @@ jobs:
               });
 
               const failedJobs = jobInfo.data.jobs
-                .filter(job => job.status === "completed" && job.conclusion === "failure");
+                .filter(job => job.status === "completed" && job.conclusion === "failure" && !job.name.includes("-tests-result"));
 
               // don't bother slack if only the flaky job failed
               if (failedJobs.every(job => job.name.toLowerCase().includes("flaky"))) {

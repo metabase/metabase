@@ -30,6 +30,10 @@ const validCases = [
     cy.contains('my string of text').click();
   });`,
   `cy.get('#my-div').contains('my string of text').click();`,
+  `cy.contains('#my-div', 'foo')`,
+  `cy.get('#my-div').contains('foo')`,
+  `cy.get('#my-div').find('.elem').contains('foo')`,
+  `cy.get('#my-div').within(() => { cy.contains('foo') })`,
 ];
 
 const invalidCases = [
@@ -40,6 +44,7 @@ const invalidCases = [
   }).click().clack();`,
   "cy.contains('foobar');",
   "cy.contains('foobar').click();",
+  `cy.contains('#my-div', {timeout: 10000})`,
 ];
 
 ruleTester.run("no-unscoped-text-selectors", rule, {
