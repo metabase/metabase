@@ -1228,7 +1228,7 @@
       (mt/with-temp [:model/Database {:as temp-db}
                      {:engine  :bigquery-cloud-sdk
                       :details (-> (:details (mt/db))
-                                  (assoc :host "bigquery.example.com"))}]
+                                   (assoc :host "bigquery.example.com"))}]
         (let [client (#'bigquery/database-details->client (:details temp-db))]
           (is (= "bigquery.example.com"
                  (.getHost (.getOptions client)))
