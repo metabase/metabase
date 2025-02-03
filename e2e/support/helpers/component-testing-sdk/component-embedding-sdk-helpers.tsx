@@ -54,25 +54,34 @@ export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
   }).as("jwtProvider");
 };
 
+export interface MountSdkOptions {
+  sdkProviderProps?: Partial<MetabaseProviderProps>;
+  strictMode?: boolean;
+}
+
 export function mountSdkContent(
   children: JSX.Element,
-  sdkProviderProps: Partial<MetabaseProviderProps> = {},
+  { sdkProviderProps, strictMode = false }: MountSdkOptions = {},
 ) {
   cy.intercept("GET", "/api/user/current").as("getUser");
 
-  cy.mount(
-    <React.StrictMode>
-      <MetabaseProvider
-        {...sdkProviderProps}
-        authConfig={{
-          ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-          ...sdkProviderProps?.authConfig,
-        }}
-      >
-        {children}
-      </MetabaseProvider>
-    </React.StrictMode>,
+  let reactNode = (
+    <MetabaseProvider
+      {...sdkProviderProps}
+      authConfig={{
+        ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+        ...sdkProviderProps?.authConfig,
+      }}
+    >
+      {children}
+    </MetabaseProvider>
   );
+
+  if (strictMode) {
+    reactNode = <React.StrictMode>{reactNode}</React.StrictMode>;
+  }
+
+  cy.mount(reactNode);
 
   cy.wait("@getUser").then(({ response }) => {
     expect(response?.statusCode).to.equal(200);

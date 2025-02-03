@@ -303,7 +303,8 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       cy.stub(win.console, "error").log(true).as("consoleError");
     });
 
-    mountInteractiveQuestion();
+    // Enable strict mode to surface development-time console warnings
+    mountInteractiveQuestion({}, { strictMode: true });
 
     cy.wait("@cardQuery").then(({ response }) => {
       expect(response?.statusCode).to.equal(202);
