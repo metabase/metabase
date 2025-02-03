@@ -6,6 +6,7 @@ inputs:
   test-args:
     required: false
   build-static-viz:
+    required: true
     default: false
 
 runs:
