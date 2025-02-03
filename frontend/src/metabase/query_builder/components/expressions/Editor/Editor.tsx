@@ -206,8 +206,10 @@ function useExpression<S extends StartRule = "expression">({
         typeof compileError.message === "string"
       ) {
         onError({ message: compileError.message });
+        return;
       } else if (compileError) {
         onError({ message: t`Invalid expression` });
+        return;
       }
 
       if (!expression || !isExpression(expression) || !expressionClause) {
