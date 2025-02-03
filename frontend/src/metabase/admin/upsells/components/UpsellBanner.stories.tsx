@@ -10,10 +10,10 @@ import S from "./Upsells.module.css";
 const args = {
   children: "Discover the power of Metabase Enterprise.",
   buttonLink: "https://www.metabase.com",
+  buttonText: "Try for free",
   campaign: "upsell-banner",
   source: "storybook",
   title: "Upgrade now",
-  buttonText: "Try for free",
 };
 
 const argTypes = {
@@ -33,9 +33,6 @@ const argTypes = {
     control: { type: "text" },
   },
   title: {
-    control: { type: "text" },
-  },
-  secondaryLink: {
     control: { type: "text" },
   },
 };
