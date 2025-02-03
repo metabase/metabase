@@ -2,9 +2,8 @@
   "Unauthenticated `/api/notification/unsubscribe` endpoints to allow non-logged-in people to unsubscribe from
   Alerts/DashboardNotifications."
   (:require
-   [compojure.core :refer [POST]]
    [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
    [metabase.events :as events]
@@ -39,13 +38,15 @@
       :notification/dashboard (->> notification :payload :dashboard_id (t2/select-one-fn :name :model/Dashboard))
       (name (:payload_type notification)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Allow non-users to unsubscribe from notifications, with the hash given through email."
-  [:as {{:keys [email hash notification-handler-id]} :body, :as request}]
-  {notification-handler-id ms/PositiveInt
-   email                   :string
-   hash                    :string}
+  [_route-params
+   _query-params
+   {:keys [email hash notification-handler-id]} :- [:map
+                                                    [:notification-handler-id ms/PositiveInt]
+                                                    [:email                   :string]
+                                                    [:hash                    :string]]
+   request]
   (check-hash notification-handler-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
     (let [recipients (t2/select :model/NotificationRecipient
@@ -58,13 +59,15 @@
   (events/publish-event! :event/notification-unsubscribe-ex {:object {:email email}})
   {:status :success :title (notification-name-by-handler-id notification-handler-id)})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/undo"
+(api.macros/defendpoint :post "/undo"
   "Allow non-users to undo an unsubscribe from notifications, with the hash given through email."
-  [:as {{:keys [email hash notification-handler-id]} :body, :as request}]
-  {notification-handler-id ms/PositiveInt
-   email                   :string
-   hash                    :string}
+  [_route-params
+   _query-params
+   {:keys [email hash notification-handler-id]} :- [:map
+                                                    [:notification-handler-id ms/PositiveInt]
+                                                    [:email                   :string]
+                                                    [:hash                    :string]]
+   request]
   (check-hash notification-handler-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
     (let [recipients         (t2/select :model/NotificationRecipient :notification_handler_id notification-handler-id
@@ -77,5 +80,3 @@
         (throw (ex-info (tru "Email already exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-undo-ex {:object {:email email}})
   {:status :success :title (notification-name-by-handler-id notification-handler-id)})
-
-(api/define-routes)

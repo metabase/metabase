@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -63,13 +63,13 @@ describe("scenarios > dashboard > tabs", () => {
       dashboardId: ORDERS_DASHBOARD_ID,
       save: false,
     });
-    H.dashboardCards().within(() => {
-      cy.findByText("Orders").should("not.exist");
-      cy.findByText("There's nothing here, yet.").should("be.visible");
-    });
+
+    cy.findByRole("heading", {
+      name: "Create a new question or browse your collections for an existing one.",
+    }).should("exist");
+    H.dashboardCards().should("not.exist");
 
     // Add card to second tab
-    cy.icon("pencil").click();
     H.openQuestionsSidebar();
     H.sidebar().within(() => {
       cy.findByText("Orders, Count").click();
@@ -288,7 +288,7 @@ describe("scenarios > dashboard > tabs", () => {
         }),
       ];
 
-      cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+      H.createDashboard().then(({ body: { id: dashboard_id } }) => {
         H.updateDashboardCards({ dashboard_id, cards });
 
         H.visitDashboard(dashboard_id);
@@ -327,7 +327,7 @@ describe("scenarios > dashboard > tabs", () => {
       },
       collection_id: ADMIN_PERSONAL_COLLECTION_ID,
     };
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails: {
         collection_id: NORMAL_PERSONAL_COLLECTION_ID,

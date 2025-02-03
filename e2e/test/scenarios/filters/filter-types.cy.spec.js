@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 const STRING_CASES = [
   {
@@ -351,14 +351,14 @@ const EXCLUDE_DATE_CASES = [
     expectedRowCount: 183,
   },
   {
-    title: "is empty",
-    label: "Is empty",
+    title: "empty values",
+    label: "Empty values",
     expectedDisplayName: "Created At is not empty",
     expectedRowCount: 200,
   },
   {
-    title: "not empty",
-    label: "Is not empty",
+    title: "not empty values",
+    label: "Not empty values",
     expectedDisplayName: "Created At is empty",
     expectedRowCount: 0,
   },

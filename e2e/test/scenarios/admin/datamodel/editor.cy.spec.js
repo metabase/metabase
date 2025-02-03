@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -701,6 +701,7 @@ const assertTableHeader = columns => {
   cy.findAllByTestId("header-cell").should("have.length", columns.length);
 
   columns.forEach((column, index) => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", column);
   });
 };

@@ -1,7 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/testing-library";
+import { userEvent, within } from "@storybook/test";
 import { type ComponentProps, useEffect } from "react";
 
 import { getStore } from "__support__/entities-store";
@@ -16,8 +16,10 @@ import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import PivotTable from "metabase/visualizations/visualizations/PivotTable";
 import { PIVOT_TABLE_MOCK_DATA } from "metabase/visualizations/visualizations/PivotTable/pivot-table-test-mocks";
+import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
 import {
   createMockCard,
   createMockColumn,
@@ -36,6 +38,10 @@ import {
 
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(PivotTable);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(SmartScalar);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(BarChart);
 
 export default {
   title: "embed/PublicOrEmbeddedQuestionView",

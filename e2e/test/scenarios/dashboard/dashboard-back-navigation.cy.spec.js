@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -68,14 +68,14 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     H.getDashboardCard().realHover();
     H.getDashboardCardMenu().click();
     H.popover().findByText("Edit question").click();
-    H.nativeEditor().should("be.visible");
+    H.NativeEditor.get().should("be.visible");
 
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
     H.getDashboardCard().findByText("Orders SQL").click();
     cy.findByTestId("native-query-top-bar")
       .findByText("This question is written in SQL.")
       .should("be.visible");
-    H.nativeEditor().should("not.be.visible");
+    H.NativeEditor.get().should("not.be.visible");
   });
 
   it("should display a back to the dashboard button in table x-ray dashboards", () => {
@@ -364,9 +364,9 @@ const createDashboardWithCards = () => {
     visualization_settings: {},
   };
 
-  cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-    cy.createQuestion(questionDetails).then(({ body: { id: question_id } }) => {
-      cy.createQuestion(modelDetails).then(({ body: { id: model_id } }) => {
+  H.createDashboard().then(({ body: { id: dashboard_id } }) => {
+    H.createQuestion(questionDetails).then(({ body: { id: question_id } }) => {
+      H.createQuestion(modelDetails).then(({ body: { id: model_id } }) => {
         H.createAction({ ...actionDetails, model_id }).then(
           ({ body: { id: action_id } }) => {
             cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -393,7 +393,7 @@ const createDashboardWithNativeCard = () => {
     },
   };
 
-  cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+  H.createNativeQuestionAndDashboard({ questionDetails }).then(
     ({ body: { dashboard_id } }) => cy.wrap(dashboard_id).as("dashboardId"),
   );
 };
@@ -442,7 +442,7 @@ const createDashboardWithSlowCard = () => {
     target: ["variable", ["template-tag", "sleep"]],
   };
 
-  cy.createNativeQuestionAndDashboard({
+  H.createNativeQuestionAndDashboard({
     questionDetails,
     dashboardDetails,
   }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -491,9 +491,9 @@ const createDashboardWithPermissionError = () => {
     size_y: 8,
   };
 
-  cy.createQuestion(question1Details).then(({ body: { id: card_id_1 } }) => {
-    cy.createQuestion(question2Details).then(({ body: { id: card_id_2 } }) => {
-      cy.createDashboard(dashboardDetails).then(
+  H.createQuestion(question1Details).then(({ body: { id: card_id_1 } }) => {
+    H.createQuestion(question2Details).then(({ body: { id: card_id_2 } }) => {
+      H.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboard_id } }) => {
           cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
             dashcards: [

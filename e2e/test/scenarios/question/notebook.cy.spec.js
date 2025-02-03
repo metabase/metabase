@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -197,7 +197,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
     };
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 98 rows");
@@ -439,7 +439,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       display: "table",
     };
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.filter();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -461,7 +461,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       display: "table",
     };
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.filter();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -474,14 +474,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("should prompt to join with a model if the question is based on a model", () => {
     cy.intercept("GET", "/api/table/*/query_metadata").as("loadMetadata");
 
-    cy.createQuestion({
+    H.createQuestion({
       name: "Products model",
       query: { "source-table": PRODUCTS_ID },
       type: "model",
       display: "table",
     });
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Orders model",
         query: { "source-table": ORDERS_ID },
@@ -521,7 +521,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   // flaky test
   it.skip("should show an info popover when hovering over a field picker option for a saved question", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "question a",
       native: { query: "select 'foo' as a_column" },
     });
@@ -543,7 +543,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should allow to pick a saved question when there are models", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "Orders, Model",
       type: "model",
       native: { query: "SELECT * FROM ORDERS" },
@@ -705,9 +705,30 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         horizontal,
         vertical,
       });
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("notebook-cell-item")
         .eq(index)
         .should("have.text", name);
+    }
+
+    function verifyDragAndDrop() {
+      H.getNotebookStep("expression").within(() => {
+        moveElement({ name: "E1", horizontal: 100, index: 1 });
+      });
+      H.getNotebookStep("filter").within(() => {
+        moveElement({ name: "ID is 2", horizontal: -100, index: 0 });
+      });
+      H.getNotebookStep("summarize").within(() => {
+        cy.findByTestId("aggregate-step").within(() => {
+          moveElement({ name: "Count", vertical: 100, index: 4 });
+        });
+        cy.findByTestId("breakout-step").within(() => {
+          moveElement({ name: "ID", horizontal: 100, index: 1 });
+        });
+      });
+      H.getNotebookStep("sort").within(() => {
+        moveElement({ name: "Average of Total", horizontal: -100, index: 0 });
+      });
     }
 
     function verifyPopoverDoesNotMoveElement({
@@ -724,10 +745,28 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
           vertical,
         });
       });
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.getNotebookStep(type)
         .findAllByTestId("notebook-cell-item")
         .eq(index)
         .should("have.text", name);
+    }
+
+    function verifyPopoverIsClosedAfterDragAndDrop({
+      type,
+      name,
+      index,
+      horizontal,
+      vertical,
+    }) {
+      H.getNotebookStep(type).within(() => {
+        cy.findByText(name).click();
+      });
+      H.popover().should("be.visible");
+      H.getNotebookStep(type).within(() => {
+        moveElement({ name, horizontal, vertical, index });
+      });
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
     }
 
     const questionDetails = {
@@ -760,35 +799,25 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         ],
       },
     };
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
-    H.getNotebookStep("expression").within(() => {
-      moveElement({ name: "E1", horizontal: 100, index: 1 });
-    });
-    H.getNotebookStep("filter").within(() => {
-      moveElement({ name: "ID is 2", horizontal: -100, index: 0 });
-    });
-    H.getNotebookStep("summarize").within(() => {
-      cy.findByTestId("aggregate-step").within(() => {
-        moveElement({ name: "Count", vertical: 100, index: 4 });
-      });
-      cy.findByTestId("breakout-step").within(() => {
-        moveElement({ name: "ID", horizontal: 100, index: 1 });
-      });
-    });
-    H.getNotebookStep("sort").within(() => {
-      moveElement({ name: "Average of Total", horizontal: -100, index: 0 });
-    });
+    verifyDragAndDrop();
     verifyPopoverDoesNotMoveElement({
       type: "filter",
       name: "ID is 1",
       index: 1,
       horizontal: -100,
     });
+    verifyPopoverIsClosedAfterDragAndDrop({
+      type: "filter",
+      name: "ID is 1",
+      index: 0,
+      horizontal: -100,
+    });
   });
 
   it("should not crash notebook when metric is used as an aggregation and breakout is applied (metabase#40553)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -827,7 +856,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it.skip("should be possible to sort by metric (metabase#8283,metabase#42392)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Revenue",
         description: "Sum of orders subtotal",
@@ -851,7 +880,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         },
       };
 
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
 
       H.openNotebook();
 
@@ -883,6 +912,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
             .should("eq", "Revenue");
         });
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.get("@table")
         .last()
         .as("tableBody")
@@ -917,6 +947,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       .findByText("by month")
       .click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -932,6 +963,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       .findByText("Auto bin")
       .click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -963,8 +995,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.addSummaryField({ metric: "Sum of ...", field: "Price" });
 
     cy.findByTestId("loading-indicator").should("not.exist");
-    H.nativeEditor()
-      .get(".ace_line")
+    H.NativeEditor.get(".ace_line")
       .should("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum"')
       .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."RATING") AS "sum_2"')
       .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum_3"');
@@ -1052,6 +1083,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.joinTable("Reviews", "Product ID", "Product ID");
     H.addSummaryField({ metric: "Count of rows" });
     H.addSummaryGroupingField({ field: "Created At" });
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByRole("button", { name: "Join data" }).last().click();
     H.joinTable("Reviews", "Created At: Month", "Created At");
     cy.button("Summarize").click();
@@ -1091,6 +1123,21 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByText("Created At: Month").should("be.visible");
       cy.findByText("Count").should("be.visible");
     });
+  });
+
+  it("should allow using aggregation functions inside expressions in aggregation (metabase#52611)", () => {
+    cy.visit("/");
+    H.newButton("Question").click();
+    H.entityPickerModal().findByText("Orders").click();
+    H.addSummaryField({ metric: "Custom Expression" });
+    H.enterCustomColumnDetails({
+      formula: "case(Sum([Total]) > 10, Sum([Total]), Sum([Subtotal]))",
+      name: "conditional sum",
+    });
+    cy.button("Done").click();
+    H.addSummaryGroupingField({ field: "Total" });
+    H.visualize();
+    H.echartsContainer().should("contain.text", "Total: 8 bins");
   });
 });
 

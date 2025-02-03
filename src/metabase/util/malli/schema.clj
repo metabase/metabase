@@ -210,7 +210,7 @@
   (mu/with-api-error-message
    [:and
     :string
-    [:fn u/email?]]
+    [:fn {:error/message "valid email address"} u/email?]]
    (deferred-tru "value must be a valid email address.")))
 
 (def Url
@@ -224,7 +224,7 @@
   (mu/with-api-error-message
    [:and
     :string
-    [:fn (every-pred string? #'u.password/is-valid?)]]
+    [:fn {:error/message "valid password that is not too common"} (every-pred string? #'u.password/is-valid?)]]
    (deferred-tru "password is too common.")))
 
 (def IntString
@@ -346,21 +346,21 @@
 
 (def Parameter
   "Schema for a valid Parameter.
-  We're not using [metabase.legacy-mbql.schema/Parameter] here because this Parameter is meant to be used for
+  We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter is meant to be used for
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
   (mu/with-api-error-message
-   [:map [:id NonBlankString]
+   [:map
+    [:id   NonBlankString]
     [:type keyword-or-non-blank-str-malli]
      ;; TODO how to merge this with ParameterSource above?
-    [:values_source_type {:optional true} [:enum "static-list" "card" nil]]
+    [:values_source_type   {:optional true} [:enum "static-list" "card" nil]]
     [:values_source_config {:optional true} ValuesSourceConfig]
-    [:slug {:optional true} :string]
-    [:name {:optional true} :string]
-    [:default {:optional true} :any]
-    [:sectionId {:optional true} NonBlankString]
-    [:temporal_units {:optional true}
-     [:sequential ::lib.schema.temporal-bucketing/unit]]]
+    [:slug                 {:optional true} :string]
+    [:name                 {:optional true} :string]
+    [:default              {:optional true} :any]
+    [:sectionId            {:optional true} NonBlankString]
+    [:temporal_units       {:optional true} [:sequential ::lib.schema.temporal-bucketing/unit]]]
    (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
@@ -384,7 +384,9 @@
   (mu/with-api-error-message
    [:and
     NonBlankString
-    [:fn i18n/available-locale?]]
+    [:fn
+     {:error/message "valid locale"}
+     i18n/available-locale?]]
    (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))
 
 (def NanoIdString

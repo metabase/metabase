@@ -47,6 +47,7 @@ import {
   InputContainer,
 } from "./TagEditorParamParts/TagEditorParam";
 import { VariableTypeSelect } from "./TagEditorParamParts/VariableTypeSelect";
+import type { WidgetOption } from "./types";
 
 interface Props {
   tag: TemplateTag;
@@ -245,7 +246,7 @@ class TagEditorParamInner extends Component<Props> {
       parameter,
       embeddedParameterVisibility,
     } = this.props;
-    let widgetOptions: { name?: string; type: string }[] = [];
+    let widgetOptions: WidgetOption[] = [];
     let field: Field | null = null;
     let table: Table | null | undefined = null;
     let fieldMetadataLoaded = false;
