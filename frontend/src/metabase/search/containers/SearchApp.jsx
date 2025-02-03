@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import { useSearchQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import Search from "metabase/entities/search";

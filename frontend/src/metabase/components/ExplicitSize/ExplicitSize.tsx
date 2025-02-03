@@ -4,10 +4,10 @@ import type {
   CSSProperties,
   ComponentType,
   ForwardedRef,
+  MutableRefObject,
   PropsWithoutRef,
 } from "react";
-import React, { Component } from "react";
-import ReactDOM from "react-dom";
+import React, { Component, createRef } from "react";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
@@ -76,6 +76,8 @@ function ExplicitSize<T>({
 
       _updateSize: () => void;
 
+      elementRef: MutableRefObject<HTMLDivElement | null> = createRef();
+
       constructor(props: T & InnerProps) {
         super(props);
 
@@ -92,10 +94,11 @@ function ExplicitSize<T>({
 
       _getElement() {
         try {
-          let element = ReactDOM.findDOMNode(this);
+          let element = this.elementRef.current;
           if (selector && element instanceof Element) {
             element = element.querySelector(selector) || element;
           }
+
           return element instanceof Element ? element : null;
         } catch (e) {
           console.error(e);
@@ -227,7 +230,11 @@ function ExplicitSize<T>({
           const { className, style = {}, ...rest } = props;
           const { width, height } = this.state;
           return (
-            <div className={cx(className, CS.relative)} style={style}>
+            <div
+              className={cx(className, CS.relative)}
+              style={style}
+              ref={this.elementRef}
+            >
               <ComposedComponent
                 ref={forwardedRef}
                 style={{ position: "absolute", top: 0, left: 0, width, height }}
@@ -239,7 +246,17 @@ function ExplicitSize<T>({
         } else {
           return (
             <ComposedComponent
-              ref={forwardedRef}
+              ref={(el: HTMLDivElement) => {
+                if (forwardedRef) {
+                  if (typeof forwardedRef === "function") {
+                    forwardedRef(el);
+                  } else {
+                    forwardedRef.current = el;
+                  }
+                }
+
+                this.elementRef.current = el;
+              }}
               {...(props as unknown as T)}
               {...this.state}
             />

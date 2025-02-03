@@ -4,16 +4,10 @@
   Deprecated: will soon be migrated to notification APIs."
   (:require
    [clojure.set :as set]
-   [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
+   [metabase.api.macros :as api.macros]
    [metabase.api.notification :as api.notification]
-   [metabase.channel.email :as email]
-   [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
-   [metabase.events :as events]
-   [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.cron :as u.cron]
    [metabase.util.malli.schema :as ms]
@@ -80,12 +74,13 @@
                                                       {})})))
                                 (:handlers notification))})))
 
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.
   The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users."
-  [archived user_id]
-  {archived [:maybe ms/BooleanValue]
-   user_id  [:maybe ms/PositiveInt]}
+  [_route-params
+   {:keys [archived user_id]} :- [:map
+                                  [:archived {:default false} [:maybe ms/BooleanValue]]
+                                  [:user_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (let [user-id (if api/*is-superuser?*
                   user_id
                   api/*current-user-id*)]
@@ -96,21 +91,17 @@
          (map notification->pulse)
          (remove nil?))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id"
+(api.macros/defendpoint :get "/:id"
   "Fetch an alert by ID"
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (-> (api.notification/get-notification id)
       api/read-check
       notification->pulse))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/:id/subscription"
+(api.macros/defendpoint :delete "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api.notification/unsubscribe-user! id api/*current-user-id*)
   api/generic-204-no-content)
-
-(api/define-routes)

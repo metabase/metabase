@@ -46,15 +46,14 @@
         "qnkhuat",
         "piranha",
         "crisptrutski",
-        "deniskaber"
+        "deniskaber",
+        "wotbrew"
       ]
     },
     {
       "name": "Admin Webapp",
       "label": ".Team/AdminWebapp",
       "members": [
-        "noahmoss",
-        "escherize",
         "npfitz",
         "johnswanson",
         "rafpaf",
@@ -69,16 +68,17 @@
       "members": [
         "alxnddr",
         "kulyk",
-        "adam-james-v",
         "tsplude",
-        "lorem--ipsum"
+        "lorem--ipsum",
+        "noahmoss"
       ]
     },
     {
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
-        "camsaul"
+        "camsaul",
+        "escherize"
       ]
     }
   ]

@@ -1,6 +1,6 @@
 import { onlyOn } from "@cypress/skip-test";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -25,7 +25,7 @@ describe("revision history", () => {
     });
 
     it("shouldn't render revision history steps when there was no diff (metabase#1926)", () => {
-      cy.createDashboard().then(({ body }) => {
+      H.createDashboard().then(({ body }) => {
         H.visitDashboard(body.id);
         H.editDashboard();
       });
@@ -67,7 +67,7 @@ describe("revision history", () => {
               cy.intercept("GET", "/api/dashboard/*").as("fetchDashboard");
               cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-              cy.createDashboard().then(({ body }) => {
+              H.createDashboard().then(({ body }) => {
                 H.visitDashboard(body.id);
                 H.editDashboard();
               });
@@ -106,7 +106,7 @@ describe("revision history", () => {
 
               // We reverted the dashboard to the state prior to adding any cards to it
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("This dashboard is looking empty.");
+              cy.findByText("This dashboard is empty");
 
               // Should be able to revert back again
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -150,6 +150,7 @@ describe("revision history", () => {
               cy.findByRole("tab", { name: "History" }).click();
 
               // Last revert is the original state
+              // eslint-disable-next-line no-unsafe-element-filtering
               cy.findAllByTestId("question-revert-button").last().click();
 
               cy.wait("@revert").then(({ response: { statusCode, body } }) => {
@@ -189,6 +190,7 @@ describe("revision history", () => {
 });
 
 function clickRevert(event_name, index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByLabelText(event_name).eq(index).click();
 }
 

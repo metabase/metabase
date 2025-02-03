@@ -1,27 +1,24 @@
 (ns metabase-enterprise.advanced-permissions.api.subscription-test
   "Permisisons tests for API that needs to be enforced by Application Permissions to create and edit alerts/subscriptions."
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.test :refer :all]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
-(defmacro ^:private with-subscription-disabled-for-all-users
+(defmacro ^:private with-subscription-disabled-for-all-users!
   "Temporarily remove `subscription` permission for group `All Users`, execute `body` then re-grant it.
   Use it when we need to isolate a user's permissions during tests."
   [& body]
   `(try
-     (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
+     (perms/revoke-application-permissions! (perms/all-users-group) :subscription)
      ~@body
      (finally
-       (perms/grant-application-permissions! (perms-group/all-users) :subscription))))
+       (perms/grant-application-permissions! (perms/all-users-group) :subscription))))
 
 (deftest pulse-permissions-test
   (testing "/api/pulse/*"
-    (with-subscription-disabled-for-all-users
+    (with-subscription-disabled-for-all-users!
       (mt/with-user-in-groups [group {:name "New Group"}
                                user  [group]]
         (mt/with-temp [:model/Card  card {}

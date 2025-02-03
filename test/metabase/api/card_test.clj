@@ -10,7 +10,9 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
    [metabase.api.card :as api.card]
+   [metabase.api.macros :as api.macros]
    [metabase.api.notification-test :as api.notification-test]
+   [metabase.api.open-api :as open-api]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.driver :as driver]
@@ -20,13 +22,13 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.card.metadata :as card.metadata]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
@@ -704,13 +706,32 @@
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest ^:parallel docstring-test
+(deftest ^:parallel doc-test
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
-    (let [doc (-> #'api.card/POST_ meta :doc)]
+    (let [openapi-object             (open-api/open-api-spec (api.macros/ns-handler 'metabase.api.card) "/api/card")
+          schemas                    (get-in openapi-object [:components :schemas])
+          body-properties            (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
+          _                          (is (some? body-properties))
+          type-schema-ref            (some-> (get-in body-properties ["type" :$ref])
+                                             (str/replace #"^#/components/schemas/" "")
+                                             (str/replace #"\Q~1\E" "/"))
+          _                          (is (some? type-schema-ref))
+          type-schema                (get schemas type-schema-ref)
+          result-metadata-schema-ref (some-> (get-in body-properties ["result_metadata" :$ref])
+                                             (str/replace #"^#/components/schemas/" "")
+                                             (str/replace #"\Q~1\E" "/"))
+          _                          (is (some? result-metadata-schema-ref))
+          result-metadata-schema     (get schemas result-metadata-schema-ref)]
       (testing 'type
-        (is (str/includes? doc "**`type`** nullable enum of :question, :metric, :model.")))
+        (testing (pr-str type-schema-ref)
+          (is (=? {:type :string, :enum [:question :metric :model]}
+                  type-schema))))
       (testing 'result_metadata
-        (is (str/includes? doc "**`result_metadata`** nullable value must be an array of valid results column metadata maps."))))))
+        (testing (pr-str result-metadata-schema-ref)
+          (is (=? {:type        :array
+                   :description "value must be an array of valid results column metadata maps."
+                   :optional    true}
+                  result-metadata-schema)))))))
 
 (deftest create-a-card
   (testing "POST /api/card"
@@ -772,14 +793,28 @@
 
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
-    (is (= {:errors          {:visualization_settings "Value must be a map."}
-            :specific-errors {:visualization_settings ["Value must be a map., received: \"ABC\""]}}
-           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
+    (is (=? {:errors {:name                   "value must be a non-blank string."
+                      :dataset_query          "Value must be a map."
+                      :display                "value must be a non-blank string."
+                      :visualization_settings "Value must be a map."}
+             :specific-errors {:name                   ["missing required key, received: nil"]
+                               :dataset_query          ["missing required key, received: nil"]
+                               :display                ["missing required key, received: nil"]
+                               :visualization_settings ["Value must be a map., received: \"ABC\""]}}
+            (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))))
 
-    (is (= {:errors          {:parameters "nullable sequence of parameter must be a map with :id and :type keys"}
-            :specific-errors {:parameters ["invalid type, received: \"abc\""]}}
-           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
-                                                              :parameters             "abc"})))))
+(deftest ^:parallel create-card-validation-test-1b
+  (testing "POST /api/card"
+    (is (=? {:errors {:name          "value must be a non-blank string."
+                      :dataset_query "Value must be a map."
+                      :parameters    "nullable sequence of parameter must be a map with :id and :type keys"
+                      :display       "value must be a non-blank string."}
+             :specific-errors {:name          ["missing required key, received: nil"]
+                               :dataset_query ["missing required key, received: nil"]
+                               :parameters    ["invalid type, received: \"abc\""]
+                               :display       ["missing required key, received: nil"]}}
+            (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
+                                                               :parameters             "abc"})))))
 
 (deftest create-card-validation-test-2
   (testing "POST /api/card"
@@ -1999,42 +2034,46 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
-(def ^:private ^:const ^String encoded-params
-  (json/encode [{:type   :number
-                 :target [:variable [:template-tag :category]]
-                 :value  2}]))
+(def ^:private ^String test-params
+  [{:type   :number
+    :target [:variable [:template-tag :category]]
+    :value  2}])
 
 (deftest csv-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection! card
-        (is (= ["COUNT(*)"
-                "75"]
-               (str/split-lines
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
-                                                               (u/the-id card)))))))))
+        (let [response (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card)))]
+          (is (= ["COUNT(*)"
+                  "75"]
+                 (cond-> response
+                   (string? response) str/split-lines))))))))
+
+(deftest csv-download-test-2
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
-        (is (= ["COUNT(*)"
-                "8"]
-               (str/split-lines
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
-                                                               (u/the-id card))
-                                      :parameters encoded-params))))))))
+        (let [response (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))
+                                             {:parameters test-params})]
+          (is (= ["COUNT(*)"
+                  "8"]
+                 (cond-> response
+                   (string? response) str/split-lines))))))))
 
 (deftest json-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "75"}]
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) :format_rows true))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) {:format_rows true})))))))
+
+(deftest json-download-test-2
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "8"}]
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) :format_rows true
-                                     :parameters encoded-params)))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
+                                     {:format_rows true, :parameters test-params})))))))
 
 (deftest renamed-column-names-are-applied-to-json-test
   (testing "JSON downloads should have the same columns as displayed in Metabase (#18572)"
@@ -2109,7 +2148,7 @@
           (letfn [(col-names [card-id]
                     (->> (mt/user-http-request :crowberto :post 200
                                                (format "card/%d/query/json" card-id)
-                                               :format_rows true)
+                                               {:format_rows true})
                          first keys (map name) set))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= #{"THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"}
@@ -2137,14 +2176,16 @@
       (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+
+(deftest xlsx-download-test-2
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 8.0}]
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      :parameters encoded-params))))))))
+                                      {:parameters test-params}))))))))
 
 (defn- parse-xlsx-results-to-strings
   "Parse an excel response into a 2-D array of formatted values"
@@ -2172,7 +2213,7 @@
         (is (= [["T"] ["2023-1-1"]]
                (parse-xlsx-results-to-strings
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      :format_rows true))))))))
+                                      {:format_rows true}))))))))
 
 (deftest xlsx-default-currency-formatting-test
   (testing "The default currency is USD"
@@ -2187,7 +2228,7 @@
               ["[$$]123.45"]]
              (parse-xlsx-results-to-strings
               (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                    :format_rows true)))))))
+                                    {:format_rows true})))))))
 
 (deftest xlsx-default-currency-formatting-test-2
   (testing "Default localization settings take effect"
@@ -2204,7 +2245,7 @@
                 ["[$€]123.45"]]
                (parse-xlsx-results-to-strings
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      :format_rows true))))))))
+                                      {:format_rows true}))))))))
 
 (deftest xlsx-currency-formatting-test
   (testing "Currencies are applied correctly in Excel files"
@@ -2227,7 +2268,7 @@
                   ["[$$]123.45" "[$CA$]123.45" "[$€]123.45" "[$¥]123.45"]]
                  (parse-xlsx-results-to-strings
                   (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                        :format_rows true)))))))))
+                                        {:format_rows true})))))))))
 
 (def ^:private excel-data-query
   "with t1 as (
@@ -2369,7 +2410,7 @@
                     ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
                    (parse-xlsx-results-to-strings
                     (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                          :format_rows true))))))))))
+                                          {:format_rows true}))))))))))
 
 (deftest xlsx-full-formatting-test-2
   (testing "Formatting should be applied correctly for all types, including numbers, currencies, exponents, and times. (relates to #14393)"
@@ -2388,10 +2429,10 @@
                     ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$€]3,456.00" "[$EUR] 2300.00" "2,250.00 euros" "12.7181E+4" "95.40%" "11.580%"]]
                    (parse-xlsx-results-to-strings
                     (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                          :format_rows true)))))
+                                          {:format_rows true})))))
           (parse-xlsx-results-to-strings
            (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                 :format_rows true)))))))
+                                 {:format_rows true})))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -2623,7 +2664,7 @@
          (update-card card {:description "a new description"})
          (is (empty? (reviews card)))))
      (testing "Does not add nil moderation reviews when there are reviews but not verified"
-      ;; testing that we aren't just adding a nil moderation each time we update a card
+         ;; testing that we aren't just adding a nil moderation each time we update a card
        (with-card :verified
          (is (verified? card))
          (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -3375,7 +3416,7 @@
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
 
-(defn upload-example-csv-via-api!
+(defn- upload-example-csv-via-api!
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
   [& {:as args}]
   (mt/with-current-user (mt/user->id :rasta)
@@ -3584,7 +3625,7 @@
                    (->> (mt/user-http-request
                          :crowberto :post 200
                          (format "card/%s/query/%s" card-id (name export-format))
-                         :format_rows apply-formatting?)
+                         {:format_rows apply-formatting?})
                         ((get output-helper export-format)))))))))))
 
 (deftest ^:parallel can-restore
@@ -3676,7 +3717,7 @@
               (is (mi/can-read? card)))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
 
-(deftest query-metadata-test
+(deftest ^:parallel query-metadata-test
   (mt/with-temp
     [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
                                   :database_id (mt/id)}

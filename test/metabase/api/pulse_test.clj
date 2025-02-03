@@ -12,11 +12,11 @@
    [metabase.channel.render.style :as style]
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.pulse-test :as pulse-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -113,7 +113,7 @@
   (doseq [[input expected-error]
           {{}
            {:errors {:name "value must be a non-blank string."}
-            :specific-errors {:name ["should be a string, received: nil" "non-blank string, received: nil"]}}
+            :specific-errors {:name ["missing required key, received: nil"]}}
 
            {:name "abc"}
            default-post-card-ref-validation-error

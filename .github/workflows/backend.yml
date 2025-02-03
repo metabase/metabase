@@ -98,14 +98,14 @@ jobs:
   # Because it's not possible to conditionally run only `java-11-ee` test in the draft mode,
   # we have to extract that job manually here. Backend developers have requested that this
   # test runs at all times to give them an early warning sign is something is broken.
-  be-tests-java-11-ee-pre-check:
+  be-tests-pre-check:
     needs: [files-changed, static-viz-files-changed]
     if: |
       !cancelled() &&
       github.event.pull_request.draft == true &&
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
-    name: Java 11 EE Pre-Check
+    name: Backend Tests Pre-Check
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -114,7 +114,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: java-11-ee-pre-check
+          m2-cache-key: backend-pre-check
 
       - run: yarn install --frozen-lockfile --prefer-offline
       - name: Build static viz frontend
@@ -128,7 +128,7 @@ jobs:
         if: failure()
         with:
           path: "target/junit/**/*_test.xml"
-          name: JUnit Test Report be-tests-java-11-ee-pre-check
+          name: JUnit Test Report (Backend Tests Pre-Check)
           reporter: java-junit
           list-suites: failed
           list-tests: failed
@@ -145,10 +145,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java-version:
-          - 11
-          - 17
-          - 21
+        java-version: [21]
         job:
           - name: Enterprise Tests
             edition: ee
@@ -264,7 +261,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        java-version: [11, 17, 21]
+        java-version: [21]
     name: "Check Java ${{ matrix.java-version }}"
     steps:
       - uses: actions/checkout@v4
@@ -272,6 +269,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: be-check
+      # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
       - name: Check namespaces
         run: clojure -M:ee:drivers:check
 

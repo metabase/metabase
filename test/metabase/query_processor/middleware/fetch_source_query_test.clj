@@ -137,7 +137,7 @@
   (testing "make sure that the `resolve-source-cards` middleware correctly resolves native queries"
     (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                                       meta/metadata-provider
-                                      [(:dataset-query (lib.tu/mock-cards :venues/native))])
+                                      [(:dataset-query (:venues/native (lib.tu/mock-cards)))])
       (is (=? (assoc (default-result-with-inner-query
                       {:aggregation  [[:count]]
                        :breakout     [[:field "price" {:base-type :type/Integer}]]

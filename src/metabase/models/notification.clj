@@ -8,8 +8,8 @@
    [medley.core :as m]
    [metabase.channel.models.channel :as models.channel]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.util.spec-update :as models.u.spec-update]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -66,7 +66,7 @@
    :id
    {:default []}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Notification :payload]
+(methodical/defmethod t2/batched-hydrate [:default :payload]
   "Batch hydration payloads for a list of Notifications."
   [_model k notifications]
   (let [payload-type->ids        (u/group-by :payload_type :payload_id
@@ -76,8 +76,12 @@
                                        (for [[payload-type payload-ids] payload-type->ids]
                                          (case payload-type
                                            :notification/card
-                                           (t2/select-fn->fn (fn [x] [payload-type (:id x)]) identity
-                                                             :model/NotificationCard :id [:in payload-ids])
+                                           (let [notification-cards (t2/hydrate
+                                                                     (t2/select :model/NotificationCard
+                                                                                :id [:in payload-ids])
+                                                                     :card)]
+                                             (into {} (for [nc notification-cards]
+                                                        [[:notification/card (:id nc)] nc])))
                                            {[payload-type nil] nil})))]
 
     (for [notification notifications]
@@ -238,20 +242,23 @@
    notification-handlers
    k
    #(group-by :notification_handler_id
-              (let [recipients       (t2/select :model/NotificationRecipient
-                                                :notification_handler_id [:in (map :id notification-handlers)])
-                    type->recipients (group-by :type recipients)]
-                (-> type->recipients
-                    (m/update-existing :notification-recipient/user
-                                       (fn [recipients]
-                                         (t2/hydrate recipients :user)))
-                    (m/update-existing :notification-recipient/group
-                                       (fn [recipients]
-                                         (t2/hydrate recipients [:permissions_group :members])))
-                    vals
-                    flatten)))
+              (t2/select :model/NotificationRecipient
+                         :notification_handler_id [:in (map :id notification-handlers)]))
    :id
    {:default []}))
+
+(methodical/defmethod t2/batched-hydrate [:default :recipients-detail]
+  "Batch hydration of details (user, group members) for NotificationRecipients"
+  [_model _k recipients]
+  (-> (group-by :type recipients)
+      (m/update-existing :notification-recipient/user
+                         (fn [recipients]
+                           (t2/hydrate recipients :user)))
+      (m/update-existing :notification-recipient/group
+                         (fn [recipients]
+                           (t2/hydrate recipients [:permissions_group :members])))
+      vals
+      flatten))
 
 (defn- cross-check-channel-type-and-template-type
   [notification-handler]
@@ -365,6 +372,7 @@
   "Schema for :model/NotificationCard."
   [:map
    [:card_id                         ms/PositiveInt]
+   [:card           {:optional true} [:maybe :map]]
    [:send_condition {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
    [:send_once      {:optional true} :boolean]])
 
@@ -465,7 +473,7 @@
               :creator
               :payload
               :subscriptions
-              [:handlers :channel :template :recipients]))
+              [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]
   "Find all active card notifications for a given card-id."

@@ -1,0 +1,18 @@
+.video {
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 0.5rem;
+}
+
+.thumbnail {
+  cursor: pointer;
+  width: 8rem;
+  margin-right: 1rem;
+
+  img {
+    border-radius: 0.5rem;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.05),
+      0 4px 16px rgba(0, 0, 0, 0.1);
+  }
+}

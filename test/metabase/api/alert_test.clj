@@ -4,12 +4,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.channel.email-test :as et]
-   [metabase.channel.impl.http-test :as channel.http-test]
-   [metabase.http-client :as client]
    [metabase.models.notification :as models.notification]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as models.pulse]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
@@ -17,6 +12,8 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :notifications))
 
 (use-fixtures :once (fixtures/initialize :notifications))
 

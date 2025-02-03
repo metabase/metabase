@@ -1,6 +1,7 @@
 // @ts-check
 
 const esmPackages = [
+  "ccount",
   "character-entities-html4",
   "comma-separated-tokens",
   "d3-*",
@@ -15,9 +16,14 @@ const esmPackages = [
   "screenfull",
   "space-separated-tokens",
   "stringify-entities",
+  "unist-util-visit-parents",
+  "unist-util-visit",
+  "vfile-location",
   "vfile-message",
   "vfile",
+  "web-namespaces",
   "zrender",
+  "zwitch",
 ];
 
 /** @type {import('jest').Config} */

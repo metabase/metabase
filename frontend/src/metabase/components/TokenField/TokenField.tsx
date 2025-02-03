@@ -23,6 +23,7 @@ import { Icon } from "metabase/ui";
 
 import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
 
+import S from "./TokenField.module.css";
 import {
   PrefixContainer,
   TokenFieldContainer,
@@ -572,7 +573,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
               >
                 <Icon
                   name="close"
-                  className={cx(CS.flex, CS.alignCenter)}
+                  className={cx(CS.flex, CS.alignCenter, S.closeIcon)}
                   size={12}
                 />
               </TokenFieldAddon>

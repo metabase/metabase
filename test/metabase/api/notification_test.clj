@@ -1,16 +1,14 @@
 (ns metabase.api.notification-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.channel.email.messages :as messages]
    [metabase.models.collection :as collection]
    [metabase.models.notification :as models.notification]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -40,7 +38,8 @@
                    :creator_id    (mt/user->id :crowberto)
                    :creator       {:email "crowberto@metabase.com"}
                    :payload_type  "notification/card"
-                   :payload       {:card_id (-> notification :payload :card_id)}
+                   :payload       {:card_id (-> notification :payload :card_id)
+                                   :card    {:id (-> notification :payload :card_id)}}
                    :subscriptions [{:notification_id notification-id
                                     :type            "notification-subscription/cron"
                                     :cron_schedule   "0 0 0 * * ?"}
@@ -115,8 +114,8 @@
     (notification.tu/with-channel-fixtures [:channel/email]
       (mt/with-temp [:model/Card {card-id :id} {:name "My Card"}]
         (doseq [[send_condition expected_text] [["has_result" "whenever this question has any results"]
-                                                #_["goal_above" "when this question meets its goal"]
-                                                #_["goal_below" "when this question goes below its goal"]]]
+                                                ["goal_above" "when this question meets its goal"]
+                                                ["goal_below" "when this question goes below its goal"]]]
           (let [notification {:payload_type  "notification/card"
                               :active        true
                               :payload       {:card_id card-id
@@ -147,7 +146,7 @@
     (is (= "Unauthenticated" (mt/client :post 401 "notification"))))
 
   (testing "card notification requires a card_id"
-    (is (=? {:specific-errors {:body {:payload {:card_id ["missing required key, received: nil"]}}}}
+    (is (=? {:specific-errors {:payload {:card_id ["missing required key, received: nil"]}}}
             (mt/user-http-request :crowberto :post 400 "notification" {:payload      {}
                                                                        :payload_type "notification/card"}))))
 
@@ -205,10 +204,10 @@
                 new-recipients          [(assoc existing-user-recipient :user_id (mt/user->id :rasta))
                                          {:type                    :notification-recipient/group
                                           :notification_handler_id (:id existing-email-handler)
-                                          :permissions_group_id    (:id (perms-group/admin))}]
+                                          :permissions_group_id    (:id (perms/admin-group))}]
                 new-handlers            [(assoc existing-email-handler :recipients new-recipients)]]
             (is (=? [{:type                "notification-recipient/group"
-                      :permissions_group_id (:id (perms-group/admin))}
+                      :permissions_group_id (:id (perms/admin-group))}
                      {:type    "notification-recipient/user"
                       :user_id (mt/user->id :rasta)}]
                     (->> (update-notification (assoc @notification :handlers new-handlers))
@@ -241,7 +240,7 @@
                                   :payload      {:card_id 1}
                                   :payload_type "notification/card"}))))
   (testing "400 on invalid payload"
-    (is (=? {:specific-errors {:body {:payload {:card_id ["missing required key, received: nil"]}}}}
+    (is (=? {:specific-errors {:payload {:card_id ["missing required key, received: nil"]}}}
             (mt/user-http-request :crowberto :put 400 "notification/1" {:creator_id   (mt/user->id :crowberto)
                                                                         :payload      {}
                                                                         :payload_type "notification/card"})))))
@@ -279,40 +278,35 @@
                                  (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification))
                                                        {:handler_ids handler-ids}))))))))))))
 
-(defn- strip-keys
-  [x to-remove-keys]
-  (walk/postwalk
-   (fn [x]
-     (if (map? x)
-       (apply dissoc x to-remove-keys)
-       x))
-   x))
-
 (deftest send-unsaved-notification-api-test
   (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
                                                        :details {:url         "https://metabase.com/testhttp"
-                                                                 :auth-method "none"}}]
+                                                                 :auth-method "none"}}
+                 :model/Card    {card-id :id}         {:dataset_query (mt/mbql-query products {:aggregation [[:count]]
+                                                                                               :breakout    [$category]})}]
     (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
-      (notification.tu/with-card-notification
-        [notification {:handlers [{:channel_type :channel/email
-                                   :recipients   [{:type    :notification-recipient/user
-                                                   :user_id (mt/user->id :crowberto)}]}
-                                  {:channel_type :channel/slack
-                                   :recipients   [{:type    :notification-recipient/raw-value
-                                                   :details {:value "#general"}}]}
-                                  {:channel_type :channel/http
-                                   :channel_id   http-channel-id}]}]
-        ;; this test only check that channel will send, the content are tested in [[metabase.notification.payload.impl.card-test]]
-        (testing "send to all handlers"
-          (is (=? {:channel/email [{:message    (mt/malli=? some?)
-                                    :recipients ["crowberto@metabase.com"]}]
-                   :channel/slack [{:attachments (mt/malli=? some?)
-                                    :channel-id  "#general"}]
-                   :channel/http  [{:body (mt/malli=? some?)}]}
-                  (notification.tu/with-captured-channel-send!
-                    (mt/user-http-request :crowberto :post 204 "notification/send" (strip-keys notification [:id :created_at :updated_at]))))))))))
-
-;; Permission tests
+      (testing "send to all handlers"
+        (is (=? {:channel/email [{:message    (mt/malli=? some?)
+                                  :recipients ["crowberto@metabase.com"]}]
+                 :channel/slack [{:attachments (mt/malli=? some?)
+                                  :channel-id  "#general"}]
+                 :channel/http  [{:body (mt/malli=? some?)}]}
+                (notification.tu/with-captured-channel-send!
+                  (mt/user-http-request :crowberto :post 204 "notification/send"
+                                        {:handlers [{:channel_type :channel/email
+                                                     :recipients   [{:type    :notification-recipient/user
+                                                                     :user_id (mt/user->id :crowberto)}]}
+                                                    {:channel_type :channel/slack
+                                                     :recipients   [{:type    :notification-recipient/raw-value
+                                                                     :details {:value "#general"}}]}
+                                                    {:channel_type :channel/http
+                                                     :channel_id   http-channel-id}]
+                                         :payload_type :notification/card
+                                         :payload      {:card_id card-id
+                                                        :send_condition :has_result
+                                                        :send_once false}
+                                         :subscriptions [{:type          :notification-subscription/cron
+                                                          :cron_schedule "0 0 0 * * ?"}]}))))))))
 
 (deftest get-notification-permissions-test
   (mt/with-temp
@@ -391,10 +385,10 @@
 (defmacro with-disabled-subscriptions-permissions
   [& body]
   `(try
-     (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
+     (perms/revoke-application-permissions! (perms/all-users-group) :subscription)
      ~@body
      (finally
-       (perms/grant-application-permissions! (perms-group/all-users) :subscription))))
+       (perms/grant-application-permissions! (perms/all-users-group) :subscription))))
 
 (deftest create-card-notification-permissions-test
   (mt/with-model-cleanup [:model/Notification]
@@ -476,7 +470,7 @@
                  (move-card-collection (:id user))
                  (mt/with-premium-features #{:advanced-permissions}
                    (testing "owners won't be able to update without subscription permissions"
-                     (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
+                     (perms/revoke-application-permissions! (perms/all-users-group) :subscription)
                      (perms/revoke-application-permissions! group :subscription)
                      (update! (:id user) 403))
                    (testing "owners can update with subscription permissions"

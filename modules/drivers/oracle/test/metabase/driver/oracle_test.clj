@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.oracle :as oracle]
@@ -13,6 +14,9 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
@@ -541,3 +545,45 @@
                   (mt/run-mbql-query
                     dates_with_time
                     {:filter [:= [:field %date_with_time {:base-type :type/Date}] "2024-11-05T12:12:12"]})))))))))
+
+(deftest ^:parallel repro-49433-test
+  (mt/test-driver
+    :oracle
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                  (lib/aggregate $ (lib/count))
+                  (lib/breakout $ (m/find-first (comp #{"Category"} :display-name)
+                                                (lib/breakoutable-columns $)))
+                  (lib/breakout $ (lib/with-temporal-bucket
+                                    (m/find-first (comp #{"Created At"} :display-name)
+                                                  (lib/breakoutable-columns $))
+                                    :minute))
+                  (lib/limit $ 1))]
+      (testing "Column has effective_type DateTime (#49433)"
+        (is (=? {:effective_type :type/DateTime}
+                (m/find-first (comp #{"created_at"} :name)
+                              (mt/cols (qp/process-query query)))))))))
+
+(deftest date-filter-variable
+  (testing "Date filter variables work against date-times"
+    (mt/test-driver
+      :oracle
+      (mt/dataset
+        date-cols-with-datetime-values
+        (doseq [widget-type [:date/single :date/all-options]]
+          (let [query (mt/native-query
+                        {:query "SELECT *
+                               FROM \"mb_test\".\"date_cols_with_datetime_values_dates_with_time\"
+                               WHERE {{date_filter}}"
+                         :template-tags {"date_filter"
+                                         {:name         "date_filter"
+                                          :display-name "Date Filter"
+                                          :type         :dimension
+                                          :dimension    [:field (mt/id :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]
+                                          :widget-type  widget-type}}})
+                query-with-params (assoc query :parameters [{:type   widget-type
+                                                             :target [:dimension [:template-tag "date_filter"]]
+                                                             :value  "2024-11-06"}])]
+            (is (= [[2M "2024-11-06T13:13:13Z"]]
+                   (mt/rows
+                    (qp/process-query query-with-params))))))))))

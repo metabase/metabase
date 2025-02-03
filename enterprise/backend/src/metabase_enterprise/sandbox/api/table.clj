@@ -1,10 +1,10 @@
 (ns metabase-enterprise.sandbox.api.table
   (:require
-   [compojure.core :refer [GET]]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.api.table :as api.table]
-   [metabase.models.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -86,20 +86,19 @@
       ;; Not sandboxed, so user can fetch full metadata
       table)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/query_metadata"
+(api.macros/defendpoint :get "/:id/query_metadata"
   "This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has sandboxed permissions
   that only gives them access to a subset of columns for a given table, those inaccessable columns should also be
   excluded from what is show in the query builder. When the user has full permissions (or no permissions) this route
   doesn't add/change anything from the OSS version. See the docs on the OSS version of the endpoint for more
   information."
-  [id include_sensitive_fields include_hidden_fields include_editable_data_model]
-  {id                          ms/PositiveInt
-   include_sensitive_fields    [:maybe ms/BooleanValue]
-   include_hidden_fields       [:maybe ms/BooleanValue]
-   include_editable_data_model [:maybe ms/BooleanValue]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
+   :- [:map
+       [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
+       [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
   (fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                   :include-hidden-fields?       include_hidden_fields
                                   :include-editable-data-model? include_editable_data_model}))
-
-(api/define-routes)

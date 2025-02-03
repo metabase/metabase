@@ -19,7 +19,7 @@ export function setQuarterAndYear({ quarter, year } = {}) {
 }
 
 export function setSingleDate(date) {
-  cy.findByLabelText("Date").clear().type(date).blur();
+  popover().findByLabelText("Date").clear().type(date).blur();
 }
 
 export function setTime({ hours, minutes }) {

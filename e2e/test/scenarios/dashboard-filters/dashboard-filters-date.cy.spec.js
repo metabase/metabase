@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
@@ -35,6 +35,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // Go through each of the filters and make sure they work individually
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
 
         dateFilterSelector({
@@ -175,7 +176,7 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Toutes les options").click(); // "All Options"
+    cy.findByText("Date").click(); // "Date" - it's the same word in English and in French
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exclure...").click(); // "Exclude…"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -186,10 +187,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Ajouter un filtre").click(); // "Add filter"
 
-    cy.url().should(
-      "match",
-      /\/dashboard\/\d+\?toutes_les_options=exclude-months-Jan/,
-    );
+    cy.url().should("match", /\/dashboard\/\d+\?date=exclude-months-Jan/);
   });
 });
 

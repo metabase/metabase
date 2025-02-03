@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -113,6 +113,7 @@ function createBasicAlert({ firstAlert, includeNormal } = {}) {
   }
 
   if (includeNormal) {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findByText("Email alerts to:").parent().children().last().click();
     cy.findByText(H.getFullName(normal)).click();
   }

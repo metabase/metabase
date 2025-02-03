@@ -12,7 +12,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import { delay } from "metabase/lib/promise";

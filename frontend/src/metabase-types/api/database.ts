@@ -35,7 +35,8 @@ export type DatabaseFeature =
   | "nested-field-columns"
   | "advanced-math-expressions"
   | "connection-impersonation"
-  | "connection-impersonation-requires-role";
+  | "connection-impersonation-requires-role"
+  | "native-requires-specified-collection";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;

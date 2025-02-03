@@ -79,7 +79,7 @@ function MainNavbar({
   onChangeLocation,
   ...props
 }: Props) {
-  const { data: card } = useGetCardQuery(
+  const { currentData: card } = useGetCardQuery(
     questionId
       ? {
           id: questionId,
@@ -87,7 +87,7 @@ function MainNavbar({
       : skipToken,
   );
 
-  const { data: collection } = useGetCollectionQuery(
+  const { currentData: collection } = useGetCollectionQuery(
     collectionId ? { id: collectionId } : skipToken,
   );
 
@@ -109,7 +109,7 @@ function MainNavbar({
   }, [isOpen, openNavbar, closeNavbar]);
 
   const selectedItems = useMemo<SelectedItem[]>(() => {
-    const question = new Question(card);
+    const question = card && new Question(card);
 
     return getSelectedItems({
       pathname: location.pathname,
