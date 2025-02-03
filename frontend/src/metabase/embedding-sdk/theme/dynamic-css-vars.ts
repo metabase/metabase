@@ -3,10 +3,7 @@ import { css } from "@emotion/react";
 import { alpha, darken, isDark, isLight, lighten } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
 
-import type {
-  ColorOperation,
-  SourceColorKey,
-} from "../types/private/css-variables";
+import type { ColorOperation } from "../types/private/css-variables";
 
 import { DYNAMIC_CSS_VARIABLES } from "./dynamic-css-vars-config";
 
@@ -42,16 +39,7 @@ export function getDynamicCssVariables(theme: MantineTheme) {
 
   const mappings = Object.entries(DYNAMIC_CSS_VARIABLES)
     .map(([cssVar, config]) => {
-      let colorKey: SourceColorKey | null = null;
       let operation: ColorOperation | null = null;
-
-      if (typeof config.source === "string") {
-        colorKey = config.source;
-      } else if (isDarkTheme && config.source.dark) {
-        colorKey = config.source.dark;
-      } else if (!isDarkTheme && config.source.light) {
-        colorKey = config.source.light;
-      }
 
       if (isDarkTheme && config.dark) {
         operation = config.dark;
@@ -60,11 +48,11 @@ export function getDynamicCssVariables(theme: MantineTheme) {
       }
 
       // Do not define the CSS variable if the source color or operation is not defined.
-      if (!colorKey || !operation) {
+      if (!operation) {
         return [cssVar, null];
       }
 
-      let mappedColor = theme.fn.themeColor(colorKey);
+      let mappedColor = theme.fn.themeColor(operation.source);
 
       if (operation.lighten) {
         mappedColor = lighten(mappedColor, operation.lighten);

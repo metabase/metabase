@@ -4,19 +4,23 @@ import type { ColorName } from "metabase/lib/colors/types";
 export type SourceColorKey = ColorName | SemanticColorKey;
 
 export type ColorOperation = {
+  /** The color to use as a source for generating the CSS variable. **/
+  source: SourceColorKey;
+
+  /** Lightens the color by the given amount. **/
   lighten?: number;
+
+  /** Darkens the color by the given amount. **/
   darken?: number;
+
+  /** Sets the alpha value of the color. **/
   alpha?: number;
 };
 
+/**
+ * Applies different color operations to light and dark themes.
+ */
 export type DynamicCssVarColorDefinition = {
-  /**
-   * The color to use as a source for generating the CSS variable.
-   * If the value is an object, it will use the light color for light themes and the dark color for dark themes.
-   **/
-  source: SourceColorKey | { light?: SourceColorKey; dark?: SourceColorKey };
-
-  // applies different operations to light and dark themes
   light?: ColorOperation;
   dark?: ColorOperation;
 };
