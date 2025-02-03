@@ -65,11 +65,6 @@ const CypressBackend = {
         }),
       };
 
-      const snowplowConfig = {
-        MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
-        MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
-      };
-
       this.server.process = spawn(
         "java",
         [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
@@ -78,7 +73,6 @@ const CypressBackend = {
             ...process.env,
             ...metabaseConfig,
             ...userDefaults,
-            ...snowplowConfig,
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||

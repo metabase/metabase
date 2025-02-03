@@ -3,7 +3,6 @@ const runCypress = require("./cypress-runner-run-tests");
 const { printBold, shell } = require("./cypress-runner-utils");
 
 // if you want to change these, set them in your shell
-console.log("process.env", process.env);
 const options = {
   MB_EDITION: "ee",
   ENTERPRISE_TOKEN: null,
@@ -15,15 +14,19 @@ const options = {
   TEST_SUITE: "e2e", // e2e | component | visual
   OPEN_UI: true,
   SHOW_BACKEND_LOGS: false,
+  QUIET: false,
   ...process.env,
 };
 
-// what could possibly go wrong?
 process.env = {
+  // derived from options
   MB_PREMIUM_EMBEDDING_TOKEN: options.ENTERPRISE_TOKEN,
   CYPRESS_ALL_FEATURES_TOKEN: options.ENTERPRISE_TOKEN,
-  ...process.env,
+  QA_DB_ENABLED: options.START_CONTAINERS,
+  MB_SNOWPLOW_AVAILABLE: options.START_CONTAINERS,
+  MB_SNOWPLOW_URL: "http://localhost:9090",
   ...options,
+  ...process.env,
 };
 
 if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
@@ -59,14 +62,16 @@ const init = async () => {
     printBold("⏳ Building backend");
     shell("./bin/build-for-test");
 
-    shell(
-      'lsof -ti:8080 && echo "✅ Frontend is running" || echo "You don\'t have your frontend running, you should probably run yarn build-hot"',
+    const isBackendRunning = shell(
+      `lsof -ti:${options.BACKEND_PORT} || echo ""`,
+      { quiet: true },
     );
-
-    printBold("🔪 Killing existing backend (if any)");
-    shell(
-      `kill $(lsof -ti:${options.BACKEND_PORT}) :|| echo "no backend to kill"`,
-    );
+    if (isBackendRunning) {
+      printBold(
+        "Your backend is already running, you may want to kill pid " +
+          isBackendRunning,
+      );
+    }
 
     printBold("⏳ Starting backend");
     await CypressBackend.start();
@@ -79,6 +84,13 @@ const init = async () => {
   if (options.GENERATE_SNAPSHOTS) {
     printBold("⏳ Generating snapshots");
     await runCypress("snapshot", cleanup);
+  }
+
+  const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
+  if (!isFrontendRunning) {
+    printBold(
+      "\n\n⚠️⚠️ You don't have your frontend running. You should probably run yarn build-hot ⚠️⚠️\n\n",
+    );
   }
 
   printBold("⏳ Starting Cypress");

@@ -9,7 +9,7 @@ const getTestConfig = async () => {
     config: {
       baseUrl: `http://localhost:${process.env.BACKEND_PORT}`,
     },
-    mode: "e2e",
+    testingType: process.env.TEST_SUITE,
     openMode: args["--open"] || process.env.OPEN_UI,
   };
 
@@ -30,6 +30,7 @@ const getSnapshotConfig = async () => {
     config: {
       baseUrl: `http://localhost:${process.env.BACKEND_PORT}`,
     },
+    testingType: "e2e",
     openMode: false,
   };
 

@@ -30,8 +30,9 @@ async function parseArguments(args) {
   return await cypress.cli.parseRunArguments(cliArgs);
 }
 
-function shell(command) {
-  return execSync(command, { stdio: "inherit" });
+function shell(command, { quiet = process.env.QUIET } = {}) {
+  const output = execSync(command, { stdio: quiet ? "pipe" : "inherit" });
+  return output?.toString()?.trim();
 }
 
 module.exports = {
