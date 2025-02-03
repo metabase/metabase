@@ -23,10 +23,10 @@
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.pulse :as models.pulse]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.upload :as upload]
@@ -1435,5 +1435,3 @@
                  (decode-graph {:revision revision :groups groups})
                  skip-graph
                  force))
-
-(api/define-routes)
