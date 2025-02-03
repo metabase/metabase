@@ -66,7 +66,7 @@
   task-history)
 
 (t2/deftransforms :model/TaskHistory
-  {:task_details mi/transform-json
+  {:task_details mi/transform-json-eliding
    :status       mi/transform-keyword})
 
 (mu/defn all

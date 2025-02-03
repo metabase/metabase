@@ -48,3 +48,10 @@
         "..."
         (when (< (+ end-limit start-limit) cnt)
           (subs s (- cnt end-limit) cnt)))))))
+
+(defn elide
+  "Elides the string to the specified length, adding '...' if it exceeds that length."
+  [s max-length]
+  (if (> (count s) max-length)
+    (str (subs s 0 (- max-length 3)) "...")
+    s))
