@@ -1,0 +1,51 @@
+name: Get latest release branch
+
+inputs:
+  count:
+    description: "Number of latest release branches to return"
+    required: false
+    default: "1"
+
+outputs:
+  branch-names:
+    value: ${{ steps.get-latest-release-branches.outputs.result }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/github-script@v7
+      id: get-latest-release-branches
+      with:
+        result-encoding: string
+        script: |
+          // Retrieve the 'count' input (as a number)
+          const count = parseInt(process.env.INPUT_COUNT, 10) || 1;
+
+          const releaseBranches = await github.rest.git.listMatchingRefs({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: "heads/release-x.",
+          });
+
+          const getVersionFromBranch = branch => {
+            const match = branch.match(/release-x\.(.*?)\.x$/);
+            return match ? parseInt(match[1], 10) : null;
+          };
+
+          // Filter out branches that don't match and sort the valid ones in descending order
+          const validBranches = releaseBranches.data
+            .filter(branch => getVersionFromBranch(branch.ref) !== null)
+            .sort((a, b) => getVersionFromBranch(b.ref) - getVersionFromBranch(a.ref));
+
+          // Get the top 'count' branches
+          const latestBranches = validBranches.slice(0, count);
+
+          // Remove the refs/heads/ prefix to get clean branch names
+          const branchNames = latestBranches.map(branch =>
+            branch.ref.replace(/^refs\/heads\//, "")
+          );
+
+          console.log(`Latest release branches: ${branchNames.join(', ')}`);
+
+          // Return the branch names as a comma-separated string
+          return branchNames.join(',');
