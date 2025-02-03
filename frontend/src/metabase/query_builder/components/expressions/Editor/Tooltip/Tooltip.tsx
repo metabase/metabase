@@ -52,7 +52,6 @@ export function Tooltip({
   );
 
   const { options, selectedOption } = useCompletions(state);
-
   const enclosingFn = enclosingFunction(doc, state.selection.main.head);
 
   return (
@@ -120,7 +119,7 @@ function Completions({
       <ul role="listbox" className={S.listbox}>
         {completions.map((completion, index) => (
           <CompletionItem
-            key={index}
+            key={completion.displayLabel}
             completion={completion}
             index={index}
             selected={selectedCompletion === index}
@@ -172,10 +171,38 @@ function CompletionItem({
       className={S.item}
     >
       <Icon name={completion.icon} className={S.icon} />
-
-      {completion.displayLabel ?? completion.label}
+      <MatchText
+        text={completion.displayLabel ?? completion.label}
+        ranges={completion.matches}
+      />
     </li>
   );
+}
+
+function MatchText({
+  text,
+  ranges = [],
+}: {
+  text: string;
+  ranges?: [number, number][];
+}) {
+  const res = [];
+  let prevIndex = 0;
+
+  for (const range of ranges) {
+    if (range[0] >= 0) {
+      res.push(text.slice(prevIndex, range[0]));
+    }
+    res.push(
+      <span className={S.highlight}>
+        {text.slice(Math.max(0, range[0]), range[1] + 1)}
+      </span>,
+    );
+    prevIndex = range[1] + 1;
+  }
+  res.push(text.slice(prevIndex, text.length));
+
+  return <span className={S.label}>{res}</span>;
 }
 
 function Footer() {

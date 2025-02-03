@@ -38,6 +38,14 @@
   }
 }
 
+.label {
+  white-space: pre;
+}
+
+.highlight {
+  font-weight: bold;
+}
+
 .footer {
   /* TODO: use correct color */
   background-color: #fafafb;
