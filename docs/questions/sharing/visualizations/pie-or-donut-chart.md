@@ -48,7 +48,7 @@ For a sunburst (multi-dimensional pie) chart, you'll need a query with up to thr
 
 You can choose which breakouts to assign to the inner, middle, or outer rings of the sunburst chart in [chart "Data" settings](#data-settings). If your query has multiple metrics, you'll also be able to choose which metric to display. Here's the sunburst chart for the example table above:
 
-![](../../images/sunburst-two-levels.png)
+![Sunburst Two Levels](../../images/sunburst-two-levels.png)
 
 You don't need to include the percentages in your query. Metabase will automatically compute the percentage of the total for each value of the metric (for example, Metabase will compute that 23 Cats make up 31.9% of all pets).
 

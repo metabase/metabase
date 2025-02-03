@@ -153,7 +153,7 @@ The exact instructions for how to run Metabase as a service will differ dependin
 
 ### Migrating to a production installation
 
-If you've been running Metabase with the default H2 application database and your team has already created questions, dashboards, collections and so on, you'll want to migrate that data to a production application database. And the sooner you do, the better. See [Migrating from the H2 database](migrating-from-h2.md).
+If you've been running Metabase with the default H2 application database and your team has already created questions, dashboards, collections and so on, you'll want to migrate that data to a production application database. And the sooner you do, the better. See [Migrating from the H2 database](./migrating-from-h2.md).
 
 ## Troubleshooting
 
