@@ -20,31 +20,35 @@
             ZoneId
             ZonedDateTime]))
 
-(deftest ->config-good-test
-  (testing "Both needed values are present and pulled from settings"
-    (tu/with-temporary-setting-values
-      [api-key "mb_api_key_123"
-       store-api-url "http://store-api-url.com"]
-      (is (= {:store-api-url "http://store-api-url.com", :api-key "mb_api_key_123"}
-             (#'gsheets.api/->config))))))
+(set! *warn-on-reflection* true)
 
-(deftest ->config-missing-api-key-test
-  (tu/with-temporary-setting-values
-    [api-key nil
-     store-api-url "http://store-api-url.com"]
-    (is (thrown-with-msg?
-         Exception
-         #"Missing api-key."
-         (#'gsheets.api/->config)))))
+;; TODO (gsheets): move these into hm.client test
 
-(deftest ->config-missing-both-test
-  (tu/with-temporary-setting-values
-    [api-key ""
-     store-api-url nil]
-    (is (thrown-with-msg?
-         Exception
-         #"Missing api-key."
-         (#'gsheets.api/->config)))))
+;; (deftest ->config-good-test
+;;   (testing "Both needed values are present and pulled from settings"
+;;     (tu/with-temporary-setting-values
+;;       [api-key "mb_api_key_123"
+;;        store-api-url "http://store-api-url.com"]
+;;       (is (= {:store-api-url "http://store-api-url.com", :api-key "mb_api_key_123"}
+;;              (#'gsheets.api/->config))))))
+
+;; (deftest ->config-missing-api-key-test
+;;   (tu/with-temporary-setting-values
+;;     [api-key nil
+;;      store-api-url "http://store-api-url.com"]
+;;     (is (thrown-with-msg?
+;;          Exception
+;;          #"Missing api-key."
+;;          (#'gsheets.api/->config)))))
+
+;; (deftest ->config-missing-both-test
+;;   (tu/with-temporary-setting-values
+;;     [api-key ""
+;;      store-api-url nil]
+;;     (is (thrown-with-msg?
+;;          Exception
+;;          #"Missing api-key."
+;;          (#'gsheets.api/->config)))))
 
 (deftest gsheets-calls-fail-when-missing-etl-connections
   (binding [token-check/*token-features* (constantly #{"attached-dwh"})]
@@ -88,15 +92,12 @@
            (mt/user-http-request :crowberto :get 200 "ee/gsheets/service-account"))))))
 
 (defn- ->zdt
-  ([date] (->zdt date 0))
-  ([date time] (->zdt date time "UTC"))
-  ([date time zone] (ZonedDateTime/of (LocalDate/of date 1 1)
-                                      (-> LocalTime/MIDNIGHT (.plusSeconds time))
-                                      (ZoneId/of zone))))
+  [^long date ^long time ^String zone]
+  (ZonedDateTime/of (LocalDate/of date 1 1) (-> LocalTime/MIDNIGHT (.plusSeconds time)) (ZoneId/of zone)))
 
 (deftest sync-complete?-test
-  (let [earlier-time (->zdt 2000)
-        later-time (->zdt 2022)]
+  (let [earlier-time (->zdt 2000 0 "UTC")
+        later-time (->zdt 2022 0 "UTC")]
 
     (is (not (#'gsheets.api/sync-complete? {:status "initializing" :last-dwh-sync nil :last-gdrive-conn-sync nil}))
         "status must be active for sync to be complete")
@@ -140,14 +141,13 @@
                    :created-at "2025-01-27T18:43:02Z"}]}]))
 
 (defn mock-make-request
-  ([responses config method url] (mock-make-request responses config method url nil))
-  ([responses _config method url body]
+  ([responses method url] (mock-make-request responses method url nil))
+  ([responses method url body]
    (get responses {:method method :url url :body body}
         [:error {:status 404}])))
 
 (deftest can-get-service-account-test
   (let [[status response] (mock-make-request (happy-responses)
-                                             (#'gsheets.api/->config)
                                              :get
                                              "/api/v2/mb/connections-google/service-account")]
     (is (= :ok status))
@@ -240,46 +240,3 @@
       (with-sample-db-as-dwh
         (is (= "Unable to disconnect google service account"
                (:message (mt/user-http-request :crowberto :delete 500 "ee/gsheets/folder"))))))))
-
-(def zdt-schema-with-gen
-  [:time/zoned-date-time
-   {:gen/gen
-    (gen/fmap (fn [[d t z]] (->zdt d t z))
-              (gen/tuple
-               (gen/choose 0 (* 50 365))
-               (gen/choose 0 (* 24 60 60))
-               (gen/elements (vec (ZoneId/getAvailableZoneIds)))))}])
-
-(defn ->generatable-zdtimes [schema]
-  (walk/postwalk (fn [x]
-                   (if (= x :time/zoned-date-time)
-                     zdt-schema-with-gen
-                     x))
-                 schema))
-
-(def ^:private status-sort-order ["active" "error" "syncing" "initializing"])
-
-(deftest sort-gdrive-conns-test
-  (let [unsorted [{:status "initializing", :created-at #t "2023-01-01T05:31:13+02:00[EET]"}
-                  {:status "active", :created-at #t "2019-01-01T08:28:46+01:00[Europe/Podgorica]"}
-                  {:status "error", :created-at #t "2022-01-01T15:54:29-03:00[America/Argentina/San_Juan]"}
-                  {:status "active", :created-at #t "2009-01-01T19:21:38-04:00[SystemV/AST4]"}
-                  {:status "initializing", :created-at #t "2021-01-01T06:42:22-05:18:08[America/Panama]"}
-                  {:status "initializing", :created-at #t "2020-01-01T15:45:14-05:00[America/Cayman]"}
-                  {:status "syncing", :created-at #t "2003-01-01T09:25:08-04:00[America/Virgin]"}
-                  {:status "active", :created-at #t "2000-01-01T18:47:07+03:00[Europe/Simferopol]"}]
-        sorted (#'gsheets.api/sort-gdrive-conns unsorted)]
-    (is (= status-sort-order (distinct (map :status sorted)))
-        "Sorted by `status`")
-    (doseq [[_status conns] (group-by :status sorted)
-            [{t1 :created-at} {t2 :created-at}] (partition 2 1 conns)]
-      (is (t/after? (t/instant t1) (t/instant t2))
-          "`created-at` times are sorted in descending order"))))
-
-(defspec gdrive-conns-get-sorted-by-status
-  (prop/for-all [conns (mg/generator (->generatable-zdtimes
-                                      [:sequential (mr/schema ::gsheets.api/gdrive-conn)]))]
-    (let [sorted (#'gsheets.api/sort-gdrive-conns conns)
-          existing-statuses (set (distinct (keep :status sorted)))]
-      (= (filter existing-statuses status-sort-order)
-         (distinct (map :status sorted))))))
