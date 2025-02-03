@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > question > custom column > expression shortcuts > combine", () => {
@@ -79,6 +79,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
       "123.45678901234567 123.45678901234567 email@example.com",
     );
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByLabelText("Remove column").last().click();
 
     cy.findByTestId("combine-example").should(
@@ -109,7 +110,8 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
 
     H.popover().findByText("Count of rows").click();
 
-    H.addCustomColumn();
+    // add custom column
+    cy.findAllByTestId("action-buttons").first().icon("add_data").click();
     selectCombineColumns();
 
     selectColumn(0, "User", "Email");
@@ -164,9 +166,11 @@ function selectCombineColumns() {
 
 function selectColumn(index: number, table: string, name?: string) {
   H.expressionEditorWidget().within(() => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("column-input").eq(index).click();
   });
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.popover()
     .last()
     .within(() => {

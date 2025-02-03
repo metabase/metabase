@@ -5,10 +5,13 @@
    [metabase-enterprise.scim.v2.api :as scim-api]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.http-client :as client]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (def ^:dynamic *scim-api-key* nil)
 

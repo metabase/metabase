@@ -32,7 +32,10 @@ const NUMERIC_UNIT_FORMATS = {
     moment("2016-01-01") // initial date must be in leap year to format properly
       .dayOfYear(value)
       .startOf("day"),
-  "week-of-year": (value: number) => moment().week(value).startOf("week"),
+  "week-of-year": (value: number) =>
+    moment("2016-01-01") // initial date must be in a year with 53 iso weeks to format properly
+      .isoWeek(value) // set the iso week number to not depend on the first day of week
+      .startOf("isoWeek"),
   "month-of-year": (value: number) =>
     moment()
       .month(value - 1)

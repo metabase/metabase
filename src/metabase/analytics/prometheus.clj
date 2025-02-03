@@ -5,6 +5,7 @@
 
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
+  (:refer-clojure :exclude [set!])
   (:require
    [clojure.java.jmx :as jmx]
    [iapetos.collector :as collector]
@@ -195,7 +196,9 @@
 (defn- product-collectors
   []
   ;; Iapetos will use "default" if we do not provide a namespace, so explicitly set, e.g. `metabase-email`:
-  [(prometheus/counter :metabase-email/messages
+  [(prometheus/counter :metabase-csv-upload/failed
+                       {:description "Number of failures when uploading CSV."})
+   (prometheus/counter :metabase-email/messages
                        {:description "Number of emails sent."})
    (prometheus/counter :metabase-email/message-errors
                        {:description "Number of errors when sending emails."})
@@ -218,24 +221,58 @@
    (prometheus/counter :metabase-search/index
                        {:description "Number of entries indexed for search"
                         :labels      [:model]})
+   (prometheus/counter :metabase-search/index-error
+                       {:description "Number of errors encountered when indexing for search"})
    (prometheus/counter :metabase-search/index-ms
                        {:description "Total number of ms indexing took"})
+   (prometheus/gauge :metabase-search/queue-size
+                     {:description "Number of updates on the search indexing queue."})
    (prometheus/counter :metabase-search/response-ok
                        {:description "Number of successful search requests."})
    (prometheus/counter :metabase-search/response-error
-                       {:description "Number of errors when responding to search requests."})])
+                       {:description "Number of errors when responding to search requests."})
+   (prometheus/gauge :metabase-search/engine-default
+                     {:description "Whether a given engine is being used as the default. User can override via cookie."
+                      :labels [:engine]})
+   (prometheus/gauge :metabase-search/engine-active
+                     {:description "Whether a given engine is active. This does NOT mean that it is the default."
+                      :labels [:engine]})])
+
+(defmulti known-labels
+  "Implement this for a given metric to initialize it for the given set of label values."
+  {:arglists '([metric]), :added "0.52.0"}
+  identity)
+
+(defmulti initial-value
+  "Implement this for a given metric to have non-zero initial values for the given set of label values."
+  {:arglists '([metric labels]), :added "0.52.0"}
+  (fn [metric _labels]
+    metric))
+
+(defmethod initial-value :default [_ _] 0)
+
+(defn- initial-labelled-metric-values []
+  (for [metric (keys (methods known-labels))
+        labels (known-labels metric)]
+    {:metric metric
+     :labels labels
+     :value  (initial-value metric labels)}))
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
   will throw."
   [registry-name]
   (log/info "Starting prometheus metrics collector")
-  (let [registry (prometheus/collector-registry registry-name)]
-    (apply prometheus/register registry
-           (concat (jvm-collectors)
-                   (jetty-collectors)
-                   [@c3p0-collector]
-                   (product-collectors)))))
+  (let [registry (prometheus/collector-registry registry-name)
+        registry (apply prometheus/register
+                        (collector.ring/initialize registry)
+                        (concat (jvm-collectors)
+                                (jetty-collectors)
+                                [@c3p0-collector]
+                                (product-collectors)))]
+    (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
+      (prometheus/inc registry metric labels value))
+    registry))
 
 (defn- start-web-server!
   "Start the prometheus web-server. If [[prometheus-server-port]] is not set it will throw."
@@ -255,10 +292,10 @@
 (defn setup!
   "Start the prometheus metric collector and web-server."
   []
-  (let [port (prometheus-server-port)]
-    (when-not port
-      (log/info "Running prometheus metrics without a webserver."))
-    (when-not system
+  (when-not system
+    (let [port (prometheus-server-port)]
+      (when-not port
+        (log/info "Running prometheus metrics without a webserver"))
       (locking #'system
         (when-not system
           (let [sys (make-prometheus-system port "metabase-registry")]
@@ -278,18 +315,30 @@
                (log/warn e "Error stopping prometheus web-server")))))))
 
 (defn inc!
-  "Call iapetos.core/inc on the metric in the global registry,
-   if it has already been initialized and the metric is registered."
+  "Call iapetos.core/inc on the metric in the global registry.
+   Inits registry if it's not been initialized yet."
   ([metric] (inc! metric nil 1))
   ([metric labels-or-amount]
    (if (seq? labels-or-amount)
      (inc! metric labels-or-amount 1)
      (inc! metric nil labels-or-amount)))
   ([metric labels amount]
-   (when-let [registry (some-> system .-registry)]
-     (when (metric registry)
-       (prometheus/inc registry metric labels amount)))))
+   (when-not system
+     (setup!))
+   (prometheus/inc (:registry system) metric labels amount)))
+
+(defn set!
+  "Call iapetos.core/set on the metric in the global registry.
+   Inits registry if it's not been initialized yet."
+  ([metric amount]
+   (assert (not (seq? amount)) "Cannot only provide labels")
+   ;; Escape var to avoid confusing it with the special form of the same name.
+   (#'set! metric nil amount))
+  ([metric labels amount]
+   (when-not system
+     (setup!))
+   (prometheus/set (:registry system) metric labels amount)))
 
 (comment
   (require 'iapetos.export)
-  (spit "metrics" (iapetos.export/text-format (.registry system))))
+  (spit "metrics" (iapetos.export/text-format (:registry system))))

@@ -4,10 +4,14 @@ import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import type {
   CollectionId,
   CollectionItemModel,
+  Dashboard,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
-import { getParentCollectionId } from "../CollectionPicker/utils";
+import {
+  getParentCollectionId,
+  getPathLevelForItem,
+} from "../CollectionPicker/utils";
 import type { PickerState } from "../EntityPicker";
 
 import type {
@@ -134,4 +138,43 @@ export const isFolder = (item: DashboardPickerItem) => {
         ["dashboard"],
       ).length > 0)
   );
+};
+
+export const handleNewDashboard = (
+  newDashboard: Dashboard,
+  path: DashboardPickerStatePath,
+  onItemSelect: (item: DashboardPickerItem) => void,
+  userPersonalCollectionId: CollectionId | undefined,
+  handleItemSelect: (item: DashboardPickerItem) => void,
+  onPathChange: (item: DashboardPickerStatePath) => void,
+) => {
+  const newCollectionItem: DashboardPickerItem = {
+    id: newDashboard.id,
+    name: newDashboard.name,
+    collection_id: newDashboard.collection_id || "root",
+    model: "dashboard",
+  };
+
+  // Needed to satisfy type between DashboardPickerItem and the query below.
+  const parentCollectionId = getCollectionId(newCollectionItem);
+
+  //Is the parent collection already in the path?
+  const isParentCollectionInPath =
+    getPathLevelForItem(newCollectionItem, path, userPersonalCollectionId) > 0;
+
+  if (!isParentCollectionInPath) {
+    onPathChange([
+      ...path,
+      {
+        query: {
+          id: parentCollectionId,
+          models: ["collection", "dashboard"],
+        },
+        selectedItem: newCollectionItem,
+      },
+    ]);
+    onItemSelect(newCollectionItem);
+    return;
+  }
+  handleItemSelect(newCollectionItem);
 };

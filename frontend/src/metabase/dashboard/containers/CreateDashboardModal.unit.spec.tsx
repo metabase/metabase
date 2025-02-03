@@ -22,7 +22,7 @@ import {
   createMockCollectionItemFromCollection,
 } from "metabase-types/api/mocks";
 
-import { CreateDashboardModalConnected } from "./CreateDashboardModal";
+import { CreateDashboardModal } from "./CreateDashboardModal";
 
 const COLLECTION = {
   ROOT: createMockCollection({
@@ -87,7 +87,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
     .filter(c => c.id !== "root")
     .forEach(c => fetchMock.get(`path:/api/collection/${c.id}`, c));
 
-  renderWithProviders(<CreateDashboardModalConnected onClose={onClose} />, {
+  renderWithProviders(<CreateDashboardModal opened onClose={onClose} />, {
     storeInitialState: {
       entities: createMockEntitiesState({ collections }),
       settings,

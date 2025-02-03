@@ -25,7 +25,9 @@
   "Inverse of `safe-name`."
   codec/url-decode)
 
-(defmulti ^:private fully-qualified-name* mi/model)
+(defmulti ^:private fully-qualified-name*
+  {:arglists '([instance])}
+  mi/model)
 
 (def ^{:arglists '([entity] [model id])} fully-qualified-name
   "Get the logical path for entity `entity`."
@@ -130,8 +132,10 @@
    [:user       {:optional true} ms/PositiveInt]
    [:snippet    {:optional true} [:maybe ms/PositiveInt]]])
 
-(defmulti ^:private path->context* (fn [_ model _ _]
-                                     model))
+(defmulti ^:private path->context*
+  {:arglists '([context model model-attrs entity-name])}
+  (fn [_ model _ _]
+    model))
 
 (def ^:private ^{:arglists '([context model model-attrs entity-name])} path->context
   "Extract entities from a logical path."

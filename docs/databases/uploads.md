@@ -1,10 +1,10 @@
 ---
-title: Uploading data
+title: Setting up data uploads
 ---
 
-# Uploading data
+# Setting up data uploads
 
-Once you've [enabled uploads](#setting-up-uploads), you can [upload files](../exploration-and-organization/uploads.md) in CSV format to a collection in Metabase.
+This page covers how admins can set up data uploads so people can upload CSVs to your Metabase. For _how_ to upload data once this is set up, check out [Uploading data](../exploration-and-organization/uploads.md).
 
 ![Upload CSV data to a collection in Metabase](./images/upload-to-collection.png)
 

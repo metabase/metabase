@@ -8,13 +8,14 @@
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [mb.hawk.init]
    [metabase.actions.test-util :as actions.test-util]
+   [metabase.channel.email-test]
    [metabase.config :as config]
+   [metabase.core.init]
    [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.email-test :as et]
    [metabase.http-client :as client]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.permissions.test-util :as perms.test-util]
@@ -64,12 +65,13 @@
   data/keep-me
   datasets/keep-me
   driver/keep-me
-  et/keep-me
   i18n.tu/keep-me
   initialize/keep-me
   lib.metadata.jvm/keep-me
   mb.hawk.init/keep-me
   mdb.test-util/keep-me
+  metabase.channel.email-test/keep-me
+  metabase.core.init/keep-me
   metabase.request.core/keep-me
   metabase.test.util.dynamic-redefs/keep-me
   metabase.util.log.capture/keep-me
@@ -132,7 +134,7 @@
  [driver
   with-driver]
 
- [et
+ [metabase.channel.email-test
   email-to
   fake-inbox-email-fn
   inbox
@@ -174,7 +176,7 @@
 
  [metabase.test.util.dynamic-redefs
   dynamic-value
-  with-dynamic-redefs]
+  with-dynamic-fn-redefs]
 
  [premium-features.test-util
   with-premium-features
@@ -250,6 +252,8 @@
   discard-setting-changes
   doall-recursive
   file->bytes
+  file-path->bytes
+  bytes->base64-data-uri
   latest-audit-log-entry
   let-url
   obj->json->obj

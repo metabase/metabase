@@ -5,19 +5,24 @@ inputs:
     default: "driver"
   test-args:
     required: false
+  build-static-viz:
+    required: true
+    default: false
 
 runs:
   using: "composite"
   steps:
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: driver
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+      if: ${{ inputs.build-static-viz == 'true' }}
     - name: Build static viz frontend
       run: yarn build-static-viz
       shell: bash
+      if: ${{ inputs.build-static-viz == 'true' }}
     - name: Test database driver
       run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
       shell: bash

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -13,7 +13,7 @@ describe("scenarios > visualizations > maps", () => {
   it("should display a pin map for a native query", () => {
     cy.signInAsNormalUser();
     // create a native query with lng/lat fields
-    H.openNativeEditor().type(
+    H.startNewNativeQuestion().type(
       "select -80 as lng, 40 as lat union all select -120 as lng, 40 as lat",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -55,7 +55,7 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should suggest map visualization regardless of the first column type (metabase#14254)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "14254",
         native: {

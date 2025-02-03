@@ -1,6 +1,6 @@
 import cx from "classnames";
-import type { ComponentType } from "react";
-import { Component } from "react";
+import type { ComponentType, ForwardedRef } from "react";
+import { Component, forwardRef } from "react";
 import type { ConnectedProps } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -35,10 +35,6 @@ import { addUndo } from "metabase/redux/undo";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
-import {
-  MOBILE_DEFAULT_CARD_HEIGHT,
-  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
-} from "metabase/visualizations/shared/utils/sizes";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import {
   type BaseDashboardCard,
@@ -123,7 +119,9 @@ const mapDispatchToProps = {
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
 };
-const connector = connect(mapStateToProps, mapDispatchToProps);
+const connector = connect(mapStateToProps, mapDispatchToProps, null, {
+  forwardRef: true,
+});
 
 type DashboardGridReduxProps = ConnectedProps<typeof connector>;
 
@@ -149,13 +147,20 @@ type OwnProps = {
   ) => void;
   onEditingChange?: (dashboard: Dashboard | null) => void;
   downloadsEnabled: boolean;
+  autoScrollToDashcardId: DashCardId | undefined;
+  reportAutoScrolledToDashcard: () => void;
 };
 
 type DashboardGridProps = OwnProps &
   DashboardGridReduxProps &
-  ExplicitSizeProps;
+  ExplicitSizeProps & {
+    forwardedRef?: ForwardedRef<HTMLDivElement>;
+  };
 
-class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
+class DashboardGridInner extends Component<
+  DashboardGridProps,
+  DashboardGridState
+> {
   static contextType = ContentViewportContext;
 
   _pauseAnimationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -354,11 +359,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
   getLayouts(cards: BaseDashboardCard[]) {
     const desktop = cards.map(this.getLayoutForDashCard);
-    const mobile = generateMobileLayout({
-      desktopLayout: desktop,
-      defaultCardHeight: MOBILE_DEFAULT_CARD_HEIGHT,
-      heightByDisplayType: MOBILE_HEIGHT_BY_DISPLAY_TYPE,
-    });
+    const mobile = generateMobileLayout(desktop);
     return { desktop, mobile };
   }
 
@@ -512,11 +513,15 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       gridItemWidth,
       totalNumGridCols,
       downloadsEnabled,
+      shouldAutoScrollTo,
+      reportAutoScrolledToDashcard,
     }: {
       isMobile: boolean;
       gridItemWidth: number;
       totalNumGridCols: number;
       downloadsEnabled: boolean;
+      shouldAutoScrollTo: boolean;
+      reportAutoScrolledToDashcard: () => void;
     },
   ) {
     return (
@@ -552,6 +557,8 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
         downloadsEnabled={downloadsEnabled}
+        autoScroll={shouldAutoScrollTo}
+        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
       />
     );
   }
@@ -575,7 +582,9 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     gridItemWidth: number;
     totalNumGridCols: number;
   }) => {
-    const { isEditing } = this.props;
+    const { isEditing, autoScrollToDashcardId, reportAutoScrolledToDashcard } =
+      this.props;
+    const shouldAutoScrollTo = autoScrollToDashcardId === dc.id;
 
     const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
       dc.card.display,
@@ -601,6 +610,8 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           gridItemWidth,
           totalNumGridCols,
           downloadsEnabled: this.props.downloadsEnabled,
+          shouldAutoScrollTo,
+          reportAutoScrolledToDashcard,
         })}
       </DashboardCardContainer>
     );
@@ -635,10 +646,10 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   }
 
   render() {
-    const { dashboard, width } = this.props;
-
+    const { dashboard, width, forwardedRef } = this.props;
     return (
       <DashboardGridContainer
+        ref={forwardedRef}
         data-testid="dashboard-grid"
         isFixedWidth={dashboard?.width === "fixed"}
       >
@@ -671,6 +682,12 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
 
   throw new Error(`Unknown card.type: ${type}`);
 };
+
+const DashboardGrid = forwardRef<HTMLDivElement, DashboardGridProps>(
+  function _DashboardGrid(props, ref) {
+    return <DashboardGridInner {...props} forwardedRef={ref} />;
+  },
+);
 
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),

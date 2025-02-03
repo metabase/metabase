@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
+import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import Modal from "metabase/components/Modal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
@@ -13,7 +14,7 @@ import * as Urls from "metabase/lib/urls";
 import { CreateAlertModalContent } from "metabase/notifications/AlertModals";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/updateQuestion";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
-import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
+import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -113,17 +114,32 @@ export function QueryModals({
     [onCloseModal, onCreate],
   );
 
-  const nativeToDashboarQuestionDashboard = useCallback(
-    (question: Question) => {
+  const navigateToDashboardQuestionDashboard = useCallback(
+    async (question: Question) => {
+      const cardId = question.id();
       const dashboardId = question.dashboardId();
-
       if (!dashboardId) {
         throw new Error("must provide a valid dashboard question");
       }
 
-      dispatch(
-        push(Urls.dashboard({ id: dashboardId, name: "" }, { editMode: true })),
+      const dashboard = await dispatch(
+        getDashboard.initiate({ id: dashboardId }),
+      )
+        .unwrap()
+        .catch(() => undefined); // we can fallback to navigation w/o this info
+      const dashcard = dashboard?.dashcards.find(c => c.card_id === cardId);
+
+      if (!dashboard || !dashcard) {
+        console.warn(
+          "Could not fetch dashcard position on dashboard, falling back to navigation without auto-scrolling",
+        );
+      }
+
+      const url = Urls.dashboard(
+        { id: dashboardId, name: "", ...question.dashboard(), ...dashboard },
+        { editMode: true, scrollToDashcard: dashcard?.id },
       );
+      dispatch(push(url));
     },
     [dispatch],
   );
@@ -138,7 +154,7 @@ export function QueryModals({
         onCloseModal();
         setQueryBuilderMode("view");
       } else if (isDashboardQuestion) {
-        nativeToDashboarQuestionDashboard(newQuestion);
+        navigateToDashboardQuestionDashboard(newQuestion);
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
@@ -150,7 +166,7 @@ export function QueryModals({
       onCreate,
       onOpenModal,
       setQueryBuilderMode,
-      nativeToDashboarQuestionDashboard,
+      navigateToDashboardQuestionDashboard,
     ],
   );
 
@@ -159,12 +175,12 @@ export function QueryModals({
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
 
       if (isDashboardQuestion) {
-        nativeToDashboarQuestionDashboard(newQuestion);
+        navigateToDashboardQuestionDashboard(newQuestion);
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
     },
-    [onOpenModal, nativeToDashboarQuestionDashboard],
+    [onOpenModal, navigateToDashboardQuestionDashboard],
   );
 
   switch (modal) {

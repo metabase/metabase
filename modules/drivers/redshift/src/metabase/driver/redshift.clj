@@ -544,3 +544,8 @@
   (let [[column-name type-and-constraints] (first column-definitions)
         type (first type-and-constraints)]
     (throw (ex-info (format "There's a value with the wrong type ('%s') in the '%s' column" (name type) (name column-name)) {}))))
+
+(defmethod sql.qp/cast-temporal-byte [:redshift :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:from_varbyte expr (h2x/literal "UTF8")]))

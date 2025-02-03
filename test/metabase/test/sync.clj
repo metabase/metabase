@@ -1,7 +1,7 @@
 (ns metabase.test.sync
   (:require
    [clojure.test :refer :all]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test.data :as data]
    [toucan2.core :as t2]))
 

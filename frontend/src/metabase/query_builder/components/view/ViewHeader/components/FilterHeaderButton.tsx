@@ -5,7 +5,7 @@ import { t } from "ttag";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import { Button } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
@@ -39,7 +39,7 @@ export function FilterHeaderButton({
   return (
     <Button.Group>
       <Button
-        color="filter"
+        leftIcon={<Icon name="filter" />}
         className={cx(className, ViewTitleHeaderS.FilterButton)}
         onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
         data-testid="question-filter-header"

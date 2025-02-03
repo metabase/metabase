@@ -10,13 +10,13 @@
    [metabase.integrations.google]
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-test :as perms-test]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-test :as perms-test]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -588,3 +588,16 @@
                                           :sso_source "jwt"}
                                          default-invitor
                                          false))))))
+
+(deftest deactivated-at-test
+  (testing "deactivated_at is set when a user is deactivated and unset when reactivated (#51728)"
+    (mt/with-temp [:model/User {user-id :id :as user} {}]
+      (is (nil? (:deactivated_at user)))
+
+      (t2/update! :model/User user-id {:is_active false})
+      (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
+        (is (instance? java.time.OffsetDateTime deactivated-at)))
+
+      (t2/update! :model/User user-id {:is_active true})
+      (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
+        (is (nil? deactivated-at))))))

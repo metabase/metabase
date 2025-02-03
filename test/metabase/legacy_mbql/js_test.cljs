@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.legacy-mbql.js-test
+(ns metabase.legacy-mbql.js-test
   (:require
    [cljs.test :as t]
    [metabase.legacy-mbql.js :as mbql.js]))

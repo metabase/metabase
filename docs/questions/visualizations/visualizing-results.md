@@ -1,13 +1,34 @@
 ---
-title: Visualizing data
+title: Visualization overview
 redirect_from:
   - /docs/latest/users-guide/05-visualizing-results
   - /docs/latest/questions/sharing/visualizing-results
 ---
 
-# Visualizing data
+# Visualization overview
 
 While tables are useful for looking up information or finding specific numbers, it's usually easier to see trends and make sense of data using charts.
+
+## Visualize query results
+
+The query builder will automatically select an appropriate chart to visual your results. With native queries, however, you'll need to manually select a chart type.
+### Visualizing questions in the query builder
+
+To visualize results of a question built in the [query builder](../query-builder/editor.md), click on the **Visualize** button under the last query builder step. Metabase will select a chart type most appropriate for your data, but you can [change the visualization type](#change-visualization-type). You can also toggle between the visualization and the table of results.
+
+You can switch between the visualization view and the query builder using the **Visualization**/**Editor** button in the top right.
+
+![Switch to editor](../images/switch-to-editor.png)
+
+### Visualizing native questions
+
+To visualize results of a native query, click on the **Visualization** button in the bottom of the screen and select a visualization type.
+
+![Visualize a native query](../images/visualize-native.png)
+
+As long as the shape of the native query results is appropriate for the chart type - for example, a metric grouped by a date column for a trend chart - you'll be able to use to use all chart types, except [pivot tables](./pivot-table.md). [Pivot tables](./pivot-table.md) are currently unavailable for native queries.
+
+## Change visualization type
 
 To change how the answer to your question is displayed, click on the **Visualization** button in the bottom-left of the screen to open the visualization sidebar.
 
@@ -21,12 +42,7 @@ Not sure which visualization type to use? Check out [Which chart should you use?
 
 ![Options for a chart](../images/viz-options.png)
 
-Each visualization type has its own advanced options.
-
-To change the settings for a specific chart, for example a row chart, you could either:
-
-- Click on the gear icon in the bottom left of the chart (next to the **Visualization** button, or
-- Click on **Visualization** in the bottom left of the chart, then hover over the currently selected chart and click on the **gear** icon that pops up.
+Each visualization type has its own advanced options. To change the settings for a specific chart, for example a row chart, click on the **Gear** button in the bottom left.
 
 ## Area charts
 
@@ -92,7 +108,7 @@ A [sunburst chart](./pie-or-donut-chart.md) is a pie chart with more than one ri
 
 ## Pivot tables
 
-[Pivot tables(./pivot-table.md) allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
+[Pivot tables](./pivot-table.md) allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
 
 ![Pivot table options](../images/pivot-table-options.png)
 
@@ -148,7 +164,7 @@ If you have a bar chart like Count of Users by Age, where the x-axis is a number
 
 ![Chart formatting options](../images/chart-formatting-options.png)
 
-You can access formatting options for the columns used in a chart. Just open the visualization settings (click on the gear in the bottom left of a chart next to **Visualization**).
+You can access formatting options for the columns used in a chart. Just open the visualization settings by clicking on the **Gear** icon in bottom left.
 
 Options differ depending on the chart, and can include settings for the chart's data, its display, and its axes.
 

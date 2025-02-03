@@ -74,7 +74,7 @@ type OwnProps = {
 type PublicOrEmbeddedDashboardProps = OwnProps &
   ReduxProps &
   DashboardDisplayOptionControls &
-  EmbedDisplayParams &
+  Omit<EmbedDisplayParams, "font"> &
   Pick<EmbeddingAdditionalHashOptions, "locale">;
 
 const initializeData = async ({
@@ -136,6 +136,7 @@ const PublicOrEmbeddedDashboardInner = ({
   theme,
   downloadsEnabled = true,
   hideParameters,
+  withFooter,
   navigateToNewCardFromDashboard,
   selectedTabId,
   slowCards,
@@ -239,6 +240,7 @@ const PublicOrEmbeddedDashboardInner = ({
         slowCards={slowCards}
         cardTitled={cardTitled}
         downloadsEnabled={downloadsEnabled}
+        withFooter={withFooter}
       />
     </LocaleProvider>
   );

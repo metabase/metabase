@@ -1,4 +1,4 @@
-import { getEmbeddingColorPalette } from "embedding-sdk/lib/theme/embedding-color-palette";
+import { getEmbeddingColorPalette } from "metabase/embedding-sdk/theme/embedding-color-palette";
 
 describe("Embedding Color Palette", () => {
   it("transforms chart color overrides into accent colors", () => {

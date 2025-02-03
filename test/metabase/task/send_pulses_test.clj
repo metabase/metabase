@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.task.send-pulses-test
+(ns metabase.task.send-pulses-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]

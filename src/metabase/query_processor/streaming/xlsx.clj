@@ -303,6 +303,7 @@
   "Sets a cell to the provided value, with an appropriate style if necessary.
 
   This is based on the equivalent multimethod in Docjure, but adapted to support Metabase viz settings."
+  {:arglists '([cell value styles typed-styles])}
   (fn [^Cell _cell value _styles _typed-styles]
     (type value)))
 
@@ -343,9 +344,14 @@
   [^Cell cell t styles typed-styles]
   (set-cell! cell (t/offset-date-time t) styles typed-styles))
 
+(def ^:dynamic *number-of-characters-cell*
+  "Total number of characters that a cell can contain, 32767 is the maximum number supported by the cell."
+  ;; See https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3
+  32767)
+
 (defmethod set-cell! String
   [^Cell cell value _styles _typed-styles]
-  (.setCellValue cell ^String value))
+  (.setCellValue cell ^String (u/truncate value *number-of-characters-cell*)))
 
 (defmethod set-cell! Number
   [^Cell cell value styles typed-styles]
@@ -464,9 +470,8 @@
          (let [value (.next val-it)
                col (.next col-it)
                styles (.next sty-it)
-               id-or-name   (or (:id col) (:name col))
-               settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                                (get col-settings {::mb.viz/column-name id-or-name}))
+               settings     (or (get col-settings {::mb.viz/field-id (:id col)})
+                                (get col-settings {::mb.viz/column-name (:name col)}))
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
                scaled-val   (if (and (number? value) (::mb.viz/scale settings))
                               (* value (::mb.viz/scale settings))
@@ -618,7 +623,11 @@
     (doseq [idx pivot-cols]
       (.addColLabel pivot-table idx))
     (doseq [idx pivot-measures]
-      (.addColumnLabel pivot-table DataConsolidateFunction/SUM #_(get aggregation-functions idx DataConsolidateFunction/SUM) idx))
+      ;; Really this should be doing (get _aggregation-functions idx) in place of the hard coded SUM function
+      ;; But since QP sends us pre-aggregated data we can't use excel's innate aggregation functions
+      (let [col-name (or (not-empty (nth col-names idx))
+                         (get-in ordered-cols [idx :display_name]))]
+        (.addColumnLabel pivot-table DataConsolidateFunction/SUM idx col-name)))
     (doseq [[idx sort-setting] column-sort-order]
       (let [setting (case sort-setting
                       :ascending  STFieldSortType/ASCENDING

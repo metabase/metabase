@@ -25,6 +25,8 @@ dataset_query:
   query:
     aggregation:
     - - count
+    aggregation-idents:
+      0: aggregation_Vm-4GYORvVbGu9jHVLfg1@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -33,6 +35,8 @@ dataset_query:
         - timestamp
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: month
+    breakout-idents:
+      0: breakout_Vm-4GYORvVbGu9jHVLfg1@0__0
     filter:
     - =
     - - field
@@ -59,6 +63,7 @@ dataset_query:
           - user_id
         - base-type: type/Integer
           join-alias: People - User
+      ident: join_Vm-4GYORvVbGu9jHVLfg1@0__People - User
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     source-table: P6Ityjj7igswKh4NgZZjz
@@ -76,6 +81,7 @@ serdes/meta:
   label: question_views_per_month
   model: Card
 archived_directly: false
+dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

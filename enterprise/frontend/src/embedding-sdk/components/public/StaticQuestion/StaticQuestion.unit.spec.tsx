@@ -7,12 +7,8 @@ import {
   setupCardQueryEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-  within,
-} from "__support__/ui";
+import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import type { Card } from "metabase-types/api";
 import {
@@ -86,14 +82,13 @@ const setup = ({
 
   setupCardQueryEndpoints(card, TEST_DATASET);
 
-  return renderWithProviders(
+  return renderWithSDKProviders(
     <StaticQuestion
       questionId={TEST_QUESTION_ID}
       withChartTypeSelector={withChartTypeSelector}
       initialSqlParameters={initialSqlParameters}
     />,
     {
-      mode: "sdk",
       sdkProviderProps: {
         authConfig: createMockAuthProviderUriConfig({
           authProviderUri: "http://TEST_URI/sso/metabase",

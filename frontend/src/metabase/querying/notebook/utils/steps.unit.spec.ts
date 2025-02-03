@@ -1,6 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import { createQueryWithClauses } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type { StructuredQuery as StructuredQueryObject } from "metabase-types/api";
 import {
   ORDERS,
@@ -273,5 +275,28 @@ describe("filtered and summarized query with post-aggregation filter", () => {
       expect(Lib.filters(newQuery, 0)).toHaveLength(1);
       expect(Lib.filters(newQuery, 1)).toHaveLength(0);
     });
+  });
+});
+
+describe("aggregated query without breakout", () => {
+  it("provides 'join data' and 'custom column' actions", () => {
+    const query = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+    });
+
+    const baseQuestion = Question.create({
+      databaseId: SAMPLE_DB_ID,
+      metadata,
+    });
+
+    const question = baseQuestion.setQuery(query);
+
+    const steps = getQuestionSteps(question, metadata, {});
+
+    expect(
+      steps
+        .find(step => step.type === "summarize")
+        ?.actions.map(action => action.type),
+    ).toEqual(["join", "expression"]);
   });
 });

@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.models.revision-test
+(ns metabase.models.revision-test
   (:require
    [clojure.test :refer :all]
    [metabase.config :as config]

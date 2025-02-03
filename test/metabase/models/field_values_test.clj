@@ -7,7 +7,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.field-values :as field-values]
    [metabase.models.serialization :as serdes]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]

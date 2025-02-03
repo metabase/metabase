@@ -47,6 +47,7 @@
   "Create an image bundle. An image bundle contains the data needed to either encode the image inline (when
   `render-type` is `:inline`), or create the hashes/references needed for an attached image (`render-type` of
   `:attachment`)"
+  {:arglists '([render-type url-or-bytes])}
   (fn [render-type url-or-bytes]
     [render-type (class url-or-bytes)]))
 

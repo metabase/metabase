@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
@@ -30,6 +30,7 @@ describe("scenarios > dashboard > filters > location", () => {
 
     Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         addWidgetStringFilter(value);
 

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -63,7 +63,7 @@ describe("scenarios > account > notifications", () => {
         H.getCurrentUser().then(({ body: { id: admin_id } }) => {
           cy.signInAsNormalUser().then(() => {
             H.getCurrentUser().then(({ body: { id: user_id } }) => {
-              cy.createQuestion(getQuestionDetails()).then(
+              H.createQuestion(getQuestionDetails()).then(
                 ({ body: { id: card_id } }) => {
                   H.createAlert(
                     getAlertDetails({ card_id, user_id, admin_id }),
@@ -145,7 +145,7 @@ describe("scenarios > account > notifications", () => {
   describe("pulses", () => {
     beforeEach(() => {
       cy.signInAsNormalUser().then(() => {
-        cy.createQuestionAndDashboard({
+        H.createQuestionAndDashboard({
           questionDetails: getQuestionDetails(),
         }).then(({ body: { card_id, dashboard_id } }) => {
           H.createPulse(getPulseDetails({ card_id, dashboard_id }));

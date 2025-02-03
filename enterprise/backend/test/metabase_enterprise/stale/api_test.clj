@@ -1,11 +1,12 @@
 (ns metabase-enterprise.stale.api-test
-  (:require  [clojure.test :refer [deftest testing is]]
-             [metabase.analytics.snowplow-test :as snowplow-test]
-             [metabase.models.collection :as collection]
-             [metabase.models.collection-test :refer [with-collection-hierarchy!]]
-             [metabase.stale-test :as stale.test]
-             [metabase.test :as mt]
-             [metabase.util :as u]))
+  (:require
+   [clojure.test :refer [deftest testing is]]
+   [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.models.collection :as collection]
+   [metabase.models.collection-test :refer [with-collection-hierarchy!]]
+   [metabase.stale-test :as stale.test]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,7 +23,7 @@
 
 (deftest can-fetch-stale-candidates
   (mt/with-premium-features #{:collection-cleanup}
-    (with-collection-hierarchy! [{:keys [a b c d e]}]
+    (with-collection-hierarchy! [{:keys [a]}]
       (stale.test/with-stale-items [:model/Card card {:collection_id (:id a)}
                                     :model/Dashboard dashboard {:collection_id (:id a)}]
         (let [result (mt/user-http-request :crowberto :get 200 (stale-url a))]
@@ -40,7 +41,11 @@
                         (map (juxt :model :id))
                         set))))
           (testing "The count is correct"
-            (is (= 2 (:total result))))))
+            (is (= 2 (:total result)))))))))
+
+(deftest can-fetch-stale-candidates-1b
+  (mt/with-premium-features #{:collection-cleanup}
+    (with-collection-hierarchy! [{:keys [a b]}]
       (testing "Recursive search works"
         (stale.test/with-stale-items [:model/Card card {:collection_id (:id a)}
                                       :model/Dashboard dashboard {:collection_id (:id a)}
@@ -53,7 +58,11 @@
             (testing "Contains the correct data"
               (= #{["card" (u/the-id card)] ["dashboard" (u/the-id dashboard)]
                    ["card" (u/the-id card-2)] ["dashboard" (u/the-id dashboard-2)]}
-                 (->> result :data (map (juxt :model :id)) set))))))
+                 (->> result :data (map (juxt :model :id)) set)))))))))
+
+(deftest can-fetch-stale-candidates-1c
+  (mt/with-premium-features #{:collection-cleanup}
+    (with-collection-hierarchy! [{:keys [a b c d e]}]
       (testing "Sorting works"
         (stale.test/with-stale-items [:model/Card _ {:collection_id (:id a) :name "A"}
                                       :model/Card _ {:collection_id (:id b) :name "B"}
@@ -79,7 +88,11 @@
                  (->> (mt/user-http-request :crowberto :get 200 (stale-url a)
                                             :is_recursive true :sort_column "name" :sort_direction "desc")
                       :data
-                      (map :name))))))
+                      (map :name)))))))))
+
+(deftest can-fetch-stale-candidates-1d
+  (mt/with-premium-features #{:collection-cleanup}
+    (with-collection-hierarchy! [{:keys [a e]}]
       (testing "Sanity check: we do actually include only stale items!"
         (stale.test/with-stale-items [:model/Card _ {:collection_id (:id a) :name "A"}
                                       :model/Card _ {:collection_id (:id e) :name "E"}]
@@ -91,7 +104,11 @@
                    (->> (mt/user-http-request :crowberto :get 200 (stale-url a)
                                               :is_recursive true)
                         :data
-                        (map :name)))))))
+                        (map :name))))))))))
+
+(deftest can-fetch-stale-candidates-1e
+  (mt/with-premium-features #{:collection-cleanup}
+    (with-collection-hierarchy! [{:keys [a]}]
       (testing "Before date is respected"
         (let [cutoff (stale.test/date-months-ago 2)
               before (.minusDays cutoff 1)
@@ -103,7 +120,10 @@
                                               :before_date (str cutoff))
                         :data
                         (map :name)
-                        set)))))))
+                        set)))))))))
+
+(deftest can-fetch-stale-candidates-2
+  (mt/with-premium-features #{:collection-cleanup}
     (testing "I can get stale items from the root collection"
       (mt/with-temp [:model/Collection {coll-id :id} {}]
         (stale.test/with-stale-items [:model/Card card-a {:name "Card in root"}
@@ -119,13 +139,16 @@
                  (->> (mt/user-http-request :crowberto :get 200 "ee/stale/root"
                                             :is_recursive true)
                       :data
-                      (filter #(contains? #{(u/the-id card-a)
-                                            (u/the-id card-b)
-                                            (u/the-id dashboard-a)
-                                            (u/the-id dashboard-b)}
+                      (filter #(contains? (into #{} [(u/the-id card-a) ; there might be some duplicates here
+                                                     (u/the-id card-b)
+                                                     (u/the-id dashboard-a)
+                                                     (u/the-id dashboard-b)])
                                           (:id %)))
                       (map :name)
-                      set))))))
+                      set))))))))
+
+(deftest can-fetch-stale-candidates-3
+  (mt/with-premium-features #{:collection-cleanup}
     (testing "the collection data is included"
       (mt/with-temp [:model/Collection {top-coll-id :id
                                         top-coll-name :name

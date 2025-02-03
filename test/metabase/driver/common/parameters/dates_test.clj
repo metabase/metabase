@@ -1,9 +1,10 @@
 (ns metabase.driver.common.parameters.dates-test
   (:require
    [clojure.test :refer :all]
-   [clojure.test.check :as tc]
+   [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [java-time.api :as t]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.test :as mt]))
 
@@ -445,7 +446,7 @@
                (params.dates/date-string->range "next1months")
                (params.dates/date-string->range "next1months-from-0months")))))))
 
-(def time-range-generator
+(def ^:private time-range-generator
   (let [time-units (mapv #(str % "s") (keys @#'params.dates/operations-by-date-unit))]
     (gen/fmap
      (fn [[frame n unit unit2]]
@@ -457,10 +458,11 @@
       (gen/elements time-units)
       (gen/elements time-units)))))
 
-(tc/quick-check 1000
+(defspec ^:parallel date-string->range-spec-test 1000
   (prop/for-all [[tr tr+from-zero] time-range-generator]
-    (= (params.dates/date-string->range tr)
-       (params.dates/date-string->range tr+from-zero))))
+    (mt/with-clock (t/zoned-date-time)
+      (= (params.dates/date-string->range tr)
+         (params.dates/date-string->range tr+from-zero)))))
 
 (deftest custom-start-of-week-test
   (testing "Relative filters should respect the custom `start-of-week` Setting (#14294)"

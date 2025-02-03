@@ -8,7 +8,8 @@ import {
   setupDatabaseEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { screen } from "__support__/ui";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import type { Card, Dataset } from "metabase-types/api";
@@ -83,8 +84,7 @@ const setup = ({
     </div>
   );
 
-  return renderWithProviders(children, {
-    mode: "sdk",
+  return renderWithSDKProviders(children, {
     sdkProviderProps: {
       authConfig: createMockAuthProviderUriConfig({
         authProviderUri: "http://TEST_URI/sso/metabase",

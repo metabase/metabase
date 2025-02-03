@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.db.internal-user-test
+(ns metabase.db.internal-user-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

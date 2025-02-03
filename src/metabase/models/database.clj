@@ -10,13 +10,11 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
@@ -27,12 +25,21 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.realize :as t2.realize]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Database [_model] :metabase_database)
+
+(methodical/defmethod t2.pipeline/results-transform [:toucan.result-type/instances :model/Database]
+  [query-type model]
+  (comp
+   (next-method query-type model)
+    ;; This is for safety - if a secret ever gets stored in details we don't want it to leak.
+    ;; This will also help to secure properties that we set to secret in the future.
+   (map secret/clean-secret-properties-from-database)))
 
 (t2/deftransforms :model/Database
   {:details                     mi/transform-encrypted-json
@@ -54,9 +61,9 @@
   [_model _explicit-attributes f]
   (fn [temp-object]
     ;; Grant All Users full perms on the temp-object so that tests don't have to manually set permissions
-    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/view-data :unrestricted)
-    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/create-queries :query-builder-and-native)
-    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/download-results :one-million-rows)
+    (perms/set-database-permission! (perms/all-users-group) temp-object :perms/view-data :unrestricted)
+    (perms/set-database-permission! (perms/all-users-group) temp-object :perms/create-queries :query-builder-and-native)
+    (perms/set-database-permission! (perms/all-users-group) temp-object :perms/download-results :one-million-rows)
     (f temp-object)))
 
 (defn- should-read-audit-db?
@@ -71,7 +78,7 @@
    (if (should-read-audit-db? pk)
      false
      (contains? #{:query-builder :query-builder-and-native}
-                (data-perms/most-permissive-database-permission-for-user
+                (perms/most-permissive-database-permission-for-user
                  api/*current-user-id*
                  :perms/create-queries
                  pk)))))
@@ -126,8 +133,7 @@
   [database]
   (try
     ;; this is done this way to avoid circular dependencies
-    (classloader/require 'metabase.task.sync-databases)
-    ((resolve 'metabase.task.sync-databases/check-and-schedule-tasks-for-db!) database)
+    ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database)
     (catch Throwable e
       (log/error e "Error scheduling tasks for DB"))))
 
@@ -144,35 +150,35 @@
   "Unschedule any currently pending sync operation tasks for `database`."
   [database]
   (try
-    (classloader/require 'metabase.task.sync-databases)
-    ((resolve 'metabase.task.sync-databases/unschedule-tasks-for-db!) database)
+    ((requiring-resolve 'metabase.sync.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
       (log/error e "Error unscheduling tasks for DB."))))
 
+;; TODO -- consider whether this should live HERE or inside the `permissions` module.
 (defn- set-new-database-permissions!
   [database]
   (t2/with-transaction [_conn]
-    (let [all-users-group  (perms-group/all-users)
-          non-magic-groups (perms-group/non-magic-groups)
+    (let [all-users-group  (perms/all-users-group)
+          non-magic-groups (perms/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
       (if (:is_audit database)
         (doseq [group non-admin-groups]
-          (data-perms/set-database-permission! group database :perms/view-data :unrestricted)
-          (data-perms/set-database-permission! group database :perms/create-queries :no)
-          (data-perms/set-database-permission! group database :perms/download-results :one-million-rows)
-          (data-perms/set-database-permission! group database :perms/manage-table-metadata :no)
-          (data-perms/set-database-permission! group database :perms/manage-database :no))
+          (perms/set-database-permission! group database :perms/view-data :unrestricted)
+          (perms/set-database-permission! group database :perms/create-queries :no)
+          (perms/set-database-permission! group database :perms/download-results :one-million-rows)
+          (perms/set-database-permission! group database :perms/manage-table-metadata :no)
+          (perms/set-database-permission! group database :perms/manage-database :no))
         (doseq [group non-admin-groups]
-          (data-perms/set-new-database-permissions! group database))))))
+          (perms/set-new-database-permissions! group database))))))
 
 (t2/define-after-insert :model/Database
   [database]
   (u/prog1 database
     (set-new-database-permissions! database)
-    ;; schedule the Database sync & analyze tasks
-    ;; This will not do anything when coming from [[metabase-enterprise.advanced-config.file/initialize!]],
-    ;; since the scheduler will not be up yet.
-    ;; Thus, we call [[metabase.task.sync-databases/check-and-schedule-tasks!]] from [[metabase.core/init!]] to self-heal.
+    ;; schedule the Database sync & analyze tasks This will not do anything when coming
+    ;; from [[metabase-enterprise.advanced-config.file/initialize!]], since the scheduler will not be up yet. Thus, we
+    ;; call [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]] from [[metabase.core.core/init!]] to
+    ;; self-heal.
     (check-and-schedule-tasks-for-db! (t2.realize/realize database))))
 
 (def ^:private ^:dynamic *normalizing-details*
@@ -197,30 +203,10 @@
            (not *normalizing-details*))
       normalize-details)))
 
-(defn- delete-orphaned-secrets!
-  "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
-  simply delete any Secret whose ID appears in the details blob, since every Secret instance that is currently created
-  is exclusively associated with a single Database.
-
-  In the future, if/when we allow arbitrary association of secret instances to database instances, this will need to
-  change and become more complicated (likely by consulting a many-to-many join table)."
-  [{:keys [id details] :as database}]
-  (when-let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
-    (let [conn-props                 (conn-props-fn (driver.u/database->driver database))
-          possible-secret-prop-names (keys (secret/conn-props->secret-props-by-name conn-props))]
-      (doseq [secret-id (reduce (fn [acc prop-name]
-                                  (if-let [secret-id (get details (keyword (str prop-name "-id")))]
-                                    (conj acc secret-id)
-                                    acc))
-                                []
-                                possible-secret-prop-names)]
-        (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
-        (t2/delete! :model/Secret :id secret-id)))))
-
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (delete-orphaned-secrets! database)
+  (secret/delete-orphaned-secrets! database)
   ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
   (when-some [table-ids (not-empty (t2/select-pks-vec :model/Table :db_id id))]
@@ -229,45 +215,6 @@
     (driver/notify-database-updated driver database)
     (catch Throwable e
       (log/error e "Error sending database deletion notification"))))
-
-(defn- handle-db-details-secret-prop!
-  "Helper fn for reducing over a map of all the secret connection-properties, keyed by name. This is side effecting. At
-  each iteration step, if there is a -value suffixed property set in the details to be persisted, then we instead insert
-  (or update an existing) Secret instance and point to the inserted -id instead."
-  [database details conn-prop-nm conn-prop]
-  (let [sub-prop   (fn [suffix]
-                     (keyword (str conn-prop-nm suffix)))
-        id-kw      (sub-prop "-id")
-        value-kw   (sub-prop "-value")
-        new-name   (format "%s for %s" (:display-name conn-prop) (:name database))
-        kind       (:secret-kind conn-prop)
-        ;; in the future, when secret values can simply be changed by passing
-        ;; in a new ID (as opposed to a new value), this behavior will change,
-        ;; but for now, we should simply look for the value
-        secret-map (secret/db-details-prop->secret-map details conn-prop-nm)
-        value      (:value secret-map)
-        src        (:source secret-map)] ; set the :source due to the -path suffix (see above)]
-    (if (nil? value) ;; secret value for this conn prop was not changed
-      details
-      (let [{:keys [id] :as secret*} (secret/upsert-secret-value!
-                                      (id-kw details)
-                                      new-name
-                                      kind
-                                      src
-                                      value)]
-        (-> details
-            ;; remove the -value keyword (since in the persisted details blob, we only ever want to store the -id),
-            ;; but the value may be re-added by expand-inferred-secret-values below (if appropriate)
-            (dissoc value-kw (sub-prop "-path"))
-            (assoc id-kw id)
-            (secret/expand-inferred-secret-values conn-prop-nm conn-prop secret*))))))
-
-(defn- handle-secrets-changes [{:keys [details] :as database}]
-  (let [updated-details (secret/reduce-over-details-secret-values
-                         (driver.u/database->driver database)
-                         details
-                         (partial handle-db-details-secret-prop! database))]
-    (assoc database :details updated-details)))
 
 (defn- handle-uploads-enabled!
   "This function maintains the invariant that only one database can have uploads_enabled=true."
@@ -308,7 +255,7 @@
                  infer-db-schedules
 
                  (some? (:details changes))
-                 handle-secrets-changes
+                 secret/handle-incoming-client-secrets!
 
                  (:uploads_enabled changes)
                  handle-uploads-enabled!)
@@ -323,9 +270,9 @@
 
 (t2/define-after-update :model/Database
   [database]
-  ;; This will not do anything when coming from [[metabase-enterprise.advanced-config.file/initialize!]],
-  ;; since the scheduler will not be up yet.
-  ;; Thus, we call [[metabase.task.sync-databases/check-and-schedule-tasks!]] from [[metabase.core/init!]] to self-heal.
+  ;; This will not do anything when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
+  ;; scheduler will not be up yet. Thus, we call [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]]
+  ;; from [[metabase.core/init!]] to self-heal.
   (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
 
 (t2/define-before-insert :model/Database
@@ -336,7 +283,7 @@
       (cond->
        (not details)             (assoc :details {})
        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
-      handle-secrets-changes
+      secret/handle-incoming-client-secrets!
       handle-uploads-enabled!
       infer-db-schedules))
 
@@ -388,10 +335,6 @@
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 
-(def ^:const protected-password
-  "The string to replace passwords with when serializing Databases."
-  "**MetabasePass**")
-
 (defn sensitive-fields-for-db
   "Gets all sensitive fields that should be redacted in API responses for a given database. Delegates to
   driver.u/sensitive-fields using the given database's driver (if valid), so refer to that for full details. If a valid
@@ -416,11 +359,13 @@
               (do (log/debug "Fully redacting database details during json encoding.")
                   (dissoc db :details))
               (do (log/debug "Redacting sensitive fields within database details during json encoding.")
-                  (update db :details (fn [details]
-                                        (reduce
-                                         #(m/update-existing %1 %2 (constantly protected-password))
-                                         details
-                                         (sensitive-fields-for-db db))))))]
+                  (-> db
+                      (secret/to-json-hydrate-redacted-secrets)
+                      (update :details (fn [details]
+                                         (reduce
+                                          #(m/update-existing %1 %2 (fn [v] (when v secret/protected-password)))
+                                          details
+                                          (sensitive-fields-for-db db)))))))]
      (update db :settings
              (fn [settings]
                (when (map? settings)

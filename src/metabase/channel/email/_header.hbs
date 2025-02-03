@@ -1,0 +1,52 @@
+<html>
+<head>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,900;1,100;1,300;1,400;1,700;1,900" rel="stylesheet">
+  <style>
+    * {
+      mso-line-height-rule: exactly;
+    }
+    .pulse .container .title-link {
+      color: #616D75;
+      text-decoration: none;
+    }
+    .pulse .container .title-link:hover {
+      color: #509EE3;
+    }
+    .card-container {
+      margin: auto;
+      background-color: #ffffff;
+      max-width: 570px;
+
+      padding: 1em;
+      border: 1px solid #dddddd;
+      border-radius: 2px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+    .padded-section {
+      padding-top: 2em;
+    }
+    @media only screen and (max-device-width: 480px) {
+      .card-container {
+        border: none;
+        box-shadow: none;
+      }
+    }
+    @media only screen and (min-device-width: 481px) {
+      .card-container {
+        padding: 2em 4em;
+      }
+    }
+    @media screen and (min-width: 600px) {
+      .pulse .container {
+        padding: 2em 4em !important;
+      }
+    }
+  </style>
+</head>
+<body class="{{emailType}}" style="font-family: 'Lato', 'Helvetica Neue', Helvetica, sans-serif; padding: 1em;">
+  {{#if logoHeader}}
+    <div style="padding-bottom: 2em; padding-top: 1em; text-align: center;">
+      {{> metabase/channel/email/_logo.hbs }}
+    </div>
+  {{/if}}
+  <div class="container" style="margin: 0; padding: 0 0 2em 0; max-width: 100%; font-size: 16px; line-height: 24px; color: #616D75;">

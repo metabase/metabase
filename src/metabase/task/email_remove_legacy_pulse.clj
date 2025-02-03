@@ -2,8 +2,8 @@
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.channel.email :as email]
    [metabase.channel.template.core :as channel.template]
-   [metabase.email :as email]
    [metabase.task :as task]
    [metabase.util.log :as log]
    [metabase.util.urls :as urls]
@@ -14,7 +14,7 @@
 (defn- has-legacy-pulse? []
   (pos? (t2/count :model/Pulse :dashboard_id nil :alert_condition nil :archived false)))
 
-(def ^:private template-path "metabase/email/warn_deprecate_pulse.hbs")
+(def ^:private template-path "metabase/channel/email/warn_deprecate_pulse.hbs")
 
 (defn- email-remove-legacy-pulse []
   (when (and (email/email-configured?)

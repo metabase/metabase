@@ -473,7 +473,9 @@
       desugar-if
       maybe-desugar-expression))
 
-(defmulti ^:private negate* first)
+(defmulti ^:private negate*
+  {:arglists '([mbql-clause])}
+  first)
 
 (defmethod negate* :not [[_ subclause]]    subclause)
 (defmethod negate* :and [[_ & subclauses]] (into [:or]  (map negate* subclauses)))

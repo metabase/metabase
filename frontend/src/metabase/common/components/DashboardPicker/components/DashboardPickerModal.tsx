@@ -147,12 +147,12 @@ export const DashboardPickerModal = ({
   const modalActions = [
     <Button
       key="dashboard-on-the-go"
-      miw="21rem"
+      miw="9.5rem"
       onClick={openCreateDialog}
-      leftIcon={<Icon name="add" />}
+      leftIcon={<Icon name="add_to_dash" />}
       disabled={selectedItem?.can_write === false}
     >
-      {t`Create a new dashboard`}
+      {t`New dashboard`}
     </Button>,
   ];
 

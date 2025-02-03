@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
@@ -36,7 +36,7 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       },
     };
 
-    cy.createDashboard(
+    H.createDashboard(
       {
         name: "Embedding Sdk Test Dashboard",
         dashcards: [questionCard, textCard],

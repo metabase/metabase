@@ -66,7 +66,7 @@
         (is (= (set (take-last 3 versions))
                (t2/select-fn-set :version :model/SearchIndexMetadata))))
       (testing "After 1 day, it deletes version which are neither the latest, nor used by this instance"
-        (mt/with-dynamic-redefs [t/zoned-date-time (constantly (t/plus (t/zoned-date-time) (t/days 1) (t/minutes 1)))]
+        (mt/with-dynamic-fn-redefs [t/zoned-date-time (constantly (t/plus (t/zoned-date-time) (t/days 1) (t/minutes 1)))]
           (search-index-metadata/delete-obsolete! our-version)
           (is (= #{our-version (last versions)}
                  (t2/select-fn-set :version :model/SearchIndexMetadata))))))))
