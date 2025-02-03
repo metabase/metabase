@@ -49,6 +49,7 @@ jest.mock("@uiw/react-codemirror", () => {
         value={props.value ?? ""}
         // @ts-expect-error: We cannot provide the update argument to onChange
         onChange={evt => props.onChange?.(evt.target.value, undefined)}
+        autoFocus
       />
     );
   });
