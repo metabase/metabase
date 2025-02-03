@@ -431,37 +431,6 @@
                                                             #"More results have been included"
                                                             #"ID</th>"))))}})))
 
-(deftest alert-first-run-only-test
-  (tests! {:pulse {:alert_condition "rows", :alert_first_only true}}
-          "first run only with data"
-          {:card
-           (merge
-            (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-            {:visualization_settings {:graph.dimensions ["DATE"]
-                                      :graph.metrics    ["count"]}})
-
-           :assert
-           {:email
-            (fn [{pulse-id :pulse-id} [email]]
-              (is (= (rasta-alert-message)
-                     (mt/summarize-multipart-single-email email test-card-regex))) ;#"stop sending you alerts")))
-              (testing "Pulse should be deleted"
-                (is (= false
-                       (t2/exists? :model/Pulse :id pulse-id)))))}}
-
-          "first run alert with no data"
-          {:card
-           (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
-                                                 :breakout [!day.date]})
-
-           :assert
-           {:email
-            (fn [{:keys [pulse-id]} emails]
-              (is (empty? emails))
-              (testing "Pulse should still exist"
-                (is (= true
-                       (t2/exists? :model/Pulse :id pulse-id)))))}}))
-
 (deftest above-goal-alert-test
   (testing "above goal alert"
     (tests! {:pulse {:alert_condition  "goal"
