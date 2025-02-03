@@ -225,5 +225,5 @@ import {
   errorComponent={({ message }) => <div>There was an error: {message}</div>}
 >
   <StaticDashboard dashboardId={1} />
-</MetabaseProvider>;
+</MetabaseProvider>
 ```
