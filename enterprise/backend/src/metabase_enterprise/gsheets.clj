@@ -241,7 +241,10 @@
     (hm.client/make-request :delete (str "/api/v2/mb/connections/" id))))
 
 (defn- handle-get-folder [attached-dwh]
-  (let [[sstatus {conn :body}] (hm-get-gdrive-conn (:gdrive/conn-id (gsheets)))]
+  (let [[sstatus {conn :body}] (try (hm-get-gdrive-conn (:gdrive/conn-id (gsheets)))
+                                    (catch Exception _
+                                      (reset-gsheets-status)
+                                      (error-response-in-body (tru "Unable to find google drive connection, please try again."))))]
     (if (= :ok sstatus)
       (let [{:keys [status] last-gdrive-conn-sync :last-sync-at :as gdrive-conn}
             (normalize-gdrive-conn conn)
