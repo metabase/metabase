@@ -19,16 +19,16 @@
 }
 
 .arg {
-  color: var(--mb-base-color-lobster-60);
+  color: var(--mb-base-color-dubloon-50);
   font-family: var(--mb-default-monospace-font-family);
 
   &.active {
-    background-color: var(--mb-base-color-lobster-20);
+    background-color: var(--mb-base-color-dubloon-10);
   }
 }
 
 .info {
-  padding: 8px;
+  padding: 0.5rem;
   overflow: auto;
   flex-shrink: 10;
   min-height: 0;
