@@ -2,7 +2,10 @@ import { useCallback } from "react";
 
 import { useUserKeyValue } from "./use-user-key-value";
 
-type UseUserAcknowledgementResult = [boolean, () => void, () => void];
+type UseUserAcknowledgementResult = [
+  acknowledged: boolean,
+  { ack: () => void; unack: () => void; isLoading: boolean },
+];
 
 export const useUserAcknowledgement = (
   key: string,
@@ -12,6 +15,7 @@ export const useUserAcknowledgement = (
     value: acked,
     setValue,
     clearValue,
+    isLoading,
   } = useUserKeyValue({
     namespace: "user_acknowledgement",
     key,
@@ -26,5 +30,5 @@ export const useUserAcknowledgement = (
     clearValue();
   }, [clearValue]);
 
-  return [acked, ack, unack];
+  return [acked, { ack, unack, isLoading }];
 };

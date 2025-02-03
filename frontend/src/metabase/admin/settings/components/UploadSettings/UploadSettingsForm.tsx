@@ -7,7 +7,7 @@ import { updateSettings } from "metabase/admin/settings/settings";
 import { skipToken, useListSyncableDatabaseSchemasQuery } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Alert from "metabase/core/components/Alert";
 import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";

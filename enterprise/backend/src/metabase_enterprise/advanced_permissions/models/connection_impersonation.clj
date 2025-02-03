@@ -71,7 +71,7 @@
        data-perm-changes))))
 
 (defenterprise delete-impersonations-if-needed-after-permissions-change!
-  "For use only inside `metabase.models.permissions`; don't call this elsewhere. Delete Connection Impersonations that
+  "For use only inside `metabase.permissions.models.permissions`; don't call this elsewhere. Delete Connection Impersonations that
   are no longer needed after the permissions graph is updated. `changes` are the parts of the graph that have changed,
   i.e. the `things-only-in-new` returned by `clojure.data/diff`."
   :feature :advanced-permissions

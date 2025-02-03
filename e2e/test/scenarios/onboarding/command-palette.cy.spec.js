@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
@@ -14,7 +14,7 @@ describe("command palette", () => {
     cy.signInAsAdmin();
   });
 
-  it("should render a searchable command palette", () => {
+  it("should render a searchable command palette", { tags: "@flaky" }, () => {
     // //Add a description for a check
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       description: "The best question",
@@ -143,6 +143,7 @@ describe("command palette", () => {
         const results = response.body.data;
 
         results.forEach((result, index) => {
+          // eslint-disable-next-line no-unsafe-element-filtering
           cy.findAllByRole("option")
             .eq(index + 2)
             .should("contain.text", result.name);

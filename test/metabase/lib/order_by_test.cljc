@@ -24,7 +24,7 @@
                        :order-by     [[:asc
                                        {:lib/uuid string?}
                                        [:field {:lib/uuid string?} (meta/id :venues :id)]]]}]}
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/order-by (meta/field-metadata :venues :id))))))
 
 (deftest ^:parallel threading-test
@@ -34,7 +34,7 @@
                        :order-by     [[:asc
                                        {:lib/uuid string?}
                                        [:field {:lib/uuid string?} (meta/id :venues :id)]]]}]}
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/order-by (meta/field-metadata :venues :id))
               (dissoc :lib/metadata)))))
 
@@ -45,7 +45,7 @@
                        :order-by     [[:desc
                                        {:lib/uuid string?}
                                        [:field {:lib/uuid string?} (meta/id :venues :id)]]]}]}
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/order-by (meta/field-metadata :venues :id) :desc)
               (dissoc :lib/metadata)))))
 
@@ -92,7 +92,7 @@
   (is (=? [[:asc
             {:lib/uuid string?}
             [:field {:lib/uuid string?} (meta/id :venues :id)]]]
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/order-by (meta/field-metadata :venues :id))
               lib/order-bys))))
 
@@ -104,7 +104,7 @@
              [:asc
               {:lib/uuid string?}
               [:field {:lib/uuid string?} (meta/id :venues :price)]]]
-            (-> lib.tu/venues-query
+            (-> (lib.tu/venues-query)
                 (lib/order-by (meta/field-metadata :venues :id))
                 (lib/order-by (meta/field-metadata :venues :price))
                 lib/order-bys))))
@@ -124,7 +124,7 @@
                 :base-type :type/Date
                 :effective-type :type/Date}
                "expr2"]]]
-            (as-> lib.tu/query-with-expression $q
+            (as-> (lib.tu/query-with-expression) $q
               (lib/expression $q "expr2" (lib/absolute-datetime "2020" :month))
               (lib/order-by $q (lib/expression-ref $q "expr"))
               (lib/order-by $q (lib/expression-ref $q "expr2"))
@@ -137,12 +137,12 @@
                    clojure.lang.ExceptionInfo
                    #"Invalid output:.*Duplicate values ignoring uuids"
                    query)
-       (-> lib.tu/venues-query
+       (-> (lib.tu/venues-query)
            (lib/order-by (meta/field-metadata :venues :id))
            (lib/order-by (meta/field-metadata :venues :id))
            lib/order-bys)
 
-       (as-> lib.tu/query-with-expression $q
+       (as-> (lib.tu/query-with-expression) $q
          (lib/order-by $q (lib/expression-ref $q "expr"))
          (lib/order-by $q (lib/expression-ref $q "expr"))
          (lib/order-bys $q)))))
@@ -174,7 +174,7 @@
 
 (deftest ^:parallel orderable-columns-breakouts-test
   (testing "If query has aggregations and/or breakouts you can only order by those."
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
                     (lib/aggregate (lib/avg (lib/+ (meta/field-metadata :venues :price) 1)))
                     (lib/breakout (meta/field-metadata :venues :category-id)))]
@@ -205,7 +205,7 @@
 
 (deftest ^:parallel orderable-columns-breakouts-with-expression-test
   (testing "If query has aggregations and/or breakouts you can only order by those (with an expression)"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/expression "Category ID + 1"  (lib/+ (meta/field-metadata :venues :category-id) 1))
                     (lib/breakout [:expression {:lib/uuid (str (random-uuid))} "Category ID + 1"]))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
@@ -218,7 +218,7 @@
 
 (deftest ^:parallel order-by-breakout-expression-test
   (testing "order-by with a broken out expression has correct reference (#32845)"
-    (let [query (lib/expression lib.tu/venues-query
+    (let [query (lib/expression (lib.tu/venues-query)
                                 "Category ID + 1"
                                 (lib/+ (meta/field-metadata :venues :category-id) 1))
           breakout-col (m/find-first #(= (:lib/source %) :source/expressions)
@@ -233,7 +233,7 @@
         (lib/append-stage query)))))
 
 (deftest ^:parallel orderable-columns-test
-  (let [query lib.tu/venues-query]
+  (let [query (lib.tu/venues-query)]
     (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
       (is (=? [{:lib/type                 :metadata/column
                 :name                     "ID"
@@ -302,7 +302,7 @@
 
 (deftest ^:parallel orderable-expressions-test
   (testing "orderable-columns should include expressions"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/expression "Category ID + 1"  (lib/+ (meta/field-metadata :venues :category-id) 1)))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (is (=? [{:id (meta/id :venues :id) :name "ID"}
@@ -322,7 +322,7 @@
 
 (deftest ^:parallel orderable-expressions-exclude-boolean-expressions-test
   (testing "orderable-columns should filter out boolean expressions."
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/expression "Name is empty?"  (lib/is-empty (meta/field-metadata :venues :name))))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (is (=? [{:id (meta/id :venues :id) :name "ID"}
@@ -338,7 +338,7 @@
 
 (deftest ^:parallel orderable-columns-exclude-expressions-containing-offset
   (testing "orderable-columns should filter out expressions which contain :offset"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/order-by (meta/field-metadata :venues :id) :asc)
                     (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
                     (lib/expression "Nested Offset"
@@ -356,7 +356,7 @@
 
 (deftest ^:parallel orderable-explicit-joins-test
   (testing "orderable-columns should include columns from explicit joins"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
                                    [(lib/=
@@ -390,7 +390,7 @@
 (deftest ^:parallel orderable-columns-source-card-test
   (doseq [varr [#'lib.tu/query-with-source-card
                 #'lib.tu/query-with-source-card-with-result-metadata]
-          :let [query @varr]]
+          :let [query (@varr)]]
     (testing (str (pr-str varr) \newline (lib.util/format "Query =\n%s" (u/pprint-to-str query)))
       (is (=? [{:name                     "USER_ID"
                 :display-name             "User ID"
@@ -463,7 +463,7 @@
 
 (deftest ^:parallel orderable-columns-e2e-test
   (testing "Use the metadata returned by `orderable-columns` to add a new order-by to a query."
-    (let [query lib.tu/venues-query]
+    (let [query (lib.tu/venues-query)]
       (is (=? {:lib/type :mbql/query
                :database (meta/id)
                :stages   [{:lib/type     :mbql.stage/mbql
@@ -489,7 +489,7 @@
 (deftest ^:parallel orderable-columns-with-source-card-e2e-test
   (binding [lib.card/*force-broken-card-refs* false]
     (testing "Make sure you can order by a column that comes from a source Card (Saved Question/Model/etc)"
-      (let [query lib.tu/query-with-source-card]
+      (let [query (lib.tu/query-with-source-card)]
         (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
           (let [name-col (m/find-first #(= (:name %) "USER_ID")
                                        (lib/orderable-columns query))]
@@ -542,7 +542,7 @@
             :lib/source-column-alias  "NAME"
             :lib/desired-column-alias "Cat__NAME"
             :lib/source               :source/joins}]
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/join (-> (lib/join-clause
                              (meta/table-metadata :categories)
                              [(lib/=
@@ -586,7 +586,7 @@
               :table-id                 (meta/id :categories)
               :lib/source-column-alias  "Cat__NAME"
               :lib/desired-column-alias "Cat__NAME"}]
-            (-> lib.tu/venues-query
+            (-> (lib.tu/venues-query)
                 (lib/join (-> (lib/join-clause
                                (meta/table-metadata :categories)
                                [(lib/=
@@ -601,7 +601,7 @@
 
 (deftest ^:parallel orderable-columns-exclude-already-sorted-columns-test
   (testing "orderable-columns should return position for normal Fields already included in :order-by (#30568)"
-    (let [query lib.tu/venues-query]
+    (let [query (lib.tu/venues-query)]
       (is (=? [{:display-name "ID",          :lib/source :source/table-defaults}
                {:display-name "Name",        :lib/source :source/table-defaults}
                {:display-name "Category ID", :lib/source :source/table-defaults}
@@ -644,7 +644,7 @@
 
 (deftest ^:parallel orderable-columns-exclude-already-sorted-aggregation-test
   (testing "orderable-columns should return position for aggregation refs that are already in :order-by (#30568)"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))]
       (let [orderable-columns (lib/orderable-columns query)]
@@ -661,7 +661,7 @@
 
 (deftest ^:parallel orderable-columns-exclude-already-sorted-joined-columns-test
   (testing "orderable-columns should return position for joined columns that are already in :order-by (#30568)"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all)
@@ -702,7 +702,7 @@
 
 (deftest ^:parallel orderable-columns-exclude-already-sorted-implicitly-joinable-columns-test
   (testing "orderable-columns should return position implicitly joinable columns that are already in :order-by (#30568)"
-    (let [query lib.tu/venues-query
+    (let [query (lib.tu/venues-query)
           query (-> query
                     (lib/order-by (m/find-first #(= (:id %) (meta/id :categories :name))
                                                 (lib/orderable-columns query))))]
@@ -724,7 +724,7 @@
 
 (deftest ^:parallel orderable-columns-exclude-already-sorted-expression-test
   (testing "orderable-columns should return position for expressions that are already in :order-by (#30568)"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/expression "My Expression" (lib/+ 2 3)))]
       (is (=? [{:display-name "ID",            :lib/source :source/table-defaults}
                {:display-name "Name",          :lib/source :source/table-defaults}
@@ -760,7 +760,7 @@
             "Categories__ID" ; this column is not projected, but should still be returned.
             "Categories__NAME"]
            (map :lib/desired-column-alias
-                (-> lib.tu/venues-query
+                (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
                                    [(lib/=
@@ -771,7 +771,7 @@
 
 (deftest ^:parallel order-by-aggregation-test
   (testing "Should be able to order by an aggregation (#30089)"
-    (let [query             (-> lib.tu/venues-query
+    (let [query             (-> (lib.tu/venues-query)
                                 (lib/aggregate (lib/avg (lib/+ (meta/field-metadata :venues :price) 1))))
           {ag-uuid :lib/source-uuid} (first (lib/aggregations-metadata query))
           orderable-columns (lib/orderable-columns query)]
@@ -807,7 +807,7 @@
                    (lib/describe-query query'')))))))))
 
 (deftest ^:parallel order-by-expression-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                   (lib/with-fields [(meta/field-metadata :venues :id)]))]
     (is (=? [{:id (meta/id :venues :id),          :name "ID",          :display-name "ID",          :lib/source :source/table-defaults}
@@ -833,7 +833,7 @@
                  (lib/describe-query updated-query))))))))
 
 (deftest ^:parallel orderable-columns-display-info-test
-  (let [query lib.tu/venues-query]
+  (let [query (lib.tu/venues-query)]
     (is (=? [{:semantic-type          :type/PK
               :is-calculated          false
               :table                  {:name "VENUES", :display-name "Venues" :is-source-table true}
@@ -861,7 +861,7 @@
               (lib/display-info query col))))))
 
 (deftest ^:parallel order-bys-display-info-test
-  (let [query             lib.tu/venues-query
+  (let [query             (lib.tu/venues-query)
         orderable-columns (lib/orderable-columns query)
         col               (m/find-first #(= (:id %) (meta/id :venues :name)) orderable-columns)
         _                 (is (some? col))
@@ -887,7 +887,7 @@
 
 (deftest ^:parallel change-direction-test
   (doseq [[dir opposite] {:asc :desc, :desc :asc}]
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/order-by (meta/field-metadata :venues :id) dir))
           current-order-by (first (lib/order-bys query))
           new-query (lib/change-direction query current-order-by)

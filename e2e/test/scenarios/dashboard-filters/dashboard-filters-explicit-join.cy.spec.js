@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -44,7 +44,7 @@ describe("scenarios > dashboard > filters", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: dashboardCard }) => {
         const { card_id, dashboard_id } = dashboardCard;
 
@@ -69,7 +69,7 @@ describe("scenarios > dashboard > filters", () => {
           ],
         };
 
-        cy.editDashboardCard(dashboardCard, updatedCardDetails);
+        H.editDashboardCard(dashboardCard, updatedCardDetails);
 
         H.visitDashboard(dashboard_id);
       },

@@ -9,10 +9,10 @@
 
    Refer to the documentation for those endpoints for further details."
   (:require
-   [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.embed.common :as api.embed.common]
+   [metabase.api.macros :as api.macros]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.util.embed :as embed]
    [metabase.util.malli.schema :as ms]))
@@ -22,11 +22,10 @@
   (validation/check-embedding-enabled)
   (embed/unsign token))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/card/:token"
+(api.macros/defendpoint :get "/card/:token"
   "Fetch a Card you're considering embedding by passing a JWT `token`."
-  [token]
-  {token ms/NonBlankString}
+  [{:keys [token]} :- [:map
+                       [:token ms/NonBlankString]]]
   (let [unsigned-token (check-and-unsign token)]
     (api.embed.common/card-for-unsigned-token unsigned-token
                                               :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
@@ -35,11 +34,11 @@
   "Embedding previews need to be limited in size to avoid performance issues (#20938)."
   2000)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/card/:token/query"
+(api.macros/defendpoint :get "/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
-  [token & query-params]
-  {token ms/NonBlankString}
+  [{:keys [token]} :- [:map
+                       [:token ms/NonBlankString]]
+   query-params]
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/process-query-for-card-with-params
@@ -50,32 +49,31 @@
      :constraints      {:max-results max-results}
      :query-params     (api.embed.common/parse-query-params query-params))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/dashboard/:token"
+(api.macros/defendpoint :get "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
-  [token]
-  {token ms/NonBlankString}
+  [{:keys [token]} :- [:map
+                       [:token ms/NonBlankString]]]
   (let [unsigned-token (check-and-unsign token)]
     (api.embed.common/dashboard-for-unsigned-token unsigned-token
                                                    :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/dashboard/:token/params/:param-key/values"
+(api.macros/defendpoint :get "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
-  [token param-key :as {:keys [query-params]}]
+  [{:keys [token param-key]}
+   query-params]
   (api.embed.common/dashboard-param-values token
                                            param-key
                                            nil
                                            (api.embed.common/parse-query-params query-params)
                                            {:preview true}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+(api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
-  [token dashcard-id card-id & query-params]
-  {token       ms/NonBlankString
-   dashcard-id ms/PositiveInt
-   card-id     ms/PositiveInt}
+  [{:keys [token dashcard-id card-id]} :- [:map
+                                           [:token       ms/NonBlankString]
+                                           [:dashcard-id ms/PositiveInt]
+                                           [:card-id     ms/PositiveInt]]
+   query-params]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
@@ -89,11 +87,11 @@
      :token-params     token-params
      :query-params     (api.embed.common/parse-query-params query-params))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/pivot/card/:token/query"
+(api.macros/defendpoint :get "/pivot/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
-  [token & query-params]
-  {token ms/NonBlankString}
+  [{:keys [token]} :- [:map
+                       [:token ms/NonBlankString]]
+   query-params]
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/process-query-for-card-with-params
@@ -104,13 +102,13 @@
      :query-params     (api.embed.common/parse-query-params query-params)
      :qp               qp.pivot/run-pivot-query)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+(api.macros/defendpoint :get "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
-  [token dashcard-id card-id & query-params]
-  {token       ms/NonBlankString
-   dashcard-id ms/PositiveInt
-   card-id     ms/PositiveInt}
+  [{:keys [token dashcard-id card-id]} :- [:map
+                                           [:token       ms/NonBlankString]
+                                           [:dashcard-id ms/PositiveInt]
+                                           [:card-id     ms/PositiveInt]]
+   query-params]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
@@ -124,5 +122,3 @@
      :token-params     token-params
      :query-params     (api.embed.common/parse-query-params query-params)
      :qp               qp.pivot/run-pivot-query)))
-
-(api/define-routes)

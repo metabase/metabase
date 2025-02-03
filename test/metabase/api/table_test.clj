@@ -9,9 +9,9 @@
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -1109,7 +1109,8 @@
       (testing "Can we set custom field ordering?"
         (let [custom-field-order [(mt/id :venues :price) (mt/id :venues :longitude) (mt/id :venues :id)
                                   (mt/id :venues :category_id) (mt/id :venues :name) (mt/id :venues :latitude)]]
-          (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues)) custom-field-order)
+          (is (=? {:success true}
+                  (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues)) custom-field-order)))
           (is (= custom-field-order
                  (->> (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :fields)
                       :fields

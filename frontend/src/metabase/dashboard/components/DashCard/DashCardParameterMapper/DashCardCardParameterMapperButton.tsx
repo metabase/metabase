@@ -143,6 +143,7 @@ export const DashCardCardParameterMapperButton = ({
             }}
             target={target}
             mappingOptions={mappingOptions}
+            selectedMappingOption={selectedMappingOption}
           />
         }
       >
