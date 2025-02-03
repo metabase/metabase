@@ -394,6 +394,7 @@
     "embedding-sdk:generate-nextjs-compat": "tsx enterprise/frontend/src/embedding-sdk/bin/generate-nextjs-compat.ts",
     "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk/",
     "eslint-fix": "yarn lint-eslint --fix",
+    "find-never-defined-css-variables": "tsx bin/find-never-defined-css-variables/find-never-defined-css-variables.ts",
     "generate-cypress-html-report": "mochawesome-merge cypress/reports/mochareports/*.json > cypress/reports/cypress-test-report.json && marge cypress/reports/cypress-test-report.json -o cypress/reports/mochareports --inline",
     "lint": "yarn lint-eslint && yarn lint-prettier && yarn lint-docs-links && yarn lint-yaml && yarn type-check",
     "lint-docs-links": "yarn && ./bin/verify-doc-links",
