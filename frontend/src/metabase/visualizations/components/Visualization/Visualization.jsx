@@ -73,21 +73,21 @@ const mapStateToProps = state => ({
 const SMALL_CARD_WIDTH_THRESHOLD = 150;
 
 class Visualization extends PureComponent {
-  state = {
-    getHref: undefined,
-    hovered: null,
-    clicked: null,
-    error: null,
-    genericError: null,
-    warnings: [],
-    series: null,
-    visualization: null,
-    computedSettings: {},
-  };
-
   constructor(props) {
     super(props);
-    this.state = this.transformPropsToState(props);
+
+    this.state = {
+      getHref: undefined,
+      hovered: null,
+      clicked: null,
+      error: null,
+      genericError: null,
+      warnings: [],
+      series: null,
+      visualization: null,
+      computedSettings: {},
+      ...this.transformPropsToState(props),
+    };
   }
 
   componentDidUpdate(prevProps, prevState) {
