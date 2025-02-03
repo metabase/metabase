@@ -138,11 +138,11 @@
                                       " update your integration in Admin Settings -> Slack."))))
     (throw (ex-info message error))))
 
-(defn- handle-response [{:keys [status body]}]
+(defn- handle-response [{:keys [headers status body]}]
   (with-open [reader (io/reader body)]
     (let [body (json/decode+kw reader)]
       (if (and (= 200 status) (:ok body))
-        body
+        (assoc body ::headers headers)
         (handle-error body)))))
 
 (defn- do-slack-request [request-fn endpoint request]
@@ -175,6 +175,13 @@
   "Make a POST request to the Slack API."
   [endpoint body]
   (do-slack-request http/post endpoint body))
+
+(defn- oauth-scopes
+  "Returns the set of scopes associated with the current token"
+  []
+  (let [{::keys [headers]} (GET "auth.test")
+        {:strs [x-oauth-scopes]} headers]
+    (set (str/split x-oauth-scopes #","))))
 
 (defn- next-cursor
   "Get a cursor for the next page of results in a Slack API response, if one exists."
@@ -217,8 +224,11 @@
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages).
   By default only fetches channels, and returns them with their # prefix. Note the call to [[paged-list-request]] will
   only fetch the first [[max-list-results]] items."
-  [& {:as query-parameters}]
-  (let [params (merge {:exclude_archived true, :types "public_channel"} query-parameters)]
+  [& {:keys [oauth-scopes query-parameters]}]
+  (let [types  (if (contains? oauth-scopes "groups:read")
+                 "public_channel,private_channel"
+                 "public_channel")
+        params (merge {:exclude_archived true, :types types} query-parameters)]
     (paged-list-request "conversations.list"
                         ;; response -> channel names
                         #(->> % :channels (map channel-transform))
@@ -285,7 +295,7 @@
   (when (slack-configured?)
     (log/info "Refreshing slack channels and usernames.")
     (let [users (future (vec (users-list)))
-          conversations (future (vec (conversations-list)))]
+          conversations (future (vec (conversations-list {:oauth-scopes (oauth-scopes)})))]
       (slack-cached-channels-and-usernames! {:channels (concat @conversations @users)})
       (slack-channels-and-usernames-last-updated! (t/zoned-date-time)))))
 
