@@ -138,7 +138,7 @@
 
 (deftest ^:parallel available-join-strategies-test
   (testing "available-join-strategies returns an array of opaque strategy objects (#32089)"
-    (let [strategies (lib.js/available-join-strategies lib.tu/query-with-join -1)]
+    (let [strategies (lib.js/available-join-strategies (lib.tu/query-with-join) -1)]
       (is (array? strategies))
       (is (= [{:lib/type :option/join.strategy, :strategy :left-join, :default true}
               {:lib/type :option/join.strategy, :strategy :right-join}
@@ -183,21 +183,6 @@
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
 
-(deftest ^:parallel extract-template-tags-test
-  (testing "Undefined parameters are ignored (#34729)"
-    (let [tag-name "foo"
-          tags {tag-name {:type         :text
-                          :name         tag-name
-                          :display-name "Foo"
-                          :id           (str (random-uuid))}}]
-      (is (= {"bar" {"type"         "text"
-                     "name"         "bar"
-                     "display-name" "Bar"
-                     "id"           (get-in tags [tag-name :id])}}
-             (-> (lib.js/extract-template-tags "SELECT * FROM table WHERE {{bar}}"
-                                               (add-undefined-params (clj->js tags) tag-name))
-                 js->clj))))))
-
 (deftest ^:parallel is-column-metadata-test
   (is (true? (lib.js/is-column-metadata (meta/field-metadata :venues :id))))
   (is (false? (lib.js/is-column-metadata 1))))
@@ -208,7 +193,7 @@
 
 (deftest ^:parallel expression-clause-<->-legacy-expression-test
   (testing "conversion works both ways, even with aggregations (#34830, #36087)"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))
                     (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))
           agg-uuid (-> query lib/aggregations first lib.options/uuid)
@@ -232,7 +217,7 @@
       (testing "from pMBQL filter"
         (is (= (js->clj legacy-filter) (js->clj legacy-filter'))))))
   (testing "conversion drops aggregation-options (#36120)"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/aggregate (lib.options/update-options (lib/sum (meta/field-metadata :venues :price))
                                                                assoc :display-name "price sum")))
           agg-expr (-> query lib/aggregations first)
@@ -240,14 +225,14 @@
           legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
       (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
   (testing "legacy expressions are converted properly (#36120)"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/aggregate (lib/count)))
           agg-expr (-> query lib/aggregations first)
           legacy-agg-expr #js ["count"]
           legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
       (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
   (testing "simple values can be converted properly (#36459)"
-    (let [query lib.tu/venues-query
+    (let [query (lib.tu/venues-query)
           legacy-expr 0
           expr (lib.js/expression-clause-for-legacy-expression query 0 legacy-expr)
           legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
@@ -258,7 +243,7 @@
       (is (= legacy-expr expr legacy-expr' legacy-expr-from-query))
       (is (= "named" (lib/display-name query named-expr)))))
   (testing "simple expressions can be converted properly (#37173)"
-    (let [query lib.tu/venues-query
+    (let [query (lib.tu/venues-query)
           legacy-expr #js ["+" 1 2]
           expr (lib.js/expression-clause-for-legacy-expression query 0 legacy-expr)
           legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
@@ -274,7 +259,7 @@
         (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "expr"} 1 2]]}]}
                 (lib/expression query -1 "expr" expr))))))
   (testing "filters from queries can be converted to legacy clauses (#37173, #44584)"
-    (let [query (lib/filter lib.tu/venues-query (lib/< (meta/field-metadata :venues :price) 3))
+    (let [query (lib/filter (lib.tu/venues-query) (lib/< (meta/field-metadata :venues :price) 3))
           expr (first (lib/filters query))
           legacy-expr (lib.js/legacy-expression-for-expression-clause query 0 expr)
           price-id (meta/id :venues :price)]
@@ -332,7 +317,7 @@
         metric-id 101
 
         metric-definition
-        (-> lib.tu/venues-query
+        (-> (lib.tu/venues-query)
             (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
             (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
             lib.convert/->legacy-MBQL)
@@ -405,16 +390,16 @@
 (deftest ^:parallel source-table-or-card-id-test
   (testing "returns the table-id as a number"
     (are [query] (= (meta/id :venues) (lib.js/source-table-or-card-id query))
-      lib.tu/venues-query
-      (lib/append-stage lib.tu/venues-query)))
+      (lib.tu/venues-query)
+      (lib/append-stage (lib.tu/venues-query))))
   (testing "returns the card-id in the legacy string form"
     (are [query] (= "card__1" (lib.js/source-table-or-card-id query))
-      lib.tu/query-with-source-card
-      (lib/append-stage lib.tu/query-with-source-card)))
+      (lib.tu/query-with-source-card)
+      (lib/append-stage (lib.tu/query-with-source-card))))
   (testing "returns nil for questions starting from a native query"
     (are [query] (nil? (lib.js/source-table-or-card-id query))
-      lib.tu/native-query
-      (lib/append-stage lib.tu/native-query))))
+      (lib.tu/native-query)
+      (lib/append-stage (lib.tu/native-query)))))
 
 (deftest ^:parallel expression-clause-normalization-test
   (are [x y] (do
@@ -618,7 +603,7 @@
                            lib.convert/->pMBQL)
         query (reduce-kv (fn [query expr-name expr]
                            (lib/expression query 0 expr-name expr))
-                         lib.tu/venues-query
+                         (lib.tu/venues-query)
                          exprs)
         c-pos (some (fn [[i e]]
                       (when (= (-> e lib.options/options :lib/expression-name) "c")

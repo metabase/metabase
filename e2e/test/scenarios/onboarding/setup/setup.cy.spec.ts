@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import { SUBSCRIBE_URL } from "metabase/setup/constants";
 
@@ -295,15 +295,19 @@ describe("scenarios > setup", () => {
     skipLicenseStepOnEE();
 
     // usage data
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("section")
       .last()
       .findByText(/certain data about product usage/);
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("section").last().button("Finish").click();
 
     // done
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("section")
       .last()
       .findByText(/You're all set up/);
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("section")
       .last()
       .findByRole("link", { name: "Take me to Metabase" })
@@ -359,13 +363,16 @@ describe("scenarios > setup", () => {
         "not.exist",
       );
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.get("section")
         .last()
         .findByText(/certain data about product usage/);
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.get("section").last().button("Finish").click();
 
       // Finish & Subscribe
       cy.intercept("GET", "/api/session/properties").as("properties");
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.get("section")
         .last()
         .findByRole("link", { name: "Take me to Metabase" })

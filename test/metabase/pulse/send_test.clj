@@ -11,11 +11,11 @@
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
    [metabase.integrations.slack :as slack]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as models.pulse]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]

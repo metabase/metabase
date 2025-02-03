@@ -14,11 +14,11 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -45,7 +45,7 @@
 (defmethod mi/can-read? :model/Segment
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
-     (data-perms/user-has-permission-for-table?
+     (perms/user-has-permission-for-table?
       api/*current-user-id*
       :perms/manage-table-metadata
       :yes

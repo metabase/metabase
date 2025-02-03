@@ -12,7 +12,7 @@ import NewDatasetModalS from "./NewDatasetModal.module.css";
 export function NewDatasetModal({ onClose }: { onClose: () => void }) {
   const dispatch = useDispatch();
 
-  const [, ack] = useUserAcknowledgement("turn_into_model_modal");
+  const [, { ack }] = useUserAcknowledgement("turn_into_model_modal");
 
   const onConfirm = useCallback(() => {
     ack();

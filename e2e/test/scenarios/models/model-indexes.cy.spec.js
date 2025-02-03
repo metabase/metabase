@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
@@ -17,7 +17,7 @@ describe("scenarios > model indexes", () => {
     cy.intercept("PUT", "/api/card/*").as("cardUpdate");
     cy.intercept("GET", "/api/card/*").as("cardGet");
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Products Model",
         query: { "source-table": PRODUCTS_ID },
@@ -123,93 +123,105 @@ describe("scenarios > model indexes", () => {
       .should("exist");
   });
 
-  it("should be able to search model index values and visit detail records", () => {
-    createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
+  it(
+    "should be able to search model index values and visit detail records",
+    { tags: "@flaky" },
+    () => {
+      createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
 
-    cy.visit("/");
+      cy.visit("/");
 
-    H.commandPaletteSearch("marble shoes", false);
-    H.commandPalette()
-      .findByRole("option", { name: "Small Marble Shoes" })
-      .click();
+      H.commandPaletteSearch("marble shoes", false);
+      H.commandPalette()
+        .findByRole("option", { name: "Small Marble Shoes" })
+        .click();
 
-    cy.wait("@dataset");
+      cy.wait("@dataset");
 
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByRole("heading", { name: /Product/ });
-      cy.findByText("Small Marble Shoes");
-      cy.findByText("Doohickey");
-    });
-  });
-
-  it("should be able to see details of a record outside the first 2000", () => {
-    cy.createQuestion(
-      {
-        name: "People Model",
-        query: { "source-table": PEOPLE_ID },
-        type: "model",
-      },
-      {
-        wrapId: true,
-        idAlias: "people_model_id",
-      },
-    );
-
-    cy.get("@people_model_id").then(peopleModelId => {
-      createModelIndex({
-        modelId: peopleModelId,
-        pkName: "ID",
-        valueName: "NAME",
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByRole("heading", { name: /Product/ });
+        cy.findByText("Small Marble Shoes");
+        cy.findByText("Doohickey");
       });
-    });
+    },
+  );
 
-    cy.visit("/");
+  it(
+    "should be able to see details of a record outside the first 2000",
+    { tags: "@flaky" },
+    () => {
+      H.createQuestion(
+        {
+          name: "People Model",
+          query: { "source-table": PEOPLE_ID },
+          type: "model",
+        },
+        {
+          wrapId: true,
+          idAlias: "people_model_id",
+        },
+      );
 
-    H.commandPaletteSearch("anais", false);
-    H.commandPalette().findByRole("option", { name: "Anais Zieme" }).click();
+      cy.get("@people_model_id").then(peopleModelId => {
+        createModelIndex({
+          modelId: peopleModelId,
+          pkName: "ID",
+          valueName: "NAME",
+        });
+      });
 
-    cy.wait("@dataset");
-    cy.wait("@dataset"); // second query gets the additional record
+      cy.visit("/");
 
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByText(/We're a little lost/i).should("not.exist");
-      cy.findAllByText("Anais Zieme").should("have.length", 2);
-    });
-  });
+      H.commandPaletteSearch("anais", false);
+      H.commandPalette().findByRole("option", { name: "Anais Zieme" }).click();
 
-  it("should not reload the model for record in the same model", () => {
-    createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
+      cy.wait("@dataset");
+      cy.wait("@dataset"); // second query gets the additional record
 
-    cy.visit("/");
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByText(/We're a little lost/i).should("not.exist");
+        cy.findAllByText("Anais Zieme").should("have.length", 2);
+      });
+    },
+  );
 
-    H.commandPaletteSearch("marble shoes", false);
-    H.commandPalette()
-      .findByRole("option", { name: "Small Marble Shoes" })
-      .click();
+  it(
+    "should not reload the model for record in the same model",
+    { tags: "@flaky" },
+    () => {
+      createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
 
-    cy.wait("@dataset");
+      cy.visit("/");
 
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByRole("heading", { name: /Product/ });
-      cy.findByText("Small Marble Shoes");
-      cy.findByText("Doohickey");
-    });
+      H.commandPaletteSearch("marble shoes", false);
+      H.commandPalette()
+        .findByRole("option", { name: "Small Marble Shoes" })
+        .click();
 
-    expectCardQueries(1);
+      cy.wait("@dataset");
 
-    cy.get("body").type("{esc}");
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByRole("heading", { name: /Product/ });
+        cy.findByText("Small Marble Shoes");
+        cy.findByText("Doohickey");
+      });
 
-    H.commandPaletteSearch("silk coat", false);
-    H.commandPalette()
-      .findByRole("option", { name: "Ergonomic Silk Coat" })
-      .click();
+      expectCardQueries(1);
 
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Upton, Kovacek and Halvorson");
-    });
+      cy.get("body").type("{esc}");
 
-    expectCardQueries(1);
-  });
+      H.commandPaletteSearch("silk coat", false);
+      H.commandPalette()
+        .findByRole("option", { name: "Ergonomic Silk Coat" })
+        .click();
+
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByText("Upton, Kovacek and Halvorson");
+      });
+
+      expectCardQueries(1);
+    },
+  );
 });
 
 function editTitleMetadata() {

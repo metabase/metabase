@@ -74,22 +74,22 @@
      metabase.models.model-index/add-values!
      metabase.models.moderation-review/create-review!
      metabase.models.on-demand-test/add-dashcard-with-parameter-mapping!
-     metabase.models.permissions/grant-application-permissions!
-     metabase.models.permissions/grant-collection-read-permissions!
-     metabase.models.permissions/grant-collection-readwrite-permissions!
-     metabase.models.permissions/grant-full-data-permissions!
-     metabase.models.permissions/grant-native-readwrite-permissions!
-     metabase.models.permissions/grant-permissions!
-     metabase.models.permissions/revoke-application-permissions!
-     metabase.models.permissions/revoke-data-perms!
-     metabase.models.permissions/update-data-perms-graph!
-     metabase.models.permissions/update-group-permissions!
      metabase.models.persisted-info/ready-database!
      metabase.models.setting-test/test-user-local-allowed-setting!
      metabase.models.setting-test/test-user-local-only-setting!
      metabase.models.setting.cache/restore-cache!
      metabase.models.setting/set!
      metabase.models.setting/validate-settings-formatting!
+     metabase.permissions.models.permissions/grant-application-permissions!
+     metabase.permissions.models.permissions/grant-collection-read-permissions!
+     metabase.permissions.models.permissions/grant-collection-readwrite-permissions!
+     metabase.permissions.models.permissions/grant-full-data-permissions!
+     metabase.permissions.models.permissions/grant-native-readwrite-permissions!
+     metabase.permissions.models.permissions/grant-permissions!
+     metabase.permissions.models.permissions/revoke-application-permissions!
+     metabase.permissions.models.permissions/revoke-data-perms!
+     metabase.permissions.models.permissions/update-data-perms-graph!
+     metabase.permissions.models.permissions/update-group-permissions!
      metabase.permissions.test-util/with-restored-perms!
      metabase.pulse.send/send-notifications!
      metabase.pulse.send/send-pulse!

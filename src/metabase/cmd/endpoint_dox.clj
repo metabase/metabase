@@ -1,11 +1,11 @@
 (ns metabase.cmd.endpoint-dox
   "Generate OpenAPI + Scalar API documentation by running
 
-    clojure -M:ee:doc api-documentation-2"
+    clojure -M:ee:doc api-documentation"
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.api.common]
+   [metabase.api.open-api]
    [metabase.api.routes]
    [metabase.util.json :as json]))
 
@@ -14,11 +14,13 @@
 (def ^:private scalar-config
   "See https://github.com/scalar/scalar/blob/main/documentation/configuration.md"
   {:servers [{:url         "http://localhost:3000/api"
-              :description "Localhost"}]})
+              :description "Localhost"}]
+   :info {:title "Metabase API documentation"
+          :description (slurp (io/resource "openapi/api-intro.md"))}})
 
 (defn- openapi-object []
   (merge
-   (metabase.api.common/openapi-object #'metabase.api.routes/routes)
+   (metabase.api.open-api/root-open-api-object #'metabase.api.routes/routes)
    scalar-config))
 
 (defn generate-dox!

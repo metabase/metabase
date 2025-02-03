@@ -5,9 +5,9 @@
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.params.chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

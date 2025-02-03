@@ -1,6 +1,4 @@
-import { onlyOn } from "@cypress/skip-test";
-
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -33,7 +31,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
-      H.nativeEditor().should("not.exist");
+      H.NativeEditor.get().should("not.exist");
       cy.button("Convert this question to SQL").should("be.disabled");
     });
   });
@@ -49,7 +47,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.wait("@nativeDataset");
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
-      H.nativeEditor()
+      H.NativeEditor.get()
         .should("be.visible")
         .and("contain", "SELECT")
         .and("contain", queryLimit);
@@ -71,7 +69,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.log("Modifying GUI query should update the SQL preview");
     cy.findByTestId("step-limit-0-0").icon("close").click({ force: true });
     cy.wait("@nativeDataset");
-    H.nativeEditor()
+    H.NativeEditor.get()
       .should("be.visible")
       .and("contain", "SELECT")
       .and("contain", defaultRowLimit)
@@ -255,7 +253,7 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
 });
 
 describe(
-  "converting question to a native query (metabase#15946, metabase#32121, metabase#38181)",
+  "converting question to a native query (metabase#15946, metabase#32121, metabase#38181, metabase#40557)",
   { tags: "@mongo" },
   () => {
     const MONGO_DB_NAME = "QA Mongo";
@@ -278,7 +276,7 @@ describe(
       cy.findByLabelText("View native query").click();
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
-        H.nativeEditor()
+        H.NativeEditor.get()
           .should("be.visible")
           .and("contain", "$project")
           .and("contain", "$limit");
@@ -306,7 +304,7 @@ describe(
       H.openNotebook(); // SQL sidebar state was persisted so it's already open now
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
-        H.nativeEditor()
+        H.NativeEditor.get()
           .should("be.visible")
           .and("contain", "$project")
           .and("contain", "$limit")
@@ -316,18 +314,12 @@ describe(
         cy.button("Convert this question to a native query").click();
       });
 
-      // FIXME: Remove `onlyOn` wrapper block once the issue #40557 is fixed
-      onlyOn(false, () => {
-        cy.log(
-          "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
-        );
-        cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
-        cy.findByTestId("selected-table").should("have.text", "Products");
-        cy.get("[data-testid=cell-data]").should(
-          "contain",
-          "Small Marble Shoes",
-        );
-      });
+      cy.log(
+        "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
+      );
+      cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
+      cy.findByTestId("selected-table").should("have.text", "Products");
+      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
     });
 
     it.skip("should work for a nested GUI question (metabase#40557)", () => {
@@ -362,7 +354,7 @@ describe(
 
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
-        H.nativeEditor()
+        H.NativeEditor.get()
           .should("be.visible")
           .and("contain", "$project")
           .and("contain", "$limit")
@@ -425,7 +417,7 @@ function convertToSql() {
   cy.intercept("POST", "/api/dataset").as("dataset");
   cy.button("Convert this question to SQL").click();
   cy.wait("@dataset");
-  H.nativeEditor().should("be.visible");
+  H.NativeEditor.get().should("be.visible");
 }
 
 type ResizeSidebarCallback = (

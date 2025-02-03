@@ -18,6 +18,11 @@ export const DiagnosticCheckboxes = ({
   applicationName,
 }: DiagnosticCheckboxesProps) => (
   <Stack spacing="md" pt="md">
+    <FormCheckbox
+      name="reporter"
+      label={c("This is part of the bug reporting modal")
+        .t`Your name and email`}
+    />
     {canIncludeQueryData && (
       <FormCheckbox name="queryResults" label={t`Query results`} />
     )}

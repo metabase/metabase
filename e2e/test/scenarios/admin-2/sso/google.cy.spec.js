@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 const CLIENT_ID_SUFFIX = "apps.googleusercontent.com";
 

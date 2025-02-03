@@ -4,11 +4,10 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.core :as channel]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.notification.core :as notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.core :as perms]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -368,7 +367,7 @@
               (notification.tu/with-card-notification
                 [notification {:card {:collection_id (:id coll)}
                                :notification {:creator_id (mt/user->id user-kw)}}]
-                (perms/revoke-collection-permissions! (perms-group/all-users) coll)
+                (perms/revoke-collection-permissions! (perms/all-users-group) coll)
                 (get-in (notification/notification-payload notification)
                         [:payload :card_part :result])))]
       (testing "rasta has no permissions and will get error"
