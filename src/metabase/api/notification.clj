@@ -190,5 +190,3 @@
           (messages/send-you-unsubscribed-notification-card-email!
            (update <> :payload t2/hydrate :card)
            [(:email @api/*current-user*)]))))))
-
-(api/define-routes)

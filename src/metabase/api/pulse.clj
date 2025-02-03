@@ -12,6 +12,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common]
    [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
    [metabase.config :as config]
@@ -22,7 +23,7 @@
    [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.notification.core :as notification]
-   [metabase.permissions.util :as perms-util]
+   [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
@@ -47,7 +48,7 @@
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
   themselves. Recipients that are plain email addresses are preserved."
   [pulses]
-  (if (perms-util/sandboxed-or-impersonated-user?)
+  (if (perms/sandboxed-or-impersonated-user?)
     (for [pulse pulses]
       (assoc pulse :channels
              (for [channel (:channels pulse)]
@@ -173,7 +174,7 @@
   to merge in existing recipients before writing the pulse updates to avoid them being deleted unintentionally. We only
   merge in recipients that are Metabase users, not raw email addresses, which these users can still view and modify."
   [pulse-updates pulse-before-update]
-  (if (perms-util/sandboxed-or-impersonated-user?)
+  (if (perms/sandboxed-or-impersonated-user?)
     (let [recipients-to-add (filter
                              (fn [{id :id}] (and id (not= id api/*current-user-id*)))
                              (:recipients (api.alert/email-channel pulse-before-update)))]
@@ -246,7 +247,7 @@
                        (assoc-in [:email :configured] (email/email-configured?))
                        (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
     {:channels (cond
-                 (perms-util/sandboxed-or-impersonated-user?)
+                 (perms/sandboxed-or-impersonated-user?)
                  (dissoc chan-types :slack)
 
                  ;; no Slack integration, so we are g2g
@@ -384,7 +385,10 @@
     (t2/delete! :model/PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
 
-(def ^:private style-nonce-middleware
-  (partial channel.render/style-tag-nonce-middleware "/api/pulse/preview_dashboard"))
+(def ^:private ^{:arglists '([handler])} style-nonce-middleware
+  (metabase.api.routes.common/wrap-middleware-for-open-api-spec-generation
+   (partial channel.render/style-tag-nonce-middleware "/api/pulse/preview_dashboard")))
 
-(api/define-routes style-nonce-middleware)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/pulse` endpoints."
+  (api.macros/ns-handler *ns* style-nonce-middleware))

@@ -6,11 +6,10 @@
   (:require
    [metabase-enterprise.scim.api :as scim]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -461,5 +460,3 @@
     (let [group (get-group-by-entity-id id)]
       (t2/delete! :model/PermissionsGroup (u/the-id group))
       (scim-response nil 204))))
-
-(api/define-routes)

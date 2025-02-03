@@ -17,7 +17,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel remove-clause-order-bys-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/order-by (meta/field-metadata :venues :name))
                   (lib/order-by (meta/field-metadata :venues :price)))
         order-bys (lib/order-bys query)]
@@ -49,7 +49,7 @@
 
 (deftest ^:parallel remove-clause-join-conditions-test
   (testing "directly removing the final join condition throws an exception"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/join (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :categories))
                                                [(lib/= (meta/field-metadata :venues :price) 4)
                                                 (lib/= (meta/field-metadata :venues :name) "x")])))
@@ -94,7 +94,7 @@
               (lib/remove-clause query 0 (first (lib/breakouts query 0))))))))
 
 (deftest ^:parallel remove-clause-breakout-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/aggregate (lib/count))
                   (lib/breakout (meta/field-metadata :venues :id))
                   (lib/breakout (meta/field-metadata :venues :name)))
@@ -136,7 +136,7 @@
                     (lib/breakouts 0)))))))
 
 (deftest ^:parallel remove-clause-fields-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id)))
                   (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)]))
         fields (lib/fields query)]
@@ -173,7 +173,7 @@
 
 (deftest ^:parallel remove-clause-join-fields-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
-                  (lib/join (-> (lib/join-clause lib.tu/venues-query
+                  (lib/join (-> (lib/join-clause (lib.tu/venues-query)
                                                  [(lib/= (meta/field-metadata :venues :price) 4)])
                                 (lib/with-join-fields [(meta/field-metadata :venues :price)
                                                        (meta/field-metadata :venues :id)]))))
@@ -210,7 +210,7 @@
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
                     (lib/breakout (meta/field-metadata :categories :id))
                     (lib/aggregate (lib/sum (meta/field-metadata :categories :id)))
-                    (lib/join (-> (lib/join-clause lib.tu/venues-query
+                    (lib/join (-> (lib/join-clause (lib.tu/venues-query)
                                                    [(lib/= (meta/field-metadata :venues :category-id)
                                                            (meta/field-metadata :categories :id))])
                                   (lib/with-join-fields :all))))
@@ -234,7 +234,7 @@
                                   (lib/avg (lib/length (meta/field-metadata :categories :name)))))))))
 
 (deftest ^:parallel remove-clause-aggregation-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
                   (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
         aggregations (lib/aggregations query)]
@@ -322,7 +322,7 @@
                 (lib/remove-clause query 0 a0-ref)))))))
 
 (deftest ^:parallel remove-clause-expression-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/expression "a" (meta/field-metadata :venues :id))
                   (lib/expression "b" (meta/field-metadata :venues :price)))
         [expr-a expr-b :as expressions] (lib/expressions query)]
@@ -346,7 +346,7 @@
 
 (deftest ^:parallel replace-clause-order-by-test
   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/filter (lib/= "myvenue" (meta/field-metadata :venues :name)))
                     (lib/order-by (meta/field-metadata :venues :name))
                     (lib/order-by (meta/field-metadata :venues :price)))
@@ -362,7 +362,7 @@
         (is (= (second order-bys) (second replaced-order-bys)))))))
 
 (deftest ^:parallel replace-clause-filters-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/filter (lib/= (meta/field-metadata :venues :name) "myvenue"))
                   (lib/filter (lib/= (meta/field-metadata :venues :price) 2)))
         filters (lib/filters query)]
@@ -377,7 +377,7 @@
       (is (= (second filters) (second replaced-filters))))))
 
 (deftest ^:parallel replace-clause-join-conditions-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/join (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :categories))
                                              [(lib/= (meta/field-metadata :venues :price) 4)])))
         conditions (lib/join-conditions (first (lib/joins query)))]
@@ -395,7 +395,7 @@
                (:ident (first (lib/joins replaced)))))))))
 
 (deftest ^:parallel replace-clause-join-fields-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/join
                    (-> (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :categories))
                                         [(lib/= (meta/field-metadata :venues :price) 4)])
@@ -416,7 +416,7 @@
                (:ident (first (lib/joins replaced)))))))))
 
 (deftest ^:parallel replace-clause-breakout-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/breakout (meta/field-metadata :venues :id))
                   (lib/breakout (meta/field-metadata :venues :name)))
         breakouts (lib/breakouts query)
@@ -447,7 +447,7 @@
     (testing "should ignore duplicate breakouts"
       (let [id-column    (meta/field-metadata :venues :id)
             price-column (meta/field-metadata :venues :price)
-            query        (-> lib.tu/venues-query
+            query        (-> (lib.tu/venues-query)
                              (lib/breakout id-column)
                              (lib/breakout price-column))
             breakouts    (lib/breakouts query)]
@@ -468,7 +468,7 @@
                                          (lib/with-temporal-bucket column :month))))))))
 
 (deftest ^:parallel replace-clause-fields-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)]))
         fields (lib/fields query)
         replaced (-> query
@@ -494,7 +494,7 @@
                            (lib/fields 0)))))))
 
 (deftest ^:parallel replace-clause-aggregation-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
                   (lib/aggregate (lib/distinct (meta/field-metadata :venues :name))))
         aggregations (lib/aggregations query)
@@ -548,7 +548,7 @@
                                        :database-id (meta/id)
                                        :table-id    (meta/id :venues)
                                        :dataset-query
-                                       (-> lib.tu/venues-query
+                                       (-> (lib.tu/venues-query)
                                            (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
                                            (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
                                            lib.convert/->legacy-MBQL)
@@ -598,7 +598,7 @@
                (second (lib/available-segments query))))))))
 
 (deftest ^:parallel replace-clause-expression-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/expression "a" (meta/field-metadata :venues :id))
                   (lib/expression "b" (meta/field-metadata :venues :name)))
         [expr-a expr-b :as expressions] (lib/expressions query)
@@ -633,7 +633,7 @@
                   (lib/replace-clause 0 expr-a 999)))))))
 
 (deftest ^:parallel replace-clause-expression-used-in-breakout-test
-  (let [query    (-> lib.tu/venues-query
+  (let [query    (-> (lib.tu/venues-query)
                      (lib/expression "a" (lib/+ (meta/field-metadata :venues :name) 7))
                      (as-> $q (lib/breakout $q -1 (lib/expression-ref $q -1 "a"))))
         [before] (lib/breakouts query)
@@ -667,7 +667,7 @@
         (is (= :day (:temporal-unit (second (last (first (lib/order-bys q3)))))))
         (is (= :month (:temporal-unit (second (last (first (lib/order-bys q4)))))))))
     (testing "Binning should keep in order-by in sync"
-      (let [query lib.tu/venues-query
+      (let [query (lib.tu/venues-query)
             breakout-col (->> (lib/breakoutable-columns query)
                               (m/find-first (comp #{"PRICE"} :name)))
             ten (->> (lib/available-binning-strategies query breakout-col)
@@ -686,7 +686,7 @@
         (is (= 100 (:num-bins (:binning (second (last (first (lib/order-bys q3))))))))
         (is (= 10 (:num-bins (:binning (second (last (first (lib/order-bys q4))))))))))
     (testing "Replace the correct order-by bin when there are multiple"
-      (let [query lib.tu/venues-query
+      (let [query (lib.tu/venues-query)
             breakout-col (->> (lib/breakoutable-columns query)
                               (m/find-first (comp #{"PRICE"} :name)))
             ten (->> (lib/available-binning-strategies query breakout-col)
@@ -723,7 +723,7 @@
                          (lib/replace-clause ten-breakout fiddy)
                          lib/order-bys))))))
     (testing "Replacing with a new field should remove the order by"
-      (let [query lib.tu/venues-query
+      (let [query (lib.tu/venues-query)
             breakout-col (->> (lib/breakoutable-columns query)
                               (m/find-first (comp #{"PRICE"} :name)))
             new-breakout-col (->> (lib/breakoutable-columns query)
@@ -742,7 +742,7 @@
                  (lib/replace-clause ten-breakout new-breakout-col)
                  lib/order-bys)))))
     (testing "Removing a breakout should remove the order by"
-      (let [query lib.tu/venues-query
+      (let [query (lib.tu/venues-query)
             breakout-col (->> (lib/breakoutable-columns query)
                               (m/find-first (comp #{"PRICE"} :name)))
             q2 (-> query
@@ -1041,7 +1041,7 @@
       (is (nil? (lib/joins (lib/remove-clause query 0 (first (lib/joins query 0)))))))))
 
 (deftest ^:parallel replace-join-test
-  (let [query             lib.tu/query-with-join
+  (let [query             (lib.tu/query-with-join)
         expected-original {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :all}]}]}
         [original-join]   (lib/joins query)
         original-ident    (:ident original-join)
@@ -1157,7 +1157,7 @@
 
 (deftest ^:parallel removing-aggregation-leaves-breakouts
   (testing "Removing aggregation leaves breakouts (#28609)"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/aggregate (lib/count)))
           query (reduce lib/breakout
                         query
@@ -1169,7 +1169,7 @@
 
 (deftest ^:parallel removing-last-aggregation-brings-back-all-fields-on-joins
   (testing "Removing the last aggregation puts :fields :all on join clauses"
-    (let [base   (-> lib.tu/venues-query
+    (let [base   (-> (lib.tu/venues-query)
                      (lib/join (lib/join-clause (meta/table-metadata :products)
                                                 [(lib/= (meta/field-metadata :orders :product-id)
                                                         (meta/field-metadata :products :id))])))
@@ -1182,7 +1182,7 @@
 
 (deftest ^:parallel removing-last-breakout-brings-back-all-fields-on-joins
   (testing "Removing the last breakout puts :fields :all on join clauses"
-    (let [base   (-> lib.tu/venues-query
+    (let [base   (-> (lib.tu/venues-query)
                      (lib/join (lib/join-clause (meta/table-metadata :products)
                                                 [(lib/= (meta/field-metadata :orders :product-id)
                                                         (meta/field-metadata :products :id))])))
@@ -1264,7 +1264,7 @@
             (lib/replace-clause query 0 orig-agg new-agg)))))
 
 (deftest ^:parallel replace-clause-uses-custom-expression-name-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/expression "expr" (lib/+ 1 1)))
         expr  (first (lib/expressions query))]
     (is (=? [[:+ {:lib/expression-name "expr"} 1 1]]
@@ -1281,7 +1281,7 @@
 
 (deftest ^:parallel normalize-fields-clauses-test
   (testing "queries with no :fields clauses should not be changed"
-    (are [query] (= query (lib.remove-replace/normalize-fields-clauses query))
+    (are [query-fn] (let [q (query-fn)] (= q (lib.remove-replace/normalize-fields-clauses q)))
       lib.tu/query-with-join
       lib.tu/query-with-self-join
       lib.tu/venues-query))
@@ -1363,7 +1363,7 @@
   (m/find-first #(= (:name %) col-name) columns))
 
 (def ^:private multi-stage-query-with-expressions
-  (-> lib.tu/venues-query
+  (-> (lib.tu/venues-query)
       (lib/expression "double price" (lib/* (meta/field-metadata :venues :price) 2))
       (lib/expression "name length" (lib/length (meta/field-metadata :venues :name)))
       (as-> q

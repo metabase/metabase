@@ -1,5 +1,5 @@
 (ns metabase.models.collection.graph
-  "Code for generating and updating the Collection permissions graph. See [[metabase.models.permissions]] for more
+  "Code for generating and updating the Collection permissions graph. See [[metabase.permissions.models.permissions]] for more
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
@@ -9,9 +9,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.permissions.util :as perms.u]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -98,7 +96,7 @@
 (defn- modify-instance-analytics-for-admins
   "In the graph, override the instance analytics collection within the admin group to read."
   [graph]
-  (let [admin-group-id      (:id (perms-group/admin))
+  (let [admin-group-id      (:id (perms/admin-group))
         audit-collection-id (:id (audit/default-audit-collection))]
     (if (nil? audit-collection-id)
       graph
@@ -106,7 +104,7 @@
 
 (mu/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
-  works just like the function of the same name in `metabase.models.permissions`; see also the documentation for that
+  works just like the function of the same name in `metabase.permissions.models.permissions`; see also the documentation for that
   function.
 
   The graph is restricted to a given namespace by the optional `collection-namespace` param; by default, `nil`, which
@@ -198,7 +196,7 @@
          new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
                                        [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
          [diff-old changes] (data/diff old-perms new-perms)]
-     (when-not force? (perms.u/check-revision-numbers old-graph new-graph))
+     (when-not force? (perms/check-revision-numbers old-graph new-graph))
      (when (seq changes)
        (let [revision-id (t2/with-transaction [_conn]
                            (doseq [[group-id changes] changes]
@@ -206,5 +204,5 @@
                              (update-group-permissions! collection-namespace group-id changes))
                            (:id (create-perms-revision! (:revision old-graph))))]
          ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
-         (perms.u/log-permissions-changes diff-old changes)
+         (perms/log-permissions-changes diff-old changes)
          (fill-revision-details! revision-id (assoc old-graph :namespace collection-namespace) changes))))))

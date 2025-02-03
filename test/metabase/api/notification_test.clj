@@ -6,10 +6,9 @@
    [metabase.channel.email.messages :as messages]
    [metabase.models.collection :as collection]
    [metabase.models.notification :as models.notification]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -205,10 +204,10 @@
                 new-recipients          [(assoc existing-user-recipient :user_id (mt/user->id :rasta))
                                          {:type                    :notification-recipient/group
                                           :notification_handler_id (:id existing-email-handler)
-                                          :permissions_group_id    (:id (perms-group/admin))}]
+                                          :permissions_group_id    (:id (perms/admin-group))}]
                 new-handlers            [(assoc existing-email-handler :recipients new-recipients)]]
             (is (=? [{:type                "notification-recipient/group"
-                      :permissions_group_id (:id (perms-group/admin))}
+                      :permissions_group_id (:id (perms/admin-group))}
                      {:type    "notification-recipient/user"
                       :user_id (mt/user->id :rasta)}]
                     (->> (update-notification (assoc @notification :handlers new-handlers))
@@ -349,10 +348,10 @@
 (defmacro with-disabled-subscriptions-permissions
   [& body]
   `(try
-     (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
+     (perms/revoke-application-permissions! (perms/all-users-group) :subscription)
      ~@body
      (finally
-       (perms/grant-application-permissions! (perms-group/all-users) :subscription))))
+       (perms/grant-application-permissions! (perms/all-users-group) :subscription))))
 
 (deftest create-card-notification-permissions-test
   (mt/with-model-cleanup [:model/Notification]
@@ -434,7 +433,7 @@
                  (move-card-collection (:id user))
                  (mt/with-premium-features #{:advanced-permissions}
                    (testing "owners won't be able to update without subscription permissions"
-                     (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
+                     (perms/revoke-application-permissions! (perms/all-users-group) :subscription)
                      (perms/revoke-application-permissions! group :subscription)
                      (update! (:id user) 403))
                    (testing "owners can update with subscription permissions"
