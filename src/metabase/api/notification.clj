@@ -52,7 +52,7 @@
                                    :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
                                   (sql.helpers/where [:= :notification_recipient.user_id recipient_id]))
 
-                              (and (nil? legacy-active) (not (true? include_inactive)))
+                              (not (true? include_inactive))
                               (sql.helpers/where [:= :notification.active true])
 
                               payload_type

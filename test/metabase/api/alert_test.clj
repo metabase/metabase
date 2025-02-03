@@ -114,6 +114,57 @@
                   (mt/with-current-user (mt/user->id :crowberto)
                     (models.pulse/retrieve-alert alert))))))))))
 
+(deftest get-alerts-archived-test
+  (notification.tu/with-card-notification
+    [active-noti {}]
+    (notification.tu/with-card-notification
+      [archived-noti {:notification {:active false}}]
+      (testing "by default only active alerts are returned"
+        (is (= #{(:id active-noti)}
+               (set (map :id (mt/user-http-request :crowberto :get 200 "alert"))))))
+
+      (testing "can fetch archived alerts"
+        (is (= #{(:id archived-noti)}
+               (set (map :id (mt/user-http-request :crowberto :get 200 "alert" :archived true)))))))))
+
+(deftest get-alerts-by-user-test
+  (notification.tu/with-card-notification
+    [crowberto-alert {:notification {:creator_id (mt/user->id :crowberto)}}]
+    (notification.tu/with-card-notification
+      [rasta-alert {:notification {:creator_id (mt/user->id :rasta)}}]
+      (notification.tu/with-card-notification
+        [rasta-recipient-alert {:notification {:creator_id (mt/user->id :crowberto)}
+                                :handlers    [{:channel_type :channel/email
+                                               :recipients  [{:type :notification-recipient/user
+                                                              :user_id (mt/user->id :rasta)}]}]}]
+
+        (testing "admin can see all alerts"
+          (is (= #{(:id crowberto-alert) (:id rasta-alert) (:id rasta-recipient-alert)}
+                 (set (map :id (mt/user-http-request :crowberto :get 200 "alert"))))))
+
+        (testing "can fetch alerts by user_id - should include created and received alerts"
+          (is (= #{(:id crowberto-alert) (:id rasta-recipient-alert)}
+                 (set (map :id (mt/user-http-request :crowberto :get 200 "alert"
+                                                     :user_id (mt/user->id :crowberto))))))
+
+          (is (= #{(:id rasta-alert) (:id rasta-recipient-alert)}
+                 (set (map :id (mt/user-http-request :crowberto :get 200 "alert"
+                                                     :user_id (mt/user->id :rasta)))))))
+
+        (testing "regular users can only see alerts they created or receive"
+          (is (= #{(:id rasta-alert) (:id rasta-recipient-alert)}
+                 (set (map :id (mt/user-http-request :rasta :get 200 "alert"))))))))))
+
+(deftest get-alert-test
+  (testing "an alert can be fetched by ID"
+    (notification.tu/with-card-notification
+      [notification {}]
+      (is (= (:id notification)
+             (:id (mt/user-http-request :crowberto :get 200 (alert-url notification)))))))
+
+  (testing "fetching a non-existing alert returns an error"
+    (mt/user-http-request :rasta :get 404 (str "alert/" Integer/MAX_VALUE))))
+
 (deftest unsubscribe-alert-test
   (mt/with-model-cleanup [:model/Notification]
     (let [unsubscribe     (fn [user status thunk]

@@ -57,8 +57,9 @@
                                                               (filter #(= :notification-recipient/raw-value (:type %)))
                                                               (map :details))]
                                     (merge
-                                     (select-keys (u.cron/cron-string->schedule-map (:cron_schedule subscription))
-                                                  [:schedule_type :schedule_hour :schedule_day :schedule_frame])
+                                     (when subscription
+                                       (select-keys (u.cron/cron-string->schedule-map (:cron_schedule subscription))
+                                                    [:schedule_type :schedule_hour :schedule_day :schedule_frame]))
                                      {:id           (:id handler)
                                       :recipients   (if (= :channel/email (:channel_type handler))
                                                       (concat (map #(set/rename-keys % {:value :email}) value-recipients) user-recipients)
