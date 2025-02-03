@@ -676,7 +676,7 @@
              ;; state
              #_:original_name #_(.getColumnName rsmeta i)
              #_:jdbc_type #_(u/ignore-exceptions
-                             (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
+                              (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
              :base_type     base-type
              :database_type db-type-name}))
         (column-range rsmeta))
