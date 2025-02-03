@@ -155,6 +155,9 @@ jobs:
       - name: Build Embedding SDK package
         run: yarn build-embedding-sdk
 
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
       - name: Make app db snapshot
         run: node e2e/runner/run_cypress_ci.js snapshot --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
