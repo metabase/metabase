@@ -34,8 +34,6 @@
    {:keys [value]} :- [:map [:value :any]]]
   (update-cell! field-id row-pk value))
 
-(api/define-routes)
-
 (comment
   (def table (t2/select-one :model/Table :name "PEOPLE"))
   (def field-id (t2/select-one-fn :id [:model/Field :id] :table_id (:id table) :name "NAME"))

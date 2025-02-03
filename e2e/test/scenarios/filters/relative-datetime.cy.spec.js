@@ -1,6 +1,6 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
-import { H } from "e2e/support";
+const { H } = cy;
 
 const STARTING_FROM_UNITS = [
   "minutes",
@@ -237,7 +237,7 @@ const nativeSQL = values => {
     return `SELECT '${date.toISOString()}'::timestamp as "testcol"`;
   });
 
-  cy.createNativeQuestion(
+  H.createNativeQuestion(
     {
       name: "datetime",
       native: {

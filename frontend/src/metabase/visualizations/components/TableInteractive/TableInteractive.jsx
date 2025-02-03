@@ -1302,7 +1302,7 @@ class TableInteractive extends Component {
     } = this.props;
 
     if (!width || !height) {
-      return <div className={className} />;
+      return <div ref={this.props.forwardedRef} className={className} />;
     }
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
@@ -1336,9 +1336,9 @@ class TableInteractive extends Component {
             } else {
               mainGridProps.scrollLeft = scrollLeft;
             }
-
             return (
               <TableInteractiveRoot
+                ref={this.props.forwardedRef}
                 bg={backgroundColor}
                 className={cx(
                   className,
@@ -1524,20 +1524,27 @@ class TableInteractive extends Component {
   }
 }
 
+const TableInteractiveMemoized = memoizeClass(
+  "_getCellClickedObjectCached",
+  "_visualizationIsClickableCached",
+  "getCellBackgroundColor",
+  "getCellFormattedValue",
+  "getHeaderClickedObject",
+)(TableInteractive);
+
+const TableInteractiveWithRef = forwardRef((props, ref) => (
+  <TableInteractiveMemoized {...props} forwardedRef={ref} />
+));
+
+TableInteractiveWithRef.displayName = "TableInteractiveInner";
+
 export default _.compose(
   withMantineTheme,
+  connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
   ExplicitSize({
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),
-  connect(mapStateToProps, mapDispatchToProps),
-  memoizeClass(
-    "_getCellClickedObjectCached",
-    "_visualizationIsClickableCached",
-    "getCellBackgroundColor",
-    "getCellFormattedValue",
-    "getHeaderClickedObject",
-  ),
-)(TableInteractive);
+)(TableInteractiveWithRef);
 
 const DetailShortcut = forwardRef((_props, ref) => (
   <div

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -109,7 +109,7 @@ H.describeEE("scenarios > admin > permissions > application", () => {
           cy.button("Yes").click();
         });
 
-        cy.createNativeQuestion(
+        H.createNativeQuestion(
           {
             name: "broken_question",
             native: { query: "select * from broken_question" },
@@ -208,7 +208,7 @@ H.describeEE("scenarios > admin > permissions > application", () => {
 });
 
 function createSubscription(user_id) {
-  cy.createQuestionAndDashboard({
+  H.createQuestionAndDashboard({
     questionDetails: {
       name: "Test Question",
       query: {

@@ -38,6 +38,7 @@ const AutocompleteInput = ({
   onChange,
   options = [],
   filterOptions = filterOptionsByValue,
+  onFocus,
   onBlur,
   onOptionSelect,
   ...rest
@@ -84,7 +85,10 @@ const AutocompleteInput = ({
           {...rest}
           value={value}
           onClick={handleShowPopover}
-          onFocus={handleShowPopover}
+          onFocus={composeEventHandlers<React.FocusEvent<HTMLInputElement>>(
+            onFocus,
+            handleShowPopover,
+          )}
           onChange={composeEventHandlers(handleChange, handleShowPopover)}
           onBlur={composeEventHandlers<React.FocusEvent<HTMLInputElement>>(
             onBlur,

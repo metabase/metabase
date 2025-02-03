@@ -214,7 +214,7 @@
      (assert-native-query! stage)
      (let [valid-tags (keys existing-tags)]
        (assoc stage :template-tags
-              (m/deep-merge existing-tags (select-keys tags valid-tags)))))))
+              (merge existing-tags (select-keys tags valid-tags)))))))
 
 (mu/defn raw-native-query :- ::common/non-blank-string
   "Returns the native query string"
@@ -263,7 +263,7 @@
                 (set (keys (native-extras query))))
    (not (str/blank? (raw-native-query query)))))
 
-(mu/defn engine :- :keyword
+(mu/defn engine :- [:maybe :keyword]
   "Returns the database engine.
    Must be a native query"
   [query :- ::lib.schema/query]

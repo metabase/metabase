@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -196,8 +196,8 @@ describe("issue 15542", () => {
 
 describe("issue 52411", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.resetTestTable({ type: "postgres", table: "multi_schema" });
     H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "multi_schema" });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
   });
