@@ -4,6 +4,8 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.models.setting :as setting]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -29,6 +31,23 @@
   (when (number? (:status response))
     (http/success? response)))
 
+(defn- ->config
+  "This config is needed to call [[hm.client/make-request]].
+
+   `->config` either gets the store-api-url and api-key from settings or throws an exception when one or both are
+   unset or blank."
+  []
+  (let [store-api-url (setting/get-value-of-type :string :store-api-url)
+        _ (when (str/blank? store-api-url)
+            (log/error "Missing store-api-url. Cannot create hm client config.")
+            (throw (ex-info (tru "Missing store-api-url.") {:store-api-url store-api-url})))
+        api-key (setting/get-value-of-type :string :api-key)
+        _ (when (str/blank? api-key)
+            (log/error "Missing api-key. Cannot create hm client config.")
+            (throw (ex-info (tru "Missing api-key.") {:api-key api-key})))]
+    {:store-api-url store-api-url
+     :api-key api-key}))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PUBLIC API:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44,7 +63,7 @@
    url :- :string
    & [body]]
   (let [{:keys [store-api-url
-                api-key]} config
+                api-key]} (->config)
         request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)
                                              "Content-Type" "application/json"}}
                             body (assoc :body (json/encode body)))

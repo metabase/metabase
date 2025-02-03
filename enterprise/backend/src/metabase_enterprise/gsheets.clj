@@ -107,23 +107,6 @@
                    [:status                      [:enum "not-connected" "loading" "complete"]]
                    [:folder_url {:optional true} ms/NonBlankString]])
 
-(defn- ->config
-  "This config is needed to call [[hm.client/make-request]].
-
-   `->config` either gets the store-api-url and api-key from settings or throws an exception when one or both are
-   unset or blank."
-  []
-  (let [store-api-url (setting/get-value-of-type :string :store-api-url)
-        _ (when (str/blank? store-api-url)
-            (log/error "Missing store-api-url. Cannot create hm client config.")
-            (throw (ex-info (tru "Missing store-api-url.") {:store-api-url store-api-url})))
-        api-key (setting/get-value-of-type :string :api-key)
-        _ (when (str/blank? api-key)
-            (log/error "Missing api-key. Cannot create hm client config.")
-            (throw (ex-info (tru "Missing api-key.") {:api-key api-key})))]
-    {:store-api-url store-api-url
-     :api-key api-key}))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -131,7 +114,7 @@
 (mu/defn- hm-service-account-email :- [:or [:= false] :string]
   "Checks to see if Google service-account is setup in harbormaster."
   []
-  (let [[_status {:keys [body] :as response}] (hm.client/make-request (->config) :get "/api/v2/mb/connections-google/service-account")]
+  (let [[_status {:keys [body] :as response}] (hm.client/make-request :get "/api/v2/mb/connections-google/service-account")]
     (if-let [email (:email body)]
       email
       (throw (ex-info (tru "Error checking service-account status.") {:status-code (:status-code response)})))))
@@ -154,53 +137,40 @@
   first."
   {"active" 0 "error" 1 "syncing" 2 "initializing" 3})
 
-(defn- sort-gdrive-conns
-  "Sorts the gdrive connections found on HM.
-   First sorted by: status = active > syncing > intiializing > error
-   Then in descending order on created-at."
-  [conns]
-  (sort-by (fn [{:keys [status created-at]}]
-             [(get status-order status Integer/MAX_VALUE)
-              ;; Convert created-at to millis, treat nil as the oldest
-              (if created-at (t/instant created-at) (t/instant 0))])
-           (fn [[status1 time1] [status2 time2]]
-             (or (compare status1 status2)
-                 (compare time2 time1)))
-           conns))
+(defn normalize-gdrive-conn [gdc]
+  (-> gdc
+      (dissoc :hosted-instance-resource)
+      (m/update-existing :last-sync-at u.date/parse)
+      (m/update-existing :last-sync-started-at u.date/parse)
+      (m/update-existing :created-at u.date/parse)
+      (m/update-existing :updated-at u.date/parse)))
 
 (mu/defn- hm-get-gdrive-conns :- [:sequential ::gdrive-conn]
-  "Get the harbormaster gdrive type connection."
+  "Get the harbormaster gdrive type connection.
+
+  If the response fails, returns an empty list.
+  If the response succeeds, returns a list of gdrive connections, sorted by status and created-at."
   []
-  (let [[status {:keys [body]
-                 :as response}] (hm.client/make-request (->config) :get "/api/v2/mb/connections")]
-    (condp = [status (boolean (seq body))]
-      [:ok true]
-      ;; TODO check for gdrive ones inside the condp?
-      (some->> (filter is-gdrive? body)
-               (map (fn [gdc] (-> gdc
-                                  (m/update-existing :last-sync-at u.date/parse)
-                                  (m/update-existing :last-sync-started-at u.date/parse)
-                                  (m/update-existing :created-at u.date/parse)
-                                  (m/update-existing :updated-at u.date/parse))))
-               (sort-gdrive-conns))
-
-      [:ok false] ;; if there are no gdrive connections, we need to revert to the not-connected state:
-      (do (gsheets! not-connected)
-          (throw (ex-info (tru "There are no gdrive connections, please re-connect.")
-                          {:hm/status-code (:status-code response)
-                           :status-code 404})))
-
+  (let [[status response] (hm.client/make-request :get "/api/v2/mb/connections")]
+    (if (= status :ok)
+      (mapv normalize-gdrive-conn
+           (filter is-gdrive? (or (some-> response :body) [])))
       [])))
+
+(mu/defn hm-get-gdrive-conn [id]
+  (when-not id
+    (throw (ex-info "must have an id to lookup by id" {})))
+  (hm.client/make-request :get (str "/api/v2/mb/connections/" id)))
 
 (mu/defn- hm-create-gdrive-conn :- [:tuple [:enum :ok :error] :map]
   "Creating a gdrive connection on HM starts the sync w/ drive folder."
   [drive-folder-url]
-  (hm.client/make-request (->config) :post "/api/v2/mb/connections" {:type "gdrive" :secret {:resources [drive-folder-url]}}))
+  (hm.client/make-request :post "/api/v2/mb/connections" {:type "gdrive" :secret {:resources [drive-folder-url]}}))
 
 (mu/defn- hm-delete-conn :- [:tuple [:enum :ok :error] :map]
   "Delete (presumably a gdrive) connection on HM."
   [conn-id]
-  (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" conn-id)))
+  (hm.client/make-request :delete (str "/api/v2/mb/connections/" conn-id)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; FE <-> MB APIs
@@ -236,9 +206,12 @@
   [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
   (api/check-superuser)
   (check-allowed-url url)
-  (let [[status _resp] (hm-create-gdrive-conn url)]
+  (let [[status response] (hm-create-gdrive-conn url)]
     (if (= status :ok)
-      (u/prog1 {:status "loading" :folder_url url :folder-upload-time (seconds-from-epoch-now)}
+      (u/prog1 {:status "loading"
+                :folder_url url
+                :folder-upload-time (seconds-from-epoch-now)
+                :gdrive/conn-id (-> response :body :id)}
         (gsheets! <>))
       (error-response-in-body
        (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions.")))))
@@ -260,18 +233,21 @@
 (def ^:dynamic ^:private *folder-setup-timeout-seconds*
   "We want to avoid polling forever, even if harbormaster never finishes the sync, so if the sync does not happen
   during this window, we'll error out, reset the gsheets status, and suggest trying again."
-  (* 60 5))
+  (* 5 60))
 
 (defn- reset-gsheets-status []
   (gsheets! not-connected)
-  (let [conns (try (hm-get-gdrive-conns) (catch Exception _ []))]
-    (doseq [{:keys [id]} conns]
-      (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" id)))))
+  (doseq [{:keys [id]} (hm-get-gdrive-conns)]
+    (hm.client/make-request :delete (str "/api/v2/mb/connections/" id))))
 
 (defn- handle-get-folder [attached-dwh]
-  (let [gdrive-conns (hm-get-gdrive-conns)]
-    (if-let [{:keys [status] last-gdrive-conn-sync :last-sync-at :as gdrive-conn} (first gdrive-conns)]
-      (let [last-dwh-sync (get-last-mb-dwh-sync-time)]
+  (let [[sstatus {conn :body}] (hm-get-gdrive-conn (:gdrive/conn-id (gsheets)))]
+    (if (= :ok sstatus)
+      (let [{:keys [status] last-gdrive-conn-sync :last-sync-at :as gdrive-conn}
+            (normalize-gdrive-conn conn)
+
+            last-dwh-sync
+            (get-last-mb-dwh-sync-time)]
         (-> (cond
               (sync-complete? {:status status :last-dwh-sync last-dwh-sync :last-gdrive-conn-sync last-gdrive-conn-sync})
               (u/prog1 (assoc (gsheets) :status "complete")
@@ -287,8 +263,9 @@
 
               ;; Syncing failed
               (= "error" status)
-              (do (reset-gsheets-status)
-                  (error-response-in-body (tru "Problem syncing google drive folder.")))
+              (do
+                (reset-gsheets-status)
+                (error-response-in-body (tru "Problem syncing google drive folder, please try again..")))
 
               ;; Continue waiting
               :else (gsheets))
@@ -296,20 +273,12 @@
                    ;; TEMP (gsheets)
                    ;; here is some debugging info to make sure we have it straight:
                    :hm/conn gdrive-conn
-                   :hm/gdrive-conns gdrive-conns
-                   :hm/gdrive-conns-status (frequencies (map :status gdrive-conns))
                    :mb/sync-info {:status status
                                   :last-dwh-sync last-dwh-sync
-                                  :last-gdrive-conn-sync last-gdrive-conn-sync}
-                   :mb/sync-status (sync-complete? {:status status
-                                                    :last-dwh-sync last-dwh-sync
-                                                    :last-gdrive-conn-sync last-gdrive-conn-sync}))))
-      (do
-        (reset-gsheets-status)
-        (snowplow/track-event! ::snowplow/simple_event
-                               {:event "sheets_connected"
-                                :event_detail "fail - no drive connection"})
-        (error-response-in-body (tru "Google Drive Connection not found.") (gsheets))))))
+                                  :last-gdrive-conn-sync last-gdrive-conn-sync})))
+      (error-response-in-body
+       (tru "Unable to find google drive connection.")
+       {:status-code 404}))))
 
 (api.macros/defendpoint :get "/folder" :- ::gsheets
   "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to
@@ -377,7 +346,7 @@
   (reset-gsheets-status)
 
   ;; trigger gdrive scan resync on HM
-  ;; (hm.client/make-request (->config) :put (format "/api/v2/mb/connections/%s/sync" (:id (get-gdrive-conn))))
+  ;; (hm.client/make-request :put (format "/api/v2/mb/connections/%s/sync" (:id (get-gdrive-conn))))
 
 
   ;; need an "attached dwh" locally:
