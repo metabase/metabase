@@ -2,45 +2,59 @@ const cypress = require("cypress");
 
 const { parseArguments, args } = require("./cypress-runner-utils");
 
-const getTestConfig = async () => {
-  const defaultConfig = {
-    browser: "chrome",
-    configFile: "e2e/support/cypress.config.js",
-    config: {
-      baseUrl: `http://localhost:${process.env.BACKEND_PORT}`,
-    },
-    testingType: process.env.TEST_SUITE,
-    openMode: args["--open"] || process.env.OPEN_UI,
-  };
+const configs = {
+  e2e: async () => {
+    const defaultConfig = {
+      browser: "chrome",
+      configFile: "e2e/support/cypress.config.js",
+      config: {
+        baseUrl: `http://localhost:${process.env.BACKEND_PORT}`,
+      },
+      testingType: "e2e",
+      openMode: args["--open"] || process.env.OPEN_UI,
+    };
 
-  const userArgs = await parseArguments(args);
-  const finalConfig = Object.assign({}, defaultConfig, userArgs);
-  return finalConfig;
+    const userArgs = await parseArguments(args);
+    const finalConfig = Object.assign({}, defaultConfig, userArgs);
+    return finalConfig;
+  },
+  snapshot: async () => {
+    // We only ever care about a browser out of all possible user arguments,
+    // when it comes to the snapshot generation.
+    // Anything else could result either in a failure or in a wrong database snapshot!
+    const { browser } = await parseArguments(args);
+
+    const snapshotConfig = {
+      browser: browser ?? "chrome",
+      configFile: "e2e/support/cypress-snapshots.config.js",
+      config: {
+        baseUrl: `http://localhost:${process.env.BACKEND_PORT}`,
+      },
+      testingType: "e2e",
+      openMode: false,
+    };
+
+    return snapshotConfig;
+  },
+  component: async () => {
+    const { browser } = await parseArguments(args);
+
+    const sdkComponentConfig = {
+      browser: browser ?? "chrome",
+      configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
+      config: {
+        baseUrl: `http://localhost:${process.env.BACKEND_PORT}`,
+      },
+      testingType: "component",
+      openMode: args["--open"] || process.env.OPEN_UI,
+    };
+
+    return sdkComponentConfig;
+  },
 };
 
-const getSnapshotConfig = async () => {
-  // We only ever care about a browser out of all possible user arguments,
-  // when it comes to the snapshot generation.
-  // Anything else could result either in a failure or in a wrong database snapshot!
-  const { browser } = await parseArguments(args);
-
-  const snapshotConfig = {
-    browser: browser ?? "chrome",
-    configFile: "e2e/support/cypress-snapshots.config.js",
-    config: {
-      baseUrl: `http://localhost:${process.env.BACKEND_PORT}`,
-    },
-    testingType: "e2e",
-    openMode: false,
-  };
-
-  return snapshotConfig;
-};
-
-const runCypress = async (mode = "test", exitFunction = process.exit) => {
-  const config = await (mode === "snapshot"
-    ? getSnapshotConfig()
-    : getTestConfig());
+const runCypress = async (suite = "e2e", exitFunction = process.exit) => {
+  const config = await configs[suite]();
 
   try {
     const { status, message, totalFailed, failures } = config.openMode

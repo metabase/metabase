@@ -4,6 +4,7 @@ const { printBold, shell } = require("./cypress-runner-utils");
 
 // if you want to change these, set them in your shell
 const options = {
+  TEST_SUITE: "e2e", // e2e | component | visual
   MB_EDITION: "ee",
   ENTERPRISE_TOKEN: null,
   START_CONTAINERS: true,
@@ -11,7 +12,6 @@ const options = {
   BUILD_JAR: true,
   GENERATE_SNAPSHOTS: true,
   BACKEND_PORT: 4000,
-  TEST_SUITE: "e2e", // e2e | component | visual
   OPEN_UI: true,
   SHOW_BACKEND_LOGS: false,
   QUIET: false,
@@ -25,6 +25,7 @@ process.env = {
   QA_DB_ENABLED: options.START_CONTAINERS,
   MB_SNOWPLOW_AVAILABLE: options.START_CONTAINERS,
   MB_SNOWPLOW_URL: "http://localhost:9090",
+  CYPRESS_IS_EMBEDDING_SDK: options.TEST_SUITE === "component",
   ...options,
   ...process.env,
 };
@@ -37,6 +38,7 @@ if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
 }
 
 printBold(`Running Cypress with options:
+  - TEST_SUITE         : ${options.TEST_SUITE}
   - MB_EDITION         : ${options.MB_EDITION}
   - ENTERPRISE_TOKEN   : ${options.ENTERPRISE_TOKEN ? "present" : "<missing>"}
   - START_CONTAINERS   : ${options.START_CONTAINERS}
@@ -44,14 +46,15 @@ printBold(`Running Cypress with options:
   - BUILD_JAR          : ${options.BUILD_JAR}
   - GENERATE_SNAPSHOTS : ${options.GENERATE_SNAPSHOTS}
   - BACKEND_PORT       : ${options.BACKEND_PORT}
-  - TEST_SUITE         : ${options.TEST_SUITE}
   - OPEN_UI            : ${options.OPEN_UI}
   - SHOW_BACKEND_LOGS  : ${options.SHOW_BACKEND_LOGS}
 `);
 
 const init = async () => {
-  // reset cache
-  shell("rm -f e2e/support/cypress_sample_instance_data.json");
+  if (options.TEST_SUITE === "component") {
+    printBold("⏳ Building embedding SDK");
+    shell("yarn build-embedding-sdk");
+  }
 
   if (options.START_CONTAINERS) {
     printBold("⏳ Starting containers");
@@ -82,19 +85,22 @@ const init = async () => {
   }
 
   if (options.GENERATE_SNAPSHOTS) {
+    // reset cache
+    shell("rm -f e2e/support/cypress_sample_instance_data.json");
+
     printBold("⏳ Generating snapshots");
     await runCypress("snapshot", cleanup);
   }
 
   const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
-  if (!isFrontendRunning) {
+  if (!isFrontendRunning && options.TEST_SUITE === "e2e") {
     printBold(
       "\n\n⚠️⚠️ You don't have your frontend running. You should probably run yarn build-hot ⚠️⚠️\n\n",
     );
   }
 
   printBold("⏳ Starting Cypress");
-  await runCypress("test", cleanup);
+  await runCypress(options.TEST_SUITE, cleanup);
 };
 
 const cleanup = async (exitCode = 0) => {

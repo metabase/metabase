@@ -435,8 +435,6 @@
     "test": "yarn test-unit && yarn test-timezones && yarn test-cypress",
     "test-cljs": "yarn && shadow-cljs compile test && node target/node-tests.js",
     "test-cypress": "node ./e2e/runner/run_cypress_local.js",
-    "test-cypress-open-component-sdk": "yarn build-embedding-sdk yarn test-cypress-run-component-sdk --open",
-    "test-cypress-run-component-sdk": "CYPRESS_IS_EMBEDDING_SDK=true NODE_OPTIONS=--max-old-space-size=8196 yarn test-cypress --component --config-file='e2e/support/cypress-embedding-sdk-component-test.config.js'",
     "test-debug": "yarn build:cljs && node --inspect-brk node_modules/.bin/jest --runInBand --detectOpenHandles",
     "test-timezones": "yarn && ./frontend/test/__runner__/run_timezone_tests",
     "test-timezones-unit": "yarn build:cljs && jest --silent --maxWorkers=4 --config jest.tz.unit.conf.json",

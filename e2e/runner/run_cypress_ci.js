@@ -15,7 +15,7 @@ const snapshot = async () => {
 
 const runTests = async () => {
   printBold("Running Cypress Tests");
-  await runCypress("test");
+  await runCypress("e2e");
 };
 
 if (mode === "start") {
