@@ -1,16 +1,11 @@
 import { useMount } from "react-use";
-import { t } from "ttag";
 
 import { Box, Flex, Text, Title } from "metabase/ui";
 
 import S from "./UpsellCard.module.css";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
-import {
-  SecondaryCTALink,
-  UpsellBannerComponent,
-  UpsellCTALink,
-} from "./Upsells.styled";
+import { UpsellBannerComponent, UpsellCTALink } from "./Upsells.styled";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
@@ -19,7 +14,6 @@ export type UpsellBannerProps = {
   buttonText: string;
   buttonLink: string;
   campaign: string;
-  secondaryLink?: string;
   source: string;
   children: React.ReactNode;
   style?: React.CSSProperties;
@@ -30,7 +24,6 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   buttonText,
   buttonLink,
   campaign,
-  secondaryLink,
   source,
   children,
   ...props
@@ -54,14 +47,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
             {title}
           </Title>
           <Text lh="1rem" size="sm">
-            <>
-              {children}
-              {secondaryLink && (
-                <SecondaryCTALink
-                  href={secondaryLink}
-                >{t`Learn more`}</SecondaryCTALink>
-              )}
-            </>
+            {children}
           </Text>
         </Box>
       </Flex>
