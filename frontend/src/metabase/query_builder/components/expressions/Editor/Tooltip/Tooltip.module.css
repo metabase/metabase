@@ -1,6 +1,5 @@
 .tooltip {
   background: var(--mb-color-background);
-  border: 1px solid var(--mb-color-border) !important;
   z-index: 1000;
   width: 400px;
   box-shadow: rgba(0, 0, 0, 0.05) 0 4px 20px 0;
@@ -15,6 +14,7 @@
 
 .listbox {
   flex-shrink: 1;
+  border-top: 1px solid var(--mb-color-border) !important;
   min-height: 0;
   overflow-y: auto;
   font-size: 14px;
