@@ -52,7 +52,11 @@ export function useCustomTooltip({
           evt.stopPropagation();
 
           const el = evt.relatedTarget as HTMLElement | null;
-          if (tooltipRef.current === el || tooltipRef.current?.contains(el)) {
+          if (
+            tooltipRef.current === el ||
+            tooltipRef.current?.contains(el) ||
+            el?.dataset.elementId === "mantine-popover"
+          ) {
             return;
           }
 
