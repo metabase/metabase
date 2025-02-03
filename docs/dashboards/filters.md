@@ -240,7 +240,7 @@ A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [S
 
 ## Linking filters
 
-See [Linked filters](linked-filters.md).
+See [Linked filters](./linked-filters.md).
 
 ## Auto-apply filters
 

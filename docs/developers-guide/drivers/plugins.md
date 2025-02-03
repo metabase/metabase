@@ -221,4 +221,4 @@ init:
 
 ## Next up
 
-[Implementing multimethods](multimethods.md) for your driver.
+[Implementing multimethods](./multimethods.md) for your driver.

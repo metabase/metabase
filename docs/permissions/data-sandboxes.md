@@ -14,7 +14,7 @@ You can use sandboxes to set up [self-service analytics](https://www.metabase.co
 
 ## Data sandbox examples
 
-You can skip the theory and go [straight to sandbox examples](data-sandbox-examples.md).
+You can skip the theory and go [straight to sandbox examples](./data-sandbox-examples.md).
 
 ## How sandboxes work
 

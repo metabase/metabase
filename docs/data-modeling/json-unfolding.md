@@ -26,7 +26,7 @@ And here are the values as seen in the table:
 
 This unfolding allows you to filter for values found in the original JSON object.
 
-Metabase will prefix the unfolded column names with the name of the original column that contained the JSON. You can change the column names in **Admin settings** > [Table metadata](metadata-editing.md), or by creating a [model](./models.md) and editing the column metadata.
+Metabase will prefix the unfolded column names with the name of the original column that contained the JSON. You can change the column names in **Admin settings** > [Table metadata](./metadata-editing.md), or by creating a [model](./models.md) and editing the column metadata.
 
 ## Toggling JSON unfolding for a database
 
