@@ -24,6 +24,7 @@ export function Tooltip({
   query,
   metadata,
   reportTimezone,
+  tooltipRef,
 
   state,
   view,
@@ -33,6 +34,7 @@ export function Tooltip({
   reportTimezone?: string;
 
   // from tooltip extension
+  tooltipRef: React.RefObject<HTMLDivElement>;
   state: EditorState;
   view: EditorView;
 }) {
@@ -67,20 +69,22 @@ export function Tooltip({
         <div />
       </Popover.Target>
       <Popover.Dropdown
-        className={S.tooltip}
         data-testid="custom-expression-editor-suggestions"
+        className={S.dropdown}
       >
-        <HelpText
-          enclosingFunction={enclosingFn}
-          query={query}
-          metadata={metadata}
-          reportTimezone={reportTimezone}
-        />
-        <Completions
-          completions={options}
-          selectedCompletion={selectedOption}
-          onCompletionClick={handleCompletionClick}
-        />
+        <div className={S.tooltip} ref={tooltipRef}>
+          <HelpText
+            enclosingFunction={enclosingFn}
+            query={query}
+            metadata={metadata}
+            reportTimezone={reportTimezone}
+          />
+          <Completions
+            completions={options}
+            selectedCompletion={selectedOption}
+            onCompletionClick={handleCompletionClick}
+          />
+        </div>
       </Popover.Dropdown>
     </Popover>
   );

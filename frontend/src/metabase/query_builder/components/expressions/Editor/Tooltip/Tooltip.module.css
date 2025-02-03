@@ -1,11 +1,17 @@
+.dropdown {
+  display: flex;
+}
+
 .tooltip {
   background: var(--mb-color-background);
   z-index: 1000;
   width: 400px;
   box-shadow: rgba(0, 0, 0, 0.05) 0 4px 20px 0;
   display: flex;
+  flex-grow: 0;
   flex-direction: column;
   font-size: 14px;
+  max-height: 100%;
 
   &:empty {
     display: none;

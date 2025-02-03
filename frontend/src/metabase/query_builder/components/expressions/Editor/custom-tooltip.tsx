@@ -15,6 +15,7 @@ import { createPortal } from "react-dom";
 type TooltipProps = {
   state: EditorState;
   view: EditorView;
+  tooltipRef: React.RefObject<HTMLDivElement>;
 };
 
 type TooltipOptions = {
@@ -55,7 +56,7 @@ export function useCustomTooltip({
           if (
             tooltipRef.current === el ||
             tooltipRef.current?.contains(el) ||
-            el?.dataset.elementId === "mantine-popover"
+            el?.contains(tooltipRef.current)
           ) {
             return;
           }
@@ -84,15 +85,11 @@ export function useCustomTooltip({
   );
 
   const children = (
-    <div
-      ref={tooltipRef}
-      onBlur={handleBlur}
-      onKeyDown={handleKeyDown}
-      tabIndex={0}
-    >
+    <div onBlur={handleBlur} onKeyDown={handleKeyDown} tabIndex={0}>
       {update &&
         hasFocus &&
         render({
+          tooltipRef,
           state: update.state,
           view: update.view,
         })}
