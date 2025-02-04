@@ -26,7 +26,6 @@ import { tokenAtPos } from "./util";
 
 type EditorProps<S extends StartRule> = {
   id?: string;
-  expression?: Expression | null;
   clause?: ClauseType<S> | null;
   error: ErrorWithMessage | null;
   name: string;
@@ -37,14 +36,8 @@ type EditorProps<S extends StartRule> = {
   reportTimezone?: string;
   readOnly?: boolean;
 
-  onChange: (
-    expression: Expression | null,
-    expressionClause: ClauseType<S> | null,
-  ) => void;
-  onCommit: (
-    expression: Expression | null,
-    expressionClause: ClauseType<S> | null,
-  ) => void;
+  onChange: (clause: ClauseType<S> | null) => void;
+  onCommit: (clause: ClauseType<S> | null) => void;
   onError: (error: ErrorWithMessage | null) => void;
   shortcuts?: Shortcut[];
 };
@@ -128,7 +121,6 @@ export function Editor<S extends StartRule = "expression">(
 
 function useExpression<S extends StartRule = "expression">({
   name,
-  expression: legacyExpression = null,
   clause,
   startRule,
   stageIndex,
@@ -146,8 +138,8 @@ function useExpression<S extends StartRule = "expression">({
       clause &&
       Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
 
-    return expressionFromClause ?? legacyExpression;
-  }, [legacyExpression, clause, query, stageIndex]);
+    return expressionFromClause;
+  }, [clause, query, stageIndex]);
 
   const formatExpression = useCallback(
     (expression: Expression | null) =>
@@ -222,9 +214,9 @@ function useExpression<S extends StartRule = "expression">({
       const clause = expressionClause as ClauseType<S>;
 
       if (commit) {
-        onCommit(expression, clause);
+        onCommit(clause);
       } else {
-        onChange(expression, clause);
+        onChange(clause);
       }
       onError(null);
       setHasChanges(false);

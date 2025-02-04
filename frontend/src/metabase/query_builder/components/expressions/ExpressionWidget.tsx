@@ -5,10 +5,8 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { isNotNull } from "metabase/lib/types";
 import { Box, Button, Flex, TextInput } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import { isExpression } from "metabase-lib/v1/expressions";
+import type * as Lib from "metabase-lib";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
-import type { Expression } from "metabase-types/api";
 
 import {
   trackColumnCombineViaShortcut,
@@ -30,14 +28,6 @@ export type ExpressionWidgetProps<S extends StartRule = "expression"> = {
 
   query: Lib.Query;
   stageIndex: number;
-  /**
-   * expression should not be present in components migrated to MLv2
-   */
-  expression?: Expression | undefined;
-  /**
-   * Presence of this prop is not enforced due to backwards-compatibility
-   * with ExpressionWidget usages outside of GUI editor.
-   */
   clause?: ClauseType<S> | undefined;
   name?: string;
   withName?: boolean;
@@ -45,7 +35,6 @@ export type ExpressionWidgetProps<S extends StartRule = "expression"> = {
   header?: ReactNode;
   expressionIndex?: number;
 
-  onChangeExpression?: (name: string, expression: Expression) => void;
   onChangeClause?: (name: string, clause: ClauseType<S>) => void;
   onClose?: () => void;
 };
@@ -59,22 +48,17 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
     query,
     stageIndex,
     name: initialName,
-    expression: initialExpression,
     clause: initialClause,
     withName = false,
     startRule = "expression",
     reportTimezone,
     header,
     expressionIndex,
-    onChangeExpression,
     onChangeClause,
     onClose,
   } = props;
 
   const [name, setName] = useState(initialName || "");
-  const [expression, setExpression] = useState<Expression | null>(
-    initialExpression ?? null,
-  );
   const [clause, setClause] = useState<Clause | null>(initialClause ?? null);
   const [error, setError] = useState<ErrorWithMessage | null>(null);
   const [isCombiningColumns, setIsCombiningColumns] = useState(false);
@@ -82,27 +66,15 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   const [isExtractingColumn, setIsExtractingColumn] = useState(false);
 
   const isValidName = withName ? name.trim().length > 0 : true;
-  const isValidExpression = isNotNull(expression) && isExpression(expression);
   const isValidExpressionClause = isNotNull(clause);
-  const isValid =
-    !error && isValidName && (isValidExpression || isValidExpressionClause);
+  const isValid = !error && isValidName && isValidExpressionClause;
 
-  const handleCommit = (
-    expression: Expression | null,
-    clause: Clause | null,
-  ) => {
-    const isValidExpression = isNotNull(expression) && isExpression(expression);
+  const handleCommit = (clause: Clause | null) => {
     const isValidExpressionClause = isNotNull(clause);
-    const isValid =
-      !error && isValidName && (isValidExpression || isValidExpressionClause);
+    const isValid = !error && isValidName && isValidExpressionClause;
 
     if (!isValid) {
       return;
-    }
-
-    if (isValidExpression) {
-      onChangeExpression?.(name, expression);
-      onClose?.();
     }
 
     if (isValidExpressionClause) {
@@ -115,11 +87,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
     setError(error);
   };
 
-  const handleExpressionChange = (
-    expression: Expression | null,
-    clause: Clause | null,
-  ) => {
-    setExpression(expression);
+  const handleExpressionChange = (clause: Clause | null) => {
     setClause(clause);
     setError(null);
   };
@@ -146,12 +114,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   if (startRule === "expression" && isCombiningColumns) {
     const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
       trackColumnCombineViaShortcut(query);
-      const expression = Lib.legacyExpressionForExpressionClause(
-        query,
-        stageIndex,
-        clause,
-      );
-      handleExpressionChange(expression, clause as Clause);
+      handleExpressionChange(clause as Clause);
       setName(name);
       setIsCombiningColumns(false);
     };
@@ -182,12 +145,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
       extraction: Lib.ColumnExtraction,
     ) => {
       trackColumnExtractViaShortcut(query, stageIndex, extraction);
-      const expression = Lib.legacyExpressionForExpressionClause(
-        query,
-        stageIndex,
-        clause,
-      );
-      handleExpressionChange(expression, clause as Clause);
+      handleExpressionChange(clause as Clause);
       setName(name);
       setIsExtractingColumn(false);
     };
@@ -218,7 +176,6 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
         </Box>
         <Editor
           id="expression-content"
-          expression={expression}
           expressionIndex={expressionIndex}
           startRule={startRule as S}
           clause={clause}
@@ -254,7 +211,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
             onChange={event => setName(event.target.value)}
             onKeyDown={e => {
               if (e.key === "Enter") {
-                handleCommit(expression, clause);
+                handleCommit(clause);
               }
             }}
           />
@@ -267,7 +224,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
           <Button
             variant={isValid ? "filled" : "default"}
             disabled={!isValid}
-            onClick={() => handleCommit(expression, clause)}
+            onClick={() => handleCommit(clause)}
           >
             {initialName ? t`Update` : t`Done`}
           </Button>
