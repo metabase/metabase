@@ -120,6 +120,9 @@ class Visualization extends PureComponent {
   }
 
   static getDerivedStateFromProps(props, state) {
+    // When these props has changed, we need to re-derive the state.
+    // getDerivedStateFromProps does not have access to the last props, so
+    // we need to store them in the state.
     if (
       !isSameSeries(props.rawSeries, state._lastProps?.rawSeries) ||
       !equals(props.settings, state._lastProps?.settings) ||
@@ -130,11 +133,20 @@ class Visualization extends PureComponent {
       )
     ) {
       return {
-        _lastProps: props,
+        ...state,
         ...deriveStateFromProps(props),
+
+        // Store last properties to compare with the next call
+        _lastProps: _.pick(props, [
+          "rawSeries",
+          "settings",
+          "timelineEvents",
+          "selectedTimelineEventIds",
+        ]),
       };
     }
 
+    // Do not alter the state if the above props have not changed
     return null;
   }
 
