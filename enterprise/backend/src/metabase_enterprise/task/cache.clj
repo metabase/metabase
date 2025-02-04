@@ -4,9 +4,6 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase.models.query :as query]
-   [metabase.models.query-cache :as query-cache]
-   [metabase.models.query-execution :as query-execution]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task :as task]
@@ -18,12 +15,6 @@
    (org.quartz.spi MutableTrigger)))
 
 (set! *warn-on-reflection* true)
-
-(comment
-  ;; Make sure these models are loaded so that `t2/table-name` returns the correct names
-  query/keep-me
-  query-execution/keep-me
-  query-cache/keep-me)
 
 ;;; ------------------------------------------- Preemptive Caching ----------------------------------------------------
 

@@ -73,6 +73,7 @@
 
 (defn- update-index! []
   (when (search/supports-index?)
+    (log/info "Starting Realtime Search Index Update worker")
     (while true
       (try
         (let [batch    (search/get-next-batch! Long/MAX_VALUE 100)

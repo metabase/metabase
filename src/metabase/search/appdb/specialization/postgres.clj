@@ -55,7 +55,7 @@
       (str/join " <-> " <>))
 
     ;; negation
-    (str/starts-with? word-or-phrase "-")
+    (re-find #"^-\w" word-or-phrase)
     (str "!" (quote* (subs word-or-phrase 1)))
 
     ;; just a regular word

@@ -487,7 +487,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.dashboardCards().findAllByText("Orders").should("have.length", 1);
     });
 
-    it("can share a dashboard card via public link", { tags: "@flaky" }, () => {
+    it("can share a dashboard card via public link", () => {
       H.createQuestion(
         {
           name: "Total Orders",
@@ -504,6 +504,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.openSharingMenu("Create a public link");
       cy.findByTestId("public-link-input")
         .invoke("val")
+        .should("not.be.empty")
         .then(publicLink => {
           cy.signOut();
           cy.visit(publicLink);
