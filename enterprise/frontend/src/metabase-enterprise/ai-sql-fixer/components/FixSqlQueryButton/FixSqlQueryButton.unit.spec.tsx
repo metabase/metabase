@@ -64,7 +64,7 @@ function createNativeQuery(rawQuery: string) {
 }
 
 describe("FixSqlQueryButton", () => {
-  it("should apply query fixes", async () => {
+  it("should allow to apply a single query fix", async () => {
     const { getFixedQuery } = setup({
       query: createNativeQuery("SELECT1 * FROM ORDERS"),
       fixQueryResponse: createMockFixSqlQueryResponse({
@@ -81,5 +81,50 @@ describe("FixSqlQueryButton", () => {
 
     const fixedQuery = getFixedQuery();
     expect(Lib.rawNativeQuery(fixedQuery)).toBe("SELECT * FROM ORDERS");
+  });
+
+  it("should allow to apply multiple query fixes", async () => {
+    const { getFixedQuery } = setup({
+      query: createNativeQuery("SELECT1 *\nFROM2 ORDERS\nWHERE 1=1"),
+      fixQueryResponse: createMockFixSqlQueryResponse({
+        fixes: [
+          createMockSqlQueryFix({
+            fixed_sql: "SELECT *",
+            line_number: 1,
+          }),
+          createMockSqlQueryFix({
+            fixed_sql: "FROM ORDERS",
+            line_number: 2,
+          }),
+        ],
+      }),
+    });
+
+    await userEvent.click(await screen.findByText("Have Metabot fix it"));
+
+    const fixedQuery = getFixedQuery();
+    expect(Lib.rawNativeQuery(fixedQuery)).toBe(
+      "SELECT *\nFROM ORDERS\nWHERE 1=1",
+    );
+  });
+
+  it("should show an error message when fixes are empty", async () => {
+    setup({
+      query: createNativeQuery("SELECT1 * FROM ORDERS"),
+      fixQueryResponse: createMockFixSqlQueryResponse({
+        fixes: [],
+      }),
+    });
+
+    expect(await screen.findByText("Metabot can't fix it")).toBeInTheDocument();
+  });
+
+  it("should show an error message when the endpoint returns an error", async () => {
+    setup({
+      query: createNativeQuery("SELECT1 * FROM ORDERS"),
+      fixQueryResponse: undefined,
+    });
+
+    expect(await screen.findByText("Metabot can't fix it")).toBeInTheDocument();
   });
 });
