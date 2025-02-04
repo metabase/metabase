@@ -1,5 +1,6 @@
 .InfoLink {
   margin-left: 4px;
+  color: var(--mb-color-text-light);
 
   &:hover,
   &:focus {
