@@ -57,7 +57,7 @@
             :hosting                        true
             :llm_autodescription            true
             :metabot_v3                     true
-            :ai-sql-fixer                   true
+            :ai_sql_fixer                   true
             :official_collections           true
             :query_reference_validation     true
             :sandboxes                      true
