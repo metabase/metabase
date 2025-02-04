@@ -1,5 +1,6 @@
 (ns metabase.sync.sync-metadata.fields.sync-instances-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
@@ -155,70 +156,37 @@
         ;; field should become inactive
         (is (false? (t2/select-one-fn :active :model/Field :id blueberries-field-id)))))))
 
-(deftest auto-cruft-all-tables-test
-  (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
-    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
-                                       :settings {:auto-cruft-tables [".*"]}}]
-      (sync-metadata/sync-db-metadata! db)
-      (is (= #{:cruft}
-             (t2/select-fn-set :visibility_type :model/Table :db_id (u/the-id db)))))))
+(defn run-cruft-test [patterns freqs]
+  (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
+                                     :settings {:auto_cruft_columns patterns}}]
+    (sync-metadata/sync-db-metadata! db)
+    (let [tables (t2/select :model/Table :db_id (u/the-id db))
+          fields (mapcat (fn [{:keys [id]}] (t2/select :model/Field :table_id id)) tables)]
+      (is (= freqs
+             (frequencies (map :visibility_type fields)))))))
 
-(deftest auto-cruft-employee-table-test
-  (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
-    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
-                                       :settings {:auto-cruft-tables ["employees"]}}]
-      (sync-metadata/sync-db-metadata! db)
-      (is (= #{["employees" :cruft]
-               ["transactions" nil]}
-             (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db)))))))
+(deftest auto-cruft-all-fields-test
+  (testing "Make sure a db's settings.auto_cruft_fields mark all fields as crufty"
+    (run-cruft-test [".*"]
+                    {:details-only 12})
+    (run-cruft-test (map str (into [] "abcdefghijklmnoqprstuvwxyz"))
+                    {:details-only 12})))
 
-(deftest auto-cruft-tables-with-an-l-test
-  (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
-    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
-                                       :settings {:auto-cruft-tables ["l"]}}]
-      (sync-metadata/sync-db-metadata! db)
-      (is (= #{["employees" :cruft]
-               ["transactions" nil]}
-             (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db)))))))
+(deftest auto-cruft-exact-field-name-test
+  (testing "Make sure a db's settings.auto_cruft_fields mark fields as crufty for exact table names"
+    (run-cruft-test ["^details$" "^age$"]
+                    {:normal 10 :details-only 2})))
 
-(deftest auto-cruft-tables-with-an-l-or-a-y-test
-  (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
-    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
-                                       :settings {:auto-cruft-tables ["l" "y"]}}]
-      (sync-metadata/sync-db-metadata! db)
-      (is (= #{["employees" :cruft]
-               ["transactions" nil]}
-             (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db)))))))
+(deftest auto-cruft-fields-with-multiple-patterns-test
+  (testing "Make sure a db's settings.auto_cruft_fields mark fields as crufty against multiple patterns"
+    (run-cruft-test ["a" "b" "c"]     {:normal 4 :details-only 8})
+    (run-cruft-test ["c" "a" "t"]     {:normal 3 :details-only 9})
+    (run-cruft-test ["d" "o" "g"]     {:normal 6 :details-only 6})
+    (run-cruft-test ["b" "i" "r" "d"] {:normal 7 :details-only 5})
+    (run-cruft-test ["x" "y" "z"]     {:normal 11 :details-only 1})))
 
-(deftest auto-cruft-tables-get-put-back-when-removed-test
-  (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
-    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
-                                       :settings {:auto-cruft-tables ["l" "y"]}}]
-      ;; initial sync:
-      (sync-metadata/sync-db-metadata! db)
-      ;; employees has an l or a y, transactions doesnt:
-      (is (= #{["employees" :cruft]
-               ["transactions" nil]}
-             (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))))
+(deftest auto-cruft-fields-none-are-crufted-with-missing-pattern
+  (run-cruft-test [] {:normal 12}))
 
-      ;; now let's have 0 crufty tables:
-      (t2/update! :model/Database (u/the-id db) {:settings {:auto-cruft-tables []}})
-      (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :id (u/the-id db)))
-      (is (= #{["employees" nil]
-               ["transactions" nil]}
-             (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))))
-
-      ;; reset the auto-cruft-tables setting to match only transactions:
-      (t2/update! :model/Database (u/the-id db) {:settings {:auto-cruft-tables ["transactions"]}})
-      (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :id (u/the-id db)))
-      (is (= #{["employees" nil]
-               ["transactions" :cruft]}
-             (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))))
-
-      ;; zero crufty tables another way:
-      ;; now let's have 0 crufty tables when the setting is missing:
-      (t2/update! :model/Database (u/the-id db) {:settings {}})
-      (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :id (u/the-id db)))
-      (is (= #{["employees" nil]
-               ["transactions" nil]}
-             (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db)))))))
+(deftest auto-cruft-fields-none-are-crufted-with-no-hit-pattern
+  (run-cruft-test ["^it was the best$" "^of times it was$" "^the worst of times$"] {:normal 12}))

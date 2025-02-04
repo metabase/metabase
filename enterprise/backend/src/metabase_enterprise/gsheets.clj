@@ -333,7 +333,7 @@
   (t2/update! :model/Database 1 {:is_attached_dwh true})
 
   (t2/update! :model/Database 1 {:is_attached_dwh true
-                                 :settings (json/encode {:auto-cruft-tables ["^feedback$"]
-                                                         :auto-cruft-columns ["^email$"]})})
+                                 :settings (json/encode {:auto_cruft_tables ["^feedback$"]
+                                                         :auto_cruft_columns ["^email$"]})})
 
   ,)

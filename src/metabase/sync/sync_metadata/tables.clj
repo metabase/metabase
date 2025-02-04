@@ -99,7 +99,7 @@
 (defn- cruft-dependent-columns [table-name database]
   ;; if this is a crufty table, mark initial sync as complete since we'll be skipping the subsequent sync steps
   (let [is-crufty? (crufty/name? table-name {:patterns crufty-table-patterns
-                                             :pattern-strings (some-> database :settings :auto-cruft-tables)})]
+                                             :pattern-strings (some-> database :settings :auto_cruft_tables)})]
     {:initial_sync_status (if is-crufty? "complete" "incomplete")
      :visibility_type     (when is-crufty? :cruft)}))
 

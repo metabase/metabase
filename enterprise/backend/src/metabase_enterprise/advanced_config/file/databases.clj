@@ -37,7 +37,7 @@
   (s/and
    map?
    (fn cruft-patterns-are-valid? [settings]
-     (->> [(:auto-cruft-tables settings) (:auto-cruft-columns settings)]
+     (->> [(:auto_cruft_tables settings) (:auto_cruft_columns settings)]
           (remove nil?)
           (map valid-regex-patterns?)
           (every? true?)))))

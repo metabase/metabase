@@ -16,7 +16,7 @@
 
 (defn- compute-new-visibility-type [db field-metadata]
   (if (crufty/name? (:name field-metadata)
-                    {:pattern-strings (some-> db :settings :auto-cruft-columns)})
+                    {:pattern-strings (some-> db :settings :auto_cruft_columns)})
     :details-only
     ;; n.b. if it was auto-crufted in the past, removing it from auto-cruft will NOT make it visible because old
     ;; visibility-type will be :details-only. This only changes things to be hidden. If you want to make it visible
