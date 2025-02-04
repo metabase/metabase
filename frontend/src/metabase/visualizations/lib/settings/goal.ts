@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { GoalValuePicker } from "metabase/visualizations/components/settings/GoalValuePicker";
 import { getDefaultGoalLabel } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type { ChartGoal } from "metabase/visualizations/shared/types/settings";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -35,7 +36,7 @@ export const GRAPH_GOAL_SETTINGS = {
   "graph.goal_value": {
     section: t`Display`,
     title: t`Goal value`,
-    widget: "number",
+    widget: GoalValuePicker,
     default: 0,
     getHidden: (_series: unknown, vizSettings: VisualizationSettings) =>
       vizSettings["graph.show_goal"] !== true,

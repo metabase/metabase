@@ -179,6 +179,14 @@ export interface ColumnSettings {
   [key: string]: any;
 }
 
+export type CardGoalValue = {
+  type: "card";
+  card_id: CardId;
+  value_field: string;
+};
+
+export type GoalValue = number | CardGoalValue;
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
@@ -218,7 +226,7 @@ export type VisualizationSettings = {
   "graph.y_axis.max"?: number;
 
   // Goal
-  "graph.goal_value"?: number;
+  "graph.goal_value"?: GoalValue;
   "graph.show_goal"?: boolean;
   "graph.goal_label"?: string;
 
