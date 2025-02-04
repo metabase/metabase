@@ -57,11 +57,15 @@ export function SimpleDataPicker({
       {/* @ts-expect-error - I think the typing for ScrollArea.Autosize is wrong. This might be fixed in Mantine 7 */}
       <ScrollArea.Autosize mah={TEN_OPTIONS_HEIGHT} type="auto">
         {options.filter(filterSearch).map(option => {
+          const isSelected = selectedEntity === option.id;
+          const iconColor = isSelected
+            ? "--mb-color-text-white"
+            : "--mb-color-icon-primary";
           return (
             <NavLink
               key={option.id}
               active={selectedEntity === option.id}
-              icon={<Icon c="var(--mb-color-icon-primary)" name="table" />}
+              icon={<Icon color={`var(${iconColor})`} name="table" />}
               label={option.display_name}
               onClick={() => onClick(option)}
               variant="default"
