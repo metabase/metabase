@@ -42,6 +42,7 @@ import {
 import type {
   DatasetColumn,
   DatasetData,
+  RawSeries,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -101,7 +102,8 @@ class Table extends Component<TableProps, TableState> {
       title: t`Show column totals`,
       inline: true,
       widget: "toggle",
-      default: true, // TODO: should be false by default
+      getHidden: ([{ data }]: RawSeries) => data.rows_truncated != null,
+      getDefault: ([{ data }]: RawSeries) => data.rows_truncated == null,
     },
     "table.pivot": {
       section: t`Columns`,

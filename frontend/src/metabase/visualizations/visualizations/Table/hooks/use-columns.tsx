@@ -97,6 +97,7 @@ interface UseColumnsProps {
   getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
   question: Question;
   hasMetadataPopovers?: boolean;
+  columnTotals: (number | null)[] | null;
 }
 
 const columnHelper = createColumnHelper<RowValues>();
@@ -127,25 +128,6 @@ const getColumnWidthsForSettings = (
 
 export type ExpandedColumnsState = Record<string, boolean>;
 
-const calculateColumnTotals = (
-  cols: DatasetColumn[],
-  rows: RowValues[],
-  columnFormatters: any,
-): React.ReactNode[] => {
-  return cols.map((col, colIndex) => {
-    if (isNumber(col) && col.binning_info == null) {
-      const columnTotal = rows.reduce((acc: number | null, row) => {
-        return sumMetric(acc, row[colIndex]);
-      }, null);
-      return columnFormatters[colIndex](columnTotal);
-    } else {
-      // const distinctValuesCount = new Set(rows.map(row => row[colIndex])).size;
-      // return t`${distinctValuesCount} values`;
-    }
-    return null;
-  });
-};
-
 export const useColumns = ({
   settings,
   onVisualizationClick,
@@ -155,6 +137,7 @@ export const useColumns = ({
   measureBodyCellDimensions,
   question,
   hasMetadataPopovers = false,
+  columnTotals,
 }: UseColumnsProps) => {
   const { cols, rows } = data;
 
@@ -231,14 +214,10 @@ export const useColumns = ({
     [onUpdateColumnExpanded, columnSizing, cols],
   );
 
-  const totals = useMemo(() => {
-    return calculateColumnTotals(cols, rows, columnFormatters);
-  }, [cols, rows, columnFormatters]);
-
   const columns: ColumnDef<RowValues, RowValue>[] = useMemo(() => {
     const indexColumn = columnHelper.display({
       id: INDEX_COLUMN_ID,
-      size: 46,
+      size: 52,
       enableResizing: false,
       cell: props => {
         return <IndexCell rowNumber={props.row.index + 1} />;
@@ -269,14 +248,20 @@ export const useColumns = ({
       const id = isPivoted ? `${index}:${col.name}` : col.name;
       return columnHelper.accessor(row => row[index], {
         id,
-        header: memo(props => {
+        header: memo(() => {
           return (
             <HeaderCell name={columnName} align={align} sort={sortDirection} />
           );
         }),
-        footer: memo(props => {
-          console.log(">>>props", props);
-          return <FooterCell align={align} value={totals[index]} />;
+        footer: memo(() => {
+          if (!columnTotals) {
+            return null;
+          }
+
+          const formatter = columnFormatters[index];
+          return (
+            <FooterCell align={align} value={formatter(columnTotals[index])} />
+          );
         }),
         cell: memo(
           (props: { getValue: () => RowValue; row: { index: number } }) => {
@@ -341,7 +326,7 @@ export const useColumns = ({
     columnFormatters,
     question,
     hasMetadataPopovers,
-    totals,
+    columnTotals,
   ]);
 
   const measureRootRef = useRef<HTMLDivElement>();

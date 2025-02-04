@@ -49,6 +49,7 @@ import styles from "./Table.module.css";
 import { HEADER_HEIGHT, INDEX_COLUMN_ID, ROW_HEIGHT } from "./constants";
 import { useTableCellsMeasure } from "./hooks/use-cell-measure";
 import { useColumnResizeObserver } from "./hooks/use-column-resize-observer";
+import { useColumnTotals } from "./hooks/use-column-totals";
 import { useColumns } from "./hooks/use-columns";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { useVirtualGrid } from "./hooks/use-virtual-grid";
@@ -101,6 +102,8 @@ export const _Table = ({
     measureRoot,
   } = useTableCellsMeasure();
 
+  const columnTotals = useColumnTotals(cols, rows, settings, question);
+
   const {
     columns,
     columnFormatters,
@@ -117,6 +120,7 @@ export const _Table = ({
     getColumnSortDirection,
     question,
     hasMetadataPopovers,
+    columnTotals,
   });
 
   const wrappedColumns = useMemo(() => {
@@ -371,8 +375,6 @@ export const _Table = ({
     return null;
   }
 
-  const hasFooter = settings["table.column_totals"];
-
   return (
     <DndContext
       sensors={sensors}
@@ -524,7 +526,7 @@ export const _Table = ({
                 );
               })}
             </div>
-            {hasFooter ? (
+            {columnTotals != null ? (
               <div className={styles.tfoot}>
                 {table.getFooterGroups().map(footerGroup => (
                   <div
