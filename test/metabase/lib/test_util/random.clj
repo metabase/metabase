@@ -8,14 +8,14 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *generator* nil)
+(defonce ^:dynamic *generator* (java.util.Random.))
 
 (defn initial-seed-value
   "x"
   []
   (or (env :mb-test-run-seed)
-      (doto (.nextLong ^java.util.Random (java.util.Random.))
-        (as-> $ (log/errorf "Seed: %d" $)))))
+      (doto (.nextLong ^java.util.Random *generator*)
+        (as-> $ (log/infof "Seed: %d" $)))))
 
 (comment
 
@@ -29,11 +29,8 @@
   )
 
 
-;; TODO: The question is whether to enable it with uninitialized generator.
 (defn rand
   ([]
-   (when-not (instance? java.util.Random *generator*)
-     (throw (Exception. "Random generator not initialized.")))
    (.nextDouble ^java.util.Random *generator*))
   ([n]
    (* n (rand))))
