@@ -128,6 +128,5 @@
 (defsetting show-sdk-embed-terms
   (deferred-tru "Check if admin should see the SDK licensing terms popup")
   :type    :boolean
-  :visibility :public
   :default true
   :export? true)
