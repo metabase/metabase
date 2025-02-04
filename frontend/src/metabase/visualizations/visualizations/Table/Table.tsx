@@ -371,6 +371,8 @@ export const _Table = ({
     return null;
   }
 
+  const hasFooter = settings["table.column_totals"];
+
   return (
     <DndContext
       sensors={sensors}
@@ -522,6 +524,44 @@ export const _Table = ({
                 );
               })}
             </div>
+            {hasFooter ? (
+              <div className={styles.tfoot}>
+                {table.getFooterGroups().map(footerGroup => (
+                  <div
+                    key={footerGroup.id}
+                    className={styles.tr}
+                    style={{ height: "32px" }}
+                  >
+                    {virtualPaddingLeft ? (
+                      <div style={{ width: virtualPaddingLeft }} />
+                    ) : null}
+                    {virtualColumns.map(virtualColumn => {
+                      const header = footerGroup.headers[virtualColumn.index];
+
+                      const footerCell = flexRender(
+                        header.column.columnDef.footer,
+                        header.getContext(),
+                      );
+
+                      return (
+                        <div
+                          key={header.id}
+                          style={{
+                            width: header.getSize(),
+                            position: "relative",
+                          }}
+                        >
+                          {footerCell}
+                        </div>
+                      );
+                    })}
+                    {virtualPaddingRight ? (
+                      <div style={{ width: virtualPaddingRight }} />
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
         {isAddColumnButtonSticky ? addColumnButton : null}

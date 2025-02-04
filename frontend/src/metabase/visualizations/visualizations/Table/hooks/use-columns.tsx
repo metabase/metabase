@@ -1,4 +1,11 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Root } from "react-dom/client";
 import { type CSSProperties } from "react";
 
@@ -13,7 +20,7 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { OrderByDirection } from "metabase-lib/types";
-import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
+import { isFK, isNumber, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
   DatasetColumn,
@@ -51,6 +58,10 @@ import type Question from "metabase-lib/v1/Question";
 
 import { IndexCell } from "../cell/IndexCell";
 import { IndexHeaderCell } from "../cell/IndexHeaderCell";
+import { FooterCell } from "../cell/FooterCell";
+import _ from "underscore";
+import { sumMetric } from "metabase/visualizations/lib/dataset";
+import { t } from "ttag";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
@@ -115,6 +126,25 @@ const getColumnWidthsForSettings = (
 };
 
 export type ExpandedColumnsState = Record<string, boolean>;
+
+const calculateColumnTotals = (
+  cols: DatasetColumn[],
+  rows: RowValues[],
+  columnFormatters: any,
+): React.ReactNode[] => {
+  return cols.map((col, colIndex) => {
+    if (isNumber(col) && col.binning_info == null) {
+      const columnTotal = rows.reduce((acc: number | null, row) => {
+        return sumMetric(acc, row[colIndex]);
+      }, null);
+      return columnFormatters[colIndex](columnTotal);
+    } else {
+      // const distinctValuesCount = new Set(rows.map(row => row[colIndex])).size;
+      // return t`${distinctValuesCount} values`;
+    }
+    return null;
+  });
+};
 
 export const useColumns = ({
   settings,
@@ -201,6 +231,10 @@ export const useColumns = ({
     [onUpdateColumnExpanded, columnSizing, cols],
   );
 
+  const totals = useMemo(() => {
+    return calculateColumnTotals(cols, rows, columnFormatters);
+  }, [cols, rows, columnFormatters]);
+
   const columns: ColumnDef<RowValues, RowValue>[] = useMemo(() => {
     const indexColumn = columnHelper.display({
       id: INDEX_COLUMN_ID,
@@ -211,6 +245,9 @@ export const useColumns = ({
       },
       header: () => {
         return <IndexHeaderCell />;
+      },
+      footer: () => {
+        return <FooterCell value={t`Totals`} />;
       },
     });
     const dataColumns = cols.map((col, index) => {
@@ -236,6 +273,10 @@ export const useColumns = ({
           return (
             <HeaderCell name={columnName} align={align} sort={sortDirection} />
           );
+        }),
+        footer: memo(props => {
+          console.log(">>>props", props);
+          return <FooterCell align={align} value={totals[index]} />;
         }),
         cell: memo(
           (props: { getValue: () => RowValue; row: { index: number } }) => {
@@ -300,6 +341,7 @@ export const useColumns = ({
     columnFormatters,
     question,
     hasMetadataPopovers,
+    totals,
   ]);
 
   const measureRootRef = useRef<HTMLDivElement>();

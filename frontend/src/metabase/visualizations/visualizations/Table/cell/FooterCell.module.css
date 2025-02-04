@@ -1,0 +1,15 @@
+.root {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  cursor: default;
+  font-weight: 600;
+  padding: 0 12px;
+  border-top: 1px solid var(--mb-color-border-alpha-30);
+  font-size: 12px;
+  color: var(--mb-color-text-tertiary);
+  text-overflow: ellipsis;
+  overflow: hidden;
+}

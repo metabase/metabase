@@ -96,6 +96,13 @@ class Table extends Component<TableProps, TableState> {
       widget: "toggle",
       default: true, // TODO: should be false by default
     },
+    "table.column_totals": {
+      section: t`Columns`,
+      title: t`Show column totals`,
+      inline: true,
+      widget: "toggle",
+      default: true, // TODO: should be false by default
+    },
     "table.pivot": {
       section: t`Columns`,
       title: t`Pivot table`,

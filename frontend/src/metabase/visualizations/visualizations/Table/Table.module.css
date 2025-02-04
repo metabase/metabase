@@ -88,3 +88,9 @@
 .headerWrapper:hover {
   cursor: grab;
 }
+
+.tfoot {
+  position: sticky;
+  bottom: 0;
+  background-color: #fff;
+}
