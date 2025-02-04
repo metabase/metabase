@@ -162,9 +162,6 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.0"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
-  org.eclipse.jetty/jetty-server            ^:antq/exclude                      ; 12.x do not support Java 8
-                                            {:mvn/version "11.0.24"}            ; web server
-  org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.24"}   ; ring-jetty-adapter needs that
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.js/js                         ^:antq/exclude                      ; newer GraalVM is not compatible with Java 8
                                             {:mvn/version "22.3.5"}             ; JavaScript engine
@@ -188,9 +185,7 @@
                                              :sha "4a37feaf817a2a6b5ef688c927f6fd4375964433"}
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
   ring/ring-core                            {:mvn/version "1.13.0"}             ; HTTP abstraction
-  ring/ring-jetty-adapter                   {:mvn/version "1.13.0"              ; Jetty adapter
-                                             :exclusions [org.eclipse.jetty/jetty-server
-                                                          org.eclipse.jetty.websocket/websocket-jetty-server]}
+  info.sunng/ring-jetty9-adapter            {:mvn/version "0.36.1"}             ; Jetty adapter, along with jetty itself
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere

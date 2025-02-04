@@ -12,7 +12,7 @@
    [metabase.server.middleware.json :as mw.json]
    [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
-   [ring.adapter.jetty :as jetty]
+   [ring.adapter.jetty9 :as ring-jetty]
    [ring.middleware.params :refer [wrap-params]]
    [toucan2.core :as t2])
   (:import
@@ -59,7 +59,7 @@
                          (mapv :route routes+handlers)
                          (conj routes+handlers (compojure.route/not-found {:status-code 404 :body "Not found."}))
                          (apply #_{:clj-kondo/ignore [:discouraged-var]} compojure/routes routes+handlers))
-        ^Server server (jetty/run-jetty (apply-middleware handler middlewares) {:port 0 :join? false})]
+        ^Server server (ring-jetty/run-jetty (apply-middleware handler middlewares) {:port 0 :join? false})]
     (try
       (f (str "http://localhost:" (.. server getURI getPort)))
       (finally
