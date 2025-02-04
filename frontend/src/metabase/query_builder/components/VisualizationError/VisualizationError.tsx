@@ -97,14 +97,12 @@ export function VisualizationError({
     );
   } else if (isNative) {
     // always show errors for native queries
-    let processedError = error;
+    let processedError = String(error);
     const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
-    if (typeof error === "string" && typeof origSql === "string") {
+    if (typeof origSql === "string") {
       processedError = adjustPositions(error, origSql);
     }
-    if (typeof error === "string") {
-      processedError = stripRemarks(processedError);
-    }
+    processedError = stripRemarks(processedError);
     const database = question.database();
     const isSql = database && getEngineNativeType(database.engine) === "sql";
 
@@ -117,9 +115,7 @@ export function VisualizationError({
               className={VisErrorS.QueryErrorTitle}
             >{t`An error occurred in your query`}</Box>
           </Flex>
-          {typeof processedError === "string" && (
-            <Box className={VisErrorS.QueryErrorMessage}>{processedError}</Box>
-          )}
+          <Box className={VisErrorS.QueryErrorMessage}>{processedError}</Box>
           <Flex align="center" my="md" gap="md">
             {isSql && showMetabaseLinks && (
               <ExternalLink
