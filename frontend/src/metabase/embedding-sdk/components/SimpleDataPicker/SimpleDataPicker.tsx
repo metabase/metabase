@@ -12,6 +12,7 @@ import { SortDirection } from "metabase-types/api/sorting";
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
 
 interface SimpleDataPickerProps {
+  selectedDatabaseId: number | null;
   selectedEntity?: TableId;
   isInitiallyOpen: boolean;
   triggerElement: ReactNode;
@@ -19,6 +20,7 @@ interface SimpleDataPickerProps {
 }
 
 export function SimpleDataPicker({
+  selectedDatabaseId,
   selectedEntity,
   isInitiallyOpen,
   setSourceTableFn,
@@ -27,6 +29,7 @@ export function SimpleDataPicker({
   const [isDataPickerOpened, { toggle, close }] =
     useDisclosure(isInitiallyOpen);
   const { data, isLoading, error } = useSearchQuery({
+    table_db_id: selectedDatabaseId ? selectedDatabaseId : undefined,
     models: ["dataset", "table"],
   });
 

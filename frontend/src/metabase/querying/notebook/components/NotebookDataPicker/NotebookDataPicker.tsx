@@ -203,6 +203,7 @@ function LegacyDataPicker({
   isDisabled,
   onChange,
 }: LegacyDataPickerProps) {
+  const databaseId = Lib.databaseID(query);
   const tableInfo =
     table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
   /**
@@ -220,6 +221,7 @@ function LegacyDataPicker({
   return (
     <SimpleDataPicker
       key={pickerInfo?.tableId}
+      selectedDatabaseId={databaseId}
       selectedEntity={pickerInfo?.tableId}
       isInitiallyOpen={!table}
       triggerElement={
