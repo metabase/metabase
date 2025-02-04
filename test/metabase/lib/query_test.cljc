@@ -281,22 +281,22 @@
             (is (= true  (-> offset-query
                              (lib/order-by (meta/field-metadata :venues :latitude))
                              (->> (lib/can-preview -1)))))))
-      (testing "with an offset expression in an earlier stage"
-        (let [offset-query (-> (lib.tu/venues-query)
-                               (lib/expression "prev_price" (lib/offset (meta/field-metadata :venues :price) -1))
-                               (lib/breakout (lib.options/ensure-uuid [:expression {} "prev_price"]))
-                               (lib/aggregate (lib/count))
-                               lib/append-stage)]
-          (testing "without order-by in that stage = false"
-            (is (= false (lib/can-preview -1 offset-query)))
+        (testing "with an offset expression in an earlier stage"
+          (let [offset-query (-> (lib.tu/venues-query)
+                                 (lib/expression "prev_price" (lib/offset (meta/field-metadata :venues :price) -1))
+                                 (lib/breakout (lib.options/ensure-uuid [:expression {} "prev_price"]))
+                                 (lib/aggregate (lib/count))
+                                 lib/append-stage)]
+            (testing "without order-by in that stage = false"
+              (is (= false (lib/can-preview -1 offset-query)))
             ;; order by in the other stage doesn't help
-            (is (= false (-> offset-query
-                             (lib/order-by -1 (meta/field-metadata :venues :latitude) :asc)
-                             (->> (lib/can-preview -1))))))
-          (testing "with order-by in that stage = true"
-            (is (= true  (-> offset-query
-                             (lib/order-by 0 (meta/field-metadata :venues :latitude) :asc)
-                             (->> (lib/can-preview -1))))))))))))
+              (is (= false (-> offset-query
+                               (lib/order-by -1 (meta/field-metadata :venues :latitude) :asc)
+                               (->> (lib/can-preview -1))))))
+            (testing "with order-by in that stage = true"
+              (is (= true  (-> offset-query
+                               (lib/order-by 0 (meta/field-metadata :venues :latitude) :asc)
+                               (->> (lib/can-preview -1))))))))))))
 
 (def ^:private query-for-preview
   "\"Christmas tree\" query with anything and everything hanging from its branches, for testing [[preview-query]]."
