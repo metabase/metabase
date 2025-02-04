@@ -1,3 +1,4 @@
+export * from "./ai-sql-fixer";
 export * from "./audit-info";
 export * from "./api";
 export * from "./billing-info";

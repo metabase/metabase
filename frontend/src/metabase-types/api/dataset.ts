@@ -95,12 +95,7 @@ export interface Dataset {
   row_count: number;
   running_time: number;
   json_query?: JsonQuery;
-  error?:
-    | string
-    | {
-        status: number; // HTTP status code
-        data?: string;
-      };
+  error?: DatasetError;
   error_type?: string;
   error_is_curated?: boolean;
   context?: string;
@@ -112,6 +107,13 @@ export interface Dataset {
   /** A date in ISO 8601 format */
   started_at?: string;
 }
+
+export type DatasetError =
+  | string
+  | {
+      status: number; // HTTP status code
+      data?: string;
+    };
 
 export interface EmbedDatasetData {
   rows: RowValues[];

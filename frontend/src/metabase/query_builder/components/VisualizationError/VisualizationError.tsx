@@ -9,11 +9,13 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_AI_SQL_FIXER } from "metabase/plugins";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type { DatasetError } from "metabase-types/api";
 
 import { VISUALIZATION_SLOW_TIMEOUT } from "../../constants";
 
@@ -22,23 +24,27 @@ import { AdminEmail } from "./components";
 import { adjustPositions, stripRemarks } from "./utils";
 
 interface VisualizationErrorProps {
+  className?: string;
   via: Record<string, any>[];
   question: Question;
   duration: number;
-  error: any;
-  className?: string;
+  error: DatasetError;
+  isResultDirty?: boolean;
 }
 
 export function VisualizationError({
+  className,
   via,
   question,
   duration,
   error,
-  className,
+  isResultDirty,
 }: VisualizationErrorProps) {
+  const query = question.query();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const isNative = question && Lib.queryDisplayInfo(question.query()).isNative;
-  if (error && typeof error.status === "number") {
+
+  const isNative = question && Lib.queryDisplayInfo(query).isNative;
+  if (typeof error === "object" && error.status != null) {
     // Assume if the request took more than 15 seconds it was due to a timeout
     // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
     if (duration > VISUALIZATION_SLOW_TIMEOUT) {
@@ -109,17 +115,28 @@ export function VisualizationError({
               className={VisErrorS.QueryErrorTitle}
             >{t`An error occurred in your query`}</Box>
           </Flex>
-          <Box className={VisErrorS.QueryErrorMessage}>{processedError}</Box>
-          {isSql && showMetabaseLinks && (
-            <ExternalLink
-              className={VisErrorS.QueryErrorLink}
-              href={getLearnUrl(
-                "grow-your-data-skills/learn-sql/debugging-sql/sql-syntax",
-              )}
-            >
-              {t`Learn how to debug SQL errors`}
-            </ExternalLink>
+          {typeof processedError === "string" && (
+            <Box className={VisErrorS.QueryErrorMessage}>{processedError}</Box>
           )}
+          <Flex my="md" gap="md">
+            {isSql && showMetabaseLinks && (
+              <ExternalLink
+                className={VisErrorS.QueryErrorLink}
+                href={getLearnUrl(
+                  "grow-your-data-skills/learn-sql/debugging-sql/sql-syntax",
+                )}
+              >
+                {t`Learn how to debug SQL errors`}
+              </ExternalLink>
+            )}
+            {!isResultDirty && (
+              <PLUGIN_AI_SQL_FIXER.FixSqlButton
+                query={query}
+                queryError={error}
+                onChange={() => 0}
+              />
+            )}
+          </Flex>
         </Flex>
       </Box>
     );
