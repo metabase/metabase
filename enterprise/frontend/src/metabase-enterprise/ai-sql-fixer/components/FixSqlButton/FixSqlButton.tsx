@@ -73,12 +73,13 @@ function getRequest(
 }
 
 function getFixedQuery(query: Lib.Query, fixes: AiSqlFix[]) {
-  const rawQuery = Lib.rawNativeQuery(query);
-  const rawQueryLines = rawQuery.split("\n");
-  const newRawQueryLines = fixes.reduce((result, fix) => {
-    result[fix.line_number] = fix.fixed_sql;
+  const sql = Lib.rawNativeQuery(query);
+  const sqlLines = sql.split("\n");
+  const newSqlLines = fixes.reduce((result, fix) => {
+    const lineIndex = fix.line_number - 1;
+    result[lineIndex] = fix.fixed_sql;
     return result;
-  }, rawQueryLines);
-  const newRawQuery = newRawQueryLines.join("\n");
-  return Lib.withNativeQuery(query, newRawQuery);
+  }, sqlLines);
+  const newSql = newSqlLines.join("\n");
+  return Lib.withNativeQuery(query, newSql);
 }
