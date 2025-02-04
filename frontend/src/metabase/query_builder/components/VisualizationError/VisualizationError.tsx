@@ -17,7 +17,7 @@ import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetError } from "metabase-types/api";
+import type { DatasetError, DatasetErrorType } from "metabase-types/api";
 
 import { VISUALIZATION_SLOW_TIMEOUT } from "../../constants";
 
@@ -31,6 +31,7 @@ interface VisualizationErrorProps {
   question: Question;
   duration: number;
   error: DatasetError;
+  errorType?: DatasetErrorType;
 }
 
 export function VisualizationError({
@@ -39,6 +40,7 @@ export function VisualizationError({
   question,
   duration,
   error,
+  errorType,
 }: VisualizationErrorProps) {
   const query = question.query();
   const isResultDirty = useSelector(getIsResultDirty);
@@ -142,6 +144,7 @@ export function VisualizationError({
               <PLUGIN_AI_SQL_FIXER.FixNativeQueryButton
                 query={query}
                 queryError={error}
+                queryErrorType={errorType}
                 onQueryFix={handleNativeQueryFix}
               />
             )}

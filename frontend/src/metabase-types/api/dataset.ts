@@ -96,7 +96,7 @@ export interface Dataset {
   running_time: number;
   json_query?: JsonQuery;
   error?: DatasetError;
-  error_type?: string;
+  error_type?: DatasetErrorType;
   error_is_curated?: boolean;
   context?: string;
   status?: string;
@@ -114,6 +114,11 @@ export type DatasetError =
       status: number; // HTTP status code
       data?: string;
     };
+
+export type DatasetErrorType =
+  | "invalid-query"
+  | "missing-required-parameter"
+  | string;
 
 export interface EmbedDatasetData {
   rows: RowValues[];
@@ -133,7 +138,7 @@ interface SuccessEmbedDataset {
 }
 
 export interface ErrorEmbedDataset {
-  error_type: string;
+  error_type: DatasetErrorType;
   error: string;
   status: string;
 }

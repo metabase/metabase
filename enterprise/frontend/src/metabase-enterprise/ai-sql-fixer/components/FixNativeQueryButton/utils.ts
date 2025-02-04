@@ -2,6 +2,7 @@ import { getEngineNativeType } from "metabase/lib/engine";
 import * as Lib from "metabase-lib";
 import type {
   DatasetError,
+  DatasetErrorType,
   FixNativeQueryRequest,
   NativeQueryFix,
 } from "metabase-types/api";
@@ -9,8 +10,9 @@ import type {
 export function getFixRequest(
   query: Lib.Query,
   queryError: DatasetError,
+  queryErrorType: DatasetErrorType | undefined,
 ): FixNativeQueryRequest | undefined {
-  if (typeof queryError !== "string") {
+  if (typeof queryError !== "string" || queryErrorType !== "invalid-query") {
     return;
   }
 

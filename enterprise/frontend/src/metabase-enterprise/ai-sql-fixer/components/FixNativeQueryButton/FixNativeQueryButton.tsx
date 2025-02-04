@@ -11,9 +11,10 @@ import { getFixRequest, getFixedQuery } from "./utils";
 export function FixNativeQueryButton({
   query,
   queryError,
+  queryErrorType,
   onQueryFix,
 }: FixNativeQueryButtonProps) {
-  const request = getFixRequest(query, queryError);
+  const request = getFixRequest(query, queryError, queryErrorType);
   const { data, error, isFetching } = useGetFixedNativeQueryQuery(
     request ?? skipToken,
   );

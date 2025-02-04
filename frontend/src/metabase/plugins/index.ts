@@ -55,6 +55,7 @@ import type {
   Database as DatabaseType,
   Dataset,
   DatasetError,
+  DatasetErrorType,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -578,6 +579,7 @@ const defaultMetabotContextValue: MetabotContext = {
 export type FixNativeQueryButtonProps = {
   query: Lib.Query;
   queryError: DatasetError;
+  queryErrorType: DatasetErrorType | undefined;
   onQueryFix: (newQuery: Lib.Query) => void;
 };
 
