@@ -28,7 +28,6 @@
                   :mb-test-run-seed)
   )
 
-
 (defn rand
   ([]
    (.nextDouble ^java.util.Random *generator*))
