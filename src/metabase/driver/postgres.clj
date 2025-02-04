@@ -966,9 +966,12 @@
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (let [obj (.getObject rs i)]
-      (if (instance? org.postgresql.util.PGobject obj)
-        (.getValue ^org.postgresql.util.PGobject obj)
-        obj))))
+      (cond (instance? org.postgresql.util.PGobject obj)
+            (.getValue ^org.postgresql.util.PGobject obj)
+            (instance? org.postgresql.jdbc.PgArray obj)
+            (.getArray ^org.postgresql.jdbc.PgArray obj)
+            :else
+            obj))))
 
 ;; Postgres doesn't support OffsetTime
 (defmethod sql-jdbc.execute/set-parameter [:postgres OffsetTime]
