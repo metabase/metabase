@@ -63,9 +63,7 @@ export function SimpleDataPicker({
               active={selectedEntity === option.id}
               icon={<Icon c="var(--mb-color-icon-primary)" name="table" />}
               label={option.display_name}
-              onClick={() => {
-                onClick(option);
-              }}
+              onClick={() => onClick(option)}
               variant="default"
             />
           );
