@@ -64,7 +64,7 @@ export const EmbeddingSdkLegaleseModal = ({
         <Button
           onClick={onAccept}
           variant="filled"
-          data-loading={loading}
+          data-is-loading={loading}
           loading={loading}
         >{t`Agree and continue`}</Button>
       </Group>
