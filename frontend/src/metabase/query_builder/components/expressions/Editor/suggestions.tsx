@@ -252,17 +252,13 @@ export function suggestPopular({
     .map(name => MBQL_CLAUSES[name])
     .filter(isNotNull)
     .filter(clause => !database || database?.hasFeature(clause.requiresFeature))
-    .map(clause => ({
-      type: "function",
-      label: suggestionText(clause),
-      displayLabel: clause.displayName,
-      detail:
-        (clause.name &&
-          database &&
-          getHelpText(clause.name, database, reportTimezone)?.description) ??
-        undefined,
-      icon: "function",
-    }));
+    .map(clause =>
+      expressionClauseCompletion(clause, {
+        type: startRule,
+        database,
+        reportTimezone,
+      }),
+    );
 
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
