@@ -29,8 +29,8 @@ const ACTIONS = {
   },
 } as const;
 
-export const pivotDrill: Drill = ({ query, stageIndex, drill, applyDrill }) => {
-  const pivotTypes = Lib.pivotTypes(drill);
+export const pivotDrill: Drill = ({ query, drill, applyDrill }) => {
+  const { pivotTypes, stageIndex } = Lib.pivotDrillDetails(drill);
 
   const actions = pivotTypes.map(pivotType =>
     getActionForType(query, stageIndex, drill, pivotType, applyDrill),
