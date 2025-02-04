@@ -1,15 +1,15 @@
 import { getEngineNativeType } from "metabase/lib/engine";
 import * as Lib from "metabase-lib";
 import type {
-  AiFixSqlRequest,
-  AiSqlFix,
   DatasetError,
+  FixNativeQueryRequest,
+  NativeQueryFix,
 } from "metabase-types/api";
 
 export function getFixRequest(
   query: Lib.Query,
   queryError: DatasetError,
-): AiFixSqlRequest | undefined {
+): FixNativeQueryRequest | undefined {
   if (typeof queryError !== "string") {
     return;
   }
@@ -31,7 +31,7 @@ export function getFixRequest(
   };
 }
 
-export function getFixedQuery(query: Lib.Query, fixes: AiSqlFix[]) {
+export function getFixedQuery(query: Lib.Query, fixes: NativeQueryFix[]) {
   const sql = Lib.rawNativeQuery(query);
   const sqlLines = sql.split("\n");
   const newSqlLines = fixes.reduce((result, fix) => {

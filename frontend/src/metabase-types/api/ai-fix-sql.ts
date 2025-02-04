@@ -1,15 +1,15 @@
 import type { DatasetQuery } from "metabase-types/api/query";
 
-export type AiFixSqlRequest = {
+export type FixNativeQueryRequest = {
   query: DatasetQuery;
   error_message: string;
 };
 
-export type AiFixSqlResponse = {
-  fixes: AiSqlFix[];
+export type FixNativeQueryResponse = {
+  fixes: NativeQueryFix[];
 };
 
-export type AiSqlFix = {
+export type NativeQueryFix = {
   line_number: number;
   fixed_sql: string;
 };
