@@ -243,8 +243,9 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
         });
 
         const newColumnWidths = { ...newLeftHeaderWidths, valueHeaderWidths };
+        setHeaderWidths(newColumnWidths);
+
         if (!_.isEqual(newColumnWidths, columnWidthSettings)) {
-          setHeaderWidths(newColumnWidths);
           onUpdateVisualizationSettings({
             "pivot_table.column_widths": newColumnWidths,
           });
