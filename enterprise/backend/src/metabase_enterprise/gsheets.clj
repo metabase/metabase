@@ -106,17 +106,27 @@
                    [:status                      [:enum "not-connected" "loading" "complete"]]
                    [:folder_url {:optional true} ms/NonBlankString]])
 
+(defn error-response-in-body
+  "We've decided to return errors as a map with an `:error` key. This function is a helper to make that map.
+
+  This formats and throws an ex-info that will put the message into the body of the response."
+  ([message] (error-response-in-body message {}))
+  ([message data]
+   (throw (ex-info message (merge data {:errors true :message message})))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (mu/defn- hm-service-account-email :- [:or [:= false] :string]
-  "Checks to see if Google service-account is setup in harbormaster."
+  "Checks to see if Google service-account is setup in harbormaster, and returns the email."
   []
-  (let [[_status {:keys [body] :as response}] (hm.client/make-request :get "/api/v2/mb/connections-google/service-account")]
+  (let [[_status {:keys [body] :as _response}] (hm.client/make-request :get "/api/v2/mb/connections-google/service-account")]
     (if-let [email (:email body)]
       email
-      (throw (ex-info (tru "Error checking service-account status.") {:status-code (:status-code response)})))))
+      (error-response-in-body
+       (tru "Google service-account is not setup in harbormaster.")
+       {:status-code 502}))))
 
 (mr/def ::gdrive-conn [:map {:description "The Harbormaster Gdrive Connection"}
                        [:id :string]
@@ -175,22 +185,13 @@
 ;; FE <-> MB APIs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn error-response-in-body
-  "We've decided to return errors as a map with an `:error` key. This function is a helper to make that map.
-
-  This formats and throws an ex-info that will put the message into the body of the response."
-  ([message] (error-response-in-body message {}))
-  ([message data]
-   (throw (ex-info message (merge data {:errors true
-                                        :message message})))))
-
 (api.macros/defendpoint :get "/service-account" :- [:map [:email [:maybe :string]]]
   "Checks to see if service-account is setup or not, delegates to HM only if we haven't set it from a metabase cluster
   before."
   []
   (api/check-superuser)
   (when-not (api.auth/show-google-sheets-integration)
-    (error-response-in-body (tru "Google Sheets integration is not enabled.")))
+    (error-response-in-body (tru "Google Sheets integration is not enabled.") {:status-code 402}))
   {:email (hm-service-account-email)})
 
 (defn- seconds-from-epoch-now []
@@ -237,19 +238,19 @@
 (defn- reset-gsheets-status []
   (gsheets! not-connected)
   (doseq [{:keys [id]} (hm-get-gdrive-conns)]
-    (hm-delete-conn id)))
+    (hm-delete-conn id))
+  not-connected)
 
 (defn- handle-get-folder [attached-dwh]
   (let [[sstatus {conn :body}] (try (hm-get-gdrive-conn (:gdrive/conn-id (gsheets)))
+                                    ;; missing id:
                                     (catch Exception _
                                       (reset-gsheets-status)
                                       (error-response-in-body (tru "Unable to find google drive connection, please try again."))))]
     (if (= :ok sstatus)
-      (let [{:keys [status] last-gdrive-conn-sync :last-sync-at :as gdrive-conn}
-            (normalize-gdrive-conn conn)
-
-            last-dwh-sync
-            (get-last-mb-dwh-sync-time)]
+      (let [{:keys [status] last-gdrive-conn-sync :last-sync-at
+             :as   gdrive-conn} (normalize-gdrive-conn conn)
+            last-dwh-sync       (get-last-mb-dwh-sync-time)]
         (-> (cond
               (sync-complete? {:status status :last-dwh-sync last-dwh-sync :last-gdrive-conn-sync last-gdrive-conn-sync})
               (u/prog1 (assoc (gsheets) :status "complete")
@@ -275,8 +276,8 @@
                    ;; TEMP (gsheets)
                    ;; here is some debugging info to make sure we have it straight:
                    :hm/conn gdrive-conn
-                   :mb/sync-info {:status status
-                                  :last-dwh-sync last-dwh-sync
+                   :mb/sync-info {:status                status
+                                  :last-dwh-sync         last-dwh-sync
                                   :last-gdrive-conn-sync last-gdrive-conn-sync})))
       (error-response-in-body
        (tru "Unable to find google drive connection.")
@@ -323,11 +324,15 @@
 
   (gsheets)
 
+
+  (reset-gsheets-status)
+
   ;; need an "attached dwh" locally?
   (t2/update! :model/Database 1 {:is_attached_dwh true})
 
 
-  (t2/update! :model/Database 1 {:settings (json/encode {:auto-cruft-tables ["^feedback$"]
+  (t2/update! :model/Database 1 {:is_attached_dwh true
+                                 :settings (json/encode {:auto-cruft-tables ["^feedback$"]
                                                          :auto-cruft-columns ["^email$"]})})
 
   )

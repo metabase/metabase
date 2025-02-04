@@ -32,7 +32,7 @@
     (http/success? response)))
 
 (defn- ->config
-  "The config needed to call [[make-request]].
+  "Returns the config needed to call [[make-request]].
 
   `->config` either gets the store-api-url and api-key from settings or throws an exception when either are unset or
   blank."
