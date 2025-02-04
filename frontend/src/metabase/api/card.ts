@@ -1,3 +1,8 @@
+import { useEffect } from "react";
+import { usePrevious } from "react-use";
+import _ from "underscore";
+
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import type {
   Card,
   CardId,
@@ -316,3 +321,30 @@ export const {
     getCardDashboards,
   },
 } = cardApi;
+
+export function useMultipleCardQueries(cardIds: CardId[]) {
+  const dispatch = useDispatch();
+  const previousCardIds = usePrevious(cardIds);
+
+  const results = useSelector(state => {
+    const rtkQueryCache = state["metabase-api"].queries;
+    return Object.fromEntries(
+      cardIds.map(cardId => [
+        cardId,
+        rtkQueryCache[`getCardQuery({"cardId":${cardId}})`]?.data,
+      ]),
+    );
+  });
+
+  useEffect(() => {
+    if (!_.isEqual(previousCardIds, cardIds)) {
+      cardIds.forEach(cardId => {
+        // TODO Unsubscribe on unmount
+        // https://redux-toolkit.js.org/rtk-query/api/created-api/endpoints#description
+        dispatch(cardApi.endpoints.getCardQuery.initiate({ cardId }));
+      });
+    }
+  }, [cardIds, previousCardIds, dispatch]);
+
+  return results;
+}
