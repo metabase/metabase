@@ -3,6 +3,6 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { FixSqlButton } from "./components/FixSqlButton";
 
-if (hasPremiumFeature("metabot_v3")) {
+if (hasPremiumFeature("ai_sql_fixer")) {
   PLUGIN_AI_SQL_FIXER.FixSqlButton = FixSqlButton;
 }
