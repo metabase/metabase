@@ -1,15 +1,11 @@
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
+import type Question from "metabase-lib/v1/Question";
 
-import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
+import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 
-HeaderCollectionBadge.propTypes = {
-  question: PropTypes.object.isRequired,
-};
-
-export function HeaderCollectionBadge({ question }) {
+export function HeaderCollectionBadge({ question }: { question: Question }) {
   const { collection } = question.card();
   const icon = question.type();
   return (

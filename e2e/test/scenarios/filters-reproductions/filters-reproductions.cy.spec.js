@@ -221,10 +221,9 @@ describe("issue 18770", () => {
     H.popover().within(() => {
       cy.findByText("Filter by this value").should("be.visible");
       cy.findAllByRole("button")
-        .should("have.length", 5)
+        .should("have.length", 6)
         .and("contain", "See these Orders")
-        // TODO fix this drill thru and re-enable this check (metabase#52236)
-        // .and("contain", "Break out by")
+        .and("contain", "Break out by")
         .and("contain", "<")
         .and("contain", ">")
         .and("contain", "=")
