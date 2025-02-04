@@ -39,12 +39,6 @@
              (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
                     (into {} table))))))))
 
-
-(mt/dataset metabase.sync.sync-metadata.tables-test/db-with-some-cruft
-  (t2/update! :model/Database :id (mt/id) {:settings {:auto_cruft_tables [".*"]}})
-  (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
-         (into {} table))))
-
 (deftest retire-tables-test
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"
     (mt/with-temp [:model/Database db {}
@@ -89,7 +83,7 @@
 (deftest auto-cruft-all-tables-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
-                                       :settings {:auto_cruft_tables [".*"]}}]
+                                       :settings {:auto-cruft-tables [".*"]}}]
       (sync-metadata/sync-db-metadata! db)
       (is (= #{:cruft}
              (t2/select-fn-set :visibility_type
@@ -100,7 +94,7 @@
 (deftest auto-cruft-employee-table-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
-                                       :settings {:auto_cruft_tables ["employees"]}}]
+                                       :settings {:auto-cruft-tables ["employees"]}}]
       (sync-metadata/sync-db-metadata! db)
       (is (= #{["employees" :cruft]
                ["transactions" nil]}
@@ -109,7 +103,7 @@
 (deftest auto-cruft-tables-with-an-l-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
-                                       :settings {:auto_cruft_tables ["l"]}}]
+                                       :settings {:auto-cruft-tables ["l"]}}]
       (sync-metadata/sync-db-metadata! db)
       (is (= #{["employees" :cruft]
                ["transactions" nil]}
@@ -118,7 +112,7 @@
 (deftest auto-cruft-tables-with-an-l-or-a-y-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
-                                       :settings {:auto_cruft_tables ["l" "y"]}}]
+                                       :settings {:auto-cruft-tables ["l" "y"]}}]
       (sync-metadata/sync-db-metadata! db)
       (is (= #{["employees" :cruft]
                ["transactions" nil]}
