@@ -1675,7 +1675,7 @@
                                          {:database (mt/id)
                                           :native {:query "select category_id, array_agg(name)
                                                            from venues
-                                                           group by 1 
+                                                           group by 1
                                                            order by 1 asc
                                                            limit 2;"}
                                           :type "native"})]
