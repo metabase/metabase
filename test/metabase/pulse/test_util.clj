@@ -73,7 +73,7 @@
      ~@body))
 
 (def png-attachment
-  {:type         :inline
+{:type         :inline
    :content-id   true
    :content-type "image/png"
    :content      java.net.URL})

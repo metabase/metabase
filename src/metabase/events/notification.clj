@@ -10,11 +10,13 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(derive :metabase/event ::notification)
+(derive ::notification-event :metabase/event)
+(derive :event/notification-send-failed ::notification-event)
 
 (def ^:private supported-topics #{:event/user-invited
                                   :event/alert-create
-                                  :event/slack-token-invalid})
+                                  :event/slack-token-invalid
+                                  :event/notification-send-failed})
 
 (def ^:private hydrate-transformer
   (mtx/transformer
@@ -50,6 +52,8 @@
 (defn maybe-hydrate-event-info
   "Hydrate event-info if the topic has a schema."
   [topic event-info]
+  (def topic topic)
+  (def event-info event-info)
   (cond->> event-info
     (some? (events/topic->schema topic))
     (hydrate! (events/topic->schema topic))))
@@ -78,6 +82,7 @@
         (doseq [notification notifications]
           (notification/send-notification! (assoc notification :payload {:event_info  (maybe-hydrate-event-info topic event-info)
                                                                          :event_topic topic})))))))
+(derive :metabase/event ::notification)
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]

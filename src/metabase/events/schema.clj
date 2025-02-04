@@ -28,6 +28,9 @@
 (def ^:private user-hydrate
   [:model/User :first_name :last_name :email])
 
+(def ^:private card-hydrate
+  [:model/Card :name :description])
+
 (let [default-schema (mc/schema
                       [:map {:closed true}
                        [:user-id  pos-int?]
@@ -179,6 +182,17 @@
                                         [:user-id [:maybe pos-int?]]
                                         [:model [:or :keyword :string]]])}))
 
+;; notification events
+
+(def ^:private notification-events
+  {:event/notification-send-failed (mc/schema
+                                    [:map
+                                     (-> [:creator_id pos-int?]
+                                         (with-hydrate :creator user-hydrate))
+                                     [:alert {:optional true}
+                                      [:map (-> [:card_id pos-int?]
+                                                (with-hydrate :card card-hydrate))]]])})
+
 (def topic->schema
   "Returns the schema for an event topic."
   (merge alert-schema
@@ -187,6 +201,7 @@
          dashboard-events-schemas
          database-events
          metric-related-schema
+         notification-events
          permission-failure-events
          pulse-schemas
          table-events

@@ -101,7 +101,23 @@
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{context.admin_email}}" :is_optional true}}
                                            {:type                 :notification-recipient/group
-                                            :permissions_group_id (:id (perms/admin-group))}]}]}]))
+                                            :permissions_group_id (:id (perms/admin-group))}]}]}
+          {:internal_id   "system-event/notification-send-failed"
+           :active        true
+           :payload_type  :notification/system-event
+           :subscriptions [{:type       :notification-subscription/system-event
+                            :event_name :event/notification-send-failed}]
+           :handlers      [{:active       true
+                            :channel_type :channel/email
+                            :channel_id   nil
+                            :template     {:name         "Notification Failed Email template"
+                                           :channel_type "channel/email"
+                                           :details      {:type "email/handlebars-resource"
+                                                          :subject "Your notification failed to send"
+                                                          :path "metabase/channel/email/notification_send_failed.hbs"
+                                                          :recipient-type "cc"}}
+                            :recipients   [{:type    :notification-recipient/template
+                                            :details {:pattern "{{payload.event_info.creator.email}}"}}]}]}]))
 
 (defn- cleanup-notification!
   [internal-id existing-row]

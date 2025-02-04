@@ -3,8 +3,10 @@
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.pulse.send :as pulse.send]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -118,3 +120,27 @@
                                                                                    [:timestamp :string]
                                                                                    [:message :string]]])}}
                       (t2/select-one :model/TaskHistory :task "channel-send"))))))))))
+
+(deftest notification-send-failed-send-email-test
+  (testing "if a notification fails to send, we send the creator an email"
+    (notification.tu/with-notification-testing-setup
+      (mt/with-temp
+        [:model/Card         {card-id :id}  {:dataset_query (mt/mbql-query orders {:limit 1})}
+         :model/Pulse        {pulse-id :id} {:name            "Test Pulse"
+                                             :alert_condition "rows"
+                                             :creator_id      (mt/user->id :crowberto)}
+         :model/PulseCard    _              {:pulse_id pulse-id
+                                             :card_id  card-id}
+         :model/PulseChannel _              {:pulse_id pulse-id
+                                             :channel_type "email"
+                                             :details      {:emails ["foo@metabase.com"]}}]
+        (let [original-payload @#'notification.payload/payload]
+          (with-redefs [notification.payload/payload (fn [x]
+                                                       (if (= {:payload_type :notification/card
+                                                               :id           pulse-id}
+                                                              (select-keys x [:payload_type :id]))
+                                                         (throw (Exception. "test-exception"))
+                                                         (original-payload x)))]
+            (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
+            #_(notification.tu/with-captured-channel-send!
+                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))))

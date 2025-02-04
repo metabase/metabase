@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.channel.core :as channel]
+   [metabase.events :as events]
    [metabase.models.setting :as setting]
    [metabase.models.task-history :as task-history]
    [metabase.notification.payload.core :as notification.payload]
@@ -150,6 +151,11 @@
             (log/infof "[Notification %d] Skipping" (:id notification-info))))))
     (catch Exception e
       (log/errorf e "[Notification %d] Failed to send" (:id notification-info))
+      ;; do not double firing in case there is a notification on the :event/notification-send-failed event
+      (if-not (and (= :notification/system-event (:payload_type notification-info))
+                   (= :event/notification-send-failed (-> notification-info :payload :event_topic)))
+        (events/publish-event! :event/notification-send-failed (assoc notification-info :error-message (ex-message e)))
+        (log/fatal e "There is something seriously wrong with the notification system, please investigate!"))
       (throw e)))
   nil)
 
