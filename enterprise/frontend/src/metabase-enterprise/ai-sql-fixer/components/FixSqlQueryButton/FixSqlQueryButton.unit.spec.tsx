@@ -1,12 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupErrorFixNativeQueryEndpoint,
   setupFixNativeQueryEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
+import { SAMPLE_METADATA, createQuery } from "metabase-lib/test-helpers";
 import type {
   DatasetError,
   DatasetErrorType,
@@ -16,7 +17,10 @@ import {
   createMockFixSqlQueryResponse,
   createMockSqlQueryFix,
 } from "metabase-types/api/mocks";
-import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import {
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { FixSqlQueryButton } from "./FixSqlQueryButton";
 
@@ -77,7 +81,9 @@ describe("FixSqlQueryButton", () => {
       }),
     });
 
-    await userEvent.click(await screen.findByText("Have Metabot fix it"));
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Have Metabot fix it/ }),
+    );
 
     const fixedQuery = getFixedQuery();
     expect(Lib.rawNativeQuery(fixedQuery)).toBe("SELECT * FROM ORDERS");
@@ -100,7 +106,9 @@ describe("FixSqlQueryButton", () => {
       }),
     });
 
-    await userEvent.click(await screen.findByText("Have Metabot fix it"));
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Have Metabot fix it/ }),
+    );
 
     const fixedQuery = getFixedQuery();
     expect(Lib.rawNativeQuery(fixedQuery)).toBe(
@@ -116,7 +124,9 @@ describe("FixSqlQueryButton", () => {
       }),
     });
 
-    expect(await screen.findByText("Metabot can't fix it")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Metabot can't fix it/ }),
+    ).toBeInTheDocument();
   });
 
   it("should show an error message when the endpoint returns an error", async () => {
@@ -125,6 +135,33 @@ describe("FixSqlQueryButton", () => {
       fixQueryResponse: undefined,
     });
 
-    expect(await screen.findByText("Metabot can't fix it")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Metabot can't fix it/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("should not prompt to a fix a non-native query", () => {
+    setup({ query: createQuery() });
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("should not prompt to fix a non-sql native query", () => {
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase({ engine: "mongo" })],
+    });
+    const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
+    const query = Lib.nativeQuery(SAMPLE_DB_ID, metadataProvider, "{}");
+    setup({ query });
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("should not prompt to a fix the query when there is an http error", () => {
+    setup({ queryError: { status: 500 } });
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("should not prompt to a fix the query for unrelated error types", () => {
+    setup({ queryErrorType: "missing-required-parameter" });
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });
