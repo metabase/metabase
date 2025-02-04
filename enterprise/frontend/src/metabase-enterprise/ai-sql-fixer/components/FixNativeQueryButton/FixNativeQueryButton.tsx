@@ -2,30 +2,25 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import type { FixNativeQueryButtonProps } from "metabase/plugins";
 import { Button, Icon } from "metabase/ui";
-import { useGetFixedSqlQuery } from "metabase-enterprise/api";
-import type * as Lib from "metabase-lib";
-import type { DatasetError } from "metabase-types/api";
+import { useGetFixedNativeQueryQuery } from "metabase-enterprise/api";
 
 import { getFixRequest, getFixedQuery } from "./utils";
 
-type MetabotFixSqlButtonProps = {
-  query: Lib.Query;
-  queryError: DatasetError;
-  onChange: (newQuery: Lib.Query) => void;
-};
-
-export function FixSqlButton({
+export function FixNativeQueryButton({
   query,
   queryError,
-  onChange,
-}: MetabotFixSqlButtonProps) {
+  onQueryFix,
+}: FixNativeQueryButtonProps) {
   const request = getFixRequest(query, queryError);
-  const { data, error, isFetching } = useGetFixedSqlQuery(request ?? skipToken);
+  const { data, error, isFetching } = useGetFixedNativeQueryQuery(
+    request ?? skipToken,
+  );
 
   const handleClick = () => {
     if (data) {
-      onChange(getFixedQuery(query, data.fixes));
+      onQueryFix(getFixedQuery(query, data.fixes));
     }
   };
 

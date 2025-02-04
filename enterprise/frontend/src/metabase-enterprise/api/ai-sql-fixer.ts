@@ -4,7 +4,7 @@ import { EnterpriseApi } from "./api";
 
 export const aiSqlFixerApi = EnterpriseApi.injectEndpoints({
   endpoints: builder => ({
-    getFixedSql: builder.query<AiFixSqlResponse, AiFixSqlRequest>({
+    getFixedNativeQuery: builder.query<AiFixSqlResponse, AiFixSqlRequest>({
       query: body => ({
         method: "POST",
         url: "/api/ee/ai-sql-fixer/fix",
@@ -14,4 +14,4 @@ export const aiSqlFixerApi = EnterpriseApi.injectEndpoints({
   }),
 });
 
-export const { useGetFixedSqlQuery } = aiSqlFixerApi;
+export const { useGetFixedNativeQueryQuery } = aiSqlFixerApi;

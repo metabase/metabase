@@ -8,8 +8,10 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/lib/engine";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_AI_SQL_FIXER } from "metabase/plugins";
+import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
+import { getIsResultDirty } from "metabase/query_builder/selectors";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
@@ -29,8 +31,6 @@ interface VisualizationErrorProps {
   question: Question;
   duration: number;
   error: DatasetError;
-  isResultDirty: boolean;
-  onUpdateQuestion: (newQuestion: Question) => void;
 }
 
 export function VisualizationError({
@@ -39,11 +39,19 @@ export function VisualizationError({
   question,
   duration,
   error,
-  isResultDirty,
-  onUpdateQuestion,
 }: VisualizationErrorProps) {
   const query = question.query();
+  const isResultDirty = useSelector(getIsResultDirty);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const dispatch = useDispatch();
+
+  const handleNativeQueryFix = (newQuery: Lib.Query) => {
+    const newQuestion = question.setQuery(newQuery);
+    dispatch(updateQuestion(newQuestion));
+    dispatch(
+      setUIControls({ isNativeEditorOpen: true, isNativeFixApplied: true }),
+    );
+  };
 
   const isNative = question && Lib.queryDisplayInfo(query).isNative;
   if (typeof error === "object" && error.status != null) {
@@ -128,12 +136,10 @@ export function VisualizationError({
               </ExternalLink>
             )}
             {!isResultDirty && (
-              <PLUGIN_AI_SQL_FIXER.FixSqlButton
+              <PLUGIN_AI_SQL_FIXER.FixNativeQueryButton
                 query={query}
                 queryError={error}
-                onChange={newQuery =>
-                  onUpdateQuestion(question.setQuery(newQuery))
-                }
+                onQueryFix={handleNativeQueryFix}
               />
             )}
           </Flex>
