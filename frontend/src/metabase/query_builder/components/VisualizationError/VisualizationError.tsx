@@ -49,7 +49,10 @@ export function VisualizationError({
     const newQuestion = question.setQuery(newQuery);
     dispatch(updateQuestion(newQuestion));
     dispatch(
-      setUIControls({ isNativeEditorOpen: true, isNativeFixApplied: true }),
+      setUIControls({
+        isNativeEditorOpen: true,
+        isNativeQueryFixApplied: true,
+      }),
     );
   };
 

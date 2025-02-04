@@ -50,7 +50,7 @@ export interface QueryBuilderUIControls {
   modal: QueryModalType | null;
   modalContext: TimelineEventId | null;
   dataReferenceStack: null;
-  isNativeFixApplied: boolean;
+  isNativeQueryFixApplied: boolean;
 }
 
 export interface QueryBuilderLoadingControls {
