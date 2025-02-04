@@ -63,7 +63,7 @@
 
   &[data-variant="subtle"] {
     &:hover {
-      color: alpha(var(--mb-color-brand), 0.88);
+      color: alpha(var(--mb-color-brand), 0.88) !important;
       background-color: transparent;
     }
 

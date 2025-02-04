@@ -7,3 +7,7 @@
 .root[data-size="lg"] {
   line-height: 1.5rem;
 }
+
+.root {
+  font-weight: inherit;
+}
