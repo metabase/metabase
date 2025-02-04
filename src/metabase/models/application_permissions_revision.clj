@@ -24,4 +24,4 @@
    (This is used by the permissions graph update logic that checks for changes since the original graph was fetched)."
   []
   (or (:id (t2/select-one [:model/ApplicationPermissionsRevision [:%max.id :id]]))
-    0))
+      0))
