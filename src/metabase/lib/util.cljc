@@ -281,9 +281,7 @@
     query
     (case (:type query)
       :native (native-query->pipeline query)
-      "native" (native-query->pipeline query)
-      :query  (mbql-query->pipeline query)
-      "query" (mbql-query->pipeline query))))
+      :query  (mbql-query->pipeline query))))
 
 (mu/defn canonical-stage-index :- [:int {:min 0}]
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on

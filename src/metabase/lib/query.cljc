@@ -103,7 +103,10 @@
 (defn- expand-stage [metadata-provider stage]
   (let [card-id (:source-card stage)
         card (when card-id (lib.metadata/card metadata-provider card-id))
-        expanded-query (some-> card :dataset-query lib.convert/->pMBQL (->> (query metadata-provider)))]
+        expanded-query (some-> card
+                               :dataset-query
+                               (->> (query metadata-provider))
+                               lib.convert/->pMBQL)]
     (stage-seq card-id expanded-query)))
 
 (defn- add-stage-dep [graph stage]
