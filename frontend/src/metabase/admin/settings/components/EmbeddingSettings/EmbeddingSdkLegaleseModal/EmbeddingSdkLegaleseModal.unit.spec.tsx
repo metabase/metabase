@@ -38,7 +38,7 @@ describe("EmbeddingSdkLegaleseModal", () => {
 
     expect(
       screen.getByRole("button", { name: "Agree and continue" }),
-    ).toHaveAttribute("data-balls", "true");
+    ).toHaveAttribute("data-loading", "true");
 
     jest.advanceTimersToNextTimer();
 

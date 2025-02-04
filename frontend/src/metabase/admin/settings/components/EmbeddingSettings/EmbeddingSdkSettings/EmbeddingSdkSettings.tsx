@@ -213,7 +213,11 @@ export function EmbeddingSdkSettings({
             <SettingTextInput
               id={sdkOriginsSetting.key}
               setting={sdkOriginsSetting}
-              onClick={showSdkEmbedTerms ? openLegaleseModal : undefined}
+              onClick={
+                isEmbeddingSdkEnabled && showSdkEmbedTerms
+                  ? openLegaleseModal
+                  : undefined
+              }
               onChange={handleChangeSdkOrigins}
               type="text"
               disabled={!canEditSdkOrigins}
