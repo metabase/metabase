@@ -336,16 +336,15 @@
                             `lib.metadata.protocols/database
                             `UncachedApplicationDatabaseMetadataProvider)
                     {})))
-  (let [result (t2/select-one :metadata/database database-id)
-        map-version (into {} result)]
-    (assoc map-version :native-permissions
-           (if (= :query-builder-and-native
-                  (perms/full-db-permission-for-user
-                   api/*current-user-id*
-                   :perms/create-queries
-                   database-id))
-             :write
-             :none))))
+  (some-> (t2/select-one :metadata/database database-id)
+          (assoc :native-permissions
+                 (if (= :query-builder-and-native
+                        (perms/full-db-permission-for-user
+                         api/*current-user-id*
+                         :perms/create-queries
+                         database-id))
+                   :write
+                   :none))))
 
 (defn- metadatas [database-id metadata-type ids]
   (let [database-id-key (case metadata-type
