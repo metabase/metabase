@@ -3,15 +3,15 @@ import * as Lib from "metabase-lib";
 import type {
   DatasetError,
   DatasetErrorType,
-  FixNativeQueryRequest,
-  NativeQueryFix,
+  FixSqlQueryRequest,
+  SqlQueryFix,
 } from "metabase-types/api";
 
 export function getFixRequest(
   query: Lib.Query,
   queryError: DatasetError,
   queryErrorType: DatasetErrorType | undefined,
-): FixNativeQueryRequest | undefined {
+): FixSqlQueryRequest | undefined {
   if (typeof queryError !== "string" || queryErrorType !== "invalid-query") {
     return;
   }
@@ -33,7 +33,7 @@ export function getFixRequest(
   };
 }
 
-export function getFixedQuery(query: Lib.Query, fixes: NativeQueryFix[]) {
+export function getFixedQuery(query: Lib.Query, fixes: SqlQueryFix[]) {
   const sql = Lib.rawNativeQuery(query);
   const sqlLines = sql.split("\n");
   const newSqlLines = fixes.reduce((result, fix) => {

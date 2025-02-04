@@ -2,20 +2,20 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import type { FixNativeQueryButtonProps } from "metabase/plugins";
+import type { FixSqlQueryButtonProps } from "metabase/plugins";
 import { Button, Icon } from "metabase/ui";
-import { useGetFixedNativeQueryQuery } from "metabase-enterprise/api";
+import { useGetFixedSqlQueryQuery } from "metabase-enterprise/api";
 
 import { getFixRequest, getFixedQuery } from "./utils";
 
-export function FixNativeQueryButton({
+export function FixSqlQueryButton({
   query,
   queryError,
   queryErrorType,
   onQueryFix,
-}: FixNativeQueryButtonProps) {
+}: FixSqlQueryButtonProps) {
   const request = getFixRequest(query, queryError, queryErrorType);
-  const { data, error, isFetching } = useGetFixedNativeQueryQuery(
+  const { data, error, isFetching } = useGetFixedSqlQueryQuery(
     request ?? skipToken,
   );
 
@@ -34,7 +34,7 @@ export function FixNativeQueryButton({
       loading: true,
       children: t`Trying to find a fix`,
     }))
-    .with({ data: P.nonNullable, error: P.nullish }, () => ({
+    .with({ data: { fixes: [P._, ...P.array()] }, error: P.nullish }, () => ({
       leftIcon: <Icon name="metabot" />,
       children: t`Have Metabot fix it`,
     }))

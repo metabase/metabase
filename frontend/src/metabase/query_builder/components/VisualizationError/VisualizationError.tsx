@@ -141,7 +141,7 @@ export function VisualizationError({
               </ExternalLink>
             )}
             {!isResultDirty && (
-              <PLUGIN_AI_SQL_FIXER.FixNativeQueryButton
+              <PLUGIN_AI_SQL_FIXER.FixSqlQueryButton
                 query={query}
                 queryError={error}
                 queryErrorType={errorType}
