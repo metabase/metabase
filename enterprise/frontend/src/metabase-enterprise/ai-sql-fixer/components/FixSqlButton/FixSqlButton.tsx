@@ -2,15 +2,12 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import { getEngineNativeType } from "metabase/lib/engine";
-import { Button } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import { useGetFixedSqlQuery } from "metabase-enterprise/api";
-import * as Lib from "metabase-lib";
-import type {
-  AiFixSqlRequest,
-  AiSqlFix,
-  DatasetError,
-} from "metabase-types/api";
+import type * as Lib from "metabase-lib";
+import type { DatasetError } from "metabase-types/api";
+
+import { getFixRequest, getFixedQuery } from "./utils";
 
 type MetabotFixSqlButtonProps = {
   query: Lib.Query;
@@ -23,9 +20,8 @@ export function FixSqlButton({
   queryError,
   onChange,
 }: MetabotFixSqlButtonProps) {
-  const request = getRequest(query, queryError);
+  const request = getFixRequest(query, queryError);
   const { data, error, isFetching } = useGetFixedSqlQuery(request ?? skipToken);
-  const isDisabled = error != null || isFetching;
 
   const handleClick = () => {
     if (data) {
@@ -37,49 +33,20 @@ export function FixSqlButton({
     return null;
   }
 
-  return (
-    <Button loading={isFetching} disabled={isDisabled} onClick={handleClick}>
-      {match({ data, error, isFetching })
-        .with({ isFetching: true }, () => null)
-        .with({ error: P.nullish }, () => t`Have Metabot fix it`)
-        .otherwise(() => t`Metabot can't fix it`)}
-    </Button>
-  );
-}
+  const props = match({ data, error, isFetching })
+    .with({ isFetching: true }, () => ({
+      loading: true,
+      children: t`Trying to find a fix`,
+    }))
+    .with({ data: P.nonNullable, error: P.nullish }, () => ({
+      leftIcon: <Icon name="metabot" />,
+      children: t`Have Metabot fix it`,
+    }))
+    .otherwise(() => ({
+      disabled: true,
+      leftIcon: <Icon name="metabot" />,
+      children: t`Metabot can't fix it`,
+    }));
 
-function getRequest(
-  query: Lib.Query,
-  queryError: DatasetError,
-): AiFixSqlRequest | undefined {
-  if (typeof queryError !== "string") {
-    return;
-  }
-
-  const queryInfo = Lib.queryDisplayInfo(query);
-  if (!queryInfo.isNative) {
-    return;
-  }
-
-  const engine = Lib.engine(query);
-  const engineType = engine && getEngineNativeType(engine);
-  if (engineType !== "sql") {
-    return;
-  }
-
-  return {
-    query: Lib.toLegacyQuery(query),
-    error_message: queryError,
-  };
-}
-
-function getFixedQuery(query: Lib.Query, fixes: AiSqlFix[]) {
-  const sql = Lib.rawNativeQuery(query);
-  const sqlLines = sql.split("\n");
-  const newSqlLines = fixes.reduce((result, fix) => {
-    const lineIndex = fix.line_number - 1;
-    result[lineIndex] = fix.fixed_sql;
-    return result;
-  }, sqlLines);
-  const newSql = newSqlLines.join("\n");
-  return Lib.withNativeQuery(query, newSql);
+  return <Button {...props} onClick={handleClick} />;
 }
