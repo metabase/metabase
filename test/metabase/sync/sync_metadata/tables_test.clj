@@ -80,14 +80,17 @@
         (is (= 100
                (t2/select-one-fn :estimated_row_count :model/Table (mt/id :venues))))))))
 
-(defmacro ^:private double [& body]
+(defmacro ^:private run-twice
+  "Run body twice. In this case, we are checking that creating and updating syncs the tables correctly w.r.t.
+  cruftiness."
+  [& body]
   `(do ~@body ~@body))
 
 (deftest auto-cruft-all-tables-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables [".*"]}}]
-      (double
+      (run-twice
        (sync-metadata/sync-db-metadata! db)
        (is (= #{:cruft}
               (t2/select-fn-set :visibility_type
@@ -99,7 +102,7 @@
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables ["employees"]}}]
-      (double
+      (run-twice
        (sync-metadata/sync-db-metadata! db)
        (is (= #{["employees" :cruft]
                 ["transactions" nil]}
@@ -109,7 +112,7 @@
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables ["l"]}}]
-      (double
+      (run-twice
        (sync-metadata/sync-db-metadata! db)
        (is (= #{["employees" :cruft]
                 ["transactions" nil]}
@@ -119,7 +122,7 @@
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables ["l" "y"]}}]
-      (double
+      (run-twice
        (sync-metadata/sync-db-metadata! db)
        (is (= #{["employees" :cruft]
                 ["transactions" nil]}
