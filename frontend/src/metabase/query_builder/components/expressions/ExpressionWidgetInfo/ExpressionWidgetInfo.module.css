@@ -1,0 +1,15 @@
+.InfoLink {
+  margin-left: 4px;
+  color: var(--mb-color-text-light);
+
+  &:hover,
+  &:focus {
+    color: var(--mb-color-brand);
+  }
+}
+
+.TooltipLabel {
+  display: inline-block;
+  max-width: 20.75rem;
+  white-space: normal;
+}
