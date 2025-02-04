@@ -3,6 +3,7 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.test :refer :all]
    [metabase.models.resolution]
+   [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]))
@@ -85,8 +86,8 @@
                       [:= :search_index.archived true]
                       [:>= [:cast :search_index.model_created_at :date] #t"2024-10-01"]
                       [:< [:cast :search_index.model_created_at :date] #t"2024-10-02"]
-                      ;; depends on whether :content-verification is enabled
-                      #_[:= :search_index.verified true]
+                      (when (premium-features/has-feature? :content-verification)
+                        [:= :search_index.verified true])
                       [:in :search_index.creator_id [123]]
                       [:or
                        [:= nil :search_index.dashboard_id]
