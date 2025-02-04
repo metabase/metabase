@@ -140,19 +140,19 @@
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."
   [card-id :- :int
-   query :- ::lib.schema/query
+   dataset-query :- ::lib.schema/query
    card-type :- ::lib.schema.metadata/card.type]
   (and (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-         (mr/validate ::lib.schema/query query))
-       (:database query)
-       (has-no-cycles? card-id query)
-       (boolean (can-run-method query card-type))))
+         (mr/validate ::lib.schema/query dataset-query))
+       (:database dataset-query)
+       (has-no-cycles? card-id dataset-query)
+       (boolean (can-run-method dataset-query card-type))))
 
 (defmulti can-save-method
   "Returns whether the query can be saved based on first stage :lib/type."
-  {:arglists '([query card-type])}
-  (fn [query _card-type]
-    (:lib/type (lib.util/query-stage query 0))))
+  {:arglists '([dataset-query card-type])}
+  (fn [dataset-query _card-type]
+    (:lib/type (lib.util/query-stage dataset-query 0))))
 
 (defmethod can-save-method :default
   [_query _card-type]
@@ -161,25 +161,25 @@
 (mu/defn can-save :- :boolean
   "Returns whether `query` for a card of `card-type` can be saved."
   [card-id :- :int
-   query :- ::lib.schema/query
+   dataset-query :- ::lib.schema/query
    card-type :- ::lib.schema.metadata/card.type]
-  (and (lib.metadata/editable? query)
-       (can-run card-id query card-type)
-       (boolean (can-save-method query card-type))))
+  (and (lib.metadata/editable? dataset-query)
+       (can-run card-id dataset-query card-type)
+       (boolean (can-save-method dataset-query card-type))))
 
 (mu/defn can-preview :- :boolean
   "Returns whether the query can be previewed.
 
   See [[metabase.lib.js/can-preview]] for how this differs from [[can-run]]."
   [card-id :- :int
-   query :- ::lib.schema/query]
-  (and (can-run card-id query "question")
+   dataset-query :- ::lib.schema/query]
+  (and (can-run card-id dataset-query "question")
        ;; Either it contains no expressions with `:offset`, or there is at least one order-by.
        (every? (fn [stage]
                  (boolean
                   (or (seq (:order-by stage))
                       (not (lib.util.match/match-one (:expressions stage) :offset)))))
-               (:stages query))))
+               (:stages dataset-query))))
 
 (defn add-types-to-fields
   "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on pmbql fields.
@@ -259,22 +259,22 @@
   (query-from-legacy-query metadata-providerable legacy-query))
 
 (defmethod query-method :dispatch-type/map
-  [metadata-providerable query]
-  (query-method metadata-providerable (assoc (lib.convert/->pMBQL query) :lib/type :mbql/query)))
+  [metadata-providerable dataset-query]
+  (query-method metadata-providerable (assoc (lib.convert/->pmbql dataset-query) :lib/type :mbql/query)))
 
 ;;; this should already be a query in the shape we want but:
 ;; - let's make sure it has the database metadata that was passed in
 ;; - fill in field refs with metadata (#33680)
 ;; - fill in top expression refs with metadata
 (defmethod query-method :mbql/query
-  [metadata-providerable {converted? :lib.convert/converted? :as query}]
+  [metadata-providerable {converted? :lib.convert/converted? :as dataset-query}]
   (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
-        query (-> query
-                  (assoc :lib/metadata metadata-provider)
-                  (dissoc :lib.convert/converted?)
-                  lib.normalize/normalize)
-        stages (:stages query)]
-    (cond-> query
+        dataset-query (-> dataset-query
+                          (assoc :lib/metadata metadata-provider)
+                          (dissoc :lib.convert/converted?)
+                          lib.normalize/normalize)
+        stages (:stages dataset-query)]
+    (cond-> dataset-query
       converted?
       (assoc
        :stages
@@ -288,7 +288,7 @@
                      (let [found-ref (try
                                        (m/remove-vals
                                         #(= :type/* %)
-                                        (-> (lib.expression/expression-ref query stage-number expression-name)
+                                        (-> (lib.expression/expression-ref dataset-query stage-number expression-name)
                                             second
                                             (select-keys [:base-type :effective-type])))
                                        (catch #?(:clj Exception :cljs :default) _
@@ -303,8 +303,6 @@
   (query-with-stages metadata-providerable
                      [{:lib/type     :mbql.stage/mbql
                        :source-table (u/the-id table-metadata)}]))
-
-(declare query)
 
 (defn- metric-query
   [metadata-providerable card-metadata]
