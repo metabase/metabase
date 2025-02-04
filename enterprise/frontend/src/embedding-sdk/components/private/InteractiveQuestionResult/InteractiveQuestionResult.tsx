@@ -92,7 +92,9 @@ export const InteractiveQuestionResult = ({
       <Stack className={InteractiveQuestionS.TopBar} spacing="sm" p="md">
         <Group position="apart" align="flex-end">
           <Group spacing="xs">
-            <InteractiveQuestion.BackButton />
+            <Box mr="sm">
+              <InteractiveQuestion.BackButton />
+            </Box>
             <ResultTitle title={title} withResetButton={withResetButton} />
           </Group>
           {showSaveButton && (
@@ -102,8 +104,9 @@ export const InteractiveQuestionResult = ({
         <Group
           position="apart"
           p="sm"
-          bg="var(--mb-color-background-disabled)"
+          bg="var(--mb-color-bg-sdk-question-toolbar)"
           style={{ borderRadius: "0.5rem" }}
+          data-testid="interactive-question-result-toolbar"
         >
           <Group spacing="xs">
             {isEditorOpen ? (
