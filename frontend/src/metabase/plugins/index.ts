@@ -6,7 +6,6 @@ import React, {
   type SetStateAction,
 } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -39,6 +38,7 @@ import type { MetabotContext } from "metabase/metabot";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { GroupProps, IconName, IconProps } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -54,6 +54,8 @@ import type {
   Dashboard,
   Database as DatabaseType,
   Dataset,
+  DatasetError,
+  DatasetErrorType,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -573,6 +575,22 @@ const defaultMetabotContextValue: MetabotContext = {
   getChatContext: () => ({}) as any,
   registerChatContextProvider: () => () => {},
 };
+
+export type FixNativeQueryButtonProps = {
+  query: Lib.Query;
+  queryError: DatasetError;
+  queryErrorType: DatasetErrorType | undefined;
+  onQueryFix: (newQuery: Lib.Query) => void;
+};
+
+export type PluginAiSqlFixer = {
+  FixNativeQueryButton: ComponentType<FixNativeQueryButtonProps>;
+};
+
+export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
+  FixNativeQueryButton: PluginPlaceholder,
+};
+
 export const PLUGIN_METABOT = {
   Metabot: () => null as React.ReactElement | null,
   defaultMetabotContextValue,

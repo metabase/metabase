@@ -132,6 +132,7 @@ export const createMockTokenFeatures = (
   serialization: false,
   cache_preemptive: false,
   metabot_v3: false,
+  ai_sql_fixer: false,
   ...opts,
 });
 

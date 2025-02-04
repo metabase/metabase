@@ -6,7 +6,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.util :as driver.u]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util.malli.schema :as ms]))
 
@@ -20,9 +19,9 @@
                                      [:error_message :string]]]
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-    (let [driver (driver.u/database->driver (:database query))
-          compiled (qp.compile/compile-with-inline-parameters query)]
-      (-> (metabot-v3.client/fix-sql {:sql (:query compiled)
+    (let [sql    (-> query :native :query)
+          driver (driver.u/database->driver (:database query))]
+      (-> (metabot-v3.client/fix-sql {:sql sql
                                       :dialect driver
                                       :error_message error_message
                                       :schema_ddl ""})

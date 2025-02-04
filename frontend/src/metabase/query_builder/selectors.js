@@ -764,6 +764,11 @@ const getNativeEditorSelectedRange = createSelector(
   uiControls => uiControls && uiControls.nativeEditorSelectedRange,
 );
 
+export const getisNativeQueryFixApplied = createSelector(
+  [getUiControls],
+  uiControls => uiControls && uiControls.isNativeQueryFixApplied,
+);
+
 export const getIsTimeseries = createSelector(
   [getVisualizationSettings],
   settings => settings && isTimeseries(settings),
