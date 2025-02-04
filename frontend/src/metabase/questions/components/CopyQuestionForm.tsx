@@ -49,13 +49,15 @@ export const CopyQuestionForm = ({
   onSaved,
   model,
 }: CopyQuestionFormProps) => {
-  const computedInitialValues = useMemo<CopyQuestionProperties>(
-    () => ({
+  const computedInitialValues = useMemo<CopyQuestionProperties>(() => {
+    const name = truncateNameToLimit(initialValues.name ?? "");
+
+    return {
       ...QUESTION_SCHEMA.getDefault(),
       ...initialValues,
-    }),
-    [initialValues],
-  );
+      name,
+    };
+  }, [initialValues]);
 
   const handleDuplicate = async (vals: CopyQuestionProperties) => {
     const newQuestion = await onSubmit(vals);
@@ -76,7 +78,7 @@ export const CopyQuestionForm = ({
         <FormTextInput
           name="name"
           label={t`Name`}
-          placeholder={t`What is the name of your dashboard?`}
+          placeholder={t`What is the name of your question?`}
           autoFocus
           mb="1.5rem"
         />
@@ -113,3 +115,13 @@ export const CopyQuestionForm = ({
     </FormProvider>
   );
 };
+
+export function truncateNameToLimit(str: string) {
+  const postfix = " - " + t`Duplicate`;
+  const indexOfPostfix = str.lastIndexOf(postfix);
+  const cleanName = str.slice(0, indexOfPostfix);
+  const maxLength = QUESTION_NAME_MAX_LENGTH - postfix.length;
+  const truncatedName = cleanName.slice(0, maxLength);
+
+  return truncatedName + postfix;
+}
