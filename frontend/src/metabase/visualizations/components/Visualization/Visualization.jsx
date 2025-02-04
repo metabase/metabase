@@ -125,24 +125,14 @@ class Visualization extends PureComponent {
     // we need to store them in the state.
     if (
       !isSameSeries(props.rawSeries, state._lastProps?.rawSeries) ||
-      !equals(props.settings, state._lastProps?.settings) ||
-      !equals(props.timelineEvents, state._lastProps?.timelineEvents) ||
-      !equals(
-        props.selectedTimelineEventIds,
-        state._lastProps?.selectedTimelineEventIds,
-      )
+      !equals(props.settings, state._lastProps?.settings)
     ) {
       return {
         ...state,
         ...deriveStateFromProps(props),
 
         // Store last properties to compare with the next call
-        _lastProps: _.pick(props, [
-          "rawSeries",
-          "settings",
-          "timelineEvents",
-          "selectedTimelineEventIds",
-        ]),
+        _lastProps: _.pick(props, ["rawSeries", "settings"]),
       };
     }
 
