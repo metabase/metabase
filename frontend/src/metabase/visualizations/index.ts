@@ -143,6 +143,15 @@ export function getDefaultSize(display: VisualizationDisplay) {
   return visualization?.defaultSize;
 }
 
+export function getSettingNamesSupportingColumnReferences(
+  display: VisualizationDisplay,
+) {
+  const visualization = visualizations.get(display);
+  return Object.keys(visualization?.settings || {}).filter(
+    key => !!visualization?.settings[key].columnReferenceConfig,
+  );
+}
+
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
 export const extractRemappedColumns = (data: DatasetData) => {
   const cols: RemappingHydratedDatasetColumn[] = data.cols.map(col => ({

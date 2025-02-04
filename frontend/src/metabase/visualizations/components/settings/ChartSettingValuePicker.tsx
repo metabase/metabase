@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { useGetCardQuery, useListRecentsQuery } from "metabase/api";
+import { skipToken, useGetCardQuery, useListRecentsQuery } from "metabase/api";
 import {
   ActionIcon,
   Box,
@@ -10,15 +10,25 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import type { RecentItem } from "metabase-types/api";
+import type {
+  CardId,
+  Field,
+  RecentItem,
+  VizSettingColumnReference,
+} from "metabase-types/api";
 
-function QuestionColumns({ selected }: { selected: RecentItem }) {
-  const { data: card } = useGetCardQuery({ id: selected.id });
+function QuestionColumns({
+  columns,
+  onSelect,
+}: {
+  columns: Field[];
+  onSelect: (name: string) => void;
+}) {
   return (
     <ol>
-      {card?.result_metadata.map((m, i) => (
-        <li key={i} onClick={() => alert("Call antons thing")}>
-          {m.display_name}
+      {columns.map(col => (
+        <li key={col.name} onClick={() => onSelect(col.name)}>
+          {col.display_name}
         </li>
       ))}
     </ol>
@@ -28,9 +38,9 @@ function QuestionColumns({ selected }: { selected: RecentItem }) {
 function RecentsList({
   onSelectQuestion,
 }: {
-  onSelectQuestion: (question: any) => void;
+  onSelectQuestion: (cardId: CardId) => void;
 }) {
-  const { data: recents, isLoading } = useListRecentsQuery();
+  const { data: recents = [], isLoading } = useListRecentsQuery();
 
   function questionsOnly(recent: RecentItem) {
     return recent.model === "card";
@@ -42,22 +52,32 @@ function RecentsList({
         <Text>Loading...</Text>
       ) : (
         <Box>
-          {recents &&
-            recents.filter(questionsOnly).map(recent => (
-              <Text onClick={() => onSelectQuestion(recent)} key={recent.id}>
-                {recent.name}
-              </Text>
-            ))}
+          {recents.filter(questionsOnly).map(recent => (
+            <Text onClick={() => onSelectQuestion(recent.id)} key={recent.id}>
+              {recent.name}
+            </Text>
+          ))}
         </Box>
       )}
     </Box>
   );
 }
 
-export function ChartSettingValuePicker() {
-  const [selected, setSelected] = useState<RecentItem | undefined>();
+interface ChartSettingValuePickerProps {
+  value: VizSettingColumnReference | null | undefined;
+  onChange: (value: VizSettingColumnReference | null | undefined) => void;
+}
 
-  // how to fetch the columns for a question
+export function ChartSettingValuePicker({
+  value,
+  columnReferenceConfig,
+  onChange,
+}: ChartSettingValuePickerProps) {
+  const { data } = useGetCardQuery(
+    value?.card_id ? { id: value.card_id } : skipToken,
+  );
+
+  const selectedCard = value?.card_id && data ? data : null;
 
   return (
     <Popover position="bottom-end" trapFocus>
@@ -75,20 +95,35 @@ export function ChartSettingValuePicker() {
             </ActionIcon>
           }
         />
-        {selected && (
+        {selectedCard && (
           <Flex>
-            <Text>{selected.name}</Text>{" "}
+            <Text>{selectedCard.name}</Text>{" "}
             <ActionIcon ml="auto">
-              <Icon onClick={() => setSelected(undefined)} name="close" />
+              <Icon onClick={() => onChange(undefined)} name="close" />
             </ActionIcon>
           </Flex>
         )}
-        {selected ? (
+        {selectedCard ? (
           <Box ml="md">
-            <QuestionColumns selected={selected} />
+            <QuestionColumns
+              columns={selectedCard.result_metadata.filter(
+                columnReferenceConfig.isValidColumn,
+              )}
+              onSelect={columnName =>
+                onChange({
+                  type: "card",
+                  card_id: value?.card_id,
+                  column_name: columnName,
+                })
+              }
+            />
           </Box>
         ) : (
-          <RecentsList onSelectQuestion={setSelected} />
+          <RecentsList
+            onSelectQuestion={cardId =>
+              onChange({ type: "card", card_id: cardId, column_name: "" })
+            }
+          />
         )}
       </Popover.Dropdown>
     </Popover>

@@ -49,7 +49,7 @@ import {
   isYAxisUnpinFromZeroValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isNumeric, isString } from "metabase-lib/v1/types/utils/isa";
 
 export const getSeriesDisplays = (transformedSeries, settings) => {
   return transformedSeries.map(single => settings.series(single).display);
@@ -671,6 +671,9 @@ export const GRAPH_AXIS_SETTINGS = {
     getProps: series => ({
       placeholder: getDefaultDimensionLabel(series),
     }),
+    columnReferenceConfig: {
+      isValidColumn: isString,
+    },
   },
   "graph.y_axis.labels_enabled": {
     section: t`Axes`,

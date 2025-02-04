@@ -2,6 +2,7 @@ import { useState } from "react";
 import _ from "underscore";
 
 import { TextInput } from "metabase/ui";
+import { isVizSettingColumnReference } from "metabase-types/guards";
 
 import { ChartSettingValuePicker } from "./ChartSettingValuePicker";
 
@@ -17,6 +18,7 @@ export const ChartSettingInput = ({
   onChange,
   placeholder,
   id,
+  columnReferenceConfig,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState(value);
 
@@ -25,15 +27,27 @@ export const ChartSettingInput = ({
       id={id}
       data-testid={id}
       placeholder={placeholder}
-      value={inputValue}
+      disabled={isVizSettingColumnReference(value)}
+      value={
+        isVizSettingColumnReference(value)
+          ? `${value.column_name} (card ${value.card_id})`
+          : String(inputValue)
+      }
       onChange={e => setInputValue(e.target.value)}
       onBlur={() => {
         if (inputValue !== (value || "")) {
           onChange(inputValue);
         }
       }}
-      // TODO - only show if setting accepts a reference value
-      rightSection={<ChartSettingValuePicker />}
+      rightSection={
+        !!columnReferenceConfig && (
+          <ChartSettingValuePicker
+            value={isVizSettingColumnReference(value) ? value : undefined}
+            columnReferenceConfig={columnReferenceConfig}
+            onChange={onChange}
+          />
+        )
+      }
     />
   );
 };

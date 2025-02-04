@@ -2,6 +2,7 @@ import { type ChangeEvent, useState } from "react";
 import _ from "underscore";
 
 import { TextInput } from "metabase/ui";
+import { isVizSettingColumnReference } from "metabase-types/guards";
 
 import { ChartSettingValuePicker } from "./ChartSettingValuePicker";
 import type { ChartSettingWidgetProps } from "./types";
@@ -41,6 +42,7 @@ export const ChartSettingInputNumeric = ({
   options,
   id,
   getDefault,
+  columnReferenceConfig,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
   const defaultValueProps = getDefault ? { defaultValue: getDefault() } : {};
@@ -52,7 +54,12 @@ export const ChartSettingInputNumeric = ({
       placeholder={placeholder}
       type="text"
       error={inputValue && isNaN(Number(inputValue))}
-      value={String(inputValue)}
+      disabled={isVizSettingColumnReference(value)}
+      value={
+        isVizSettingColumnReference(value)
+          ? `${value.column_name} (card ${value.card_id})`
+          : String(inputValue)
+      }
       onChange={(e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.value.split("").every(ch => ALLOWED_CHARS.has(ch))) {
           setInputValue(e.target.value);
@@ -74,8 +81,15 @@ export const ChartSettingInputNumeric = ({
           setInputValue(String(num));
         }
       }}
-      // TODO - only show if setting accepts a reference value
-      rightSection={<ChartSettingValuePicker />}
+      rightSection={
+        !!columnReferenceConfig && (
+          <ChartSettingValuePicker
+            value={isVizSettingColumnReference(value) ? value : undefined}
+            columnReferenceConfig={columnReferenceConfig}
+            onChange={onChange}
+          />
+        )
+      }
     />
   );
 };

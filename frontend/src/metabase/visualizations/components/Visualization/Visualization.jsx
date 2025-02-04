@@ -1,10 +1,11 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { PureComponent, forwardRef } from "react";
+import { PureComponent, forwardRef, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useMultipleCardQueries } from "metabase/api";
 import { SmallGenericError } from "metabase/components/ErrorPages";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
@@ -17,6 +18,7 @@ import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getFont } from "metabase/styled-components/selectors";
 import {
   extractRemappings,
+  getSettingNamesSupportingColumnReferences,
   getVisualizationTransformed,
 } from "metabase/visualizations";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
@@ -35,6 +37,7 @@ import { isRegularClickAction } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/v1/utils";
+import { isVizSettingColumnReference } from "metabase-types/guards";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
@@ -565,7 +568,69 @@ export default _.compose(
     refreshMode: props => (props.isVisible ? "throttle" : "debounceLeading"),
   }),
 )(
-  forwardRef(function VisualizationForwardRef(props, ref) {
-    return <VisualizationMemoized {...props} forwardedRef={ref} />;
+  forwardRef(function VisualizationForwardRef(
+    { rawSeries, settings, ...props },
+    ref,
+  ) {
+    const [{ card }] = rawSeries ?? [{}];
+
+    const rawSettings = useMemo(() => {
+      if (settings) {
+        return settings;
+      }
+      return rawSeries[0]?.card?.visualization_settings;
+    }, [settings, rawSeries]);
+
+    const vizSettingsWithColumnReferences = useMemo(() => {
+      const candidates = getSettingNamesSupportingColumnReferences(
+        card.display,
+      );
+      const settingsWithReferences = candidates.filter(key =>
+        isVizSettingColumnReference(rawSettings[key]),
+      );
+      return _.pick(rawSettings, settingsWithReferences);
+    }, [card, rawSettings]);
+
+    const datasets = useMultipleCardQueries(
+      _.uniq(
+        Object.values(vizSettingsWithColumnReferences).map(ref => ref.card_id),
+      ),
+    );
+
+    const finalSettings = useMemo(() => {
+      const referencedValues = Object.fromEntries(
+        Object.entries(vizSettingsWithColumnReferences).map(([key, ref]) => {
+          const dataset = datasets[ref.card_id];
+          const columnIndex = dataset?.data?.cols.findIndex(
+            col => col.name === ref.column_name,
+          );
+          const value = dataset?.data?.rows?.[0]?.[columnIndex];
+          return [key, value];
+        }),
+      );
+      return {
+        ...rawSettings,
+        ...referencedValues,
+      };
+    }, [datasets, rawSettings, vizSettingsWithColumnReferences]);
+
+    const finalSeries = useMemo(() => {
+      const [first, ...rest] = rawSeries;
+      return [
+        {
+          ...first,
+          card: { ...first.card, visualization_settings: finalSettings },
+        },
+        ...rest,
+      ];
+    }, [rawSeries, finalSettings]);
+
+    return (
+      <VisualizationMemoized
+        {...props}
+        rawSeries={finalSeries}
+        forwardedRef={ref}
+      />
+    );
   }),
 );

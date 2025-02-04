@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { GoalValuePicker } from "metabase/visualizations/components/settings/GoalValuePicker";
 import { getDefaultGoalLabel } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type { ChartGoal } from "metabase/visualizations/shared/types/settings";
+import { isNumeric, isString } from "metabase-lib/v1/types/utils/isa";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { getStackOffset } from "./stacking";
@@ -36,11 +36,14 @@ export const GRAPH_GOAL_SETTINGS = {
   "graph.goal_value": {
     section: t`Display`,
     title: t`Goal value`,
-    widget: GoalValuePicker,
+    widget: "number",
     default: 0,
     getHidden: (_series: unknown, vizSettings: VisualizationSettings) =>
       vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
+    columnReferenceConfig: {
+      isValidColumn: isNumeric,
+    },
   },
   "graph.goal_label": {
     section: t`Display`,
@@ -50,5 +53,8 @@ export const GRAPH_GOAL_SETTINGS = {
     getHidden: (_series: unknown, vizSettings: VisualizationSettings) =>
       vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
+    columnReferenceConfig: {
+      isValidColumn: isString,
+    },
   },
 };
