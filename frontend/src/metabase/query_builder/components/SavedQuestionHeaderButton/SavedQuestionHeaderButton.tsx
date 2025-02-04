@@ -29,10 +29,7 @@ function SavedQuestionHeaderButton({
         data-testid="saved-question-header-title"
       />
 
-      <CollectionIcon
-        collection={question.card().collection}
-        question={question}
-      />
+      <CollectionIcon collection={question.collection()} question={question} />
     </Flex>
   );
 }

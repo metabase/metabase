@@ -3,7 +3,6 @@ import {
   type ComponentProps,
   Fragment,
   type ReactElement,
-  type ReactNode,
   isValidElement,
 } from "react";
 
@@ -37,7 +36,7 @@ function getBadgeInactiveColor({
 interface HeadBreadcrumbsProps {
   variant?: "head" | "subhead";
   parts: DataSourcePart[];
-  divider?: string | ReactNode;
+  divider?: string | ReactElement;
   inactiveColor?: string;
 }
 
@@ -76,10 +75,10 @@ export function HeadBreadcrumbs({
               </HeaderBadge>
             )}
             {!isLast &&
-              (typeof divider === "string" ? (
-                <Divider char={divider} />
-              ) : (
+              (isDividerReactElement(divider) ? (
                 divider
+              ) : (
+                <Divider char={divider} />
               ))}
           </Fragment>
         );
@@ -98,6 +97,12 @@ function Divider({ char = "/" }: { char?: string }) {
 
 function isDataSourceReactElement(part: DataSourcePart): part is ReactElement {
   return isValidElement(part);
+}
+
+function isDividerReactElement(
+  divider?: string | ReactElement,
+): divider is ReactElement {
+  return isValidElement(divider);
 }
 
 HeadBreadcrumbs.Badge = HeaderBadge;
