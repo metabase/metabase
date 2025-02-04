@@ -96,10 +96,10 @@
               {:details
                (assoc (:details database) :version (:version db-metadata))}))
 
-(defn- cruft-dependent-columns [table-name database]
+(defn- cruft-dependent-tables [table-name database]
   ;; if this is a crufty table, mark initial sync as complete since we'll be skipping the subsequent sync steps
   (let [is-crufty? (crufty/name? table-name {:patterns crufty-table-patterns
-                                             :pattern-strings (some-> database :settings :auto_cruft_tables)})]
+                                             :pattern-strings (some-> database :settings :auto-cruft-tables)})]
     {:initial_sync_status (if is-crufty? "complete" "incomplete")
      :visibility_type     (when is-crufty? :cruft)}))
 
@@ -109,7 +109,7 @@
   [database table]
   (t2/insert-returning-instance!
    :model/Table
-   (merge (cruft-dependent-columns (:name table) database)
+   (merge (cruft-dependent-tables (:name table) database)
           {:active                  true
            :db_id                   (:id database)
            :schema                  (:schema table)
@@ -127,7 +127,7 @@
                                          :name table-name
                                          :active false)]
     ;; if the table already exists but is marked *inactive*, mark it as *active*
-    (t2/update! :model/Table existing-id (assoc (cruft-dependent-columns (:name table) database) :active true))
+    (t2/update! :model/Table existing-id (assoc (cruft-dependent-tables (:name table) database) :active true))
     ;; otherwise create a new Table
     (create-table! database table)))
 
@@ -171,7 +171,7 @@
   (let [old-table               (select-keys metabase-table keys-to-update)
         new-table               (-> (zipmap keys-to-update (repeat nil))
                                     (merge table-metadata
-                                           (cruft-dependent-columns (:name table-metadata) metabase-database))
+                                           (cruft-dependent-tables (:name table-metadata) metabase-database))
                                     (select-keys keys-to-update))
         [_ changes _]           (data/diff old-table new-table)
         changes                 (cond-> changes
