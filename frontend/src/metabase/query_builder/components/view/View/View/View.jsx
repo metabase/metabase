@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 
+import { forwardRef } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -21,7 +22,7 @@ import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import * as Lib from "metabase-lib";
 
-import DatasetEditor from "../../../DatasetEditor";
+import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
 import ViewSidebar from "../../ViewSidebar";
@@ -36,7 +37,7 @@ import {
   QueryBuilderViewRoot,
 } from "./View.styled";
 
-const ViewInner = props => {
+const ViewInner = forwardRef(function _ViewInner(props, ref) {
   const {
     question,
     result,
@@ -93,7 +94,9 @@ const ViewInner = props => {
 
   // if we don't have a question at all or no databases then we are initializing, so keep it simple
   if (!question || !databases) {
-    return <LoadingAndErrorWrapper className={CS.fullHeight} loading />;
+    return (
+      <LoadingAndErrorWrapper className={CS.fullHeight} loading ref={ref} />
+    );
   }
 
   const query = question.query();
@@ -106,9 +109,10 @@ const ViewInner = props => {
   if ((isModel || isMetric) && queryBuilderMode === "dataset") {
     return (
       <>
-        {isModel && <DatasetEditor {...props} />}
+        {isModel && <DatasetEditor {...props} ref={ref} />}
         {isMetric && (
           <MetricEditor
+            ref={ref}
             question={question}
             result={result}
             rawSeries={rawSeries}
@@ -182,9 +186,8 @@ const ViewInner = props => {
     .with({ isShowingQuestionInfoSidebar: true }, () => 0)
     .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
     .otherwise(() => SIDEBAR_SIZES.NORMAL);
-
   return (
-    <div className={CS.fullHeight}>
+    <div className={CS.fullHeight} ref={ref}>
       <QueryBuilderViewRoot
         className={QueryBuilderS.QueryBuilder}
         data-testid="query-builder-root"
@@ -273,7 +276,7 @@ const ViewInner = props => {
       />
     </div>
   );
-};
+});
 
 const mapDispatchToProps = dispatch => ({
   onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
@@ -295,5 +298,5 @@ const mapDispatchToProps = dispatch => ({
 
 export const View = _.compose(
   ExplicitSize({ refreshMode: "debounceLeading" }),
-  connect(null, mapDispatchToProps),
+  connect(null, mapDispatchToProps, null, { forwardRef: true }),
 )(ViewInner);
