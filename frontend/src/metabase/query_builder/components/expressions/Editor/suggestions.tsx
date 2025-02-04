@@ -37,7 +37,7 @@ export type Shortcut = {
   action: () => void;
 };
 
-type SuggestOptions = Omit<
+export type SuggestOptions = Omit<
   SuggestArgs,
   "source" | "targetOffset" | "getColumnIcon"
 > & {
@@ -65,7 +65,11 @@ export function suggestions(options: SuggestOptions) {
   });
 }
 
-function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
+export function suggestFields({
+  query,
+  stageIndex,
+  expressionIndex,
+}: SuggestOptions) {
   const columns = Lib.expressionableColumns(
     query,
     stageIndex,
@@ -116,7 +120,7 @@ function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
   };
 }
 
-function suggestFunctions({
+export function suggestFunctions({
   startRule,
   query,
   metadata,
@@ -171,7 +175,7 @@ function suggestFunctions({
   };
 }
 
-function suggestAggregations({
+export function suggestAggregations({
   startRule,
   query,
   metadata,
@@ -232,19 +236,18 @@ function getPopular(startRule: string) {
   return null;
 }
 
-function suggestPopular({
+export function suggestPopular({
   startRule,
   query,
   reportTimezone,
   metadata,
 }: SuggestOptions) {
-  const database = getDatabase(query, metadata);
-
   const popular = getPopular(startRule);
   if (!popular) {
     return null;
   }
 
+  const database = getDatabase(query, metadata);
   const clauses = popular
     .map(name => MBQL_CLAUSES[name])
     .filter(isNotNull)
@@ -275,7 +278,7 @@ function suggestPopular({
   };
 }
 
-function suggestLiterals() {
+export function suggestLiterals() {
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
@@ -304,7 +307,7 @@ function suggestLiterals() {
   };
 }
 
-function suggestSegments({ query, stageIndex }: SuggestOptions) {
+export function suggestSegments({ query, stageIndex }: SuggestOptions) {
   const segments = Lib.availableSegments(query, stageIndex)?.map(segment => {
     const displayInfo = Lib.displayInfo(query, stageIndex, segment);
     return {
@@ -339,7 +342,11 @@ function suggestSegments({ query, stageIndex }: SuggestOptions) {
   };
 }
 
-function suggestMetrics({ startRule, query, stageIndex }: SuggestOptions) {
+export function suggestMetrics({
+  startRule,
+  query,
+  stageIndex,
+}: SuggestOptions) {
   const metrics = Lib.availableMetrics(query, stageIndex)?.map(metric => {
     const displayInfo = Lib.displayInfo(query, stageIndex, metric);
     return {
@@ -430,7 +437,7 @@ function expressionClauseCompletion(
   };
 }
 
-function suggestShortcuts(options: SuggestOptions) {
+export function suggestShortcuts(options: SuggestOptions) {
   const { shortcuts = [] } = options;
 
   const completions: Completion[] = shortcuts.map(shortcut => ({
