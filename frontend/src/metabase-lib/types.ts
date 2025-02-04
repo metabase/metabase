@@ -598,6 +598,11 @@ export type FilterDrillDetails = {
 
 export type PivotType = "category" | "location" | "time";
 
+export type PivotDrillDetails = {
+  pivotTypes: PivotType[];
+  stageIndex: number;
+};
+
 export interface ClickObjectDimension {
   value: RowValue;
   column: DatasetColumn;

@@ -8,6 +8,11 @@ title: Driver interface changelog
 
 - Added the multi-method `bad-connection-details` to allow mocking bad connection parameters for tests.
 
+- Added `driver/dynamic-database-types-lookup` and its `:postgres` implementation. The method generates map 
+  of `database_type` to `base_type`, for dynamic types, ie. those which are not covered 
+  by `sql-jdbc.sync/database-type->base-type`. Its original purpose was to enable mapping of user defined enums in
+  postgres to appropriate base type in results metadata.
+
 ## Metabase 0.52.0
 
 - The Docker image for Metabase 0.52.0 now uses Java 21 instead of Java 11. Please make sure to test your driver
