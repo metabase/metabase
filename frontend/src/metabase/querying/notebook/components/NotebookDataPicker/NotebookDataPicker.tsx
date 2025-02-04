@@ -210,6 +210,10 @@ function LegacyDataPicker({
    * this property will change the way icons are displayed in the data picker trigger,
    * so we need to remove it. Treating it as a table.
    */
+  const tableInfoWithTableIcon = tableInfo && {
+    ...tableInfo,
+    isModel: false,
+  };
   delete tableInfo?.isModel;
   const pickerInfo = table != null ? Lib.pickerInfo(query, table) : undefined;
 
@@ -220,7 +224,7 @@ function LegacyDataPicker({
       isInitiallyOpen={!table}
       triggerElement={
         <DataPickerTarget
-          tableInfo={tableInfo}
+          tableInfo={tableInfoWithTableIcon}
           placeholder={placeholder}
           isDisabled={isDisabled}
         />
