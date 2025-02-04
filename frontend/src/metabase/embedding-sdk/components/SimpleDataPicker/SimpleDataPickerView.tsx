@@ -93,7 +93,7 @@ export function SimpleDataPickerView({
                     />
                   }
                   label={option.name}
-                  onClick={() => onClick(option)}
+                  onClick={() => onClick(option.id)}
                   variant="default"
                 />
               );
