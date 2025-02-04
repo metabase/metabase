@@ -35,11 +35,6 @@
 (json/add-encoder Object (fn [obj json-generator]
                            (json/write-string json-generator (str obj))))
 
-(json/add-encoder
- (Class/forName  "[Ljava.lang.String;")
- (fn [string-arr json-generator]
-   (json/write-string json-generator (json/encode (vec string-arr)))))
-
 ;; Binary arrays ("[B") -- hex-encode their first four bytes, e.g. "0xC42360D7"
 (json/add-encoder
  (Class/forName "[B")
