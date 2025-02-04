@@ -26,7 +26,7 @@ export const EditorButton = ({
         data-active={isOpen}
         variant="default"
       >
-        <Icon name="pencil_lines" />
+        <Icon name="notebook" />
       </ActionIcon>
     )
   );
