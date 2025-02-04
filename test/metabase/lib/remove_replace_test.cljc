@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
-   [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -1147,7 +1146,7 @@
                     (map :alias))))))))
 
 (deftest ^:parallel replace-join-on-models-test
-  (testing "amgiguous model fields shouldn't get a join alias added incorrectly"
+  (testing "ambiguous model fields shouldn't get a join alias added incorrectly"
     (let [base-query {:lib/type :mbql/query
                       :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
                       :database (meta/id)
@@ -1160,16 +1159,18 @@
           [join] (lib/joins query)
           new-clause (lib.join/with-join-alias
                       (lib/join-clause product-card [(lib/= orders-id products-id)])
-                      "fake join alias")]
+                      "fake join alias")
+          new-query (lib/replace-clause query join new-clause)
+          [new-join] (lib/joins new-query)]
       (is (=? {:stages
                [{:joins
                  [{:conditions
                    [[:=
                      {}
                      [:field #(not (contains? % :join-alias)) "ID"]
-                     [:field {:join-alias (=?/same :join-alias)} any?]]]
-                   :alias (=?/same :join-alias)}]}]}
-              (lib/replace-clause query join new-clause))))))
+                     [:field {:join-alias (:alias new-join)} any?]]]
+                   :alias (:alias new-join)}]}]}
+              new-query)))))
 
 (deftest ^:parallel remove-first-in-long-series-of-join-test
   (testing "Recursive join removal (#35049)"
