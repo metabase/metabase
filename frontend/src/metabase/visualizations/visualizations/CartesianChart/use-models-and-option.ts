@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 
-import { skipToken, useGetCardQueryQuery } from "metabase/api";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
@@ -26,7 +25,7 @@ export function useModelsAndOption(
     rawSeries,
     series: transformedSeries,
     isPlaceholder,
-    settings: rawSettings,
+    settings,
     card,
     fontFamily,
     width,
@@ -59,54 +58,6 @@ export function useModelsAndOption(
   const hasTimelineEvents = timelineEvents
     ? timelineEvents.length !== 0
     : false;
-
-  const hasCardGoalLine =
-    typeof rawSettings["graph.goal_value"] === "object" &&
-    rawSettings["graph.goal_value"].type === "card";
-
-  const { data: goalQueryResults } = useGetCardQueryQuery(
-    // TODO don't run query if "graph.show_goal" is false
-    // TODO ensure it reruns when QB 🔄 button is clicked
-    hasCardGoalLine
-      ? {
-          cardId: rawSettings["graph.goal_value"]?.card_id,
-        }
-      : skipToken,
-  );
-
-  const goalLineValue = useMemo(() => {
-    if (!rawSettings["graph.goal_value"]) {
-      return;
-    }
-
-    if (hasCardGoalLine) {
-      if (!goalQueryResults) {
-        return;
-      }
-
-      const columnIndex = goalQueryResults.data.cols.findIndex(
-        col => col.name === rawSettings["graph.goal_value"].value_field,
-      );
-
-      if (columnIndex === -1) {
-        return;
-      }
-
-      return goalQueryResults.data.rows[0][columnIndex];
-    }
-
-    return rawSettings["graph.goal_value"];
-  }, [goalQueryResults, hasCardGoalLine, rawSettings]);
-
-  const settings = useMemo(() => {
-    if (hasCardGoalLine) {
-      return {
-        ...rawSettings,
-        "graph.goal_value": goalLineValue,
-      };
-    }
-    return rawSettings;
-  }, [hasCardGoalLine, rawSettings, goalLineValue]);
 
   const chartModel = useMemo(() => {
     let getModel;

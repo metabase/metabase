@@ -179,13 +179,11 @@ export interface ColumnSettings {
   [key: string]: any;
 }
 
-export type CardGoalValue = {
+export type VizSettingColumnReference = {
   type: "card";
   card_id: CardId;
-  value_field: string;
+  column_name: string;
 };
-
-export type GoalValue = number | CardGoalValue;
 
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
@@ -226,7 +224,7 @@ export type VisualizationSettings = {
   "graph.y_axis.max"?: number;
 
   // Goal
-  "graph.goal_value"?: GoalValue;
+  "graph.goal_value"?: number | VizSettingColumnReference;
   "graph.show_goal"?: boolean;
   "graph.goal_label"?: string;
 

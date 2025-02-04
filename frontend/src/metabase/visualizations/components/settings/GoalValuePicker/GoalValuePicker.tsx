@@ -10,12 +10,14 @@ import {
 import SelectButton from "metabase/core/components/SelectButton";
 import { Box, Radio, Select, Stack, Text } from "metabase/ui";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { CardGoalValue, GoalValue } from "metabase-types/api";
+import type { VizSettingColumnReference } from "metabase-types/api";
 
 import { ChartSettingInputNumeric } from "../ChartSettingInputNumeric";
 import type { ChartSettingWidgetProps } from "../types";
 
-type GoalValuePickerProps = ChartSettingWidgetProps<GoalValue>;
+type GoalValuePickerProps = ChartSettingWidgetProps<
+  number | VizSettingColumnReference
+>;
 
 type ValueType = "static" | "card";
 
@@ -71,8 +73,8 @@ export function GoalValuePicker({
 }
 
 interface CardPickerProps {
-  value: CardGoalValue | null | undefined;
-  onChange: (value: CardGoalValue) => void;
+  value: VizSettingColumnReference | null | undefined;
+  onChange: (value: VizSettingColumnReference) => void;
 }
 
 function CardPicker({ value, onChange }: CardPickerProps) {
@@ -94,17 +96,17 @@ function CardPicker({ value, onChange }: CardPickerProps) {
         </SelectButton>
         {card && (
           <Select
-            value={value?.value_field}
+            value={value?.column_name}
             data={fields.map(field => ({
               value: field.name,
               label: field.display_name,
             }))}
-            onChange={field => {
-              if (field) {
+            onChange={column_name => {
+              if (column_name) {
                 onChange({
                   type: "card",
                   card_id: value!.card_id!,
-                  value_field: field,
+                  column_name,
                 });
               }
             }}
@@ -120,7 +122,7 @@ function CardPicker({ value, onChange }: CardPickerProps) {
               : undefined
           }
           onChange={({ id }) => {
-            onChange({ type: "card", card_id: id, value_field: "" });
+            onChange({ type: "card", card_id: id, column_name: "" });
             close();
           }}
           onClose={close}
