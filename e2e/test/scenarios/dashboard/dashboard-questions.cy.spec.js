@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as S from "e2e/support/cypress_sample_instance_data";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
@@ -578,6 +578,7 @@ describe("Dashboard > Dashboard Questions", () => {
       // remove the card saved inside the dashboard
       H.editDashboard();
       H.dashboardCards().findByText("Total Orders").realHover();
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.icon("close").last().click();
       H.undoToast().findByText("Removed card");
       H.saveDashboard();

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { REVIEWS, REVIEWS_ID, ACCOUNTS_ID } = SAMPLE_DATABASE;
@@ -92,7 +92,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   });
 
   it("should display proper drills on cell click for query aggregated by category", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": REVIEWS_ID,
@@ -145,7 +145,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   });
 
   it("should display proper drills on cell click for query aggregated by date", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": REVIEWS_ID,
@@ -190,7 +190,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
 
   describe("native query", () => {
     it("should display proper drills on cell click for unaggregated query", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "table_drills",
           native: { query: "select * from reviews limit 3" },
@@ -276,7 +276,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     it("should display proper drills on cell click for query aggregated by category", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "table_drills",
           native: {
@@ -335,7 +335,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     it("should display proper drills on cell click for query aggregated by date", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "table_drills",
           native: {
@@ -386,6 +386,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills > nulls", ()
     const CANCELLED_AT_INDEX = 9;
 
     H.openTable({ table: ACCOUNTS_ID, limit: 1 });
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByRole("gridcell")
       .eq(CANCELLED_AT_INDEX)
       .should("have.text", "")
@@ -401,6 +402,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills > nulls", ()
       "have.text",
       "Canceled At is not empty",
     );
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByRole("gridcell")
       .eq(CANCELLED_AT_INDEX)
       .should("not.have.text", "");

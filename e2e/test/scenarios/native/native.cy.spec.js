@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   SAMPLE_DB_ID,
   USER_GROUPS,
@@ -178,7 +178,7 @@ describe("scenarios > question > native", () => {
       },
     };
 
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       H.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
@@ -365,7 +365,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       [USER_GROUPS.NOSQL_GROUP]: { root: "write" },
     });
 
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "Secret Orders",
         native: {
@@ -477,7 +477,7 @@ describe("scenarios > native question > data reference sidebar", () => {
   });
 
   it("should show models", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "Native Products Model",
         description: "A model of the Products table",

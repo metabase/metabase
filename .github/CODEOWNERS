@@ -12,7 +12,7 @@ frontend/src/metabase/ui @metabase/core-frontend-admin-webapp
 src/metabase/**/*permissions* @noahmoss
 src/metabase/integrations @noahmoss
 snowplow/* @metabase/data
-e2e/* @filiphric
+e2e @filiphric
 
 #
 # Backend modules <=> teams that own them
