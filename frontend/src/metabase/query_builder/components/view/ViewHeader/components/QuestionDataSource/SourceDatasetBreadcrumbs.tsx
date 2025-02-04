@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
@@ -11,13 +11,16 @@ import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 
 import { getQuestionIcon } from "./utils";
 
-interface Props {
-  divider: ReactNode;
+interface SourceDatasetBreadcrumbsProps {
+  divider?: ReactElement | string;
   question: Question;
   variant: "head" | "subhead";
 }
 
-export function SourceDatasetBreadcrumbs({ question, ...props }: Props) {
+export function SourceDatasetBreadcrumbs({
+  question,
+  ...props
+}: SourceDatasetBreadcrumbsProps) {
   const collectionId = question.collectionId();
 
   const { data: collection, isFetching } = useGetCollectionQuery(

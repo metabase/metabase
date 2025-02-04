@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 
 import type Question from "metabase-lib/v1/Question";
 
@@ -7,7 +7,7 @@ import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import { getDataSourceParts } from "./utils";
 
 interface Props {
-  divider: ReactNode;
+  divider?: ReactElement | string;
   question: Question;
   variant: "head" | "subhead";
   isObjectDetail?: boolean;
