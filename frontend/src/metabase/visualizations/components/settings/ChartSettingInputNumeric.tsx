@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import { TextInput } from "metabase/ui";
 
+import { ChartSettingValuePicker } from "./ChartSettingValuePicker";
 import type { ChartSettingWidgetProps } from "./types";
 
 const ALLOWED_CHARS = new Set([
@@ -73,6 +74,8 @@ export const ChartSettingInputNumeric = ({
           setInputValue(String(num));
         }
       }}
+      // TODO - only show if setting accepts a reference value
+      rightSection={<ChartSettingValuePicker />}
     />
   );
 };

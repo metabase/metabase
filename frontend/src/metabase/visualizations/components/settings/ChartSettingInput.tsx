@@ -3,6 +3,8 @@ import _ from "underscore";
 
 import { TextInput } from "metabase/ui";
 
+import { ChartSettingValuePicker } from "./ChartSettingValuePicker";
+
 interface ChartSettingInputProps {
   value: string;
   placeholder: string;
@@ -30,6 +32,8 @@ export const ChartSettingInput = ({
           onChange(inputValue);
         }
       }}
+      // TODO - only show if setting accepts a reference value
+      rightSection={<ChartSettingValuePicker />}
     />
   );
 };
