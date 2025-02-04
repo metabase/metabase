@@ -44,7 +44,7 @@ export function FixSqlButton({
     }))
     .otherwise(() => ({
       disabled: true,
-      leftIcon: <Icon name="metabot" />,
+      leftIcon: <Icon name="metabot_sad" />,
       children: t`Metabot can't fix it`,
     }));
 
