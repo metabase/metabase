@@ -53,6 +53,7 @@ oauth_config:
       - chat:write
       - chat:write.customize
       - chat:write.public
+      - groups:read
 ```
 
 The manifest just take cares of some settings for your app and helps speed things along.
@@ -83,7 +84,7 @@ In order to send subscriptions and alerts to private Slack channels, you must fi
 
 In Slack, go to the private channel and mention the Metabase app. For example, if you called your Slack app "Metabase", you'd just type `@Metabase`. Slack will ask you if you want to invite your app to your channel, which you should.
 
-Once your Metabase app is added to the private channel, you'll need to type out the private channel's name in the subscription or alert. Make sure to spell the channel's name correctly, or Metabase won't be able to send the notification.
+Once your Metabase app is added to the private channel you'll need to type out the private channel's name in the subscription or alert. Make sure to spell the channel's name correctly, or Metabase won't be able to send the notification.
 
 ## Further reading
 
