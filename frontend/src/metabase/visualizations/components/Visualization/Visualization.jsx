@@ -72,6 +72,35 @@ const mapStateToProps = state => ({
 
 const SMALL_CARD_WIDTH_THRESHOLD = 150;
 
+const isLoading = series => {
+  return !(
+    series &&
+    series.length > 0 &&
+    _.every(
+      series,
+      s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
+    )
+  );
+};
+
+const deriveStateFromProps = props => {
+  const transformed = props.rawSeries
+    ? getVisualizationTransformed(extractRemappings(props.rawSeries))
+    : null;
+
+  const series = transformed?.series;
+
+  const computedSettings = !isLoading(series)
+    ? getComputedSettingsForSeries(series)
+    : {};
+
+  return {
+    series,
+    computedSettings,
+    visualization: transformed?.visualization,
+  };
+};
+
 class Visualization extends PureComponent {
   constructor(props) {
     super(props);
@@ -86,26 +115,30 @@ class Visualization extends PureComponent {
       series: null,
       visualization: null,
       computedSettings: {},
-      ...this.transformPropsToState(props),
+      ...deriveStateFromProps(props),
     };
   }
 
-  componentDidUpdate(prevProps, prevState) {
+  static getDerivedStateFromProps(props, state) {
     if (
-      !isSameSeries(this.props.rawSeries, prevProps.rawSeries) ||
-      !equals(this.props.settings, prevProps.settings) ||
-      !equals(this.props.timelineEvents, prevProps.timelineEvents) ||
+      !isSameSeries(props.rawSeries, state._lastProps?.rawSeries) ||
+      !equals(props.settings, state._lastProps?.settings) ||
+      !equals(props.timelineEvents, state._lastProps?.timelineEvents) ||
       !equals(
-        this.props.selectedTimelineEventIds,
-        prevProps.selectedTimelineEventIds,
+        props.selectedTimelineEventIds,
+        state._lastProps?.selectedTimelineEventIds,
       )
     ) {
-      this.setState({
-        ...prevState,
-        ...this.transformPropsToState(this.props),
-      });
+      return {
+        _lastProps: props,
+        ...deriveStateFromProps(props),
+      };
     }
 
+    return null;
+  }
+
+  componentDidUpdate(prevProps, prevState) {
     if (!equals(this.getWarnings(prevProps, prevState), this.getWarnings())) {
       this.updateWarnings();
     }
@@ -142,38 +175,6 @@ class Visualization extends PureComponent {
       this.props.onUpdateWarnings(this.getWarnings() || []);
     }
   }
-
-  transformPropsToState(newProps) {
-    const transformed = newProps.rawSeries
-      ? getVisualizationTransformed(extractRemappings(newProps.rawSeries))
-      : null;
-    const series = transformed && transformed.series;
-    const visualization = transformed && transformed.visualization;
-    const computedSettings = !this.isLoading(series)
-      ? getComputedSettingsForSeries(series)
-      : {};
-
-    return {
-      hovered: null,
-      error: null,
-      genericError: null,
-      warnings: [],
-      series: series,
-      visualization: visualization,
-      computedSettings: computedSettings,
-    };
-  }
-
-  isLoading = series => {
-    return !(
-      series &&
-      series.length > 0 &&
-      _.every(
-        series,
-        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
-      )
-    );
-  };
 
   handleHoverChange = hovered => {
     if (hovered) {
@@ -356,7 +357,7 @@ class Visualization extends PureComponent {
     let error = this.props.error || this.state.error;
     let noResults = false;
     let isPlaceholder = false;
-    const loading = this.isLoading(series);
+    const loading = isLoading(series);
 
     // don't try to load settings unless data is loaded
     let settings = this.props.settings || this.state.computedSettings;
