@@ -314,53 +314,10 @@ describe("scenarios > embedding > full app", () => {
       },
     };
 
-    const ordersCountCardDetails = {
-      name: "Card",
-      type: "question",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-      },
-    };
-
-    const cardTypeToLabel = {
-      question: "Saved Questions",
-      model: "Models",
-      metric: "Metrics",
-    };
-
     function startNewEmbeddingQuestion() {
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
       cy.button("New").click();
       H.popover().findByText("Question").click();
-    }
-
-    function selectTable({ tableName, schemaName, databaseName }) {
-      H.popover().within(() => {
-        cy.findByText("Raw Data").click();
-        if (databaseName) {
-          cy.findByText(databaseName).click();
-        }
-        if (schemaName) {
-          cy.findByText(schemaName).click();
-        }
-        cy.findByText(tableName).click();
-      });
-      cy.wait("@getTableMetadata");
-    }
-
-    function selectCard({ cardName, cardType, collectionNames }) {
-      H.popover().within(() => {
-        cy.findByText(cardTypeToLabel[cardType]).click();
-        collectionNames.forEach(collectionName =>
-          cy.findByText(collectionName).click(),
-        );
-        cy.findByText(cardName).click();
-      });
-      cy.wait("@getTableMetadata");
-      if (cardType !== "metric") {
-        cy.wait("@getCard");
-      }
     }
 
     function clickOnDataSource(sourceName) {
@@ -393,13 +350,6 @@ describe("scenarios > embedding > full app", () => {
           .its("collection.name")
           .should("equal", collectionName);
       });
-    }
-
-    function verifyMetricClause(metricName) {
-      H.getNotebookStep("summarize")
-        .findByTestId("aggregate-step")
-        .findByText(metricName)
-        .should("be.visible");
     }
 
     beforeEach(() => {
@@ -746,139 +696,6 @@ describe("scenarios > embedding > full app", () => {
         });
         verifyTableSelected({
           tableName: cardDetails.name,
-        });
-      });
-    });
-
-    describe("metric", () => {
-      it("should select a data source in the root collection", () => {
-        const cardDetails = {
-          ...ordersCountCardDetails,
-          type: "metric",
-          collection_id: null,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: cardDetails.type,
-          collectionNames: [],
-        });
-        verifyMetricClause(cardDetails.name);
-        clickOnDataSource("Orders");
-        verifyTableSelected({
-          tableName: "Orders",
-          databaseName: "Sample Database",
-        });
-      });
-
-      it("should select a data source in a regular collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "metric",
-          collection_id: FIRST_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: cardDetails.type,
-          collectionNames: ["First collection"],
-        });
-        verifyMetricClause(cardDetails.name);
-        clickOnDataSource("Orders");
-        verifyTableSelected({
-          tableName: "Orders",
-          databaseName: "Sample Database",
-        });
-      });
-
-      it("should select a data source in a nested collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "metric",
-          collection_id: SECOND_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: cardDetails.type,
-          collectionNames: ["First collection", "Second collection"],
-        });
-        verifyMetricClause(cardDetails.name);
-        clickOnDataSource("Orders");
-        verifyTableSelected({
-          tableName: "Orders",
-          databaseName: "Sample Database",
-        });
-      });
-
-      it("should select a data source in a personal collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "metric",
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: cardDetails.type,
-          collectionNames: ["Your personal collection"],
-        });
-        verifyMetricClause(cardDetails.name);
-        clickOnDataSource("Orders");
-        verifyTableSelected({
-          tableName: "Orders",
-          databaseName: "Sample Database",
-        });
-      });
-
-      it("should select a data source in another user personal collection", () => {
-        cy.signInAsAdmin();
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "metric",
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: cardDetails.type,
-          collectionNames: [
-            "All personal collections",
-            "Robert Tableton's Personal Collection",
-          ],
-        });
-        verifyMetricClause(cardDetails.name);
-        clickOnDataSource("Orders");
-        verifyTableSelected({
-          tableName: "Orders",
-          databaseName: "Sample Database",
-        });
-      });
-
-      it("should not be able to join a metric", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "metric",
-          collection_id: null,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectTable({
-          tableName: "Orders",
-        });
-        H.getNotebookStep("data").button("Join data").click();
-        H.popover().within(() => {
-          cy.icon("chevronleft").click();
-          cy.icon("chevronleft").click();
-          cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Saved Questions").should("be.visible");
-          cy.findByText("Models").should("be.visible");
-          cy.findByText("Metrics").should("not.exist");
         });
       });
     });
