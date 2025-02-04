@@ -76,6 +76,7 @@ export function Editor<S extends StartRule = "expression">(
     render: props => (
       <Tooltip
         query={query}
+        stageIndex={stageIndex}
         metadata={metadata}
         reportTimezone={reportTimezone}
         {...props}

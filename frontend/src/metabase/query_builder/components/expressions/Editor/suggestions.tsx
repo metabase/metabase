@@ -77,6 +77,7 @@ function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
       label: formatIdentifier(displayInfo.longDisplayName),
       displayLabel: displayInfo.longDisplayName,
       icon: getColumnIcon(column),
+      column,
     };
   });
 

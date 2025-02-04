@@ -227,11 +227,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.CustomExpressionEditor.type("[");
 
     // hover over option in the suggestion list
-    cy.findByTestId("expression-suggestions-list")
-      .findByText("Created At")
-      .parents("li")
-      .findByLabelText("More info")
-      .realHover();
+    H.CustomExpressionEditor.completions().within(() => {
+      cy.findByText("Created At")
+        .parents("li")
+        .findByLabelText("More info")
+        .realHover();
+    });
 
     H.hovercard().within(() => {
       cy.contains("The date and time an order was submitted.");

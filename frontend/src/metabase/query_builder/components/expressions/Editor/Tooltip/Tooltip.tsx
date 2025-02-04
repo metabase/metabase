@@ -10,7 +10,8 @@ import type { EditorView } from "@codemirror/view";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 
-import { Box, Icon, Popover } from "metabase/ui";
+import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { Box, DelayGroup, Icon, Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
@@ -22,6 +23,7 @@ import S from "./Tooltip.module.css";
 
 export function Tooltip({
   query,
+  stageIndex,
   metadata,
   reportTimezone,
   tooltipRef,
@@ -30,6 +32,7 @@ export function Tooltip({
   view,
 }: {
   query: Lib.Query;
+  stageIndex: number;
   metadata: Metadata;
   reportTimezone?: string;
 
@@ -83,6 +86,8 @@ export function Tooltip({
             completions={options}
             selectedCompletion={selectedOption}
             onCompletionClick={handleCompletionClick}
+            query={query}
+            stageIndex={stageIndex}
           />
         </div>
       </Popover.Dropdown>
@@ -109,10 +114,14 @@ function Completions({
   completions,
   selectedCompletion,
   onCompletionClick,
+  query,
+  stageIndex,
 }: {
   completions: readonly Completion[];
   selectedCompletion: number | null;
   onCompletionClick: (index: number) => void;
+  query: Lib.Query;
+  stageIndex: number;
 }) {
   if (completions.length <= 0) {
     return null;
@@ -121,15 +130,19 @@ function Completions({
   return (
     <>
       <ul role="listbox" className={S.listbox}>
-        {completions.map((completion, index) => (
-          <CompletionItem
-            key={completion.displayLabel}
-            completion={completion}
-            index={index}
-            selected={selectedCompletion === index}
-            onCompletionClick={onCompletionClick}
-          />
-        ))}
+        <DelayGroup>
+          {completions.map((completion, index) => (
+            <CompletionItem
+              key={completion.displayLabel}
+              completion={completion}
+              index={index}
+              selected={selectedCompletion === index}
+              onCompletionClick={onCompletionClick}
+              query={query}
+              stageIndex={stageIndex}
+            />
+          ))}
+        </DelayGroup>
       </ul>
       <Footer />
     </>
@@ -141,11 +154,15 @@ function CompletionItem({
   selected,
   onCompletionClick,
   index,
+  query,
+  stageIndex,
 }: {
   completion: Completion;
   index: number;
   onCompletionClick: (index: number) => void;
   selected: boolean;
+  query: Lib.Query;
+  stageIndex: number;
 }) {
   const ref = useRef<HTMLLIElement>(null);
   const handleMouseDown = useCallback(
@@ -174,7 +191,16 @@ function CompletionItem({
       onMouseDown={handleMouseDown}
       className={S.item}
     >
-      <Icon name={completion.icon} className={S.icon} />
+      {completion.column && (
+        <QueryColumnInfoIcon
+          query={query}
+          stageIndex={stageIndex}
+          column={completion.column}
+          position="top"
+          className={S.icon}
+        />
+      )}
+      {!completion.column && <Icon name={completion.icon} className={S.icon} />}
       <MatchText
         text={completion.displayLabel ?? completion.label}
         ranges={completion.matches}
