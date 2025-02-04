@@ -1251,6 +1251,45 @@
             (mt/user-http-request :crowberto :put 400 (str "card/" (:id card))
                                   {:dataset_query query-with-self-join
                                    :type card-type})))))))
+
+(deftest cannot-join-question-with-other-question-joining-original
+  (doseq [card-type ["question"]]
+    (testing (str "Cannot join a " card-type " to make cycle.")
+      (let [query {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table (mt/id :orders)
+                              :aggregation [["count"]]
+                              :aggregation-idents {0 "B_02AJ4Jx2JLIg_KfILar"}
+                              :breakout [["field" (meta/id :orders :created-at) {:base-type "type/DateTime"
+                                                                                 :temporal-unit "month"
+                                                                                 :original-temporal-unit "month"}]]
+                              :breakout-idents {0 "7NnM4n9CZ5xrkfiStyM2U"}}}]
+        (mt/with-temp [:model/Card card-a {:dataset_query query :type card-type}]
+          (let [query-with-join (assoc-in (:dataset_query card-a)
+                                          [:query :joins]
+                                          [{:alias "A"
+                                            :condition ["="
+                                                        ["field" (meta/id :orders :id) {"base-type" "type/BigInteger"}]
+                                                        ["field" (meta/id :orders :id) {"base-type" "type/bigInteger"
+                                                                                        "join-alias" "A"}]]
+                                            :fields "all"
+                                            :source-table (str "card__" (:id card-a))
+                                            :stategy "left-join"}])]
+            (mt/with-temp [:model/Card card-b {:dataset_query query-with-join :type card-type}]
+              (let [original-query-with-join (assoc-in (:dataset_query card-a)
+                                                       [:query :joins]
+                                                       [{:alias "B"
+                                                         :condition ["="
+                                                                     ["field" (meta/id :orders :id) {"base-type" "type/BigInteger"}]
+                                                                     ["field" (meta/id :orders :id) {"base-type" "type/bigInteger"
+                                                                                                     "join-alias" "B"}]]
+                                                         :fields "all"
+                                                         :source_table (str "card__" (:id card-b))
+                                                         :stategy "left-join"}])]
+                (mt/user-http-request :crowberto :put 400 (str "card/" (:id card-a))
+                                      {:dataset_query original-query-with-join
+                                       :type card-type})))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
