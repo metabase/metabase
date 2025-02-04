@@ -3,6 +3,7 @@
   (:require
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
+   [metabase.api.common :as api]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.driver :as driver]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
@@ -13,6 +14,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
+   [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -334,7 +336,16 @@
                             `lib.metadata.protocols/database
                             `UncachedApplicationDatabaseMetadataProvider)
                     {})))
-  (t2/select-one :metadata/database database-id))
+  (let [result (t2/select-one :metadata/database database-id)
+        map-version (into {} result)]
+    (assoc map-version :native-permissions
+           (if (= :query-builder-and-native
+                  (perms/full-db-permission-for-user
+                   api/*current-user-id*
+                   :perms/create-queries
+                   database-id))
+             :write
+             :none))))
 
 (defn- metadatas [database-id metadata-type ids]
   (let [database-id-key (case metadata-type
