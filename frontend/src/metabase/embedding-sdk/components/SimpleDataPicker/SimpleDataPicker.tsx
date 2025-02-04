@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Icon, NavLink, Paper, ScrollArea, TextInput } from "metabase/ui";
+import EmptyState from "metabase/components/EmptyState";
+import { CONTAINER_WIDTH } from "metabase/query_builder/components/DataSelector/constants";
+import { Flex, Icon, NavLink, Paper, ScrollArea, TextInput } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
 interface SimpleDataPickerProps {
@@ -34,8 +36,26 @@ export function SimpleDataPicker({
     return true;
   }
 
+  if (options.length === 0) {
+    return (
+      <Paper w={CONTAINER_WIDTH} p="80px 60px">
+        <EmptyState
+          message={t`To pick some data, you'll need to add some first`}
+          icon="database"
+        />
+      </Paper>
+    );
+  }
+
+  const displayOptions = options.filter(filterSearch);
   return (
-    <Paper w="300px" p="sm">
+    <Paper
+      component={Flex}
+      w={CONTAINER_WIDTH}
+      p="sm"
+      mih="200px"
+      direction="column"
+    >
       {shouldShowSearchBar ? (
         <TextInput
           data-autofocus
@@ -54,25 +74,31 @@ export function SimpleDataPicker({
          */
         <span aria-hidden data-autofocus tabIndex={-1} />
       )}
-      {/* @ts-expect-error - I think the typing for ScrollArea.Autosize is wrong. This might be fixed in Mantine 7 */}
-      <ScrollArea.Autosize mah={TEN_OPTIONS_HEIGHT} type="auto">
-        {options.filter(filterSearch).map(option => {
-          const isSelected = selectedEntity === option.id;
-          const iconColor = isSelected
-            ? "--mb-color-text-white"
-            : "--mb-color-icon-primary";
-          return (
-            <NavLink
-              key={option.id}
-              active={selectedEntity === option.id}
-              icon={<Icon color={`var(${iconColor})`} name="table" />}
-              label={option.display_name}
-              onClick={() => onClick(option)}
-              variant="default"
-            />
-          );
-        })}
-      </ScrollArea.Autosize>
+      <Flex direction="column" justify="center" style={{ flex: 1 }}>
+        {displayOptions.length >= 1 ? (
+          // @ts-expect-error - I think the typing for ScrollArea.Autosize is wrong. This might be fixed in Mantine 7 */}
+          <ScrollArea.Autosize mah={TEN_OPTIONS_HEIGHT} type="auto" mb="auto">
+            {displayOptions.map(option => {
+              const isSelected = selectedEntity === option.id;
+              const iconColor = isSelected
+                ? "--mb-color-text-white"
+                : "--mb-color-icon-primary";
+              return (
+                <NavLink
+                  key={option.id}
+                  active={selectedEntity === option.id}
+                  icon={<Icon color={`var(${iconColor})`} name="table" />}
+                  label={option.display_name}
+                  onClick={() => onClick(option)}
+                  variant="default"
+                />
+              );
+            })}
+          </ScrollArea.Autosize>
+        ) : (
+          <EmptyState message={t`Nothing here`} />
+        )}
+      </Flex>
     </Paper>
   );
 }

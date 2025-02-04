@@ -10,10 +10,6 @@ const SHORT_OPTIONS = createOptions([
   "Analytic Events",
   "Feedback",
   "Invoices",
-  "Orders",
-  "People",
-  "Products",
-  "Reviews",
 ]);
 
 const LONG_OPTIONS = createOptions([
@@ -93,6 +89,12 @@ type Story = StoryObj<typeof SimpleDataPicker>;
 
 export const WithoutPopover: Story = {
   render: args => <SimpleDataPicker {...args} />,
+};
+
+export const NoOptions: Story = {
+  args: {
+    options: [],
+  },
 };
 
 export const ShortOptions: Story = {};
