@@ -393,12 +393,6 @@ describe("scenarios > embedding > full app", () => {
           .its("collection.name")
           .should("equal", collectionName);
       });
-
-      //   .its("response.body.name")
-      //   .should("equal", cardName);
-      // cy.get("@getCard")
-      //   .its("response.body.collection.name")
-      //   .should("equal", collectionName);
     }
 
     function verifyMetricClause(metricName) {
