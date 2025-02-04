@@ -310,7 +310,8 @@
          (lib/has-write-permission (lib.tu/venues-query))))))
 
 (deftest ^:parallel can-run-native-test
-  (is (lib/can-run (lib/with-template-tags
+  (is (lib/can-run -1
+                   (lib/with-template-tags
                      (lib/native-query meta/metadata-provider "select * {{foo}}")
                      {"foo" {:type :dimension
                              :id "1"
@@ -319,10 +320,11 @@
                              :display-name "foo"
                              :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
                    :question))
-  (is (lib/can-run (lib.tu/venues-query) :question))
+  (is (lib/can-run -1 (lib.tu/venues-query) :question))
   (mu/disable-enforcement
-    (is (not (lib/can-run (lib/native-query meta/metadata-provider "") :question)))
-    (is (not (lib/can-run (lib/with-template-tags
+    (is (not (lib/can-run -1 (lib/native-query meta/metadata-provider "") :question)))
+    (is (not (lib/can-run -1
+                          (lib/with-template-tags
                             (lib/native-query meta/metadata-provider "select * {{foo}}")
                             {"foo" {:type :dimension
                                     :id "1"
@@ -330,7 +332,8 @@
                                     :widget-type :text
                                     :display-name "foo"}})
                           :question)))
-    (is (not (lib/can-run (update-in (lib/native-query (metadata-provider-requiring-collection) "select * {{foo}}" nil {:collection "foobar"})
+    (is (not (lib/can-run -1
+                          (update-in (lib/native-query (metadata-provider-requiring-collection) "select * {{foo}}" nil {:collection "foobar"})
                                      [:stages 0] dissoc :collection)
                           :question)))))
 
