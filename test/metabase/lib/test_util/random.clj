@@ -15,7 +15,7 @@
   []
   (or (env :mb-test-run-seed)
       (doto (.nextLong ^java.util.Random *generator*)
-        (as-> $ (log/infof "Seed: %d" $)))))
+        (as-> $ (log/infof "Run Seed Value: %d" $)))))
 
 (comment
 
