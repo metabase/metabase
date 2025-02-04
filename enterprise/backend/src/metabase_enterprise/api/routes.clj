@@ -59,7 +59,7 @@
   "/api/ee routes. The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new
   routes here and follow the convention."
   {"/advanced-permissions"       (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
-   "/ai-sql-fixer"               (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
+   "/ai-sql-fixer"               (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :metabot-v3)
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes

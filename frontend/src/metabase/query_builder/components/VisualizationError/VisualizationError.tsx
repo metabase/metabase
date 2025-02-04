@@ -29,7 +29,8 @@ interface VisualizationErrorProps {
   question: Question;
   duration: number;
   error: DatasetError;
-  isResultDirty?: boolean;
+  isResultDirty: boolean;
+  onUpdateQuestion: (newQuestion: Question) => void;
 }
 
 export function VisualizationError({
@@ -39,6 +40,7 @@ export function VisualizationError({
   duration,
   error,
   isResultDirty,
+  onUpdateQuestion,
 }: VisualizationErrorProps) {
   const query = question.query();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -118,7 +120,7 @@ export function VisualizationError({
           {typeof processedError === "string" && (
             <Box className={VisErrorS.QueryErrorMessage}>{processedError}</Box>
           )}
-          <Flex my="md" gap="md">
+          <Flex align="center" my="md" gap="md">
             {isSql && showMetabaseLinks && (
               <ExternalLink
                 className={VisErrorS.QueryErrorLink}
@@ -133,7 +135,9 @@ export function VisualizationError({
               <PLUGIN_AI_SQL_FIXER.FixSqlButton
                 query={query}
                 queryError={error}
-                onChange={() => 0}
+                onChange={newQuery =>
+                  onUpdateQuestion(question.setQuery(newQuery))
+                }
               />
             )}
           </Flex>

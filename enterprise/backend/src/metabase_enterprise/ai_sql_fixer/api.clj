@@ -17,16 +17,13 @@
    _query-params
    {:keys [query error_message]} :- [:map
                                      [:query [:map
-                                              [:database ms/PositiveInt]
-                                              [:pretty   {:default true} [:maybe :boolean]]]]
+                                              [:database ms/PositiveInt]]]
                                      [:error_message :string]]]
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [{:keys [database pretty]} query
           driver (driver.u/database->driver database)
-          prettify #(driver/prettify-native-form driver %)
-          compiled (cond-> (qp.compile/compile-with-inline-parameters query)
-                     pretty (update :query prettify))]
+          compiled (qp.compile/compile-with-inline-parameters query)]
       (-> (metabot-v3.client/fix-sql {:sql (:query compiled)
                                       :dialect driver
                                       :error_message error_message

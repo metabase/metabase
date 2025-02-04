@@ -29,6 +29,7 @@ export default function QueryVisualization(props) {
     isNativeEditorOpen,
     result,
     maxTableRows = HARD_ROW_LIMIT,
+    onUpdateQuestion,
   } = props;
 
   const canRun = Lib.canRun(question.query(), question.type());
@@ -78,6 +79,7 @@ export default function QueryVisualization(props) {
             question={question}
             duration={result.duration}
             isResultDirty={isResultDirty}
+            onUpdateQuestion={onUpdateQuestion}
           />
         ) : result?.data ? (
           <VisualizationResult
