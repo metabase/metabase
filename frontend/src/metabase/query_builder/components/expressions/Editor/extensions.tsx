@@ -74,14 +74,10 @@ export function useExtensions(options: Options): Extension[] {
         "data-autofocus": "",
       }),
       EditorView.domEventHandlers({
-        click(_, view) {
-          if (view.state.doc.toString() === "") {
-            startCompletion(view);
-          }
-        },
         focus(_, view) {
           if (view.state.doc.toString() === "") {
             startCompletion(view);
+            setTimeout(() => startCompletion(view), 0);
           }
 
           const len = view.state.doc.length;
