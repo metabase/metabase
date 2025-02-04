@@ -24,6 +24,7 @@
                               :hosting
                               :llm-autodescription
                               :metabot-v3
+                              :ai-sql-fixer
                               :no-upsell
                               :official-collections
                               :query-reference-validation
@@ -56,6 +57,7 @@
             :hosting                        true
             :llm_autodescription            true
             :metabot_v3                     true
+            :ai-sql-fixer                   true
             :official_collections           true
             :query_reference_validation     true
             :sandboxes                      true
