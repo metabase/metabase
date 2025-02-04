@@ -1,6 +1,8 @@
 (ns metabase-enterprise.advanced-config.file.databases
   (:require
+   [clojure.set :as set]
    [clojure.spec.alpha :as s]
+   [medley.core :as m]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.driver.util :as driver.u]
    [metabase.models.setting :refer [defsetting]]
@@ -37,7 +39,7 @@
   (s/and
    map?
    (fn cruft-patterns-are-valid? [settings]
-     (->> [(:auto_cruft_tables settings) (:auto_cruft_columns settings)]
+     (->> [(:auto_cruft_tables settings) (:auto_cruft_columns settings)] ;; validated then normalized
           (remove nil?)
           (map valid-regex-patterns?)
           (every? true?)))))
@@ -51,6 +53,11 @@
 (defmethod advanced-config.file.i/section-spec :databases
   [_section]
   (s/spec (s/* ::config-file-spec)))
+
+(defn- normalize-settings [db]
+  (m/update-existing db :settings set/rename-keys
+                     {:auto_cruft_tables :auto-cruft-tables
+                      :auto_cruft_columns :auto-cruft-columns}))
 
 (defn- init-from-config-file!
   [database]
@@ -72,10 +79,10 @@
       (if-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
         (do
           (log/info (u/format-color :blue "Updating Database %s %s" (:engine database) (pr-str (:name database))))
-          (t2/update! :model/Database existing-database-id database))
+          (t2/update! :model/Database existing-database-id (normalize-settings database)))
         (do
           (log/info (u/format-color :green "Creating new %s Database %s" (:engine database) (pr-str (:name database))))
-          (let [db (first (t2/insert-returning-instances! :model/Database database))]
+          (let [db (first (t2/insert-returning-instances! :model/Database (normalize-settings database)))]
             (if (config-from-file-sync-databases)
               (let [submit-task!   (requiring-resolve 'metabase.sync.core/submit-task!)
                     sync-database! (requiring-resolve 'metabase.sync.core/sync-database!)]

@@ -141,13 +141,9 @@
   "Is this connection a gdrive connection?"
   [{:keys [type] :as _conn}] (= "gdrive" type))
 
-(def ^:private status-order
-  "If there is an active connection, we just use it. But if there are no active connections, we want to see the errors
-  first."
-  {"active" 0 "error" 1 "syncing" 2 "initializing" 3})
-
-(defn- normalize-gdrive-conn [gdc]
+(defn- normalize-gdrive-conn
   "Normalize the gdrive connection shape from harbormaster, mostly parsing times."
+  [gdc]
   (-> gdc
       (dissoc :hosted-instance-resource)
       (m/update-existing :last-sync-at u.date/parse)
@@ -168,8 +164,8 @@
       [])))
 
 (mu/defn hm-get-gdrive-conn :- ::hm.client/http-reply
-  [id]
   "Get a specific gdrive connection by id."
+  [id]
   (when-not id
     (throw (ex-info "must have an id to lookup by id" {})))
   (hm.client/make-request :get (str "/api/v2/mb/connections/" id)))
@@ -333,7 +329,7 @@
   (t2/update! :model/Database 1 {:is_attached_dwh true})
 
   (t2/update! :model/Database 1 {:is_attached_dwh true
-                                 :settings (json/encode {:auto_cruft_tables ["^feedback$"]
-                                                         :auto_cruft_columns ["^email$"]})})
+                                 :settings (json/encode {:auto-cruft-tables ["^feedback$"]
+                                                         :auto-cruft-columns ["^email$"]})})
 
   ,)

@@ -1,6 +1,5 @@
 (ns metabase.sync.sync-metadata.fields.sync-instances-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
@@ -158,7 +157,7 @@
 
 (defn run-cruft-test [patterns freqs]
   (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
-                                     :settings {:auto_cruft_columns patterns}}]
+                                     :settings {:auto-cruft-columns patterns}}]
     (sync-metadata/sync-db-metadata! db)
     (let [tables (t2/select :model/Table :db_id (u/the-id db))
           fields (mapcat (fn [{:keys [id]}] (t2/select :model/Field :table_id id)) tables)]
