@@ -10,7 +10,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { mapPinIcon } from "e2e/support/helpers";
+import { createQuestionAndDashboard, mapPinIcon } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
   createMockVirtualCard,
@@ -23,7 +23,6 @@ import {
   durationRadioButton,
   openSidebarCacheStrategyForm,
 } from "../admin/performance/helpers/e2e-strategy-form-helpers";
-
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard", () => {
@@ -42,6 +41,7 @@ describe("scenarios > dashboard", () => {
       const newQuestionName = "New dashboard question";
 
       cy.visit("/");
+
       H.appBar().findByText("New").click();
       H.popover().findByText("Dashboard").should("be.visible").click();
 
@@ -1718,6 +1718,41 @@ describe("scenarios > dashboard > entity id support", () => {
     );
 
     H.main().findByText("We're a little lost...").should("be.visible");
+  });
+});
+
+describe("Visual regression tests", { tags: "@visual" }, () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("existing dashboard UI", () => {
+    createQuestionAndDashboard({
+      questionDetails: {
+        name: "orders",
+        type: "model",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      dashboardDetails: {
+        name: "Dashboard",
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.captureSnapshot("existing dashboard");
+
+    H.editDashboard();
+
+    H.captureSnapshot("existing dashboard editing");
+
+    H.openQuestionsSidebar();
+    cy.focused().blur();
+
+    H.captureSnapshot("existing dashboard with questions sidebar");
   });
 });
 

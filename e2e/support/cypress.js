@@ -5,8 +5,13 @@ import "@cypress/skip-test/support";
 import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
+import compareSnapshotCommand from "cypress-image-diff-js";
 import addContext from "mochawesome/addContext";
+
 import "./commands";
+import { H } from "e2e/support";
+
+compareSnapshotCommand();
 
 const isCI = Cypress.env("CI");
 
@@ -112,6 +117,10 @@ Cypress.on("window:load", window => {
 
     return addEventListener.apply(this, arguments);
   };
+});
+
+beforeEach(function () {
+  H.prepareVisualTest(this.currentTest);
 });
 
 if (isCI) {

@@ -1,10 +1,8 @@
 const CypressBackend = require("./cypress-runner-backend");
 const generateSnapshots = require("./cypress-runner-generate-snapshots");
 const runCypress = require("./cypress-runner-run-tests");
-const { printBold } = require("./cypress-runner-utils");
+const { printBold, BASE_URL } = require("./cypress-runner-utils");
 const mode = process.argv[2];
-
-const baseUrl = process.env["E2E_HOST"] ?? "http://localhost:4000";
 
 const startServer = async () => {
   const server = CypressBackend.createServer();
@@ -14,12 +12,12 @@ const startServer = async () => {
 
 const snapshot = async () => {
   printBold("Generating snapshots");
-  await generateSnapshots(baseUrl);
+  await generateSnapshots(BASE_URL);
 };
 
 const runTests = async () => {
   printBold("Running Cypress Tests");
-  await runCypress(baseUrl, exitCode => process.exit(exitCode));
+  await runCypress(BASE_URL, exitCode => process.exit(exitCode));
 };
 
 if (mode === "start") {

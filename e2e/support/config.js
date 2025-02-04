@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import getCompareSnapshotsPlugin from "cypress-image-diff-js/plugin";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
+
+import { BASE_URL } from "e2e/runner/cypress-runner-utils";
+import { OnWrapper } from "e2e/support/utils/on-wrapper";
 
 import * as ciTasks from "./ci_tasks";
 import {
@@ -18,8 +22,12 @@ const {
 } = require("@esbuild-plugins/node-modules-polyfill");
 const cypressSplit = require("cypress-split");
 
+const e2eHost = BASE_URL;
+
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = process.env["CYPRESS_CI"] === "true";
+
+const isVisualTest = process.env["CYPRESS_IS_VISUAL_TEST"] === "true";
 
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
@@ -28,6 +36,8 @@ const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
 
 const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
+
+const doNotFail = process.env.CYPRESS_DO_NOT_FAIL === "true";
 
 const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
 
@@ -61,11 +71,13 @@ function getSplittableSpecs(specs) {
   });
 }
 
+const SCREEN_WIDTH = 1280;
+const SCREEN_HEIGHT = 800;
+
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
-  setupNodeEvents(on, config) {
-    // `on` is used to hook into various events Cypress emits
-    // `config` is the resolved Cypress config
+  setupNodeEvents(originalOn, config) {
+    const { on, forward: forwardEvents } = new OnWrapper(originalOn);
 
     // cypress-terminal-report
     if (isCI) {
@@ -96,6 +108,16 @@ const defaultConfig = {
       //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
         launchOptions.args.push("--auto-open-devtools-for-tabs");
+
+        if (isVisualTest) {
+          launchOptions.args.push("--hide-scrollbars");
+          launchOptions.args.push("--disable-gpu");
+          launchOptions.args.push("--force-device-scale-factor=1");
+          launchOptions.args.push("--start-fullscreen");
+          launchOptions.args.push(
+            `--window-size=${SCREEN_WIDTH},${SCREEN_HEIGHT}`,
+          );
+        }
       }
 
       // Start browsers with prefers-reduced-motion set to "reduce"
@@ -150,16 +172,23 @@ const defaultConfig = {
       config.excludeSpecPattern = "e2e/snapshot-creators/qa-db.cy.snap.js";
     }
 
+    config.env.E2E_HOST = e2eHost;
+
     // `grepIntegrationFolder` needs to point to the root!
     // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
     config.env.grepIntegrationFolder = "../../";
     config.env.grepFilterSpecs = true;
 
     config.env.IS_ENTERPRISE = isEnterprise;
+
+    config.env.isCI = isCI;
+    config.env.IS_VISUAL_TEST = isVisualTest;
+
     config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
     config.env.TARGET_VERSION = targetVersion;
+    config.env.DO_NOT_FAIL = doNotFail;
     // Set on local, development-mode runs only
     config.env.feHealthcheck = {
       enabled: feHealthcheckEnabled,
@@ -174,7 +203,11 @@ const defaultConfig = {
       cypressSplit(on, config, getSplittableSpecs);
     }
 
-    return config;
+    const compareSnapshotsPluginConfig = getCompareSnapshotsPlugin(on, config);
+
+    forwardEvents();
+
+    return compareSnapshotsPluginConfig;
   },
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,
@@ -183,8 +216,8 @@ const defaultConfig = {
   //   1. testFiles and
   //   2. integrationFolder
   specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
-  viewportHeight: 800,
-  viewportWidth: 1280,
+  viewportWidth: SCREEN_WIDTH,
+  viewportHeight: SCREEN_HEIGHT,
   // enable video recording in run mode
   video: true,
   videoCompression: true,

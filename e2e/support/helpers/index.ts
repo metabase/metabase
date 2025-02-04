@@ -4,6 +4,7 @@ export * from "./e2e-api-key-helpers";
 export * from "./e2e-ad-hoc-question-helpers";
 export * from "./e2e-bi-basics-helpers";
 export * from "./e2e-boolean-helpers";
+export * from "./e2e-charts-helpers";
 export * from "./e2e-cloud-helpers";
 export * from "./e2e-collection-helpers";
 export * from "./e2e-command-palette-helpers";

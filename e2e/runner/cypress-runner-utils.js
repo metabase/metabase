@@ -2,6 +2,8 @@ const arg = require("arg");
 const chalk = require("chalk");
 const cypress = require("cypress");
 
+const BASE_URL = process.env["E2E_HOST"] || "http://localhost:4000";
+
 function printBold(message) {
   console.log(chalk.bold(message));
 }
@@ -29,6 +31,7 @@ async function parseArguments(args) {
 }
 
 module.exports = {
+  BASE_URL,
   printBold,
   parseArguments,
   args,
