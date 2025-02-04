@@ -8,7 +8,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- +slash-prefix [s]
   (cond->> s
@@ -52,7 +53,9 @@
 ;; PUBLIC API:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(mu/defn make-request :- [:tuple [:enum :ok :error] :map]
+(mr/def ::http-reply [:tuple [:enum :ok :error] :map])
+
+(mu/defn make-request :- ::http-reply
   "Makes a request to the store-api-url with the given method, path, and body.
 
   Returns a tuple of [:ok response] if the request was successful, or [:error response] if it failed."

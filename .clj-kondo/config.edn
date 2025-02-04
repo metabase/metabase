@@ -330,7 +330,8 @@
                                      metabase.analytics.stats
                                      metabase.analytics.sdk}                                        ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze.core}
-    metabase.api                   #{metabase.api.common
+    metabase.api                   #{metabase.api.auth
+                                     metabase.api.common
                                      ;; I don't really like making all these namespaces external but they have to be
                                      ;; for now until we can shrink this mega-module down a little bit (by moving API
                                      ;; namespaces out into different modules)... eventually `api` will just be a

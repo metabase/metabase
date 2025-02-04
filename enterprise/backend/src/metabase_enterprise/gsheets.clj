@@ -146,7 +146,8 @@
   first."
   {"active" 0 "error" 1 "syncing" 2 "initializing" 3})
 
-(defn normalize-gdrive-conn [gdc]
+(defn- normalize-gdrive-conn [gdc]
+  "Normalize the gdrive connection shape from harbormaster, mostly parsing times."
   (-> gdc
       (dissoc :hosted-instance-resource)
       (m/update-existing :last-sync-at u.date/parse)
@@ -166,17 +167,19 @@
             (filter is-gdrive? (or (some-> response :body) [])))
       [])))
 
-(mu/defn hm-get-gdrive-conn [id]
+(mu/defn hm-get-gdrive-conn :- ::hm.client/http-reply
+  [id]
+  "Get a specific gdrive connection by id."
   (when-not id
     (throw (ex-info "must have an id to lookup by id" {})))
   (hm.client/make-request :get (str "/api/v2/mb/connections/" id)))
 
-(mu/defn- hm-create-gdrive-conn :- [:tuple [:enum :ok :error] :map]
+(mu/defn- hm-create-gdrive-conn :- ::hm.client/http-reply
   "Creating a gdrive connection on HM starts the sync w/ drive folder."
   [drive-folder-url]
   (hm.client/make-request :post "/api/v2/mb/connections" {:type "gdrive" :secret {:resources [drive-folder-url]}}))
 
-(mu/defn- hm-delete-conn :- [:tuple [:enum :ok :error] :map]
+(mu/defn- hm-delete-conn :- ::hm.client/http-reply
   "Delete (presumably a gdrive) connection on HM."
   [conn-id]
   (hm.client/make-request :delete (str "/api/v2/mb/connections/" conn-id)))
@@ -324,15 +327,13 @@
 
   (gsheets)
 
-
   (reset-gsheets-status)
 
   ;; need an "attached dwh" locally?
   (t2/update! :model/Database 1 {:is_attached_dwh true})
 
-
   (t2/update! :model/Database 1 {:is_attached_dwh true
                                  :settings (json/encode {:auto-cruft-tables ["^feedback$"]
                                                          :auto-cruft-columns ["^email$"]})})
 
-  )
+  ,)
