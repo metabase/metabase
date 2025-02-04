@@ -1067,7 +1067,9 @@ describe("issue 49882", () => {
   });
 
   it("does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)", () => {
+    const metaKey = Cypress.platform === "darwin" ? "Meta" : "Control";
     const moveCursorBefore2ndCase = "{leftarrow}".repeat(41);
+
     H.enterCustomColumnDetails({
       formula:
         'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])',
@@ -1082,15 +1084,17 @@ describe("issue 49882", () => {
       .realPress(["Shift", "ArrowLeft"])
       .realPress(["Shift", "ArrowLeft"]);
 
-    cy.realPress(["Control", "X"]);
+    cy.realPress([metaKey, "X"], { pressDelay: 100 });
 
-    H.CustomExpressionEditor.type(moveCursorBefore2ndCase, { blur: false });
+    H.CustomExpressionEditor.type(moveCursorBefore2ndCase, {
+      focus: false,
+      blur: false,
+    });
 
-    cy.realPress(["Control", "V"]);
+    cy.realPress([metaKey, "V"], { pressDelay: 100 });
 
     H.CustomExpressionEditor.shouldContain(
       'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )',
-      // 'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])',
     );
 
     H.popover()

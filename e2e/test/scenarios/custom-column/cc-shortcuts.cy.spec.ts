@@ -5,14 +5,12 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 function selectExtractColumn() {
-  H.CustomExpressionEditor.focus();
   H.CustomExpressionEditor.completions().should("be.visible");
   cy.wait(300);
   H.CustomExpressionEditor.completion("Extract columns").click();
 }
 
 function selectCombineColumns() {
-  H.CustomExpressionEditor.focus();
   H.CustomExpressionEditor.completions().should("be.visible");
   cy.wait(300);
   H.CustomExpressionEditor.completion("Combine columns").realClick();

@@ -158,9 +158,8 @@ H.describeWithSnowplow(
 );
 
 function selectCombineColumns() {
-  H.CustomExpressionEditor.focus();
   H.CustomExpressionEditor.completions().should("be.visible");
-  cy.wait(100);
+  cy.wait(300);
   H.CustomExpressionEditor.completion("Combine columns")
     .should("be.visible")
     .click();
