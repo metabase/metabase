@@ -107,7 +107,7 @@ The problem with having end-users share a Metabase account is that, even if you 
 
 If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
 
-In addition to this, we consider shared accounts to be unfair usage of our terms. Fair usage of the SDK involves giving each end-user of the embedded analytics their own Metabase account.
+In addition to this, we consider shared accounts to be unfair usage. Fair usage of the SDK involves giving each end-user of the embedded analytics their own Metabase account.
 
 ## Getting Metabase authentication status
 
