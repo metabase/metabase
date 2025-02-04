@@ -260,7 +260,7 @@
 
 (defmethod query-method :dispatch-type/map
   [metadata-providerable dataset-query]
-  (query-method metadata-providerable (assoc (lib.convert/->pmbql dataset-query) :lib/type :mbql/query)))
+  (query-method metadata-providerable (assoc (lib.convert/->pMBQL dataset-query) :lib/type :mbql/query)))
 
 ;;; this should already be a query in the shape we want but:
 ;; - let's make sure it has the database metadata that was passed in
