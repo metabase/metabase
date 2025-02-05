@@ -10479,13 +10479,13 @@ databaseChangeLog:
       changes:
         - sql: >
             UPDATE setting
-            SET value = 'true'
+            SET value = 'false'
             WHERE key = 'enable-embedding-sdk'
-            AND EXISTS (
+            AND NOT EXISTS (
                   SELECT 1
                   FROM setting
                   WHERE key = 'embedding-app-origins-sdk'
-            )
+            );
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
