@@ -35,7 +35,6 @@ export function EmbeddingSdkSettings({
   const isEE = PLUGIN_EMBEDDING_SDK.isEnabled();
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
   const showSdkEmbedTerms = useSetting("show-sdk-embed-terms");
-
   const [
     isLegaleseModalOpen,
     { open: openLegaleseModal, close: closeLegaleseModal },
@@ -164,12 +163,18 @@ export function EmbeddingSdkSettings({
               : handleToggleEmbeddingSdk
           }
         />
+        <Button
+          onClick={() => updateSetting({ key: "show-sdk-embed-terms" }, true)}
+        >
+          Reset
+        </Button>
         <EmbeddingSdkLegaleseModal
           opened={isLegaleseModalOpen}
           onClose={closeLegaleseModal}
           updateSetting={updateSetting}
         />
         <Alert
+          data-testid="sdk-settings-alert-info"
           icon={
             <Icon color="var(--mb-color-text-secondary)" name="info_filled" />
           }
