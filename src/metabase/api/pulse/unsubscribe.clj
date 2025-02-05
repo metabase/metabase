@@ -26,7 +26,6 @@
                     {:type        type
                      :status-code 400}))))
 
-;; TODO: needs to make this work too
 (api.macros/defendpoint :post "/"
   "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
   [_route-params
