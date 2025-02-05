@@ -408,9 +408,9 @@ describe("scenarios > embedding > full app", () => {
           cy.signInAsAdmin();
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
           startNewEmbeddingQuestion();
-          selectFirstDataSource("Animals");
+          selectDataSource("Birds");
           verifyTableSelected({
-            tableName: "Animals",
+            tableName: "Birds",
             schemaName: "Wild",
             databaseName: "Writable Postgres12",
           });

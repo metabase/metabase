@@ -214,10 +214,11 @@ function EmbeddingDataPicker({
 }: LegacyDataPickerProps) {
   // XXX: Flip to the previous picker when there's more than 100 data sources
   // XXX: Make this customizable through props in interactive embedding and in the SDK
-  const { data: dataSourceCountData } = useSearchQuery({
-    models: ["dataset", "table"],
-    limit: 0,
-  });
+  const { data: dataSourceCountData, isLoading: isDataSourceCountLoading } =
+    useSearchQuery({
+      models: ["dataset", "table"],
+      limit: 0,
+    });
 
   const databaseId = Lib.databaseID(query);
   const tableInfo =
@@ -242,6 +243,11 @@ function EmbeddingDataPicker({
   const isUserSpecifyComplexDataPicker = useSelector(
     state => getEmbedOptions(state).multi_stage_data_picker,
   );
+
+  if (isDataSourceCountLoading) {
+    return null;
+  }
+
   const shouldUseSimpleDataPicker = Number(dataSourceCountData?.total) < 100;
   if (shouldUseSimpleDataPicker && !isUserSpecifyComplexDataPicker) {
     return (
