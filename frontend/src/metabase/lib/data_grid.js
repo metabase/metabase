@@ -198,20 +198,12 @@ export function multiLevelPivot(data, settings) {
     count += 1
   }
 
-  console.log("TSP multiLevelPivot valuesByKey: ", valuesByKey)
+  console.log("TSP before")
 
-  // build objects to look up subtotal values
-  const oldSubtotalValues = {};
-  for (const [subtotalName, subtotal] of Object.entries(pivotData)) {
-    const indexes = JSON.parse(subtotalName);
-    oldSubtotalValues[subtotalName] = {};
-    for (const row of subtotal) {
-      const valueKey = JSON.stringify(indexes.map(index => row[index]));
-      oldSubtotalValues[subtotalName][valueKey] = valueColumnIndexes.map(
-        index => row[index],
-      );
-    }
-  }
+  const tmpValuesByKey = Pivot.build_values_by_key(pivotData[primaryRowsKey], columnColumnIndexes, rowColumnIndexes, valueColumnIndexes, columnSettings, columns);
+  console.log("TSP multiLevelPivot valuesByKey: ", valuesByKey);
+  console.log("TSP multiLevelPivot tmpValuesByKey: ", tmpValuesByKey);
+
   Pivot.build_pivot_trees(pivotData[primaryRowsKey], columnColumnIndexes, rowColumnIndexes, columnSettings, collapsedSubtotals);
 
   const subtotalValues = Pivot.subtotal_values(pivotData, valueColumnIndexes);
