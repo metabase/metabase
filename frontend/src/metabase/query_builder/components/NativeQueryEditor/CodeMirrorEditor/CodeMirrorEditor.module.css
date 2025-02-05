@@ -195,7 +195,7 @@
     }
 
     .cm-highlight-line {
-      background-color: var(--mb-color-brand-alpha-04);
+      background-color: var(--mb-color-brand-light);
     }
   }
 }

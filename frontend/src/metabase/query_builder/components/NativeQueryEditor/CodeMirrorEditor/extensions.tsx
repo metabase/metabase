@@ -310,6 +310,7 @@ function highlightLines() {
 
       for (const effect of transaction.effects) {
         if (effect.is(highlightLinesEffect)) {
+          value = value.update({ filter: () => false });
           value = value.update({ add: effect.value });
         }
       }
