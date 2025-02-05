@@ -14,6 +14,7 @@ export const DEFAULT_EMBED_OPTIONS: InteractiveEmbeddingOptions = {
   header: true,
   additional_info: true,
   action_buttons: true,
+  multi_stage_data_picker: false,
 } as const;
 
 const allowedEmbedOptions = Object.keys(DEFAULT_EMBED_OPTIONS);

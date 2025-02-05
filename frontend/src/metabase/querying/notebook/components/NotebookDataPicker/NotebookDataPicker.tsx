@@ -14,7 +14,11 @@ import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import { getIsEmbedded, getIsEmbeddingSdk } from "metabase/selectors/embed";
+import {
+  getEmbedOptions,
+  getIsEmbedded,
+  getIsEmbeddingSdk,
+} from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
@@ -235,8 +239,11 @@ function EmbeddingDataPicker({
   const modelList = getModelFilterList(context, hasMetrics);
 
   // (metabase#52889)
+  const isUserSpecifyComplexDataPicker = useSelector(
+    state => getEmbedOptions(state).multi_stage_data_picker,
+  );
   const shouldUseSimpleDataPicker = Number(dataSourceCountData?.total) < 100;
-  if (shouldUseSimpleDataPicker) {
+  if (shouldUseSimpleDataPicker && !isUserSpecifyComplexDataPicker) {
     return (
       <SimpleDataPicker
         key={pickerInfo?.tableId}
