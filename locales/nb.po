@@ -37671,21 +37671,21 @@ msgstr "Aktiver innsending av feilrapporter."
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Breakout/Breakout.tsx:19
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Breakout/BreakoutBadgeList.tsx:28
 msgid "Add another grouping"
-msgstr ""
+msgstr "Legg til en ny gruppering"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Filter/Filter.tsx:18
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Filter/FilterBadgeList.tsx:22
 msgid "Add another filter"
-msgstr ""
+msgstr "Legg til et nytt filter"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Summarize/Summarize.tsx:33
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizeBadgeList.tsx:23
 msgid "Add another summary"
-msgstr ""
+msgstr "Legg til et nytt sammendrag"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu.tsx:104
 msgid "Move, duplicate, and more…"
-msgstr ""
+msgstr "Flytt, dupliser og mer..."
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ToggleNativeQueryPreview/ToggleNativeQueryPreview.tsx:16
 msgid "View SQL"
@@ -37693,7 +37693,7 @@ msgstr "Vis SQL"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ToggleNativeQueryPreview/ToggleNativeQueryPreview.tsx:17
 msgid "View native query"
-msgstr ""
+msgstr "Vis opprinnelig spørring"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ToggleNativeQueryPreview/ToggleNativeQueryPreview.tsx:21
 msgid "Hide SQL"
@@ -37701,11 +37701,11 @@ msgstr "Skjul SQL"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ToggleNativeQueryPreview/ToggleNativeQueryPreview.tsx:22
 msgid "Hide native query"
-msgstr ""
+msgstr "Skjul opprinnelig spørring"
 
 #: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:66
 msgid "Previous 3 months"
-msgstr ""
+msgstr "De siste 3 månedene"
 
 #: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:75
 msgid "Previous 12 months"
@@ -37715,112 +37715,113 @@ msgstr "Forrige 12 måneder"
 #: frontend/src/metabase/nav/components/ProfileLink/ProfileLink.jsx:104
 #: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:192
 msgid "Report an issue"
-msgstr ""
+msgstr "Rapporter et problem"
 
 #: frontend/src/metabase-lib/v1/expressions/resolver.js:140
 msgid "{0} expects 2 arguments or more"
-msgstr ""
+msgstr "{0} forventer 2 argumenter eller mer"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestionResult/InteractiveQuestionResult.tsx:116
 msgid "Back to visualization"
-msgstr ""
+msgstr "Tilbake til visualisering"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:19
 msgid "Refresh cache automatically"
-msgstr ""
+msgstr "Oppdater hurtigbufferen automatisk"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
 msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr ""
+msgstr "Så snart resultatene i hurtigbufferen utløper, kjører du spørringen på nytt for å oppdatere resultatene og oppdatere\n"
+"hurtigbufferen."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:91
 msgid "Can't move this question into a dashboard"
-msgstr ""
+msgstr "Kan ikke flytte dette spørsmålet til et dashbord"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:93
 msgid "Move this question?"
 msgid_plural "Move these questions?"
-msgstr[0] ""
+msgstr[0] "Flytte dette spørsmålet?"
 msgstr[1] ""
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:118
 msgid "Checking on some things..."
-msgstr ""
+msgstr "Sjekker noen ting..."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:125
 msgid "This question currently appears in a dashboard that you don't have permission to edit."
-msgstr ""
+msgstr "Dette spørsmålet vises for øyeblikket i et dashbord som du ikke har tillatelse til å redigere."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:134
 msgid "Moving a question into a dashboard removes it from all other dashboards it appears in"
-msgstr ""
+msgstr "Når du flytter et spørsmål til et dashbord, fjernes det fra alle andre dashbord det vises i"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:147
 msgid "{0} will be removed from {1}"
-msgstr ""
+msgstr "{0} vil bli fjernet fra {1}"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:166
 msgid "Move it"
 msgid_plural "Move them"
-msgstr[0] ""
+msgstr[0] "Flytt den"
 msgstr[1] ""
 
 #: frontend/src/metabase/common/components/EntityPicker/utils.ts:174
 msgid "Search this dashboard or everywhere…"
-msgstr ""
+msgstr "Søk på dette dashbordet eller overalt..."
 
 #: frontend/src/metabase/querying/drills/utils/quick-filter-drill.tsx:44
 msgid "Filter by this date and time"
-msgstr ""
+msgstr "Filtrer etter denne datoen og klokkeslettet"
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/chart-definition.ts:208
 msgid "Sankey chart doesn't support more than {0} unique nodes."
-msgstr ""
+msgstr "Sankey-diagrammet støtter ikke mer enn {0} unike noder."
 
 #: frontend/src/metabase/dashboard/containers/ArchiveDashboardModal.jsx:46
 msgid "This will trash the dashboard and the questions that are saved in it. Are you sure you want to do this?"
-msgstr ""
+msgstr "Dette vil slette dashbordet og spørsmålene som er lagret i det. Er du sikker på at du vil gjøre dette?"
 
 #: frontend/src/metabase/questions/containers/ArchiveQuestionModal.jsx:19
 msgid "This question will be removed from its dashboard and any alerts using it."
-msgstr ""
+msgstr "Dette spørsmålet vil bli fjernet fra dashbordet og alle varsler som bruker det."
 
 #: frontend/src/metabase/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.tsx:76
 #: frontend/src/metabase/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.tsx:211
 msgid "Select a collection or dashboard"
-msgstr ""
+msgstr "Velg en samling eller et dashbord"
 
 #: frontend/src/metabase/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.tsx:148
 msgid "Select this dashboard"
-msgstr ""
+msgstr "Velg dette dashbordet"
 
 #: frontend/src/metabase/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.tsx:149
 msgid "Select this collection"
-msgstr ""
+msgstr "Velg denne kolleksjonen"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:118
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:76
 msgid "Diagnostic info may contain sensitive data."
-msgstr ""
+msgstr "Diagnostisk informasjon kan inneholde sensitive data."
 
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:150
 msgid "Thank you for your feedback!"
-msgstr ""
+msgstr "Takk for din tilbakemelding!"
 
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:153
 msgid "Bug report submitted successfully."
-msgstr ""
+msgstr "Feilrapport sendt inn vellykket."
 
 #: frontend/src/metabase/components/SaveQuestionForm/SaveQuestionForm.tsx:39
 msgid "Save changes or save as new?"
-msgstr ""
+msgstr "Lagre endringer eller lagre som ny?"
 
 #: frontend/src/metabase/components/SaveQuestionForm/SaveQuestionForm.tsx:85
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:251
 #: frontend/src/metabase/questions/components/CopyQuestionForm.tsx:87
 msgid "Where do you want to save this?"
-msgstr ""
+msgstr "Hvor vil du lagre dette?"
 
 #: frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx:41
 msgid "Save your changes?"
@@ -37828,67 +37829,67 @@ msgstr "Lagre endringer?"
 
 #: frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx:42
 msgid "You’ll need to save your changes before leaving to create a new question."
-msgstr ""
+msgstr "Du må lagre endringene dine før du går videre til å opprette et nytt spørsmål."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:204
 msgid "An admin needs to enable this feature first."
-msgstr ""
+msgstr "En administrator må aktivere denne funksjonen først."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:246
 msgid "data stack"
-msgstr ""
+msgstr "datastack"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:279
 msgid "Admin panel with the \"Invite someone\" button"
-msgstr ""
+msgstr "Administratorpanel med \"Inviter noen\"-knappen"
 
 #: frontend/src/metabase/nav/components/TrialBanner/TrialBanner.tsx:28
 msgid "Today is the last day of your trial."
-msgstr ""
+msgstr "I dag er den siste dagen av rettssaken din."
 
 #: frontend/src/metabase/nav/components/TrialBanner/TrialBanner.tsx:29
 msgid "{0} day left in your trial."
 msgid_plural "{0} days left in your trial."
-msgstr[0] ""
+msgstr[0] "{0} dag igjen av rettssaken."
 msgstr[1] ""
 
 #: frontend/src/metabase/nav/components/TrialBanner/TrialBanner.tsx:36
 msgid "Manage your subscription."
-msgstr ""
+msgstr "Administrer abonnementet ditt."
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:161
 msgid "Do you still want this question to appear in"
-msgstr ""
+msgstr "Ønsker du fortsatt at dette spørsmålet skal vises i"
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:178
 msgid "It can still appear there even though you’re moving it into a collection."
-msgstr ""
+msgstr "Den kan fortsatt vises der selv om du flytter den til en samling."
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:186
 msgid "Yes, it should still appear there"
-msgstr ""
+msgstr "Ja, det skal fortsatt vises der"
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:191
 msgid "No, remove it from that dashboard"
-msgstr ""
+msgstr "Nei, fjern den fra dashbordet"
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:221
 msgid "You can move it to a collection if you want to use it in both dashboards."
-msgstr ""
+msgstr "Du kan flytte den til en samling hvis du vil bruke den i begge instrumentbordene."
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:297
 msgid "Exclude {0}"
-msgstr ""
+msgstr "Ekskluder {0}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:300
 msgid "Exclude {0} selection"
 msgid_plural "Exclude {0} selections"
-msgstr[0] ""
+msgstr[0] "Ekskluder {0} valg"
 msgstr[1] ""
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:622
 msgid "Returns true if string1 contains string2 within it (or string3, etc. if specified)."
-msgstr ""
+msgstr "Returnerer true hvis string1 inneholder string2 (eller string3, osv. hvis spesifisert)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:636
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:664
@@ -37897,77 +37898,77 @@ msgstr ""
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:953
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:976
 msgid "You can add more values to look for."
-msgstr ""
+msgstr "Du kan legge til flere verdier å se etter."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:641
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:669
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:697
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:725
 msgid "Optional. To perform a case-insensitive match."
-msgstr ""
+msgstr "Valgfritt. For å utføre en case-insensitiv match."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:650
 msgid "Returns true if string1 does not contain string2 within it (and string3, etc. if specified)."
-msgstr ""
+msgstr "Returnerer true hvis string1 ikke inneholder string2 (og string3 osv. hvis spesifisert)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:678
 msgid "Returns true if the beginning of the string1 matches the string2 (or string3, etc. if specified)."
-msgstr ""
+msgstr "Returnerer true hvis begynnelsen av string1 samsvarer med string2 (eller string3, osv. hvis spesifisert)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:706
 msgid "Returns true if the end of the string1 matches the string2 (or string3, etc. if specified)."
-msgstr ""
+msgstr "Returnerer true hvis slutten av string1 samsvarer med string2 (eller string3, osv. hvis spesifisert)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:888
 msgid "Alias for if(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met."
-msgstr ""
+msgstr "Alias for if(). Tester et uttrykk mot en liste med tilfeller og returnerer den tilsvarende verdien for det første samsvarende tilfellet, med en valgfri standardverdi hvis ingenting annet er oppfylt."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:914
 msgid "Alias for case(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met."
-msgstr ""
+msgstr "Alias for case(). Tester et uttrykk mot en liste med tilfeller og returnerer den tilsvarende verdien for det første samsvarende tilfellet, med en valgfri standardverdi hvis ingenting annet er oppfylt."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:939
 msgid "Returns true if value1 equals value2 (or value3, etc. if specified)."
-msgstr ""
+msgstr "Returnerer true hvis verdi1 er lik verdi2 (eller verdi3 osv. hvis spesifisert)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:943
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:966
 msgid "The column or value to check."
-msgstr ""
+msgstr "Kolonnen eller verdien som skal kontrolleres."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:948
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:971
 msgid "The column or value to look for."
-msgstr ""
+msgstr "Kolonnen eller verdien du skal se etter."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:962
 msgid "Returns true if value1 doesn't equal value2 (and value3, etc. if specified)."
-msgstr ""
+msgstr "Returnerer true hvis verdi1 ikke er lik verdi2 (og verdi3 osv. hvis spesifisert)."
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:48
 msgid "Report a bug"
-msgstr ""
+msgstr "Rapporter en feil"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:69
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:55
 msgid "What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?"
-msgstr ""
+msgstr "Hva prøvde du å gjøre, og hvilke skritt tok du? Hva var det forventede resultatet, og hva skjedde i stedet?"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:80
 msgid "Include diagnostic information"
-msgstr ""
+msgstr "Inkluder diagnostisk informasjon"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:112
 msgid "Submit report"
-msgstr ""
+msgstr "Send inn rapport"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:117
 msgid "Download report"
-msgstr ""
+msgstr "Last ned rapporten"
 
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:99
 msgid "Like \"the previous 7 days\" or \"this month\""
-msgstr ""
+msgstr "Som \"de siste 7 dagene\" eller \"denne måneden\""
 
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:190
 msgid "Previous Week"
@@ -37983,31 +37984,31 @@ msgstr "Forrige år"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestionResult/ResultTitle.tsx:83
 msgid "the original exploration"
-msgstr ""
+msgstr "den opprinnelige utforskningen"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/PublicComponentWrapper/SdkError.tsx:44
 msgid "Question {0} not found. Make sure you pass the correct ID."
-msgstr ""
+msgstr "Spørsmål {0} ble ikke funnet. Sørg for at du oppgir riktig ID."
 
 #: enterprise/frontend/src/embedding-sdk/components/private/PublicComponentWrapper/SdkError.tsx:60
 msgid "Dashboard {0} not found. Make sure you pass the correct ID."
-msgstr ""
+msgstr "Dashbord {0} ble ikke funnet. Sørg for at du oppgir riktig ID."
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:300
 msgid "By enabling uploads to the Sample Database, you agree that you will not upload or otherwise transmit any individually identifiable information, including without limitation Personal Data (as defined by the General Data Protection Regulation) or Personally Identifiable Information (as defined by the California Consumer Privacy Act and California Privacy Rights Act)."
-msgstr ""
+msgstr "Ved å aktivere opplasting til eksempeldatabasen samtykker du i at du ikke vil laste opp eller på annen måte overføre individuelt identifiserbar informasjon, inkludert, men ikke begrenset til, personopplysninger (som definert i personvernforordningen) eller personlig identifiserbar informasjon (som definert i California Consumer Privacy Act og California Privacy Rights Act)."
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:301
 msgid "Additionally, you acknowledge and agree that the ability to upload to the Sample Database is provided “as is” and without warranty of any kind, and Metabase disclaims all warranties, express or implied, and all liability in connection with the uploads to the Sample Database or the data stored within it."
-msgstr ""
+msgstr "I tillegg erkjenner og godtar du at muligheten til å laste opp til eksempeldatabasen leveres \"som den er\" og uten noen form for garanti, og Metabase fraskriver seg alle garantier, uttrykkelige eller underforståtte, og alt ansvar i forbindelse med opplastinger til eksempeldatabasen eller dataene som er lagret i den."
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:308
 msgid "Additional terms apply."
-msgstr ""
+msgstr "Ytterligere vilkår gjelder."
 
 #: frontend/src/metabase/common/components/CollectionPicker/components/CollectionPickerModal.tsx:153
 msgid "Browse"
-msgstr ""
+msgstr "Bla gjennom"
 
 #: frontend/src/metabase/common/components/DashboardPicker/components/DashboardPickerModal.tsx:69
 msgid "Save in this dashboard"
@@ -38019,96 +38020,96 @@ msgstr "Lagre i samlingen"
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperContent.tsx:105
 msgid "You can connect widgets to {{variables}} in link cards."
-msgstr ""
+msgstr "Du kan koble widgeter til {{variabler}} i lenkekort."
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperContent.tsx:106
 msgid "You can connect widgets to {{variables}} in iframe cards."
-msgstr ""
+msgstr "Du kan koble widgeter til {{variabler}} i iframe-kort."
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
 msgid "Hide page"
-msgstr ""
+msgstr "Skjul side"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SharingPaneButton/SharingPaneButton.tsx:68
 msgid "Disabled."
-msgstr ""
+msgstr "Deaktivert."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SharingPaneButton/SharingPaneButton.tsx:74
 msgid "Enable in admin settings"
-msgstr ""
+msgstr "Aktiver i administratorinnstillingene"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Filter/FilterDropdown/FilterDropdown.tsx:45
 msgid "1 filter"
-msgstr ""
+msgstr "1 filter"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Filter/FilterDropdown/FilterDropdown.tsx:46
 msgid "{0} filters"
-msgstr ""
+msgstr "{0} filtre"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizeDropdown/SummarizeDropdown.tsx:26
 msgid "1 summary"
-msgstr ""
+msgstr "1 sammendrag"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizeDropdown/SummarizeDropdown.tsx:27
 msgid "{0} summaries"
-msgstr ""
+msgstr "{0} sammendrag"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.tsx:96
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu.tsx:182
 msgctxt "A verb, not a noun"
 msgid "Move"
-msgstr ""
+msgstr "Flytte"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.tsx:104
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu.tsx:193
 msgctxt "A verb, not a noun"
 msgid "Duplicate"
-msgstr ""
+msgstr "Duplikat"
 
 #: frontend/src/metabase/common/components/DataPicker/components/DataPickerModal.tsx:260
 msgctxt "A verb, not a noun"
 msgid "Filter"
-msgstr ""
+msgstr "Filter"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:258
 msgctxt "The response returned by an API Request"
 msgid "Test response"
-msgstr ""
+msgstr "Testrespons"
 
 #: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
 msgctxt "Notification that shows after the user hides the page"
 msgid "Page hidden from the navigation sidebar"
-msgstr ""
+msgstr "Siden er skjult fra navigasjonsfeltet"
 
 #: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
 msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
 msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
-msgstr ""
+msgstr "Du får tilgang til den når som helst ved å klikke på tannhjulikonet øverst til høyre på skjermen."
 
 #: enterprise/frontend/src/metabase-enterprise/clean_up/CollectionCleanupAlert/CollectionCleanupAlert.tsx:67
 msgctxt "This is the heading of a banner that invites the user to clean up a collection."
 msgid "Keep your collections tidy!"
-msgstr ""
+msgstr "Hold orden i samlingene dine!"
 
 #: enterprise/frontend/src/metabase-enterprise/clean_up/CollectionCleanupAlert/CollectionCleanupAlert.tsx:77
 msgctxt "This is the heading of a banner that invites the user to clean up a collection."
 msgid "View unused items and select which ones to move to the trash."
-msgstr ""
+msgstr "Se ubrukte elementer og velg hvilke som skal flyttes til papirkurven."
 
 #: frontend/src/metabase/components/ErrorPages/DiagnosticCheckboxes.tsx:52
 msgctxt "{0} is the name of the application, usually 'Metabase'"
 msgid "{0} instance version information"
-msgstr ""
+msgstr "{0} informasjon om instansversjon"
 
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:59
 msgctxt "{0} is the name of the application, usually 'Metabase'"
 msgid "This information helps {0} figure out what exactly caused the issue"
-msgstr ""
+msgstr "Denne informasjonen hjelper {0} med å finne ut hva som forårsaket problemet"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:84
 msgctxt "{0} is the name of the application, usually 'Metabase'"
 msgid "This information helps {0} figure out what exactly caused the issue."
-msgstr ""
+msgstr "Denne informasjonen hjelper {0} med å finne ut hva som forårsaket problemet."
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:122
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:69
@@ -38119,159 +38120,162 @@ msgstr "Last ned"
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:144
 msgctxt "Alt text for image shown on successful bug report submission"
 msgid "Bug report submitted"
-msgstr ""
+msgstr "Feilrapport sendt inn"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:259
 msgctxt "On a date. Example: On Jan 20."
 msgid "On {0}"
-msgstr ""
+msgstr "På {0}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:266
 msgctxt "Before a date. Example: Before Jan 20."
 msgid "Before {0}"
-msgstr ""
+msgstr "Før {0}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:273
 msgctxt "After a date. Example: After Jan 20."
 msgid "After {0}"
-msgstr ""
+msgstr "Etter {0}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:287
 msgctxt "Describes a relative date interval. Example: Previous 2 months, starting 1 year ago."
 msgid "{0}, starting {1}"
-msgstr ""
+msgstr "{0}, starter {1}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:340
 msgctxt "This is a \"dayjs\" format string (https://day.js.org/docs/en/plugin/advanced-format). It should include \"Q\" for the quarter number, YYYY for the year, and raw text can be escaped by brackets. For example, \"[Quarter] Q YYYY\" will be rendered as \"Quarter 1 2024\"."
 msgid "[Q]Q YYYY"
-msgstr ""
+msgstr "[Q]Q YYYYY"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:360
 #: frontend/src/metabase/ui/components/inputs/QuarterPicker/QuarterPicker.tsx:95
 msgctxt "This is a \"dayjs\" format string (https://day.js.org/docs/en/plugin/advanced-format). It should include \"Q\" for the quarter number, and raw text can be escaped by brackets. For example, \"[Quarter] Q\" will be rendered as \"Quarter 1\"."
 msgid "[Q]Q"
-msgstr ""
+msgstr "[Q]Q"
 
 #: frontend/src/metabase-lib/v1/expressions/diagnostics.ts:210
 #: frontend/src/metabase-lib/v1/expressions/process.ts:26
 msgctxt "{0} is an identifier of the field provided by user in a custom expression"
 msgid "No aggregation found in: {0}. Use functions like Sum() or custom Metrics"
-msgstr ""
+msgstr "Ingen aggregering funnet i: {0}. Bruk funksjoner som Sum() eller egendefinerte beregninger"
 
 #: metabase/legacy_mbql/normalize.cljc:1012
 msgid "Error replacing legacy filters"
-msgstr ""
+msgstr "Feil ved utskifting av eldre filtre"
 
 #: metabase/lib/aggregation.cljc:121
 msgid "If"
-msgstr ""
+msgstr "Hvis"
 
 #: metabase/lib/binning.cljc:114
 msgid "Bin every 0.005 degrees"
-msgstr ""
+msgstr "Bin hver 0,005 grader"
 
 #: metabase/lib/binning.cljc:113
 msgid "Bin every 0.01 degrees"
-msgstr ""
+msgstr "Bin hver 0,01 grad"
 
 #: metabase/lib/binning.cljc:112
 msgid "Bin every 0.05 degrees"
-msgstr ""
+msgstr "Bin hver 0,05 grader"
 
 #: metabase/lib/filter.cljc:121
 msgid "{0} is in {1}"
-msgstr ""
+msgstr "{0} er i {1}"
 
 #: metabase/lib/filter.cljc:95
 msgid "{0} is at {1}"
-msgstr ""
+msgstr "{0} er ved {1}"
 
 #: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
 msgid "{0} is one of {1} {2} selections"
-msgstr ""
+msgstr "{0} er ett av {1} {2} valg"
 
 #: metabase/models/card.clj:484
 msgid "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question"
-msgstr ""
+msgstr "Ugyldig dashbordspørsmål: Kan ikke angi `type` på et dashbord Spørsmål"
 
 #: metabase/models/card.clj:497
 msgid "Can't move question into dashboard. Questions saved in dashboards can't appear in other dashboards."
-msgstr ""
+msgstr "Kan ikke flytte spørsmål til dashbordet. Spørsmål som er lagret i dashbord, kan ikke vises i andre dashbord."
 
 #: metabase/models/card.clj:480
 msgid "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question"
-msgstr ""
+msgstr "Ugyldig dashbordspørsmål: Kan ikke angi `collection_position` på et dashbord Spørsmål"
 
 #: metabase/models/card.clj:513
 msgid "Invalid dashboard-internal card"
-msgstr ""
+msgstr "Ugyldig dashbord-internt kort"
 
 #: metabase/models/card.clj:478
 msgid "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question"
-msgstr ""
+msgstr "Ugyldig dashbordspørsmål: Kan ikke angi `collection_id` manuelt på et dashbord Spørsmål"
 
 #: metabase/models/revision/diff.clj:94
 msgid "moved from dashboard {0} to {1}"
-msgstr ""
+msgstr "flyttet fra dashbord {0} til {1}"
 
 #: metabase/models/revision/diff.clj:97
 msgid "made this a dashboard-internal question in {0}"
-msgstr ""
+msgstr "gjorde dette til et dashbord-internt spørsmål i {0}"
 
 #: metabase/models/revision/diff.clj:99
 msgid "extracted this question from {0}"
-msgstr ""
+msgstr "hentet dette spørsmålet fra {0}"
 
 #: metabase/models/user.clj:462
 msgid "Whether the user has dismissed the onboarding link from the main sidebar."
-msgstr ""
+msgstr "Om brukeren har avvist onboarding-lenken fra hovedsidefeltet."
 
 #: metabase/models/user.clj:526
 msgid "The ISO8601 date when a user last dismissed the trial banner."
-msgstr ""
+msgstr "ISO8601-datoen da en bruker sist avviste prøvebanneret."
 
 #: metabase/premium_features/token_check.clj:83
 msgid "Number of active users"
-msgstr ""
+msgstr "Antall aktive brukere"
 
 #: metabase/public_settings.clj:819
 msgid "Indicates whether Metabase is running behind a proxy that sets the source-address-header for incoming requests."
-msgstr ""
+msgstr "Angir om Metabase kjører bak en proxy som setter source-address-headeren for innkommende forespørsler."
 
 #: metabase/public_settings.clj:1072
 msgid "Which engine to use when performing search. Supported values are :in-place and :appdb"
-msgstr ""
+msgstr "Hvilken motor som skal brukes når du utfører søk. Verdier som støttes er :in-place og :appdb"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
 "    application database.\n"
 "\n"
 "    Turn off by default since we haven't had an user-facing feature that uses this data yet."
-msgstr ""
+msgstr "Aktiver feltbruksanalyse for spørringer. Dette vil analysere feltene som brukes i spørringer, og lagre dem i\n"
+"    applikasjonsdatabasen.\n"
+"\n"
+"    Slå av som standard, siden vi ikke har hatt en brukervendt funksjon som bruker disse dataene ennå."
 
 #: metabase/task/truncate_audit_tables.clj:72
 msgid "Batch size to use for deletion of old rows for audit-related tables (like query_execution). Can be only set as an environment variable."
-msgstr ""
+msgstr "Batchstørrelse som skal brukes til sletting av gamle rader for revisjonsrelaterte tabeller (som query_execution). Kan bare angis som en miljøvariabel."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:201
 msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
-msgstr ""
+msgstr "URL for JWT-basert påloggingsside. Valgfritt hvis du bare bruker JWT SSO med den innebygde analyse-SDK-en."
 
 #: metabase_enterprise/stale.clj:153
 msgid "Was the collection cleanup banner dismissed?"
-msgstr ""
+msgstr "Ble innsamlingsaksjonen avvist?"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/QuestionRelationshipsTab.tsx:24
 msgid "Linked tables"
-msgstr ""
+msgstr "Koblede tabeller"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/TablesLinkedToQuestion.tsx:37
 msgid "This model is not linked to any tables."
-msgstr ""
+msgstr "Denne modellen er ikke knyttet til noen tabeller."
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/TablesLinkedToQuestion.tsx:38
 msgid "This question is not linked to any tables."
-msgstr ""
+msgstr "Dette spørsmålet er ikke knyttet til noen tabeller."
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/ToggleFullList.tsx:33
 msgid "Show less"
@@ -38283,21 +38287,21 @@ msgstr "Vis alt"
 
 #: frontend/src/metabase/querying/filters/components/DatePicker/ExcludeDatePicker/constants.ts:27
 msgid "Empty values"
-msgstr ""
+msgstr "Tomme verdier"
 
 #: frontend/src/metabase/querying/filters/components/DatePicker/ExcludeDatePicker/constants.ts:31
 msgid "Not empty values"
-msgstr ""
+msgstr "Ikke tomme verdier"
 
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:49
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:61
 msgid "opening parenthesis"
-msgstr ""
+msgstr "åpningsparentes"
 
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:52
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:71
 msgid "closing parenthesis"
-msgstr ""
+msgstr "avsluttende parentes"
 
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:69
 msgid "comma"
@@ -38305,153 +38309,154 @@ msgstr "komma"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/InlineActionSettings.tsx:136
 msgid "To enable creating a shareable link you first need to save your action"
-msgstr ""
+msgstr "For å kunne opprette en delbar lenke må du først lagre handlingen din"
 
 #: frontend/src/metabase/models/components/ModelActions/ModelActions.tsx:20
 msgid "Actions for {0}"
-msgstr ""
+msgstr "Handlinger for {0}"
 
 #: frontend/src/metabase/models/components/ModelActions/ModelActions.tsx:34
 msgid "Actions are not enabled for this model."
-msgstr ""
+msgstr "Handlinger er ikke aktivert for denne modellen."
 
 #: enterprise/frontend/src/metabase-enterprise/clean_up/index.tsx:22
 msgid "Clear out unused items"
-msgstr ""
+msgstr "Rydd ut ubrukte gjenstander"
 
 #: frontend/src/metabase/browse/models/BrowseModels.tsx:98
 #: frontend/src/metabase/browse/models/ModelExplanationBanner.tsx:54
 msgid "Create models to clean up and combine tables to make your data easier to explore"
-msgstr ""
+msgstr "Lag modeller for å rydde opp i og kombinere tabeller for å gjøre dataene enklere å utforske"
 
 #: frontend/src/metabase/browse/models/BrowseModels.tsx:99
 #: frontend/src/metabase/browse/models/ModelExplanationBanner.tsx:56
 msgid "Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table."
-msgstr ""
+msgstr "Modeller er litt som virtuelle tabeller: Gjør alle sammenføyninger og egendefinerte kolonner én gang, lagre den som en modell, og spør deretter i den som i en tabell."
 
 #: frontend/src/metabase/browse/models/EmptyStates/ModelsVideo.tsx:14
 msgid "Use Models in Metabase | Getting started with Metabase"
-msgstr ""
+msgstr "Bruk modeller i Metabase | Kom i gang med Metabase"
 
 #: frontend/src/metabase/browse/models/EmptyStates/ModelsVideo.tsx:28
 msgid "Browse models video thumbnail"
-msgstr ""
+msgstr "Bla gjennom videominiatyrbilder av modeller"
 
 #: frontend/src/metabase/collections/components/CollectionMenu/CollectionMenu.tsx:86
 msgid "Move questions into their dashboards"
-msgstr ""
+msgstr "Flytt spørsmål inn i dashbordene deres"
 
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:33
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:198
 msgid "Gather diagnostic information"
-msgstr ""
+msgstr "Samle inn diagnostisk informasjon"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:65
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:51
 msgid "Could you provide us with a little context?"
-msgstr ""
+msgstr "Kan du gi oss litt kontekst?"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsModal.tsx:63
 msgid "The questions were successfully moved into their dashboards"
-msgstr ""
+msgstr "Spørsmålene ble flyttet inn i dashbordene deres"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:18
 msgid "Move questions into their dashboards?"
-msgstr ""
+msgstr "Flytte spørsmål inn i dashbordene deres?"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:28
 msgid "If a question only appears in a single dashboard in this collection, it'll be moved into that dashboard to declutter the collection."
-msgstr ""
+msgstr "Hvis et spørsmål bare finnes i ett enkelt instrumentbord i denne samlingen, flyttes det til dette instrumentbordet for å rydde opp i samlingen."
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:31
 msgid "Permissions won’t change."
-msgstr ""
+msgstr "Tillatelsene endres ikke."
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:38
 msgid "Preview the changes"
-msgstr ""
+msgstr "Forhåndsvis endringene"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1163
 msgid "Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr ""
+msgstr "Konverter tidssone for en dato- eller tidsstempelkolonne.\n"
+"Vi støtter tz-databasens tidssonenavn."
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:70
 msgid "Move these questions into their dashboards?"
-msgstr ""
+msgstr "Flytte disse spørsmålene inn i dashbordene deres?"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:71
 msgid "Move this question into its dashboard?"
 msgid_plural "Move these {0} questions into their dashboards?"
-msgstr[0] ""
+msgstr[0] "Flytte dette spørsmålet til dashbordet sitt?"
 msgstr[1] ""
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:91
 msgid "Dashboard it'll be moved to"
-msgstr ""
+msgstr "Dashboard vil det bli flyttet til"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:117
 msgid "There aren't any questions to move into dashboards. Looks like everything is in its place."
-msgstr ""
+msgstr "Det er ingen spørsmål som skal flyttes til dashbord. Alt ser ut til å være på plass."
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:156
 msgid "Move these questions"
-msgstr ""
+msgstr "Flytt disse spørsmålene"
 
 #: frontend/src/metabase/notifications/NewPulseSidebar.tsx:30
 msgid "Set up a dashboard subscription"
-msgstr ""
+msgstr "Sett opp et dashbordabonnement"
 
 #: frontend/src/metabase/notifications/NewPulseSidebar.tsx:31
 msgid "Schedule dashboard results to be sent to you and your team. People don't need a {0} account to subscribe."
-msgstr ""
+msgstr "Planlegg at resultatene fra dashbordet skal sendes til deg og teamet ditt. Folk trenger ikke en {0}-konto for å abonnere."
 
 #: frontend/src/metabase/notifications/NewPulseSidebar.tsx:54
 msgid "Configure Slack"
-msgstr ""
+msgstr "Konfigurer Slack"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:320
 msgid "Additional tooltip columns"
-msgstr ""
+msgstr "Flere kolonner med verktøytips"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:321
 msgid "Enter column names"
-msgstr ""
+msgstr "Skriv inn kolonnenavn"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/SidesheetCardWithFields.tsx:18
 msgctxt "{0} is the number of fields"
 msgid "{0} field"
 msgid_plural "{0} fields"
-msgstr[0] ""
+msgstr[0] "{0} felt"
 msgstr[1] ""
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/ToggleFullList.tsx:27
 msgctxt "{0} is a number"
 msgid "Showing all {0} questions"
-msgstr ""
+msgstr "Viser alle {0} spørsmål"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/ToggleFullList.tsx:28
 msgctxt "The variables are numbers"
 msgid "Showing {0} of {1} questions"
-msgstr ""
+msgstr "Viser {0} av {1} spørsmål"
 
 #: frontend/src/metabase/components/ErrorPages/DiagnosticCheckboxes.tsx:23
 msgctxt "This is part of the bug reporting modal"
 msgid "Your name and email"
-msgstr ""
+msgstr "Ditt navn og e-post"
 
 #: frontend/src/metabase/lib/errors/validation.ts:10
 msgctxt "{0} is a number greater than 1"
 msgid "must be {0} characters or less"
-msgstr ""
+msgstr "må være {0} tegn eller mindre"
 
 #: frontend/src/metabase/lib/errors/validation.ts:13
 msgctxt "{0} is a number greater than 1"
 msgid "must be exactly {0} characters"
-msgstr ""
+msgstr "må være nøyaktig {0} tegn"
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:161
 msgctxt "{0} is the dashboard name the question currently has dashcards in"
 msgid "Do you still want this question to appear in {0}?"
-msgstr ""
+msgstr "Vil du fortsatt at dette spørsmålet skal vises i {0}?"
 

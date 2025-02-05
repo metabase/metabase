@@ -37523,220 +37523,220 @@ msgstr "Aktifkan pengiriman laporan bug."
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Breakout/Breakout.tsx:19
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Breakout/BreakoutBadgeList.tsx:28
 msgid "Add another grouping"
-msgstr ""
+msgstr "Tambahkan pengelompokan lain"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Filter/Filter.tsx:18
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Filter/FilterBadgeList.tsx:22
 msgid "Add another filter"
-msgstr ""
+msgstr "Tambahkan filter lainnya"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Summarize/Summarize.tsx:33
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizeBadgeList.tsx:23
 msgid "Add another summary"
-msgstr ""
+msgstr "Tambahkan ringkasan lainnya"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu.tsx:104
 msgid "Move, duplicate, and more…"
-msgstr ""
+msgstr "Pindahkan, gandakan, dan banyak lagi…"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ToggleNativeQueryPreview/ToggleNativeQueryPreview.tsx:16
 msgid "View SQL"
-msgstr ""
+msgstr "Lihat SQL"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ToggleNativeQueryPreview/ToggleNativeQueryPreview.tsx:17
 msgid "View native query"
-msgstr ""
+msgstr "Lihat kueri asli"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ToggleNativeQueryPreview/ToggleNativeQueryPreview.tsx:21
 msgid "Hide SQL"
-msgstr ""
+msgstr "Sembunyikan SQL"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ToggleNativeQueryPreview/ToggleNativeQueryPreview.tsx:22
 msgid "Hide native query"
-msgstr ""
+msgstr "Sembunyikan kueri asli"
 
 #: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:66
 msgid "Previous 3 months"
-msgstr ""
+msgstr "3 bulan sebelumnya"
 
 #: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:75
 msgid "Previous 12 months"
-msgstr ""
+msgstr "12 bulan sebelumnya"
 
 #: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:125
 #: frontend/src/metabase/nav/components/ProfileLink/ProfileLink.jsx:104
 #: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:192
 msgid "Report an issue"
-msgstr ""
+msgstr "Laporkan masalah"
 
 #: frontend/src/metabase-lib/v1/expressions/resolver.js:140
 msgid "{0} expects 2 arguments or more"
-msgstr ""
+msgstr "{0} mengharapkan 2 argumen atau lebih"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestionResult/InteractiveQuestionResult.tsx:116
 msgid "Back to visualization"
-msgstr ""
+msgstr "Kembali ke visualisasi"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:19
 msgid "Refresh cache automatically"
-msgstr ""
+msgstr "Segarkan cache secara otomatis"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
 msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr ""
+msgstr "Segera setelah hasil yang di-cache kedaluwarsa, jalankan dan cache kueri lagi untuk memperbarui hasil dan menyegarkan cache."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:91
 msgid "Can't move this question into a dashboard"
-msgstr ""
+msgstr "Tidak dapat memindahkan pertanyaan ini ke dasbor"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:93
 msgid "Move this question?"
 msgid_plural "Move these questions?"
-msgstr[0] ""
+msgstr[0] "Pindahkan pertanyaan ini?"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:118
 msgid "Checking on some things..."
-msgstr ""
+msgstr "Memeriksa beberapa hal..."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:125
 msgid "This question currently appears in a dashboard that you don't have permission to edit."
-msgstr ""
+msgstr "Pertanyaan ini saat ini muncul di dasbor yang tidak Anda miliki izin untuk mengeditnya."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:134
 msgid "Moving a question into a dashboard removes it from all other dashboards it appears in"
-msgstr ""
+msgstr "Memindahkan pertanyaan ke dasbor akan menghapusnya dari semua dasbor lain yang menampilkan pertanyaan tersebut"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:147
 msgid "{0} will be removed from {1}"
-msgstr ""
+msgstr "{0} akan dihapus dari {1}"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:166
 msgid "Move it"
 msgid_plural "Move them"
-msgstr[0] ""
+msgstr[0] "Pindahkan itu"
 
 #: frontend/src/metabase/common/components/EntityPicker/utils.ts:174
 msgid "Search this dashboard or everywhere…"
-msgstr ""
+msgstr "Cari di dasbor ini atau di mana saja…"
 
 #: frontend/src/metabase/querying/drills/utils/quick-filter-drill.tsx:44
 msgid "Filter by this date and time"
-msgstr ""
+msgstr "Filter berdasarkan tanggal dan waktu ini"
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/chart-definition.ts:208
 msgid "Sankey chart doesn't support more than {0} unique nodes."
-msgstr ""
+msgstr "Bagan Sankey tidak mendukung lebih dari {0} node unik."
 
 #: frontend/src/metabase/dashboard/containers/ArchiveDashboardModal.jsx:46
 msgid "This will trash the dashboard and the questions that are saved in it. Are you sure you want to do this?"
-msgstr ""
+msgstr "Ini akan menghapus dasbor dan pertanyaan yang tersimpan di dalamnya. Apakah Anda yakin ingin melakukan ini?"
 
 #: frontend/src/metabase/questions/containers/ArchiveQuestionModal.jsx:19
 msgid "This question will be removed from its dashboard and any alerts using it."
-msgstr ""
+msgstr "Pertanyaan ini akan dihapus dari dasbornya dan semua peringatan yang menggunakannya."
 
 #: frontend/src/metabase/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.tsx:76
 #: frontend/src/metabase/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.tsx:211
 msgid "Select a collection or dashboard"
-msgstr ""
+msgstr "Pilih koleksi atau dasbor"
 
 #: frontend/src/metabase/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.tsx:148
 msgid "Select this dashboard"
-msgstr ""
+msgstr "Pilih dasbor ini"
 
 #: frontend/src/metabase/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.tsx:149
 msgid "Select this collection"
-msgstr ""
+msgstr "Pilih koleksi ini"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:118
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:76
 msgid "Diagnostic info may contain sensitive data."
-msgstr ""
+msgstr "Info diagnostik mungkin berisi data sensitif."
 
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:150
 msgid "Thank you for your feedback!"
-msgstr ""
+msgstr "Terima kasih atas masukan Anda!"
 
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:153
 msgid "Bug report submitted successfully."
-msgstr ""
+msgstr "Laporan bug berhasil dikirimkan."
 
 #: frontend/src/metabase/components/SaveQuestionForm/SaveQuestionForm.tsx:39
 msgid "Save changes or save as new?"
-msgstr ""
+msgstr "Simpan perubahan atau simpan sebagai baru?"
 
 #: frontend/src/metabase/components/SaveQuestionForm/SaveQuestionForm.tsx:85
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:251
 #: frontend/src/metabase/questions/components/CopyQuestionForm.tsx:87
 msgid "Where do you want to save this?"
-msgstr ""
+msgstr "Di mana Anda ingin menyimpan ini?"
 
 #: frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx:41
 msgid "Save your changes?"
-msgstr ""
+msgstr "Simpan perubahan Anda?"
 
 #: frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx:42
 msgid "You’ll need to save your changes before leaving to create a new question."
-msgstr ""
+msgstr "Anda perlu menyimpan perubahan sebelum meninggalkan halaman untuk membuat pertanyaan baru."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:204
 msgid "An admin needs to enable this feature first."
-msgstr ""
+msgstr "Admin perlu mengaktifkan fitur ini terlebih dahulu."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:246
 msgid "data stack"
-msgstr ""
+msgstr "tumpukan data"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:279
 msgid "Admin panel with the \"Invite someone\" button"
-msgstr ""
+msgstr "Panel admin dengan tombol \"Undang seseorang\""
 
 #: frontend/src/metabase/nav/components/TrialBanner/TrialBanner.tsx:28
 msgid "Today is the last day of your trial."
-msgstr ""
+msgstr "Hari ini adalah hari terakhir persidangan Anda."
 
 #: frontend/src/metabase/nav/components/TrialBanner/TrialBanner.tsx:29
 msgid "{0} day left in your trial."
 msgid_plural "{0} days left in your trial."
-msgstr[0] ""
+msgstr[0] "{0} hari tersisa dalam masa percobaan Anda."
 
 #: frontend/src/metabase/nav/components/TrialBanner/TrialBanner.tsx:36
 msgid "Manage your subscription."
-msgstr ""
+msgstr "Kelola langganan Anda."
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:161
 msgid "Do you still want this question to appear in"
-msgstr ""
+msgstr "Apakah Anda masih ingin pertanyaan ini muncul di"
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:178
 msgid "It can still appear there even though you’re moving it into a collection."
-msgstr ""
+msgstr "Itu masih dapat muncul di sana meskipun Anda memindahkannya ke dalam koleksi."
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:186
 msgid "Yes, it should still appear there"
-msgstr ""
+msgstr "Ya, itu seharusnya masih muncul di sana"
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:191
 msgid "No, remove it from that dashboard"
-msgstr ""
+msgstr "Tidak, hapus dari dasbor itu"
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:221
 msgid "You can move it to a collection if you want to use it in both dashboards."
-msgstr ""
+msgstr "Anda dapat memindahkannya ke koleksi jika Anda ingin menggunakannya di kedua dasbor."
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:297
 msgid "Exclude {0}"
-msgstr ""
+msgstr "Kecualikan {0}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:300
 msgid "Exclude {0} selection"
 msgid_plural "Exclude {0} selections"
-msgstr[0] ""
+msgstr[0] "Kecualikan pilihan {0}"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:622
 msgid "Returns true if string1 contains string2 within it (or string3, etc. if specified)."
-msgstr ""
+msgstr "Mengembalikan true jika string1 berisi string2 di dalamnya (atau string3, dst. jika ditentukan)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:636
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:664
@@ -37745,559 +37745,560 @@ msgstr ""
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:953
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:976
 msgid "You can add more values to look for."
-msgstr ""
+msgstr "Anda dapat menambahkan lebih banyak nilai untuk dicari."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:641
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:669
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:697
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:725
 msgid "Optional. To perform a case-insensitive match."
-msgstr ""
+msgstr "Opsional. Untuk melakukan pencocokan tanpa memperhatikan huruf besar/kecil."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:650
 msgid "Returns true if string1 does not contain string2 within it (and string3, etc. if specified)."
-msgstr ""
+msgstr "Mengembalikan true jika string1 tidak mengandung string2 di dalamnya (dan string3, dst. jika ditentukan)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:678
 msgid "Returns true if the beginning of the string1 matches the string2 (or string3, etc. if specified)."
-msgstr ""
+msgstr "Mengembalikan true jika awal string1 cocok dengan string2 (atau string3, dst. jika ditentukan)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:706
 msgid "Returns true if the end of the string1 matches the string2 (or string3, etc. if specified)."
-msgstr ""
+msgstr "Mengembalikan true jika akhir string1 cocok dengan string2 (atau string3, dst. jika ditentukan)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:888
 msgid "Alias for if(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met."
-msgstr ""
+msgstr "Alias untuk if(). Menguji ekspresi terhadap daftar kasus dan mengembalikan nilai yang sesuai dari kasus pertama yang cocok, dengan nilai default opsional jika tidak ada hal lain yang terpenuhi."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:914
 msgid "Alias for case(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met."
-msgstr ""
+msgstr "Alias untuk case(). Menguji ekspresi terhadap daftar kasus dan mengembalikan nilai yang sesuai dari kasus pertama yang cocok, dengan nilai default opsional jika tidak ada hal lain yang terpenuhi."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:939
 msgid "Returns true if value1 equals value2 (or value3, etc. if specified)."
-msgstr ""
+msgstr "Mengembalikan true jika nilai1 sama dengan nilai2 (atau nilai3, dst. jika ditentukan)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:943
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:966
 msgid "The column or value to check."
-msgstr ""
+msgstr "Kolom atau nilai yang akan diperiksa."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:948
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:971
 msgid "The column or value to look for."
-msgstr ""
+msgstr "Kolom atau nilai yang akan dicari."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:962
 msgid "Returns true if value1 doesn't equal value2 (and value3, etc. if specified)."
-msgstr ""
+msgstr "Mengembalikan true jika nilai1 tidak sama dengan nilai2 (dan nilai3, dst. jika ditentukan)."
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:48
 msgid "Report a bug"
-msgstr ""
+msgstr "Laporkan bug"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:69
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:55
 msgid "What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?"
-msgstr ""
+msgstr "Apa yang Anda coba lakukan, dan langkah apa yang Anda ambil? Apa hasil yang diharapkan, dan apa yang terjadi?"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:80
 msgid "Include diagnostic information"
-msgstr ""
+msgstr "Sertakan informasi diagnostik"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:112
 msgid "Submit report"
-msgstr ""
+msgstr "Kirim laporan"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:117
 msgid "Download report"
-msgstr ""
+msgstr "Unduh laporan"
 
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:99
 msgid "Like \"the previous 7 days\" or \"this month\""
-msgstr ""
+msgstr "Seperti “7 hari sebelumnya” atau “bulan ini”"
 
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:190
 msgid "Previous Week"
-msgstr ""
+msgstr "Minggu Sebelumnya"
 
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:194
 msgid "Previous Month"
-msgstr ""
+msgstr "Bulan Sebelumnya"
 
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:198
 msgid "Previous Year"
-msgstr ""
+msgstr "Tahun Sebelumnya"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestionResult/ResultTitle.tsx:83
 msgid "the original exploration"
-msgstr ""
+msgstr "eksplorasi asli"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/PublicComponentWrapper/SdkError.tsx:44
 msgid "Question {0} not found. Make sure you pass the correct ID."
-msgstr ""
+msgstr "Pertanyaan {0} tidak ditemukan. Pastikan Anda memberikan ID yang benar."
 
 #: enterprise/frontend/src/embedding-sdk/components/private/PublicComponentWrapper/SdkError.tsx:60
 msgid "Dashboard {0} not found. Make sure you pass the correct ID."
-msgstr ""
+msgstr "Dasbor {0} tidak ditemukan. Pastikan Anda memberikan ID yang benar."
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:300
 msgid "By enabling uploads to the Sample Database, you agree that you will not upload or otherwise transmit any individually identifiable information, including without limitation Personal Data (as defined by the General Data Protection Regulation) or Personally Identifiable Information (as defined by the California Consumer Privacy Act and California Privacy Rights Act)."
-msgstr ""
+msgstr "Dengan mengaktifkan unggahan ke Basis Data Sampel, Anda setuju bahwa Anda tidak akan mengunggah atau mengirimkan informasi identitas individu apa pun, termasuk namun tidak terbatas pada Data Pribadi (sebagaimana didefinisikan oleh Peraturan Perlindungan Data Umum) atau Informasi Identitas Pribadi (sebagaimana didefinisikan oleh Undang-Undang Privasi Konsumen California dan Undang-Undang Hak Privasi California)."
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:301
 msgid "Additionally, you acknowledge and agree that the ability to upload to the Sample Database is provided “as is” and without warranty of any kind, and Metabase disclaims all warranties, express or implied, and all liability in connection with the uploads to the Sample Database or the data stored within it."
-msgstr ""
+msgstr "Selain itu, Anda mengakui dan setuju bahwa kemampuan untuk mengunggah ke Database Sampel diberikan \"apa adanya\" dan tanpa jaminan apa pun, dan Metabase menyangkal semua jaminan, tersurat maupun tersirat, dan semua tanggung jawab sehubungan dengan unggahan ke Database Sampel atau data yang tersimpan di dalamnya."
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:308
 msgid "Additional terms apply."
-msgstr ""
+msgstr "Ketentuan tambahan berlaku."
 
 #: frontend/src/metabase/common/components/CollectionPicker/components/CollectionPickerModal.tsx:153
 msgid "Browse"
-msgstr ""
+msgstr "Jelajahi"
 
 #: frontend/src/metabase/common/components/DashboardPicker/components/DashboardPickerModal.tsx:69
 msgid "Save in this dashboard"
-msgstr ""
+msgstr "Simpan di dasbor ini"
 
 #: frontend/src/metabase/common/components/DashboardPicker/components/DashboardPickerModal.tsx:70
 msgid "Save in this collection"
-msgstr ""
+msgstr "Simpan dalam koleksi ini"
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperContent.tsx:105
 msgid "You can connect widgets to {{variables}} in link cards."
-msgstr ""
+msgstr "Anda dapat menghubungkan widget ke {{variabel}} di kartu tautan."
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperContent.tsx:106
 msgid "You can connect widgets to {{variables}} in iframe cards."
-msgstr ""
+msgstr "Anda dapat menghubungkan widget ke {{variabel}} di kartu iframe."
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
 msgid "Hide page"
-msgstr ""
+msgstr "Sembunyikan halaman"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SharingPaneButton/SharingPaneButton.tsx:68
 msgid "Disabled."
-msgstr ""
+msgstr "Dengan disabilitas."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SharingPaneButton/SharingPaneButton.tsx:74
 msgid "Enable in admin settings"
-msgstr ""
+msgstr "Aktifkan di pengaturan admin"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Filter/FilterDropdown/FilterDropdown.tsx:45
 msgid "1 filter"
-msgstr ""
+msgstr "1 saringan"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Filter/FilterDropdown/FilterDropdown.tsx:46
 msgid "{0} filters"
-msgstr ""
+msgstr "{0} filter"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizeDropdown/SummarizeDropdown.tsx:26
 msgid "1 summary"
-msgstr ""
+msgstr "1 ringkasan"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizeDropdown/SummarizeDropdown.tsx:27
 msgid "{0} summaries"
-msgstr ""
+msgstr "{0} ringkasan"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.tsx:96
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu.tsx:182
 msgctxt "A verb, not a noun"
 msgid "Move"
-msgstr ""
+msgstr "Bergerak"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.tsx:104
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu.tsx:193
 msgctxt "A verb, not a noun"
 msgid "Duplicate"
-msgstr ""
+msgstr "Duplikat"
 
 #: frontend/src/metabase/common/components/DataPicker/components/DataPickerModal.tsx:260
 msgctxt "A verb, not a noun"
 msgid "Filter"
-msgstr ""
+msgstr "Menyaring"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:258
 msgctxt "The response returned by an API Request"
 msgid "Test response"
-msgstr ""
+msgstr "Respon uji"
 
 #: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
 msgctxt "Notification that shows after the user hides the page"
 msgid "Page hidden from the navigation sidebar"
-msgstr ""
+msgstr "Halaman disembunyikan dari bilah sisi navigasi"
 
 #: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
 msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
 msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
-msgstr ""
+msgstr "Akses nanti kapan saja dengan mengeklik ikon roda gigi di kanan atas layar."
 
 #: enterprise/frontend/src/metabase-enterprise/clean_up/CollectionCleanupAlert/CollectionCleanupAlert.tsx:67
 msgctxt "This is the heading of a banner that invites the user to clean up a collection."
 msgid "Keep your collections tidy!"
-msgstr ""
+msgstr "Jagalah koleksi Anda tetap rapi!"
 
 #: enterprise/frontend/src/metabase-enterprise/clean_up/CollectionCleanupAlert/CollectionCleanupAlert.tsx:77
 msgctxt "This is the heading of a banner that invites the user to clean up a collection."
 msgid "View unused items and select which ones to move to the trash."
-msgstr ""
+msgstr "Lihat item yang tidak digunakan dan pilih mana yang akan dipindahkan ke tempat sampah."
 
 #: frontend/src/metabase/components/ErrorPages/DiagnosticCheckboxes.tsx:52
 msgctxt "{0} is the name of the application, usually 'Metabase'"
 msgid "{0} instance version information"
-msgstr ""
+msgstr "Informasi versi instance {0}"
 
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:59
 msgctxt "{0} is the name of the application, usually 'Metabase'"
 msgid "This information helps {0} figure out what exactly caused the issue"
-msgstr ""
+msgstr "Informasi ini membantu {0} mengetahui apa sebenarnya yang menyebabkan masalah tersebut"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:84
 msgctxt "{0} is the name of the application, usually 'Metabase'"
 msgid "This information helps {0} figure out what exactly caused the issue."
-msgstr ""
+msgstr "Informasi ini membantu {0} mengetahui apa sebenarnya penyebab masalahnya."
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:122
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:69
 msgctxt "This is a verb, not a noun"
 msgid "Download"
-msgstr ""
+msgstr "Unduh"
 
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:144
 msgctxt "Alt text for image shown on successful bug report submission"
 msgid "Bug report submitted"
-msgstr ""
+msgstr "Laporan bug telah dikirimkan"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:259
 msgctxt "On a date. Example: On Jan 20."
 msgid "On {0}"
-msgstr ""
+msgstr "Pada {0}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:266
 msgctxt "Before a date. Example: Before Jan 20."
 msgid "Before {0}"
-msgstr ""
+msgstr "Sebelum {0}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:273
 msgctxt "After a date. Example: After Jan 20."
 msgid "After {0}"
-msgstr ""
+msgstr "Setelah {0}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:287
 msgctxt "Describes a relative date interval. Example: Previous 2 months, starting 1 year ago."
 msgid "{0}, starting {1}"
-msgstr ""
+msgstr "{0}, mulai {1}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:340
 msgctxt "This is a \"dayjs\" format string (https://day.js.org/docs/en/plugin/advanced-format). It should include \"Q\" for the quarter number, YYYY for the year, and raw text can be escaped by brackets. For example, \"[Quarter] Q YYYY\" will be rendered as \"Quarter 1 2024\"."
 msgid "[Q]Q YYYY"
-msgstr ""
+msgstr "[T]T TTTT"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:360
 #: frontend/src/metabase/ui/components/inputs/QuarterPicker/QuarterPicker.tsx:95
 msgctxt "This is a \"dayjs\" format string (https://day.js.org/docs/en/plugin/advanced-format). It should include \"Q\" for the quarter number, and raw text can be escaped by brackets. For example, \"[Quarter] Q\" will be rendered as \"Quarter 1\"."
 msgid "[Q]Q"
-msgstr ""
+msgstr "[P]Pertanyaan"
 
 #: frontend/src/metabase-lib/v1/expressions/diagnostics.ts:210
 #: frontend/src/metabase-lib/v1/expressions/process.ts:26
 msgctxt "{0} is an identifier of the field provided by user in a custom expression"
 msgid "No aggregation found in: {0}. Use functions like Sum() or custom Metrics"
-msgstr ""
+msgstr "Tidak ditemukan agregasi di: {0}. Gunakan fungsi seperti Sum() atau Metrik khusus"
 
 #: metabase/legacy_mbql/normalize.cljc:1012
 msgid "Error replacing legacy filters"
-msgstr ""
+msgstr "Kesalahan saat mengganti filter lama"
 
 #: metabase/lib/aggregation.cljc:121
 msgid "If"
-msgstr ""
+msgstr "Jika"
 
 #: metabase/lib/binning.cljc:114
 msgid "Bin every 0.005 degrees"
-msgstr ""
+msgstr "Tempat sampah setiap 0,005 derajat"
 
 #: metabase/lib/binning.cljc:113
 msgid "Bin every 0.01 degrees"
-msgstr ""
+msgstr "Tempat sampah setiap 0,01 derajat"
 
 #: metabase/lib/binning.cljc:112
 msgid "Bin every 0.05 degrees"
-msgstr ""
+msgstr "Tempat sampah setiap 0,05 derajat"
 
 #: metabase/lib/filter.cljc:121
 msgid "{0} is in {1}"
-msgstr ""
+msgstr "{0} ada di {1}"
 
 #: metabase/lib/filter.cljc:95
 msgid "{0} is at {1}"
-msgstr ""
+msgstr "{0} ada di {1}"
 
 #: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
 msgid "{0} is one of {1} {2} selections"
-msgstr ""
+msgstr "{0} adalah salah satu dari {1} {2} pilihan"
 
 #: metabase/models/card.clj:484
 msgid "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question"
-msgstr ""
+msgstr "Pertanyaan Dasbor Tidak Valid: Tidak dapat menetapkan `jenis` pada Pertanyaan Dasbor"
 
 #: metabase/models/card.clj:497
 msgid "Can't move question into dashboard. Questions saved in dashboards can't appear in other dashboards."
-msgstr ""
+msgstr "Tidak dapat memindahkan pertanyaan ke dasbor. Pertanyaan yang disimpan di dasbor tidak dapat muncul di dasbor lain."
 
 #: metabase/models/card.clj:480
 msgid "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question"
-msgstr ""
+msgstr "Pertanyaan Dasbor Tidak Valid: Tidak dapat menetapkan `collection_position` pada Pertanyaan Dasbor"
 
 #: metabase/models/card.clj:513
 msgid "Invalid dashboard-internal card"
-msgstr ""
+msgstr "Kartu internal dasbor tidak valid"
 
 #: metabase/models/card.clj:478
 msgid "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question"
-msgstr ""
+msgstr "Pertanyaan Dasbor Tidak Valid: Tidak dapat mengatur `collection_id` secara manual pada Pertanyaan Dasbor"
 
 #: metabase/models/revision/diff.clj:94
 msgid "moved from dashboard {0} to {1}"
-msgstr ""
+msgstr "dipindahkan dari dasbor {0} ke {1}"
 
 #: metabase/models/revision/diff.clj:97
 msgid "made this a dashboard-internal question in {0}"
-msgstr ""
+msgstr "menjadikan ini pertanyaan internal dasbor di {0}"
 
 #: metabase/models/revision/diff.clj:99
 msgid "extracted this question from {0}"
-msgstr ""
+msgstr "diekstrak pertanyaan ini dari {0}"
 
 #: metabase/models/user.clj:462
 msgid "Whether the user has dismissed the onboarding link from the main sidebar."
-msgstr ""
+msgstr "Apakah pengguna telah menutup tautan orientasi dari bilah sisi utama."
 
 #: metabase/models/user.clj:526
 msgid "The ISO8601 date when a user last dismissed the trial banner."
-msgstr ""
+msgstr "Tanggal ISO8601 saat pengguna terakhir kali menutup banner uji coba."
 
 #: metabase/premium_features/token_check.clj:83
 msgid "Number of active users"
-msgstr ""
+msgstr "Jumlah pengguna aktif"
 
 #: metabase/public_settings.clj:819
 msgid "Indicates whether Metabase is running behind a proxy that sets the source-address-header for incoming requests."
-msgstr ""
+msgstr "Menunjukkan apakah Metabase berjalan di belakang proxy yang menetapkan source-address-header untuk permintaan masuk."
 
 #: metabase/public_settings.clj:1072
 msgid "Which engine to use when performing search. Supported values are :in-place and :appdb"
-msgstr ""
+msgstr "Mesin pencari mana yang digunakan saat melakukan pencarian. Nilai yang didukung adalah :in-place dan :appdb"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
 "    application database.\n"
 "\n"
 "    Turn off by default since we haven't had an user-facing feature that uses this data yet."
-msgstr ""
+msgstr "Aktifkan analisis penggunaan bidang untuk kueri. Ini akan menganalisis bidang yang digunakan dalam kueri dan menyimpannya dalam basis data aplikasi. Nonaktifkan secara default karena kami belum memiliki fitur yang dapat diakses pengguna yang menggunakan data ini."
 
 #: metabase/task/truncate_audit_tables.clj:72
 msgid "Batch size to use for deletion of old rows for audit-related tables (like query_execution). Can be only set as an environment variable."
-msgstr ""
+msgstr "Ukuran batch yang akan digunakan untuk menghapus baris lama pada tabel terkait audit (seperti query_execution). Hanya dapat ditetapkan sebagai variabel lingkungan."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:201
 msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
-msgstr ""
+msgstr "URL untuk halaman login berbasis JWT. Opsional jika hanya menggunakan JWT SSO dengan SDK analitik tertanam."
 
 #: metabase_enterprise/stale.clj:153
 msgid "Was the collection cleanup banner dismissed?"
-msgstr ""
+msgstr "Apakah spanduk pembersihan koleksi diabaikan?"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/QuestionRelationshipsTab.tsx:24
 msgid "Linked tables"
-msgstr ""
+msgstr "Tabel terkait"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/TablesLinkedToQuestion.tsx:37
 msgid "This model is not linked to any tables."
-msgstr ""
+msgstr "Model ini tidak terhubung ke tabel mana pun."
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/TablesLinkedToQuestion.tsx:38
 msgid "This question is not linked to any tables."
-msgstr ""
+msgstr "Pertanyaan ini tidak terkait dengan tabel mana pun."
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/ToggleFullList.tsx:33
 msgid "Show less"
-msgstr ""
+msgstr "Tampilkan lebih sedikit"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/ToggleFullList.tsx:33
 msgid "Show all"
-msgstr ""
+msgstr "Tampilkan semua"
 
 #: frontend/src/metabase/querying/filters/components/DatePicker/ExcludeDatePicker/constants.ts:27
 msgid "Empty values"
-msgstr ""
+msgstr "Nilai kosong"
 
 #: frontend/src/metabase/querying/filters/components/DatePicker/ExcludeDatePicker/constants.ts:31
 msgid "Not empty values"
-msgstr ""
+msgstr "Nilai tidak kosong"
 
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:49
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:61
 msgid "opening parenthesis"
-msgstr ""
+msgstr "tanda kurung pembuka"
 
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:52
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:71
 msgid "closing parenthesis"
-msgstr ""
+msgstr "tanda kurung tutup"
 
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:69
 msgid "comma"
-msgstr ""
+msgstr "koma"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/InlineActionSettings.tsx:136
 msgid "To enable creating a shareable link you first need to save your action"
-msgstr ""
+msgstr "Untuk mengaktifkan pembuatan tautan yang dapat dibagikan, Anda harus menyimpan tindakan Anda terlebih dahulu"
 
 #: frontend/src/metabase/models/components/ModelActions/ModelActions.tsx:20
 msgid "Actions for {0}"
-msgstr ""
+msgstr "Tindakan untuk {0}"
 
 #: frontend/src/metabase/models/components/ModelActions/ModelActions.tsx:34
 msgid "Actions are not enabled for this model."
-msgstr ""
+msgstr "Tindakan tidak diaktifkan untuk model ini."
 
 #: enterprise/frontend/src/metabase-enterprise/clean_up/index.tsx:22
 msgid "Clear out unused items"
-msgstr ""
+msgstr "Bersihkan barang-barang yang tidak digunakan"
 
 #: frontend/src/metabase/browse/models/BrowseModels.tsx:98
 #: frontend/src/metabase/browse/models/ModelExplanationBanner.tsx:54
 msgid "Create models to clean up and combine tables to make your data easier to explore"
-msgstr ""
+msgstr "Buat model untuk membersihkan dan menggabungkan tabel agar data Anda lebih mudah dijelajahi"
 
 #: frontend/src/metabase/browse/models/BrowseModels.tsx:99
 #: frontend/src/metabase/browse/models/ModelExplanationBanner.tsx:56
 msgid "Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table."
-msgstr ""
+msgstr "Model agak mirip seperti tabel virtual: lakukan semua penggabungan dan kolom khusus sekaligus, simpan sebagai model, lalu lakukan kueri seperti tabel."
 
 #: frontend/src/metabase/browse/models/EmptyStates/ModelsVideo.tsx:14
 msgid "Use Models in Metabase | Getting started with Metabase"
-msgstr ""
+msgstr "Menggunakan Model di Metabase | Memulai dengan Metabase"
 
 #: frontend/src/metabase/browse/models/EmptyStates/ModelsVideo.tsx:28
 msgid "Browse models video thumbnail"
-msgstr ""
+msgstr "Telusuri video thumbnail model"
 
 #: frontend/src/metabase/collections/components/CollectionMenu/CollectionMenu.tsx:86
 msgid "Move questions into their dashboards"
-msgstr ""
+msgstr "Pindahkan pertanyaan ke dasbor mereka"
 
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:33
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:198
 msgid "Gather diagnostic information"
-msgstr ""
+msgstr "Kumpulkan informasi diagnostik"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:65
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:51
 msgid "Could you provide us with a little context?"
-msgstr ""
+msgstr "Bisakah Anda memberi kami sedikit konteks?"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsModal.tsx:63
 msgid "The questions were successfully moved into their dashboards"
-msgstr ""
+msgstr "Pertanyaan berhasil dipindahkan ke dasbor mereka"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:18
 msgid "Move questions into their dashboards?"
-msgstr ""
+msgstr "Pindahkan pertanyaan ke dasbor mereka?"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:28
 msgid "If a question only appears in a single dashboard in this collection, it'll be moved into that dashboard to declutter the collection."
-msgstr ""
+msgstr "Jika suatu pertanyaan hanya muncul pada satu dasbor dalam koleksi ini, pertanyaan tersebut akan dipindahkan ke dasbor tersebut untuk merapikan koleksi."
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:31
 msgid "Permissions won’t change."
-msgstr ""
+msgstr "Izin tidak akan berubah."
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:38
 msgid "Preview the changes"
-msgstr ""
+msgstr "Pratinjau perubahannya"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1163
 msgid "Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr ""
+msgstr "Mengonversi zona waktu kolom tanggal atau stempel waktu.\n"
+"Kami mendukung nama zona waktu basis data tz."
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:70
 msgid "Move these questions into their dashboards?"
-msgstr ""
+msgstr "Pindahkan pertanyaan-pertanyaan ini ke dasbor mereka?"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:71
 msgid "Move this question into its dashboard?"
 msgid_plural "Move these {0} questions into their dashboards?"
-msgstr[0] ""
+msgstr[0] "Pindahkan pertanyaan ini ke dasbornya?"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:91
 msgid "Dashboard it'll be moved to"
-msgstr ""
+msgstr "Dasbor akan dipindahkan ke"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:117
 msgid "There aren't any questions to move into dashboards. Looks like everything is in its place."
-msgstr ""
+msgstr "Tidak ada pertanyaan untuk dipindahkan ke dasbor. Sepertinya semuanya sudah pada tempatnya."
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:156
 msgid "Move these questions"
-msgstr ""
+msgstr "Pindahkan pertanyaan ini"
 
 #: frontend/src/metabase/notifications/NewPulseSidebar.tsx:30
 msgid "Set up a dashboard subscription"
-msgstr ""
+msgstr "Siapkan langganan dasbor"
 
 #: frontend/src/metabase/notifications/NewPulseSidebar.tsx:31
 msgid "Schedule dashboard results to be sent to you and your team. People don't need a {0} account to subscribe."
-msgstr ""
+msgstr "Jadwalkan hasil dasbor untuk dikirimkan kepada Anda dan tim Anda. Orang tidak memerlukan akun {0} untuk berlangganan."
 
 #: frontend/src/metabase/notifications/NewPulseSidebar.tsx:54
 msgid "Configure Slack"
-msgstr ""
+msgstr "Konfigurasikan Slack"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:320
 msgid "Additional tooltip columns"
-msgstr ""
+msgstr "Kolom keterangan alat tambahan"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:321
 msgid "Enter column names"
-msgstr ""
+msgstr "Masukkan nama kolom"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/SidesheetCardWithFields.tsx:18
 msgctxt "{0} is the number of fields"
 msgid "{0} field"
 msgid_plural "{0} fields"
-msgstr[0] ""
+msgstr[0] "{0} bidang"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/ToggleFullList.tsx:27
 msgctxt "{0} is a number"
 msgid "Showing all {0} questions"
-msgstr ""
+msgstr "Menampilkan semua {0} pertanyaan"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/ToggleFullList.tsx:28
 msgctxt "The variables are numbers"
 msgid "Showing {0} of {1} questions"
-msgstr ""
+msgstr "Menampilkan {0} dari {1} pertanyaan"
 
 #: frontend/src/metabase/components/ErrorPages/DiagnosticCheckboxes.tsx:23
 msgctxt "This is part of the bug reporting modal"
 msgid "Your name and email"
-msgstr ""
+msgstr "Nama dan email Anda"
 
 #: frontend/src/metabase/lib/errors/validation.ts:10
 msgctxt "{0} is a number greater than 1"
 msgid "must be {0} characters or less"
-msgstr ""
+msgstr "harus {0} karakter atau kurang"
 
 #: frontend/src/metabase/lib/errors/validation.ts:13
 msgctxt "{0} is a number greater than 1"
 msgid "must be exactly {0} characters"
-msgstr ""
+msgstr "harus tepat {0} karakter"
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:161
 msgctxt "{0} is the dashboard name the question currently has dashcards in"
 msgid "Do you still want this question to appear in {0}?"
-msgstr ""
+msgstr "Apakah Anda masih ingin pertanyaan ini muncul di {0}?"
 

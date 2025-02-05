@@ -37618,224 +37618,225 @@ msgstr "Разрешаване на подаването на доклади з�
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Breakout/Breakout.tsx:19
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Breakout/BreakoutBadgeList.tsx:28
 msgid "Add another grouping"
-msgstr ""
+msgstr "Добавяне на друга група"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Filter/Filter.tsx:18
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Filter/FilterBadgeList.tsx:22
 msgid "Add another filter"
-msgstr ""
+msgstr "Добавяне на друг филтър"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Summarize/Summarize.tsx:33
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizeBadgeList.tsx:23
 msgid "Add another summary"
-msgstr ""
+msgstr "Добавяне на друго резюме"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu.tsx:104
 msgid "Move, duplicate, and more…"
-msgstr ""
+msgstr "Преместване, дублиране и други..."
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ToggleNativeQueryPreview/ToggleNativeQueryPreview.tsx:16
 msgid "View SQL"
-msgstr ""
+msgstr "Преглед на SQL"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ToggleNativeQueryPreview/ToggleNativeQueryPreview.tsx:17
 msgid "View native query"
-msgstr ""
+msgstr "Преглед на родната заявка"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ToggleNativeQueryPreview/ToggleNativeQueryPreview.tsx:21
 msgid "Hide SQL"
-msgstr ""
+msgstr "Скриване на SQL"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/ToggleNativeQueryPreview/ToggleNativeQueryPreview.tsx:22
 msgid "Hide native query"
-msgstr ""
+msgstr "Скриване на родната заявка"
 
 #: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:66
 msgid "Previous 3 months"
-msgstr ""
+msgstr "Предишни 3 месеца"
 
 #: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:75
 msgid "Previous 12 months"
-msgstr ""
+msgstr "Предишни 12 месеца"
 
 #: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:125
 #: frontend/src/metabase/nav/components/ProfileLink/ProfileLink.jsx:104
 #: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:192
 msgid "Report an issue"
-msgstr ""
+msgstr "Докладване на проблем"
 
 #: frontend/src/metabase-lib/v1/expressions/resolver.js:140
 msgid "{0} expects 2 arguments or more"
-msgstr ""
+msgstr "{0} очаква 2 или повече аргумента"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestionResult/InteractiveQuestionResult.tsx:116
 msgid "Back to visualization"
-msgstr ""
+msgstr "Обратно към визуализация"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:19
 msgid "Refresh cache automatically"
-msgstr ""
+msgstr "Автоматично опресняване на кеша"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
 msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr ""
+msgstr "Щом изтече срокът на кешираните резултати, изпълнете и кеширайте заявката отново, за да актуализирате резултатите и да ги освежите.\n"
+"кеша."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:91
 msgid "Can't move this question into a dashboard"
-msgstr ""
+msgstr "Не мога да преместя този въпрос в табло за управление"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:93
 msgid "Move this question?"
 msgid_plural "Move these questions?"
-msgstr[0] ""
+msgstr[0] "Преместване на този въпрос?"
 msgstr[1] ""
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:118
 msgid "Checking on some things..."
-msgstr ""
+msgstr "Проверявам някои неща..."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:125
 msgid "This question currently appears in a dashboard that you don't have permission to edit."
-msgstr ""
+msgstr "В момента този въпрос се появява в табло за управление, което нямате право да редактирате."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:134
 msgid "Moving a question into a dashboard removes it from all other dashboards it appears in"
-msgstr ""
+msgstr "Преместването на въпрос в табло за управление го премахва от всички други табла за управление, в които се появява."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:147
 msgid "{0} will be removed from {1}"
-msgstr ""
+msgstr "{0} ще бъде премахнат от {1}"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:166
 msgid "Move it"
 msgid_plural "Move them"
-msgstr[0] ""
+msgstr[0] "Преместете го"
 msgstr[1] ""
 
 #: frontend/src/metabase/common/components/EntityPicker/utils.ts:174
 msgid "Search this dashboard or everywhere…"
-msgstr ""
+msgstr "Търсете в този панел или навсякъде..."
 
 #: frontend/src/metabase/querying/drills/utils/quick-filter-drill.tsx:44
 msgid "Filter by this date and time"
-msgstr ""
+msgstr "Филтриране по тази дата и час"
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/chart-definition.ts:208
 msgid "Sankey chart doesn't support more than {0} unique nodes."
-msgstr ""
+msgstr "Диаграмата на Санки не поддържа повече от {0} уникални възли."
 
 #: frontend/src/metabase/dashboard/containers/ArchiveDashboardModal.jsx:46
 msgid "This will trash the dashboard and the questions that are saved in it. Are you sure you want to do this?"
-msgstr ""
+msgstr "Това ще доведе до изтриване на таблото за управление и запазените в него въпроси. Сигурни ли сте, че искате да направите това?"
 
 #: frontend/src/metabase/questions/containers/ArchiveQuestionModal.jsx:19
 msgid "This question will be removed from its dashboard and any alerts using it."
-msgstr ""
+msgstr "Този въпрос ще бъде премахнат от таблото за управление и от всички сигнали, които го използват."
 
 #: frontend/src/metabase/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.tsx:76
 #: frontend/src/metabase/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.tsx:211
 msgid "Select a collection or dashboard"
-msgstr ""
+msgstr "Изберете колекция или табло за управление"
 
 #: frontend/src/metabase/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.tsx:148
 msgid "Select this dashboard"
-msgstr ""
+msgstr "Изберете това табло за управление"
 
 #: frontend/src/metabase/collections/containers/FormCollectionAndDashboardPicker/FormCollectionAndDashboardPicker.tsx:149
 msgid "Select this collection"
-msgstr ""
+msgstr "Изберете тази колекция"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:118
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:76
 msgid "Diagnostic info may contain sensitive data."
-msgstr ""
+msgstr "Диагностичната информация може да съдържа чувствителни данни."
 
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:150
 msgid "Thank you for your feedback!"
-msgstr ""
+msgstr "Благодарим Ви за обратната връзка!"
 
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:153
 msgid "Bug report submitted successfully."
-msgstr ""
+msgstr "Докладът за грешка е изпратен успешно."
 
 #: frontend/src/metabase/components/SaveQuestionForm/SaveQuestionForm.tsx:39
 msgid "Save changes or save as new?"
-msgstr ""
+msgstr "Запазване на промените или запазване като нови?"
 
 #: frontend/src/metabase/components/SaveQuestionForm/SaveQuestionForm.tsx:85
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:251
 #: frontend/src/metabase/questions/components/CopyQuestionForm.tsx:87
 msgid "Where do you want to save this?"
-msgstr ""
+msgstr "Къде искате да го запазите?"
 
 #: frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx:41
 msgid "Save your changes?"
-msgstr ""
+msgstr "Запазване на промените?"
 
 #: frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx:42
 msgid "You’ll need to save your changes before leaving to create a new question."
-msgstr ""
+msgstr "Трябва да запазите промените, преди да започнете да създавате нов въпрос."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:204
 msgid "An admin needs to enable this feature first."
-msgstr ""
+msgstr "Администраторът трябва първо да активира тази функция."
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:246
 msgid "data stack"
-msgstr ""
+msgstr "стека с данни"
 
 #: frontend/src/metabase/home/components/Onboarding/Onboarding.tsx:279
 msgid "Admin panel with the \"Invite someone\" button"
-msgstr ""
+msgstr "Администраторски панел с бутон \"Покани някого\""
 
 #: frontend/src/metabase/nav/components/TrialBanner/TrialBanner.tsx:28
 msgid "Today is the last day of your trial."
-msgstr ""
+msgstr "Днес е последният ден от процеса."
 
 #: frontend/src/metabase/nav/components/TrialBanner/TrialBanner.tsx:29
 msgid "{0} day left in your trial."
 msgid_plural "{0} days left in your trial."
-msgstr[0] ""
+msgstr[0] "Остава {0} ден до края на процеса."
 msgstr[1] ""
 
 #: frontend/src/metabase/nav/components/TrialBanner/TrialBanner.tsx:36
 msgid "Manage your subscription."
-msgstr ""
+msgstr "Управлявайте абонамента си."
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:161
 msgid "Do you still want this question to appear in"
-msgstr ""
+msgstr "Все още ли искате този въпрос да се появява в"
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:178
 msgid "It can still appear there even though you’re moving it into a collection."
-msgstr ""
+msgstr "Той може да се появи там, въпреки че го премествате в колекция."
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:186
 msgid "Yes, it should still appear there"
-msgstr ""
+msgstr "Да, все още трябва да се появява там"
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:191
 msgid "No, remove it from that dashboard"
-msgstr ""
+msgstr "Не, премахнете го от таблото за управление"
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:221
 msgid "You can move it to a collection if you want to use it in both dashboards."
-msgstr ""
+msgstr "Можете да го преместите в колекция, ако искате да го използвате и в двете табла."
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:297
 msgid "Exclude {0}"
-msgstr ""
+msgstr "Изключване на {0}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:300
 msgid "Exclude {0} selection"
 msgid_plural "Exclude {0} selections"
-msgstr[0] ""
+msgstr[0] "Изключване на селекция {0}"
 msgstr[1] ""
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:622
 msgid "Returns true if string1 contains string2 within it (or string3, etc. if specified)."
-msgstr ""
+msgstr "Връща true, ако низ1 съдържа в себе си низ2 (или низ3 и т.н., ако е посочено)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:636
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:664
@@ -37844,561 +37845,565 @@ msgstr ""
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:953
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:976
 msgid "You can add more values to look for."
-msgstr ""
+msgstr "Можете да добавите още стойности, които да търсите."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:641
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:669
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:697
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:725
 msgid "Optional. To perform a case-insensitive match."
-msgstr ""
+msgstr "По избор. За да извършите съвпадение без значение на големи и малки букви."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:650
 msgid "Returns true if string1 does not contain string2 within it (and string3, etc. if specified)."
-msgstr ""
+msgstr "Връща true, ако низ1 не съдържа в себе си низ2 (и низ3, и т.н., ако е посочено)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:678
 msgid "Returns true if the beginning of the string1 matches the string2 (or string3, etc. if specified)."
-msgstr ""
+msgstr "Връща true, ако началото на низ1 съвпада с низ2 (или низ3 и т.н., ако е посочено)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:706
 msgid "Returns true if the end of the string1 matches the string2 (or string3, etc. if specified)."
-msgstr ""
+msgstr "Връща true, ако краят на низ1 съвпада с низ2 (или низ3 и т.н., ако е посочен)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:888
 msgid "Alias for if(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met."
-msgstr ""
+msgstr "Псевдоним на if(). Тества израз спрямо списък от случаи и връща съответната стойност на първия съвпадащ случай, с незадължителна стойност по подразбиране, ако не е изпълнено нищо друго."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:914
 msgid "Alias for case(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met."
-msgstr ""
+msgstr "Псевдоним на case(). Тества израз срещу списък от случаи и връща съответната стойност на първия съвпадащ случай, с незадължителна стойност по подразбиране, ако не е изпълнено нищо друго."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:939
 msgid "Returns true if value1 equals value2 (or value3, etc. if specified)."
-msgstr ""
+msgstr "Връща true, ако стойност1 е равна на стойност2 (или стойност3 и т.н., ако е посочено)."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:943
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:966
 msgid "The column or value to check."
-msgstr ""
+msgstr "Колоната или стойността, която се проверява."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:948
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:971
 msgid "The column or value to look for."
-msgstr ""
+msgstr "Колоната или стойността, която трябва да се търси."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:962
 msgid "Returns true if value1 doesn't equal value2 (and value3, etc. if specified)."
-msgstr ""
+msgstr "Връща true, ако стойност1 не е равна на стойност2 (и стойност3 и т.н., ако е посочено)."
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:48
 msgid "Report a bug"
-msgstr ""
+msgstr "Докладване на грешка"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:69
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:55
 msgid "What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?"
-msgstr ""
+msgstr "Какво се опитвахте да направите и какви стъпки предприехте? Какъв беше очакваният резултат и какво се случи вместо това?"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:80
 msgid "Include diagnostic information"
-msgstr ""
+msgstr "Включете диагностична информация"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:112
 msgid "Submit report"
-msgstr ""
+msgstr "Изпращане на доклад"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:117
 msgid "Download report"
-msgstr ""
+msgstr "Изтегляне на доклад"
 
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:99
 msgid "Like \"the previous 7 days\" or \"this month\""
-msgstr ""
+msgstr "Като \"предходните 7 дни\" или \"този месец\"."
 
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:190
 msgid "Previous Week"
-msgstr ""
+msgstr "Предишна седмица"
 
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:194
 msgid "Previous Month"
-msgstr ""
+msgstr "Предишен месец"
 
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:198
 msgid "Previous Year"
-msgstr ""
+msgstr "Предишна година"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestionResult/ResultTitle.tsx:83
 msgid "the original exploration"
-msgstr ""
+msgstr "първоначалното проучване"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/PublicComponentWrapper/SdkError.tsx:44
 msgid "Question {0} not found. Make sure you pass the correct ID."
-msgstr ""
+msgstr "Въпрос {0} не е намерен. Уверете се, че сте посочили правилния идентификатор."
 
 #: enterprise/frontend/src/embedding-sdk/components/private/PublicComponentWrapper/SdkError.tsx:60
 msgid "Dashboard {0} not found. Make sure you pass the correct ID."
-msgstr ""
+msgstr "Таблото за управление {0} не е намерено. Уверете се, че сте подали правилния идентификатор."
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:300
 msgid "By enabling uploads to the Sample Database, you agree that you will not upload or otherwise transmit any individually identifiable information, including without limitation Personal Data (as defined by the General Data Protection Regulation) or Personally Identifiable Information (as defined by the California Consumer Privacy Act and California Privacy Rights Act)."
-msgstr ""
+msgstr "Като разрешавате качването на данни в Базата данни с образци, Вие се съгласявате, че няма да качвате или предавате по друг начин каквато и да е информация, която може да бъде идентифицирана индивидуално, включително, но не само, лични данни (съгласно определението в Общия регламент за защита на данните) или информация, която може да бъде идентифицирана индивидуално (съгласно определението в Калифорнийския закон за защита на личните данни на потребителите и Калифорнийския закон за защита на личните данни)."
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:301
 msgid "Additionally, you acknowledge and agree that the ability to upload to the Sample Database is provided “as is” and without warranty of any kind, and Metabase disclaims all warranties, express or implied, and all liability in connection with the uploads to the Sample Database or the data stored within it."
-msgstr ""
+msgstr "Освен това вие потвърждавате и се съгласявате, че възможността за качване в Базата данни с образци се предоставя \"както е\" и без каквато и да е гаранция, а Metabase се отказва от всякакви гаранции, изрични или подразбиращи се, и от всякаква отговорност във връзка с качването в Базата данни с образци или данните, съхранявани в нея."
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:308
 msgid "Additional terms apply."
-msgstr ""
+msgstr "Прилагат се допълнителни условия."
 
 #: frontend/src/metabase/common/components/CollectionPicker/components/CollectionPickerModal.tsx:153
 msgid "Browse"
-msgstr ""
+msgstr "Преглед на"
 
 #: frontend/src/metabase/common/components/DashboardPicker/components/DashboardPickerModal.tsx:69
 msgid "Save in this dashboard"
-msgstr ""
+msgstr "Запазване в това табло за управление"
 
 #: frontend/src/metabase/common/components/DashboardPicker/components/DashboardPickerModal.tsx:70
 msgid "Save in this collection"
-msgstr ""
+msgstr "Запазване в тази колекция"
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperContent.tsx:105
 msgid "You can connect widgets to {{variables}} in link cards."
-msgstr ""
+msgstr "Можете да свързвате уиджети с {{променливи}} в картите с връзки."
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperContent.tsx:106
 msgid "You can connect widgets to {{variables}} in iframe cards."
-msgstr ""
+msgstr "Можете да свързвате уиджети към {{променливи}} в iframe карти."
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
 msgid "Hide page"
-msgstr ""
+msgstr "Скриване на страницата"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SharingPaneButton/SharingPaneButton.tsx:68
 msgid "Disabled."
-msgstr ""
+msgstr "В състояние на инвалидност."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SharingPaneButton/SharingPaneButton.tsx:74
 msgid "Enable in admin settings"
-msgstr ""
+msgstr "Разрешаване в настройките на администратора"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Filter/FilterDropdown/FilterDropdown.tsx:45
 msgid "1 filter"
-msgstr ""
+msgstr "1 филтър"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Filter/FilterDropdown/FilterDropdown.tsx:46
 msgid "{0} filters"
-msgstr ""
+msgstr "{0} филтри"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizeDropdown/SummarizeDropdown.tsx:26
 msgid "1 summary"
-msgstr ""
+msgstr "1 обобщение"
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizeDropdown/SummarizeDropdown.tsx:27
 msgid "{0} summaries"
-msgstr ""
+msgstr "{0} обобщения"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.tsx:96
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu.tsx:182
 msgctxt "A verb, not a noun"
 msgid "Move"
-msgstr ""
+msgstr "Преместване"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/DashboardActionMenu.tsx:104
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu.tsx:193
 msgctxt "A verb, not a noun"
 msgid "Duplicate"
-msgstr ""
+msgstr "Дублиране на"
 
 #: frontend/src/metabase/common/components/DataPicker/components/DataPickerModal.tsx:260
 msgctxt "A verb, not a noun"
 msgid "Filter"
-msgstr ""
+msgstr "Филтър"
 
 #: frontend/src/metabase/admin/settings/notifications/WebhookForm.tsx:258
 msgctxt "The response returned by an API Request"
 msgid "Test response"
-msgstr ""
+msgstr "Отговор на теста"
 
 #: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
 msgctxt "Notification that shows after the user hides the page"
 msgid "Page hidden from the navigation sidebar"
-msgstr ""
+msgstr "Страница, скрита от страничната лента на навигацията"
 
 #: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
 msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
 msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
-msgstr ""
+msgstr "Достъпът до него е възможен по всяко време, като кликнете върху иконата на зъбно колело в горния десен ъгъл на екрана."
 
 #: enterprise/frontend/src/metabase-enterprise/clean_up/CollectionCleanupAlert/CollectionCleanupAlert.tsx:67
 msgctxt "This is the heading of a banner that invites the user to clean up a collection."
 msgid "Keep your collections tidy!"
-msgstr ""
+msgstr "Поддържайте колекциите си подредени!"
 
 #: enterprise/frontend/src/metabase-enterprise/clean_up/CollectionCleanupAlert/CollectionCleanupAlert.tsx:77
 msgctxt "This is the heading of a banner that invites the user to clean up a collection."
 msgid "View unused items and select which ones to move to the trash."
-msgstr ""
+msgstr "Преглеждайте неизползваните елементи и избирайте кои от тях да преместите в кошчето за боклук."
 
 #: frontend/src/metabase/components/ErrorPages/DiagnosticCheckboxes.tsx:52
 msgctxt "{0} is the name of the application, usually 'Metabase'"
 msgid "{0} instance version information"
-msgstr ""
+msgstr "{0} информация за версията на инстанцията"
 
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:59
 msgctxt "{0} is the name of the application, usually 'Metabase'"
 msgid "This information helps {0} figure out what exactly caused the issue"
-msgstr ""
+msgstr "Тази информация помага на {0} да разбере какво точно е причинило проблема"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:84
 msgctxt "{0} is the name of the application, usually 'Metabase'"
 msgid "This information helps {0} figure out what exactly caused the issue."
-msgstr ""
+msgstr "Тази информация помага на {0} да се разбере каква точно е причината за проблема."
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:122
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:69
 msgctxt "This is a verb, not a noun"
 msgid "Download"
-msgstr ""
+msgstr "Изтегляне"
 
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:144
 msgctxt "Alt text for image shown on successful bug report submission"
 msgid "Bug report submitted"
-msgstr ""
+msgstr "Подаден доклад за грешка"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:259
 msgctxt "On a date. Example: On Jan 20."
 msgid "On {0}"
-msgstr ""
+msgstr "На {0}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:266
 msgctxt "Before a date. Example: Before Jan 20."
 msgid "Before {0}"
-msgstr ""
+msgstr "Преди {0}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:273
 msgctxt "After a date. Example: After Jan 20."
 msgid "After {0}"
-msgstr ""
+msgstr "След {0}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:287
 msgctxt "Describes a relative date interval. Example: Previous 2 months, starting 1 year ago."
 msgid "{0}, starting {1}"
-msgstr ""
+msgstr "{0}, започвайки от {1}"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:340
 msgctxt "This is a \"dayjs\" format string (https://day.js.org/docs/en/plugin/advanced-format). It should include \"Q\" for the quarter number, YYYY for the year, and raw text can be escaped by brackets. For example, \"[Quarter] Q YYYY\" will be rendered as \"Quarter 1 2024\"."
 msgid "[Q]Q YYYY"
-msgstr ""
+msgstr "[Q]Q ГГГГ"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:360
 #: frontend/src/metabase/ui/components/inputs/QuarterPicker/QuarterPicker.tsx:95
 msgctxt "This is a \"dayjs\" format string (https://day.js.org/docs/en/plugin/advanced-format). It should include \"Q\" for the quarter number, and raw text can be escaped by brackets. For example, \"[Quarter] Q\" will be rendered as \"Quarter 1\"."
 msgid "[Q]Q"
-msgstr ""
+msgstr "[Q]Q"
 
 #: frontend/src/metabase-lib/v1/expressions/diagnostics.ts:210
 #: frontend/src/metabase-lib/v1/expressions/process.ts:26
 msgctxt "{0} is an identifier of the field provided by user in a custom expression"
 msgid "No aggregation found in: {0}. Use functions like Sum() or custom Metrics"
-msgstr ""
+msgstr "Не е намерено обединение в: {0}. Използвайте функции като Sum() или потребителски метрики"
 
 #: metabase/legacy_mbql/normalize.cljc:1012
 msgid "Error replacing legacy filters"
-msgstr ""
+msgstr "Грешка при замяна на наследени филтри"
 
 #: metabase/lib/aggregation.cljc:121
 msgid "If"
-msgstr ""
+msgstr "Ако"
 
 #: metabase/lib/binning.cljc:114
 msgid "Bin every 0.005 degrees"
-msgstr ""
+msgstr "Бин на всеки 0,005 градуса"
 
 #: metabase/lib/binning.cljc:113
 msgid "Bin every 0.01 degrees"
-msgstr ""
+msgstr "Бин на всеки 0,01 градуса"
 
 #: metabase/lib/binning.cljc:112
 msgid "Bin every 0.05 degrees"
-msgstr ""
+msgstr "Бин на всеки 0,05 градуса"
 
 #: metabase/lib/filter.cljc:121
 msgid "{0} is in {1}"
-msgstr ""
+msgstr "{0} е в {1}"
 
 #: metabase/lib/filter.cljc:95
 msgid "{0} is at {1}"
-msgstr ""
+msgstr "{0} е в {1}"
 
 #: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
 msgid "{0} is one of {1} {2} selections"
-msgstr ""
+msgstr "{0} е едно от {1} {2} избори"
 
 #: metabase/models/card.clj:484
 msgid "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question"
-msgstr ""
+msgstr "Невалиден въпрос за таблото за управление: Не мога да задам `тип` на табло за управление Въпрос"
 
 #: metabase/models/card.clj:497
 msgid "Can't move question into dashboard. Questions saved in dashboards can't appear in other dashboards."
-msgstr ""
+msgstr "Не мога да преместя въпроса в таблото за управление. Въпроси, записани в табла, не могат да се появяват в други табла."
 
 #: metabase/models/card.clj:480
 msgid "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question"
-msgstr ""
+msgstr "Невалиден въпрос за таблото за управление: Не може да се зададе `collection_position` на табло за управление Въпрос"
 
 #: metabase/models/card.clj:513
 msgid "Invalid dashboard-internal card"
-msgstr ""
+msgstr "Невалидна вътрешна карта на таблото за управление"
 
 #: metabase/models/card.clj:478
 msgid "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question"
-msgstr ""
+msgstr "Невалиден въпрос за таблото за управление: Не мога да задам ръчно `collection_id` на табло за управление Въпрос"
 
 #: metabase/models/revision/diff.clj:94
 msgid "moved from dashboard {0} to {1}"
-msgstr ""
+msgstr "преместен от табло за управление {0} на {1}"
 
 #: metabase/models/revision/diff.clj:97
 msgid "made this a dashboard-internal question in {0}"
-msgstr ""
+msgstr "направих този въпрос вътрешен за таблото за управление в {0}"
 
 #: metabase/models/revision/diff.clj:99
 msgid "extracted this question from {0}"
-msgstr ""
+msgstr "извлече този въпрос от {0}"
 
 #: metabase/models/user.clj:462
 msgid "Whether the user has dismissed the onboarding link from the main sidebar."
-msgstr ""
+msgstr "Дали потребителят е отхвърлил връзката за въвеждане в системата от главната странична лента."
 
 #: metabase/models/user.clj:526
 msgid "The ISO8601 date when a user last dismissed the trial banner."
-msgstr ""
+msgstr "Датата по ISO8601, когато потребителят за последен път е отхвърлил пробния банер."
 
 #: metabase/premium_features/token_check.clj:83
 msgid "Number of active users"
-msgstr ""
+msgstr "Брой активни потребители"
 
 #: metabase/public_settings.clj:819
 msgid "Indicates whether Metabase is running behind a proxy that sets the source-address-header for incoming requests."
-msgstr ""
+msgstr "Показва дали Metabase работи зад прокси сървър, който задава заглавието source-address-header за входящите заявки."
 
 #: metabase/public_settings.clj:1072
 msgid "Which engine to use when performing search. Supported values are :in-place and :appdb"
-msgstr ""
+msgstr "Коя машина да използвате при търсене. Поддържаните стойности са :in-place и :appdb"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
 "    application database.\n"
 "\n"
 "    Turn off by default since we haven't had an user-facing feature that uses this data yet."
-msgstr ""
+msgstr "Активиране на анализа на използването на полетата за заявки. Това ще анализира полетата, използвани в заявките, и ще ги съхранява в\n"
+"    базата данни на приложението.\n"
+"\n"
+"    Изключено по подразбиране, тъй като все още нямаме функция, насочена към потребителя, която да използва тези данни."
 
 #: metabase/task/truncate_audit_tables.clj:72
 msgid "Batch size to use for deletion of old rows for audit-related tables (like query_execution). Can be only set as an environment variable."
-msgstr ""
+msgstr "Размер на партидата, която се използва за изтриване на стари редове за таблици, свързани с одита (като query_execution). Може да се зададе само като променлива на средата."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:201
 msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
-msgstr ""
+msgstr "URL адрес за страницата за вход, базирана на JWT. Незадължително, ако използвате JWT SSO само с вградения аналитичен SDK."
 
 #: metabase_enterprise/stale.clj:153
 msgid "Was the collection cleanup banner dismissed?"
-msgstr ""
+msgstr "Отхвърлен ли е банерът за почистване на събиране?"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/QuestionRelationshipsTab.tsx:24
 msgid "Linked tables"
-msgstr ""
+msgstr "Свързани таблици"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/TablesLinkedToQuestion.tsx:37
 msgid "This model is not linked to any tables."
-msgstr ""
+msgstr "Този модел не е свързан с никакви таблици."
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/TablesLinkedToQuestion.tsx:38
 msgid "This question is not linked to any tables."
-msgstr ""
+msgstr "Този въпрос не е свързан с никакви таблици."
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/ToggleFullList.tsx:33
 msgid "Show less"
-msgstr ""
+msgstr "Покажи по-малко"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/ToggleFullList.tsx:33
 msgid "Show all"
-msgstr ""
+msgstr "Покажи всички"
 
 #: frontend/src/metabase/querying/filters/components/DatePicker/ExcludeDatePicker/constants.ts:27
 msgid "Empty values"
-msgstr ""
+msgstr "Празни стойности"
 
 #: frontend/src/metabase/querying/filters/components/DatePicker/ExcludeDatePicker/constants.ts:31
 msgid "Not empty values"
-msgstr ""
+msgstr "Не празни стойности"
 
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:49
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:61
 msgid "opening parenthesis"
-msgstr ""
+msgstr "отваряща скоба"
 
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:52
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:71
 msgid "closing parenthesis"
-msgstr ""
+msgstr "затварящи скоби"
 
 #: frontend/src/metabase-lib/v1/expressions/recursive-parser.js:69
 msgid "comma"
-msgstr ""
+msgstr "запетая"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/InlineActionSettings.tsx:136
 msgid "To enable creating a shareable link you first need to save your action"
-msgstr ""
+msgstr "За да можете да създадете връзка за споделяне, първо трябва да запазите действието си."
 
 #: frontend/src/metabase/models/components/ModelActions/ModelActions.tsx:20
 msgid "Actions for {0}"
-msgstr ""
+msgstr "Действия за {0}"
 
 #: frontend/src/metabase/models/components/ModelActions/ModelActions.tsx:34
 msgid "Actions are not enabled for this model."
-msgstr ""
+msgstr "Действията не са разрешени за този модел."
 
 #: enterprise/frontend/src/metabase-enterprise/clean_up/index.tsx:22
 msgid "Clear out unused items"
-msgstr ""
+msgstr "Изчистване на неизползвани елементи"
 
 #: frontend/src/metabase/browse/models/BrowseModels.tsx:98
 #: frontend/src/metabase/browse/models/ModelExplanationBanner.tsx:54
 msgid "Create models to clean up and combine tables to make your data easier to explore"
-msgstr ""
+msgstr "Създаване на модели за изчистване и комбиниране на таблици, за да се улесни проучването на данните"
 
 #: frontend/src/metabase/browse/models/BrowseModels.tsx:99
 #: frontend/src/metabase/browse/models/ModelExplanationBanner.tsx:56
 msgid "Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table."
-msgstr ""
+msgstr "Моделите донякъде приличат на виртуални таблици: направете всички обединения и потребителски колони веднъж, запазете ги като модел и след това ги търсете като таблица."
 
 #: frontend/src/metabase/browse/models/EmptyStates/ModelsVideo.tsx:14
 msgid "Use Models in Metabase | Getting started with Metabase"
-msgstr ""
+msgstr "Използване на модели в Metabase | Започване с Metabase"
 
 #: frontend/src/metabase/browse/models/EmptyStates/ModelsVideo.tsx:28
 msgid "Browse models video thumbnail"
-msgstr ""
+msgstr "Преглед на моделите видео миниатюра"
 
 #: frontend/src/metabase/collections/components/CollectionMenu/CollectionMenu.tsx:86
 msgid "Move questions into their dashboards"
-msgstr ""
+msgstr "Преместете въпросите в техните табла за управление"
 
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:33
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:198
 msgid "Gather diagnostic information"
-msgstr ""
+msgstr "Събиране на диагностична информация"
 
 #: frontend/src/metabase/components/ErrorPages/BugReportModal.tsx:65
 #: frontend/src/metabase/components/ErrorPages/DownloadDiagnosticModal.tsx:51
 msgid "Could you provide us with a little context?"
-msgstr ""
+msgstr "Бихте ли ни представили малко контекст?"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsModal.tsx:63
 msgid "The questions were successfully moved into their dashboards"
-msgstr ""
+msgstr "Въпросите бяха успешно преместени в техните информационни табла"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:18
 msgid "Move questions into their dashboards?"
-msgstr ""
+msgstr "Премествате въпросите в техните информационни табла?"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:28
 msgid "If a question only appears in a single dashboard in this collection, it'll be moved into that dashboard to declutter the collection."
-msgstr ""
+msgstr "Ако даден въпрос се появява само в едно табло в тази колекция, той ще бъде преместен в това табло, за да се намали обемът на колекцията."
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:31
 msgid "Permissions won’t change."
-msgstr ""
+msgstr "Разрешенията няма да се променят."
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:38
 msgid "Preview the changes"
-msgstr ""
+msgstr "Преглед на промените"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1163
 msgid "Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr ""
+msgstr "Конвертиране на часовата зона на колона с дата или времеви печат.\n"
+"Поддържаме имена на часови зони в базата данни tz."
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:70
 msgid "Move these questions into their dashboards?"
-msgstr ""
+msgstr "Прехвърляте тези въпроси в техните информационни табла?"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:71
 msgid "Move this question into its dashboard?"
 msgid_plural "Move these {0} questions into their dashboards?"
-msgstr[0] ""
+msgstr[0] "Преместете този въпрос в своето табло?"
 msgstr[1] ""
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:91
 msgid "Dashboard it'll be moved to"
-msgstr ""
+msgstr "Таблото за управление ще бъде преместено в"
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:117
 msgid "There aren't any questions to move into dashboards. Looks like everything is in its place."
-msgstr ""
+msgstr "Няма въпроси, които да се прехвърлят в таблата за управление. Изглежда, че всичко е на мястото си."
 
 #: frontend/src/metabase/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx:156
 msgid "Move these questions"
-msgstr ""
+msgstr "Преместете тези въпроси"
 
 #: frontend/src/metabase/notifications/NewPulseSidebar.tsx:30
 msgid "Set up a dashboard subscription"
-msgstr ""
+msgstr "Създаване на абонамент за табло за управление"
 
 #: frontend/src/metabase/notifications/NewPulseSidebar.tsx:31
 msgid "Schedule dashboard results to be sent to you and your team. People don't need a {0} account to subscribe."
-msgstr ""
+msgstr "Планирайте резултатите от таблото за управление да бъдат изпращани на вас и на вашия екип. Хората не се нуждаят от {0} акаунт, за да се абонират."
 
 #: frontend/src/metabase/notifications/NewPulseSidebar.tsx:54
 msgid "Configure Slack"
-msgstr ""
+msgstr "Конфигуриране на Slack"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:320
 msgid "Additional tooltip columns"
-msgstr ""
+msgstr "Допълнителни колони с подсказки"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:321
 msgid "Enter column names"
-msgstr ""
+msgstr "Въвеждане на имена на колони"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/SidesheetCardWithFields.tsx:18
 msgctxt "{0} is the number of fields"
 msgid "{0} field"
 msgid_plural "{0} fields"
-msgstr[0] ""
+msgstr[0] "{0} поле"
 msgstr[1] ""
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/ToggleFullList.tsx:27
 msgctxt "{0} is a number"
 msgid "Showing all {0} questions"
-msgstr ""
+msgstr "Показване на всички {0} въпроси"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/ToggleFullList.tsx:28
 msgctxt "The variables are numbers"
 msgid "Showing {0} of {1} questions"
-msgstr ""
+msgstr "Показване на {0} от {1} въпроси"
 
 #: frontend/src/metabase/components/ErrorPages/DiagnosticCheckboxes.tsx:23
 msgctxt "This is part of the bug reporting modal"
 msgid "Your name and email"
-msgstr ""
+msgstr "Вашето име и имейл"
 
 #: frontend/src/metabase/lib/errors/validation.ts:10
 msgctxt "{0} is a number greater than 1"
 msgid "must be {0} characters or less"
-msgstr ""
+msgstr "трябва да бъде {0} или по-малко знаци"
 
 #: frontend/src/metabase/lib/errors/validation.ts:13
 msgctxt "{0} is a number greater than 1"
 msgid "must be exactly {0} characters"
-msgstr ""
+msgstr "трябва да бъде точно {0} символа"
 
 #: frontend/src/metabase/query_builder/components/MoveQuestionModal/MoveQuestionModal.tsx:161
 msgctxt "{0} is the dashboard name the question currently has dashcards in"
 msgid "Do you still want this question to appear in {0}?"
-msgstr ""
+msgstr "Все още ли искате този въпрос да се появи в {0}?"
 
