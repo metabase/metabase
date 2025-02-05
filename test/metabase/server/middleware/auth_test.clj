@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.models.session :as session]
    [metabase.request.core :as request]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.session :as mw.session]
@@ -36,14 +37,15 @@
 
 (deftest wrap-current-user-info-test
   (testing "Valid requests should add `metabase-user-id` to requests with valid session info"
-    (let [session-id (random-session-id)]
+    (let [session-id (random-session-id)
+          session-id-hashed (session/hash-session-id session-id)]
       (try
-        (t2/insert! :model/Session {:id      session-id
+        (t2/insert! :model/Session {:id      session-id-hashed
                                     :user_id (test.users/user->id :rasta)})
         (is (= (test.users/user->id :rasta)
                (-> (auth-enforced-handler (request-with-session-id session-id))
                    :metabase-user-id)))
-        (finally (t2/delete! :model/Session :id session-id)))))
+        (finally (t2/delete! :model/Session :id session-id-hashed)))))
 
   (testing "Invalid requests should return unauthed response"
     (testing "when no session ID is sent with request"
@@ -54,28 +56,30 @@
     (testing "when an expired session ID is sent with request"
       ;; create a new session (specifically created some time in the past so it's EXPIRED) should fail due to session
       ;; expiration
-      (let [session-id (random-session-id)]
+      (let [session-id (random-session-id)
+            session-id-hashed (session/hash-session-id session-id)]
         (try
-          (t2/insert! :model/Session {:id      session-id
+          (t2/insert! :model/Session {:id      session-id-hashed
                                       :user_id (test.users/user->id :rasta)})
-          (t2/update! (t2/table-name :model/Session) {:id session-id}
+          (t2/update! (t2/table-name :model/Session) {:id session-id-hashed}
                       {:created_at (t/instant 1000)})
           (is (= request/response-unauthentic
                  (auth-enforced-handler (request-with-session-id session-id))))
-          (finally (t2/delete! :model/Session :id session-id)))))
+          (finally (t2/delete! :model/Session :id session-id-hashed)))))
 
     (testing "when a Session tied to an inactive User is sent with the request"
       ;; create a new session (specifically created some time in the past so it's EXPIRED)
       ;; should fail due to inactive user
       ;; NOTE that :trashbird is our INACTIVE test user
-      (let [session-id (random-session-id)]
+      (let [session-id (random-session-id)
+            session-id-hashed (session/hash-session-id session-id)]
         (try
-          (t2/insert! :model/Session {:id      session-id
+          (t2/insert! :model/Session {:id      session-id-hashed
                                       :user_id (test.users/user->id :trashbird)})
           (is (= request/response-unauthentic
                  (auth-enforced-handler
                   (request-with-session-id session-id))))
-          (finally (t2/delete! :model/Session :id session-id)))))))
+          (finally (t2/delete! :model/Session :id session-id-hashed)))))))
 
 ;;; ------------------------------------------ TEST wrap-static-api-key middleware ------------------------------------------
 

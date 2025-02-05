@@ -44,7 +44,7 @@
 (def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
 (def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
 
-(mu/defn- ldap-login :- [:maybe [:map [:id uuid?]]]
+(mu/defn- ldap-login :- [:maybe [:map [:id ms/UUIDString]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- request/DeviceInfo]
@@ -67,7 +67,7 @@
       (catch LDAPSDKException e
         (log/error e "Problem connecting to LDAP server, will fall back to local authentication")))))
 
-(mu/defn- email-login :- [:maybe [:map [:id uuid?]]]
+(mu/defn- email-login :- [:maybe [:map [:id ms/UUIDString]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
@@ -146,9 +146,10 @@
   "Logout."
   ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
   [_route-params _query-params _body {:keys [metabase-session-id], :as _request}]
-  (api/check-exists? :model/Session metabase-session-id)
-  (t2/delete! :model/Session :id metabase-session-id)
-  (request/clear-session-cookie api/generic-204-no-content))
+  (let [hashed-session-id (session/hash-session-id metabase-session-id)]
+    (api/check-exists? :model/Session hashed-session-id)
+    (t2/delete! :model/Session :id hashed-session-id)
+    (request/clear-session-cookie api/generic-204-no-content)))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.

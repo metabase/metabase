@@ -10,6 +10,7 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.models.session :as session]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -67,8 +68,9 @@
 (api.macros/defendpoint :post "/logout"
   "Logout."
   [_route-params _query-params _body {cookies :cookies, :as _request}]
-  (let [metabase-session-id (get-in cookies [request/metabase-session-cookie :value])]
-    (api/check-exists? :model/Session metabase-session-id)
+  (let [metabase-session-id (get-in cookies [request/metabase-session-cookie :value])
+        metabase-session-id-hashed (session/hash-session-id metabase-session-id)]
+    (api/check-exists? :model/Session metabase-session-id-hashed)
     (let [{:keys [email sso_source]}
           (t2/query-one {:select [:u.email :u.sso_source]
                          :from   [[:core_user :u]]
@@ -77,7 +79,7 @@
       ;; If a user doesn't have SLO setup on their IdP,
       ;; they will never hit "/handle_slo" so we must delete the session here:
       (when-not (sso-settings/saml-slo-enabled)
-        (t2/delete! :model/Session :id metabase-session-id))
+        (t2/delete! :model/Session :id metabase-session-id-hashed))
       {:saml-logout-url
        (when (and (sso-settings/saml-slo-enabled)
                   (= sso_source "saml"))

@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.driver.h2 :as h2]
    [metabase.http-client :as client]
+   [metabase.models.session :as session]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
@@ -196,7 +197,8 @@
       ;; Session
       (test.users/clear-cached-session-tokens!)
       (let [session-id       (client/authenticate (test.users/user->credentials :rasta))
-            login-history-id (t2/select-one-pk :model/LoginHistory :session_id session-id)]
+            session-id-hashed (session/hash-session-id session-id)
+            login-history-id (t2/select-one-pk :model/LoginHistory :session_id session-id-hashed)]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
@@ -204,7 +206,7 @@
         (client/client session-id :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (t2/select-one :model/Session :id session-id)))
+               (t2/select-one :model/Session :id session-id-hashed)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (malli= [:map
                        [:id                 ms/PositiveInt]

@@ -10,6 +10,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.serialization :as serdes]
+   [metabase.models.session :as session]
    [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.notification.test-util :as notification.tu]
@@ -411,7 +412,7 @@
     (testing "should clear out all existing Sessions"
       (mt/with-temp [:model/User {user-id :id} {}]
         (dotimes [_ 2]
-          (t2/insert! :model/Session {:id (str (random-uuid)), :user_id user-id}))
+          (t2/insert! :model/Session {:id (session/hash-session-id  (str (random-uuid))), :user_id user-id}))
         (letfn [(session-count [] (t2/count :model/Session :user_id user-id))]
           (is (= 2
                  (session-count)))

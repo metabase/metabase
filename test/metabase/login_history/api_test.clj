@@ -1,6 +1,7 @@
 (ns metabase.login-history.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.session :as session]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -15,15 +16,16 @@
 (deftest login-history-test
   (testing "GET /api/login-history/current"
     (let [session-id (str (random-uuid))
-          device-id  "e9b49ec7-bc64-4a83-9b1a-ecd3ae26ba9d"]
+          device-id  "e9b49ec7-bc64-4a83-9b1a-ecd3ae26ba9d"
+          session-id-hashed (session/hash-session-id session-id)]
       (mt/with-temp [:model/User         user {}
-                     :model/Session      _    {:id session-id, :user_id (u/the-id user)}
+                     :model/Session      _    {:id session-id-hashed, :user_id (u/the-id user)}
                      :model/LoginHistory _    {:timestamp          #t "2021-03-18T19:52:41.808482Z"
                                                :user_id            (u/the-id user)
                                                :device_id          device-id
                                                :device_description windows-user-agent
                                                :ip_address         "185.233.100.23"
-                                               :session_id         session-id}
+                                               :session_id         session-id-hashed}
                      :model/LoginHistory _    {:timestamp          #t "2021-03-18T20:04:24.727300Z"
                                                :user_id            (u/the-id user)
                                                :device_id          device-id
