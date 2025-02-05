@@ -37,8 +37,8 @@ process.env = {
 };
 
 if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
-  console.error(
-    "ENTERPRISE_TOKEN is not set. Either set it or run with MB_EDITION=oss",
+  printBold(
+    "⚠️ ENTERPRISE_TOKEN is not set. Either set it or run with MB_EDITION=oss",
   );
   process.exit(1);
 }
@@ -77,9 +77,10 @@ const init = async () => {
     );
     if (isBackendRunning) {
       printBold(
-        "Your backend is already running, you may want to kill pid " +
+        "⚠️ Your backend is already running, you may want to kill pid " +
           isBackendRunning,
       );
+      process.exit(1);
     }
 
     printBold("⏳ Starting backend");
