@@ -1219,7 +1219,9 @@ describe("scenarios > dashboard", () => {
       // move tab
       H.editDashboard();
       dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
-      H.openQuestionsSidebar();
+      // assert tab order is now correct and ui has caught up to result of dragging the tab
+      cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
+      cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
       assertPreventLeave();
       H.saveDashboard();
 
