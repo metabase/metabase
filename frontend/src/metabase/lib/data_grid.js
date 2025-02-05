@@ -146,65 +146,24 @@ export function multiLevelPivot(data, settings) {
   );
 
   // we build a tree for each tuple of pivoted column/row values seen in the data
-  const columnColumnTree = [];
-  const rowColumnTree = [];
-
-  // this stores pivot table values keyed by all pivoted columns
-  const valuesByKey = {};
-
-  // loop over the primary rows to build trees of column/row header data
+  //const columnColumnTree = [];
+  //const rowColumnTree = [];
+  //
+  //// this stores pivot table values keyed by all pivoted columns
+  //const valuesByKey = {};
+  //
+  //// loop over the primary rows to build trees of column/row header data
   // primaryRowsKey = [0, 1] | [0, 1, 2]
   const primaryRowsKey = JSON.stringify(
     _.range(columnColumnIndexes.length + rowColumnIndexes.length),
   );
 
-  var count = 0
-  for (const row of pivotData[primaryRowsKey]) {
-    // mutate the trees to add the tuple from the current row
-    updateValueObject(
-      row,
-      columnColumnIndexes,
-      columnSettings,
-      columnColumnTree,
-    );
-    updateValueObject(
-      row,
-      rowColumnIndexes,
-      columnSettings,
-      rowColumnTree,
-      collapsedSubtotals,
-    );
+  const valuesByKey = Pivot.build_values_by_key(pivotData[primaryRowsKey], columnColumnIndexes, rowColumnIndexes, valueColumnIndexes, columnSettings, columns);
 
-    // save the value columns keyed by the values in the column/row pivoted columns
-    const valueKey = JSON.stringify(
-      columnColumnIndexes.concat(rowColumnIndexes).map(index => row[index]),
-    );
-    const values = valueColumnIndexes.map(index => row[index]);
-    const valueColumns = valueColumnIndexes.map(
-      index => columnSettings[index]?.column,
-    );
+  const { rowTree, colTree } = Pivot.build_pivot_trees(pivotData[primaryRowsKey], columnColumnIndexes, rowColumnIndexes, columnSettings, collapsedSubtotals);
 
-    valuesByKey[valueKey] = {
-      values,
-      valueColumns,
-      data: row.map((value, index) => ({ value, col: columns[index] })),
-      dimensions: row
-        .map((value, index) => ({
-          value,
-          column: columns[index],
-        }))
-        .filter(({ column }) => column.source === "breakout"),
-    };
-    count += 1
-  }
-
-  console.log("TSP before")
-
-  const tmpValuesByKey = Pivot.build_values_by_key(pivotData[primaryRowsKey], columnColumnIndexes, rowColumnIndexes, valueColumnIndexes, columnSettings, columns);
-  console.log("TSP multiLevelPivot valuesByKey: ", valuesByKey);
-  console.log("TSP multiLevelPivot tmpValuesByKey: ", tmpValuesByKey);
-
-  Pivot.build_pivot_trees(pivotData[primaryRowsKey], columnColumnIndexes, rowColumnIndexes, columnSettings, collapsedSubtotals);
+  const rowColumnTree = rowTree || [];
+  const columnColumnTree = colTree || [];
 
   const subtotalValues = Pivot.subtotal_values(pivotData, valueColumnIndexes);
 

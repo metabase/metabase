@@ -176,15 +176,10 @@
          {:row-tree (ordered-map/ordered-map)
           :col-tree (ordered-map/ordered-map)}
          rows)
-
-        collapsed-row-tree
-        (add-is-collapsed row-tree collapsed-subtotals)
-
+        collapsed-row-tree (add-is-collapsed row-tree collapsed-subtotals)
         row-sort-orders (sort-orders-from-settings col-settings row-indexes)
         col-sort-orders (sort-orders-from-settings col-settings col-indexes)
-
-        sorted-row-tree
-        (sort-tree collapsed-row-tree row-sort-orders)
-
-        sorted-col-tree
-        (sort-tree col-tree col-sort-orders)]))
+        sorted-row-tree (sort-tree collapsed-row-tree row-sort-orders)
+        sorted-col-tree (sort-tree col-tree col-sort-orders)]
+    {:row-tree sorted-row-tree
+     :col-tree sorted-col-tree}))
