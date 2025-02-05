@@ -42,6 +42,8 @@ type EditorProps<S extends StartRule> = {
   shortcuts?: Shortcut[];
 };
 
+const DEFAULT_SHORTCUTS: Shortcut[] = [];
+
 export function Editor<S extends StartRule = "expression">(
   props: EditorProps<S>,
 ) {
@@ -55,7 +57,7 @@ export function Editor<S extends StartRule = "expression">(
     readOnly,
     error,
     reportTimezone,
-    shortcuts = [],
+    shortcuts = DEFAULT_SHORTCUTS,
   } = props;
 
   const ref = useRef<ReactCodeMirrorRef>(null);
