@@ -59,7 +59,7 @@ const UserProfileForm = ({
       onSubmit={handleSubmit}
     >
       {({ dirty }) => (
-        <Form disabled={!dirty} data-testid="user-profile-form">
+        <Form disabled={!dirty}>
           {!isSsoUser && (
             <>
               <FormInput
