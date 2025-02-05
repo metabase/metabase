@@ -52,8 +52,6 @@
 (defn maybe-hydrate-event-info
   "Hydrate event-info if the topic has a schema."
   [topic event-info]
-  (def topic topic)
-  (def event-info event-info)
   (cond->> event-info
     (some? (events/topic->schema topic))
     (hydrate! (events/topic->schema topic))))
@@ -64,15 +62,9 @@
   (when (supported-topics topic)
     (models.notification/notifications-for-event topic)))
 
-(def ^:dynamic *skip-sending-notification?*
-  "Used as a hack for when we need to skip sending notifications for certain events.
-
-  It's an escape hatch until we implement conditional notifications."
-  false)
-
 (defn- maybe-send-notification-for-topic!
   [topic event-info]
-  (when-not *skip-sending-notification?*
+  (when-not notification/*skip-sending-notification?*
     (when-let [notifications (notifications-for-topic topic)]
       (task-history/with-task-history {:task         "notification-trigger"
                                        :task_details {:trigger_type     :notification-subscription/system-event

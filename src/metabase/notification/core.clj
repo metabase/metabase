@@ -18,7 +18,9 @@
   Notification
   NotificationPayload]
  [notification.seed
-  seed-notification!])
+  seed-notification!]
+ [notification.send
+  *skip-sending-notification?*])
 
 (def ^:private Options
   [:map

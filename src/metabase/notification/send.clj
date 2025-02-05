@@ -15,6 +15,12 @@
    (java.util.concurrent Callable Executors ExecutorService)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
+(def ^:dynamic *skip-sending-notification?*
+  "Used as a hack for when we need to skip sending notifications for certain events.
+
+  It's an escape hatch until we implement conditional notifications."
+  false)
+
 (set! *warn-on-reflection* true)
 
 (defn- hydrate-notification-handler
@@ -151,11 +157,13 @@
             (log/infof "[Notification %d] Skipping" (:id notification-info))))))
     (catch Exception e
       (log/errorf e "[Notification %d] Failed to send" (:id notification-info))
-      ;; do not double firing in case there is a notification on the :event/notification-send-failed event
-      (if-not (and (= :notification/system-event (:payload_type notification-info))
-                   (= :event/notification-send-failed (-> notification-info :payload :event_topic)))
-        (events/publish-event! :event/notification-send-failed (assoc notification-info :error-message (ex-message e)))
-        (log/fatal e "There is something seriously wrong with the notification system, please investigate!"))
+      ;; prevent infinite sending notifications because there is a notification that subscribes to
+      ;; the :event/notification-send-failed event
+      (binding [*skip-sending-notification?* (and (= :notification/system-event
+                                                     (:payload_type notification-info))
+                                                  (= :event/notification-send-failed
+                                                     (-> notification-info :payload :event_topic)))]
+        (events/publish-event! :event/notification-send-failed (assoc notification-info :error-message (ex-message e))))
       (throw e)))
   nil)
 

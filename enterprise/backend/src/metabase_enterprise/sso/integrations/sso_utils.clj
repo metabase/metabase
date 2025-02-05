@@ -5,8 +5,8 @@
    [metabase.api.common :as api]
    [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
-   [metabase.events.notification :as events.notification]
    [metabase.integrations.common :as integrations.common]
+   [metabase.notification.core :as notification]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -63,7 +63,7 @@
       (log/infof "New SSO user created: %s (%s)" (:common_name <>) (:email <>))
       ;; publish user-invited event for audit logging
       ;; skip sending user invited emails for sso users
-      (binding [events.notification/*skip-sending-notification?* true]
+      (binding [notification/*skip-sending-notification?* true]
         (events/publish-event! :event/user-invited {:object (assoc <> :sso_source (:sso_source user))}))
       ;; send an email to everyone including the site admin if that's set
       (when (integrations.common/send-new-sso-user-admin-email?)

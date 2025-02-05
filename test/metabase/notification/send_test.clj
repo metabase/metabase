@@ -141,6 +141,5 @@
                                                               (select-keys x [:payload_type :id]))
                                                          (throw (Exception. "test-exception"))
                                                          (original-payload x)))]
-            (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
-            #_(notification.tu/with-captured-channel-send!
-                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))))
+            (notification.tu/with-captured-channel-send!
+              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))))
