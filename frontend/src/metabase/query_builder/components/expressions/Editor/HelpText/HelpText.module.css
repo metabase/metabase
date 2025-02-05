@@ -9,6 +9,10 @@
   min-height: 2.5rem;
   line-height: 2.5rem;
   box-sizing: border-box;
+
+  & + ul {
+    height: calc(100% - 5rem);
+  }
 }
 
 .arg {

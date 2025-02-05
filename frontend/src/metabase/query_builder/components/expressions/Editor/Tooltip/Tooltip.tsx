@@ -1,6 +1,7 @@
 import { currentCompletions } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -11,6 +12,8 @@ import { Listbox } from "../Listbox";
 import { enclosingFunction } from "../util";
 
 import S from "./Tooltip.module.css";
+
+const HEIGHT_THRESHOLD = 320;
 
 export function Tooltip({
   query,
@@ -33,8 +36,33 @@ export function Tooltip({
   view: EditorView;
 }) {
   const doc = state.doc.toString();
-  const enclosingFn = enclosingFunction(doc, state.selection.main.head);
-  const completions = currentCompletions(state);
+
+  const enclosingFn = useMemo(
+    () => enclosingFunction(doc, state.selection.main.head),
+    [doc, state.selection.main.head],
+  );
+
+  const completions = useMemo(() => currentCompletions(state), [state]);
+
+  const maxHeight = usePopoverHeight(tooltipRef);
+  const canShowBoth = maxHeight > HEIGHT_THRESHOLD;
+
+  const [isHelpTextOpen, setIsHelpTextOpen] = useState(false);
+  const handleToggleHelpText = useCallback(
+    () => setIsHelpTextOpen(open => !open),
+    [],
+  );
+
+  useEffect(() => {
+    if (!canShowBoth && enclosingFn && completions.length > 0) {
+      setIsHelpTextOpen(false);
+      return;
+    }
+    if (canShowBoth || completions.length === 0) {
+      setIsHelpTextOpen(true);
+      return;
+    }
+  }, [canShowBoth, enclosingFn, completions.length]);
 
   return (
     <Popover
@@ -63,15 +91,31 @@ export function Tooltip({
             query={query}
             metadata={metadata}
             reportTimezone={reportTimezone}
+            open={isHelpTextOpen}
+            onToggle={handleToggleHelpText}
           />
-          <Listbox
-            state={state}
-            view={view}
-            query={query}
-            stageIndex={stageIndex}
-          />
+          {(canShowBoth || !isHelpTextOpen) && (
+            <Listbox
+              state={state}
+              view={view}
+              query={query}
+              stageIndex={stageIndex}
+            />
+          )}
         </div>
       </Popover.Dropdown>
     </Popover>
   );
+}
+
+function usePopoverHeight(ref: React.RefObject<HTMLDivElement>) {
+  const [maxHeight, setMaxHeight] = useState(0);
+  useEffect(() => {
+    const px = ref.current?.parentElement?.style.maxHeight ?? "0";
+    const parsed = parseInt(px, 10);
+    if (!Number.isNaN(parsed)) {
+      setMaxHeight(parsed);
+    }
+  }, [ref]);
+  return maxHeight;
 }

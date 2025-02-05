@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { Fragment, useCallback, useState } from "react";
+import { Fragment, useCallback } from "react";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
@@ -27,6 +27,8 @@ function wrapPlaceholder(name: string) {
 }
 
 export type HelpTextProps = {
+  open?: boolean;
+  onToggle?: () => void;
   enclosingFunction?: {
     name: string;
     arg: {
@@ -44,13 +46,13 @@ function getDatabase(query: Lib.Query, metadata: Metadata) {
 }
 
 export function HelpText({
+  open = true,
+  onToggle,
   enclosingFunction,
   query,
   metadata,
   reportTimezone,
 }: HelpTextProps) {
-  const [open, setOpen] = useState(true);
-
   const database = getDatabase(query, metadata);
   const helpText =
     enclosingFunction && database
@@ -67,9 +69,9 @@ export function HelpText({
   const handleMouseDown = useCallback(
     (evt: React.MouseEvent<HTMLDivElement>) => {
       evt.preventDefault();
-      setOpen(open => !open);
+      onToggle?.();
     },
-    [],
+    [onToggle],
   );
 
   if (!helpText || !clause || !isSupported) {
