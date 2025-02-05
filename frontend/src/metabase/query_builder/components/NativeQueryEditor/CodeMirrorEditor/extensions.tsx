@@ -322,11 +322,11 @@ function highlightLines() {
 
 export function useHighlightLines(
   editorRef: RefObject<ReactCodeMirrorRef>,
-  highlightedLineNumbers?: number[],
+  highlightedLineNumbers: number[] = [],
 ) {
   useEffect(() => {
     const view = editorRef.current?.view;
-    if (!view || !highlightedLineNumbers) {
+    if (!view) {
       return;
     }
 
