@@ -184,6 +184,7 @@ export const uiControls = handleActions(
       ...state,
       isRunning: true,
       isSqlQueryFixApplied: false,
+      highlightedSqlQueryLineNumbers: [],
     }),
     [CANCEL_QUERY]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),

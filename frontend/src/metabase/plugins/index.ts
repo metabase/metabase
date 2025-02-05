@@ -580,8 +580,8 @@ export type FixSqlQueryButtonProps = {
   query: Lib.Query;
   queryError: DatasetError;
   queryErrorType: DatasetErrorType | undefined;
-  onQueryFix: (newQuery: Lib.Query) => void;
-  onHighlightLines: (lineNumbers: number[]) => void;
+  onQueryFix: (fixedQuery: Lib.Query, fixedLineNumbers: number[]) => void;
+  onHighlightLines: (fixedLineNumbers: number[]) => void;
 };
 
 export type PluginAiSqlFixer = {

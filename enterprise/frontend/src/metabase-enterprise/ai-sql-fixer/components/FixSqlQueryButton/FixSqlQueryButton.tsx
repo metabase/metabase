@@ -22,7 +22,9 @@ export function FixSqlQueryButton({
 
   const handleClick = () => {
     if (data) {
-      onQueryFix(getFixedQuery(query, data.fixes));
+      const fixedQuery = getFixedQuery(query, data.fixes);
+      const fixedLineNumbers = getFixedLineNumbers(data.fixes);
+      onQueryFix(fixedQuery, fixedLineNumbers);
     }
   };
 

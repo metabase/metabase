@@ -47,11 +47,12 @@ export function VisualizationError({
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const dispatch = useDispatch();
 
-  const handleSqlQueryFix = (newQuery: Lib.Query) => {
+  const handleSqlQueryFix = (newQuery: Lib.Query, lineNumbers: number[]) => {
     const newQuestion = question.setQuery(newQuery);
     dispatch(updateQuestion(newQuestion));
     dispatch(
       setUIControls({
+        highlightedSqlQueryLineNumbers: lineNumbers,
         isNativeEditorOpen: true,
         isSqlQueryFixApplied: true,
       }),
