@@ -58,8 +58,9 @@
   "A list of pattern strings that get converted into additional regexes that match Fields that should automatically be
   marked as visibility-type = `:hidden`. Not to be set directly, this setting lives in the metabase_database.settings json blob."
   :type :json
+  :database-local :only
   :visibility :internal
-  :export? false
+  :export? true
   :encryption :no)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

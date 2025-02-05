@@ -81,8 +81,9 @@
   "A list of pattern strings that get converted into additional regexes that match Tables that should automatically be
   marked as `:cruft`."
   :type :json
+  :database-local :only
   :visibility :internal
-  :export? false
+  :export? true
   :encryption :no)
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
