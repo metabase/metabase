@@ -103,10 +103,9 @@
 (defn- expand-stage [metadata-provider stage]
   (let [card-id (:source-card stage)
         card (when card-id (lib.metadata/card metadata-provider card-id))
-        expanded-query (some-> card
+        expanded-query (some->> card
                                :dataset-query
-                               (->> (query metadata-provider))
-                               )]
+                               (query metadata-provider))]
     (stage-seq card-id expanded-query)))
 
 (defn- add-stage-dep [graph stage]
