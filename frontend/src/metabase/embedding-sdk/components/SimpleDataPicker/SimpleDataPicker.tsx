@@ -56,6 +56,7 @@ export function SimpleDataPicker({
       opened={isDataPickerOpened}
       position="bottom-start"
       onClose={close}
+      trapFocus
     >
       <Popover.Target>
         <Box onClick={toggle}>{triggerElement}</Box>
