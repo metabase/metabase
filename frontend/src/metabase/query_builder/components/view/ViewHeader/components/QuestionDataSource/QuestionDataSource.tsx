@@ -1,6 +1,5 @@
-import PropTypes from "prop-types";
-
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
@@ -11,19 +10,20 @@ import { SourceDatasetBreadcrumbs } from "./SourceDatasetBreadcrumbs";
 import { SourceQuestionBreadcrumbs } from "./SourceQuestionBreadcrumbs";
 import { getDataSourceParts } from "./utils";
 
-QuestionDataSource.propTypes = {
-  question: PropTypes.object,
-  originalQuestion: PropTypes.object,
-  subHead: PropTypes.bool,
-  isObjectDetail: PropTypes.bool,
-};
+interface QuestionDataSourceProps {
+  question: Question;
+  originalQuestion?: Question;
+  subHead?: boolean;
+  isObjectDetail?: boolean;
+  className?: string;
+}
 
 export function QuestionDataSource({
   question,
   originalQuestion,
   subHead = false,
   ...props
-}) {
+}: QuestionDataSourceProps) {
   if (!question) {
     return null;
   }
@@ -61,5 +61,10 @@ export function QuestionDataSource({
   );
 }
 
-QuestionDataSource.shouldRender = ({ question, isObjectDetail = false }) =>
-  getDataSourceParts({ question, isObjectDetail }).length > 0;
+QuestionDataSource.shouldRender = ({
+  question,
+  isObjectDetail = false,
+}: {
+  question: Question;
+  isObjectDetail?: boolean;
+}) => getDataSourceParts({ question, isObjectDetail }).length > 0;
