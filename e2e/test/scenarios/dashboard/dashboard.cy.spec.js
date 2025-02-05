@@ -354,10 +354,10 @@ describe("scenarios > dashboard", () => {
 
       it("should save changes to a dashboard after using the 'Add a chart' button from an empty tab (metabase#53132)", () => {
         cy.log("add an existing card");
-        cy.findAllByTestId("dashboard-header").icon("pencil").click();
-        cy.findAllByTestId("dashboard-header").icon("add").click();
+        H.editDashboard();
+        cy.findByTestId("dashboard-header").icon("add").click();
         H.sidebar().findByText("Orders, Count").click();
-        cy.findAllByTestId("dashboard-header").icon("add").click();
+        cy.findByTestId("dashboard-header").icon("add").click();
 
         cy.log("create a tab to access emtpy state again");
         H.createNewTab();
@@ -371,13 +371,7 @@ describe("scenarios > dashboard", () => {
 
         cy.log("create a dashboard question");
         H.NativeEditor.focus().type("SELECT 1");
-        H.queryBuilderHeader().findByText("Save").click();
-        H.modal().within(() => {
-          cy.findByPlaceholderText(/name of your question/i).type(
-            "Foo question",
-          );
-          cy.findByRole("button", { name: "Save" }).click();
-        });
+        H.saveQuestion("Foo question");
 
         cy.log(
           "should have persisted changes from when dashboard was saved before creating a question",
