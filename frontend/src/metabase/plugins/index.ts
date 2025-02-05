@@ -552,7 +552,7 @@ export const PLUGIN_AUDIT = {
 type GsheetConnectionModalProps = {
   isModalOpen: boolean;
   onClose: () => void;
-  reconnect: boolean,
+  reconnect: boolean;
 };
 
 export const PLUGIN_UPLOAD_MANAGEMENT = {

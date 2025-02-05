@@ -8,7 +8,11 @@ export function trackSheetImportClick() {
   });
 }
 
-export function trackSheetConnectionClick({ from }: { from: GsheetsConnectionClickedEvent["triggered_from"] }) {
+export function trackSheetConnectionClick({
+  from,
+}: {
+  from: GsheetsConnectionClickedEvent["triggered_from"];
+}) {
   trackSimpleEvent({
     event: "sheets_connection_clicked",
     triggered_from: from,
