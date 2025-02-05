@@ -139,7 +139,7 @@
                                              :user_id    user-id
                                              :created_at (t/minus (t/local-date) (t/days 1))}]
     (testing "session-cleanup deletes old sessions and keeps new enough ones"
-      (is (t2/select-one :model/Session :id "a"))
+      (is (t2/select-one :model/Session :id (old-session :id)))
       (session/cleanup-sessions)
-      (is (not (t2/select-one :model/Session :id "a")))
-      (is (t2/select-one :model/Session :id "b")))))
+      (is (not (t2/select-one :model/Session :id (old-session :id))))
+      (is (t2/select-one :model/Session :id (new-session :id))))))

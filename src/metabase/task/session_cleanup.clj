@@ -5,12 +5,14 @@
             [metabase.models.session :as session]
             [metabase.task :as task]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private session-cleanup-job-key (jobs/key "metabase.task.session-cleanup.job"))
 (def ^:private session-cleanup-trigger-key (triggers/key "metabase.task.session-cleanup.trigger"))
 
 (jobs/defjob ^{:doc "Job that cleans up outdated sessions."}
   SessionCleanup
-  [context]
+  [_]
   (session/cleanup-sessions))
 
 (defmethod task/init! ::SessionCleanup [_]
@@ -22,5 +24,5 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                     ;; run once a day
-                   cron/cron-schedule "0 0 2 * * ? *"))]
+                  cron/cron-schedule "0 0 2 * * ? *"))]
     (task/schedule-task! job trigger)))
