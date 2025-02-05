@@ -133,7 +133,7 @@ function Completions({
         <DelayGroup>
           {completions.map((completion, index) => (
             <CompletionItem
-              key={completion.displayLabel}
+              key={completion.displayLabel ?? completion.label}
               completion={completion}
               index={index}
               selected={selectedCompletion === index}
