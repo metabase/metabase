@@ -125,23 +125,6 @@ const defaultConfig = {
       signJwt,
     });
 
-    // this is an official workaround to keep recordings of the failed specs only
-    // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
-    on("after:spec", (spec, results) => {
-      if (results && results.video) {
-        // Do we have failures for any retry attempts?
-        const failures = results.tests.some(test =>
-          test.attempts.some(attempt => attempt.state === "failed"),
-        );
-        if (!failures) {
-          // delete the video if the spec passed and no tests retried
-          if (fs.existsSync(results.video)) {
-            fs.unlinkSync(results.video);
-          }
-        }
-      }
-    });
-
     /********************************************************************
      **                          CONFIG                                **
      ********************************************************************/
@@ -173,6 +156,18 @@ const defaultConfig = {
     if (isCI) {
       cypressSplit(on, config, getSplittableSpecs);
     }
+
+    // this is an official workaround to keep recordings of the failed specs only
+    // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
+    on("after:spec", (spec, results) => {
+      if (results && results.video) {
+        // Do we have test failures?
+        if (results && results.video && results.stats.failures === 0) {
+          // delete the video if the spec passed
+          fs.unlinkSync(results.video);
+        }
+      }
+    });
 
     return config;
   },
@@ -235,6 +230,7 @@ const mainConfig = {
 const snapshotsConfig = {
   ...defaultConfig,
   specPattern: "e2e/snapshot-creators/**/*.cy.snap.js",
+  video: false,
 };
 
 const crossVersionSourceConfig = {
