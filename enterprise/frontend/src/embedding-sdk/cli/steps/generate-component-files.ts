@@ -58,8 +58,8 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
   const componentExtension = isInTypeScriptProject ? "tsx" : "jsx";
 
   // Generate sample components files in the specified directory.
-  for (const { name, content } of sampleComponents) {
-    await fs.writeFile(`${path}/${name}.${componentExtension}`, content);
+  for (const { fileName, content } of sampleComponents) {
+    await fs.writeFile(`${path}/${fileName}.${componentExtension}`, content);
   }
 
   // Generate analytics.css sample styles.
