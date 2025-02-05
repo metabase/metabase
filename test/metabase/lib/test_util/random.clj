@@ -22,12 +22,9 @@
 
   (initial-seed-value)
 
-  (alter-var-root #'environ.core/env assoc
-                  :mb-test-run-seed 1)
+  (alter-var-root #'environ.core/env assoc :mb-test-run-seed 1)
 
-  (alter-var-root #'environ.core/env dissoc
-                  :mb-test-run-seed)
-  )
+  (alter-var-root #'environ.core/env dissoc :mb-test-run-seed))
 
 (defn rand
   "wip"
