@@ -110,34 +110,36 @@
 
 (defn build-values-by-key
   "Replicate valuesByKey construction"
-  [rows col-indexes row-indexes val-indexes col-settings cols]
+  [rows cols row-indexes col-indexes val-indexes col-settings]
   ;; Construct valueKey row[[col-indexes val-indexes]]
-  (reduce (fn [acc row]
-            ;; Construct valueKey
-            (let [value-key    (mapv row (into col-indexes row-indexes))
-                  values       (mapv row val-indexes)
-                  value-cols   (mapv (fn [index]
-                                       (get-in col-settings [index :column]))
-                                     val-indexes)
-                  data         (vec (map-indexed (fn [index value]
-                                                   (sorted-map :value value
-                                                               :col (nth cols index)))
-                                                 row))
-                  ;; @tsp TODO? this could use the `data` above
-                  dimensions   (->> row
-                                    (map-indexed (fn [index value]
-                                                   (sorted-map :value value
-                                                               :column (nth cols index))))
-                                    (filter (fn [tmp]
-                                              (= (get-in tmp [:column :source]) "breakout"))))]
-              (assoc acc
-                     (to-key value-key)
-                     (sorted-map :values values
-                                 :valueColumns value-cols
-                                 :data data
-                                 :dimensions dimensions))))
-          (ordered-map/ordered-map)
-          rows))
+  (let [value-cols (map (fn [index]
+                          (get-in col-settings [index :column]))
+                        val-indexes)
+        col-and-row-indexes (concat col-indexes row-indexes)]
+    (reduce
+     (fn [acc row]
+       (let [value-key  (to-key (map row col-and-row-indexes))
+             values     (map row val-indexes)
+             data       (map-indexed
+                         (fn [index value]
+                           {:value value
+                            :col (nth cols index)})
+                         row)
+             ;; @tsp TODO? this could use the `data` above
+             dimensions (->> row
+                             (map-indexed (fn [index value]
+                                            {:value value
+                                             :column (nth cols index)}))
+                             (filter (fn [tmp]
+                                       (= (get-in tmp [:column :source]) "breakout"))))]
+         (assoc acc
+                value-key
+                {:values values
+                 :valueColumns value-cols
+                 :data data
+                 :dimensions dimensions})))
+     {}
+     rows)))
 
 (defn- sort-orders-from-settings
   [col-settings indexes]
@@ -165,7 +167,7 @@
 
 (defn build-pivot-trees
   "TODO"
-  [rows col-indexes row-indexes col-settings collapsed-subtotals]
+  [rows cols row-indexes col-indexes val-indexes col-settings collapsed-subtotals]
   (let [{:keys [row-tree col-tree]}
         (reduce
          (fn [{:keys [row-tree col-tree]} row]
@@ -180,6 +182,8 @@
         row-sort-orders (sort-orders-from-settings col-settings row-indexes)
         col-sort-orders (sort-orders-from-settings col-settings col-indexes)
         sorted-row-tree (sort-tree collapsed-row-tree row-sort-orders)
-        sorted-col-tree (sort-tree col-tree col-sort-orders)]
+        sorted-col-tree (sort-tree col-tree col-sort-orders)
+        values-by-key   (build-values-by-key rows cols row-indexes col-indexes val-indexes col-settings)]
     {:row-tree sorted-row-tree
-     :col-tree sorted-col-tree}))
+     :col-tree sorted-col-tree
+     :values-by-key values-by-key}))
