@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -61,36 +61,48 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   const [name, setName] = useState(initialName || "");
   const [clause, setClause] = useState<Clause | null>(initialClause ?? null);
   const [error, setError] = useState<ErrorWithMessage | null>(null);
-  const [isCombiningColumns, setIsCombiningColumns] = useState(false);
 
+  const [isCombiningColumns, setIsCombiningColumns] = useState(false);
   const [isExtractingColumn, setIsExtractingColumn] = useState(false);
 
   const isValidName = withName ? name.trim().length > 0 : true;
   const isValidExpressionClause = isNotNull(clause);
   const isValid = !error && isValidName && isValidExpressionClause;
 
-  const handleCommit = (clause: Clause | null) => {
-    const isValidExpressionClause = isNotNull(clause);
-    const isValid = !error && isValidName && isValidExpressionClause;
+  const handleCommit = useCallback(
+    (clause: Clause | null) => {
+      const isValidExpressionClause = isNotNull(clause);
+      const isValid = !error && isValidName && isValidExpressionClause;
 
-    if (!isValid) {
-      return;
-    }
+      if (!isValid) {
+        return;
+      }
 
-    if (isValidExpressionClause) {
       onChangeClause?.(name, clause);
       onClose?.();
-    }
-  };
+    },
+    [name, isValidName, error, onChangeClause, onClose],
+  );
 
-  const handleError = (error: ErrorWithMessage | null) => {
+  const handleSubmit = useCallback(() => {
+    handleCommit(clause);
+  }, [clause, handleCommit]);
+
+  const handleError = useCallback((error: ErrorWithMessage | null) => {
     setError(error);
-  };
+  }, []);
 
-  const handleExpressionChange = (clause: Clause | null) => {
+  const handleExpressionChange = useCallback((clause: Clause | null) => {
     setClause(clause);
     setError(null);
-  };
+  }, []);
+
+  const handleNameChange = useCallback(
+    (evt: React.ChangeEvent<HTMLInputElement>) => {
+      setName(evt.target.value);
+    },
+    [],
+  );
 
   const shortcuts = useMemo(
     () =>
@@ -111,18 +123,45 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
     [startRule, query, stageIndex],
   );
 
-  if (startRule === "expression" && isCombiningColumns) {
-    const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
+  const handleCombineColumnsSubmit = useCallback(
+    (name: string, clause: Lib.ExpressionClause) => {
       trackColumnCombineViaShortcut(query);
       handleExpressionChange(clause as Clause);
       setName(name);
       setIsCombiningColumns(false);
-    };
+    },
+    [query, handleExpressionChange],
+  );
 
-    const handleCancel = () => {
-      setIsCombiningColumns(false);
-    };
+  const handleExtractColumnSubmit = useCallback(
+    (
+      clause: Lib.ExpressionClause,
+      name: string,
+      extraction: Lib.ColumnExtraction,
+    ) => {
+      trackColumnExtractViaShortcut(query, stageIndex, extraction);
+      handleExpressionChange(clause as Clause);
+      setName(name);
+      setIsExtractingColumn(false);
+    },
+    [query, stageIndex, handleExpressionChange],
+  );
 
+  const handleCancel = useCallback(() => {
+    setIsCombiningColumns(false);
+    setIsExtractingColumn(false);
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (evt: React.KeyboardEvent<HTMLInputElement>) => {
+      if (evt.key === "Enter") {
+        handleCommit(clause);
+      }
+    },
+    [handleCommit, clause],
+  );
+
+  if (startRule === "expression" && isCombiningColumns) {
     return (
       <Box w={WIDGET_WIDTH} data-testid="expression-editor">
         <ExpressionWidgetHeader
@@ -132,31 +171,20 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
         <CombineColumns
           query={query}
           stageIndex={stageIndex}
-          onSubmit={handleSubmit}
+          onSubmit={handleCombineColumnsSubmit}
         />
       </Box>
     );
   }
 
   if (isExtractingColumn) {
-    const handleSubmit = (
-      clause: Lib.ExpressionClause,
-      name: string,
-      extraction: Lib.ColumnExtraction,
-    ) => {
-      trackColumnExtractViaShortcut(query, stageIndex, extraction);
-      handleExpressionChange(clause as Clause);
-      setName(name);
-      setIsExtractingColumn(false);
-    };
-
     return (
       <Box w={WIDGET_WIDTH} data-testid="expression-editor">
         <ExtractColumn
           query={query}
           stageIndex={stageIndex}
-          onCancel={() => setIsExtractingColumn(false)}
-          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+          onSubmit={handleExtractColumnSubmit}
         />
       </Box>
     );
@@ -190,13 +218,16 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
           shortcuts={shortcuts}
         />
       </Box>
+
       {withName && (
         <Box p="0 1.5rem 1.5rem">
           <Box
             component="label"
             className={ExpressionWidgetS.FieldLabel}
             htmlFor="expression-name"
-          >{t`Name`}</Box>
+          >
+            {t`Name`}
+          </Box>
           <TextInput
             classNames={{
               input: CS.textBold,
@@ -208,12 +239,8 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
             placeholder={t`Something nice and descriptive`}
             w="100%"
             radius="md"
-            onChange={event => setName(event.target.value)}
-            onKeyDown={e => {
-              if (e.key === "Enter") {
-                handleCommit(clause);
-              }
-            }}
+            onChange={handleNameChange}
+            onKeyDown={handleKeyDown}
           />
         </Box>
       )}
@@ -221,11 +248,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
       <Flex className={ExpressionWidgetS.Footer}>
         <Flex ml="auto" gap="md">
           {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
-          <Button
-            variant={isValid ? "filled" : "default"}
-            disabled={!isValid}
-            onClick={() => handleCommit(clause)}
-          >
+          <Button variant="filled" disabled={!isValid} onClick={handleSubmit}>
             {initialName ? t`Update` : t`Done`}
           </Button>
         </Flex>
