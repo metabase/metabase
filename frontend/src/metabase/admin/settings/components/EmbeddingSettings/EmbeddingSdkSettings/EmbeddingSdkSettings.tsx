@@ -163,11 +163,6 @@ export function EmbeddingSdkSettings({
               : handleToggleEmbeddingSdk
           }
         />
-        <Button
-          onClick={() => updateSetting({ key: "show-sdk-embed-terms" }, true)}
-        >
-          Reset
-        </Button>
         <EmbeddingSdkLegaleseModal
           opened={isLegaleseModalOpen}
           onClose={closeLegaleseModal}
