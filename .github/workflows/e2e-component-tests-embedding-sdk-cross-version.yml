@@ -66,8 +66,7 @@ jobs:
   build:
     needs: [files-changed, get-build-requirements]
     if: |
-      !cancelled() &&
-      github.event.pull_request.draft == false
+      !cancelled()
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     env:

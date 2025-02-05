@@ -30,7 +30,7 @@ jobs:
 
   be-tests-h2:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -58,7 +58,7 @@ jobs:
 
   be-tests-athena-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -94,7 +94,7 @@ jobs:
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -129,7 +129,7 @@ jobs:
 
   be-tests-druid-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -165,7 +165,7 @@ jobs:
 
   be-tests-databricks-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -200,7 +200,7 @@ jobs:
 
   be-tests-druid-jdbc-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -236,7 +236,7 @@ jobs:
 
   be-tests-mysql-mariadb:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -363,7 +363,7 @@ jobs:
 
   be-tests-mongo:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -416,7 +416,7 @@ jobs:
 
   be-tests-mongo-ssl:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -484,7 +484,7 @@ jobs:
 
   be-tests-mongo-sharded-cluster-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -518,7 +518,7 @@ jobs:
 
   be-tests-oracle:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -590,7 +590,7 @@ jobs:
 
   be-tests-postgres:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -695,7 +695,7 @@ jobs:
 
   be-tests-presto-jdbc-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -764,7 +764,7 @@ jobs:
 
   be-tests-redshift-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -814,7 +814,7 @@ jobs:
 
   be-tests-snowflake-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -854,7 +854,7 @@ jobs:
 
   be-tests-sparksql-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -888,7 +888,7 @@ jobs:
 
   be-tests-sqlite-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -917,7 +917,7 @@ jobs:
 
   be-tests-sqlserver:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     strategy:
@@ -968,7 +968,7 @@ jobs:
 
   be-tests-vertica-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
