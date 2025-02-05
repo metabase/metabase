@@ -60,7 +60,7 @@
                        [:device_description ms/NonBlankString]
                        [:ip_address         ms/NonBlankString]
                        [:active             [:= true]]]
-                      (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
+                      (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (session/hash-session-id (:id response))))))))
     (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
       (let [body (assoc (mt/user->credentials :rasta) :remember true)
             response (mt/client-real-response :post 200 "session" body)]
