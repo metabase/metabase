@@ -33,12 +33,19 @@ export function mountSdkContentAndAssertNoKnownErrors(
     const lifecycleErrors = $console.args.filter(args => {
       const message = args.join(" ");
 
+      const hasUnsafeLifecycleWarning = message.includes("UNSAFE_component");
+
       // Check that <Visualization /> is free of React lifecycle warnings
       const visualizationHasUnsafeCycleWarning =
-        message.includes("Visualization") &&
-        message.includes("UNSAFE_component");
+        message.includes("Visualization") && hasUnsafeLifecycleWarning;
 
-      return visualizationHasUnsafeCycleWarning;
+      // Check that <DashboardGrid /> is free of React lifecycle warnings
+      const dashboardGridHasUnsafeCycleWarning =
+        message.includes("DashboardGrid") && hasUnsafeLifecycleWarning;
+
+      return (
+        visualizationHasUnsafeCycleWarning || dashboardGridHasUnsafeCycleWarning
+      );
     });
 
     expect(lifecycleErrors.length).to.equal(
