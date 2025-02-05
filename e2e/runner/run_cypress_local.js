@@ -3,13 +3,12 @@ const runCypress = require("./cypress-runner-run-tests");
 const { printBold, shell } = require("./cypress-runner-utils");
 
 // if you want to change these, set them as environment variables in your shell
-const options = {
+const userOptions = {
   TEST_SUITE: "e2e", // e2e | component
   MB_EDITION: "ee", // ee | oss
   ENTERPRISE_TOKEN: null,
   START_CONTAINERS: true,
   STOP_CONTAINERS: false,
-  GENERATE_SNAPSHOTS: true,
   BACKEND_PORT: 4000,
   OPEN_UI: true,
   SHOW_BACKEND_LOGS: false,
@@ -17,15 +16,23 @@ const options = {
   ...process.env,
 };
 
-process.env = {
-  // derived from options
-  MB_PREMIUM_EMBEDDING_TOKEN: options.ENTERPRISE_TOKEN,
-  CYPRESS_ALL_FEATURES_TOKEN: options.ENTERPRISE_TOKEN,
-  QA_DB_ENABLED: options.START_CONTAINERS,
-  MB_SNOWPLOW_AVAILABLE: options.START_CONTAINERS,
-  BUILD_JAR: process.env.BACKEND_PORT !== 4000,
+const derivedOptions = {
+  MB_PREMIUM_EMBEDDING_TOKEN: userOptions.ENTERPRISE_TOKEN,
+  CYPRESS_ALL_FEATURES_TOKEN: userOptions.ENTERPRISE_TOKEN,
+  QA_DB_ENABLED: userOptions.START_CONTAINERS,
+  BUILD_JAR: userOptions.BACKEND_PORT === 4000,
+  GENERATE_SNAPSHOTS: userOptions.BACKEND_PORT === 4000,
+  CYPRESS_IS_EMBEDDING_SDK: userOptions.TEST_SUITE === "component",
+  MB_SNOWPLOW_AVAILABLE: userOptions.START_CONTAINERS,
   MB_SNOWPLOW_URL: "http://localhost:9090",
-  CYPRESS_IS_EMBEDDING_SDK: options.TEST_SUITE === "component",
+};
+
+const options = {
+  ...derivedOptions,
+  ...userOptions,
+};
+
+process.env = {
   ...options,
 };
 
