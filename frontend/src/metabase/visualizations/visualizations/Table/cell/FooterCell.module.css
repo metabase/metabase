@@ -1,5 +1,4 @@
 .root {
-  overflow: hidden;
   display: flex;
   align-items: center;
   height: 100%;
@@ -9,7 +8,7 @@
   padding: 0 12px;
   border-top: 1px solid var(--mb-color-border-alpha-30);
   font-size: 12px;
-  color: var(--mb-color-text-tertiary);
+  background-color: var(--mb-color-bg-light);
   text-overflow: ellipsis;
   overflow: hidden;
 }
