@@ -63,3 +63,6 @@
          pivot-data)]
     #?(:cljs (clj->js subtotal-values-map)
        :clj  subtotal-values-map)))
+
+
+(js/alert "hello world")
