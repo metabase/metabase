@@ -117,14 +117,10 @@ const cleanup = async (exitCode = 0) => {
 
   if (options.STOP_CONTAINERS) {
     printBold("⏳ Stopping containers");
-    shell("docker compose ./e2e/test/scenarios/docker-compose.yml down");
+    shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml down");
   }
 
-  // We might get a signal code instead, which is a string
-  // and doesn't require process.exit call
-  if (typeof exitCode === "number") {
-    process.exit(exitCode);
-  }
+  typeof exitCode === "number" ? process.exit(exitCode) : process.exit(0);
 };
 
 init()
