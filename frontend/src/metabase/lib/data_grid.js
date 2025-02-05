@@ -3,7 +3,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import * as Pivot from "cljs/metabase.pivot.js";
-
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
@@ -138,8 +137,6 @@ export function multiLevelPivot(data, settings) {
   const columnSettings = columns.map(column => settings.column(column));
   const allCollapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
 
-  console.log({ settings });
-
   const collapsedSubtotals = filterCollapsedSubtotals(
     allCollapsedSubtotals,
     rowColumnIndexes.map(index => columnSettings[index]),
@@ -158,9 +155,15 @@ export function multiLevelPivot(data, settings) {
     _.range(columnColumnIndexes.length + rowColumnIndexes.length),
   );
 
-  const valuesByKey = Pivot.build_values_by_key(pivotData[primaryRowsKey], columnColumnIndexes, rowColumnIndexes, valueColumnIndexes, columnSettings, columns);
-
-  const { rowTree, colTree } = Pivot.build_pivot_trees(pivotData[primaryRowsKey], columnColumnIndexes, rowColumnIndexes, columnSettings, collapsedSubtotals);
+  const { rowTree, colTree, valuesByKey } = Pivot.build_pivot_trees(
+    pivotData[primaryRowsKey],
+    columns,
+    columnColumnIndexes,
+    rowColumnIndexes,
+    valueColumnIndexes,
+    columnSettings,
+    collapsedSubtotals,
+  );
 
   const rowColumnTree = rowTree || [];
   const columnColumnTree = colTree || [];
@@ -345,14 +348,14 @@ function createRowSectionGetter({
       data === undefined
         ? o
         : {
-          ...o,
-          clicked: { data, dimensions },
-          backgroundColor: colorGetter(
-            values[index],
-            o.rowIndex,
-            valueColumns[index].name,
-          ),
-        },
+            ...o,
+            clicked: { data, dimensions },
+            backgroundColor: colorGetter(
+              values[index],
+              o.rowIndex,
+              valueColumns[index].name,
+            ),
+          },
     );
   };
   return _.memoize(getter, (i1, i2) => [i1, i2].join());
@@ -440,14 +443,14 @@ function addSubtotal(
   const hasSubtotal = isSubtotalEnabled && shouldShowSubtotal;
   const subtotal = hasSubtotal
     ? [
-      {
-        value: t`Totals for ${item.value}`,
-        rawValue: item.rawValue,
-        span: 1,
-        isSubtotal: true,
-        children: [],
-      },
-    ]
+        {
+          value: t`Totals for ${item.value}`,
+          rawValue: item.rawValue,
+          span: 1,
+          isSubtotal: true,
+          children: [],
+        },
+      ]
     : [];
   if (item.isCollapsed) {
     return subtotal;
@@ -459,65 +462,13 @@ function addSubtotal(
       // add subtotals until the last level
       child.children.length > 0
         ? addSubtotal(child, showSubtotalsByColumn, {
-          shouldShowSubtotal: child.children.length > 1 || child.isCollapsed,
-        })
+            shouldShowSubtotal: child.children.length > 1 || child.isCollapsed,
+          })
         : child,
     ),
   };
 
   return [node, ...subtotal];
-}
-
-// Update the tree with a row of data
-function updateValueObject(
-  row,
-  indexes,
-  columnSettings,
-  seenValues,
-  collapsedSubtotals = [],
-) {
-  let currentLevelSeenValues = seenValues;
-  const prefix = [];
-  for (const index of indexes) {
-    const value = row[index];
-    prefix.push(value);
-    let seenValue = currentLevelSeenValues.find(d => d.value === value);
-    const isCollapsed =
-      // the specific path is collapsed
-      collapsedSubtotals.includes(JSON.stringify(prefix)) ||
-      // the entire column is collapsed
-      collapsedSubtotals.includes(JSON.stringify(prefix.length));
-    if (seenValue === undefined) {
-      seenValue = { value, children: [], isCollapsed };
-      currentLevelSeenValues.push(seenValue);
-      sortLevelOfTree(currentLevelSeenValues, columnSettings[index]);
-    }
-    currentLevelSeenValues = seenValue.children;
-  }
-}
-
-// Sorts the array of nodes in place if a sort order is set for that column
-function sortLevelOfTree(array, { [COLUMN_SORT_ORDER]: sortOrder } = {}) {
-  if (sortOrder == null) {
-    // don't sort unless there's a column sort order set
-    return;
-  }
-  array.sort((a, b) => {
-    if (a.value === b.value) {
-      return 0;
-    }
-    // by default use "<" to compare values
-    let result = a.value < b.value ? -1 : 1;
-    // strings should use localeCompare to handle accents, etc
-    if (typeof a.value === "string") {
-      result = a.value.localeCompare(b.value);
-    }
-    // flip the comparison for descending
-    if (sortOrder === COLUMN_SORT_ORDER_DESC) {
-      result *= -1;
-    }
-    return result;
-  });
 }
 
 // Take a tree and produce a flat list used to layout the top/left headers.
@@ -599,7 +550,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
   }
 
   // provide some column metadata to maintain consistency
-  const cols = pivotValues.map(function(value, idx) {
+  const cols = pivotValues.map(function (value, idx) {
     if (idx === 0) {
       // first column is always the coldef of the normal column
       return data.cols[normalCol];
