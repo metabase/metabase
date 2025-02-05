@@ -42,21 +42,6 @@ export function Tooltip({
   view: EditorView;
 }) {
   const doc = state.doc.toString();
-  const handleCompletionClick = useCallback(
-    (index: number) => {
-      if (!view) {
-        return;
-      }
-
-      view.dispatch({
-        effects: [setSelectedCompletion(index)],
-      });
-      acceptCompletion(view);
-    },
-    [view],
-  );
-
-  const { options, selectedOption } = useCompletions(state);
   const enclosingFn = enclosingFunction(doc, state.selection.main.head);
 
   return (
@@ -83,9 +68,8 @@ export function Tooltip({
             reportTimezone={reportTimezone}
           />
           <Completions
-            completions={options}
-            selectedCompletion={selectedOption}
-            onCompletionClick={handleCompletionClick}
+            state={state}
+            view={view}
             query={query}
             stageIndex={stageIndex}
           />
@@ -111,19 +95,33 @@ function useCompletions(state: EditorState) {
 }
 
 function Completions({
-  completions,
-  selectedCompletion,
-  onCompletionClick,
+  state,
+  view,
   query,
   stageIndex,
 }: {
-  completions: readonly Completion[];
-  selectedCompletion: number | null;
-  onCompletionClick: (index: number) => void;
+  state: EditorState;
+  view: EditorView;
   query: Lib.Query;
   stageIndex: number;
 }) {
-  if (completions.length <= 0) {
+  const { options, selectedOption } = useCompletions(state);
+
+  const onCompletionClick = useCallback(
+    (index: number) => {
+      if (!view) {
+        return;
+      }
+
+      view.dispatch({
+        effects: [setSelectedCompletion(index)],
+      });
+      acceptCompletion(view);
+    },
+    [view],
+  );
+
+  if (options.length <= 0) {
     return null;
   }
 
@@ -131,12 +129,12 @@ function Completions({
     <>
       <ul role="listbox" className={S.listbox}>
         <DelayGroup>
-          {completions.map((completion, index) => (
+          {options.map((completion, index) => (
             <CompletionItem
               key={completion.displayLabel ?? completion.label}
               completion={completion}
               index={index}
-              selected={selectedCompletion === index}
+              selected={selectedOption === index}
               onCompletionClick={onCompletionClick}
               query={query}
               stageIndex={stageIndex}
