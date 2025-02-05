@@ -248,7 +248,7 @@ class DashboardGridInner extends Component<
 
   static getDerivedStateFromProps(
     nextProps: DashboardGridProps,
-    state: DashboardGridState & { _lastProps?: LastProps },
+    state: DashboardGridState,
   ) {
     const { dashboard, dashcardData, isEditing, selectedTabId } = nextProps;
     const lastProps = state._lastProps;
