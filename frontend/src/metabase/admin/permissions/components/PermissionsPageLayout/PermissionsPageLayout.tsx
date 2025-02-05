@@ -59,7 +59,6 @@ type PermissionsPageLayoutProps = {
   route: Route;
   navigateToTab: (tab: string) => void;
   helpContent?: ReactNode;
-  toolbarRightContent?: ReactNode;
   showSplitPermsModal?: boolean;
 };
 
@@ -79,7 +78,6 @@ function PermissionsPageLayout({
   onSave,
   onLoad,
   route,
-  toolbarRightContent,
   helpContent,
   showSplitPermsModal: _showSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
@@ -137,7 +135,6 @@ function PermissionsPageLayout({
         <TabsContainer className={CS.borderBottom}>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
           <ToolbarButtonsContainer>
-            {toolbarRightContent}
             {helpContent && !isHelpReferenceOpen && (
               <ToolbarButton
                 text={t`Permissions help`}
