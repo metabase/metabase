@@ -226,6 +226,16 @@ export function getPrevDashAndTabs({
   return { dashId, prevDash, prevTabs };
 }
 
+function markDashboardDirty(actionType: string, state: Draft<DashboardState>) {
+  if (!state.dashboardId || !state.dashboards[state.dashboardId]) {
+    throw new Error(
+      `${actionType} was dispatched but dashboard of (${state.dashboardId}) was not in dashboards state`,
+    );
+  }
+
+  state.dashboards[state.dashboardId].isDirty = true;
+}
+
 export function getDefaultTab({
   tabId,
   dashId,
@@ -256,13 +266,15 @@ export const tabsReducer = createReducer<DashboardState>(
   builder => {
     builder.addCase<typeof createNewTabAction>(
       createNewTabAction,
-      (state, { payload: { tabId } }) => {
+      (state, { type, payload: { tabId } }) => {
         const { dashId, prevDash, prevTabs } = getPrevDashAndTabs({ state });
         if (!dashId || !prevDash) {
           throw new Error(
             `CREATE_NEW_TAB was dispatched but either dashId (${dashId}) or prevDash (${prevDash}) are null`,
           );
         }
+
+        markDashboardDirty(type, state);
 
         // Case 1: Dashboard already has tabs
         if (prevTabs.length !== 0) {
@@ -296,7 +308,7 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase<typeof duplicateTabAction>(
       duplicateTabAction,
-      (state, { payload: { sourceTabId, newTabId } }) => {
+      (state, { type, payload: { sourceTabId, newTabId } }) => {
         const { dashId, prevDash, prevTabs } = getPrevDashAndTabs({ state });
         if (!dashId || !prevDash) {
           throw new Error(
@@ -309,6 +321,8 @@ export const tabsReducer = createReducer<DashboardState>(
             `DUPLICATED_TAB was dispatched but no tab with sourceTabId ${sourceTabId} was found`,
           );
         }
+
+        markDashboardDirty(type, state);
 
         // 1. Create empty tab(s)
 
@@ -353,10 +367,10 @@ export const tabsReducer = createReducer<DashboardState>(
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
-          // @ts-expect-error - possibly infinite type error
           if (isVirtualDashCard(sourceDashCard)) {
             return;
           }
+          // @ts-expect-error - possibly infinite type error
           if (sourceDashCard.card_id == null) {
             throw Error("sourceDashCard is non-virtual yet has null card_id");
           }
@@ -374,7 +388,7 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase(
       deleteTab,
-      (state, { payload: { tabId, tabDeletionId } }) => {
+      (state, { type, payload: { tabId, tabDeletionId } }) => {
         const { prevDash, prevTabs } = getPrevDashAndTabs({
           state,
           filterRemovedTabs: true,
@@ -385,6 +399,8 @@ export const tabsReducer = createReducer<DashboardState>(
             `DELETE_TAB was dispatched but either prevDash (${prevDash}), or tabToRemove (${tabToRemove}) is null/undefined`,
           );
         }
+
+        markDashboardDirty(type, state);
 
         // 1. Select a different tab if needed
         if (state.selectedTabId === tabToRemove.id) {
@@ -416,25 +432,32 @@ export const tabsReducer = createReducer<DashboardState>(
       },
     );
 
-    builder.addCase(undoDeleteTab, (state, { payload: { tabDeletionId } }) => {
-      const { prevTabs } = getPrevDashAndTabs({ state });
-      const { tabId, removedDashCardIds } = state.tabDeletions[tabDeletionId];
-      const removedTab = prevTabs.find(({ id }) => id === tabId);
-      if (!removedTab) {
-        throw new Error(
-          `UNDO_DELETE_TAB was dispatched but tab with id ${tabId} was not found`,
+    builder.addCase(
+      undoDeleteTab,
+      (state, { type, payload: { tabDeletionId } }) => {
+        const { prevTabs } = getPrevDashAndTabs({ state });
+        const { tabId, removedDashCardIds } = state.tabDeletions[tabDeletionId];
+        const removedTab = prevTabs.find(({ id }) => id === tabId);
+        if (!removedTab) {
+          throw new Error(
+            `UNDO_DELETE_TAB was dispatched but tab with id ${tabId} was not found`,
+          );
+        }
+
+        markDashboardDirty(type, state);
+
+        // 1. Unmark tab as removed
+        removedTab.isRemoved = false;
+
+        // 2. Unmark dashcards as removed
+        removedDashCardIds.forEach(
+          id => (state.dashcards[id].isRemoved = false),
         );
-      }
 
-      // 1. Unmark tab as removed
-      removedTab.isRemoved = false;
-
-      // 2. Unmark dashcards as removed
-      removedDashCardIds.forEach(id => (state.dashcards[id].isRemoved = false));
-
-      // 3. Remove deletion from history
-      delete state.tabDeletions[tabDeletionId];
-    });
+        // 3. Remove deletion from history
+        delete state.tabDeletions[tabDeletionId];
+      },
+    );
 
     builder.addCase(renameTab, (state, { payload: { tabId, name } }) => {
       const { prevTabs } = getPrevDashAndTabs({ state });
@@ -451,7 +474,7 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase(
       moveTab,
-      (state, { payload: { sourceTabId, destinationTabId } }) => {
+      (state, { type, payload: { sourceTabId, destinationTabId } }) => {
         const { prevDash, prevTabs } = getPrevDashAndTabs({ state });
         const sourceTabIndex = prevTabs.findIndex(
           ({ id }) => id === sourceTabId,
@@ -467,6 +490,8 @@ export const tabsReducer = createReducer<DashboardState>(
             )}), sourceTabIndex (${sourceTabIndex}) or destTabIndex (${destTabIndex}) is invalid`,
           );
         }
+
+        markDashboardDirty(type, state);
 
         prevDash.tabs = arrayMove(prevTabs, sourceTabIndex, destTabIndex);
       },

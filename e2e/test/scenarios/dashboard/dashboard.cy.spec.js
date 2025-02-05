@@ -1180,6 +1180,114 @@ describe("scenarios > dashboard", () => {
       cy.findByText("There was a problem displaying this chart.");
     });
   });
+
+  describe("warn before leave", () => {
+    // NOTE: The implementation of these tests are a bit odd to circumvent issues related to react-router v3.
+    //
+    // It's not 100% clear what the exact issue is, but in some cases, the browser's route and react-router get out of sync.
+    // For example, visit the home page, navigate to a dashboard, edit the dashboard, refresh the page (clearing the browser history), add a card, and then go back using the browser's back button.
+    // Doing so will engage the prevent leave UI, but if you notice the route in the URL it will not be the edit dashboard page's URL.
+    // The tests below have to do extra work to not engage with this odd behavior, where that happens has been called out explicitly.
+    //
+    // router.setRouteLeaveHook, which is what we're leveraging for this feature, has some closed but undressed issues on the react-router repo. It's not exactly clear _what_ the
+    // bugs people are experiencing are, but it is clear other folks experience undefined behavior with this util as well. It seems like the best course of action is to revisit
+    // this after doing a react-router upgrade.
+
+    it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
+      cy.visit("/");
+
+      // add
+      createNewDashboard();
+      addCard();
+      assertPreventGoBack();
+      H.saveDashboard();
+
+      // edit
+      H.editDashboard();
+      const card = cy
+        .findAllByTestId("dashcard-container", { scrollBehavior: false })
+        .eq(0);
+      dragRight(card, 100);
+      assertPreventGoBack();
+      H.saveDashboard();
+
+      // url state gets weird at this point, refreshing fixes this
+      cy.reload();
+
+      // add - without adding a card again + saving the url state gets wierd, so we do this again
+      createNewDashboard();
+      addCard();
+      assertPreventGoBack();
+      H.saveDashboard();
+
+      // remove
+      H.editDashboard();
+      H.removeDashboardCard();
+      assertPreventGoBack();
+    });
+
+    it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
+      cy.visit("/");
+
+      // add tab
+      createNewDashboard();
+      H.createNewTab();
+      assertPreventGoBack();
+      H.saveDashboard();
+
+      // move tab
+      H.editDashboard();
+      const tab = cy.findByRole("tab", { name: "Tab 2" });
+      dragRight(tab, -200);
+      assertPreventGoBack();
+      H.saveDashboard();
+
+      // duplicate tab
+      createNewDashboard(); // url state gets weird at this point, creating a new dashboard avoids this
+      H.duplicateTab("Tab 1");
+      assertPreventGoBack();
+      H.saveDashboard();
+
+      // remove tab
+      H.editDashboard();
+      H.deleteTab("Copy of Tab 1");
+      // go back extra times to account for tab id changes
+      cy.go("back");
+      cy.go("back");
+      assertPreventGoBack();
+      H.saveDashboard();
+    });
+
+    function createNewDashboard() {
+      H.newButton("Dashboard").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Name").type("Test");
+        cy.findByRole("button", { name: "Create" }).click();
+      });
+    }
+
+    function addCard() {
+      cy.log("test adding a card");
+      cy.findByTestId("dashboard-header").icon("add").click();
+      cy.findByTestId("add-card-sidebar").findByText("Orders").click();
+    }
+
+    function dragRight(el, distance) {
+      el.trigger("mousedown", { clientX: 0 })
+        .trigger("mousemove", { clientX: distance })
+        .trigger("mouseup");
+    }
+
+    function assertPreventGoBack() {
+      cy.go("back");
+      H.modal()
+        .should("exist")
+        .within(() => {
+          cy.findByText("Discard your changes?").should("exist");
+          cy.findByRole("button", { name: "Cancel" }).click();
+        });
+    }
+  });
 });
 
 H.describeWithSnowplow("scenarios > dashboard", () => {
