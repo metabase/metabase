@@ -1,6 +1,5 @@
 import { select } from "@inquirer/prompts";
 import { green } from "chalk";
-import path from "path";
 
 import {
   SDK_LEARN_MORE_MESSAGE,
@@ -66,24 +65,4 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   printWithPadding(green(SDK_LEARN_MORE_MESSAGE));
 
   return [{ type: "success" }, state];
-};
-
-export const getImportSnippet = ({
-  isNextJs,
-  componentDir,
-}: {
-  isNextJs: boolean;
-  componentDir?: string;
-}) => {
-  // Refer to https://www.metabase.com/docs/latest/embedding/sdk/next-js
-  if (isNextJs) {
-    const importPath = path.normalize(`../${componentDir}/analytics-page`);
-
-    let snippets = "import dynamic from 'next/dynamic';";
-    snippets += `\n  const AnalyticsPage = dynamic(() => import("${importPath}"), { ssr: false });`;
-
-    return snippets;
-  }
-
-  return `import { AnalyticsPage } from "./${componentDir}";`;
 };
