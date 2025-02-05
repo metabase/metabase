@@ -176,6 +176,23 @@
       (prometheus/inc! :metabase-email/messages)
       (is (approx= 1 (mt/metric-value system :metabase-email/messages))))))
 
+(deftest dec!-test
+  (testing "dec starts a system if it wasn't started"
+    (with-redefs [prometheus/system nil]
+      (prometheus/dec! :metabase-search/queue-size) ; << Does not throw.
+      (is (approx= -1 (mt/metric-value @#'prometheus/system :metabase-search/queue-size)))))
+
+  (testing "dec throws when called with an unknown metric"
+    (mt/with-prometheus-system! [_ _system]
+      (is (thrown-with-msg? RuntimeException
+                            #"error when updating metric"
+                            (prometheus/dec! :metabase-email/unknown-metric)))))
+
+  (testing "dec is recorded for known metrics"
+    (mt/with-prometheus-system! [_ system]
+      (prometheus/dec! :metabase-search/queue-size)
+      (is (approx= -1 (mt/metric-value system :metabase-search/queue-size))))))
+
 (deftest search-engine-metrics-test
   (let [metrics       (#'prometheus/initial-labelled-metric-values)
         engine->value (fn [metric] (u/index-by (comp :engine :labels) :value (filter (comp #{metric} :metric) metrics)))

@@ -242,7 +242,26 @@
                       :labels [:engine]})
    (prometheus/gauge :metabase-search/engine-active
                      {:description "Whether a given engine is active. This does NOT mean that it is the default."
-                      :labels [:engine]})])
+                      :labels [:engine]})
+
+   (prometheus/counter :metabase-notification/send-ok
+                       {:description "Number of successful notification sends."
+                        :labels [:payload-type]})
+   (prometheus/counter :metabase-notification/send-error
+                       {:description "Number of errors when sending notifications."
+                        :labels [:payload-type]})
+   (prometheus/histogram :metabase-notification/send-duration-ms
+                         {:description "Duration of notification sends in milliseconds."
+                          :labels [:payload-type]})
+   (prometheus/counter :metabase-notification/channel-send-ok
+                       {:description "Number of successful channel sends."
+                        :labels [:payload-type :channel-type]})
+   (prometheus/counter :metabase-notification/channel-send-error
+                       {:description "Number of errors when sending channel notifications."
+                        :labels [:payload-type :channel-type]})
+   (prometheus/gauge :metabase-notification/concurrent-sends
+                     {:description "Number of concurrent notification sends."
+                      :labels [:payload-type :channel-type]})])
 
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."
@@ -332,6 +351,19 @@
    (when-not system
      (setup!))
    (prometheus/inc (:registry system) metric labels amount)))
+
+(defn dec!
+  "Call iapetos.core/dec on the metric in the global registry.
+   Inits registry if it's not been initialized yet."
+  ([metric] (dec! metric nil 1))
+  ([metric labels-or-amount]
+   (if (seq? labels-or-amount)
+     (dec! metric labels-or-amount 1)
+     (dec! metric nil labels-or-amount)))
+  ([metric labels amount]
+   (when-not system
+     (setup!))
+   (prometheus/dec (:registry system) metric labels amount)))
 
 (defn set!
   "Call iapetos.core/set on the metric in the global registry.
