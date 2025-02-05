@@ -64,12 +64,18 @@
         subtotal)))
    pivot-data))
 
-#_(defn- collapse-level
-    "Marks all nodes at the given level as collapsed."
-    [tree level]
-    (into (ordered-map/ordered-map)
-          (if (zero? level)
-            (m/map-kv-vals))))
+(defn- collapse-level
+  "Marks all nodes at the given level as collapsed. 1 = root node; 2 = children
+  of the root, etc."
+  [tree level]
+  (into (ordered-map/ordered-map)
+        (if (= level 1)
+          (m/map-vals
+           #(assoc % :isCollapsed true)
+           tree)
+          (m/map-vals
+           #(update % :children (fn [subtree] (collapse-level subtree (dec level))))
+           tree))))
 
 (defn- add-is-collapsed
   "Annotates a row tree with :isCollapsed values, based on the contents of
@@ -82,12 +88,15 @@
          ;; A plain integer represents an entire level of the tree which is
          ;; collapsed (1-indexed)
          (int? collapsed-subtotal)
-         :todo
+         (collapse-level tree collapsed-subtotal)
 
          ;; A seq represents a specific path in the tree which is collapsed
          (sequential? collapsed-subtotal)
-         :todo))
-     tree)))
+         (let [key-path (conj (into [] (interpose :children collapsed-subtotal))
+                              :isCollapsed)]
+           (assoc-in tree key-path true))))
+     tree
+     parsed-collapsed-subtotals)))
 
 (defn- add-path-to-tree
   "Adds a path of values to a row or column tree. Each level of the tree is an
@@ -97,14 +106,15 @@
   (if (seq path)
     (let [v       (first path)
           subtree (or (get-in tree [v :children]) (ordered-map/ordered-map))]
-      (assoc-in tree [v :children] (add-path-to-tree (rest path) subtree)))
+      (-> tree
+          (assoc-in [v :children] (add-path-to-tree (rest path) subtree))
+          (assoc-in [v :isCollapsed] false)))
     tree))
 
 (defn build-pivot-trees
   "TODO"
-  [rows col-indexes row-indexes col-settings collapsed-subtotals]
-  (def collapsed-subtotals collapsed-subtotals)
-  (let [{:keys [row-tree col-tree]}
+  [rows col-indexes row-indexes _col-settings collapsed-subtotals]
+  (let [{:keys [row-tree _col-tree]}
         (reduce
          (fn [{:keys [row-tree col-tree]} row]
            (let [row-path (mapv row row-indexes)
@@ -114,5 +124,4 @@
          {:row-tree (ordered-map/ordered-map)
           :col-tree (ordered-map/ordered-map)}
          rows)]
-    (add-is-collapsed row-tree collapsed-subtotals)
-    (def row-tree row-tree)))
+    (add-is-collapsed row-tree collapsed-subtotals)))
