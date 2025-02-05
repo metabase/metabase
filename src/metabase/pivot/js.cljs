@@ -20,20 +20,20 @@
     (clj->js (pivot/subtotal-values pivot-data value-column-indexes))))
 
 (defn- postprocess-tree
-  "Walks a row or column tree, converting it to the format expected by the JS
-  pivot implementation."
+  "Walks a row or column tree, converting it to a format expected by JS.
+  Constructs JS arrays and objects directly for better performance."
   [tree]
-  (into [] (map (fn [[value tree-node]]
-                  (-> tree-node
-                      (assoc :value value)
-                      (update :children postprocess-tree)))
-                tree)))
+  (let [result #js []]
+    (doseq [[value tree-node] tree]
+      (let [node #js {:value value
+                      :children (postprocess-tree (:children tree-node))}]
+        (.push result node)))
+    result))
 
 (defn ^:export build-pivot-trees
   "TODO"
   [rows cols col-indexes row-indexes val-indexes col-settings collapsed-subtotals]
-  (let [rows (js->clj rows)
-        cols (js->clj cols)
+  (let [cols (js->clj cols)
         col-indexes (js->clj col-indexes)
         row-indexes (js->clj row-indexes)
         val-indexes (js->clj val-indexes)
@@ -46,6 +46,7 @@
                                        val-indexes
                                        col-settings
                                        collapsed-subtotals)]
-    (clj->js {:rowTree (-> trees :row-tree postprocess-tree)
-              :colTree (-> trees :col-tree postprocess-tree)
-              :valuesByKey (-> trees :values-by-key)})))
+
+    #js {:rowTree (-> trees :row-tree postprocess-tree)
+         :colTree (-> trees :col-tree postprocess-tree)
+         :valuesByKey (-> trees :values-by-key clj->js)}))
