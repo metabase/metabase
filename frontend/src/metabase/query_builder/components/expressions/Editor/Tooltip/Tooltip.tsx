@@ -224,7 +224,7 @@ function MatchText({
       res.push(text.slice(prevIndex, range[0]));
     }
     res.push(
-      <span className={S.highlight}>
+      <span className={S.highlight} key={range[0]}>
         {text.slice(Math.max(0, range[0]), range[1] + 1)}
       </span>,
     );
