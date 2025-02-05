@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.http-client :as client]
+   [metabase.models.session :as session]
    [metabase.request.core :as request]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -137,7 +138,7 @@
   "Create a new `:model/Session` for one of the test users."
   [username :- TestUserName]
   (let [session-token (str (random-uuid))]
-    (t2/insert! :model/Session {:id session-token, :user_id (user->id username)})
+    (t2/insert! :model/Session {:id (session/hash-session-id session-token), :user_id (user->id username)})
     session-token))
 
 (mu/defn username->token :- ms/UUIDString
@@ -189,7 +190,7 @@
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
       #_{:clj-kondo/ignore [:discouraged-var]}
-      (t2.with-temp/with-temp [:model/Session {session-id :id} {:id      (str (random-uuid))
+      (t2.with-temp/with-temp [:model/Session {session-id :id} {:id      (session/hash-session-id (str (random-uuid)))
                                                                 :user_id user-id}]
         (apply the-client session-id args)))))
 

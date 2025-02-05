@@ -11,6 +11,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as string]
    [toucan2.core :as t2]))
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
@@ -19,13 +20,13 @@
   ;; the way we'd expect :/
 (defn- new-session! []
   (try
-    (first (t2/insert-returning-instances! :model/Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)}))
+    (first (t2/insert-returning-instances! :model/Session {:id (session/hash-session-id (str test-uuid)), :user_id (mt/user->id :trashbird)}))
     (finally
-      (t2/delete! :model/Session :id (str test-uuid)))))
+      (t2/delete! :model/Session :id (session/hash-session-id (str test-uuid))))))
 
 (deftest new-session-include-test-test
   (testing "when creating a new Session, it should come back with an added `:type` key"
-    (is (=? {:id              "092797dd-a82a-4748-b393-697d7bb9ab65"
+    (is (=? {:id              (session/hash-session-id "092797dd-a82a-4748-b393-697d7bb9ab65")
              :user_id         (mt/user->id :trashbird)
              :anti_csrf_token nil
              :type            :normal}
@@ -35,7 +36,7 @@
   (testing "if request is an embedding request, we should get ourselves an embedded Session"
     (request/with-current-request {:headers {"x-metabase-embedded" "true"}}
       (with-redefs [session/random-anti-csrf-token (constantly "315c1279c6f9f873bf1face7afeee420")]
-        (is (=? {:id              "092797dd-a82a-4748-b393-697d7bb9ab65"
+        (is (=? {:id              (session/hash-session-id "092797dd-a82a-4748-b393-697d7bb9ab65")
                  :user_id         (mt/user->id :trashbird)
                  :anti_csrf_token "315c1279c6f9f873bf1face7afeee420"
                  :type            :full-app-embed}
@@ -111,6 +112,16 @@
                          :model/LoginHistory _ {:user_id user-id, :device_id (str (random-uuid))}]
             (is (= {}
                    @mt/inbox))))))))
+
+(deftest create-session-test
+  (mt/with-temp [:model/User {user-id :id}]
+    (let [session
+          (session/create-session! :sso {:id user-id :last_login nil} {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+                                                                       :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
+                                                                       :embedded           true
+                                                                       :ip_address         "0:0:0:0:0:0:0:1"})]
+      (is (string/valid-uuid? (:id session)))
+      (is (= (session/hash-session-id (:id session)) (t2/select-one-pk :model/Session :user_id user-id))))))
 
 (deftest email-depending-on-embedded
   (let [email-sent (atom false)]

@@ -1,6 +1,7 @@
 (ns metabase.session.models.session
   (:require
    [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [buddy.core.nonce :as nonce]
    [metabase.config :as config]
    [metabase.db :as mdb]
@@ -13,6 +14,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as string]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -31,6 +33,8 @@
 
 (t2/define-before-insert :model/Session
   [session]
+  (when (or (uuid? (:id session)) (string/valid-uuid? (:id session)))
+    (throw (RuntimeException. "Session id not be stored plaintext in the session table.")))
   (cond-> session
     (some-> (request/current-request) request/embedded?) (assoc :anti_csrf_token (random-anti-csrf-token))))
 
@@ -38,6 +42,11 @@
   [{anti-csrf-token :anti_csrf_token, :as session}]
   (let [session-type (if anti-csrf-token :full-app-embed :normal)]
     (assoc session :type session-type)))
+
+(defn hash-session-id
+  "Hash the session-id for storage in the database"
+  [session-id]
+  (codecs/bytes->hex (buddy-hash/sha512 (str session-id))))
 
 (def ^:private CreateSessionUserInfo
   [:map
@@ -49,12 +58,12 @@
   [:and
    [:map-of :keyword :any]
    [:map
-    [:id uuid?]
+    [:id string?]
     [:type [:enum :normal :full-app-embed]]]])
 
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is currently either `:password` (for email + password login) or
-  `:sso` (for other login types). Returns the newly generated Session."
+  `:sso` (for other login types). Returns the newly generated Session with the id as the plain-text session-id."
   {:arglists '([session-type user device-info])}
   (fn [session-type & _]
     session-type))
@@ -62,8 +71,9 @@
 (mu/defmethod create-session! :sso :- SessionSchema
   [_ user :- CreateSessionUserInfo device-info :- request/DeviceInfo]
   (let [session-id (random-uuid)
+        session-id-hashed (hash-session-id session-id)
         session (first (t2/insert-returning-instances! :model/Session
-                                                       :id (str session-id)
+                                                       :id session-id-hashed
                                                        :user_id (u/the-id user)))]
     (assert (map? session))
     (let [event {:user-id (u/the-id user)}]

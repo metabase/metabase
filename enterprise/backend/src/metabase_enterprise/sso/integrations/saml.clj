@@ -48,6 +48,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.urls :as urls]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
@@ -82,7 +83,7 @@
                                    (group-names->ids group-names)
                                    (all-mapped-group-ids)))))
 
-(mu/defn- fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
+(mu/defn- fetch-or-create-user! :- [:maybe [:map [:id ms/UUIDString]]]
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-enabled)
@@ -248,7 +249,7 @@
     (let [xml-str (base64-decode (:SAMLResponse params))
           success? (slo-success? xml-str)]
       (if-let [metabase-session-id (and success? (get-in cookies [request/metabase-session-cookie :value]))]
-        (do (t2/delete! :model/Session :id metabase-session-id)
+        (do (t2/delete! :model/Session :id (session/hash-session-id metabase-session-id))
             (request/clear-session-cookie (response/redirect (urls/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))
