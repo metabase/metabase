@@ -104,7 +104,7 @@ export const _Table = ({
     measureRoot,
   } = useTableCellsMeasure();
 
-  const columnTotals = useColumnTotals(cols, rows, settings, question);
+  const columnTotals = useColumnTotals(cols, rows, settings);
 
   const {
     columns,
