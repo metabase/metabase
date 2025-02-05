@@ -22,6 +22,7 @@ import {
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as qbSelectors from "metabase/query_builder/selectors";
+import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
@@ -646,6 +647,24 @@ describe("SaveQuestionModal", () => {
       expect(screen.getByLabelText("Description")).toHaveValue(
         "This should not be erased too",
       );
+    });
+
+    it("should allow to replace a question with a long name (metabase#53042)", async () => {
+      const originalQuestion = getQuestion({
+        isSaved: true,
+        name: "a".repeat(QUESTION_NAME_MAX_LENGTH),
+      });
+      await setup(getDirtyQuestion(originalQuestion), originalQuestion);
+
+      await userEvent.click(screen.getByText("Save as new question"));
+      const input = screen.getByLabelText("Name");
+
+      expect(input).toHaveValue(`${originalQuestion.displayName()} - Modified`);
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+      await userEvent.click(screen.getByText(/Replace original question/));
+
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
     });
 
     it("should allow to replace the question if new question form is invalid (metabase#13817)", async () => {
