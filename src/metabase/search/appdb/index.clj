@@ -5,7 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.models.search-index-metadata :as search-index-metadata]
+   [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]

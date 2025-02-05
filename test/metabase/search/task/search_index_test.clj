@@ -1,10 +1,10 @@
-(ns metabase.task.search-index-test
+(ns metabase.search.task.search-index-test
   (:require
    [clojure.test :refer :all]
    [honey.sql.helpers :as sql.helpers]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.test-util :as search.tu]
-   [metabase.task.search-index :as task]
+   [metabase.search.task.search-index :as task]
    [toucan2.core :as t2]))
 
 ;; TODO this is coupled to appdb engines at the moment
