@@ -81,7 +81,6 @@ jobs:
     needs: [files-changed, static-viz-files-changed]
     if: |
       !cancelled() &&
-      github.event.pull_request.draft == false &&
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 20
@@ -138,7 +137,6 @@ jobs:
     needs: [files-changed, static-viz-files-changed]
     if: |
       !cancelled() &&
-      github.event.pull_request.draft == false &&
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 60
@@ -255,7 +253,6 @@ jobs:
     needs: [files-changed, static-viz-files-changed]
     if: |
       !cancelled() &&
-      github.event.pull_request.draft == false &&
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 10

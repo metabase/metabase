@@ -203,7 +203,7 @@ Here is an example configuration for PostgreSQL.
 ```yaml
 be-tests-postgres-latest-ee:
   needs: files-changed
-  if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+  if: needs.files-changed.outputs.backend_all == 'true'
   runs-on: ubuntu-22.04
   timeout-minutes: 60
   env:
