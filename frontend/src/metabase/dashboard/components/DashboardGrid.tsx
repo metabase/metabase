@@ -248,7 +248,7 @@ class DashboardGridInner extends Component<
   static getDerivedStateFromProps(
     nextProps: DashboardGridProps,
     state: DashboardGridState,
-  ) {
+  ): Partial<DashboardGridState> {
     const { dashboard, dashcardData, isEditing, selectedTabId } = nextProps;
     const lastProps = state._lastProps;
 
@@ -292,7 +292,6 @@ class DashboardGridInner extends Component<
       layouts: getLayouts(visibleCards, state.initialCardSizes),
       _lastProps: {
         dashboard,
-        dashcardData,
         isEditing,
         selectedTabId,
       },
