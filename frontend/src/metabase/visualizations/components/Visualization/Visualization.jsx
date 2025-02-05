@@ -119,43 +119,26 @@ class Visualization extends PureComponent {
     };
   }
 
-  static getDerivedStateFromProps(props, state) {
-    // When these props has changed, we need to re-derive the state.
-    // getDerivedStateFromProps does not have access to the last props, so
+  componentDidUpdate(prevProps, prevState) {
     if (
-      !isSameSeries(props.rawSeries, state._lastProps?.rawSeries) ||
-      !equals(props.settings, state._lastProps?.settings) ||
-      !equals(props.timelineEvents, state._lastProps?.timelineEvents) ||
+      !isSameSeries(this.props.rawSeries, prevProps.rawSeries) ||
+      !equals(this.props.settings, prevProps.settings) ||
+      !equals(this.props.timelineEvents, prevProps.timelineEvents) ||
       !equals(
-        props.selectedTimelineEventIds,
-        state._lastProps?.selectedTimelineEventIds,
+        this.props.selectedTimelineEventIds,
+        prevProps.selectedTimelineEventIds,
       )
     ) {
-      return {
-        ...state,
-        ...deriveStateFromProps(props),
-
+      this.setState({
+        ...deriveStateFromProps(this.props),
         // Reset the state to its initial values when these props have changed
         hovered: null,
         error: null,
         genericError: null,
         warnings: [],
-
-        // Store last properties to compare with the next call
-        _lastProps: _.pick(props, [
-          "rawSeries",
-          "settings",
-          "timelineEvents",
-          "selectedTimelineEventIds",
-        ]),
-      };
+      });
     }
 
-    // Do not alter the state if the above props have not changed
-    return null;
-  }
-
-  componentDidUpdate(prevProps, prevState) {
     if (!equals(this.getWarnings(prevProps, prevState), this.getWarnings())) {
       this.updateWarnings();
     }
