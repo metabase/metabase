@@ -1187,7 +1187,8 @@ describe("scenarios > dashboard", () => {
 
       // add
       createNewDashboard();
-      addCard();
+      cy.findByTestId("dashboard-header").icon("add").click();
+      cy.findByTestId("add-card-sidebar").findByText("Orders").click();
       assertPreventLeave({ openSidebar: false });
       H.saveDashboard();
 
@@ -1246,12 +1247,6 @@ describe("scenarios > dashboard", () => {
         cy.findByLabelText("Name").type("Test");
         cy.findByRole("button", { name: "Create" }).click();
       });
-    }
-
-    function addCard() {
-      cy.log("test adding a card");
-      cy.findByTestId("dashboard-header").icon("add").click();
-      cy.findByTestId("add-card-sidebar").findByText("Orders").click();
     }
 
     function dragRight(el, distance) {
