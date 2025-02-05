@@ -28,8 +28,6 @@ jobs:
           filters: .github/file-paths.yaml
 
   static-viz-files-changed:
-    needs: files-changed
-    if: needs.files-changed.outputs.backend_all != 'true' && needs.files-changed.outputs.frontend_sources == 'true'
     name: Check whether static-viz files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 10
