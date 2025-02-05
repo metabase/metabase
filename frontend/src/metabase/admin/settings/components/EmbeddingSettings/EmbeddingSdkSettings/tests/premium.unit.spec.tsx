@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 import { assertLegaleseModal } from "./util";
@@ -82,7 +82,9 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
         expect(screen.getByText("Embedding SDK for React")).toBeInTheDocument();
         assertLegaleseModal();
         await userEvent.click(screen.getByText("Decline and go back"));
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        await waitFor(() => {
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
         await userEvent.click(
           screen.getByPlaceholderText("https://*.example.com"),
         );
@@ -116,7 +118,9 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
 
         await userEvent.click(screen.getByText("Agree and continue"));
 
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        await waitFor(() => {
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
 
         expect(updateSetting).toHaveBeenCalledTimes(2);
 
@@ -142,7 +146,9 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
 
         await userEvent.click(screen.getByText("Decline and go back"));
 
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        await waitFor(() => {
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
 
         expect(updateSetting).not.toHaveBeenCalled();
       });

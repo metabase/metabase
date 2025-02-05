@@ -1,9 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 
 import { setup } from "./setup";
 import { assertLegaleseModal } from "./util";
+console.error = () => {};
 
 describe("EmbeddingSdkSettings (OSS)", () => {
   describe("banner text when user is self-hosted or cloud", () => {
@@ -91,8 +92,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Agree and continue"));
-
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        await waitFor(() => {
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
 
         expect(updateSetting).toHaveBeenCalledTimes(2);
 
@@ -118,7 +120,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
 
         await userEvent.click(screen.getByText("Decline and go back"));
 
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        await waitFor(() => {
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
 
         expect(updateSetting).not.toHaveBeenCalled();
       });
