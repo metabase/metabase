@@ -276,13 +276,13 @@ class DashboardGridInner extends Component<
         )
       : [];
 
-    const hasVisibleDashcardsChanged = _.isEqual(
+    const hasVisibleDashcardsChanged = !_.isEqual(
       visibleCards,
       lastVisibleCards,
     );
 
     const initialCardSizes =
-      !isEditing || !hasVisibleDashcardsChanged
+      !isEditing || hasVisibleDashcardsChanged
         ? getInitialCardSizes(visibleCards, state.initialCardSizes)
         : state.initialCardSizes;
 
