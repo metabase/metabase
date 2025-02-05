@@ -170,7 +170,7 @@ class TableInteractive extends Component {
     );
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     // for measuring cells:
     this._div = document.createElement("div");
     this._div.className = cx(TableS.TableInteractive, "test-TableInteractive");
