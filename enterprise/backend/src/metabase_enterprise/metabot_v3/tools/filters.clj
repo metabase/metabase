@@ -78,7 +78,7 @@
                (lib/with-temporal-bucket (keyword field_granularity)))]
     (lib/breakout query expr)))
 
-(defn- query-metric
+(defn- query-metric*
   [{:keys [metric-id filters group-by] :as _arguments}]
   (let [card (api.card/get-card metric-id)
         mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
@@ -106,30 +106,35 @@
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
     (let [id 135]
-      (query-metric {:metric-id id})))
+      (query-metric* {:metric-id id})))
   -)
 
-(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
-  [_tool-name {:keys [metric-id] :as arguments} _e]
+(defn query-metric
+  "Create a query based on a metric."
+  [{:keys [metric-id] :as arguments}]
   (try
     (if (int? metric-id)
-      {:structured-output (query-metric arguments)}
+      {:structured-output (query-metric* arguments)}
       {:output (str "Invalid metric_id " metric-id)})
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (str "No metric found with metric_id " metric-id)}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
+(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
+  [_tool-name arguments _e]
+  (query-metric arguments))
+
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
             api/*is-superuser?* true]
-    (query-metric {:metric-id 135,
-                   :filters
-                   [{:operation "number-greater-than",
-                     :field_id "field_[27]_[:field {:base-type :type/Float, :effective-type :type/Float} 257]",
-                     :value 35}],
-                   :group-by nil}))
+    (query-metric* {:metric-id 135
+                    :filters
+                    [{:operation "number-greater-than",
+                      :field_id "field_[27]_[:field {:base-type :type/Float, :effective-type :type/Float} 257]",
+                      :value 35}],
+                    :group-by nil}))
   -)
 
 (defn- base-query
