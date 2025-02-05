@@ -298,7 +298,7 @@ export function resizeDashboardCard({
 
 /** Opens the dashboard info sidesheet */
 export function openDashboardInfoSidebar() {
-  dashboardHeader().icon("info").click();
+  dashboardHeader().findByLabelText("More info").click();
   return sidesheet();
 }
 /** Closes the dashboard info sidesheet */
