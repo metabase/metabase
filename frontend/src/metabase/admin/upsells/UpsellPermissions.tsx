@@ -1,19 +1,13 @@
 import { t } from "ttag";
 
-import { getPlan } from "metabase/common/utils/plan";
-import { useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { useHasTokenFeature } from "metabase/common/hooks";
 
 import { UpsellBanner } from "./components";
 
 export const UpsellPermissions = ({ source }: { source: string }) => {
-  const plan = useSelector(state =>
-    getPlan(getSetting(state, "token-features")),
-  );
+  const hasAdvancedPermissions = useHasTokenFeature("advanced_permissions");
 
-  const showUpsell = plan === "oss" || plan === "starter";
-
-  if (!showUpsell) {
+  if (hasAdvancedPermissions) {
     return null;
   }
 
