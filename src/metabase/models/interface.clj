@@ -25,6 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
    [taoensso.nippy :as nippy]
@@ -161,9 +162,29 @@
   [obj]
   (json-out obj false))
 
+(defn- elide-data [obj]
+  (walk/postwalk (fn [x] (cond
+                           (string? x) (string/elide x 250)
+                           (and (sequential? x) (> (count x) 50)) (take 50 x)
+                           :else x)) obj))
+
+(defn- json-in-with-eliding
+  [obj]
+  (if (string? obj)
+    obj
+    (json/encode (elide-data obj))))
+
 (def transform-json
   "Transform for json."
   {:in  json-in
+   :out json-out-with-keywordization})
+
+(def transform-json-eliding
+  "Serializes object as JSON, but:
+    - elides any long strings to a max of 250 chars
+    - limits sequences to the first 50 entries
+   Useful for debugging/human-consuming information which can be unbounded-ly large"
+  {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
 (defn- serialize-mlv2-query
