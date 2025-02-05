@@ -225,7 +225,7 @@ export function matchCardIdAtCursor(
   return parsedId;
 }
 
-export function referencedQuestionIds(query: Lib.Query): CardId[] {
+export function getReferencedCardIds(query: Lib.Query): CardId[] {
   return Object.values(Lib.templateTags(query) ?? {})
     .filter(tag => tag.type === "card")
     .map(tag => tag["card-id"])

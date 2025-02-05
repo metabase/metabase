@@ -39,14 +39,14 @@ import {
   useSnippetCompletion,
 } from "./completers";
 import { language } from "./language";
-import { referencedQuestionIds as getReferencedQuestionIds } from "./util";
+import { getReferencedCardIds } from "./util";
 
 export function useExtensions(query: Lib.Query): Extension[] {
-  const { databaseId, engine, referencedQuestionIds } = useMemo(
+  const { databaseId, engine, referencedCardIds } = useMemo(
     () => ({
       databaseId: Lib.databaseID(query),
       engine: Lib.engine(query),
-      referencedQuestionIds: getReferencedQuestionIds(query),
+      referencedCardIds: getReferencedCardIds(query),
     }),
     [query],
   );
@@ -55,7 +55,7 @@ export function useExtensions(query: Lib.Query): Extension[] {
   const snippetCompletion = useSnippetCompletion();
   const cardTagCompletion = useCardTagCompletion({ databaseId });
   const referencedCardCompletion = useReferencedCardCompletion({
-    referencedQuestionIds,
+    referencedCardIds,
   });
   const localsCompletion = useLocalsCompletion({ engine });
 
