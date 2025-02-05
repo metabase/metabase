@@ -1,18 +1,23 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
 import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { FormFooter } from "metabase/core/components/FormFooter";
-import FormInput from "metabase/core/components/FormInput";
-import FormRadio from "metabase/core/components/FormRadio";
 import FormTextArea from "metabase/core/components/FormTextArea";
-import { Form, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormRadioGroup,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
 import { isNullOrUndefined } from "metabase/lib/types";
-import { Button } from "metabase/ui";
+import { Button, Flex, Radio } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
+import S from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
 
 export const SaveQuestionForm = ({
@@ -53,22 +58,35 @@ export const SaveQuestionForm = ({
   return (
     <Form>
       {showSaveType && (
-        <FormRadio
-          name="saveType"
-          title={title}
-          options={[
-            {
-              name: overwriteOptionName,
-              value: "overwrite",
-            },
-            { name: t`Save as new question`, value: "create" },
-          ]}
-          vertical
-        />
+        <FormRadioGroup name="saveType" title={title}>
+          <Flex gap="sm" direction="column" mb="md">
+            <Radio
+              name={overwriteOptionName}
+              value="overwrite"
+              label={overwriteOptionName}
+              classNames={{
+                labelWrapper: S.labelWrapper,
+                label: cx(S.label, {
+                  [S.labelActive]: values.saveType === "overwrite",
+                }),
+              }}
+            />
+            <Radio
+              name={t`Save as new question`}
+              value="create"
+              classNames={{
+                label: cx(S.label, {
+                  [S.labelActive]: values.saveType === "create",
+                }),
+              }}
+              label={t`Save as new question`}
+            />
+          </Flex>
+        </FormRadioGroup>
       )}
       {values.saveType === "create" && (
         <div>
-          <FormInput
+          <FormTextInput
             name="name"
             title={t`Name`}
             placeholder={nameInputPlaceholder}
