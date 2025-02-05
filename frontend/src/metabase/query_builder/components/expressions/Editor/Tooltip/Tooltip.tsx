@@ -94,7 +94,7 @@ export function Tooltip({
             open={isHelpTextOpen}
             onToggle={handleToggleHelpText}
           />
-          {(canShowBoth || !isHelpTextOpen) && (
+          {(canShowBoth || !isHelpTextOpen || !enclosingFn) && (
             <Listbox
               state={state}
               view={view}
