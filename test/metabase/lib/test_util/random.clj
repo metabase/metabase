@@ -11,9 +11,10 @@
 (defonce ^:dynamic *generator* (java.util.Random.))
 
 (defn initial-seed-value
-  "x"
+  "wip"
   []
-  (or (env :mb-test-run-seed)
+  (or (some-> (env :mb-test-run-seed)
+              java.lang.Long/parseLong)
       (doto (.nextLong ^java.util.Random *generator*)
         (as-> $ (log/infof "Run Seed Value: %d" $)))))
 
@@ -23,27 +24,31 @@
 
   (alter-var-root #'environ.core/env assoc
                   :mb-test-run-seed 1)
-  
+
   (alter-var-root #'environ.core/env dissoc
                   :mb-test-run-seed)
   )
 
 (defn rand
+  "wip"
   ([]
    (.nextDouble ^java.util.Random *generator*))
   ([n]
    (* n (rand))))
 
 (defn rand-int
+  "wip"
   [n]
   (int (rand n)))
 
 (defn rand-nth
+  "wip"
   [coll]
   (nth coll (rand-int (count coll))))
 
 
 (defmacro with-rand
+  "wip"
   ([& body]
    `(binding [*generator* (java.util.Random. (initial-seed-value))]
       ~@body)))

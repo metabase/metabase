@@ -1,12 +1,12 @@
 name: Generative Query Test
 
 on:
-  push:
-    branches:
-      - 'master'
-      - 'release-**'
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+  # push:
+  #   branches:
+  #     - 'master'
+  #     - 'release-**'
+  # pull_request:
+  #   types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
     inputs:
       seed:
@@ -30,6 +30,7 @@ jobs:
       CI: 'true'
       MB_TEST_SEED_VALUE: ${{ inputs.seed }}
       MB_TEST_QUERY_ITERATION_COUNT: ${{ inputs.count }}
+      MB_TEST_RUN_GENERATIVE_TEST: true
     steps:
       - uses: actions/checkout@v4
       # is fe needed? is that lib related?
