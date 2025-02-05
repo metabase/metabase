@@ -7,8 +7,9 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/create-dashboard-subscription
-  [_tool-name {:keys [dashboard-id email schedule] :as _arguments} _env]
+(defn create-dashboard-subscription
+  "Create a dashboard subscription."
+  [{:keys [dashboard-id email schedule]}]
   (if (int? dashboard-id)
     (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
                         (t2/hydrate [:dashcards :card]))
@@ -48,3 +49,7 @@
          (do (models.pulse/create-pulse! (map models.pulse/card->ref cards) [channel] pulse-data)
              "success"))})
     {:output "invalid dashboard_id"}))
+
+(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/create-dashboard-subscription
+  [_tool-name arguments _env]
+  (create-dashboard-subscription arguments))
