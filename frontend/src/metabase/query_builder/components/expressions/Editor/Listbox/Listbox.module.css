@@ -34,8 +34,7 @@
 }
 
 .footer {
-  /* TODO: use correct color */
-  background-color: #fafafb;
+  background-color: var(--mb-color-bg-light);
   padding: 8px 16px;
   display: flex;
   align-items: center;
