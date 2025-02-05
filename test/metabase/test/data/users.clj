@@ -192,7 +192,7 @@
         (throw (ex-info "User does not exist" {:user user})))
       #_{:clj-kondo/ignore [:discouraged-var]}
       (t2.with-temp/with-temp [:model/Session _ {:id      (session/hash-session-id session-id)
-                                                                :user_id user-id}]
+                                                 :user_id user-id}]
         (apply the-client session-id args)))))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
