@@ -1,7 +1,7 @@
 import { currentCompletions } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -83,7 +83,6 @@ export function Tooltip({
       <Popover.Dropdown
         data-testid="custom-expression-editor-suggestions"
         className={S.dropdown}
-        mah={350}
       >
         <div className={S.tooltip} ref={tooltipRef}>
           <HelpText
@@ -110,12 +109,14 @@ export function Tooltip({
 
 function usePopoverHeight(ref: React.RefObject<HTMLDivElement>) {
   const [maxHeight, setMaxHeight] = useState(0);
-  useEffect(() => {
+  // We want to explicitly read the max height everytime we render
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
     const px = ref.current?.parentElement?.style.maxHeight ?? "0";
     const parsed = parseInt(px, 10);
     if (!Number.isNaN(parsed)) {
       setMaxHeight(parsed);
     }
-  }, [ref]);
+  });
   return maxHeight;
 }
