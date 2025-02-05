@@ -11,7 +11,7 @@
   flex-grow: 0;
   flex-direction: column;
   font-size: 14px;
-  max-height: 100%;
+  max-height: 400px;
 
   &:empty {
     display: none;
