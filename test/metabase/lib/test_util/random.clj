@@ -46,7 +46,6 @@
   [coll]
   (nth coll (rand-int (count coll))))
 
-
 (defmacro with-rand
   "wip"
   ([& body]
