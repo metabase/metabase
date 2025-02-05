@@ -6,14 +6,9 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def TimelineEvent
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/TimelineEvent)
-
 (methodical/defmethod t2/table-name :model/TimelineEvent  [_model] :timeline_event)
 
-(doto TimelineEvent
+(doto :model/TimelineEvent
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive ::mi/read-policy.full-perms-for-perms-set)
@@ -87,7 +82,7 @@
                               [:<= (h2x/->date start) (h2x/->date :timestamp)])
                             (when end
                               [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
-    (t2/hydrate (t2/select TimelineEvent clause) :creator)))
+    (t2/hydrate (t2/select :model/TimelineEvent clause) :creator)))
 
 (defn include-events
   "Include events on `timelines` passed in. Options are optional and include whether to return unarchived events or all

@@ -56,6 +56,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [domain](#domain)
     - [endsWith](#endswith)
     - [host](#host)
+    - [in](#in)
     - [isempty](./expressions/isempty.md)
     - [ltrim](#ltrim)
     - [length](#length)
@@ -93,6 +94,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [year](#year)
 
   - [Window functions](#window-functions)
+
     - [Offset](./expressions/offset.md)
     - [CumulativeCount](./expressions/cumulative.md)
     - [CumulativeSum](./expressions/cumulative.md)
@@ -449,6 +451,20 @@ Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://
 
 Related: [domain](#domain), [subdomain](#subdomain).
 
+### [in](./expressions/in.md)
+
+Returns true if `value1` equals `value2` (or `value3`, etc., if specified).
+
+```
+in(value1, value2, ...)
+```
+
+`value1` is the column or value to check.
+
+`value2, ...` is the list of columns or values to check.
+
+Related: [contains](#contains), [startsWith](#startswith), [endsWith](#endswith).
+
 ### [isempty](./expressions/isempty.md)
 
 Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error. You can use [isnull](#isnull) for non-string columns.
@@ -754,7 +770,7 @@ Syntax: `timeSpan(number, text)`.
 
 Example: `[Orders → Created At] + timeSpan(7, "day")` will return the date 7 days after the `Created At` date.
 
-### week
+### [week](./expressions/week.md)
 
 Takes a datetime and returns the week as an integer.
 
@@ -767,6 +783,8 @@ Example: `week("2021-03-25T12:52:37")` would return the week as an integer, `12`
   - ISO: (default) Week 1 starts on the Monday before the first Thursday of January.
   - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
   - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
+
+Note that summarizing by week of year in the query builder uses a different mode of determining the first week, see [Week of year](./expressions/week.md) for more information.
 
 ### weekday
 

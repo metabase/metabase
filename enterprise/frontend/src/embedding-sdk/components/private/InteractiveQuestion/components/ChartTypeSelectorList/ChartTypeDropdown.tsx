@@ -9,6 +9,7 @@ import type { CardDisplayType } from "metabase-types/api";
 
 import { useQuestionVisualization } from "../../hooks/use-question-visualization";
 import { useSensibleVisualizations } from "../../hooks/use-sensible-visualizations";
+import ToolbarButtonS from "../../styles/ToolbarButton.module.css";
 import { ToolbarButton } from "../util/ToolbarButton";
 
 export const ChartTypeDropdown = () => {
@@ -64,7 +65,10 @@ export const ChartTypeDropdown = () => {
           icon={selectedElem.iconName}
           isHighlighted={false}
           variant="default"
+          px={undefined}
+          pr="md"
           rightIcon={<Icon ml="xs" size={10} name="chevrondown" />}
+          className={ToolbarButtonS.PrimaryToolbarButton}
         />
       </Menu.Target>
       <Menu.Dropdown h="30rem">

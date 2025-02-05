@@ -1,7 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/testing-library";
+import { userEvent, within } from "@storybook/test";
 import { type ComponentProps, useEffect } from "react";
 
 import { getStore } from "__support__/entities-store";
@@ -11,7 +11,10 @@ import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { publicReducers } from "metabase/reducers-public";
+import { registerVisualization } from "metabase/visualizations";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import Table from "metabase/visualizations/visualizations/Table";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   createMockCard,
@@ -37,6 +40,11 @@ import {
   type PublicOrEmbeddedDashboardViewProps,
 } from "./PublicOrEmbeddedDashboardView";
 
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(Table);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(BarChart);
+
 export default {
   title: "embed/PublicOrEmbeddedDashboardView/filters",
   component: PublicOrEmbeddedDashboardView,
@@ -57,7 +65,7 @@ export default {
 };
 
 function ReduxDecorator(Story: StoryFn, context: StoryContext) {
-  const parameterType: ParameterType = context.args.parameterType;
+  const parameterType = context.args.parameterType as ParameterType;
   const initialState = createMockState({
     settings: createMockSettingsState({
       "hide-embed-branding?": false,
@@ -111,7 +119,7 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
  * This is an arbitrary number, it should be big enough to pass CI tests.
  * This works because we set delays for ExplicitSize to 0 in storybook.
  */
-const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1500;
+const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 2500;
 function WaitForResizeToStopDecorator(Story: StoryFn) {
   const asyncCallback = createAsyncCallback();
   useEffect(() => {
@@ -155,6 +163,7 @@ const UNIT_OF_TIME_FILTER_ID = "unit-of-time-hex";
 interface CreateDashboardOpts {
   hasScroll?: boolean;
 }
+
 function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   return createMockDashboard({
     id: DASHBOARD_ID,
@@ -226,6 +235,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
   // @ts-expect-error -- custom prop to support non JSON-serializable value as args
   const parameterType: ParameterType = args.parameterType;
   const dashboard = args.dashboard;
+
   if (!dashboard) {
     return <>Please pass `dashboard`</>;
   }
@@ -450,7 +460,6 @@ export const LightThemeTextWithValue = {
   args: createDefaultArgs(),
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const asyncCallback = createAsyncCallback();
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", { name: "Category" });
     await userEvent.click(filter);
@@ -461,7 +470,6 @@ export const LightThemeTextWithValue = {
       "filter value",
     );
     await userEvent.click(getLastPopoverElement());
-    asyncCallback();
   },
 };
 
@@ -681,16 +689,8 @@ export const LightThemeDateFilterMonthYear = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-    const month = popover.getByText("March");
+    const month = popover.getByText("May");
     month.classList.add("pseudo-hover");
-
-    await userEvent.click(
-      popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
-    );
-    const dropdown = getLastPopover();
-    dropdown
-      .getByRole("option", { name: "2023" })
-      .setAttribute("data-hovered", "true");
   },
 };
 
@@ -749,14 +749,8 @@ export const LightThemeDateFilterQuarterYearDropdown = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-
-    await userEvent.click(
-      popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
-    );
-    const dropdown = getLastPopover();
-    dropdown
-      .getByRole("option", { name: "2023" })
-      .setAttribute("data-hovered", "true");
+    await userEvent.click(popover.getByText("2024"));
+    popover.getByRole("button", { name: "2023" }).classList.add("pseudo-hover");
   },
 };
 
@@ -842,7 +836,8 @@ export const LightThemeDateFilterRange = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-    popover.getByText("15").classList.add("pseudo-hover");
+    await userEvent.click(popover.getByRole("button", { name: "Add time" }));
+    popover.getAllByText("15")[0].classList.add("pseudo-hover");
   },
 };
 

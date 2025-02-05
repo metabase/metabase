@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import Color from "color";
 
 import { color, colors } from "metabase/lib/colors/palette";
 
@@ -28,7 +29,9 @@ describe("ColorSettings", () => {
 
     expect(onChange).toHaveBeenLastCalledWith({
       brand: color("success"),
-      summarize: color("error"),
+      /* Needs to convert this to hex because the input is transform to hex,
+       * but we want to use hsla for our new colors, this is to allow better text search. */
+      summarize: Color(color("error")).hex(),
       accent1: color("text-medium"),
     });
   });

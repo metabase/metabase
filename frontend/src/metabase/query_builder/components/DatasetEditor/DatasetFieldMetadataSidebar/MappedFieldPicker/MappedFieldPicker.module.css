@@ -3,7 +3,7 @@
     background-color: var(--mb-color-brand);
     border-color: var(--mb-color-brand);
 
-    :global(.Icon) {
+    .StyledSelectIcon {
       color: var(--mb-color-text-white);
     }
 

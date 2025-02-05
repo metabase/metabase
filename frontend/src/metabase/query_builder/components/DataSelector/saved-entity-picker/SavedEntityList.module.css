@@ -1,7 +1,6 @@
 .SavedEntityListRoot {
   overflow: auto;
   width: 100%;
-  padding: 0.5rem;
 
   @media screen and (max-width: 40em) {
     min-height: 220px;
@@ -9,7 +8,7 @@
 }
 
 .SavedEntityListItem {
-  :global(.Icon):last-child {
+  .SavedEntityListItemIcon:last-child {
     justify-self: start;
   }
 }

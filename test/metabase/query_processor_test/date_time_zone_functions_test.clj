@@ -5,13 +5,11 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util.date-2 :as u.date]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
 
@@ -809,18 +807,18 @@
     (mt/with-report-timezone-id! "UTC"
       (mt/dataset times-mixed
         (testing "nested custom expression should works"
-          (t2.with-temp/with-temp [Card
-                                   card
-                                   {:dataset_query
-                                    (mt/mbql-query
-                                      times
-                                      {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
-                                                     "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
-                                                                    "Asia/Saigon"]}
-                                       :filter      [:= $times.index 1]
-                                       :fields      [$times.dt
-                                                     [:expression "to-07"]
-                                                     [:expression "to-07-to-09"]]})}]
+          (mt/with-temp [:model/Card
+                         card
+                         {:dataset_query
+                          (mt/mbql-query
+                            times
+                            {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
+                                           "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
+                                                          "Asia/Saigon"]}
+                             :filter      [:= $times.index 1]
+                             :fields      [$times.dt
+                                           [:expression "to-07"]
+                                           [:expression "to-07-to-09"]]})}]
             (testing "mbql query"
               (is (= [["2004-03-19T09:19:09Z"
                        "2004-03-19T16:19:09+07:00"

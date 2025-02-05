@@ -123,16 +123,34 @@ describe("PaletteResults", () => {
     expect(fetchMock.calls("path:/api/search").length).toBe(2);
   });
 
-  it("should provide links to settings pages", async () => {
-    setup({ query: "setu" });
+  it("should provide links to settings pages for admins", async () => {
+    setup({ query: "setu", isAdmin: true });
     expect(await screen.findByText("Admin")).toBeInTheDocument();
     expect(await screen.findByText("Settings - Setup")).toBeInTheDocument();
   });
 
-  it("should provide links to admin pages", async () => {
-    setup({ query: "permi" });
+  it("should not provide links to settings pages for non-admins", async () => {
+    setup({ query: "setu", isAdmin: false });
+    expect(
+      await screen.findByText(`Search documentation for "setu"`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Admin")).not.toBeInTheDocument();
+    expect(screen.queryByText("Settings - Setup")).not.toBeInTheDocument();
+  });
+
+  it("should provide links to admin pages for admins", async () => {
+    setup({ query: "permi", isAdmin: true });
     expect(await screen.findByText("Admin")).toBeInTheDocument();
     expect(await screen.findByText("Permissions")).toBeInTheDocument();
+  });
+
+  it("should not provide links to admin pages for non-admins", async () => {
+    setup({ query: "permi", isAdmin: false });
+    expect(
+      await screen.findByText(`Search documentation for "permi"`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Admin")).not.toBeInTheDocument();
+    expect(screen.queryByText("Permissions")).not.toBeInTheDocument();
   });
 
   it("should not compute search results if 'search-typeahead-enabled' is diabled", async () => {

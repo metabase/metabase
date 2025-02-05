@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -490,7 +489,7 @@
                                        [:field (mt/id :lots-of-fields :a) nil]
                                        [:field (mt/id :lots-of-fields :b) nil]]}
                      :fields      (into [[:expression "c"]]
-                                        (for [{:keys [id]} (t2/select [Field :id]
+                                        (for [{:keys [id]} (t2/select [:model/Field :id]
                                                                       :table_id (mt/id :lots-of-fields)
                                                                       :id       [:not-in #{(mt/id :lots-of-fields :a)
                                                                                            (mt/id :lots-of-fields :b)}]
@@ -531,17 +530,18 @@
       (is (= [["20th Century Cafe" 2 2 0]
               ["25°" 2 2 0]
               ["33 Taps" 2 2 0]]
-             (mt/formatted-rows
-              [str int int int]
-              (mt/run-mbql-query venues
-                {:source-query {:source-table (mt/id :venues)
-                                :aggregation  [[:min (mt/id :venues :price)]
-                                               [:max (mt/id :venues :price)]]
-                                :breakout     [[:field (mt/id :venues :name) nil]]
-                                :limit        3}
-                 :expressions  {:price_range [:-
-                                              [:field "max" {:base-type :type/Number}]
-                                              [:field "min" {:base-type :type/Number}]]}})))))))
+             (sort-by first
+                      (mt/formatted-rows
+                       [str int int int]
+                       (mt/run-mbql-query venues
+                         {:source-query {:source-table (mt/id :venues)
+                                         :aggregation  [[:min (mt/id :venues :price)]
+                                                        [:max (mt/id :venues :price)]]
+                                         :breakout     [[:field (mt/id :venues :name) nil]]
+                                         :limit        3}
+                          :expressions  {:price_range [:-
+                                                       [:field "max" {:base-type :type/Number}]
+                                                       [:field "min" {:base-type :type/Number}]]}}))))))))
 
 (deftest ^:parallel expression-with-duplicate-column-name
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)

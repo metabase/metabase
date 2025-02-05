@@ -106,7 +106,7 @@
                                           fn-tail
                                           (cons '&f fn-tail)))]
     (when (= parsed ::mc/invalid)
-      (let [error     (mc/explain SchematizedParams fn-tail)
+      (let [error     (mr/explain SchematizedParams fn-tail)
             humanized (mu.humanize/humanize error)]
         (throw (ex-info (format "Invalid function tail: %s" humanized)
                         {:fn-tail   fn-tail

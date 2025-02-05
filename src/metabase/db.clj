@@ -12,6 +12,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.db.data-source :as mdb.data-source]
+   [metabase.db.encryption :as mdb.encryption]
    [metabase.db.env :as mdb.env]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
@@ -41,6 +42,10 @@
  [mdb.jdbc-protocols
   clob->str]
 
+ [mdb.encryption
+  decrypt-db
+  encrypt-db]
+
  [mdb.setup
   migrate!
   quote-for-application-db]
@@ -58,6 +63,11 @@
   "True if the Metabase DB is setup and ready."
   []
   (= @(:status mdb.connection/*application-db*) ::setup-finished))
+
+(defn finish-db-setup
+  "Mark the bound Metabase DB as set up and ready."
+  []
+  (reset! (:status mdb.connection/*application-db*) ::setup-finished))
 
 (defn app-db
   "The Application database. A record, but use accessors [[db-type]], [[data-source]], etc to access. Also
@@ -84,7 +94,7 @@
               data-source   (data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
           (mdb.setup/setup-db! db-type data-source auto-migrate? create-sample-content?))
-        (reset! (:status mdb.connection/*application-db*) ::setup-finished))))
+        (finish-db-setup))))
   :done)
 
 (defn release-migration-locks!

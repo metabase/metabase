@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.names :as names]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase.models :refer [Card Collection Dashboard Database Field NativeQuerySnippet Segment Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -25,17 +24,17 @@
 
 (deftest roundtrip-test
   (ts/with-world
-    (doseq [object [(t2/select-one Card :id card-id-root)
-                    (t2/select-one Card :id card-id)
-                    (t2/select-one Card :id card-id-nested)
-                    (t2/select-one Table :id table-id)
-                    (t2/select-one Field :id category-field-id)
-                    (t2/select-one Segment :id segment-id)
-                    (t2/select-one Collection :id collection-id)
-                    (t2/select-one Collection :id collection-id-nested)
-                    (t2/select-one Dashboard :id dashboard-id)
-                    (t2/select-one Database :id db-id)
-                    (t2/select-one NativeQuerySnippet :id snippet-id)]]
+    (doseq [object [(t2/select-one :model/Card :id card-id-root)
+                    (t2/select-one :model/Card :id card-id)
+                    (t2/select-one :model/Card :id card-id-nested)
+                    (t2/select-one :model/Table :id table-id)
+                    (t2/select-one :model/Field :id category-field-id)
+                    (t2/select-one :model/Segment :id segment-id)
+                    (t2/select-one :model/Collection :id collection-id)
+                    (t2/select-one :model/Collection :id collection-id-nested)
+                    (t2/select-one :model/Dashboard :id dashboard-id)
+                    (t2/select-one :model/Database :id db-id)
+                    (t2/select-one :model/NativeQuerySnippet :id snippet-id)]]
       (testing (class object)
         (let [context (names/fully-qualified-name->context (names/fully-qualified-name object))
               id-fn   (some-fn :snippet :field :segment :card :dashboard :collection :table :database)]
@@ -45,16 +44,16 @@
 (deftest fully-qualified-name->context-test
   (testing "fully-qualified-name->context works as expected"
     (testing " with cards in root and in a collection"
-      (mt/with-temp [Collection {collection-id :id :as coll} {:name "A Collection" :location "/"}
-                     Card       root-card {:name "Root Card"}
-                     Card       collection-card {:name         "Collection Card"
-                                                 :collection_id collection-id}
-                     Collection {sub-collection-id :id :as coll2} {:name "Sub Collection"
-                                                                   :location (format "/%d/" collection-id)}
-                     Collection coll3 {:name "Deep Collection"
-                                       :location (format "/%d/%d/"
-                                                         collection-id
-                                                         sub-collection-id)}]
+      (mt/with-temp [:model/Collection {collection-id :id :as coll} {:name "A Collection" :location "/"}
+                     :model/Card       root-card {:name "Root Card"}
+                     :model/Card       collection-card {:name         "Collection Card"
+                                                        :collection_id collection-id}
+                     :model/Collection {sub-collection-id :id :as coll2} {:name "Sub Collection"
+                                                                          :location (format "/%d/" collection-id)}
+                     :model/Collection coll3 {:name "Deep Collection"
+                                              :location (format "/%d/%d/"
+                                                                collection-id
+                                                                sub-collection-id)}]
         (let [card1-name "/collections/root/cards/Root Card"
               card2-name "/collections/root/collections/A Collection/cards/Collection Card"
               coll-name  "/collections/root/collections/A Collection"
@@ -67,15 +66,15 @@
           (is (= coll2-name (names/fully-qualified-name coll2)))
           (is (= coll3-name (names/fully-qualified-name coll3))))))
     (testing " with snippets in a collection"
-      (mt/with-temp [Collection {base-collection-id :id} {:name "Base Collection"
-                                                          :namespace "snippets"}
-                     Collection {collection-id :id}      {:name "Nested Collection"
-                                                          :location (format "/%s/" base-collection-id)
-                                                          :namespace "snippets"}
-                     NativeQuerySnippet snippet {:content "price > 2"
-                                                 :name "Price > 2"
-                                                 :description "Price more than 2"
-                                                 :collection_id collection-id}]
+      (mt/with-temp [:model/Collection {base-collection-id :id} {:name "Base Collection"
+                                                                 :namespace "snippets"}
+                     :model/Collection {collection-id :id}      {:name "Nested Collection"
+                                                                 :location (format "/%s/" base-collection-id)
+                                                                 :namespace "snippets"}
+                     :model/NativeQuerySnippet snippet {:content "price > 2"
+                                                        :name "Price > 2"
+                                                        :description "Price more than 2"
+                                                        :collection_id collection-id}]
         (let [fully-qualified-name (str "/collections/root/collections/:snippets/Base Collection/collections"
                                         "/:snippets/Nested Collection/snippets/Price %3E 2")]
           (is (= fully-qualified-name
@@ -87,7 +86,7 @@
       ; these drivers keep table names lowercased, causing "users" table to clash with our entity name "users"
       (mt/test-drivers #{:postgres :mysql}
         (ts/with-world
-          (let [users-pk-field (t2/select-one Field :id users-pk-field-id)
+          (let [users-pk-field (t2/select-one :model/Field :id users-pk-field-id)
                 fq-name        (names/fully-qualified-name users-pk-field)
                 ctx            (names/fully-qualified-name->context fq-name)]
             ;; MySQL doesn't have schemas, so either one of these could be acceptable
@@ -98,9 +97,9 @@
 
 (deftest name-for-logging-test
   (testing "serialization logging name generation from Toucan 2 records (#29322)"
-    (mt/with-temp [Collection {collection-id :id} {:name         "A Collection"}
-                   Card       {card-id :id}       {:name         "A Card"
-                                                   :collection_id collection-id}]
+    (mt/with-temp [:model/Collection {collection-id :id} {:name         "A Collection"}
+                   :model/Card       {card-id :id}       {:name         "A Card"
+                                                          :collection_id collection-id}]
       (are [model s id] (= (format s id) (names/name-for-logging (t2/select-one model :id id)))
         'Collection ":model/Collection \"A Collection\" (ID %d)" collection-id
         'Card       ":model/Card \"A Card\" (ID %d)" card-id))))

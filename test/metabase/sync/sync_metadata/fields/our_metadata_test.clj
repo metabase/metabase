@@ -3,8 +3,6 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.table :refer [Table]]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
    [metabase.test :as mt]
@@ -14,7 +12,7 @@
 
 ;; `our-metadata` should match up with what we have in the DB
 (deftest does-metadata-match-test
-  (mt/with-temp [Database db {:engine ::toucanery/toucanery}]
+  (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
     (sync-metadata/sync-db-metadata! db)
     (is (= #{{:name              "id"
               :database-type     "SERIAL"
@@ -100,11 +98,11 @@
                                                           :json-unfolding    false
                                                           :database-is-auto-increment false}}}}}}
 
-           (let [transactions-table-id   (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))
+           (let [transactions-table-id   (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
                  remove-ids-and-nil-vals (partial walk/postwalk #(if-not (map? %)
                                                                    %
                                                                    ;; database-position isn't stable since they are
                                                                    ;; defined in sets. changing keys will change the
                                                                    ;; order in the set implementation. (and position depends on database-position)
                                                                    (m/filter-vals some? (dissoc % :id :database-position :position))))]
-             (remove-ids-and-nil-vals (#'fields.our-metadata/our-metadata (t2/select-one Table :id transactions-table-id))))))))
+             (remove-ids-and-nil-vals (#'fields.our-metadata/our-metadata (t2/select-one :model/Table :id transactions-table-id))))))))

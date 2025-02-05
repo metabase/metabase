@@ -18,7 +18,7 @@
   In the future, we plan to add more classifiers, including ML ones that run offline."
   (:require
    [clojure.data :as data]
-   [metabase.analyze :as analyze]
+   [metabase.analyze.core :as analyze]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]

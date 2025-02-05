@@ -31,12 +31,29 @@ export const getDefaultSize = (
   visualizationType: VisualizationDisplay,
 ): VisualizationSize => getSize(visualizationType, "default");
 
-export const MOBILE_HEIGHT_BY_DISPLAY_TYPE: Record<string, number> = {
+type CalculateMobileHeight = (desktopHeight: number) => number;
+
+export const MOBILE_HEIGHT_BY_DISPLAY_TYPE: Record<
+  string,
+  number | CalculateMobileHeight
+> = {
   action: 1,
   link: 1,
-  text: 2,
+  text: desktopHeight => Math.max(2, desktopHeight),
   heading: 2,
   scalar: 4,
 };
 
 export const MOBILE_DEFAULT_CARD_HEIGHT = 6;
+
+export const getMobileHeight = (
+  display: VisualizationDisplay,
+  desktopHeight: number,
+) => {
+  const mobileHeight =
+    MOBILE_HEIGHT_BY_DISPLAY_TYPE[display] ?? MOBILE_DEFAULT_CARD_HEIGHT;
+
+  return typeof mobileHeight === "function"
+    ? mobileHeight(desktopHeight)
+    : mobileHeight;
+};

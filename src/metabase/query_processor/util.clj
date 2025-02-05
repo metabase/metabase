@@ -101,6 +101,7 @@
       (empty? constraints) (dissoc :constraints)
       true                 (update :parameters sort-parameter-values)
       (empty? parameters)  (dissoc :parameters)
+      true                 lib.schema.util/indexed-order-bys
       true                 lib.schema.util/remove-randomized-idents
       true                 walk-query-sort-maps)))
 

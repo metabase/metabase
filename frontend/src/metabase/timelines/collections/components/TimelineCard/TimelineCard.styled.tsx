@@ -32,7 +32,7 @@ export const CardDescription = styled(Markdown)`
   word-wrap: break-word;
 `;
 
-export interface CardCountProps {
+interface CardCountProps {
   isTopAligned?: boolean;
 }
 

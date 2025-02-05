@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -27,7 +27,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.openSeriesSettings("Count");
 
     H.echartsContainer()
@@ -56,7 +56,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.openSeriesSettings("Count");
 
     H.popover().within(() => {
@@ -88,7 +88,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.openSeriesSettings("Count");
 
     H.popover().within(() => {
@@ -107,11 +107,11 @@ describe("scenarios > visualizations > line chart", () => {
       display: "area",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.openSeriesSettings("Count");
     cy.icon("bar").click();
 
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
 
     cy.icon("line").click();
 
@@ -139,7 +139,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
 
     cy.icon("line").click();
 
@@ -202,7 +202,7 @@ describe("scenarios > visualizations > line chart", () => {
     // The chart is pinned to zero by default: 0 tick should exist
     H.echartsContainer().findByText("0");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("Axes").click();
       cy.findByText("Unpin from zero").click();
@@ -311,7 +311,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // Make sure we can update input with some existing value
     H.openSeriesSettings("cat1", true);
@@ -415,7 +415,7 @@ describe("scenarios > visualizations > line chart", () => {
       .findByText("(empty)")
       .should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").findByText("(empty)");
   });
 
@@ -543,7 +543,7 @@ describe("scenarios > visualizations > line chart", () => {
             ],
           ],
         }).then(({ body: { id: question2Id } }) => {
-          cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+          H.createDashboard().then(({ body: { id: dashboardId } }) => {
             addBothSeriesToDashboard({
               dashboardId,
               firstCardId: question1Id,
@@ -586,7 +586,7 @@ describe("scenarios > visualizations > line chart", () => {
         name: "16249_Q3",
         aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
       }).then(({ body: { id: question1Id } }) => {
-        cy.createQuestion({
+        H.createQuestion({
           name: "16249_Q4",
           query: {
             "source-table": PRODUCTS_ID,
@@ -597,7 +597,7 @@ describe("scenarios > visualizations > line chart", () => {
           },
           display: "line",
         }).then(({ body: { id: question2Id } }) => {
-          cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+          H.createDashboard().then(({ body: { id: dashboardId } }) => {
             addBothSeriesToDashboard({
               dashboardId,
               firstCardId: question1Id,
@@ -665,7 +665,7 @@ describe("scenarios > visualizations > line chart", () => {
     }
 
     function createOrdersQuestionWithAggregation({ name, aggregation } = {}) {
-      return cy.createQuestion({
+      return H.createQuestion({
         name,
         query: {
           "source-table": ORDERS_ID,
@@ -735,7 +735,7 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findAllByTestId("legend-item").should("contain", "Doohickey");
 
       cy.log("Ensure that legend is hidden when not dealing with multi series");
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       cy.findByTestId("remove-CATEGORY").click();
       H.queryBuilderMain().should("not.contain", "Doohickey");
     });

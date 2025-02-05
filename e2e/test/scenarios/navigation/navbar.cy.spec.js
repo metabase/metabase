@@ -1,15 +1,54 @@
-import { H } from "e2e/support";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+const { H } = cy;
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_DASHBOARD_ID,
+  THIRD_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > navigation > navbar", () => {
-  describe("OSS", () => {
+  describe("Normal user", () => {
     beforeEach(() => {
+      H.restore();
       cy.signInAsNormalUser();
     });
 
     it("should be open after logging in", () => {
       cy.visit("/");
       H.navigationSidebar().should("be.visible");
+    });
+
+    it("should highlight relevant entities when navigating", () => {
+      const questionName = "Bookmarked question";
+      H.createQuestion(
+        {
+          name: questionName,
+          collection_id: THIRD_COLLECTION_ID,
+          query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+        },
+        {
+          wrapId: true,
+        },
+      );
+
+      cy.get("@questionId").then(id => {
+        cy.request("POST", `/api/bookmark/card/${id}`);
+        H.visitQuestion(id);
+      });
+
+      H.openNavigationSidebar();
+      H.assertNavigationSidebarItemSelected(/Third collection/);
+      H.assertNavigationSidebarBookmarkSelected(questionName);
+
+      H.newButton().click();
+      H.popover()
+        .findByText(/SQL query/)
+        .click();
+
+      H.openNavigationSidebar();
+      H.assertNavigationSidebarItemSelected(/Third collection/, "false");
+      H.assertNavigationSidebarBookmarkSelected(questionName, "false");
     });
 
     it("should display error ui when data fetching fails", () => {
@@ -25,6 +64,7 @@ describe("scenarios > navigation > navbar", () => {
       H.navigationSidebar().should("be.visible");
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.navigationSidebar().should("not.be.visible");
+
       cy.findByTestId("main-logo-link").click();
       H.navigationSidebar().should("not.be.visible");
     });
@@ -34,7 +74,7 @@ describe("scenarios > navigation > navbar", () => {
       H.navigationSidebar().should("not.be.visible");
     });
 
-    it("should preserve state when visting a collection", () => {
+    it("should preserve state when visiting a collection", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.navigationSidebar().should("not.be.visible");
       H.appBar().contains("Our analytics").parentsUntil("a").first().click();
@@ -60,22 +100,28 @@ describe("scenarios > navigation > navbar", () => {
         .click();
       H.navigationSidebar().should("not.be.visible");
     });
+  });
 
-    it("should be open when visiting home with a custom home page configured", () => {
+  describe("Custom Homepage", () => {
+    beforeEach(() => {
+      H.restore();
       cy.signInAsAdmin();
       H.updateSetting("custom-homepage", true);
       H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
+    });
+
+    it("should be open when visiting home with a custom home page configured", () => {
       cy.visit("/");
-      cy.reload();
-      cy.url().should("contain", "question");
+      cy.url().should("contain", "/dashboard/");
+      H.navigationSidebar().should("be.visible");
+
+      cy.findByTestId("main-logo-link").click();
       H.navigationSidebar().should("be.visible");
     });
 
-    it("should preserve state when clicking the mb logo and a custom home page is configured", () => {
-      cy.signInAsAdmin();
-      H.updateSetting("custom-homepage", true);
-      H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
+    it("should preserve state when clicking the mb logo and custom home page is configured", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.navigationSidebar().should("not.be.visible");
       cy.findByTestId("main-logo-link").click();
       H.navigationSidebar().should("not.be.visible");
     });

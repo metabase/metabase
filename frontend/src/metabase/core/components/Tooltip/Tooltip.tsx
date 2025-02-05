@@ -1,11 +1,11 @@
 import * as Tippy from "@tippyjs/react";
 import cx from "classnames";
-import { useMemo } from "react";
 import * as React from "react";
+import { useMemo } from "react";
 import * as ReactIs from "react-is";
 
-import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import ZIndex from "metabase/css/core/z-index.module.css";
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isReactDOMTypeElement } from "metabase-types/guards";
 

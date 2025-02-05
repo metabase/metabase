@@ -26,6 +26,11 @@ export const createMockCacheConfigWithDurationStrategy = (
   opts?: Partial<CacheConfig>,
 ): CacheConfig =>
   createMockCacheConfig({
-    strategy: { type: "duration", duration: 1, unit: CacheDurationUnit.Hours },
+    strategy: {
+      type: "duration",
+      duration: 1,
+      unit: CacheDurationUnit.Hours,
+      refresh_automatically: false,
+    },
     ...opts,
   });

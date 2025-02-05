@@ -13,16 +13,16 @@ export const getTabsOverrides = (): MantineThemeOverride["components"] => ({
     },
     styles: (theme, { orientation }: TabsStylesParams) => ({
       tab: {
-        color: theme.fn.themeColor("text-dark"),
+        color: "var(--mb-color-text-primary)",
         padding: TAB_PADDING[orientation],
         maxWidth: "100%",
         "&:hover": {
-          borderColor: theme.fn.themeColor("bg-medium"),
-          backgroundColor: "var(--mb-color-brand-lighter)",
+          borderColor: "var(--mb-color-background-hover)",
+          backgroundColor: "var(--mb-color-background-hover)",
         },
         "&[data-active]": {
-          color: theme.fn.themeColor("brand"),
-          borderColor: theme.fn.themeColor("brand"),
+          color: "var(--mb-color-text-brand)",
+          borderColor: "var(--mb-color-background-brand)",
         },
         "&:disabled": {
           color: theme.fn.themeColor("text-light"),
@@ -43,7 +43,7 @@ export const getTabsOverrides = (): MantineThemeOverride["components"] => ({
         },
       },
       tabsList: {
-        borderColor: theme.fn.themeColor("bg-medium"),
+        borderColor: "var(--mb-color-border)",
       },
     }),
   },

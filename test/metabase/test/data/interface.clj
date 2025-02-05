@@ -18,10 +18,8 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.sync.describe-table]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :as field]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test.data.env :as tx.env]
@@ -31,6 +29,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.random :as u.random]
    [methodical.core :as methodical]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -280,7 +279,7 @@
 
 (defmethod metabase-instance FieldDefinition
   [this table]
-  (t2/select-one Field
+  (t2/select-one :model/Field
                  :table_id    (u/the-id table)
                  :%lower.name (u/lower-case-en (:field-name this))
                  {:order-by [[:id :asc]]}))
@@ -290,7 +289,7 @@
   ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
   ;; like Oracle
   (letfn [(table-with-name [table-name]
-            (t2/select-one Table
+            (t2/select-one :model/Table
                            :db_id       (:id database)
                            :%lower.name table-name
                            {:order-by [[:id :asc]]}))]
@@ -307,7 +306,7 @@
   [{:keys [database-name]} :- [:map [:database-name :string]]
    driver                  :- :keyword]
   (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
-  (t2/select-one Database
+  (t2/select-one :model/Database
                  :name   (database-display-name-for-driver driver database-name)
                  :engine driver
                  {:order-by [[:id :asc]]}))
@@ -461,7 +460,7 @@
   ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
    (merge
-    (first (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
+    (first (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id :model/Table :id table-id)
                                                 :type     :query
                                                 :query    {:source-table table-id
                                                            :aggregation  [[aggregation-type [:field-id field-id]]]
@@ -836,3 +835,43 @@
   {:arglists '([driver database view-name options])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
+
+(defmulti bad-connection-details
+  "Returns a map that when merged with details will produce a failing connection to db."
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod bad-connection-details :default
+  [_driver]
+  {:user (u.random/random-name)})
+
+(doseq [driver [:h2 :sqlite]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    nil))
+
+(doseq [driver [:bigquery-cloud-sdk]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:project-id (u.random/random-name)}))
+
+(doseq [driver [:redshift :snowflake :vertica :sparksql]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:db (u.random/random-name)}))
+
+(doseq [driver [:oracle]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:service-name (u.random/random-name)}))
+
+(doseq [driver [:presto-jdbc :databricks]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:catalog (u.random/random-name)}))
+
+(doseq [driver [:athena]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:access_key (u.random/random-name)}))

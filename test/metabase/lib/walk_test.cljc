@@ -1,8 +1,8 @@
 (ns metabase.lib.walk-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [malli.core :as mc]
-   [metabase.lib.walk :as lib.walk]))
+   [metabase.lib.walk :as lib.walk]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel walk-test
   (let [query {:stages [{:joins [{:stages [{:source-card 1}]}]}]}
@@ -145,13 +145,13 @@
                   (assoc stage-or-join :path path)))))))))
 
 (deftest ^:parallel path-schema-test
-  (are [path] (mc/validate ::lib.walk/path path)
+  (are [path] (mr/validate ::lib.walk/path path)
     [:stages 0]
     [:stages 0 :joins 1]
     [:stages 0 :joins 1 :stages 0]
     [:stages 0 :joins 1 :stages 0 :joins 2]
     [:stages 0 :joins 1 :stages 0 :joins 2 :stages 0])
-  (are [path] (not (mc/validate ::lib.walk/path path))
+  (are [path] (not (mr/validate ::lib.walk/path path))
     []
     [:stages]
     [:stages 0 :stages 0]

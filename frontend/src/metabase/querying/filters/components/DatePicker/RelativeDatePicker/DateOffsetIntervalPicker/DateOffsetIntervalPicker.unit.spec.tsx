@@ -1,9 +1,12 @@
 import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
+import type {
+  DatePickerUnit,
+  RelativeIntervalDirection,
+} from "metabase/querying/filters/types";
 
-import { DATE_PICKER_UNITS } from "../../constants";
-import type { DatePickerUnit, RelativeIntervalDirection } from "../../types";
 import type { DateOffsetIntervalValue } from "../types";
 
 import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
@@ -26,14 +29,14 @@ const userEvent = _userEvent.setup({
 
 interface SetupOpts {
   value: DateOffsetIntervalValue;
-  availableUnits?: ReadonlyArray<DatePickerUnit>;
-  isNew?: boolean;
+  availableUnits?: DatePickerUnit[];
+  submitButtonLabel?: string;
 }
 
 function setup({
   value,
   availableUnits = DATE_PICKER_UNITS,
-  isNew = false,
+  submitButtonLabel = "Apply",
 }: SetupOpts) {
   const onChange = jest.fn();
   const onSubmit = jest.fn();
@@ -42,7 +45,7 @@ function setup({
     <DateOffsetIntervalPicker
       value={value}
       availableUnits={availableUnits}
-      isNew={isNew}
+      submitButtonLabel={submitButtonLabel}
       onChange={onChange}
       onSubmit={onSubmit}
     />,

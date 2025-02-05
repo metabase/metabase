@@ -210,7 +210,8 @@
   (testing "execute an userland query will capture field usages"
     (mt/test-helpers-set-global-values!
       (mt/with-model-cleanup [:model/FieldUsage]
-        (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (mt/with-temporary-setting-values [synchronous-batch-updates   true
+                                           enable-field-usage-analysis true]
           (mt/with-temp [:model/Field {field-id :id} {:table_id  (mt/id :products)
                                                       :name      "very_interesting_field"
                                                       :base_type :type/Integer}

@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 
-export type PinDropTargetProps = {
+type PinDropTargetProps = {
   variant: "pin" | "unpin";
   pinIndex: number | null;
   hideUntilDrag: boolean;

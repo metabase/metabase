@@ -4,7 +4,7 @@ import { color, isDark, lighten, tint } from "metabase/lib/colors";
 
 import type { RadioColorScheme, RadioVariant } from "./types";
 
-export interface RadioGroupProps {
+interface RadioGroupProps {
   variant: RadioVariant;
   vertical: boolean;
 }
@@ -22,7 +22,7 @@ export const RadioGroupBubble = styled(RadioGroup)`
   display: flex;
 `;
 
-export interface RadioLabelProps {
+interface RadioLabelProps {
   variant: RadioVariant;
   vertical: boolean;
 }
@@ -52,7 +52,7 @@ export const RadioInput = styled.input`
   padding: 0;
 `;
 
-export interface RadioContainerProps {
+interface RadioContainerProps {
   checked: boolean;
   variant: RadioVariant;
   colorScheme: RadioColorScheme;

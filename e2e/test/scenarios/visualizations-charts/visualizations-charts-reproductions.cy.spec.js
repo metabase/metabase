@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -33,7 +33,7 @@ describe("issue 13504", () => {
   });
 
   it("should remove post-aggregation filters from a multi-stage query (metabase#13504)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.cartesianChartCircle().eq(0).click({ force: true });
 
@@ -51,11 +51,9 @@ const externalDatabaseId = 2;
 
 describe("issue 16170", { tags: "@mongo" }, () => {
   function replaceMissingValuesWith(value) {
-    cy.findByText("Replace missing values with")
-      .parent()
-      .within(() => {
-        cy.findByTestId("chart-setting-select").click();
-      });
+    cy.get('[data-field-title="Replace missing values with"]').within(() => {
+      cy.findByTestId("chart-setting-select").click();
+    });
 
     H.popover().contains(value).click();
   }
@@ -82,13 +80,13 @@ describe("issue 16170", { tags: "@mongo" }, () => {
         display: "line",
       };
 
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
     });
   });
 
   ["Zero", "Nothing"].forEach(replacementValue => {
     it(`replace missing values with "${replacementValue}" should work on Mongo (metabase#16170)`, () => {
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       H.openSeriesSettings("Count");
 
@@ -99,6 +97,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       assertOnTheYAxis();
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.cartesianChartCircle().eq(-2).trigger("mousemove");
 
       H.assertEChartsTooltip({
@@ -156,7 +155,7 @@ describe("issue 17524", () => {
 
   describe("scenario 1", () => {
     beforeEach(() => {
-      cy.createNativeQuestion(nativeQuestionDetails, { visitQuestion: true });
+      H.createNativeQuestion(nativeQuestionDetails, { visitQuestion: true });
     });
 
     it("should not alter visualization type when applying filter on a native question (metabase#17524-1)", () => {
@@ -164,6 +163,7 @@ describe("issue 17524", () => {
 
       cy.get("polygon");
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.icon("play").last().click();
 
       cy.get("polygon");
@@ -174,7 +174,7 @@ describe("issue 17524", () => {
 
   describe("scenario 2", () => {
     beforeEach(() => {
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
     });
 
     it("should not alter visualization type when applying filter on a QB question (metabase#17524-2)", () => {
@@ -246,7 +246,7 @@ describe("issue 18061", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: dashboardCard }) => {
         const { dashboard_id, card_id } = dashboardCard;
 
@@ -277,7 +277,7 @@ describe("issue 18061", () => {
           ],
         };
 
-        cy.editDashboardCard(dashboardCard, mapFilterToCard);
+        H.editDashboardCard(dashboardCard, mapFilterToCard);
       },
     );
   });
@@ -358,13 +358,14 @@ describe("issue 18063", () => {
     display: "map",
   };
 
-  function selectFieldValue(field, value) {
-    cy.findByText(field)
-      .parent()
-      .within(() => {
-        cy.findByPlaceholderText("Select a field").click();
-      });
+  function toggleFieldSelectElement(field) {
+    return cy.get(`[data-field-title="${field}"]`).within(() => {
+      cy.findByPlaceholderText("Select a field").click();
+    });
+  }
 
+  function selectFieldValue(field, value) {
+    toggleFieldSelectElement(field);
     H.popover().findByText(value).click();
   }
 
@@ -372,10 +373,10 @@ describe("issue 18063", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     // Select a Pin map
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chart-settings-widget-map.type")
       .findByDisplayValue("Region map")
       .click();
@@ -384,12 +385,9 @@ describe("issue 18063", () => {
     // Click on the popovers to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
     ["Latitude field", "Longitude field"].forEach(field =>
-      H.leftSidebar()
-        .findByText(field)
-        .parent()
-        .within(() => {
-          cy.findByPlaceholderText("Select a field").click();
-        }),
+      H.leftSidebar().within(() => {
+        toggleFieldSelectElement(field);
+      }),
     );
   });
 
@@ -488,7 +486,7 @@ describe("issue 20548", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
     H.summarize();
   });
 
@@ -507,7 +505,7 @@ describe("issue 20548", () => {
     assertOnLegendItemFrequency("Count", 1);
     assertOnLegendItemFrequency("Sum of Price", 1);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.sidebar().findByDisplayValue("Count").should("be.visible");
   });
 });
@@ -532,7 +530,7 @@ describe("issue 21452", () => {
 
     H.visitQuestionAdhoc(questionDetails);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
   });
 
   it("should not fire POST request after every character during display name change (metabase#21452)", () => {
@@ -586,7 +584,7 @@ describe("issue 21504", () => {
       display: "pie",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
       cy.findByText("January 2025").should("be.visible");
@@ -620,7 +618,7 @@ describe("issue 21665", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails: Q1,
       dashboardDetails: { name: "21665D" },
     }).then(({ dashboardId, questionId }) => {
@@ -634,7 +632,7 @@ describe("issue 21665", () => {
       cy.log("dashboard id", dashboardId);
       cy.wrap(dashboardId).as("dashboardId");
 
-      cy.createNativeQuestion(Q2);
+      H.createNativeQuestion(Q2);
 
       H.visitDashboard(dashboardId);
       H.editDashboard();
@@ -692,13 +690,13 @@ describe.skip("issue 22527", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should render negative values in a scatter visualziation (metabase#22527)", () => {
     assertion();
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTextEnsureVisible("Data").click();
     });
@@ -729,6 +727,7 @@ describe("issue 25007", () => {
   };
 
   const clickLineDot = ({ index } = {}) => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().eq(index).click({ force: true });
   };
 
@@ -738,9 +737,9 @@ describe("issue 25007", () => {
   });
 
   it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
     clickLineDot({ index: 1 });
-    H.popover().findByTextEnsureVisible("May 1–7, 2022");
+    H.echartsTooltip().findByText("May 1–7, 2022");
   });
 });
 
@@ -805,7 +804,7 @@ describe("issue 27279", () => {
   });
 
   it("should reflect/apply sorting to the x-axis (metabase#27279)", () => {
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
@@ -923,7 +922,7 @@ describe("issue 27427", () => {
   };
 
   function assertStaticVizRender(questionDetails, callback) {
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.request({
         method: "GET",
         url: `/api/pulse/preview_card/${id}`,
@@ -951,6 +950,7 @@ describe("issue 27427", () => {
 
 const addCountGreaterThan2Filter = () => {
   H.openNotebook();
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("action-buttons").last().button("Filter").click();
   H.popover().findByText("Count").click();
   H.selectFilterOperator("Greater than");
@@ -1084,7 +1084,7 @@ describe("issue 33208", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         native: {
           query:
@@ -1116,7 +1116,7 @@ describe("issue 33208", () => {
 
   it("should not auto-select chart type when saving a native question with parameters that have default values", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
-    H.focusNativeEditor().type(" ");
+    H.NativeEditor.focus().type(" ");
     H.saveSavedQuestion("top category");
     H.runNativeQuery({ wait: false });
     cy.findByTestId("scalar-value").should("be.visible");
@@ -1232,7 +1232,7 @@ H.describeEE("issue 49160", () => {
 
     H.echartsContainer().findByText("200").should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().findByText("Gizmo");
   });

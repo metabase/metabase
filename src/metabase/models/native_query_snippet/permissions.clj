@@ -3,13 +3,13 @@
   NativeQuerySnippets if they have native query perms for at least one database. EE has a more advanced implementation."
   (:require
    [metabase.api.common :as api]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.public-settings.premium-features :refer [defenterprise]]))
+   [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]))
 
 (defn has-any-native-permissions?
   "Checks whether the current user has native query permissions for any database."
   []
-  (data-perms/user-has-any-perms-of-type? api/*current-user-id* :perms/create-queries))
+  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/create-queries))
 
 (defenterprise can-read?
   "Can the current User read this `snippet`?"

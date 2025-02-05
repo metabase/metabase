@@ -28,8 +28,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.format-rows :as format-rows]
@@ -1255,7 +1253,7 @@
     (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
       (binding [*recreate-db-if-stale?* false]
         (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
-        (t2/delete! Database :id (mt/id))
+        (t2/delete! :model/Database :id (mt/id))
         (apply count-of-grouping dataset field-grouping relative-datetime-args))
       (let [results (mt/run-mbql-query checkins
                       {:aggregation [[:count]]
@@ -1786,7 +1784,7 @@
               (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
                     june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
                     checkins     (mt/with-metadata-provider (mt/id)
-                                   (sql.qp/->honeysql driver/*driver* (t2/select-one Table :id (mt/id :checkins))))
+                                   (sql.qp/->honeysql driver/*driver* (t2/select-one :model/Table :id (mt/id :checkins))))
                     honeysql     {:select [[june-31 :june_31]]
                                   :from   [[checkins]]}
                     honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})

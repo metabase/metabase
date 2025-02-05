@@ -18,7 +18,7 @@ The easiest way to get started with Metabase is to sign up for a free trial of [
 - Let anyone on your team [ask questions](https://www.metabase.com/docs/latest/users-guide/04-asking-questions.html) without knowing SQL.
 - Use the [SQL editor](https://www.metabase.com/docs/latest/questions/native-editor/writing-sql) for more complex queries.
 - Build handsome, interactive [dashboards](https://www.metabase.com/docs/latest/users-guide/07-dashboards.html) with filters, auto-refresh, fullscreen, and custom click behavior.
-- Create [models](https://www.metabase.com/learn/getting-started/models) that clean up, annotate, and/or combine raw tables.
+- Create [models](https://www.metabase.com/learn/metabase-basics/getting-started/models) that clean up, annotate, and/or combine raw tables.
 - Define canonical [segments and metrics](https://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html) for your team to use.
 - Send data to Slack or email on a schedule with [dashboard subscriptions](https://www.metabase.com/docs/latest/users-guide/dashboard-subscriptions).
 - Set up [alerts](https://www.metabase.com/docs/latest/users-guide/15-alerts.html) to have Metabase notify you when your data changes.
@@ -96,7 +96,7 @@ This repository contains the source code for both the Open Source edition of Met
 
 See [LICENSE.txt](./LICENSE.txt) for details.
 
-Unless otherwise noted, all files © 2024 Metabase, Inc.
+Unless otherwise noted, all files © 2025 Metabase, Inc.
 
 ## [Metabase Experts](https://www.metabase.com/partners/)
 

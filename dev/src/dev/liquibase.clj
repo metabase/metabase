@@ -1,10 +1,14 @@
 (ns dev.liquibase
-  (:require [clojure.string :as str]
-            [colorize.core :as colorize]
-            [metabase.db.data-source :as mdb.data-source]
-            [metabase.db.env :as mdb.env]))
+  (:require
+   [clojure.string :as str]
+   [colorize.core :as colorize]
+   [metabase.db]
+   [metabase.db.data-source]
+   [metabase.db.env :as mdb.env]))
 
-(comment mdb.data-source/keep-me)
+(set! *warn-on-reflection* true)
+
+(comment metabase.db.data-source/keep-me)
 
 (defn -main
   "Use the Liquibase CLI with `clojure -M:liquibase <command>`."
@@ -12,7 +16,7 @@
   (let [args (if (empty? args)
                ["help"]
                args)
-        args (into ["--changeLogFile=resources/migrations/000_migrations.yaml"]
+        args (into ["--changeLogFile=resources/liquibase_legacy.yaml"]
                    (comp cat
                          (filter seq))
                    (let [^metabase.db.data_source.DataSource data-source mdb.env/data-source
@@ -23,6 +27,9 @@
                         ["--password" password])
                       ["--url" (.url data-source)]
                       (map str args)]))]
+    ;; when generating documentation we need to set up the DB and run migrations.
+    (when (= (first args) "dbDoc")
+      (metabase.db/setup-db! {:create-sample-content? false}))
     (println (colorize/green (str/join " " (cons "liquibase" (map pr-str args)))))
     ;; use reflection here instead of static method calls because `liquibase.integration.commandline.Main` fails to load
     ;; without having the `logback` dependency available. We add this as `:extra-deps` for the `:liquibase` profile. We

@@ -1,6 +1,6 @@
 (ns metabase-enterprise.dashboard-subscription-filters.parameter
   (:require
-   [metabase.public-settings.premium-features :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise the-parameters
   "Enterprise way of getting dashboard filter parameters. Blends parameters from dashboard subscription and the

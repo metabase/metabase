@@ -9,7 +9,6 @@ import type {
 } from "react";
 
 import Markdown from "metabase/core/components/Markdown";
-import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { AnchorProps, BoxProps, ButtonProps } from "metabase/ui";
 import { Anchor, Box, Button, Divider, Stack } from "metabase/ui";
 
@@ -84,10 +83,6 @@ export const SearchResultContainer = styled(Box, {
 
 export const ResultNameSection = styled(Stack)`
   overflow: hidden;
-`;
-
-export const ModerationIcon = styled(PLUGIN_MODERATION.ModerationStatusIcon)`
-  overflow: unset;
 `;
 
 export const LoadingSection = styled(Box)<BoxProps>`

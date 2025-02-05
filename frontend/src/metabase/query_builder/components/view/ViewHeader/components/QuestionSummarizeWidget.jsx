@@ -2,7 +2,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { Button } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
@@ -17,6 +17,7 @@ export function QuestionSummarizeWidget({
     <Button
       color="summarize"
       variant={isShowingSummarySidebar ? "filled" : "default"}
+      leftIcon={<Icon name="sum" />}
       onClick={async () => {
         if (isShowingSummarySidebar) {
           onCloseSummary();

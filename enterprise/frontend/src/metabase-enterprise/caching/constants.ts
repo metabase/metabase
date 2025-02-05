@@ -22,6 +22,7 @@ const scheduleStrategyValidationSchema = Yup.object({
   schedule: Yup.string()
     .required(t`A cron expression is required`)
     .default(defaultCron),
+  refresh_automatically: Yup.boolean().nullable().default(false),
 });
 
 const durationStrategyValidationSchema = Yup.object({
@@ -32,6 +33,7 @@ const durationStrategyValidationSchema = Yup.object({
     "${path} is not a valid duration",
     value => !!value && durationUnits.has(value),
   ),
+  refresh_automatically: Yup.boolean().nullable().default(false),
 });
 
 /** Caching strategies available on EE only */

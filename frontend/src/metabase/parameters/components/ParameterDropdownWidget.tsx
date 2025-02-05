@@ -1,17 +1,16 @@
 import { t } from "ttag";
 
-import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
-import { DateMonthYearWidget } from "metabase/components/DateMonthYearWidget";
-import { DateQuarterYearWidget } from "metabase/components/DateQuarterYearWidget";
-import { DateRangeWidget } from "metabase/components/DateRangeWidget";
-import { DateRelativeWidget } from "metabase/components/DateRelativeWidget";
-import { DateSingleWidget } from "metabase/components/DateSingleWidget";
 import { TextWidget } from "metabase/components/TextWidget";
-import { checkNotNull } from "metabase/lib/types";
 import type { ParameterValueWidgetProps } from "metabase/parameters/components/ParameterValueWidget";
 import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
 import { StringInputWidget } from "metabase/parameters/components/widgets/StringInputWidget";
 import { getParameterWidgetTitle } from "metabase/parameters/utils/ui";
+import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
+import { DateMonthYearWidget } from "metabase/querying/parameters/components/DateMonthYearWidget";
+import { DateQuarterYearWidget } from "metabase/querying/parameters/components/DateQuarterYearWidget";
+import { DateRangeWidget } from "metabase/querying/parameters/components/DateRangeWidget";
+import { DateRelativeWidget } from "metabase/querying/parameters/components/DateRelativeWidget";
+import { DateSingleWidget } from "metabase/querying/parameters/components/DateSingleWidget";
 import type {
   FieldFilterUiParameter,
   UiParameter,
@@ -66,27 +65,30 @@ export const ParameterDropdownWidget = ({
   };
 
   if (isDateParameter(parameter)) {
-    const DateWidget = checkNotNull(
-      {
-        "date/single": DateSingleWidget,
-        "date/range": DateRangeWidget,
-        "date/relative": DateRelativeWidget,
-        "date/month-year": DateMonthYearWidget,
-        "date/quarter-year": DateQuarterYearWidget,
-        "date/all-options": DateAllOptionsWidget,
-      }[parameter.type],
-    );
+    const DateWidget = {
+      "date/single": DateSingleWidget,
+      "date/range": DateRangeWidget,
+      "date/month-year": DateMonthYearWidget,
+      "date/quarter-year": DateQuarterYearWidget,
+      "date/relative": DateRelativeWidget,
+      "date/all-options": DateAllOptionsWidget,
+    }[parameter.type];
 
-    return (
-      <DateWidget
-        value={value}
-        initialValue={value}
-        defaultValue={parameter.default}
-        required={parameter.required}
-        setValue={setValue}
-        onClose={() => onPopoverClose?.()}
-      />
-    );
+    if (DateWidget) {
+      return (
+        <DateWidget
+          value={value}
+          availableOperators={["=", ">", "<", "between", "!="]}
+          submitButtonLabel={value ? t`Update filter` : t`Add filter`}
+          onChange={value => {
+            setValue?.(value);
+            onPopoverClose?.();
+          }}
+        />
+      );
+    }
+
+    return null;
   }
 
   if (isTemporalUnitParameter(parameter)) {

@@ -17,7 +17,10 @@ const ViewButton = ({ className, active, color, ...props }: Props) => {
 
   return (
     <Button
-      className={cx(S.ViewButton, { [S.active]: active }, className)}
+      classNames={{
+        root: cx(S.ViewButton, { [S.active]: active }, className),
+        icon: S.ViewButtonIcon,
+      }}
       style={
         {
           "--view-button-color": color ?? theme.fn.themeColor("brand"),

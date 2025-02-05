@@ -2,7 +2,7 @@
 title: Embedded analytics SDK - collections
 ---
 
-## Embedded analytics SDK - collections
+# Embedded analytics SDK - collections
 
 {% include beta-blockquote.html %}
 

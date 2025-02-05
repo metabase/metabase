@@ -15,8 +15,11 @@
   user-select: none;
 }
 
-.HeaderBadge :global(.Icon) {
-  width: 1em;
-  height: 1em;
-  margin-right: 0.5em;
+.HeaderBadge {
+  /* specificity */
+  .HeaderBadgeIcon {
+    width: 1em;
+    height: 1em;
+    margin-right: 0.5em;
+  }
 }

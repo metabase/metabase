@@ -1,3 +1,8 @@
+import type {
+  DatePickerOperator,
+  DatePickerValue,
+} from "metabase/querying/filters/types";
+
 import { getExcludeOperatorValue } from "../ExcludeDatePicker/utils";
 import {
   getDirectionDefaultValue,
@@ -7,13 +12,12 @@ import {
   getOperatorDefaultValue,
   setOperator,
 } from "../SpecificDatePicker/utils";
-import type { DatePickerOperator, DatePickerValue } from "../types";
 
 import { OPERATOR_OPTIONS } from "./constants";
 import type { OperatorOption, OptionType } from "./types";
 
 export function getAvailableOptions(
-  availableOperators: ReadonlyArray<DatePickerOperator>,
+  availableOperators: DatePickerOperator[],
 ): OperatorOption[] {
   return OPERATOR_OPTIONS.filter(
     option =>

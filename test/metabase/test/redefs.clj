@@ -7,13 +7,13 @@
    [metabase.test.util.thread-local :as tu.thread-local]
    [methodical.core :as methodical]
    [toucan2.connection :as t2.connection]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp]))
 
 (def ^:dynamic ^:private *in-tx*
   "Used to detect whether we're in a nested [[with-temp]]. Default is false."
   false)
 
-(methodical/defmethod t2.with-temp/do-with-temp* :around :default
+(methodical/defmethod toucan2.tools.with-temp/do-with-temp* :around :default
   "Initialize the DB before doing the other with-temp stuff.
   Make sure metabase.test.util is loaded.
   Run [[f]] in transaction by default, bind [[tu.thread-local/*thread-local*]] to false to disable this."

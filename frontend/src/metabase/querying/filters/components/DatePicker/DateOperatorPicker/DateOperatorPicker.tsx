@@ -1,14 +1,16 @@
 import { useMemo } from "react";
 
+import type {
+  DatePickerOperator,
+  DatePickerValue,
+} from "metabase/querying/filters/types";
 import { Select } from "metabase/ui";
-
-import type { DatePickerOperator, DatePickerValue } from "../types";
 
 import { getAvailableOptions, getOptionType, setOptionType } from "./utils";
 
 interface DateOperatorPickerProps {
   value?: DatePickerValue;
-  availableOperators: ReadonlyArray<DatePickerOperator>;
+  availableOperators: DatePickerOperator[];
   onChange: (value: DatePickerValue | undefined) => void;
 }
 

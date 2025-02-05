@@ -14,11 +14,11 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -28,11 +28,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
-
-(def Segment
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/Segment)
 
 (methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
@@ -50,7 +45,7 @@
 (defmethod mi/can-read? :model/Segment
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
-     (data-perms/user-has-permission-for-table?
+     (perms/user-has-permission-for-table?
       api/*current-user-id*
       :perms/manage-table-metadata
       :yes
@@ -63,10 +58,10 @@
   (u/prog1 (t2/changes segment)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? <> :creator_id)
-      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id Segment :id id))
+      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id :model/Segment :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment.")))))))
 
-(defmethod mi/perms-objects-set Segment
+(defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
   (let [table (or (:table segment)
                   (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
@@ -120,7 +115,7 @@
       [table-id :- ::lib.schema.id/table]
       (-> table-id table-id->db-id db-id->metadata-provider))))
 
-(methodical/defmethod t2.hydrate/batched-hydrate [Segment :definition_description]
+(methodical/defmethod t2.hydrate/batched-hydrate [:model/Segment :definition_description]
   [_model _key segments]
   (let [table-id->warmed-metadata-provider (segments->table-id->warmed-metadata-provider segments)]
     (for [segment segments
@@ -129,11 +124,11 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defmethod revision/serialize-instance Segment
+(defmethod revision/serialize-instance :model/Segment
   [_model _id instance]
   (dissoc instance :created_at :updated_at))
 
-(defmethod revision/diff-map Segment
+(defmethod revision/diff-map :model/Segment
   [model segment1 segment2]
   (if-not segment1
     ;; this is the first version of the segment
@@ -152,7 +147,7 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/hash-fields Segment
+(defmethod serdes/hash-fields :model/Segment
   [_segment]
   [:name (serdes/hydrated-hash :table) :created_at])
 
@@ -195,8 +190,8 @@
                   :collection-id false
                   :creator-id    false
                   :database-id   :table.db_id
-                  ;; Matching legacy behavior, where this cannot be filtered on.
-                  ;:created-at    true
+                  ;; should probably change this, but will break legacy search tests
+                  :created-at    false
                   :updated-at    true}
    :search-terms [:name :description]
    :render-terms {:table-id          :table_id

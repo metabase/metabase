@@ -4,6 +4,7 @@ import type {
   MantineThemeOverride,
 } from "@mantine/core";
 import { getStylesRef, rem } from "@mantine/core";
+import Color from "color";
 
 export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
   Button: {
@@ -56,12 +57,12 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
 
         return {
           root: {
-            color: theme.fn.themeColor("text-dark"),
-            borderColor: theme.fn.themeColor("border"),
-            backgroundColor: theme.fn.themeColor("bg-white"),
+            color: "var(--mb-color-text-primary)",
+            borderColor: "var(--mb-color-border)",
+            backgroundColor: "var(--mb-color-background)",
             "&:hover": {
-              color: primaryColor,
-              backgroundColor: theme.fn.themeColor("bg-light"),
+              color: "var(--mb-color-text-hover)",
+              backgroundColor: "var(--mb-color-background-hover)",
             },
             "&:disabled": {
               color: "var(--mb-color-text-tertiary)",
@@ -78,7 +79,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
       },
       filled: (theme, { color }: ButtonStylesParams) => {
         const primaryColor = getPrimaryColor(theme, color);
-        const hoverColor = getHoverColor(theme, primaryColor);
+        const hoverColor = getHoverColor(primaryColor);
         const isThemeable = color === "brand";
         const colors = isThemeable
           ? {
@@ -115,8 +116,8 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
       },
       outline: (theme, { color }: ButtonStylesParams) => {
         const primaryColor = getPrimaryColor(theme, color);
-        const hoverColor = getHoverColor(theme, primaryColor);
-        const backgroundColor = getBackgroundColor(theme, primaryColor);
+        const hoverColor = getHoverColor(primaryColor);
+        const backgroundColor = getBackgroundColor(primaryColor);
 
         return {
           root: {
@@ -137,7 +138,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
       },
       subtle: (theme, { color }: ButtonStylesParams) => {
         const primaryColor = getPrimaryColor(theme, color);
-        const hoverColor = getHoverColor(theme, primaryColor);
+        const hoverColor = getHoverColor(primaryColor);
         return {
           root: {
             color: primaryColor,
@@ -158,13 +159,13 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
 });
 
 const getPrimaryColor = (theme: MantineTheme, colorName: string) => {
-  return theme.fn.themeColor(colorName, theme.fn.primaryShade());
+  return theme.fn.themeColor(colorName);
 };
 
-const getHoverColor = (theme: MantineTheme, primaryColor: string) => {
-  return theme.fn.rgba(primaryColor, 0.88);
+const getHoverColor = (primaryColor: string) => {
+  return Color(primaryColor).alpha(0.88).string();
 };
 
-const getBackgroundColor = (theme: MantineTheme, primaryColor: string) => {
-  return theme.fn.rgba(primaryColor, 0.0971);
+const getBackgroundColor = (primaryColor: string) => {
+  return Color(primaryColor).alpha(0.0971).string();
 };

@@ -1,13 +1,13 @@
 (ns metabase-enterprise.util-test
   (:require
-   [metabase.public-settings.premium-features :refer [defenterprise defenterprise-schema]]))
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Defenterprise Macro                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; These `defenterprise` calls define the EE versions of test functions which are used in
-;; `metabase.public-settings.premium-features-test`, for testing the `defenterprise` macro itself
+;; `metabase.premium-features.defenterprise-test`, for testing the `defenterprise` macro itself
 
 (defenterprise greeting
   "Returns an special greeting for anyone running the Enterprise Edition, regardless of token."

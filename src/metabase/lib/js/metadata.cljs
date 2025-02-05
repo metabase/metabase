@@ -7,6 +7,7 @@
    [goog.object :as gobject]
    [medley.core :as m]
    [metabase.lib.cache :as lib.cache]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -486,6 +487,8 @@
 (defn- database [metadata database-id]
   (some-> metadata :databases deref (get database-id) deref))
 
+(declare ^:private xform-attach-idents)
+
 (defn- metadatas [metadata metadata-type ids]
   (let [k          (case metadata-type
                      :metadata/table         :tables
@@ -494,9 +497,22 @@
                      :metadata/segment       :segments)
         metadatas* (some-> metadata k deref)]
     (into []
-          (keep (fn [id]
-                  (some-> metadatas* (get id) deref)))
+          (comp (keep (fn [id]
+                        (some-> metadatas* (get id) deref)))
+                (if (= metadata-type :metadata/column)
+                  (xform-attach-idents metadata)
+                  identity))
           ids)))
+
+(defn- metadata->prefix-fn [metadata]
+  (fn [table-id]
+    (let [[table] (metadatas metadata :metadata/table [table-id])
+          db      (database metadata (:db-id table))]
+      (lib.metadata.ident/table-prefix (:name db) table))))
+
+(defn- xform-attach-idents [metadata]
+  (let [prefix-fn (memoize (metadata->prefix-fn metadata))]
+    (lib.metadata.ident/attach-idents prefix-fn)))
 
 (defn- tables [metadata database-id]
   (into []
@@ -513,12 +529,15 @@
             :metadata/metric        :metrics
             :metadata/segment       :segments)]
     (into []
-          (keep (fn [[_id dlay]]
-                  (when-let [object (some-> dlay deref)]
-                    (when (and (= (:table-id object) table-id)
-                               (or (not= metadata-type :metadata/metric)
-                                   (nil? (:source-card-id object))))
-                      object))))
+          (comp (keep (fn [[_id dlay]]
+                        (when-let [object (some-> dlay deref)]
+                          (when (and (= (:table-id object) table-id)
+                                     (or (not= metadata-type :metadata/metric)
+                                         (nil? (:source-card-id object))))
+                            object))))
+                (if (= metadata-type :metadata/column)
+                  (xform-attach-idents metadata)
+                  identity))
           (some-> metadata k deref))))
 
 (defn- metadatas-for-card

@@ -81,6 +81,7 @@ function setup({
       {...props}
       onAddSeries={jest.fn()}
       onReplaceCard={onReplaceCard}
+      isTrashedOnRemove={false}
       onRemove={jest.fn()}
       markNewCardSeen={jest.fn()}
       navigateToNewCardFromDashboard={jest.fn()}
@@ -89,6 +90,8 @@ function setup({
       showClickBehaviorSidebar={jest.fn()}
       onChangeLocation={jest.fn()}
       downloadsEnabled
+      autoScroll={false}
+      reportAutoScrolledToDashcard={jest.fn()}
     />,
     {
       storeInitialState: {
@@ -211,27 +214,6 @@ describe("DashCard", () => {
         isEditing: true,
       });
       expect(screen.queryByLabelText("Replace")).not.toBeInTheDocument();
-    });
-
-    it("should fade link card in parameter editing mode", () => {
-      const linkCard = createMockLinkDashboardCard({
-        url: "https://xkcd.com/327",
-      });
-      setup({
-        dashboard: {
-          ...testDashboard,
-          dashcards: [linkCard],
-        },
-        dashcard: linkCard,
-        dashcardData: {},
-        isEditing: true,
-        isEditingParameter: true,
-      });
-
-      expect(screen.getByText("https://xkcd.com/327")).toBeVisible();
-      expect(screen.getByTestId("custom-view-text-link")).toHaveStyle({
-        opacity: 0.25,
-      });
     });
   });
 });

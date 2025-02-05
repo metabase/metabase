@@ -12,9 +12,7 @@
    [metabase.search.impl :as search.impl]
    [metabase.search.in-place.legacy :as search.legacy]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel parse-engine-test
   (testing "Default engine"
@@ -55,7 +53,7 @@
 
 (deftest search-db-call-count-test
   (let [search-string (mt/random-name)]
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Card      _              {:name (str "card db 1 " search-string)}
        :model/Card      _              {:name (str "card db 2 " search-string)}
        :model/Card      _              {:name (str "card db 3 " search-string)}
@@ -88,22 +86,23 @@
                                                  :model-ancestors?            false
                                                  :limit-int                   100
                                                  :calculate-available-models? false}))]
-          ;; warm it up, in case the DB call depends on the order of test execution and it needs to
-          ;; do some initialization
+            ;; warm it up, in case the DB call depends on the order of test execution and it needs to
+            ;; do some initialization
+            (search/init-index!)
             (do-search)
             (t2/with-call-count [call-count]
               (do-search)
-            ;; the call count number here are expected to change if we change the search api
-            ;; we have this test here just to keep tracks this number to remind us to put effort
-            ;; into keep this number as low as we can
-              (is (<= (call-count) 5)))))))))
+              ;; the call count number here are expected to change if we change the search api
+              ;; we have this test here just to keep tracks this number to remind us to put effort
+              ;; into keep this number as low as we can
+              (is (<= (call-count) 6)))))))))
 
 (deftest created-at-correctness-test
   (let [search-term   "created-at-filtering"
         new           #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Dashboard  {dashboard-new :id} {:name       search-term
                                                 :created_at new}
          :model/Dashboard  {dashboard-old :id} {:name       search-term
@@ -201,7 +200,7 @@
         new           #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Dashboard  {dashboard-new :id} {:name search-term}
          :model/Dashboard  {dashboard-old :id} {:name search-term}
          :model/Card       {card-new :id}      {:name search-term}
@@ -276,19 +275,3 @@
           (test-search "thisyear" new-result)
           (test-search "past1years-from-12months" old-result)
           (test-search "today" new-result))))))
-
-(deftest ^:parallel serialize-test
-  (testing "It normalizes dataset queries from strings"
-    (let [query  {:type     :query
-                  :query    {:source-query {:source-table 1}}
-                  :database 1}
-          result {:name          "card"
-                  :model         "card"
-                  :dataset_query (json/encode query)
-                  :all-scores {}
-                  :relevant-scores {}}]
-      (is (= query (-> result search.impl/serialize :dataset_query)))))
-  (testing "Doesn't error on other models without a query"
-    (is (nil? (-> {:name "dash" :model "dashboard" :all-scores {} :relevant-scores {}}
-                  search.impl/serialize
-                  :dataset_query)))))

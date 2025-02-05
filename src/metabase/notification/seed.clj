@@ -4,7 +4,7 @@
   If a notification is changed, it will be replaced with a new one."
   (:require
    [metabase.models.notification :as models.notification]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -60,7 +60,7 @@
                                            :channel_type :channel/email
                                            :details      {:type           "email/handlebars-resource"
                                                           :subject        "{{payload.custom.user_invited_email_subject}}"
-                                                          :path           "metabase/email/new_user_invite.hbs"
+                                                          :path           "metabase/channel/email/new_user_invite.hbs"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{payload.event_info.object.email}}"}}]}]}
@@ -78,7 +78,7 @@
                                            :channel_type "channel/email"
                                            :details      {:type "email/handlebars-resource"
                                                           :subject "You set up an alert"
-                                                          :path "metabase/email/alert_new_confirmation.hbs"
+                                                          :path "metabase/channel/email/alert_new_confirmation.hbs"
                                                           :recipient-type "cc"}}
                             :recipients  [{:type    :notification-recipient/template
                                            :details {:pattern "{{payload.event_info.user.email}}"}}]}]}
@@ -96,12 +96,12 @@
                                            :channel_type "channel/email"
                                            :details      {:type "email/handlebars-resource"
                                                           :subject "Your Slack connection stopped working"
-                                                          :path "metabase/email/slack_token_error.hbs"
+                                                          :path "metabase/channel/email/slack_token_error.hbs"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{context.admin_email}}" :is_optional true}}
                                            {:type                 :notification-recipient/group
-                                            :permissions_group_id (:id (perms-group/admin))}]}]}]))
+                                            :permissions_group_id (:id (perms/admin-group))}]}]}]))
 
 (defn- cleanup-notification!
   [internal-id existing-row]

@@ -14,7 +14,7 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
 
 import ChartSettingsWidgetList from "../../ChartSettingsWidgetList";
-import ChartSettingsWidgetPopover from "../../ChartSettingsWidgetPopover";
+import { ChartSettingsWidgetPopover } from "../../ChartSettingsWidgetPopover";
 import type { Widget } from "../types";
 
 import {

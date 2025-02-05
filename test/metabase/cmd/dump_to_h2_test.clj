@@ -14,7 +14,6 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
-   [metabase.models :refer [Database Setting]]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.encryption-test :as encryption-test]
@@ -32,8 +31,8 @@
           file-contents        {tmp-h2-db    h2-file-dump-content
                                 tmp-h2-db-mv h2-file-dump-content}]
       ;; 1. Don't actually run the copy steps themselves or the flush
-      (mt/with-dynamic-redefs [copy/copy!    (constantly nil)
-                               jdbc/execute! (constantly nil)]
+      (mt/with-dynamic-fn-redefs [copy/copy!    (constantly nil)
+                                  jdbc/execute! (constantly nil)]
         (doseq [[filename contents] file-contents]
           (spit filename contents))
         (dump-to-h2/dump-to-h2! tmp-h2-db)
@@ -76,8 +75,8 @@
               (binding [copy/*copy-h2-database-details* true]
                 (load-from-h2/load-from-h2! h2-fixture-db-file)
                 (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
-                  (t2/insert! Setting {:key "my-site-admin", :value "baz"})
-                  (t2/update! Database 1 {:details {:db "/tmp/test.db"}})
+                  (t2/insert! :model/Setting {:key "my-site-admin", :value "baz"})
+                  (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
                   (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
                   (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})
                   (dump-to-h2/dump-to-h2! h2-file-default-enc)))
@@ -124,14 +123,14 @@
               (binding [copy/*copy-h2-database-details* true]
                 (load-from-h2/load-from-h2! h2-fixture-db-file)
                 (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
-                  (t2/insert! Database {:engine          "h2"
-                                        :name            "normal-db"
-                                        :details         {:db "/tmp/test.db"}
-                                        :is_attached_dwh false})
-                  (t2/insert! Database {:engine          "h2"
-                                        :name            "attached-dwh"
-                                        :details         {:db "/tmp/test.db"}
-                                        :is_attached_dwh true})
+                  (t2/insert! :model/Database {:engine          "h2"
+                                               :name            "normal-db"
+                                               :details         {:db "/tmp/test.db"}
+                                               :is_attached_dwh false})
+                  (t2/insert! :model/Database {:engine          "h2"
+                                               :name            "attached-dwh"
+                                               :details         {:db "/tmp/test.db"}
+                                               :is_attached_dwh true})
                   (dump-to-h2/dump-to-h2! h2-file {:dump-plaintext? true})))
               (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file))]
                 (testing "preserves details when is_attached_dwh is not set"

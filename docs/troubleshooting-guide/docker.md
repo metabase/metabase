@@ -1,8 +1,8 @@
 ---
-title: Running Metabase on Docker
+title: Troubleshooting Metabase on Docker
 ---
 
-# Running Metabase on Docker
+# Troubleshooting Metabase on Docker
 
 Docker simplifies many aspects of running Metabase, but there are some pitfalls to keep in mind. If you have trouble with Metabase under Docker, try going through the troubleshooting process below, then look below for details about the specific issue you've found.
 

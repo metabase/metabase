@@ -5,6 +5,7 @@ import type {
   ReactNode,
   SetStateAction,
 } from "react";
+import type React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import type { AnySchema } from "yup";
@@ -278,18 +279,6 @@ const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   icon: "folder",
 };
 
-type AuthorityLevelMenuItem = {
-  title: string;
-  icon: string;
-  action: () => void;
-};
-
-type CleanUpMenuItem = {
-  title: string;
-  icon: string;
-  link: string;
-};
-
 export type ItemWithCollection = { collection: CollectionEssentials };
 
 type GetCollectionIdType = (
@@ -319,16 +308,18 @@ export const PLUGIN_COLLECTIONS = {
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
-  ): AuthorityLevelMenuItem[] => [],
+  ): React.ReactNode[] => [],
   getIcon: getIconBase,
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items as Item[],
   canCleanUp: (_collection: Collection) => false as boolean,
-  getCleanUpMenuItems: (
+  useGetCleanUpMenuItems: (
     _collection: Collection,
-    _itemCount: number,
-  ): CleanUpMenuItem[] => [],
+  ): { menuItems: JSX.Element[]; showIndicator: boolean } => ({
+    menuItems: [],
+    showIndicator: false,
+  }),
   cleanUpRoute: null as React.ReactElement | null,
   cleanUpAlert: (() => null) as (props: {
     collection: Collection;
@@ -409,6 +400,10 @@ export type SidebarCacheFormProps = {
   onClose: () => void;
 } & GroupProps;
 
+export type PreemptiveCachingSwitchProps = {
+  handleSwitchToggle: () => void;
+};
+
 export const PLUGIN_CACHING = {
   isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
@@ -427,6 +422,8 @@ export const PLUGIN_CACHING = {
   DashboardAndQuestionCachingTab: PluginPlaceholder as any,
   StrategyEditorForQuestionsAndDashboards: PluginPlaceholder as any,
   getTabMetadata: getPerformanceTabMetadata,
+  PreemptiveCachingSwitch:
+    PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
 };
 
 export const PLUGIN_REDUCERS: {
@@ -479,6 +476,7 @@ export const PLUGIN_APPLICATION_PERMISSIONS = {
   getRoutes: (): ReactNode => null,
   tabs: [] as any,
   selectors: {
+    canAccessSettings: (_state: any) => false,
     canManageSubscriptions: (_state: any) => true,
   },
 };

@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import CS from "metabase/css/core/index.css";
+import { Box, Space, Tabs } from "metabase/ui";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
-import { PopoverRoot, PopoverTabs } from "./ChartSettingsWidgetPopover.styled";
 
 interface Widget {
   id: string;
@@ -18,7 +19,7 @@ interface ChartSettingsWidgetPopoverProps {
   widgets: Widget[];
 }
 
-const ChartSettingsWidgetPopover = ({
+export const ChartSettingsWidgetPopover = ({
   anchor,
   handleEndShowWidget,
   widgets,
@@ -51,18 +52,30 @@ const ChartSettingsWidgetPopover = ({
       reference={anchor}
       content={
         widgets.length > 0 ? (
-          <PopoverRoot noTopPadding={hasMultipleSections} ref={contentRef}>
+          <Box
+            pt={hasMultipleSections ? 0 : undefined}
+            ref={contentRef}
+            mah="37.5rem"
+            miw="336px"
+            className={CS.overflowYAuto}
+          >
             {hasMultipleSections && (
-              <PopoverTabs
+              <Tabs
+                px="md"
+                pt="xs"
                 value={currentSection}
-                options={sections.current.map((sectionName: string) => ({
-                  name: sectionName,
-                  value: sectionName,
-                }))}
-                onChange={section => setCurrentSection(String(section))}
-                variant="underlined"
-              />
+                onTabChange={section => setCurrentSection(String(section))}
+              >
+                <Tabs.List grow>
+                  {sections.current.map(sectionName => (
+                    <Tabs.Tab key={sectionName} value={sectionName} p="md">
+                      {sectionName}
+                    </Tabs.Tab>
+                  ))}
+                </Tabs.List>
+              </Tabs>
             )}
+            <Space py="sm"></Space>
             {widgets
               .filter(widget => widget.section === currentSection)
               ?.map(widget => (
@@ -72,7 +85,7 @@ const ChartSettingsWidgetPopover = ({
                   hidden={false}
                 />
               ))}
-          </PopoverRoot>
+          </Box>
         ) : null
       }
       visible={!!anchor}
@@ -92,6 +105,3 @@ const ChartSettingsWidgetPopover = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ChartSettingsWidgetPopover;

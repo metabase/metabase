@@ -1,6 +1,6 @@
+import type { DatePickerTruncationUnit } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
-import type { DatePickerTruncationUnit } from "../../types";
 import type { DateIntervalValue } from "../types";
 
 import { DEFAULT_OFFSETS } from "./constants";

@@ -1,10 +1,14 @@
 ---
-title: Password complexity
+title: Passwords
 redirect_from:
   - /docs/latest/operations-guide/changing-password-complexity
 ---
 
-# Password complexity
+# Passwords
+
+Metabase can allow authentication via email and password.
+
+## Password complexity
 
 Metabase offers a couple controls for administrators who prefer to increase the password requirements on their user accounts.
 
@@ -19,3 +23,9 @@ The settings above can be used independently, so it's fine to use only one or th
 
 By default, Metabase also prevents users from setting passwords that are in a list of common passwords (like `qwerty123` and
 `passw0rd`). Changing the complexity requirement to `weak` disables this behavior.
+
+## Disabling password logins
+
+{% include plans-blockquote.html feature="Disabling password logins" %}
+
+On Pro and Enterprise plans, you can require people to log in with SSO by disabling password authentication from **Admin settings** > **Authentication**.

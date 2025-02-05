@@ -1,13 +1,12 @@
 import { renderHook } from "@testing-library/react-hooks";
 
+import type { DatePickerValue } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
   createQuery,
   createQueryWithClauses,
 } from "metabase-lib/test-helpers";
-
-import type { DatePickerValue } from "../../components/DatePicker";
 
 import { useDateFilter } from "./use-date-filter";
 
@@ -128,7 +127,7 @@ function getTestCases(
         values: [date1],
         hasTime: false,
       },
-      expression: Lib.specificDateFilterClause(query, stageIndex, {
+      expression: Lib.specificDateFilterClause({
         operator: "=",
         column,
         values: [date1],
@@ -143,7 +142,7 @@ function getTestCases(
         values: [date1],
         hasTime: false,
       },
-      expression: Lib.specificDateFilterClause(query, stageIndex, {
+      expression: Lib.specificDateFilterClause({
         operator: "<",
         column,
         values: [date1],
@@ -158,7 +157,7 @@ function getTestCases(
         values: [date1],
         hasTime: false,
       },
-      expression: Lib.specificDateFilterClause(query, stageIndex, {
+      expression: Lib.specificDateFilterClause({
         operator: ">",
         column,
         values: [date1],
@@ -173,7 +172,7 @@ function getTestCases(
         values: [date1, date2],
         hasTime: false,
       },
-      expression: Lib.specificDateFilterClause(query, stageIndex, {
+      expression: Lib.specificDateFilterClause({
         operator: "between",
         column,
         values: [date1, date2],

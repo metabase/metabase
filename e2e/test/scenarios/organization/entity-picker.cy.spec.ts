@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -192,8 +192,8 @@ describe("scenarios > organization > entity picker", () => {
         "should search for tables when there are multiple databases",
         { tags: "@external" },
         () => {
-          H.resetTestTable({ type: "postgres", table: "multi_schema" });
           H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
           cy.signInAsAdmin();
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
@@ -252,8 +252,8 @@ describe("scenarios > organization > entity picker", () => {
         "should search for tables in a multi-schema database",
         { tags: "@external" },
         () => {
-          H.resetTestTable({ type: "postgres", table: "multi_schema" });
           H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
           cy.signInAsAdmin();
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
@@ -780,28 +780,32 @@ describe("scenarios > organization > entity picker", () => {
       });
     });
 
-    it("should show dashboards in personal collections when apropriate, even if there are no sub collections", () => {
-      cy.signInAsAdmin();
-      H.createDashboard({
-        collection_id: ADMIN_PERSONAL_COLLECTION_ID,
-      });
+    it(
+      "should show dashboards in personal collections when apropriate, even if there are no sub collections",
+      { tags: "@flaky" },
+      () => {
+        cy.signInAsAdmin();
+        H.createDashboard({
+          collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+        });
 
-      H.openTable({ table: ORDERS_ID });
-      cy.button("Save").click();
-      H.modal().findByLabelText("Where do you want to save this?").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
-        H.entityPickerModalItem(
-          0,
-          "Bobby Tables's Personal Collection",
-        ).click();
-        H.entityPickerModalItem(1, "Test Dashboard").should("exist").click();
-        cy.button("Select this dashboard").click();
-      });
-      H.modal()
-        .findByLabelText("Where do you want to save this?")
-        .should("contain.text", "Test Dashboard");
-    });
+        H.openTable({ table: ORDERS_ID });
+        cy.button("Save").click();
+        H.modal().findByLabelText("Where do you want to save this?").click();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Browse").click();
+          H.entityPickerModalItem(
+            0,
+            "Bobby Tables's Personal Collection",
+          ).click();
+          H.entityPickerModalItem(1, "Test Dashboard").should("exist").click();
+          cy.button("Select this dashboard").click();
+        });
+        H.modal()
+          .findByLabelText("Where do you want to save this?")
+          .should("contain.text", "Test Dashboard");
+      },
+    );
   });
 
   describe("dashboard picker", () => {

@@ -89,7 +89,7 @@ config:
         host: localhost
         port: 5432
         user: dbuser
-        password: "{{ env POSTGRES_TEST_DATA_PASSWORD }}"
+        password: "{{{ env POSTGRES_TEST_DATA_PASSWORD }}}"
         dbname: test-data
 {% endraw %}
 ```
@@ -122,7 +122,7 @@ config:
         host: localhost
         port: 5432
         user: dbuser
-        password: "{{ env POSTGRES_TEST_DATA_PASSWORD }}"
+        password: "{{{ env POSTGRES_TEST_DATA_PASSWORD }}}"
         dbname: test-data
       uploads_enabled: true
       uploads_schema_name: uploads
@@ -134,7 +134,7 @@ See [Uploads](../databases/uploads.md).
 
 ## Referring to environment variables in the `config.yml`
 
-As shown in the Databases examples above, environment variables can be specified with `{% raw %}{{ template-tags }}{% endraw %}` like `{% raw %}{{ env POSTGRES_TEST_DATA_PASSWORD }}{% endraw %}` or `{% raw %}[[options {{template-tags}}]]{% endraw %}`.
+As shown in the Databases examples above, environment variables can be specified with `{% raw %}{{{ template-tags }}}{% endraw %}` like `{% raw %}{{{ env POSTGRES_TEST_DATA_PASSWORD }}}{% endraw %}` or `{% raw %}[[options {{{template-tags}}}]]{% endraw %}`.
 
 Metabase doesn't support recursive expansion, so if one of your environment variables references _another_ environment variable, you're going to have a bad time.
 

@@ -14,7 +14,7 @@ Metabase will print out the help text for available commands.
 
 ## `api-documentation`
 
-Generate a markdown file containing documentation for all API endpoints. This is written to a file called `docs/api-documentation.md`.
+Generate a markdown file containing documentation for all API endpoints. This is written to a file called `docs/api.html`.
 
 ## `driver-methods` | `driver-methods _docs`
 
@@ -115,6 +115,10 @@ Reset the password for a user with `email-address`.
 ## `rotate-encryption-key new-key`
 
 Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars.
+
+## `remove-encryption`
+
+Decrypts data in the metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to the current key.
 
 ## `seed-entity-ids`
 

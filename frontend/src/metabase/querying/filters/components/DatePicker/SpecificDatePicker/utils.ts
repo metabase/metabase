@@ -6,7 +6,7 @@ import type {
   DatePickerValue,
   SpecificDatePickerOperator,
   SpecificDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
 
 import { TABS } from "./constants";
 import type { Tab } from "./types";
@@ -17,9 +17,7 @@ export function isSpecificValue(
   return value?.type === "specific";
 }
 
-export function getTabs(
-  availableOperators: ReadonlyArray<DatePickerOperator>,
-): Tab[] {
+export function getTabs(availableOperators: DatePickerOperator[]): Tab[] {
   return TABS.filter(tab => availableOperators.includes(tab.operator));
 }
 
@@ -55,7 +53,7 @@ export function getOperatorDefaultValue(
 
 export function canSetTime(
   value: SpecificDatePickerValue,
-  availableUnits: ReadonlyArray<DatePickerUnit>,
+  availableUnits: DatePickerUnit[],
 ) {
   return value.hasTime || availableUnits.includes("minute");
 }

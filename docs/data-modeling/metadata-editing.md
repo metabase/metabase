@@ -42,7 +42,7 @@ To add a table description, click into the box below the table name. Description
 
 **Queryable** tables are visible across all of Metabase.
 
-**Hidden** tables won't show up in the [query builder](../questions/query-builder/introduction.md) or [data reference](../exploration-and-organization/data-model-reference.md). But this is not a security feature: hidden tables can still be used in SQL questions if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
+**Hidden** tables won't show up in the [query builder](../questions/query-builder/editor.md) or [data reference](../exploration-and-organization/data-model-reference.md). But this is not a security feature: hidden tables can still be used in SQL questions if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
 
 Tip: To hide all of the tables in a database (say, if you've migrated to a new database), click on the **hidden eye** icon beside "# queryable tables" in the left sidebar.
 

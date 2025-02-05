@@ -28,6 +28,8 @@
   color: var(--mb-color-text-white);
   border-radius: 0.3em;
   padding: 0.2em;
+  margin-right: 8px;
+  transition: all 0.25s;
 
   &.isSelected {
     background-color: var(--mb-color-bg-white);
@@ -92,16 +94,11 @@
     background-color: var(--mb-color-brand);
   }
 
-  :global(.Icon) {
-    margin-right: 8px;
-    transition: all 0.25s;
-  }
-
   &:hover {
     color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
 
-    :global(.Icon) {
+    .FieldTypeIcon {
       background-color: var(--mb-color-bg-white);
       color: var(--mb-color-brand);
     }

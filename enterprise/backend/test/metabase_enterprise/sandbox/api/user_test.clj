@@ -6,8 +6,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
@@ -53,7 +52,7 @@
              (mt/user-http-request :rasta :get 403 "mt/user/attributes"))))
 
     (testing "returns set of user attributes"
-      (t2.with-temp/with-temp
+      (mt/with-temp
         ['User _ {:login_attributes {:foo "bar"}}
          'User _ {:login_attributes {:foo "baz"
                                      :miz "bar"}}]
@@ -75,7 +74,7 @@
              (mt/user-http-request :crowberto :put 404 (format "mt/user/%d/attributes" Integer/MAX_VALUE) {}))))
 
     (testing "Admin can update user attributes"
-      (t2.with-temp/with-temp
+      (mt/with-temp
         ['User {id :id} {}]
         (mt/user-http-request :crowberto :put 200 (format "mt/user/%d/attributes" id) {:login_attributes {"foo" "bar"}})
         (is (= {"foo" "bar"}

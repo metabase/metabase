@@ -2,11 +2,6 @@
   "Tests for /api/bookmark endpoints."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.bookmark
-    :refer [BookmarkOrdering CardBookmark CollectionBookmark DashboardBookmark]]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -15,9 +10,9 @@
 (deftest bookmarks-test
   (mt/initialize-if-needed! :db)
   (testing "POST /api/bookmark/:model/:model-id"
-    (mt/with-temp [Collection {coll-id :id :as collection} {:name "Test Collection"}
-                   Card       card {:name "Test Card", :display "area", :collection_id coll-id}
-                   Dashboard  dashboard {:name "Test Dashboard", :collection_id coll-id}]
+    (mt/with-temp [:model/Collection {coll-id :id :as collection} {:name "Test Collection"}
+                   :model/Card       card {:name "Test Card", :display "area", :collection_id coll-id}
+                   :model/Dashboard  dashboard {:name "Test Dashboard", :collection_id coll-id}]
       (testing "check that we can bookmark a Collection"
         (is (= (u/the-id collection)
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/collection/" (u/the-id collection)))
@@ -57,18 +52,18 @@
 (defn bookmark-models [user-id & models]
   (doseq [model models]
     (cond
-      (mi/instance-of? Collection model)
-      (t2/insert! CollectionBookmark
+      (mi/instance-of? :model/Collection model)
+      (t2/insert! :model/CollectionBookmark
                   {:user_id user-id
                    :collection_id (u/the-id model)})
 
-      (mi/instance-of? Card model)
-      (t2/insert! CardBookmark
+      (mi/instance-of? :model/Card model)
+      (t2/insert! :model/CardBookmark
                   {:user_id user-id
                    :card_id (u/the-id model)})
 
-      (mi/instance-of? Dashboard model)
-      (t2/insert! DashboardBookmark
+      (mi/instance-of? :model/Dashboard model)
+      (t2/insert! :model/DashboardBookmark
                   {:user_id user-id
                    :dashboard_id (u/the-id model)})
 
@@ -77,10 +72,10 @@
 
 (deftest bookmarks-on-archived-items-test
   (testing "POST /api/bookmark/:model/:model-id"
-    (mt/with-temp [Collection archived-collection {:name "Test Collection"
-                                                   :archived true}
-                   Card       archived-card {:name "Test Card" :archived true}
-                   Dashboard  archived-dashboard {:name "Test Dashboard" :archived true}]
+    (mt/with-temp [:model/Collection archived-collection {:name "Test Collection"
+                                                          :archived true}
+                   :model/Card       archived-card {:name "Test Card" :archived true}
+                   :model/Dashboard  archived-dashboard {:name "Test Dashboard" :archived true}]
       (bookmark-models (mt/user->id :rasta) archived-collection archived-card archived-dashboard)
       (testing "check that we don't receive bookmarks of archived items"
         (is (= #{}
@@ -90,10 +85,10 @@
 
 (deftest bookmarks-ordering-test
   (testing "PUT /api/bookmark/ordering"
-    (mt/with-temp [Collection collection {:name "Test Collection"}
-                   Card       card {:name "Test Card"}
-                   Dashboard  dashboard {:name "Test Dashboard"}]
-      (mt/with-model-cleanup [BookmarkOrdering]
+    (mt/with-temp [:model/Collection collection {:name "Test Collection"}
+                   :model/Card       card {:name "Test Card"}
+                   :model/Dashboard  dashboard {:name "Test Dashboard"}]
+      (mt/with-model-cleanup [:model/BookmarkOrdering]
         (bookmark-models (mt/user->id :rasta) collection card dashboard)
         (testing "Check that ordering works"
           (is (= nil

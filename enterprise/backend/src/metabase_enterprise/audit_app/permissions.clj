@@ -2,10 +2,10 @@
   (:require
    [metabase.audit :as audit]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]

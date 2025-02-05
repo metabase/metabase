@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -205,7 +205,7 @@ select 10 as size, 2 as x, 5 as y`,
       rows: allTooltipRows,
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     // Resizing animation due to the sidebar
     cy.wait(200);
 
@@ -240,6 +240,7 @@ function triggerPopoverForBubble(index = 13, force = false) {
     cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.cartesianChartCircle()
     .eq(index) // Random bubble
     .trigger("mousemove", { force });

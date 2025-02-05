@@ -103,6 +103,19 @@ export function navigationSidebar() {
   return cy.findByTestId("main-navbar-root");
 }
 
+export function assertNavigationSidebarItemSelected(name, value = "true") {
+  navigationSidebar()
+    .findByRole("treeitem", { name })
+    .should("have.attr", "aria-selected", value);
+}
+
+export function assertNavigationSidebarBookmarkSelected(name, value = "true") {
+  navigationSidebar()
+    .findByRole("tab", { name: "Bookmarks" })
+    .findByRole("listitem", { name })
+    .should("have.attr", "aria-selected", value);
+}
+
 export function appBar() {
   return cy.findByLabelText("Navigation bar");
 }
@@ -149,10 +162,12 @@ export function filterWidget() {
 }
 
 export function clearFilterWidget(index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return filterWidget().eq(index).icon("close").click();
 }
 
 export function resetFilterWidgetToDefault(index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return filterWidget().eq(index).icon("revert").click();
 }
 
@@ -165,7 +180,7 @@ export function setFilterWidgetValue(
   popover()
     .first()
     .within(() => {
-      removeMultiAutocompleteValue(0);
+      removeFieldValuesValue(0);
       if (value) {
         cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
       }
@@ -296,6 +311,10 @@ export function tableInteractiveBody() {
   return cy.get("#main-data-grid");
 }
 
+export function tableAllFieldsHiddenImage() {
+  return cy.findByTestId("Table-all-fields-hidden-image");
+}
+
 export function tableHeaderClick(headerString) {
   tableInteractive().within(() => {
     cy.findByTextEnsureVisible(headerString).trigger("mousedown");
@@ -312,6 +331,7 @@ export function assertTableData({ columns, firstRows = [] }) {
     .should("have.length", columns.length);
 
   columns.forEach((column, index) => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     tableInteractive()
       .findAllByTestId("header-cell")
       .eq(index)
@@ -320,6 +340,7 @@ export function assertTableData({ columns, firstRows = [] }) {
 
   firstRows.forEach((row, rowIndex) => {
     row.forEach((cell, cellIndex) => {
+      // eslint-disable-next-line no-unsafe-element-filtering
       tableInteractiveBody()
         .findAllByTestId("cell-data")
         .eq(columns.length * rowIndex + cellIndex)
@@ -343,11 +364,28 @@ export function newButton(menuItem) {
 }
 
 export function multiSelectInput(filter = ":eq(0)") {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy.findByRole("combobox").filter(filter).get("input").last();
 }
 
 export function multiAutocompleteInput(filter = ":eq(0)") {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy.findAllByRole("combobox").filter(filter).get("input").last();
+}
+
+export function fieldValuesInput(filter = ":eq(0)") {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  return cy.findAllByRole("textbox").filter(filter).get("input").last();
+}
+
+export function fieldValuesValue(index) {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  return cy.findAllByTestId("token-field").eq(index);
+}
+
+export function removeFieldValuesValue(index) {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  return cy.findAllByTestId("token-field").icon("close").eq(index).click();
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
@@ -371,4 +409,8 @@ export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
 
   cy.wait(interval);
   repeatAssertion(assertFn, timeout - interval, interval);
+}
+
+export function mapPinIcon() {
+  return cy.get(".leaflet-marker-icon");
 }

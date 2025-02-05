@@ -11,14 +11,8 @@ import AccordionList from "metabase/core/components/AccordionList";
 import Markdown from "metabase/core/components/Markdown";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
-import {
-  CompareAggregations,
-  canAddTemporalCompareAggregation,
-} from "metabase/query_builder/components/CompareAggregations";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-import { getQuestion } from "metabase/query_builder/selectors";
-import { trackColumnCompareViaShortcut } from "metabase/querying/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -38,7 +32,6 @@ export interface AggregationPickerProps {
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   allowCustomExpressions?: boolean;
-  allowTemporalComparisons?: boolean;
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
   onBack?: () => void;
@@ -75,12 +68,10 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   allowCustomExpressions = false,
-  allowTemporalComparisons = false,
   onClose,
   onQueryChange,
   onBack,
 }: AggregationPickerProps) {
-  const question = useSelector(getQuestion);
   const metadata = useSelector(getMetadata);
   const displayInfo = clause
     ? Lib.displayInfo(query, stageIndex, clause)
@@ -92,7 +83,6 @@ export function AggregationPicker({
   ] = useToggle(
     isExpressionEditorInitiallyOpen(query, stageIndex, clause, operators),
   );
-  const [isComparing, setIsComparing] = useState(false);
 
   // For really simple inline expressions like Average([Price]),
   // MLv2 can figure out that "Average" operator is used.
@@ -105,10 +95,6 @@ export function AggregationPicker({
     () => (operator ? Lib.displayInfo(query, stageIndex, operator) : null),
     [query, stageIndex, operator],
   );
-
-  const aggregations = useMemo(() => {
-    return Lib.aggregations(query, stageIndex);
-  }, [query, stageIndex]);
 
   const onSelect = useCallback(
     function (aggregation: Lib.Aggregable) {
@@ -163,19 +149,6 @@ export function AggregationPicker({
       });
     }
 
-    if (
-      allowTemporalComparisons &&
-      canAddTemporalCompareAggregation(query, stageIndex)
-    ) {
-      sections.push({
-        type: "action",
-        key: "compare",
-        name: t`Compare to the past`,
-        icon: "lines",
-        items: [],
-      });
-    }
-
     if (allowCustomExpressions && supportsCustomExpressions) {
       sections.push({
         key: "custom-expression",
@@ -194,7 +167,6 @@ export function AggregationPicker({
     clauseIndex,
     operators,
     allowCustomExpressions,
-    allowTemporalComparisons,
   ]);
 
   const checkIsItemSelected = useCallback(
@@ -240,14 +212,6 @@ export function AggregationPicker({
     [onSelect, onClose],
   );
 
-  const handleCompareSelect = useCallback(() => {
-    setIsComparing(true);
-  }, []);
-
-  const handleCompareClose = useCallback(() => {
-    setIsComparing(false);
-  }, []);
-
   const handleChange = useCallback(
     (item: ListItem) => {
       if (item.type === "operator") {
@@ -264,11 +228,8 @@ export function AggregationPicker({
       if (section.key === "custom-expression") {
         openExpressionEditor();
       }
-      if (section.key === "compare") {
-        handleCompareSelect();
-      }
     },
-    [openExpressionEditor, handleCompareSelect],
+    [openExpressionEditor],
   );
 
   const handleClauseChange = useCallback(
@@ -279,36 +240,6 @@ export function AggregationPicker({
     },
     [onSelect, onClose],
   );
-
-  const handleCompareSubmit = useCallback(
-    (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => {
-      onQueryChange(query);
-
-      if (question) {
-        trackColumnCompareViaShortcut(
-          query,
-          stageIndex,
-          aggregations,
-          question.id(),
-        );
-      }
-
-      onClose?.();
-    },
-    [stageIndex, question, onClose, onQueryChange],
-  );
-
-  if (isComparing) {
-    return (
-      <CompareAggregations
-        aggregations={aggregations}
-        query={query}
-        stageIndex={stageIndex}
-        onClose={handleCompareClose}
-        onSubmit={handleCompareSubmit}
-      />
-    );
-  }
 
   if (isEditingExpression) {
     return (

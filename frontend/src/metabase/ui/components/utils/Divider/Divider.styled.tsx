@@ -4,7 +4,7 @@ export const getDividerOverrides = (): MantineThemeOverride["components"] => ({
   Divider: {
     styles: theme => ({
       horizontal: {
-        borderTopColor: theme.fn.themeColor("border"),
+        borderTopColor: "var(--mb-color-border)",
       },
       vertical: {
         borderLeftColor: theme.fn.themeColor("border"),

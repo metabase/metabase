@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { loginCache } from "e2e/support/commands/user/authentication";
 import {
   METABASE_SECRET_KEY,
   SAMPLE_DB_ID,
@@ -8,6 +9,8 @@ import {
   USER_GROUPS,
 } from "e2e/support/cypress_data";
 import {
+  createQuestion,
+  createQuestionAndDashboard,
   restore,
   snapshot,
   updateSetting,
@@ -87,6 +90,8 @@ describe("snapshots", () => {
       // Dismiss `it's ok to play around` modal for admin
       cy.request("PUT", `/api/user/${id}/modal/qbnewb`);
     });
+
+    cy.signIn("admin", { setupCache: true }); // cache admin credentials
   }
 
   function updateSettings() {
@@ -144,6 +149,16 @@ describe("snapshots", () => {
 
     // Make a call to `/api/user` because some things (personal collections) get created there
     cy.request("GET", "/api/user");
+
+    Object.keys(USERS).forEach(user => {
+      if (user === "admin") {
+        // we already cached admin user credentials during setup
+        return;
+      }
+      cy.signIn(user, { setupCache: true });
+    });
+
+    cy.signInAsAdmin();
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -233,7 +248,7 @@ describe("snapshots", () => {
     // dashboard 1: Orders in a dashboard
     const dashboardDetails = { name: "Orders in a dashboard" };
 
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
       cardDetails: { size_x: 16, size_y: 8 },
@@ -242,13 +257,13 @@ describe("snapshots", () => {
     });
 
     // question 2: Orders, Count
-    cy.createQuestion({
+    createQuestion({
       name: "Orders, Count",
       query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
     });
 
     // question 3: Orders, Count, Grouped by Created At (year)
-    cy.createQuestion({
+    createQuestion({
       name: "Orders, Count, Grouped by Created At (year)",
       query: {
         "source-table": ORDERS_ID,
@@ -261,7 +276,7 @@ describe("snapshots", () => {
 
   function createModels({ ORDERS_ID }) {
     // Model 1
-    cy.createQuestion({
+    createQuestion({
       name: "Orders Model",
       query: { "source-table": ORDERS_ID },
       type: "model",
@@ -344,6 +359,8 @@ describe("snapshots", () => {
 
 function getDefaultInstanceData() {
   const instanceData = {};
+
+  instanceData.loginCache = loginCache;
 
   cy.request("/api/card").then(({ body: cards }) => {
     instanceData.questions = cards;

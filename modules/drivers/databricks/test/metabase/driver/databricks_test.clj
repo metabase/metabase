@@ -8,6 +8,7 @@
    [metabase.driver.databricks :as databricks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [toucan2.core :as t2]))
 
 ;; Because the datasets that are tested are preloaded, it is fine just to modify the database details to sync other schemas.
@@ -30,10 +31,12 @@
                                                                     (update :details dissoc :schema-filters-patterns)
                                                                     (update :details assoc  :schema-filters-type "all")))]
         (testing "tables from multiple schemas were found"
-          (is (contains? (:tables actual-tables) {:name "venues", :schema "test-data", :description nil}))
-          (is (contains? (:tables actual-tables) {:name "checkins", :schema "test-data", :description nil}))
-          (is (contains? (:tables actual-tables) {:name "airport", :schema "airports", :description nil}))
-          (is (contains? (:tables actual-tables) {:name "bird", :schema "bird-flocks", :description nil})))
+          (are [name schema] (contains? (:tables actual-tables)
+                                        {:name name, :schema schema, :description nil})
+            "venues"   "test-data"
+            "checkins" "test-data"
+            "airport"  "airports"
+            "bird"     "bird-flocks"))
         (testing "information_schema is excluded"
           (is (empty? (filter #(= "information_schema" (:schema %)) (:tables actual-tables)))))))
     (testing "`driver/describe-database` returns expected results for `exclusion` schema filters."
@@ -41,8 +44,7 @@
                                                                         :schema-filters-patterns "test-data"
                                                                         :schema-filters-type "exclusion"))]
         (testing "tables from multiple schemas were found"
-          (is (not (contains? (:tables actual-tables) {:name "venues", :schema "test-data", :description nil})))
-          (is (not (contains? (:tables actual-tables) {:name "checkins", :schema "test-data", :description nil})))
+          (is (not (contains? (set (map :schema (:tables actual-tables))) "test-data")))
           (is (contains? (:tables actual-tables) {:name "airport", :schema "airports", :description nil}))
           (is (contains? (:tables actual-tables) {:name "bird", :schema "bird-flocks", :description nil})))))))
 
@@ -287,3 +289,15 @@
       (is (true? (driver/can-connect? :databricks (:details (mt/db))))))
     (testing "Can connect returns false for catalog that is NOT present on the instance (#49444)"
       (is (false? (driver/can-connect? :databricks (assoc (:details (mt/db)) :catalog "xixixix")))))))
+
+(deftest can-connect-using-m2m-test
+  (mt/test-driver
+    :databricks
+    (testing "Can connect using m2m (#51276)"
+      (is (true? (driver/can-connect?
+                  :databricks
+                  (-> (:details (mt/db))
+                      (dissoc :token)
+                      (assoc :use-m2m      true
+                             :client-id    (tx/db-test-env-var-or-throw :databricks :client-id)
+                             :oauth-secret (tx/db-test-env-var-or-throw :databricks :oauth-secret)))))))))

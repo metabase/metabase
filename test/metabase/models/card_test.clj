@@ -1,13 +1,17 @@
 (ns metabase.models.card-test
   (:require
+   [clojure.data :as data]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.audit :as audit]
    [metabase.config :as config]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-metadata :as meta]
    [metabase.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.models.parameter-card :as parameter-card]
@@ -19,16 +23,15 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
-    (t2.with-temp/with-temp [:model/Card      {card-id :id} {}
-                             :model/Dashboard dash-1        {}
-                             :model/Dashboard dash-2        {}]
+    (mt/with-temp [:model/Card      {card-id :id} {}
+                   :model/Dashboard dash-1        {}
+                   :model/Dashboard dash-2        {}]
       (letfn [(add-card-to-dash! [dash]
                 (t2/insert! :model/DashboardCard
                             {:card_id      card-id
@@ -63,23 +66,23 @@
         card-params    (fn [card-id] (merge default-params {:values_source_type "card"
                                                             :values_source_config {:card_id card-id}}))]
     (testing "With no associated cards"
-      (t2.with-temp/with-temp [:model/Card card]
+      (mt/with-temp [:model/Card card]
         (is (zero? (hydrated-count card)))))
     (testing "With one"
-      (t2.with-temp/with-temp [:model/Card      {card-id :id :as card} {}
-                               :model/Dashboard _                      {:parameters [(card-params card-id)]}]
+      (mt/with-temp [:model/Card      {card-id :id :as card} {}
+                     :model/Dashboard _                      {:parameters [(card-params card-id)]}]
         (is (= 1 (hydrated-count card)))))
     (testing "With several"
-      (t2.with-temp/with-temp [:model/Card      {card-id :id :as card} {}
-                               :model/Dashboard _                      {:parameters [(card-params card-id)]}
-                               :model/Dashboard _                      {:parameters [(card-params card-id)]}
-                               :model/Dashboard _                      {:parameters [(card-params card-id)]}]
+      (mt/with-temp [:model/Card      {card-id :id :as card} {}
+                     :model/Dashboard _                      {:parameters [(card-params card-id)]}
+                     :model/Dashboard _                      {:parameters [(card-params card-id)]}
+                     :model/Dashboard _                      {:parameters [(card-params card-id)]}]
         (is (= 3 (hydrated-count card)))))))
 
 (deftest public-sharing-test
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
-      (t2.with-temp/with-temp [:model/Card card {:public_uuid (str (random-uuid))}]
+      (mt/with-temp [:model/Card card {:public_uuid (str (random-uuid))}]
         (is (=? u/uuid-regex
                 (:public_uuid card)))))))
 
@@ -87,7 +90,7 @@
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
-        (t2.with-temp/with-temp [:model/Card card {:public_uuid (str (random-uuid))}]
+        (mt/with-temp [:model/Card card {:public_uuid (str (random-uuid))}]
           (is (= nil
                  (:public_uuid card))))))))
 
@@ -97,9 +100,9 @@
    :native   {:query "SELECT count(*) FROM toucan_sightings;"}})
 
 (deftest database-id-test
-  (t2.with-temp/with-temp [:model/Card {:keys [id]} {:name          "some name"
-                                                     :dataset_query (dummy-dataset-query (mt/id))
-                                                     :database_id   (mt/id)}]
+  (mt/with-temp [:model/Card {:keys [id]} {:name          "some name"
+                                           :dataset_query (dummy-dataset-query (mt/id))
+                                           :database_id   (mt/id)}]
     (testing "before update"
       (is (= {:name "some name", :database_id (mt/id)}
              (into {} (t2/select-one [:model/Card :name :database_id] :id id)))))
@@ -144,8 +147,8 @@
   (mt/with-actions-enabled
     (testing "unhappy paths\n"
       (testing "should not attempt to delete if it's not a model"
-        (t2.with-temp/with-temp [:model/Card {id :id} {:type          :question
-                                                       :dataset_query (mt/mbql-query users)}]
+        (mt/with-temp [:model/Card {id :id} {:type          :question
+                                             :dataset_query (mt/mbql-query users)}]
           (with-redefs [card/disable-implicit-action-for-model! (fn [& _args]
                                                                   (throw (ex-info "Should not be called" {})))]
             (is (= 1 (t2/update! :model/Card :id id {:dataset_query (mt/mbql-query users {:limit 1})})))))))))
@@ -194,7 +197,7 @@
 
 (deftest circular-reference-test
   (testing "Should throw an Exception if saving a Card that references itself"
-    (t2.with-temp/with-temp [:model/Card card (card-with-source-table (mt/id :venues))]
+    (mt/with-temp [:model/Card card (card-with-source-table (mt/id :venues))]
       ;; now try to make the Card reference itself. Should throw Exception
       (is (thrown?
            Exception
@@ -203,8 +206,8 @@
 
 (deftest circular-reference-test-2
   (testing "Do the same stuff with circular reference between two Cards... (A -> B -> A)"
-    (t2.with-temp/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
-                             :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))]
+    (mt/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
+                   :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))]
       (is (thrown?
            Exception
            (t2/update! :model/Card (u/the-id card-a)
@@ -212,30 +215,30 @@
 
 (deftest circular-reference-test-3
   (testing "ok now try it with A -> C -> B -> A"
-    (t2.with-temp/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
-                             :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))
-                             :model/Card card-c (card-with-source-table (str "card__" (u/the-id card-b)))]
+    (mt/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
+                   :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))
+                   :model/Card card-c (card-with-source-table (str "card__" (u/the-id card-b)))]
       (is (thrown?
            Exception
            (t2/update! :model/Card (u/the-id card-a)
                        (card-with-source-table (str "card__" (u/the-id card-c)))))))))
 
 (deftest validate-collection-namespace-test
-  (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
+  (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Card in a non-normal Collection"
       (let [card-name (mt/random-name)]
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Card can only go in Collections in the \"default\" or :analytics namespace."
-               (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card) :collection_id collection-id, :name card-name))))
+               (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id collection-id, :name card-name))))
           (finally
             (t2/delete! :model/Card :name card-name)))))))
 
 (deftest validate-collection-namespace-test-2
-  (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
+  (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to move a Card to a non-normal Collection"
-      (t2.with-temp/with-temp [:model/Card {card-id :id}]
+      (mt/with-temp [:model/Card {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\" or :analytics namespace."
@@ -244,19 +247,19 @@
 (deftest ^:parallel normalize-result-metadata-test
   (testing "Should normalize result metadata keys when fetching a Card from the DB"
     (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))]
-      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query venues)
-                                                          :result_metadata metadata}]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query venues)
+                                                :result_metadata metadata}]
         (is (= (mt/derecordize metadata)
                (mt/derecordize (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))
 
 (deftest populate-result-metadata-if-needed-test
   (doseq [[creating-or-updating f]
           {"creating" (fn [properties f]
-                        (t2.with-temp/with-temp [:model/Card {card-id :id} properties]
+                        (mt/with-temp [:model/Card {card-id :id} properties]
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))
            "updating" (fn [changes f]
-                        (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query checkins)
-                                                                            :result_metadata (qp.preprocess/query->expected-cols (mt/mbql-query checkins))}]
+                        (mt/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query checkins)
+                                                                  :result_metadata (qp.preprocess/query->expected-cols (mt/mbql-query checkins))}]
                           (t2/update! :model/Card card-id changes)
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))}]
 
@@ -361,7 +364,7 @@
 (deftest normalize-visualization-settings-test
   (test-visualization-settings-normalization
    (fn [original expected]
-     (t2.with-temp/with-temp [:model/Card card {:visualization_settings original}]
+     (mt/with-temp [:model/Card card {:visualization_settings original}]
        (is (= expected
               (t2/select-one-fn :visualization_settings :model/Card :id (u/the-id card))))))))
 
@@ -423,9 +426,9 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""
-             (t2.with-temp/with-temp [:model/Card _ bad-card-data]))))
+             (mt/with-temp [:model/Card _ bad-card-data]))))
       (testing "Should not be able to update a Card to have a filter with the wrong Database ID"
-        (t2.with-temp/with-temp [:model/Card {card-id :id} good-card-data]
+        (mt/with-temp [:model/Card {card-id :id} good-card-data]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""
@@ -439,15 +442,15 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #":parameters must be a sequence of maps with :id and :type keys"
-           (t2.with-temp/with-temp [:model/Card _ {:parameters {:a :b}}])))
-      (t2.with-temp/with-temp [:model/Card card {:parameters [{:id   "valid-id"
-                                                               :type "id"}]}]
+           (mt/with-temp [:model/Card _ {:parameters {:a :b}}])))
+      (mt/with-temp [:model/Card card {:parameters [{:id   "valid-id"
+                                                     :type "id"}]}]
         (is (some? card))))))
 
 (deftest validate-parameters-test-2
   (testing "Should validate Card :parameters when"
     (testing "updating"
-      (t2.with-temp/with-temp [:model/Card {:keys [id]} {:parameters []}]
+      (mt/with-temp [:model/Card {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
@@ -460,8 +463,8 @@
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
-        (t2.with-temp/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
-                                                                                  :target target}]}]
+        (mt/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
+                                                                        :target target}]}]
 
           (is (= [{:parameter_id     "_CATEGORY_NAME_"
                    :target expected}]
@@ -473,15 +476,15 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
-           (t2.with-temp/with-temp [:model/Card _ {:parameter_mappings {:a :b}}])))
-      (t2.with-temp/with-temp [:model/Card card {:parameter_mappings [{:parameter_id "valid-id"
-                                                                       :target       [:field 1000 nil]}]}]
+           (mt/with-temp [:model/Card _ {:parameter_mappings {:a :b}}])))
+      (mt/with-temp [:model/Card card {:parameter_mappings [{:parameter_id "valid-id"
+                                                             :target       [:field 1000 nil]}]}]
         (is (some? card))))))
 
 (deftest validate-parameter-mappings-test-2
   (testing "Should validate Card :parameter_mappings when"
     (testing "updating"
-      (t2.with-temp/with-temp [:model/Card {:keys [id]} {:parameter_mappings []}]
+      (mt/with-temp [:model/Card {:keys [id]} {:parameter_mappings []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
@@ -491,9 +494,9 @@
 
 (deftest normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
-                                                                              :card_id      1
-                                                                              :target       [:dimension [:field-id 1]]}]}]
+    (mt/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
+                                                                    :card_id      1
+                                                                    :target       [:dimension [:field-id 1]]}]}]
       (is (= [{:parameter_id "22486e00"
                :card_id      1
                :target       [:dimension [:field 1 nil]]}]
@@ -514,11 +517,11 @@
                         :id         "_CATEGORY_NAME_"
                         :type       "category"}]
     (testing "parameter with source is card create ParameterCard"
-      (t2.with-temp/with-temp [:model/Card  {source-card-id-1 :id} {}
-                               :model/Card  {source-card-id-2 :id} {}
-                               :model/Card  {card-id :id}          {:parameters [(merge default-params
-                                                                                        {:values_source_type    "card"
-                                                                                         :values_source_config {:card_id source-card-id-1}})]}]
+      (mt/with-temp [:model/Card  {source-card-id-1 :id} {}
+                     :model/Card  {source-card-id-2 :id} {}
+                     :model/Card  {card-id :id}          {:parameters [(merge default-params
+                                                                              {:values_source_type    "card"
+                                                                               :values_source_config {:card_id source-card-id-1}})]}]
         (is (=? [{:card_id                   source-card-id-1
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id
@@ -546,13 +549,13 @@
                         :id         "_CATEGORY_NAME_"
                         :type       "category"}]
     (testing "Delete a card will delete any ParameterCard that linked to it"
-      (t2.with-temp/with-temp [:model/Card  {source-card-id :id} {}
-                               :model/Card  {card-id-1 :id}      {:parameters [(merge default-params
-                                                                                      {:values_source_type    "card"
-                                                                                       :values_source_config {:card_id source-card-id}})]}
-                               :model/Card  {card-id-2 :id}      {:parameters [(merge default-params
-                                                                                      {:values_source_type    "card"
-                                                                                       :values_source_config {:card_id source-card-id}})]}]
+      (mt/with-temp [:model/Card  {source-card-id :id} {}
+                     :model/Card  {card-id-1 :id}      {:parameters [(merge default-params
+                                                                            {:values_source_type    "card"
+                                                                             :values_source_config {:card_id source-card-id}})]}
+                     :model/Card  {card-id-2 :id}      {:parameters [(merge default-params
+                                                                            {:values_source_type    "card"
+                                                                             :values_source_config {:card_id source-card-id}})]}]
         ;; makes sure we have ParameterCard to start with
         (is (=? [{:card_id                   source-card-id
                   :parameterized_object_type :card
@@ -576,7 +579,7 @@
                                                                     :type       "category"
                                                                     :values_source_type    "card"
                                                                     :values_source_config {:card_id source-card-id}}]}]
-      (mt/with-dynamic-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
+      (mt/with-dynamic-fn-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
         (t2/update! :model/Card card-id-1 {:name "new name"})))))
 
 (deftest cleanup-parameter-on-card-changes-test
@@ -694,11 +697,11 @@
   (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
         query    (mt/mbql-query venues)]
     (testing "every card retains result_metadata"
-      (t2.with-temp/with-temp [:model/Card {card1-id :id} {:dataset_query   query
-                                                           :result_metadata metadata}
-                               :model/Card {card2-id :id} {:type            :model
-                                                           :dataset_query   query
-                                                           :result_metadata metadata}]
+      (mt/with-temp [:model/Card {card1-id :id} {:dataset_query   query
+                                                 :result_metadata metadata}
+                     :model/Card {card2-id :id} {:type            :model
+                                                 :dataset_query   query
+                                                 :result_metadata metadata}]
         (doseq [card-id [card1-id card2-id]]
           (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
             ;; card2 is model, but card1 is not
@@ -713,7 +716,7 @@
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
+    (mt/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
       (is (= {:version 2
               :pie.show_legend true
               :pie.percent_visibility "inside"}
@@ -721,7 +724,7 @@
 
 (deftest upgrade-to-v2-db-test-2
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
+    (mt/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
       (t2/update! :model/Card card-id {:name "Favorite Toucan Foods"})
       (is (= {:version 2
               :pie.show_legend true
@@ -756,7 +759,7 @@
     "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."))
 
 (deftest ^:parallel diff-cards-str-update-collection--test
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [:model/Collection {coll-id-1 :id} {:name "Old collection"}
      :model/Collection {coll-id-2 :id} {:name "New collection"}]
     (are [x y expected] (= expected
@@ -790,7 +793,7 @@
     :is-creation? is-creation?}))
 
 (deftest record-revision-and-description-completeness-test
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [:model/Database   db   {:name "random db"}
      :model/Dashboard  dashboard {:name "dashboard"}
      :model/Card       base-card {}
@@ -864,7 +867,7 @@
   ;; test tracking result_metadata for models
   (let [card-info (mt/card-with-source-metadata-for-query
                    (mt/mbql-query venues))]
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Card card card-info]
       (let [before  (select-keys card [:result_metadata])
             changes (update before :result_metadata drop-last)]
@@ -883,7 +886,7 @@
 
 (deftest storing-metabase-version
   (testing "Newly created Card should know a Metabase version used to create it"
-    (t2.with-temp/with-temp [:model/Card card {}]
+    (mt/with-temp [:model/Card card {}]
       (is (= config/mb-version-string (:metabase_version card)))
 
       (with-redefs [config/mb-version-string "blablabla"]
@@ -1099,36 +1102,36 @@
     (mt/with-model-cleanup [:model/Card]
       (testing "You can't insert a card with a collection_id different than its dashboard's collection_id"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                              (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                              (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                                              :dashboard_id dash-id
                                                              :collection_id other-coll-id))))
         (testing "including if it's `nil`"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                                (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                                                :dashboard_id dash-id
                                                                :collection_id nil)))))
         (testing "But you can insert a card with the *same* collection_id"
-          (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+          (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                          :dashboard_id dash-id
                                          :collection_id coll-id)))
         (testing "... or no collection_id"
-          (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+          (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                          :dashboard_id dash-id))))
       (testing "You can't insert a card with a type other than `:question` as a dashboard-internal card"
         (testing "invalid"
           (doseq [invalid-type (disj card/card-types :question)]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                                  (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                  (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                                                  :dashboard_id dash-id
                                                                  :type invalid-type))))))
         (testing "these are valid"
           (doseq [valid-type [:question "question"]]
-            (is (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+            (is (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                                :dashboard_id dash-id
                                                :type valid-type))))))
       (testing "You can't insert a dashboard-internal card with a collection_position"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                              (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                              (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                                              :dashboard_id dash-id
                                                              :collection_position 5))))))))
 
@@ -1173,3 +1176,450 @@
       (t2/update! :model/Card :id [:in [card-1-id card-2-id]]
                   {:name "Flippy"})
       (is (= "Petey" (t2/select-one-fn :name :model/Card :id card-3-id))))))
+
+(deftest ^:parallel query-description-in-metric-cards-test
+  (testing "Metric cards contain query_description key (#51303)"
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+      (mt/with-temp
+        [:model/Card
+         {id :id}
+         {:name "My metric"
+          :type :metric
+          :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/aggregate (lib/count))
+                             lib.convert/->legacy-MBQL)}]
+        (is (= "Orders, Count"
+               (:query_description (t2/select-one :model/Card :id id))))))))
+
+(defn- bare-query []
+  (mt/$ids orders
+    {:database (mt/id)
+     :type     :query
+     :query    {:source-query {:source-table $$orders
+                               :aggregation  [[:count] [:sum $subtotal]]
+                               :breakout     [$subtotal [:expression "yo"]]
+                               :expressions  {"yo" [:+ $subtotal 7]}}
+                :joins        [{:alias        "a_join"
+                                :condition    [:= $product_id &a_join.products.id]
+                                :source-table $$products}
+                               {:alias        "another_join"
+                                :condition    [:= $user_id &another_join.people.id]
+                                :source-table $$people}]}}))
+
+(defn- bare-query-exp [eid]
+  (mt/$ids orders
+    {:source-query {:source-table       $$orders
+                    :aggregation        [[:count] [:sum $subtotal]]
+                    :aggregation-idents {0 (str "aggregation_" eid "@0__0")
+                                         1 (str "aggregation_" eid "@0__1")}
+                    :breakout           [$subtotal [:expression "yo"]]
+                    :breakout-idents    {0 (str "breakout_" eid "@0__0")
+                                         1 (str "breakout_" eid "@0__1")}
+                    :expressions        {"yo" [:+ $subtotal 7]}
+                    :expression-idents  {"yo" (str "expression_" eid "@0__yo")}}
+     :joins        [{:alias "a_join"
+                     :ident (str "join_" eid "@1__a_join")}
+                    {:alias "another_join"
+                     :ident (str "join_" eid "@1__another_join")}]}))
+
+(deftest ^:sequential idents-populated-on-insert
+  (mt/with-temp [:model/Card {eid   :entity_id
+                              query :dataset_query} {:name          "A card"
+                                                     :dataset_query (bare-query)}]
+    (testing "on insert, a :dataset_query with missing idents gets them filled in"
+      (is (string? eid))
+      (is (=? {:source-query {:aggregation-idents {0 string?}
+                              :breakout-idents    {0 string?}
+                              :expression-idents  {"yo" string?}}
+               :joins        [{:alias "a_join"
+                               :ident string?}
+                              {:alias "another_join"
+                               :ident string?}]}
+              (:query query))))))
+
+(deftest ^:sequential entity-id-used-for-idents-if-missing-test
+  (mt/with-temp [:model/Card {id :id} {:name          "A card"
+                                       :dataset_query (bare-query)}]
+    ;; :idents are populated on initial insert; update to remove them. (Update does not populate them like insert.)
+    (t2/update! :model/Card id {:dataset_query (bare-query)})
+    ;; Can't use the one from `with-temp` since it came before the above edit.
+    (let [{eid   :entity_id
+           query :dataset_query} (t2/select-one :model/Card :id id)]
+      (testing "on read, a :dataset_query with missing idents gets them filled in based on entity_id"
+        ;; These idents are: kind_EID@stage__index, eg. "aggregation_4QsLuEnriHKkXCWqbPMQ8@0__0"
+        (is (string? eid))
+        (is (=? (bare-query-exp eid)
+                (:query query)))))))
+
+(deftest ^:sequential fall-back-to-hashing-entity-id-test
+  (mt/with-temp [:model/Card {id :id} {:name          "A card"
+                                       :dataset_query (bare-query)}]
+    ;; :idents are populated on initial insert; update to remove them. (Update does not populate them like insert.)
+    ;; Also remove the generated :entity_id.
+    (t2/update! :model/Card id {:dataset_query (bare-query)
+                                :entity_id     nil})
+    ;; Can't use the one from `with-temp` since it came before the above edit.
+    (let [{eid   :entity_id
+           query :dataset_query} (t2/select-one :model/Card :id id)]
+      (testing "on read, a :dataset_query with missing idents AND :entity_id gets a hashed entity_id and idents"
+        ;; These idents are: kind_EID@stage__index, eg. "aggregation_4QsLuEnriHKkXCWqbPMQ8@0__0"
+        ;; The entity_id is hashed based on created_at, so it's still always different!
+        (is (string? eid))
+        (is (=? (bare-query-exp eid)
+                (:query query)))))))
+
+(deftest ^:sequential e2e-entity-id-and-idents-test
+  (mt/with-temp [:model/Card {id :id} {:name          "A card"
+                                       :dataset_query (bare-query)}]
+    ;; :idents are populated on initial insert; update to remove them. (Update does not populate them like insert.)
+    ;; Also remove the generated :entity_id.
+    (t2/update! :model/Card id {:dataset_query (bare-query)
+                                :entity_id     nil})
+    ;; Can't use the one from `with-temp` since it came before the above edit.
+    (let [{eid   :entity_id
+           query :dataset_query} (t2/select-one :model/Card :id id)]
+      (testing "idents should be populated on read"
+        ;; These idents are: kind_EID@stage__index, eg. "aggregation_4QsLuEnriHKkXCWqbPMQ8@0__0"
+        ;; The entity_id is hashed based on created_at, so it's still always different!
+        (is (string? eid))
+        (is (=? (bare-query-exp eid)
+                (:query query)))
+
+        (testing "but not written back to appdb"
+          (let [{raw-query :dataset_query} (t2/select-one :report_card :id id)]
+            (is (string? raw-query))
+            (is (nil? (str/index-of raw-query "-idents")))))
+
+        (testing "converted to pMBQL"
+          (let [converted   (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id)) query)
+                agg-idents  (-> query :query :source-query :aggregation-idents)
+                brk-idents  (-> query :query :source-query :breakout-idents)
+                expr-idents (-> query :query :source-query :expression-idents)
+                [jid1 jid2] (->> query :query :joins (map :ident))
+                expected    {:stages [{:aggregation [[:count {:ident (get agg-idents 0)}]
+                                                     [:sum   {:ident (get agg-idents 1)} some?]]
+                                       :breakout    [[:field      {:ident (get brk-idents 0)} some?]
+                                                     [:expression {:ident (get brk-idents 1)} some?]]
+                                       :expressions [[:+ {:lib/expression-name "yo"
+                                                          :ident               (get expr-idents "yo")}
+                                                      vector? 7]]}
+                                      {:joins [{:alias "a_join"
+                                                :ident jid1}
+                                               {:alias "another_join"
+                                                :ident jid2}]}]}
+                exp-legacy  {:query {:source-query {:aggregation-idents agg-idents
+                                                    :breakout-idents    brk-idents
+                                                    :expression-idents  expr-idents}
+                                     :joins [{:alias "a_join"
+                                              :ident jid1}
+                                             {:alias "another_join"
+                                              :ident jid2}]}}]
+            (is (=? expected converted))
+
+            (testing "and converted back to legacy"
+              (is (=? exp-legacy (lib.convert/->legacy-MBQL converted))))
+
+            (testing "edited without changing the idents"
+              (let [[expr] (lib/expressions converted 0)
+                    edited (lib/replace-clause converted 0 expr (lib/with-expression-name expr "new name"))]
+                (is (=? (assoc-in expected [:stages 0 :expressions 0 1 :lib/expression-name] "new name")
+                        edited))
+
+                (testing "converted back to legacy"
+                  (let [round-trip (lib.convert/->legacy-MBQL edited)
+                        exp-edited (update-in exp-legacy [:query :source-query :expression-idents]
+                                              update-keys (constantly "new name"))]
+                    (is (=? exp-edited round-trip))
+
+                    (testing "saved to appdb, preserving the idents"
+                      (t2/update! :model/Card id {:dataset_query round-trip})
+                      (let [{raw    :dataset_query} (t2/select-one :report_card :id id)
+                            {cooked :dataset_query} (t2/select-one :model/Card  :id id)]
+                        (doseq [ident (concat (vals agg-idents)
+                                              (vals brk-idents)
+                                              (vals expr-idents)
+                                              [jid1 jid2])]
+                          (is (number? (str/index-of raw ident))))
+                        (is (=? exp-edited cooked))))))))))))))
+
+(defn- nano-id? [x]
+  (and (string? x)
+       (boolean (re-matches #"^[A-Za-z0-9_-]{21}$" x))))
+
+(def ^:private idents-randomized
+  {:query {:joins        [{:ident nano-id?}
+                          {:ident nano-id?}]
+           :source-query {:aggregation-idents {0 nano-id?, 1 nano-id?}
+                          :breakout-idents    {0 nano-id?, 1 nano-id?}
+                          :expression-idents  {"yo" nano-id?}}}})
+
+(def ^:private idents-backfilled
+  {:query {:joins        [{:ident #"^join_[A-Za-z0-9_-]{21}@1__a_join"}
+                          {:ident #"^join_[A-Za-z0-9_-]{21}@1__another_join"}]
+           :source-query {:aggregation-idents {0 #"aggregation_[A-Za-z0-9_-]{21}@0__0"
+                                               1 #"aggregation_[A-Za-z0-9_-]{21}@0__1"}
+                          :breakout-idents    {0 #"breakout_[A-Za-z0-9_-]{21}@0__0"
+                                               1 #"breakout_[A-Za-z0-9_-]{21}@0__1"}
+                          :expression-idents  {"yo" #"expression_[A-Za-z0-9_-]{21}@0__yo"}}}})
+
+(deftest ^:sequential ident-invariant-test-1a-two-cards-with-identical-queries
+  (testing ":ident invariant: two cards with identical queries get unique idents"
+    (mt/with-temp [:model/Card {id1 :id} {:name          "First card"
+                                          :dataset_query (bare-query)}
+
+                   :model/Card {id2 :id} {:name          "Second card"
+                                          :dataset_query (bare-query)}]
+      (testing "with randomized idents from initial insert"
+        (let [{q1 :dataset_query} (t2/select-one :model/Card :id id1)
+              {q2 :dataset_query} (t2/select-one :model/Card :id id2)]
+          ;; Comparing the diff here implies (1) they are different, and (2) each one matches the pattern.
+          (is (=? [idents-randomized idents-randomized some?]
+                  (data/diff q1 q2)))))
+
+      (testing "with :idents removed from one card"
+        ;; Strip the idents off `id1`. update! does not populate idents like insert! does.
+        (t2/update! :model/Card id1 {:dataset_query (bare-query)})
+        (let [{q1 :dataset_query} (t2/select-one :model/Card :id id1)
+              {q2 :dataset_query} (t2/select-one :model/Card :id id2)]
+          (is (=? idents-backfilled q1))
+          (is (=? idents-randomized q2))))
+
+      (testing "with :idents removed from both cards"
+        ;; Strip the idents off `id2` as well.
+        (t2/update! :model/Card id2 {:dataset_query (bare-query)})
+        (let [{q1 :dataset_query} (t2/select-one :model/Card :id id1)
+              {q2 :dataset_query} (t2/select-one :model/Card :id id2)]
+          ;; Using diff again: implies that they're different, and that both match `idents-backfilled`.
+          (is (=? [idents-backfilled idents-backfilled some?]
+                  (data/diff q1 q2))))))))
+
+(deftest ^:sequential ident-invariant-test-1b-agg-in-two-stages
+  (testing ":ident invariant: two identical aggregations in different stages get unique idents"
+    (let [query (mt/$ids orders
+                  {:database (mt/id)
+                   :type     :query
+                   :query    {:source-query {:source-table $$orders
+                                             :aggregation  [[:count]]}
+                              :aggregation  [[:count]]}})]
+      (mt/with-temp [:model/Card {id :id} {:name          "The card"
+                                           :dataset_query query}]
+        (testing "with randomized idents from initial insert"
+          (let [query (->> (t2/select-one :model/Card :id id) :dataset_query :query)]
+            (is (=? nano-id? (get-in query [:aggregation-idents 0])))
+            (is (=? nano-id? (get-in query [:source-query :aggregation-idents 0])))
+            (is (not= (get-in query [:aggregation-idents 0])
+                      (get-in query [:source-query :aggregation-idents 0])))))
+
+        (testing "with :idents backfilled"
+          ;; Strip the idents off `id`. update! does not populate idents like insert! does.
+          (t2/update! :model/Card id {:dataset_query query})
+          (let [query (->> (t2/select-one :model/Card :id id) :dataset_query :query)]
+            (is (=? #"aggregation_[A-Za-z0-9_-]{21}@1__0" (get-in query [:aggregation-idents 0])))
+            (is (=? #"aggregation_[A-Za-z0-9_-]{21}@0__0" (get-in query [:source-query :aggregation-idents 0])))
+            (is (not= (get-in query [:aggregation-idents 0])
+                      (get-in query [:source-query :aggregation-idents 0])))))))))
+
+(deftest ^:sequential ident-invariant-test-1c-duplicate-aggs
+  (testing ":ident invariant: two identical aggregations in one stage get unique idents"
+    (let [query (mt/$ids orders
+                  {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table $$orders
+                              :aggregation  [[:count] [:count]]}})]
+      (mt/with-temp [:model/Card {id :id} {:name          "The card"
+                                           :dataset_query query}]
+        (testing "with randomized idents from initial insert"
+          (let [{ident0 0
+                 ident1 1} (->> (t2/select-one :model/Card :id id) :dataset_query :query :aggregation-idents)]
+            (is (=? nano-id? ident0))
+            (is (=? nano-id? ident1))
+            (is (not= ident0 ident1))))
+
+        (testing "with :idents backfilled"
+          ;; Strip the idents off `id`. update! does not populate idents like insert! does.
+          (t2/update! :model/Card id {:dataset_query query})
+          (let [{ident0 0
+                 ident1 1} (->> (t2/select-one :model/Card :id id) :dataset_query :query :aggregation-idents)]
+            (is (=? #"aggregation_[A-Za-z0-9_-]{21}@0__0" ident0))
+            (is (=? #"aggregation_[A-Za-z0-9_-]{21}@0__1" ident1))
+            (is (not= ident0 ident1))))))))
+
+(deftest ^:sequential ident-invariant-test-1d-time-granularity
+  (testing ":ident invariant: two breakouts with different time granularity get unique idents"
+    (let [query (mt/$ids orders
+                  {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table $$orders
+                              :aggregation  [[:count]]
+                              :breakout     [!month.created_at !day.created_at]}})]
+      (mt/with-temp [:model/Card {id :id} {:name          "The card"
+                                           :dataset_query query}]
+        (testing "with randomized idents from initial insert"
+          (let [{{agg0 0} :aggregation-idents
+                 {brk0 0
+                  brk1 1} :breakout-idents} (->> (t2/select-one :model/Card :id id) :dataset_query :query)]
+            (is (=? nano-id? agg0))
+            (is (=? nano-id? brk0))
+            (is (=? nano-id? brk1))
+            (is (= 3 (count #{agg0 brk0 brk1})))))
+
+        (testing "with :idents backfilled"
+          ;; Strip the idents off `id`. update! does not populate idents like insert! does.
+          (t2/update! :model/Card id {:dataset_query query})
+          (let [{{agg0 0} :aggregation-idents
+                 {brk0 0
+                  brk1 1} :breakout-idents} (->> (t2/select-one :model/Card :id id) :dataset_query :query)]
+            (is (=? #"aggregation_[A-Za-z0-9_-]{21}@0__0" agg0))
+            (is (=? #"breakout_[A-Za-z0-9_-]{21}@0__0"    brk0))
+            (is (=? #"breakout_[A-Za-z0-9_-]{21}@0__1"    brk1))
+            (is (= 3 (count #{agg0 brk0 brk1})))))))))
+
+(deftest ^:sequential ident-invariant-test-2a-new-clause-random-ident
+  (testing ":ident invariant: a new clause keeps its randomized ident"
+    (let [base  (mt/$ids orders
+                  {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table $$orders
+                              :aggregation  [[:count]]
+                              :breakout     [!month.created_at]}})
+          touch (fn [query]
+                  (-> (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id)) query)
+                      (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
+                      lib.convert/->legacy-MBQL))]
+      (mt/with-temp [:model/Card {id :id} {:name          "The card"
+                                           :dataset_query base}]
+        (testing "with randomized idents from initial insert"
+          (let [original  (:dataset_query (t2/select-one :model/Card :id id))
+                modified  (touch original)
+                new-ident (get-in modified [:query :aggregation-idents 1])
+                _         (t2/update! :model/Card id {:dataset_query modified})
+                reread    (:dataset_query (t2/select-one :model/Card :id id))]
+            (is (= modified reread))
+            ;; Expects a diff with nothing removed, and only the new aggregation and its ident added.
+            (is (=? [nil
+                     {:query {:aggregation   [nil [:sum some?]]
+                              :aggregation-idents {1 new-ident}}}
+                     some?]
+                    (data/diff original modified)))))
+
+        (testing "with :idents backfilled"
+          ;; Strip the idents off `id`. update! does not populate idents like insert! does.
+          (t2/update! :model/Card id {:dataset_query base})
+          (let [original  (:dataset_query (t2/select-one :model/Card :id id))
+                modified  (touch original)
+                new-ident (get-in modified [:query :aggregation-idents 1])
+                _         (t2/update! :model/Card id {:dataset_query modified})
+                reread    (:dataset_query (t2/select-one :model/Card :id id))]
+            (is (= modified reread))
+            (is (nano-id? new-ident))
+            ;; Expects a diff with nothing removed, and only the new aggregation and its ident added.
+            (is (=? [nil
+                     {:query {:aggregation   [nil [:sum some?]]
+                              :aggregation-idents {1 new-ident}}}
+                     some?]
+                    (data/diff original modified)))))))))
+
+(deftest ^:sequential ident-invariant-test-2b-removed-clause
+  (testing ":ident invariant: removing a clause preserves other idents - EVEN IF they encode now-incorrect indexes!"
+    (let [base  (mt/$ids orders
+                  {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table $$orders
+                              :aggregation  [[:count] [:sum $subtotal]]
+                              :breakout     [!month.created_at $products.category]}})
+          touch (fn [query]
+                  (let [converted (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id)) query)
+                        [agg0]    (lib/aggregations converted)
+                        [brk0]    (lib/breakouts converted)]
+                    (-> converted
+                        (lib/remove-clause agg0)
+                        (lib/remove-clause brk0)
+                        lib.convert/->legacy-MBQL)))]
+      (mt/with-temp [:model/Card {id :id} {:name          "The card"
+                                           :dataset_query base}]
+        (testing "with randomized idents from initial insert"
+          (let [original   (:dataset_query (t2/select-one :model/Card :id id))
+                modified   (touch original)
+                _          (t2/update! :model/Card id {:dataset_query modified})
+                reread     (:dataset_query (t2/select-one :model/Card :id id))
+                agg-idents (-> original :query :aggregation-idents)
+                brk-idents (-> original :query :breakout-idents)]
+            (is (= modified reread))
+            (is (= 2
+                   (-> agg-idents vals set count)
+                   (-> brk-idents vals set count)))
+            ;; NOTE: What were previously the 1st clauses is now 0th; their idents have not changed.
+            (is (= {0 (get agg-idents 1)}
+                   (-> modified :query :aggregation-idents)))
+            (is (= {0 (get brk-idents 1)}
+                   (-> modified :query :breakout-idents)))))
+
+        (testing "with :idents backfilled"
+          ;; Strip the idents off `id`. update! does not populate idents like insert! does.
+          (t2/update! :model/Card id {:dataset_query base})
+          (let [original   (:dataset_query (t2/select-one :model/Card :id id))
+                modified   (touch original)
+                _          (t2/update! :model/Card id {:dataset_query modified})
+                reread     (:dataset_query (t2/select-one :model/Card :id id))
+                agg-idents (-> original :query :aggregation-idents)
+                brk-idents (-> original :query :breakout-idents)]
+            (is (= modified reread))
+            (is (= 2
+                   (-> agg-idents vals set count)
+                   (-> brk-idents vals set count)))
+            ;; NOTE: What were previously the 1st clauses is now 0th; their idents have not changed.
+            (is (= {0 (get agg-idents 1)}
+                   (-> modified :query :aggregation-idents)))
+            (is (= {0 (get brk-idents 1)}
+                   (-> modified :query :breakout-idents)))
+
+            ;; Specific check: the backfilled idents "enshrine" a now-incorrect index forever; that's okay!
+            (is (=? {0 #"aggregation_[A-Za-z0-9_-]{21}@0__1"}
+                    (-> modified :query :aggregation-idents)))
+            (is (=? {0 #"breakout_[A-Za-z0-9_-]{21}@0__1"}
+                    (-> modified :query :breakout-idents)))))))))
+
+(deftest ^:sequential ident-invariant-test-2c-edit-would-change-ident-but-does-not
+  (testing ":ident invariant: removing a clause preserves other idents - EVEN IF they encode now-incorrect indexes!"
+    (let [name1 "tax rate"
+          name2 "My name is Michael J. Caboose and I HATE TAXES!!!"
+          base  (mt/$ids orders
+                  {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table $$orders
+                              :expressions  {name1 [:/ $tax $subtotal]}}})
+          touch (fn [query]
+                  (let [converted (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id)) query)
+                        [expr]    (lib/expressions converted)]
+                    (-> converted
+                        (lib/replace-clause expr (lib/with-expression-name expr name2))
+                        lib.convert/->legacy-MBQL)))]
+      (mt/with-temp [:model/Card {id :id} {:name          "The card"
+                                           :dataset_query base}]
+        (testing "with randomized idents from initial insert"
+          (let [original (:dataset_query (t2/select-one :model/Card :id id))
+                modified (touch original)
+                _        (t2/update! :model/Card id {:dataset_query modified})
+                reread   (:dataset_query (t2/select-one :model/Card :id id))
+                idents   (-> original :query :expression-idents)]
+            (is (= modified reread))
+            (is (= {name2 (get idents name1)}
+                   (-> modified :query :expression-idents)))
+            (is (=? {name1 nano-id?} idents))))
+
+        (testing "with :idents backfilled"
+          ;; Strip the idents off `id`. update! does not populate idents like insert! does.
+          (t2/update! :model/Card id {:dataset_query base})
+          (let [original (:dataset_query (t2/select-one :model/Card :id id))
+                modified (touch original)
+                _        (t2/update! :model/Card id {:dataset_query modified})
+                reread   (:dataset_query (t2/select-one :model/Card :id id))
+                idents   (-> original :query :expression-idents)]
+            (is (= modified reread))
+            (is (= {name2 (get idents name1)}
+                   (-> modified :query :expression-idents)))
+            ;; NOTE: Both the original and modified queries use the original ident for the expression, even though
+            ;; it "enshrines" the original expression name forever! This is intentional - idents should never change.
+            (is (=? {name1 #"expression_[A-Za-z0-9_-]{21}@0__tax rate"} idents))
+            (is (=? {name2 #"expression_[A-Za-z0-9_-]{21}@0__tax rate"}
+                    (-> modified :query :expression-idents)))))))))

@@ -18,7 +18,7 @@ const shrinkKeyframes = keyframes`
   }
 `;
 
-export interface BookmarkIconProps {
+interface BookmarkIconProps {
   isBookmarked: boolean;
   isAnimating: boolean;
   onAnimationEnd: () => void;

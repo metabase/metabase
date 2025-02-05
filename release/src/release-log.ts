@@ -22,7 +22,7 @@ export async function gitLog(majorVersion: number) {
 
 export function processCommit(commitLine: string): CommitInfo {
   const [refs, message, hash, date] = commitLine.split('||');
-  const tags = refs?.match(/tag: ([\w\d-_\.]+)/g) ?? '';
+  const tags = refs?.match(/tag: ([\w\d-_x\.]+)/g) ?? '';
 
   const versions = tags
     ? tags.map((v) => v.replace('tag: ', ''))

@@ -11,7 +11,7 @@
   (:import
    (java.time Instant)
    (java.util Date)
-   (org.quartz DisallowConcurrentExecution JobDetail Trigger)))
+   (org.quartz DisallowConcurrentExecution JobExecutionException)))
 
 (set! *warn-on-reflection* true)
 
@@ -42,43 +42,55 @@
   "Create a new index, if necessary"
   []
   (when (search/supports-index?)
-    (let [timer    (u/start-timer)
-          report   (search/init-index! {:force-reset? false, :re-populate? false})
-          duration (u/since-ms timer)]
-      (if (seq report)
-        (do (report->prometheus! duration report)
-            (log/infof "Done indexing in %.0fms %s" duration (sort-by (comp - val) report))
-            true)
-        (log/info "Found existing search index, and using it.")))))
+    (try
+      (let [timer    (u/start-timer)
+            report   (search/init-index! {:force-reset? false, :re-populate? false})
+            duration (u/since-ms timer)]
+        (if (seq report)
+          (do (report->prometheus! duration report)
+              (log/infof "Done indexing in %.0fms %s" duration (sort-by (comp - val) report))
+              true)
+          (log/info "Found existing search index, and using it.")))
+      (catch Exception e
+        (prometheus/inc! :metabase-search/index-error)
+        (throw e)))))
 
 (defn reindex!
   "Reindex the whole AppDB"
   []
   (when (search/supports-index?)
-    (log/info "Reindexing searchable entities")
-    (let [timer    (u/start-timer)
-          report   (search/reindex!)
-          duration (u/since-ms timer)]
-      (report->prometheus! duration report)
-      (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
-      report)))
+    (try
+      (log/info "Reindexing searchable entities")
+      (let [timer    (u/start-timer)
+            report   (search/reindex!)
+            duration (u/since-ms timer)]
+        (report->prometheus! duration report)
+        (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
+        report)
+      (catch Exception e
+        (prometheus/inc! :metabase-search/index-error)
+        (throw e)))))
 
 (defn- update-index! []
   (when (search/supports-index?)
-    (while true
-      (let [timer    (u/start-timer)
-            report   (search/process-next-batch! Long/MAX_VALUE 100)
-            duration (u/since-ms timer)]
-        (when (seq report)
-          (report->prometheus! duration report)
-          (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) report)))))))
-
-(defn- force-scheduled-task! [^JobDetail job ^Trigger trigger]
-  ;; For some reason, using the schedule-task! with a non-durable job causes it to only fire on the first trigger.
-  #_(task/schedule-task! job trigger)
-  (task/delete-task! (.getKey job) (.getKey trigger))
-  (task/add-job! job)
-  (task/add-trigger! trigger))
+    (log/info "Starting Realtime Search Index Update worker")
+    (try
+      (while true
+        (try
+          (let [batch    (search/get-next-batch! Long/MAX_VALUE 100)
+                _        (log/trace "Processing batch" batch)
+                timer    (u/start-timer)
+                report   (search/bulk-ingest! batch)
+                duration (u/since-ms timer)]
+            (when (seq report)
+              (report->prometheus! duration report)
+              (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) report))))
+          (catch Exception e
+            (prometheus/inc! :metabase-search/index-error)
+            (throw e))))
+      (catch Exception e
+        (log/error e "Updating search index failed")
+        (throw (JobExecutionException. "Updating search index failed" e true))))))
 
 (jobs/defjob ^{:doc "Ensure a Search Index exists"}
   SearchIndexInit [_ctx]
@@ -89,8 +101,7 @@
   SearchIndexReindex [_ctx]
   (reindex!))
 
-(jobs/defjob ^{DisallowConcurrentExecution true
-               :doc                        "Keep Search Index updated"}
+(jobs/defjob ^{:doc                        "Keep Search Index updated"}
   SearchIndexUpdate [_ctx]
   (update-index!))
 
@@ -121,16 +132,13 @@
 (defmethod task/init! ::SearchIndexUpdate [_]
   (let [job         (jobs/build
                      (jobs/of-type SearchIndexUpdate)
-                     (jobs/store-durably)
                      (jobs/with-identity update-job-key))
         trigger-key (triggers/key (str update-stem ".trigger"))
         trigger     (triggers/build
                      (triggers/with-identity trigger-key)
                      (triggers/for-job update-job-key)
-                     (triggers/start-now)
-                     ;; This schedule is only here to restart the task if it dies for some reason.
-                     (triggers/with-schedule (simple/schedule (simple/with-interval-in-seconds 1))))]
-    (force-scheduled-task! job trigger)))
+                     (triggers/start-now))]
+    (task/schedule-task! job trigger)))
 
 (comment
   (task/job-exists? reindex-job-key)

@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.embed-test :as embed-test]
-   [metabase.models :refer [Card Dashboard DashboardCard]]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -16,8 +15,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.pipeline :as t2.pipeline]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)))
@@ -313,18 +311,18 @@
   [message {:keys [query viz-settings assertions endpoints user]}]
   (testing message
     (let [query-json        (json/encode query)
-          viz-settings-json (json/encode viz-settings)
+          viz-settings-json (some-> viz-settings json/encode)
           public-uuid       (str (random-uuid))
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
       (mt/with-temporary-setting-values [enable-public-sharing true
                                          enable-embedding-static true]
         (embed-test/with-new-secret-key!
-          (t2.with-temp/with-temp [Card          card      (if viz-settings
-                                                             (assoc card-defaults :visualization_settings viz-settings)
-                                                             card-defaults)
-                                   Dashboard     dashboard {:name "Test Dashboard"}
-                                   DashboardCard dashcard  {:card_id (u/the-id card) :dashboard_id (u/the-id dashboard)}]
+          (mt/with-temp [:model/Card          card      (if viz-settings
+                                                          (assoc card-defaults :visualization_settings viz-settings)
+                                                          card-defaults)
+                         :model/Dashboard     dashboard {:name "Test Dashboard"}
+                         :model/DashboardCard dashcard  {:card_id (u/the-id card) :dashboard_id (u/the-id dashboard)}]
             (doseq [export-format (keys assertions)
                     endpoint      (or endpoints [:dataset :card :dashboard :public :embed])]
               (testing endpoint
@@ -333,16 +331,16 @@
                   (let [results (mt/user-http-request user :post 200
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      :format_rows true
-                                                      :query query-json
-                                                      :visualization_settings viz-settings-json)]
+                                                      {:format_rows            true
+                                                       :query                  query-json
+                                                       :visualization_settings viz-settings-json})]
                     ((-> assertions export-format) results))
 
                   :card
                   (let [results (mt/user-http-request user :post 200
                                                       (format "card/%d/query/%s" (u/the-id card) (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      :format_rows true)]
+                                                      {:format_rows true})]
                     ((-> assertions export-format) results))
 
                   :dashboard
@@ -353,9 +351,10 @@
                                                               (u/the-id card)
                                                               (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      :format_rows true)]
+                                                      {:format_rows true})]
                     ((-> assertions export-format) results))
 
+                  ;; TODO -- what about the public dashcard endpoint???
                   :public
                   (let [results (mt/user-http-request user :get 200
                                                       (format "public/card/%s/query/%s?format_rows=true" public-uuid (name export-format))
@@ -389,7 +388,6 @@
                  :type     :query
                  :query    {:source-table (mt/id :venues)
                             :limit        2}}
-
     :assertions {:csv  (fn [results]
                          (is (string? results))
                           ;; CSVs round decimals to 2 digits without viz-settings

@@ -108,14 +108,16 @@
                 "drivers need to tweak the default names we generate."))
   (is (= {:database 1
           :type     :query
-          :query    {:source-table 1
-                     :aggregation  [[:aggregation-options [:+ 20 [:sum [:field 2 nil]]] {:name "_expression"}]
+          :query    {:source-table (meta/id :orders)
+                     :aggregation  [[:aggregation-options
+                                     [:+ 20 [:sum [:field (meta/id :orders :subtotal) nil]]]
+                                     {:name "_expression"}]
                                     [:aggregation-options [:count] {:name "_count"}]]}}
          (driver/with-driver ::test-driver
            (qp.store/with-metadata-provider meta/metadata-provider
              (qp.pre-alias-aggregations/pre-alias-aggregations
               {:database 1
                :type     :query
-               :query    {:source-table 1
-                          :aggregation  [[:+ 20 [:sum [:field 2 nil]]]
+               :query    {:source-table (meta/id :orders)
+                          :aggregation  [[:+ 20 [:sum [:field (meta/id :orders :subtotal) nil]]]
                                          [:count]]}}))))))

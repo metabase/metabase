@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models.table :refer [Table]]
    [metabase.util :as u]
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.transforms.materialize :as tf.materialize]
@@ -51,7 +50,7 @@
                             (map (comp :source-table :query :dataset_query))
                             (filter number?)
                             not-empty)]
-    (let [table-id->table (t2/select-pk->fn t2.realize/realize Table :id [:in (set table-ids)])]
+    (let [table-id->table (t2/select-pk->fn t2.realize/realize :model/Table :id [:in (set table-ids)])]
       (mapv (fn [table-id]
               (let [table (get table-id->table table-id)]
                 (card-for-source-table table)))

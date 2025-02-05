@@ -441,7 +441,7 @@ const ListSourceModal = ({
 function ModelHint() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
-  const href = getLearnUrl("data-modeling/models");
+  const href = getLearnUrl("metabase-basics/getting-started/models");
   const text = t`do it once in a model`;
   const link = showMetabaseLinks ? (
     <strong key="link">

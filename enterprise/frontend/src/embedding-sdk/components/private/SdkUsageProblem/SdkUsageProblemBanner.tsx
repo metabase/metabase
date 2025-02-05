@@ -2,7 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useState } from "react";
 
-import { SDK_SSO_DOCS_LINK } from "embedding-sdk/lib/usage-problem";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import LogoIcon from "metabase/components/LogoIcon";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -133,7 +132,7 @@ export const SdkUsageProblemBanner = ({
                 Hide {severity}
               </Button>
 
-              <ExternalLink href={SDK_SSO_DOCS_LINK}>
+              <ExternalLink role="link" href={problem.documentationUrl}>
                 <Button
                   fz="sm"
                   variant="outline"

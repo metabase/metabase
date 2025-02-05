@@ -5,12 +5,11 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -33,11 +32,6 @@
   #{:database :alphabetical :custom :smart})
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
-
-(def Table
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the Table symbol in our codebase."
-  :model/Table)
 
 (methodical/defmethod t2/table-name :model/Table [_model] :metabase_table)
 
@@ -71,25 +65,25 @@
 (defn- set-new-table-permissions!
   [table]
   (t2/with-transaction [_conn]
-    (let [all-users-group  (perms-group/all-users)
-          non-magic-groups (perms-group/non-magic-groups)
+    (let [all-users-group  (perms/all-users-group)
+          non-magic-groups (perms/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
       ;; Data access permissions
       (if (= (:db_id table) audit/audit-db-id)
         (do
          ;; Tables in audit DB should start out with no query access in all groups
-          (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-          (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
+          (perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
+          (perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
         (do
           ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
-          (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-          (data-perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
-          (data-perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
+          (perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
+          (perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
+          (perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
       ;; Download permissions
-      (data-perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
-      (data-perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)
+      (perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
+      (perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)
       ;; Table metadata management
-      (data-perms/set-new-table-permissions! non-admin-groups table :perms/manage-table-metadata :no))))
+      (perms/set-new-table-permissions! non-admin-groups table :perms/manage-table-metadata :no))))
 
 (t2/define-after-insert :model/Table
   [table]
@@ -98,13 +92,13 @@
 
 (defmethod mi/can-read? :model/Table
   ([instance]
-   (and (data-perms/user-has-permission-for-table?
+   (and (perms/user-has-permission-for-table?
          api/*current-user-id*
          :perms/view-data
          :unrestricted
          (:db_id instance)
          (:id instance))
-        (data-perms/user-has-permission-for-table?
+        (perms/user-has-permission-for-table?
          api/*current-user-id*
          :perms/create-queries
          :query-builder
@@ -168,12 +162,13 @@
   "Set field order to `field-order`."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
-  (t2/update! Table (u/the-id table) {:field_order :custom})
-  (doall
-   (map-indexed (fn [position field-id]
-                  (t2/update! :model/Field field-id {:position        position
-                                                     :custom_position position}))
-                field-order)))
+  (t2/with-transaction [_]
+    (t2/update! :model/Table (u/the-id table) {:field_order :custom})
+    (dorun
+     (map-indexed (fn [position field-id]
+                    (t2/update! :model/Field field-id {:position        position
+                                                       :custom_position position}))
+                  field-order))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -278,7 +273,7 @@
                       (-> path second :id))
         table-name  (-> path last :id)
         db-id       (t2/select-one-pk :model/Database :name db-name)]
-    (t2/select-one Table :name table-name :db_id db-id :schema schema-name)))
+    (t2/select-one :model/Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
@@ -294,7 +289,7 @@
 
 ;;; -------------------------------------------------- Audit Log Table -------------------------------------------------
 
-(defmethod audit-log/model-details Table
+(defmethod audit-log/model-details :model/Table
   [table _event-type]
   (select-keys table [:id :name :db_id]))
 

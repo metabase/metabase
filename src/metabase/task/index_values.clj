@@ -5,8 +5,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.model-index :as model-index :refer [ModelIndex]]
+   [metabase.models.model-index :as model-index]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util :as u]
@@ -40,14 +39,14 @@
   "Refresh the index on a model. Note, if the index should be removed (no longer a model, archived,
   etc, (see [[should-deindex?]])) will delete the indexing job."
   [model-index-id]
-  (let [model-index (t2/select-one ModelIndex :id model-index-id)
+  (let [model-index (t2/select-one :model/ModelIndex :id model-index-id)
         model       (when model-index
-                      (t2/select-one Card :id (:model_id model-index)))]
+                      (t2/select-one :model/Card :id (:model_id model-index)))]
     (if (should-deindex? model model-index)
       (u/ignore-exceptions
         (let [trigger-key (model-index-trigger-key model-index-id)]
           (task/delete-trigger! trigger-key)
-          (t2/delete! ModelIndex model-index-id)))
+          (t2/delete! :model/ModelIndex model-index-id)))
       (model-index/add-values! model-index))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true

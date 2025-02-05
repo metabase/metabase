@@ -59,13 +59,11 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       breakouts,
     );
 
+    const breakoutInfo = Lib.displayInfo(query, stageIndex, breakout);
+    if (breakoutInfo.isTemporalExtraction) {
+      return { display: "bar" };
+    }
     if (Lib.isTemporal(column)) {
-      const info = Lib.displayInfo(query, stageIndex, breakout);
-
-      if (info.isTemporalExtraction) {
-        return { display: "bar" };
-      }
-
       return { display: "line" };
     }
 
@@ -76,7 +74,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       return { display: "bar" };
     }
 
-    if (Lib.isCategory(column)) {
+    if (Lib.isBoolean(column) || Lib.isCategory(column)) {
       return { display: "bar" };
     }
   }
@@ -121,7 +119,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
     }
 
     const areBreakoutsCategories = breakoutsWithColumns.every(({ column }) => {
-      return Lib.isCategory(column);
+      return Lib.isBoolean(column) || Lib.isCategory(column);
     });
     if (areBreakoutsCategories) {
       return { display: "bar" };

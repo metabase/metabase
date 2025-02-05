@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
@@ -16,7 +16,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+    H.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
         H.visitQuestion(card_id);
 
@@ -40,6 +40,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
 
     Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         dateFilterSelector({
           filterType: filter,
@@ -63,7 +64,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
-      month: "October",
+      month: "Oct",
       year: "2022",
     });
 
@@ -80,7 +81,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
     // Make sure we can override the default value
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("October 2022").click();
-    H.popover().contains("August").click();
+    H.popover().contains("Aug").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Macy Olson");
   });

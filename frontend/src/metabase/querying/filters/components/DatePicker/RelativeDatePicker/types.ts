@@ -2,7 +2,7 @@ import type {
   DatePickerTruncationUnit,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
-} from "../types";
+} from "metabase/querying/filters/types";
 
 export interface Tab {
   label: string;

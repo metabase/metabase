@@ -4,6 +4,9 @@ import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
+import { FilterModalProvider } from "../context";
+import { createMockFilterModalContext } from "../test-utils";
+
 import { DateFilterEditor } from "./DateFilterEditor";
 
 interface SetupOpts {
@@ -18,15 +21,16 @@ function setup({ query, stageIndex, column, filter }: SetupOpts) {
   const onInput = jest.fn();
 
   renderWithProviders(
-    <DateFilterEditor
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      filter={filter}
-      isSearching={false}
-      onChange={onChange}
-      onInput={onInput}
-    />,
+    <FilterModalProvider
+      value={createMockFilterModalContext({ query, onInput })}
+    >
+      <DateFilterEditor
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        onChange={onChange}
+      />
+    </FilterModalProvider>,
   );
 
   const getNextFilterName = () => {
@@ -53,7 +57,7 @@ describe("DateFilterEditor", () => {
       column,
     });
 
-    await userEvent.click(screen.getByText("Last month"));
+    await userEvent.click(screen.getByText("Previous month"));
 
     expect(getNextFilterName()).toBe("Created At is in the previous month");
   });
@@ -93,7 +97,7 @@ describe("DateFilterEditor", () => {
     });
 
     await userEvent.click(screen.getByLabelText("More options"));
-    await userEvent.click(await screen.findByText("Last 30 days"));
+    await userEvent.click(await screen.findByText("Previous 30 days"));
 
     expect(getNextFilterName()).toBe("Created At is in the previous 30 days");
   });
@@ -144,7 +148,7 @@ describe("DateFilterEditor", () => {
     const { query, filter } = createQueryWithFilter(
       defaultQuery,
       stageIndex,
-      Lib.specificDateFilterClause(defaultQuery, stageIndex, {
+      Lib.specificDateFilterClause({
         operator: "=",
         column,
         values: [new Date(2020, 1, 15)],

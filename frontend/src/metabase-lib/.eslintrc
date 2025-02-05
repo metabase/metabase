@@ -9,6 +9,7 @@
               "metabase/*",
               "!metabase/env",
               "!metabase/lib",
+              "!metabase/querying",
               "!metabase/services"
             ]
           },

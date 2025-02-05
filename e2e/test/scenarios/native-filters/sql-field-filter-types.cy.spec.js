@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
 import {
@@ -109,7 +109,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
         filterType: subType,
         filterValue: value,
         isFilterRequired: true,
-        buttonLabel: "Update filter",
+        buttonLabel: "Add filter",
       });
 
       SQLFilter.runQuery();
@@ -189,7 +189,7 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
 
     cy.signInAsAdmin();
 
-    H.startNewNativeQuestion();
+    H.startNewNativeQuestion({ display: "table" });
     SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();

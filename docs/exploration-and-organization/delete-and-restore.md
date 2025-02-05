@@ -79,10 +79,12 @@ What happens to related items when you delete a question?
 
 What happens to related items when you delete a dashboard?
 
-| Related item    | In Trash                   | Permanently deleted        | Restored |
-| --------------- | -------------------------- | -------------------------- | -------- |
-| Subscriptions   | Deactivated                | Deactivated                | Restored |
-| Custom homepage | Revert to default homepage | Revert to default homepage | Restored |
+| Related item                          | In Trash                   | Permanently deleted        | Restored       |
+| ------------------------------------- | -------------------------- | -------------------------- | -------------- |
+| Questions saved to that dashboard     | Moved to trash             | Deleted                    | Restored       |
+| Questions not saved to that dashboard | Works normally             | Works normally             | Works normally |
+| Subscriptions                         | Deactivated                | Deactivated                | Restored       |
+| Custom homepage                       | Revert to default homepage | Revert to default homepage | Restored       |
 
 ### Model
 
@@ -133,7 +135,7 @@ You won't see retired Segments in Trash.
 
 ## Deleting subscriptions and alerts
 
-See [Deleting a subscription](../dashboards/subscriptions.md#deleting-a-subscription) and [Deleting alerts](../questions/sharing/alerts.md#editing-and-deleting-alerts).
+See [Deleting a subscription](../dashboards/subscriptions.md#deleting-a-subscription) and [Deleting alerts](../questions/alerts.md#editing-and-deleting-alerts).
 
 ## Deleting databases
 

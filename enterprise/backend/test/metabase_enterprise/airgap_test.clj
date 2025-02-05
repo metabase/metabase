@@ -3,7 +3,7 @@
                [clojure.string :as str]
                [clojure.test :refer :all]
                [metabase-enterprise.airgap :as airgap]
-               [metabase.public-settings.premium-features :as premium-features]))
+               [metabase.premium-features.core :as premium-features]))
 
 (defn- test-fake-features! [& {:keys [token-fn pubk-fn]}]
   (with-redefs

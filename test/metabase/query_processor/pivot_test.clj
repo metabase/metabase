@@ -5,20 +5,20 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [malli.core :as mc]
    [medley.core :as m]
-   [metabase.api.pivots :as api.pivots]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models :refer [Card Collection]]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -286,7 +286,7 @@
                    :aggregation  [[:sum $subtotal]]
                    :breakout     [!month.created_at
                                   [:field %people.id {:join-alias "People - User"}]]})]
-      (mt/with-temp [Card card {:dataset_query model, :type :model}]
+      (mt/with-temp [:model/Card card {:dataset_query model, :type :model}]
         (testing "Column aliasing needs to work even with aggregations over a model"
           (let [query        (mt/mbql-query
                                orders {:source-table (str "card__" (u/the-id card))
@@ -306,21 +306,21 @@
 
 (deftest nested-models-with-expressions-pivot-breakout-names-test
   (testing "#43993 again - breakouts on an expression from the inner model should pass"
-    (mt/with-temp [Card model1 {:type :model
-                                :dataset_query
-                                (mt/mbql-query products
-                                  {:source-table $$products
-                                   :expressions  {"Rating Bucket" [:floor $products.rating]}})}
-                   Card model2 {:type :model
-                                :dataset_query
-                                (mt/mbql-query orders
-                                  {:source-table $$orders
-                                   :joins        [{:source-table (str "card__" (u/the-id model1))
-                                                   :alias        "model A - Product"
-                                                   :fields       :all
-                                                   :condition    [:= $orders.product_id
-                                                                  [:field %products.id
-                                                                   {:join-alias "model A - Product"}]]}]})}]
+    (mt/with-temp [:model/Card model1 {:type :model
+                                       :dataset_query
+                                       (mt/mbql-query products
+                                         {:source-table $$products
+                                          :expressions  {"Rating Bucket" [:floor $products.rating]}})}
+                   :model/Card model2 {:type :model
+                                       :dataset_query
+                                       (mt/mbql-query orders
+                                         {:source-table $$orders
+                                          :joins        [{:source-table (str "card__" (u/the-id model1))
+                                                          :alias        "model A - Product"
+                                                          :fields       :all
+                                                          :condition    [:= $orders.product_id
+                                                                         [:field %products.id
+                                                                          {:join-alias "model A - Product"}]]}]})}]
       (testing "Column aliasing works when joining an expression in an inner model"
         (let [query        (mt/mbql-query
                              orders {:source-table (str "card__" (u/the-id model2))
@@ -406,7 +406,7 @@
         ;; check each row, but fail fast if the shapes are wrong.
         (is (=? {:status :success}
                 (reduce
-                 (let [validator (mc/validator Row)]
+                 (let [validator (mr/validator Row)]
                    (fn [_ row]
                      (testing (pr-str row)
                        (if (validator row)
@@ -506,8 +506,8 @@
             (testing "Should be able to run the query via a Card that All Users has perms for"
               ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
               ;; Collection inherits Root Collection perms when created
-              (mt/with-temp [Collection collection {}
-                             Card       card {:collection_id (u/the-id collection), :dataset_query query}]
+              (mt/with-temp [:model/Collection collection {}
+                             :model/Card       card {:collection_id (u/the-id collection), :dataset_query query}]
                 (is (=? {:status "completed"}
                         (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
                 (testing "... with the pivot-table endpoints"
@@ -694,3 +694,27 @@
              (splice [1 2 6] {1 2, 2 5})))
       (is (= [1 2 3 5 8]
              (splice [1 2 6] {1 2, 2 5, 3 2}))))))
+
+(deftest ^:parallel pivoting-same-name-breakouts-test
+  (testing "Column names are deduplicated, therefore same `:name` cols are not missing from the results (#52769)"
+    (let [mp meta/metadata-provider
+          query (as-> (lib/query mp (meta/table-metadata :orders)) $
+                  (lib/aggregate $ (lib/count))
+                  (lib/breakout $ (meta/field-metadata :orders :id))
+                  (lib/breakout $ (some (fn [{:keys [name lib/source] :as col}]
+                                          (when (and (= name "ID") (= source :source/implicitly-joinable))
+                                            col))
+                                        (lib/breakoutable-columns $))))
+          viz-settings {:column_settings {}
+                        :pivot_table.column_split {:rows ["ID" "ID_2"], :columns [], :values ["count"]}
+                        :pivot_table.collapsed_rows {:value [], :rows ["ID" "ID_2"]}
+                        :pivot.show_row_totals true
+                        :pivot.show_column_totals true
+                        :pivot_table.column_widths {:leftHeaderWidths [80 99]
+                                                    :totalLeftHeaderWidths 179
+                                                    :valueHeaderWidths {}}
+                        :table.column_formatting []
+                        :table.columns nil}]
+      ;; Without deduplication, :pivot-rows' value would be just [0].
+      (is (= {:pivot-rows [0 1], :pivot-cols nil, :pivot-measures [2]}
+             (#'qp.pivot/column-name-pivot-options query viz-settings))))))

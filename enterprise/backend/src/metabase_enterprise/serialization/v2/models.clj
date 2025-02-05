@@ -89,5 +89,6 @@
    "TablePrivileges"
    "TaskHistory"
    "User"
+   "UserKeyValue"
    "UserParameterValue"
    "ViewLog"])

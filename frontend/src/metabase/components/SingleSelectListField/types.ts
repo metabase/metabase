@@ -7,10 +7,9 @@ export interface SingleSelectListFieldProps {
   value: RowValue[];
   options: Option;
   optionRenderer: (option: any) => JSX.Element;
-  onSearchChange: (value: string) => void;
+  onSearchChange?: (value: string) => void;
   placeholder: string;
   isDashboardFilter?: boolean;
   isLoading?: boolean;
   checkedColor?: string;
-  alwaysShowOptions?: boolean;
 }

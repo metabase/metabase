@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import { focusOutlineStyle } from "metabase/core/style/input";
 
-export interface TextAreaRootProps {
+interface TextAreaRootProps {
   readOnly?: boolean;
   hasError?: boolean;
   fullWidth?: boolean;

@@ -8,15 +8,12 @@
     transparent 80%
   );
 
-  &.transparent {
-    background-color: transparent;
+  &.secondary {
+    color: var(--mb-color-text-secondary);
+    background-color: var(--mb-color-notebook-step-bg);
 
     &:hover {
-      background-color: color-mix(
-        in srgb,
-        var(--notebook-action-button-color),
-        white 50%
-      );
+      background-color: var(--mb-color-notebook-step-bg-hover);
     }
   }
 

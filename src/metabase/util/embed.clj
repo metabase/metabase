@@ -7,8 +7,8 @@
    [hiccup.core :refer [html]]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.json :as json]
@@ -124,3 +124,9 @@
              (if-not (and config/ee-available? (:valid (premium-features/token-status)))
                (setting/get-value-of-type :boolean :show-static-embed-terms)
                false)))
+
+(defsetting show-sdk-embed-terms
+  (deferred-tru "Check if admin should see the SDK licensing terms popup")
+  :type    :boolean
+  :default true
+  :export? true)

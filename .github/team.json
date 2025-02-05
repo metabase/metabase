@@ -13,19 +13,30 @@
         "lbrdnk",
         "appleby",
         "uladzimirdev",
-        "wzimrin"
+        "wzimrin",
+        "ericnormand"
       ]
     },
     {
       "name": "Drivers",
       "label": ".Team/Drivers",
-      "members": ["snoe"]
+      "projectUrl": "https://github.com/orgs/metabase/projects/98/views/1",
+      "members": [
+        "snoe",
+        "rileythomp"
+      ]
     },
     {
       "name": "Embedding",
       "label": ".Team/Embedding",
       "projectUrl": "https://github.com/orgs/metabase/projects/88/views/1",
-      "members": ["WiNloSt", "oisincoveney", "npretto", "heypoom"]
+      "members": [
+        "WiNloSt",
+        "oisincoveney",
+        "npretto",
+        "heypoom",
+        "sanex3339"
+      ]
     },
     {
       "name": "Workflows",
@@ -35,21 +46,21 @@
         "qnkhuat",
         "piranha",
         "crisptrutski",
-        "deniskaber"
+        "deniskaber",
+        "wotbrew"
       ]
     },
     {
       "name": "Admin Webapp",
       "label": ".Team/AdminWebapp",
       "members": [
-        "noahmoss",
-        "escherize",
         "npfitz",
         "johnswanson",
         "rafpaf",
         "sloansparger",
         "iethree",
-        "nvoxland"
+        "nvoxland",
+        "fraserdrops"
       ]
     },
     {
@@ -58,15 +69,17 @@
       "members": [
         "alxnddr",
         "kulyk",
-        "adam-james-v",
-        "tsplude"
+        "tsplude",
+        "lorem--ipsum",
+        "noahmoss"
       ]
     },
     {
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
-        "camsaul"
+        "camsaul",
+        "escherize"
       ]
     }
   ]

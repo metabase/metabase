@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import _ from "underscore";
 
@@ -25,9 +26,14 @@ type BadgeProps = PropsWithChildren<{
   activeColor?: string;
   isSingleLine?: boolean;
   className?: string;
+  classNames?: {
+    root?: string;
+    icon?: string;
+  };
 }>;
 
 export const Badge = ({
+  className,
   to,
   icon,
   inactiveColor = "text-medium",
@@ -35,6 +41,7 @@ export const Badge = ({
   isSingleLine = false,
   onClick,
   children,
+  classNames = {},
   ...props
 }: BadgeProps) => (
   <MaybeLink
@@ -43,9 +50,16 @@ export const Badge = ({
     isSingleLine={isSingleLine}
     to={to}
     onClick={onClick}
+    className={cx(classNames.root, className)}
     {...props}
   >
-    {icon && <BadgeIcon {...getIconProps(icon)} hasMargin={!!children} />}
+    {icon && (
+      <BadgeIcon
+        {...getIconProps(icon)}
+        className={classNames.icon}
+        hasMargin={!!children}
+      />
+    )}
     {children && (
       <BadgeText className={CS.textWrap} isSingleLine={isSingleLine}>
         {children}

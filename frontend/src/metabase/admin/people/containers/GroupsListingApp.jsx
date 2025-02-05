@@ -1,4 +1,3 @@
-import { Component } from "react";
 import _ from "underscore";
 
 import Group from "metabase/entities/groups";
@@ -17,13 +16,7 @@ const mapDispatchToProps = {
   delete: PLUGIN_GROUP_MANAGERS.deleteGroup ?? Group.actions.delete,
 };
 
-class GroupsListingApp extends Component {
-  render() {
-    return <GroupsListing {...this.props} />;
-  }
-}
-
 export default _.compose(
   Group.loadList({ reload: true }),
   connect(mapStateToProps, mapDispatchToProps),
-)(GroupsListingApp);
+)(GroupsListing);

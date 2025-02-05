@@ -4,7 +4,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [java-time.api :as t]
-            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+            [metabase.premium-features.core :as premium-features :refer [defenterprise]]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.malli :as mu]
             [metabase.util.malli.schema :as ms])

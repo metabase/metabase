@@ -16,8 +16,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
-   [metabase.models.table :refer [Table]]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -173,7 +172,7 @@
                        :database-required
                        :database-is-auto-increment
                        (comp boolean :pk?))
-                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
+                 (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))))))
     (mt/test-drivers (mt/normal-drivers-without-feature :actions)
       (is (=?
            [[0 (driver/database-supports? driver/*driver* ::describe-pks (mt/db))]
@@ -185,7 +184,7 @@
            (sort-by
             :first
             (map (juxt :database-position (comp boolean :pk?))
-                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))))
+                 (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
@@ -199,11 +198,14 @@
                  {:name "latitude"    :base-type :type/Float}
                  {:name "name"        :base-type :type/Text}
                  {:name "id"          :base-type :type/Integer}}
-               (->> (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues)))
+               (->> (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))
                     (map (fn [{:keys [name base-type]}]
                            {:name      (u/lower-case-en name)
-                            :base-type (if (or (isa? base-type :type/Integer)
-                                               (isa? base-type :type/Decimal)) ; H2 DBs returns the ID as BigInt, Oracle as Decimal;
+                            :base-type (if (or
+                                             ; H2 DBs returns the ID as BigInt, Oracle as Decimal, snowflake number
+                                            (isa? base-type :type/Integer)
+                                            (isa? base-type :type/Decimal)
+                                            (and (not (isa? base-type :type/Float)) (isa? base-type :type/Number)))
                                          :type/Integer
                                          base-type)}))
                     set)))))))
@@ -215,7 +217,7 @@
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
-             (->> (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues)))
+             (->> (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))
                   (filter :semantic-type)
                   (map (juxt (comp u/lower-case-en :name) :semantic-type))))))))
 
@@ -268,7 +270,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (when-not (mysql/mariadb? (mt/db))
         (mt/dataset json
-          (let [table (t2/select-one Table :id (mt/id :json))]
+          (let [table (t2/select-one :model/Table :id (mt/id :json))]
             (sql-jdbc.execute/do-with-connection-with-options
              driver/*driver*
              (mt/db)
@@ -536,7 +538,7 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                   driver/*driver*
                   (mt/db)
-                  (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
+                  (t2/select-one :model/Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
 (mt/defdataset json-int-turn-string
   "Used for testing mysql json value unwrapping"
@@ -589,7 +591,7 @@
                      (into [] (sql-jdbc.sync/describe-nested-field-columns
                                driver/*driver*
                                (mt/db)
-                               (t2/select-one Table :db_id (mt/id) :name "json_with_pk")))))
+                               (t2/select-one :model/Table :db_id (mt/id) :name "json_with_pk")))))
               (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
                 (is (= [{:name              "json_col → int_turn_string"
                          :database-type     "decimal"
@@ -601,7 +603,7 @@
                        (into [] (sql-jdbc.sync/describe-nested-field-columns
                                  driver/*driver*
                                  (mt/db)
-                                 (t2/select-one Table :db_id (mt/id) :name "json_without_pk")))))))))))))
+                                 (t2/select-one :model/Table :db_id (mt/id) :name "json_without_pk")))))))))))))
 
 (defn- describe-table-indexes
   [table]
@@ -754,7 +756,7 @@
          (is (= #{{:type :normal-column-index :value "id"}}
                 (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index))))))))))
 
-(defmethod driver/database-supports? [::driver/driver ::materialized-view-fields]
+(defmethod driver/database-supports? [::driver/driver ::describe-materialized-view-fields]
   [_driver _feature _database]
   true)
 
@@ -781,14 +783,15 @@
                 :mongo
                 :sparksql
                 :sqlite
-                :athena]]
+                :athena
+                :vertica]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
     [_driver _feature _database]
     false))
 
 (deftest describe-view-fields
-  (mt/test-drivers (set/union (mt/normal-drivers-with-feature ::describe-materialized-view-fields)
-                              (mt/normal-drivers-with-feature ::describe-view-fields))
+  (mt/test-drivers (set/union (mt/normal-drivers-with-feature ::describe-materialized-view-fields :test/dynamic-dataset-loading)
+                              (mt/normal-drivers-with-feature ::describe-view-fields :test/dynamic-dataset-loading))
     (doseq [materialized? (cond-> []
                             (driver/database-supports? driver/*driver* ::describe-view-fields nil)
                             (conj false)
@@ -802,7 +805,8 @@
           (tx/create-view-of-table! driver/*driver* (mt/db) view-name table-name {:materialized? materialized?})
           (sync/sync-database! (mt/db) {:scan :schema})
           (let [orders-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name table-name}) (mt/db)))
-                orders-m-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db)))
+                view-instance (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db))
+                orders-m-id (:id view-instance)
                 non-view-fields (t2/select-fn-vec
                                  (juxt (comp u/lower-case-en :name) :base_type :database_position)
                                  :model/Field
@@ -813,6 +817,8 @@
                              :model/Field
                              :table_id orders-m-id
                              {:order-by [:database_position]})]
+            (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db))))
+                           (:name view-instance)))
             (is (some? orders-m-id))
             (is (some? orders-id))
             (is (= 9 (count view-fields)))

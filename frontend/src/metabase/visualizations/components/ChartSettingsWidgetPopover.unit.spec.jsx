@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import ChartSettingsWidgetPopover from "metabase/visualizations/components/ChartSettingsWidgetPopover";
+import { ChartSettingsWidgetPopover } from "metabase/visualizations/components/ChartSettingsWidgetPopover";
 
 const DEFAULT_PROPS = {
   handleEndShowWidget: jest.fn(),

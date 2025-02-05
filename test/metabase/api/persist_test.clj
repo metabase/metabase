@@ -1,7 +1,6 @@
 (ns metabase.api.persist-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.database :refer [Database]]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -15,7 +14,7 @@
   (mt/with-temp-scheduler!
     (#'task.persist-refresh/job-init!)
     (mt/with-temporary-setting-values [:persisted-models-enabled true]
-      (mt/with-temp [Database db {:settings {:persist-models-enabled true}}]
+      (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true}}]
         (task.persist-refresh/schedule-persistence-for-database! db default-cron)
         (f db)))))
 
@@ -51,8 +50,8 @@
       [:model/Card          model {:database_id (u/the-id db), :type :model}
        :model/PersistedInfo pinfo {:database_id (u/the-id db), :card_id (u/the-id model)}]
       (testing "Should require a non-negative persisted-info-id"
-        (is (=? {:errors {:persisted-info-id "nullable value must be an integer greater than zero."}}
-                (mt/user-http-request :crowberto :get 400 (format "persist/%d" -1)))))
+        (is (= "API endpoint does not exist."
+               (mt/user-http-request :crowberto :get 404 (format "persist/%d" -1)))))
       (testing "Should not get info when the persisted-info-id doesn't exist"
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404 (format "persist/%d" Integer/MAX_VALUE)))))
@@ -69,8 +68,8 @@
       [:model/Card          model {:database_id (u/the-id db), :type :model}
        :model/PersistedInfo pinfo {:database_id (u/the-id db), :card_id (u/the-id model)}]
       (testing "Should require a non-negative card-id"
-        (is (=? {:errors {:card-id "nullable value must be an integer greater than zero."}}
-                (mt/user-http-request :crowberto :get 400 (format "persist/card/%d" -1)))))
+        (is (=? "API endpoint does not exist."
+                (mt/user-http-request :crowberto :get 404 (format "persist/card/%d" -1)))))
       (testing "Should not get info when the card-id doesn't exist"
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404 (format "persist/card/%d" Integer/MAX_VALUE)))))

@@ -1,13 +1,13 @@
 (ns metabase.lib.schema.expression.conditional-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [malli.core :as mc]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.conditional :as expression.conditional]
    [metabase.lib.test-metadata :as meta]
    [metabase.test-runner.assert-exprs.malli-equals]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (comment metabase.test-runner.assert-exprs.malli-equals/keep-me)
 
@@ -22,7 +22,7 @@
                         [[:= {:lib/uuid (str (random-uuid))} 1 1]
                          arg])
                       args)]]
-    (is (mc/validate :mbql.clause/case clause))
+    (is (mr/validate :mbql.clause/case clause))
     clause))
 
 (deftest ^:parallel case-type-of-test
@@ -54,13 +54,13 @@
       :type/Integer)))
 
 (deftest ^:parallel coalesce-test
-  (is (mc/validate
+  (is (mr/validate
        :mbql.clause/coalesce
        [:coalesce
         {:lib/uuid "eb39757b-a403-46c7-a1b0-353f21812a87"}
         [:field {:base-type :type/Text, :lib/uuid "780aab5a-88ec-4aa6-8a4a-274702273c7a"} (meta/id :venues :name)]
         "bar"]))
-  (is (mc/validate
+  (is (mr/validate
        ::lib.schema/query
        {:lib/type     :mbql/query
         :lib/metadata meta/metadata-provider

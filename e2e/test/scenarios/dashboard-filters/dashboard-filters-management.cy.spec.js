@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -35,7 +35,7 @@ describe("scenarios > dashboard > filters > management", () => {
         query: { "source-table": ORDERS_ID, limit: 5 },
       };
 
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails: {
           parameters: [locationFilter, textFilter],
         },
@@ -180,7 +180,7 @@ describe("scenarios > dashboard > filters > management", () => {
         query: { "source-table": PEOPLE_ID, limit: 5 },
       };
 
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails: {
           parameters: [textFilter],
         },
@@ -241,7 +241,7 @@ describe("scenarios > dashboard > filters > management", () => {
         query: { "source-table": PEOPLE_ID, limit: 5 },
       };
 
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails: {
           parameters: [textFilter],
         },
@@ -327,7 +327,7 @@ function createDashboardWithFilterAndQuestionMapped() {
     query: { "source-table": PEOPLE_ID, limit: 5 },
   };
 
-  cy.createDashboardWithQuestions({
+  H.createDashboardWithQuestions({
     dashboardDetails: {
       parameters: [textFilter],
     },

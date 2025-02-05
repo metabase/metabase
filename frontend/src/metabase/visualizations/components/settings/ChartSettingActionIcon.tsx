@@ -21,13 +21,16 @@ export const ChartSettingActionIcon = ({
 }: ChartSettingActionIconProps) => (
   <ActionIcon
     data-testid={dataTestId}
-    onClick={onClick}
+    onClick={e => {
+      e.stopPropagation();
+      onClick?.(e);
+    }}
     p={0}
     c="text-medium"
     size="sm"
     radius="xl"
-    className={CS.pointerEventsAll}
+    className={CS.pointerEventsAuto}
   >
-    <Icon size={16} c="inherit" name={icon} />
+    <Icon size={16} c="inherit" name={icon} className={CS.pointerEventsNone} />
   </ActionIcon>
 );

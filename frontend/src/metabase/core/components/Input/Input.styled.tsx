@@ -12,7 +12,7 @@ import { monospaceFontFamily, space } from "metabase/styled-components/theme";
 
 import type { InputSize } from "../../style/types";
 
-export interface InputProps {
+interface InputProps {
   fieldSize?: InputSize;
   hasError?: boolean;
   fullWidth?: boolean;
@@ -23,7 +23,7 @@ export interface InputProps {
   colorScheme: string;
 }
 
-export interface InputRootProps {
+interface InputRootProps {
   fullWidth?: boolean;
 }
 

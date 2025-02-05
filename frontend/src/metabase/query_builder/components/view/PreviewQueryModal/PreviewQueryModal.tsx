@@ -34,7 +34,9 @@ export const PreviewQueryModal = ({
     pretty: false,
   };
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
-  const learnUrl = getLearnUrl("debugging-sql/sql-syntax");
+  const learnUrl = getLearnUrl(
+    "grow-your-data-skills/learn-sql/debugging-sql/sql-syntax",
+  );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   const engine = question.database()?.engine;

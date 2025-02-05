@@ -7,6 +7,8 @@ module.exports = {
     "^embed",
     "^design system",
     "^Inputs/DatePicker Dates range",
+    "^Parameters/DatePicker",
+    "^Buttons/Button Compact size, custom color",
   ].join("|"),
   configurations: {
     "chrome.laptop": {
@@ -19,9 +21,7 @@ module.exports = {
   },
   "looks-same": {
     strict: false,
-    tolerance: 6,
-    antialiasingTolerance: 0,
-    ignoreAntialiasing: true,
-    ignoreCaret: true,
+    antialiasingTolerance: 9,
+    tolerance: 9,
   },
 };

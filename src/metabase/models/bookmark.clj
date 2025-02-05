@@ -3,21 +3,12 @@
    [clojure.string :as str]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models.card :as card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.card :as card]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
-
-;; Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-;; We'll keep this till we replace all the symbols in our codebase."
-(def CardBookmark       "CardBookmark model"       :model/CardBookmark)
-(def DashboardBookmark  "DashboardBookmark model"  :model/DashboardBookmark)
-(def CollectionBookmark "CollectionBookmark model" :model/CollectionBookmark)
-(def BookmarkOrdering   "BookmarkOrdering model"   :model/BookmarkOrdering)
 
 (methodical/defmethod t2/table-name :model/CardBookmark       [_model] :card_bookmark)
 (methodical/defmethod t2/table-name :model/DashboardBookmark  [_model] :dashboard_bookmark)
@@ -101,18 +92,18 @@
         {:select    [[:bookmark.created_at        :created_at]
                      [:bookmark.type              :type]
                      [:bookmark.item_id           :item_id]
-                     [:card.name                  (mdb.query/qualify Card :name)]
-                     [:card.type                  (mdb.query/qualify Card :card_type)]
-                     [:card.display               (mdb.query/qualify Card :display)]
-                     [:card.description           (mdb.query/qualify Card :description)]
-                     [:card.archived              (mdb.query/qualify Card :archived)]
-                     [:dashboard.name             (mdb.query/qualify Dashboard :name)]
-                     [:dashboard.description      (mdb.query/qualify Dashboard :description)]
-                     [:dashboard.archived         (mdb.query/qualify Dashboard :archived)]
-                     [:collection.name            (mdb.query/qualify Collection  :name)]
-                     [:collection.authority_level (mdb.query/qualify Collection :authority_level)]
-                     [:collection.description     (mdb.query/qualify Collection :description)]
-                     [:collection.archived        (mdb.query/qualify Collection :archived)]]
+                     [:card.name                  (mdb.query/qualify :model/Card :name)]
+                     [:card.type                  (mdb.query/qualify :model/Card :card_type)]
+                     [:card.display               (mdb.query/qualify :model/Card :display)]
+                     [:card.description           (mdb.query/qualify :model/Card :description)]
+                     [:card.archived              (mdb.query/qualify :model/Card :archived)]
+                     [:dashboard.name             (mdb.query/qualify :model/Dashboard :name)]
+                     [:dashboard.description      (mdb.query/qualify :model/Dashboard :description)]
+                     [:dashboard.archived         (mdb.query/qualify :model/Dashboard :archived)]
+                     [:collection.name            (mdb.query/qualify :model/Collection  :name)]
+                     [:collection.authority_level (mdb.query/qualify :model/Collection :authority_level)]
+                     [:collection.description     (mdb.query/qualify :model/Collection :description)]
+                     [:collection.archived        (mdb.query/qualify :model/Collection :archived)]]
          :from      [[(bookmarks-union-query user-id) :bookmark]]
          :left-join [[:report_card :card]                    [:= :bookmark.card_id :card.id]
                      [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]
@@ -139,7 +130,7 @@
   "Saves a bookmark ordering of shape `[{:type, :item_id}]`
    Deletes all existing orderings for user so should be given a total ordering."
   [user-id orderings]
-  (t2/delete! BookmarkOrdering :user_id user-id)
-  (t2/insert! BookmarkOrdering (->> orderings
-                                    (map #(select-keys % [:type :item_id]))
-                                    (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
+  (t2/delete! :model/BookmarkOrdering :user_id user-id)
+  (t2/insert! :model/BookmarkOrdering (->> orderings
+                                           (map #(select-keys % [:type :item_id]))
+                                           (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))

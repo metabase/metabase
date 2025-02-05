@@ -6,9 +6,9 @@
    [metabase.api.common
     :as api
     :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.setting :refer [*user-local-values*]]
    [metabase.models.user :as user]
+   [metabase.permissions.core :as perms]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))
 
@@ -46,7 +46,7 @@
                                              (delay (atom (or settings
                                                               (user/user-local-settings metabase-user-id)))))
             *user-local-values-user-id*    metabase-user-id]
-    (data-perms/with-relevant-permissions-for-user metabase-user-id
+    (perms/with-relevant-permissions-for-user metabase-user-id
       (thunk))))
 
 (defn with-current-user-fetch-user-for-id

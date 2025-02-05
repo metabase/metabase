@@ -97,6 +97,10 @@ const theme = defineMetabaseTheme({
       // Background color for all dashboards
       backgroundColor: "#2F3640",
 
+      // Border color of the dashboard grid, shown only when editing dashboards.
+      // Defaults to `colors.border`
+      gridBorderColor: "#EEECEC",
+
       card: {
         // Background color for all dashboard cards
         backgroundColor: "#2D2D30",
@@ -110,7 +114,12 @@ const theme = defineMetabaseTheme({
     // Question
     question: {
       // Background color for all questions
-      backgroundColor: "#2D2D30",
+      backgroundColor: "#2E353B",
+
+      // Toolbar of the default interactive question layout
+      toolbar: {
+        backgroundColor: "#F3F5F7",
+      },
     },
 
     // Tooltips
@@ -206,7 +215,10 @@ const theme = defineMetabaseTheme({
 You can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 
 ```tsx
-import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
+import {
+  MetabaseProvider,
+  StaticDashboard,
+} from "@metabase/embedding-sdk-react";
 
 <MetabaseProvider
   loaderComponent={() => <div>Analytics is loading...</div>}

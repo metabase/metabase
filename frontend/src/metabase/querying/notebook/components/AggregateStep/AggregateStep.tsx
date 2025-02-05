@@ -62,7 +62,6 @@ export function AggregateStep({
           stageIndex={stageIndex}
           clause={aggregation}
           clauseIndex={index}
-          isMetric={isMetric}
           onQueryChange={updateQuery}
           onClose={onClose}
         />
@@ -79,7 +78,6 @@ interface AggregationPopoverProps {
   stageIndex: number;
   clause?: Lib.AggregationClause;
   clauseIndex?: number;
-  isMetric: boolean;
   onQueryChange: (query: Lib.Query) => void;
   onClose: () => void;
 }
@@ -89,7 +87,6 @@ function AggregationPopover({
   stageIndex,
   clause,
   clauseIndex,
-  isMetric,
   onQueryChange,
   onClose,
 }: AggregationPopoverProps) {
@@ -110,7 +107,6 @@ function AggregationPopover({
       clauseIndex={clauseIndex}
       operators={operators}
       allowCustomExpressions
-      allowTemporalComparisons={!isMetric}
       onQueryChange={onQueryChange}
       onClose={onClose}
     />

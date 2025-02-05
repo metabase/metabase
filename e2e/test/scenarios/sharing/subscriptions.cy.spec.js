@@ -1,8 +1,7 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { multiAutocompleteInput } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { admin, normal } = USERS;
@@ -14,7 +13,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   });
 
   it("should allow sharing if there are no dashboard cards", () => {
-    cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+    H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       H.visitDashboard(DASHBOARD_ID);
     });
 
@@ -31,7 +30,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
-    cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+    H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       H.visitDashboard(DASHBOARD_ID);
     });
     H.addTextBox("Foo");
@@ -332,7 +331,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     it("should work when using dashboard default filter value on native query with required parameter (metabase#15705)", () => {
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "15705",
         native: {
           query: "SELECT COUNT(*) FROM ORDERS WHERE QUANTITY={{qty}}",
@@ -347,7 +346,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           },
         },
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.createDashboard({ name: "15705D" }).then(
+        H.createDashboard({ name: "15705D" }).then(
           ({ body: { id: DASHBOARD_ID } }) => {
             // Add filter to the dashboard
             cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
@@ -430,7 +429,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       const dashboardDetails = { name: "Repro Dashboard" };
 
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: { dashboard_id } }) => {
           assignRecipient({ dashboard_id });
         },
@@ -524,12 +523,9 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.get("@subscriptionBar").findByText("Corbin Mertz").click();
 
         H.popover().within(() => {
-          H.removeMultiAutocompleteValue(0);
-          H.multiAutocompleteInput().type("Sallie");
-        });
-        cy.findByRole("option", { name: "Sallie Flatley" }).click();
-        cy.findByTestId("parameter-value-dropdown").within(() => {
-          multiAutocompleteInput().blur();
+          H.removeFieldValuesValue(0);
+          H.fieldValuesInput().type("Sallie");
+          cy.findByText("Sallie Flatley").click();
         });
         H.popover().button("Update filter").click();
 
@@ -642,11 +638,11 @@ describe("scenarios > dashboard > subscriptions", () => {
           .next("aside")
           .findByText("Corbin Mertz")
           .click();
-        H.removeMultiAutocompleteValue(0, ":eq(1)");
-        H.popover().within(() => multiAutocompleteInput().type("Sallie"));
-        cy.findByRole("option", { name: "Sallie Flatley" }).click();
-        cy.findByTestId("parameter-value-dropdown").within(() => {
-          multiAutocompleteInput().blur();
+
+        H.removeFieldValuesValue(0, ":eq(1)");
+        H.popover().within(() => {
+          H.fieldValuesInput().type("Sallie");
+          cy.findByText("Sallie Flatley").click();
         });
         H.popover().button("Update filter").click();
         cy.button("Save").click();
@@ -672,11 +668,15 @@ describe("scenarios > dashboard > subscriptions", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly").click();
 
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByText("Corbin Mertz").last().click();
-        H.popover().within(() => multiAutocompleteInput().type("Bob"));
-        H.selectDropdown().findByText("Bobby Kessler").click();
+        H.popover().within(() => {
+          H.fieldValuesInput().type("Bob");
+          cy.findByText("Bobby Kessler").click();
+        });
         H.popover().contains("Update filter").click();
 
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByText("Text 1").last().click();
         H.popover().findByText("Gizmo").click();
         H.popover().contains("Add filter").click();
@@ -776,10 +776,10 @@ function addParametersToDashboard() {
   // add default value to the above filter
   cy.findByText("No default").click();
   H.popover().within(() => {
-    H.multiAutocompleteInput().type("Corbin");
+    H.fieldValuesInput().type("Corbin");
   });
 
-  H.selectDropdown().findByText("Corbin Mertz").click();
+  H.popover().findByText("Corbin Mertz").click();
 
   H.popover().contains("Add filter").click({ force: true });
 

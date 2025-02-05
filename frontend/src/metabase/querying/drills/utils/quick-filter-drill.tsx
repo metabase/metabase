@@ -39,7 +39,9 @@ function getActionOverrides(
 ): Partial<ClickAction> {
   if (Lib.isDateOrDateTime(column)) {
     const action: Partial<ClickAction> = {
-      sectionTitle: t`Filter by this date`,
+      sectionTitle: Lib.isDateWithoutTime(column)
+        ? t`Filter by this date`
+        : t`Filter by this date and time`,
       sectionDirection: "column",
       buttonType: "horizontal",
     };

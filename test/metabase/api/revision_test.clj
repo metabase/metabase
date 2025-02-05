@@ -6,8 +6,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
@@ -47,14 +46,14 @@
 ;; case with no revisions (maintains backwards compatibility with old installs before revisions)
 (deftest no-revisions-test
   (testing "Loading revisions, where there are no revisions, should work"
-    (t2.with-temp/with-temp [:model/Card {:keys [id]}]
+    (mt/with-temp [:model/Card {:keys [id]}]
       (is (= [{:user {}, :diff nil, :description "modified this.", :has_multiple_changes false}]
              (get-revisions :card id))))))
 
 ;; case with single creation revision
 (deftest single-revision-test
   (testing "Loading a single revision works"
-    (t2.with-temp/with-temp [:model/Card {:keys [id] :as card}]
+    (mt/with-temp [:model/Card {:keys [id] :as card}]
       (create-card-revision! (:id card) true :rasta)
       (is (=? [{:is_reversion         false
                 :is_creation          true
@@ -67,7 +66,7 @@
               (get-revisions :card id))))))
 
 (deftest get-revision-for-entity-with-revision-exceeds-max-revision-test
-  (t2.with-temp/with-temp [:model/Card {:keys [id] :as card} {:name "A card"}]
+  (mt/with-temp [:model/Card {:keys [id] :as card} {:name "A card"}]
     (create-card-revision! (:id card) true :rasta)
     (doseq [i (range (inc revision/max-revisions))]
       (t2/update! :model/Card (:id card) {:name (format "New name %d" i)})
@@ -93,7 +92,7 @@
 ;; case with multiple revisions, including reversion
 (deftest multiple-revisions-with-reversion-test
   (testing "Creating multiple revisions, with a reversion, works"
-    (t2.with-temp/with-temp [:model/Card {:keys [id name], :as card}]
+    (mt/with-temp [:model/Card {:keys [id name], :as card}]
       (create-card-revision! (:id card) true :rasta)
       (t2/update! :model/Card {:name "something else"})
       (create-card-revision! (:id card) false :rasta)
@@ -153,8 +152,8 @@
 
 (deftest revert-test
   (testing "Reverting through API works"
-    (t2.with-temp/with-temp [:model/Dashboard {:keys [id] :as dash}   {}
-                             :model/Card      {card-id :id, :as card} {}]
+    (mt/with-temp [:model/Dashboard {:keys [id] :as dash}   {}
+                   :model/Card      {card-id :id, :as card} {}]
       (is (=? {:id id}
               (create-dashboard-revision! (:id dash) true :rasta)))
       (let [dashcard (first (t2/insert-returning-instances! :model/DashboardCard
@@ -238,7 +237,7 @@
 
 (deftest dashboard-revision-description-test
   (testing "revision description for dashboard are generated correctly"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Collection {coll-id :id}      {:name "New Collection"}
        :model/Card       {card-id-1 :id}    {:name "Card 1"}
        :model/Card       {card-id-2 :id}    {:name "Card 2"}
@@ -307,7 +306,7 @@
 
 (deftest dashboard-width-revision-diff-test
   (testing "The Dashboard's revision history correctly reports dashboard width changes (#38910)"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Dashboard  {dashboard-id :id :as dash} {:name "A dashboard"}
        :model/Revision   _ {:model    "Dashboard"
                             :model_id dashboard-id
@@ -329,7 +328,7 @@
 
 (deftest card-revision-description-test
   (testing "revision description for card are generated correctly"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Collection {coll-id :id} {:name "New Collection"}
        :model/Card       {card-id :id} {:name                   "A card"
                                         :display                "table"
@@ -382,7 +381,7 @@
 
 (deftest card-metric-revision-description-test
   (testing "revision description for card are generated correctly"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Collection {coll-id :id} {:name "New Collection"}
        :model/Card       {card-id :id} {:name                   "A metric"
                                         :display                "table"
@@ -439,7 +438,7 @@
                                                 "reverted to an earlier version" "est revenu à une version antérieure"}}}
     (mt/with-temporary-setting-values [site-locale "fr"]
       (testing "revisions description are translated"
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card       {card-id :id} {:name                   "A card"
                                             :display                "table"
                                             :dataset_query          (mt/mbql-query venues)
@@ -468,7 +467,7 @@
 
 (deftest revert-does-not-create-new-revision
   (testing "revert a dashboard that previously added cards should not recreate duplicate revisions(#30869)"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Dashboard  {dashboard-id :id} {:name "A dashboard"}]
       ;; 0. create the dashboard
       (create-dashboard-revision! dashboard-id true :crowberto)
@@ -500,8 +499,8 @@
 
 (deftest revert-ignores-extra-fields
   (testing "Reverting should not error if nonexistent fields are present in the revert: "
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:name "A card"}
-                             :model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
+    (mt/with-temp [:model/Card {card-id :id} {:name "A card"}
+                   :model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
       (testing "Reverting a card..."
         ;; Create the revision with an extra, unknown field on the card
         (revision/push-revision!

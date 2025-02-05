@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
@@ -8,7 +8,7 @@ const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
 
 describe("issue 6010", () => {
   const createMetric = () => {
-    return cy.createQuestion({
+    return H.createQuestion({
       name: "Metric",
       description: "Metric with a filter",
       type: "metric",
@@ -21,7 +21,7 @@ describe("issue 6010", () => {
   };
 
   const createQuestion = metric_id => {
-    return cy.createQuestion({
+    return H.createQuestion({
       name: "Question",
       display: "line",
       query: {
@@ -86,7 +86,7 @@ describe("issue 11249", () => {
   it("should not allow adding more series when all columns are used (metabase#11249)", () => {
     H.visitQuestionAdhoc(questionDetails);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByText("Data").click();
@@ -122,6 +122,7 @@ describe("issue 11435", () => {
     },
   };
   const hoverLineDot = ({ index } = {}) => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().eq(index).realHover();
   };
 
@@ -131,7 +132,7 @@ describe("issue 11435", () => {
   });
 
   it("should use time formatting settings in tooltips for native questions (metabase#11435)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
     hoverLineDot({ index: 1 });
     H.assertEChartsTooltip({
       header: "March 11, 2025, 8:45:17.010 PM",
@@ -163,15 +164,15 @@ describe("issue 15353", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should be able to change field name used for values (metabase#15353)", () => {
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.sidebar()
-      .contains("Count")
-      .siblings("[data-testid$=settings-button]")
-      .click();
+      .findByTestId("draggable-item-Count")
+      .icon("ellipsis")
+      .click({ force: true });
 
     cy.findByDisplayValue("Count").type(" renamed").blur();
 
@@ -215,7 +216,7 @@ describe("issue 18976, 18817", () => {
   });
 
   it("should not keep orphan columns rendered after switching from pivot to regular table (metabase#18817)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": PEOPLE_ID,
@@ -232,7 +233,9 @@ describe("issue 18976, 18817", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("qb-header").button("Summarize").click();
+    cy.findByTestId("qb-header")
+      .button(/Summarize/)
+      .click();
     H.rightSidebar()
       .findByLabelText("Source")
       .findByRole("button", { name: "Remove dimension" })
@@ -280,7 +283,7 @@ describe("issue 18996", () => {
   });
 
   it("should navigate between pages in a table with images in a dashboard (metabase#18996)", () => {
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
     }).then(({ body: { dashboard_id } }) => {
       H.visitDashboard(dashboard_id);
@@ -316,12 +319,12 @@ describe.skip("issue 19373", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questiondDetails, { visitQuestion: true });
+    H.createQuestion(questiondDetails, { visitQuestion: true });
   });
 
   it("should return correct sum of the distinct values in row totals (metabase#19373)", () => {
     // Convert to the pivot table manually to reflect the real-world scenario
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Pivot Table-button").should("be.visible").click();
     cy.wait("@pivotDataset");
 
@@ -330,16 +333,19 @@ describe.skip("issue 19373", () => {
     cy.findAllByRole("grid").eq(2).as("tableCells");
 
     // Sanity check before we start asserting on this column
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@columnTitles")
       .findAllByTestId("pivot-table-cell")
       .eq(ROW_TOTALS_INDEX)
       .should("contain", "Row totals");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@rowTitles")
       .findAllByTestId("pivot-table-cell")
       .eq(GRAND_TOTALS_INDEX)
       .should("contain", "Grand totals");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@tableCells")
       .findAllByTestId("pivot-table-cell")
       .eq(ROW_TOTALS_INDEX)
@@ -391,14 +397,13 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
   });
 
   it("should not duplicate column in settings when removing and adding it back", () => {
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // remove column
     cy.findByTestId("sidebar-content")
-      .findByText("Subtotal")
-      .parent()
-      .find(".Icon-eye_outline")
-      .click();
+      .findByTestId("draggable-item-Subtotal")
+      .icon("eye_outline")
+      .click({ force: true });
 
     // rerun query
     cy.findAllByTestId("run-button").first().click();
@@ -407,10 +412,9 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
 
     // add column back again
     cy.findByTestId("sidebar-content")
-      .findByText("Subtotal")
-      .parent()
-      .find(".Icon-eye_crossed_out")
-      .click();
+      .findByTestId("draggable-item-Subtotal")
+      .icon("eye_crossed_out")
+      .click({ force: true });
 
     // fails because there are 2 columns, when there should be one
     cy.findByTestId("sidebar-content").findByText("Subtotal");
@@ -450,7 +454,7 @@ describe("issue 23076", () => {
       locale: "de",
     });
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should correctly translate dates (metabase#23076)", () => {
@@ -519,11 +523,14 @@ describe("issue 28304", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count by Created At: Month").should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.leftSidebar().should("not.contain", "[Unknown]");
     H.leftSidebar().should("contain", "Created At");
     H.leftSidebar().should("contain", "Count");
-    cy.findAllByTestId("mini-bar").should("have.length.greaterThan", 0);
+    cy.findAllByTestId("mini-bar-container").should(
+      "have.length.greaterThan",
+      0,
+    );
     H.getDraggableElements().should("have.length", 2);
   });
 });
@@ -580,7 +587,7 @@ describe("issue 25250", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID").should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.moveDnDKitElement(H.getDraggableElements().contains("Product ID"), {
       vertical: -100,
     });
@@ -596,7 +603,7 @@ describe("issue 30039", () => {
 
   it("should not trigger object detail navigation after the modal was closed (metabase#30039)", () => {
     H.startNewNativeQuestion();
-    H.focusNativeEditor().as("editor").type("select * from ORDERS LIMIT 2");
+    H.NativeEditor.type("select * from ORDERS LIMIT 2");
     H.runNativeQuery();
     cy.findAllByTestId("detail-shortcut").first().click();
     cy.findByTestId("object-detail").should("be.visible");
@@ -604,13 +611,13 @@ describe("issue 30039", () => {
     cy.realPress("{esc}");
     cy.findByTestId("object-detail").should("not.exist");
 
-    cy.get("@editor").type("{downArrow};");
+    H.NativeEditor.type("{downArrow};");
     H.runNativeQuery();
     cy.findByTestId("object-detail").should("not.exist");
   });
 });
 
-describe("issue 37726", () => {
+describe("issue 37726", { tags: "@flaky" }, () => {
   const PIVOT_QUESTION = {
     name: "Pivot table with custom column width",
     display: "pivot",
@@ -651,10 +658,10 @@ describe("issue 37726", () => {
 
     // The important data point in this question is that it has custom
     // leftHeaderWidths as if a user had dragged them to change the defaults.
-    cy.createQuestion(PIVOT_QUESTION, { visitQuestion: true });
+    H.createQuestion(PIVOT_QUESTION, { visitQuestion: true });
 
     // Now, add in another column to the pivot table
-    cy.button("Summarize").click();
+    cy.button(/Summarize/).click();
 
     cy.findByRole("listitem", { name: "Category" })
       .realHover()
@@ -874,7 +881,7 @@ describe.skip("issue 25415", () => {
   });
 
   it("should allow to drill-through aggregated query with a custom column on top level (metabase#25415)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Aggregated query with custom column",
         display: "line",
@@ -969,7 +976,7 @@ describe("issue 7884", () => {
     cy.findAllByTestId("header-cell").eq(1).should("contain.text", "C1");
 
     cy.log("verify column order in viz settings");
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.getDraggableElements().eq(0).should("contain.text", "C3");
     H.getDraggableElements().eq(1).should("contain.text", "C1");
   });
@@ -1041,7 +1048,7 @@ describe("issue 12368", () => {
       cy.findByText("Ean").should("be.visible");
       cy.findByText("Vendor2").should("be.visible");
     });
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.button("Add or remove columns").should("be.visible");
       cy.findByText("Pivot column").should("not.exist");
@@ -1089,7 +1096,7 @@ describe("issue 32718", () => {
       cy.findByText("Category").should("not.exist");
       cy.findByText("Created At").should("be.visible");
     });
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Detail-button").click();
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("ID").should("be.visible");
@@ -1192,6 +1199,44 @@ describe("issue 50346", () => {
     cy.findByTestId("pivot-table").within(() => {
       cy.findByTestId(`${groupValue}-toggle-button`).click();
       cy.findByText(totalValue).should("be.visible");
+    });
+  });
+});
+
+describe("issue 50686", () => {
+  const questionDetails = {
+    name: "50686",
+    display: "smartscalar",
+    native: {
+      query:
+        "select 100 as total, 110 as forecast, 80 as last_year, now() as now",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow selecting more than 1 comparison (metabase#50686)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+    // Default comparison
+    H.queryBuilderMain().findByText("N/A");
+
+    // Add another comparison
+    H.openVizSettingsSidebar();
+    cy.button("Add comparison").click();
+    H.popover().findByText("Value from another column…").click();
+    H.popover().findByText("FORECAST").click();
+    cy.button("Done").click();
+
+    H.queryBuilderMain().within(() => {
+      // First comparison still exists
+      cy.findByText("N/A");
+
+      // New comparison has been added
+      cy.findByText("9.09%");
+      cy.contains("vs. FORECAST");
     });
   });
 });
