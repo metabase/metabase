@@ -100,7 +100,9 @@
                 (fn [req]
                   (reset! request req)
                   (mock-200-response (mock-conversations-response-body req)))}
-               (slack/conversations-list opts))
+               (tu/with-temporary-setting-values [slack-token "test-token"
+                                                  slack-app-token nil]
+                 (slack/conversations-list opts)))
              (let [{:keys [query-string]} @request
                    {:keys [types]}        (parse-query-string query-string)]
                (= conversation-types types)))
