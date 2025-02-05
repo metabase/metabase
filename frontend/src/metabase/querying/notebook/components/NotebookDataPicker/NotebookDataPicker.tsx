@@ -203,6 +203,8 @@ function EmbeddingDataPicker({
   isDisabled,
   onChange,
 }: LegacyDataPickerProps) {
+  // XXX: Flip to the previous picker when there's more than 100 data sources
+  // XXX: Make this customizable through props in interactive embedding and in the SDK
   const databaseId = Lib.databaseID(query);
   const tableInfo =
     table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
@@ -221,6 +223,7 @@ function EmbeddingDataPicker({
   return (
     <SimpleDataPicker
       key={pickerInfo?.tableId}
+      // XXX: Add join across DB tests
       selectedDatabaseId={databaseId}
       selectedEntity={pickerInfo?.tableId}
       isInitiallyOpen={!table}
