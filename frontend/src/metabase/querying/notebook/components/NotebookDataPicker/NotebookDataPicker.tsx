@@ -71,7 +71,7 @@ export function NotebookDataPicker({
 
   if (isEmbedding) {
     return (
-      <LegacyDataPicker
+      <EmbeddingDataPicker
         query={query}
         stageIndex={stageIndex}
         table={table}
@@ -195,7 +195,7 @@ type LegacyDataPickerProps = {
   onChange: (tableId: TableId) => void;
 };
 
-function LegacyDataPicker({
+function EmbeddingDataPicker({
   query,
   stageIndex,
   table,
