@@ -1,3 +1,20 @@
+## [0.52.9](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.8...embedding-sdk-0.52.9) (2025-02-05)
+
+
+### Bug Fixes
+
+* **sdk:** echarts tooltip is cut off below the viewport height ([#53192](https://github.com/metabase/metabase/issues/53192)) ([4b546db](https://github.com/metabase/metabase/commit/4b546db4d55f3ce2273ee1bd7fce1fa1b6ee58d4)), closes [#52822](https://github.com/metabase/metabase/issues/52822)
+* **sdk:** fix minWidth console error in dashboard grid ([#52880](https://github.com/metabase/metabase/issues/52880)) ([#53127](https://github.com/metabase/metabase/issues/53127)) ([2ce6adf](https://github.com/metabase/metabase/commit/2ce6adf6126d15b244a6ab3d5262eb954fb94075))
+* **sdk:** Remove ExplicitSize findDOMNode console errors ([#52253](https://github.com/metabase/metabase/issues/52253)) ([#52995](https://github.com/metabase/metabase/issues/52995)) ([4333968](https://github.com/metabase/metabase/commit/4333968632b2cf3dfcb43b7b60418cd722f64423))
+
+
+### Features
+
+* **sdk:** Add option to remove dashboard footer ([#52555](https://github.com/metabase/metabase/issues/52555)) ([#52937](https://github.com/metabase/metabase/issues/52937)) ([861e49e](https://github.com/metabase/metabase/commit/861e49edc63ecdf18857851d673e3b24fe7feb80))
+* **sdk:** apply theming to interactive question modules ([#53166](https://github.com/metabase/metabase/issues/53166)) ([6ce1ff9](https://github.com/metabase/metabase/commit/6ce1ff9d6cd41c264fd1f32353bd4e39ff0e1317)), closes [#52513](https://github.com/metabase/metabase/issues/52513)
+
+
+
 ## [0.52.8](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.7...embedding-sdk-0.52.8) (2025-01-28)
 
 
