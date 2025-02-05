@@ -488,7 +488,7 @@ class Visualization extends PureComponent {
             replacementContent
           ) : isDashboard && noResults ? (
             <NoResultsView isSmall={small} />
-          ) : error ? (
+          ) : error || errorMessageOverride ? (
             <ErrorView
               error={errorMessageOverride ?? error}
               icon={errorIcon}
