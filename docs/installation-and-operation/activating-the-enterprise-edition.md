@@ -50,7 +50,6 @@ Assuming you've been using a [production application database](../installation-a
 
 Upgrading to the Enterprise Edition will keep all of your questions, dashboards, people, settings — everything in your existing Metabase.
 
-
 And don't stress. You won't lose any of your work, and if you get stuck, we're [here to help](https://www.metabase.com/help/premium).
 
 ## Validating your token
