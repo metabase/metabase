@@ -1,6 +1,6 @@
 import cx from "classnames";
-import type { ComponentType } from "react";
-import { Component } from "react";
+import type { ComponentType, ForwardedRef } from "react";
+import { Component, forwardRef } from "react";
 import type { ConnectedProps } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -115,7 +115,9 @@ const mapDispatchToProps = {
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
 };
-const connector = connect(mapStateToProps, mapDispatchToProps);
+const connector = connect(mapStateToProps, mapDispatchToProps, null, {
+  forwardRef: true,
+});
 
 type DashboardGridReduxProps = ConnectedProps<typeof connector>;
 
@@ -145,9 +147,14 @@ type OwnProps = {
 
 type DashboardGridProps = OwnProps &
   DashboardGridReduxProps &
-  ExplicitSizeProps;
+  ExplicitSizeProps & {
+    forwardedRef?: ForwardedRef<HTMLDivElement>;
+  };
 
-class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
+class DashboardGridInner extends Component<
+  DashboardGridProps,
+  DashboardGridState
+> {
   static contextType = ContentViewportContext;
 
   _pauseAnimationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -610,10 +617,10 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   }
 
   render() {
-    const { dashboard, width } = this.props;
-
+    const { dashboard, width, forwardedRef } = this.props;
     return (
       <DashboardGridContainer
+        ref={forwardedRef}
         data-testid="dashboard-grid"
         isFixedWidth={dashboard?.width === "fixed"}
       >
@@ -646,6 +653,12 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
 
   throw new Error(`Unknown card.type: ${type}`);
 };
+
+const DashboardGrid = forwardRef<HTMLDivElement, DashboardGridProps>(
+  function _DashboardGrid(props, ref) {
+    return <DashboardGridInner {...props} forwardedRef={ref} />;
+  },
+);
 
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),

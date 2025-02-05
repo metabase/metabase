@@ -1,6 +1,6 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
-import { Component, createRef } from "react";
+import { Component, type ForwardedRef, createRef, forwardRef } from "react";
 import type { ResizableBox, ResizableBoxProps } from "react-resizable";
 import slugg from "slugg";
 import { t } from "ttag";
@@ -151,7 +151,12 @@ interface EntityLoaderProps {
   snippetCollections?: Collection[];
 }
 
-type Props = OwnProps & DispatchProps & ExplicitSizeProps & EntityLoaderProps;
+type Props = OwnProps &
+  DispatchProps &
+  ExplicitSizeProps &
+  EntityLoaderProps & {
+    forwardedRef?: ForwardedRef<HTMLDivElement>;
+  };
 
 interface NativeQueryEditorState {
   initialHeight: number;
@@ -766,6 +771,7 @@ export class NativeQueryEditor extends Component<
       sidebarFeatures,
       canChangeDatabase,
       setParameterValueToDefault,
+      forwardedRef,
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -781,7 +787,10 @@ export class NativeQueryEditor extends Component<
     );
 
     return (
-      <NativeQueryEditorRoot data-testid="native-query-editor-container">
+      <NativeQueryEditorRoot
+        data-testid="native-query-editor-container"
+        ref={forwardedRef}
+      >
         {hasTopBar && (
           <Flex align="center" data-testid="native-query-top-bar">
             {canChangeDatabase && (
@@ -895,11 +904,17 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
   },
 });
 
+const NativeQueryEditorRefWrapper = forwardRef<HTMLDivElement, Props>(
+  function _NativeQueryEditorRefWrapper(props, ref) {
+    return <NativeQueryEditor {...props} forwardedRef={ref} />;
+  },
+);
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  ExplicitSize(),
   Databases.loadList({ loadingAndErrorWrapper: false }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
   connect(null, mapDispatchToProps),
-)(NativeQueryEditor);
+  ExplicitSize(),
+)(NativeQueryEditorRefWrapper);
