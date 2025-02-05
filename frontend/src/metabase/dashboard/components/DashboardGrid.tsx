@@ -188,7 +188,7 @@ class DashboardGridInner extends Component<
 
     const initialCardSizes = getInitialCardSizes(
       props.dashboard.dashcards,
-      this.state.initialCardSizes,
+      this.state?.initialCardSizes,
     );
 
     this.state = {
@@ -199,7 +199,7 @@ class DashboardGridInner extends Component<
       initialCardSizes,
       layouts: getLayouts(
         props.dashboard.dashcards,
-        this.state.initialCardSizes,
+        this.state?.initialCardSizes,
       ),
       addSeriesModalDashCard: null,
       replaceCardModalDashCard: null,
@@ -359,7 +359,7 @@ class DashboardGridInner extends Component<
   };
 
   getLayoutForDashCard = (dashcard: BaseDashboardCard) => {
-    return getLayoutForDashCard(dashcard, this.state.initialCardSizes);
+    return getLayoutForDashCard(dashcard, this.state?.initialCardSizes);
   };
 
   getVisibleCards = (
