@@ -181,7 +181,8 @@
  [premium-features.test-util
   with-premium-features
   with-additional-premium-features
-  assert-has-premium-feature-error]
+  assert-has-premium-feature-error
+  when-ee-evailable]
 
  [perms.test-util
   with-restored-data-perms!
