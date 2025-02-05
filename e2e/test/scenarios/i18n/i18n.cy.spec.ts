@@ -1,37 +1,45 @@
 const { H } = cy;
 
-const locales = {
-  "Portuguese (Brazil)": {
-    "/": /Início/,
-    "/getting-started": /Comece a visualizar seus dados/,
-    "/browse/models": /Descrição/,
-    "/browse/metrics": /Crie métricas/,
-    "/trash": /Nada aqui/,
-  },
-  // "Chinese (China)": { "/": "你好，鲍比！" },
-  // "Chinese (Taiwan)": { "/": "哈囉，鮑比！" },
-  // French: { "/": "Accueil" },
-  // German: { "/": "Hallo, Bobby!" },
-  // Italian: { "/": "Ciao, Bobby!" },
-  // Japanese: { "/": "こんにちは、ボビー！" },
-  // Korean: { "/": "안녕, 바비!" },
-  // Russian: { "/": "Привет, Бобби!" },
-  // Spanish: { "/": "Hola, Bobby!" },
-};
+const paths = [
+  "/",
+  "/getting-started",
+  "/collection/root",
+  "/browse/models",
+  "/browse/databases",
+  "/browse/metrics",
+  "/trash",
+  "/admin",
+];
 
-describe("Test that high-visibility pages work in popular locales", () => {
+const locales = [
+  "Chinese (China)",
+  "Chinese (Taiwan)",
+  "Chinese",
+  "French",
+  "German",
+  "Italian",
+  "Japanese",
+  "Korean",
+  "Portuguese (Brazil)",
+  "Russian",
+  "Spanish",
+];
+
+describe("Pages accessible within one click from the homepage should work in popular locales", () => {
+  before(H.restore);
+
   beforeEach(() => {
-    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("PUT", "/api/user/*").as("updateUserSettings");
   });
 
-  Object.entries(locales).forEach(([localeName, pathToExpectedString]) => {
-    it(`Tour works in ${localeName}`, () => {
+  locales.forEach(localeName => {
+    it(`Pages should be reachable when locale is ${localeName}`, () => {
       selectLocale(localeName);
-      Object.entries(pathToExpectedString).forEach(([path, expectedString]) => {
+      paths.forEach(path => {
         cy.visit(path);
-        cy.findByText(expectedString);
+        cy.findByRole("main");
+        cy.findAllByTestId("error-boundary").should("not.exist");
       });
     });
   });
@@ -40,9 +48,9 @@ describe("Test that high-visibility pages work in popular locales", () => {
 const selectLocale = (localeName: string) => {
   cy.visit("/account/profile");
 
-  cy.findByTestId("user-profile-form").findByText("Use site default").click();
+  cy.findByTestId("user-locale-select").click();
   H.popover().within(() => cy.findByText(localeName).click());
 
-  cy.button("Update").click();
+  cy.get("[type=submit]").click();
   cy.wait("@updateUserSettings");
 };
