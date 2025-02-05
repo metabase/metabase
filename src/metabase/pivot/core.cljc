@@ -68,14 +68,11 @@
   "Marks all nodes at the given level as collapsed. 1 = root node; 2 = children
   of the root, etc."
   [tree level]
-  (into (ordered-map/ordered-map)
-        (if (= level 1)
-          (m/map-vals
-           #(assoc % :isCollapsed true)
-           tree)
-          (m/map-vals
-           #(update % :children (fn [subtree] (collapse-level subtree (dec level))))
-           tree))))
+  (m/map-vals
+   (if (= level 1)
+     #(assoc % :isCollapsed true)
+     #(update % :children (fn [subtree] (collapse-level subtree (dec level)))))
+   tree))
 
 (defn- add-is-collapsed
   "Annotates a row tree with :isCollapsed values, based on the contents of
@@ -142,10 +139,34 @@
           (ordered-map/ordered-map)
           rows))
 
+(defn- sort-orders-from-settings
+  [col-settings indexes]
+  (->> (map col-settings indexes)
+       (map :pivot_table.column_sort_order)))
+
+(defn- compare-fn
+  [sort-order]
+  (case (keyword sort-order)
+    :ascending  compare
+    :descending #(compare %2 %1)
+    nil))
+
+(defn- sort-tree
+  "Converts each level of a tree to a sorted map as needed, based on the values
+  in `sort-orders`."
+  [tree sort-orders]
+  (let [curr-compare-fn (compare-fn (first sort-orders))]
+    (into
+     (if curr-compare-fn
+       (sorted-map-by curr-compare-fn)
+       (ordered-map/ordered-map))
+     (for [[k v] tree]
+       [k (assoc v :children (sort-tree (:children v) (rest sort-orders)))]))))
+
 (defn build-pivot-trees
   "TODO"
-  [rows col-indexes row-indexes _col-settings collapsed-subtotals]
-  (let [{:keys [row-tree _col-tree]}
+  [rows col-indexes row-indexes col-settings collapsed-subtotals]
+  (let [{:keys [row-tree col-tree]}
         (reduce
          (fn [{:keys [row-tree col-tree]} row]
            (let [row-path (mapv row row-indexes)
@@ -154,5 +175,16 @@
               :col-tree (add-path-to-tree col-path col-tree)}))
          {:row-tree (ordered-map/ordered-map)
           :col-tree (ordered-map/ordered-map)}
-         rows)]
-    (add-is-collapsed row-tree collapsed-subtotals)))
+         rows)
+
+        collapsed-row-tree
+        (add-is-collapsed row-tree collapsed-subtotals)
+
+        row-sort-orders (sort-orders-from-settings col-settings row-indexes)
+        col-sort-orders (sort-orders-from-settings col-settings col-indexes)
+
+        sorted-row-tree
+        (sort-tree collapsed-row-tree row-sort-orders)
+
+        sorted-col-tree
+        (sort-tree col-tree col-sort-orders)]))
