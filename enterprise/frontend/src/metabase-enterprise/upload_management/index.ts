@@ -14,8 +14,7 @@ if (hasPremiumFeature("upload_management")) {
   PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable = UploadManagementTable;
 }
 
-// if (hasPremiumFeature("hosting") && hasPremiumFeature("attached_dwh")) {
-if ("Foo" != "bar") { // FIXME for testing
+if (hasPremiumFeature("hosting") && hasPremiumFeature("attached_dwh")) {
   PLUGIN_UPLOAD_MANAGEMENT.GsheetConnectionModal = GsheetConnectionModal;
   PLUGIN_UPLOAD_MANAGEMENT.GsheetMenuItem = GsheetMenuItem;
   PLUGIN_UPLOAD_MANAGEMENT.GsheetsSyncStatus = GsheetsSyncStatus;

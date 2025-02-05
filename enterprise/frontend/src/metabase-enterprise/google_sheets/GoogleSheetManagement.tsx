@@ -32,10 +32,11 @@ import disconnectIllustration from "./disconnect.svg?component";
 
 export function GsheetConnectButton() {
   const url = useLocation();
-  const databaseId = /databases\/(\d+)/.exec(url.pathname ?? '')?.[1];
+  const databaseId = /databases\/(\d+)/.exec(url.pathname ?? "")?.[1];
 
-  const { data: databaseInfo } =
-    useGetDatabaseQuery(databaseId ? { id: Number(databaseId) }: skipToken);
+  const { data: databaseInfo } = useGetDatabaseQuery(
+    databaseId ? { id: Number(databaseId) } : skipToken,
+  );
 
   const isDwh = databaseInfo?.is_attached_dwh;
 
@@ -74,9 +75,7 @@ export function GsheetConnectButton() {
       {status === "complete" && (
         <Flex align="center" gap="xs">
           <Icon name="google_sheet" />
-          <Text>
-            {t`Connected to Google Sheets`}
-          </Text>
+          <Text>{t`Connected to Google Sheets`}</Text>
         </Flex>
       )}
       <Text>{" · "}</Text>
@@ -84,11 +83,13 @@ export function GsheetConnectButton() {
         p={0}
         variant="subtle"
         onClick={() => {
-          setShowModal(true)
+          setShowModal(true);
           trackSheetConnectionClick({ from: "db-page" });
         }}
         disabled={status === "loading"}
-        leftIcon={status === "complete" ? undefined : <Icon name="google_sheet" />}
+        leftIcon={
+          status === "complete" ? undefined : <Icon name="google_sheet" />
+        }
       >
         {buttonText}
       </Button>
@@ -110,14 +111,14 @@ export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery();
 
-  // if (
-  //   !gSheetsEnabled ||
-  //   !gSheetsSetting ||
-  //   !userIsAdmin ||
-  //   !serviceAccountEmail
-  // ) {
-  //   return null;
-  // }
+  if (
+    !gSheetsEnabled ||
+    !gSheetsSetting ||
+    !userIsAdmin ||
+    !serviceAccountEmail
+  ) {
+    return null;
+  }
 
   const handleClick = () => {
     trackSheetConnectionClick({ from: "left-nav" });
@@ -137,10 +138,7 @@ export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
     .otherwise(() => null);
 
   return (
-    <Menu.Item
-      onClick={handleClick}
-      disabled={status === "loading"}
-    >
+    <Menu.Item onClick={handleClick} disabled={status === "loading"}>
       <Flex gap="sm" align="flex-start" justify="space-between" w="100%">
         <Flex>
           <Icon name="google_sheet" mt="xs" mr="sm" />
@@ -184,15 +182,15 @@ export function GsheetConnectionModal({
 
   const gSheetsEnabled = useSetting("show-google-sheets-integration");
 
-  // if (
-  //   !gSheetsEnabled ||
-  //   !gSheetsSetting ||
-  //   !userIsAdmin ||
-  //   !serviceAccountEmail
-  // ) {
-  //   console.error("Google Sheets integration is not enabled");
-  //   return null;
-  // }
+  if (
+    !gSheetsEnabled ||
+    !gSheetsSetting ||
+    !userIsAdmin ||
+    !serviceAccountEmail
+  ) {
+    console.error("Google Sheets integration is not enabled");
+    return null;
+  }
 
   const { status, folder_url } = gSheetsSetting;
 
@@ -244,7 +242,7 @@ function GoogleSheetsConnectModal({
     event.preventDefault();
     setErrorMessage("");
 
-    const validationRegex =/(https|http)\:\/\/drive\.google\.com\/.+/;
+    const validationRegex = /(https|http)\:\/\/drive\.google\.com\/.+/;
 
     if (!validationRegex.test(folderLink.trim())) {
       setErrorMessage(t`Invalid Google Drive folder link`);
@@ -287,7 +285,8 @@ function GoogleSheetsConnectModal({
         </Box>
         <Flex align="center" justify="space-between">
           <Text>
-            2. {jt`Enter: ${(<strong>{serviceAccountEmail ?? t`Error fetching service account email`}</strong>)}`}
+            2.{" "}
+            {jt`Enter: ${(<strong>{serviceAccountEmail ?? t`Error fetching service account email`}</strong>)}`}
           </Text>
           <CopyButton value={serviceAccountEmail}></CopyButton>
         </Flex>
