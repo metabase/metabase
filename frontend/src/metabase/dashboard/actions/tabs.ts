@@ -367,10 +367,11 @@ export const tabsReducer = createReducer<DashboardState>(
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
+          // @ts-expect-error - possibly infinite type error
           if (isVirtualDashCard(sourceDashCard)) {
             return;
           }
-          // @ts-expect-error - possibly infinite type error
+
           if (sourceDashCard.card_id == null) {
             throw Error("sourceDashCard is non-virtual yet has null card_id");
           }
