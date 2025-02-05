@@ -40,6 +40,7 @@
   width: auto;
   min-width: 30px;
   text-overflow: ellipsis;
+  text-align: center;
 }
 
 .minibar {

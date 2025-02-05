@@ -1,9 +1,8 @@
 import type { Cell, Table } from "@tanstack/react-table";
 import { useState } from "react";
-import { useCopyToClipboard } from "react-use";
 
 export type UseCellSelectionProps = {
-  table: Table<any>;
+  table: Table<unknown>;
   scrollToRow?: (index: number) => void;
 };
 
@@ -24,9 +23,8 @@ export const useCellSelection = ({
     useState<SelectedCell | null>(null);
   const [isMouseDown, setIsMouseDown] = useState(false);
 
-  const [_copiedText, copy] = useCopyToClipboard();
   const handleCopy = () => {
-    copy(getCellValues(table, selectedCells));
+    navigator.clipboard.writeText(getCellValues(table, selectedCells));
 
     setCopiedCells(selectedCells);
     setTimeout(() => {
@@ -265,12 +263,12 @@ export const useCellSelection = ({
     isCellSelected,
     isRowSelected,
     isCellCopied,
+    selectedCells,
   };
 };
 
 type SelectedCellRowMap = Record<string, SelectedCell[]>;
-const getCellValues = (table: Table<any>, cells: SelectedCell[]) => {
-  // reduce cells into arrays of rows
+const getCellValues = (table: Table<unknown>, cells: SelectedCell[]) => {
   const rows = cells.reduce(
     (acc: SelectedCellRowMap, cellIds: SelectedCell) => {
       const cellsForRow = acc[cellIds.rowId] ?? [];

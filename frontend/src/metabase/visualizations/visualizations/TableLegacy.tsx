@@ -457,7 +457,7 @@ class Table extends Component<TableProps, TableState> {
 
     const isPivoted = Table.isPivoted(series, settings);
     const areAllColumnsHidden = data?.cols.length === 0;
-    const TableComponent = isDashboard ? TableSimple : TableInteractive;
+    const TableComponent = TableInteractive;
 
     if (!data) {
       return null;

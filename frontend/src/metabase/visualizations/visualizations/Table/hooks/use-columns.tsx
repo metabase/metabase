@@ -97,7 +97,6 @@ interface UseColumnsProps {
   getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
   question: Question;
   hasMetadataPopovers?: boolean;
-  columnTotals: (number | null)[] | null;
 }
 
 const columnHelper = createColumnHelper<RowValues>();
@@ -137,7 +136,6 @@ export const useColumns = ({
   measureBodyCellDimensions,
   question,
   hasMetadataPopovers = false,
-  columnTotals,
 }: UseColumnsProps) => {
   const { cols, rows } = data;
 
@@ -253,14 +251,9 @@ export const useColumns = ({
             <HeaderCell name={columnName} align={align} sort={sortDirection} />
           );
         }),
-        footer: memo(() => {
-          if (!columnTotals) {
-            return null;
-          }
-
-          const formatter = columnFormatters[index];
+        footer: memo(({ value, isSelected }) => {
           return (
-            <FooterCell align={align} value={formatter(columnTotals[index])} />
+            <FooterCell align={align} value={value} isSelected={isSelected} />
           );
         }),
         cell: memo(
@@ -326,7 +319,6 @@ export const useColumns = ({
     columnFormatters,
     question,
     hasMetadataPopovers,
-    columnTotals,
   ]);
 
   const measureRootRef = useRef<HTMLDivElement>();

@@ -12,3 +12,7 @@
   text-overflow: ellipsis;
   overflow: hidden;
 }
+
+.selected {
+  color: var(--mb-color-text-brand);
+}

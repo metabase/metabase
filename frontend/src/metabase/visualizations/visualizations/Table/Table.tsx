@@ -87,6 +87,7 @@ export const _Table = ({
   question,
   clicked,
   hasMetadataPopovers = true,
+  isDashboard,
 }: TableProps) => {
   const { rows, cols } = data;
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -104,8 +105,6 @@ export const _Table = ({
     measureRoot,
   } = useTableCellsMeasure();
 
-  const columnTotals = useColumnTotals(cols, rows, settings);
-
   const {
     columns,
     columnFormatters,
@@ -122,7 +121,6 @@ export const _Table = ({
     getColumnSortDirection,
     question,
     hasMetadataPopovers,
-    columnTotals,
   });
 
   const wrappedColumns = useMemo(() => {
@@ -267,16 +265,31 @@ export const _Table = ({
     virtualPaddingRight,
     rowVirtualizer,
     measureGrid,
+    scrollToRow,
   } = useVirtualGrid({
     bodyRef,
     table,
     measureRowHeight,
   });
 
-  const { isCellSelected, isRowSelected, isCellCopied, ...cellSelection } =
-    useCellSelection({
-      table,
-    });
+  const {
+    isCellSelected,
+    isRowSelected,
+    isCellCopied,
+    selectedCells,
+    ...cellSelection
+  } = useCellSelection({
+    table,
+    scrollToRow,
+  });
+
+  const columnTotals = useColumnTotals(
+    cols,
+    rows,
+    settings,
+    selectedCells,
+    table,
+  );
 
   const handleColumnResize = useCallback(
     (columnName: string, width: number) => {
@@ -301,7 +314,7 @@ export const _Table = ({
   );
 
   const isAddColumnButtonSticky = table.getTotalSize() >= width;
-  const hasAddColumnButton = onVisualizationClick != null;
+  const hasAddColumnButton = onVisualizationClick != null && !isDashboard;
   const addColumnButton = useMemo(
     () =>
       hasAddColumnButton ? (
@@ -559,10 +572,22 @@ export const _Table = ({
                     ) : null}
                     {virtualColumns.map(virtualColumn => {
                       const header = footerGroup.headers[virtualColumn.index];
+                      const datasetIndex =
+                        header.column.columnDef.meta?.datasetIndex;
+                      const columnTotal = columnTotals[datasetIndex];
+                      const rawValue = columnTotal?.value;
+                      const value =
+                        rawValue != null
+                          ? columnFormatters[datasetIndex]?.(rawValue)
+                          : null;
 
                       const footerCell = flexRender(
                         header.column.columnDef.footer,
-                        header.getContext(),
+                        {
+                          ...header.getContext(),
+                          value,
+                          isSelected: columnTotal?.isSelected,
+                        },
                       );
 
                       return (
