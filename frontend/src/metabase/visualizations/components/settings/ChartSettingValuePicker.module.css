@@ -1,0 +1,46 @@
+.popover {
+  width: 260px;
+  height: 280px;
+  position: relative;
+}
+
+.item {
+  padding: 0.2rem 1rem;
+}
+
+.item:hover {
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-brand-lighter);
+  cursor: pointer;
+}
+
+.item:hover .mantine-text {
+  color: blue !important;
+}
+
+.search {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.search input {
+  border: none;
+  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.search input:active {
+  border-color: var(--mb-color-border);
+}
+
+.selected {
+  padding: 0.5rem 0.75rem;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-bottom: 1px solid var(--mb-color-border);
+}

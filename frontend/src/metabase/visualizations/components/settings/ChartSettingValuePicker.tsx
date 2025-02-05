@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import { skipToken, useGetCardQuery, useListRecentsQuery } from "metabase/api";
 import {
   ActionIcon,
@@ -17,6 +15,8 @@ import type {
   VizSettingColumnReference,
 } from "metabase-types/api";
 
+import S from "./ChartSettingValuePicker.module.css";
+
 function QuestionColumns({
   columns,
   onSelect,
@@ -27,7 +27,11 @@ function QuestionColumns({
   return (
     <ol>
       {columns.map(col => (
-        <li key={col.name} onClick={() => onSelect(col.name)}>
+        <li
+          key={col.name}
+          onClick={() => onSelect(col.name)}
+          className={S.item}
+        >
           {col.display_name}
         </li>
       ))}
@@ -53,9 +57,16 @@ function RecentsList({
       ) : (
         <Box>
           {recents.filter(questionsOnly).map(recent => (
-            <Text onClick={() => onSelectQuestion(recent.id)} key={recent.id}>
-              {recent.name}
-            </Text>
+            <Box className={S.item} key={recent.id}>
+              <Text
+                onClick={() => onSelectQuestion(recent.id)}
+                key={recent.id}
+                color="inherit"
+                truncate
+              >
+                {recent.name}
+              </Text>
+            </Box>
           ))}
         </Box>
       )}
@@ -86,17 +97,20 @@ export function ChartSettingValuePicker({
           <Icon name="bolt" />
         </ActionIcon>
       </Popover.Target>
-      <Popover.Dropdown mah="300px" miw="200px">
-        <TextInput
-          placeholder="Search for a value for {{Goal}}"
-          rightSection={
-            <ActionIcon>
-              <Icon name="folder" />
-            </ActionIcon>
-          }
-        />
+      <Popover.Dropdown className={S.popover}>
+        {!selectedCard && (
+          <TextInput
+            className={S.search}
+            placeholder="Search for a value for {{Goal}}"
+            rightSection={
+              <ActionIcon>
+                <Icon name="folder" />
+              </ActionIcon>
+            }
+          />
+        )}
         {selectedCard && (
-          <Flex>
+          <Flex className={S.selected}>
             <Text>{selectedCard.name}</Text>{" "}
             <ActionIcon ml="auto">
               <Icon onClick={() => onChange(undefined)} name="close" />
@@ -104,7 +118,7 @@ export function ChartSettingValuePicker({
           </Flex>
         )}
         {selectedCard ? (
-          <Box ml="md">
+          <Box>
             <QuestionColumns
               columns={selectedCard.result_metadata.filter(
                 columnReferenceConfig.isValidColumn,
