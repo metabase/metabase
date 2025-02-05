@@ -67,9 +67,11 @@ export interface DashCardProps {
   isXray?: boolean;
   withTitle?: boolean;
 
+  /** Bool if removing the dashcard will queue the card to be trashed on dashboard save */
+  isTrashedOnRemove: boolean;
+  onRemove: (dashcard: StoreDashcard) => void;
   onAddSeries: (dashcard: StoreDashcard) => void;
   onReplaceCard: (dashcard: StoreDashcard) => void;
-  onRemove: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
@@ -109,9 +111,10 @@ function DashCardInner({
   isEditingParameter,
   clickBehaviorSidebarDashcard,
   withTitle = true,
+  isTrashedOnRemove,
+  onRemove,
   onAddSeries,
   onReplaceCard,
-  onRemove,
   navigateToNewCardFromDashboard,
   markNewCardSeen,
   showClickBehaviorSidebar,
@@ -337,6 +340,7 @@ function DashCardInner({
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
+            isTrashedOnRemove={isTrashedOnRemove}
           />
         )}
         <DashCardVisualization
