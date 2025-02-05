@@ -1,9 +1,9 @@
 .listbox {
-  flex-shrink: 1;
   border-top: 1px solid var(--mb-color-border);
-  min-height: 4.2rem;
   overflow-y: auto;
   font-size: 14px;
+  flex-shrink: 0;
+  height: calc(100% - 2.5rem);
 }
 
 .item {
@@ -34,13 +34,16 @@
 }
 
 .footer {
+  box-sizing: border-box;
+  height: 2.5rem;
   background-color: var(--mb-color-bg-light);
-  padding: 8px 16px;
+  padding: 0.5rem 1rem;
   display: flex;
   align-items: center;
   color: var(--mb-color-text-secondary);
   border-top: 1px solid var(--mb-color-border);
   font-size: 12px;
+  margin-top: auto;
 }
 
 .key {

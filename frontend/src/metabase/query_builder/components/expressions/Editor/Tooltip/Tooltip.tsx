@@ -1,3 +1,4 @@
+import { currentCompletions } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 
@@ -33,6 +34,7 @@ export function Tooltip({
 }) {
   const doc = state.doc.toString();
   const enclosingFn = enclosingFunction(doc, state.selection.main.head);
+  const completions = currentCompletions(state);
 
   return (
     <Popover
@@ -41,7 +43,11 @@ export function Tooltip({
       returnFocus
       closeOnEscape
       middlewares={{ shift: false, flip: false }}
-      positionDependencies={[doc, state.selection.main.head]}
+      positionDependencies={[
+        doc,
+        state.selection.main.head,
+        completions.length,
+      ]}
     >
       <Popover.Target>
         <div />
@@ -49,6 +55,7 @@ export function Tooltip({
       <Popover.Dropdown
         data-testid="custom-expression-editor-suggestions"
         className={S.dropdown}
+        mah={350}
       >
         <div className={S.tooltip} ref={tooltipRef}>
           <HelpText
