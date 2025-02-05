@@ -106,7 +106,7 @@
         expanded-query (some-> card
                                :dataset-query
                                (->> (query metadata-provider))
-                               lib.convert/->pMBQL)]
+                               )]
     (stage-seq card-id expanded-query)))
 
 (defn- add-stage-dep [graph stage]
