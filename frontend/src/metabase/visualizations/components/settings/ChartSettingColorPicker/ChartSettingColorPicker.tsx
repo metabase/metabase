@@ -6,19 +6,27 @@ import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import type { AccentColorOptions } from "metabase/lib/colors/types";
 import { Box, type BoxProps } from "metabase/ui";
+import type {
+  VizSettingColumnReference,
+  VizSettingValueCondition,
+} from "metabase-types/api";
 
 interface ChartSettingColorPickerProps extends BoxProps {
   className?: string;
   value: string;
+  settingValue: string | VizSettingColumnReference | VizSettingValueCondition;
   title?: string;
   pillSize?: PillSize;
-  onChange?: (newValue: string) => void;
+  onChange?: (
+    newValue: string | VizSettingColumnReference | VizSettingValueCondition,
+  ) => void;
   accentColorOptions?: AccentColorOptions;
 }
 
 export const ChartSettingColorPicker = ({
   className,
   value,
+  settingValue,
   title,
   pillSize,
   onChange,
@@ -35,6 +43,7 @@ export const ChartSettingColorPicker = ({
     <Box className={cx(CS.flex, CS.alignCenter, className)} {...boxProps}>
       <ColorSelector
         value={value}
+        settingValue={settingValue}
         colors={getAccentColors(accentColorOptions)}
         onChange={onChange}
         pillSize={pillSize}

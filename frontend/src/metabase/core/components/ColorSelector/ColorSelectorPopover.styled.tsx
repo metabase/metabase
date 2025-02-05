@@ -5,5 +5,4 @@ export const PopoverRoot = styled.div`
   flex-wrap: wrap;
   gap: 0.25rem;
   padding: 0.75rem;
-  max-width: 22rem;
 `;

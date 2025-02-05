@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
+import { isNotNull } from "metabase/lib/types";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -215,6 +216,13 @@ export const GRAPH_DATA_SETTINGS = {
         showColumnSetting: true,
         showColorPicker: !hasBreakout,
         colors: vizSettings["series_settings.colors"],
+        rawColors: Object.fromEntries(
+          Object.entries(card.visualization_settings.series_settings ?? {})
+            .map(([seriesKey, seriesSettings]) =>
+              seriesSettings.color ? [seriesKey, seriesSettings.color] : null,
+            )
+            .filter(isNotNull),
+        ),
         series: extra.transformedSeries,
       };
     },

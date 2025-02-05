@@ -29,6 +29,7 @@ export const ChartSettingFieldPicker = ({
   columnHasSettings,
   showColorPicker,
   colors,
+  rawColors,
   series,
   onChangeSeriesColor,
   autoOpenWhenUnset = true,
@@ -110,6 +111,7 @@ export const ChartSettingFieldPicker = ({
                 <ChartSettingColorPicker
                   pillSize="small"
                   value={colors[seriesKey]}
+                  settingValue={rawColors[seriesKey]}
                   onChange={value => {
                     onChangeSeriesColor(seriesKey, value);
                   }}

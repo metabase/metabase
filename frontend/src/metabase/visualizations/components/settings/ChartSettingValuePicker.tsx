@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { skipToken, useGetCardQuery, useListRecentsQuery } from "metabase/api";
 import {
   ActionIcon,
@@ -76,6 +78,7 @@ function RecentsList({
 
 interface ChartSettingValuePickerProps {
   value: VizSettingColumnReference | null | undefined;
+  columnReferenceConfig: any;
   onChange: (value: VizSettingColumnReference | null | undefined) => void;
 }
 
@@ -84,11 +87,28 @@ export function ChartSettingValuePicker({
   columnReferenceConfig,
   onChange,
 }: ChartSettingValuePickerProps) {
+  const [innerValue, setInnerValue] = useState<
+    Partial<VizSettingColumnReference>
+  >(value ?? {});
+
   const { data } = useGetCardQuery(
-    value?.card_id ? { id: value.card_id } : skipToken,
+    innerValue?.card_id ? { id: innerValue.card_id } : skipToken,
   );
 
-  const selectedCard = value?.card_id && data ? data : null;
+  const selectedCard = innerValue?.card_id && data ? data : null;
+
+  const handleChange = (attrs: any) => {
+    const nextValue = { ...innerValue, ...attrs };
+    const isValidReference =
+      nextValue.type === "card" &&
+      typeof nextValue.card_id === "number" &&
+      typeof nextValue.column_name === "string" &&
+      nextValue.column_name.length > 0;
+    setInnerValue(nextValue);
+    if (isValidReference) {
+      onChange(nextValue);
+    }
+  };
 
   return (
     <Popover position="bottom-end" trapFocus>
@@ -113,7 +133,7 @@ export function ChartSettingValuePicker({
           <Flex className={S.selected}>
             <Text>{selectedCard.name}</Text>{" "}
             <ActionIcon ml="auto">
-              <Icon onClick={() => onChange(undefined)} name="close" />
+              <Icon onClick={() => handleChange(undefined)} name="close" />
             </ActionIcon>
           </Flex>
         )}
@@ -124,9 +144,9 @@ export function ChartSettingValuePicker({
                 columnReferenceConfig.isValidColumn,
               )}
               onSelect={columnName =>
-                onChange({
+                handleChange({
                   type: "card",
-                  card_id: value?.card_id,
+                  card_id: innerValue?.card_id,
                   column_name: columnName,
                 })
               }
@@ -135,7 +155,7 @@ export function ChartSettingValuePicker({
         ) : (
           <RecentsList
             onSelectQuestion={cardId =>
-              onChange({ type: "card", card_id: cardId, column_name: "" })
+              handleChange({ type: "card", card_id: cardId, column_name: "" })
             }
           />
         )}

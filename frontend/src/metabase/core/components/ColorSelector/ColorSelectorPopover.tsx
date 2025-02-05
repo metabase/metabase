@@ -26,7 +26,7 @@ const ColorSelectorPopover = forwardRef(function ColorSelector(
   );
 
   return (
-    <PopoverRoot {...props} ref={ref}>
+    <PopoverRoot {...props} style={{ maxWidth: "22rem" }} ref={ref}>
       {colors.map((option, index) => (
         <ColorPill
           key={index}
