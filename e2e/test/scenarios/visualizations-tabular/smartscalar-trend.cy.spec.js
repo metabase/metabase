@@ -1,6 +1,6 @@
 import Color from "color";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { colors } from "metabase/lib/colors";
 
