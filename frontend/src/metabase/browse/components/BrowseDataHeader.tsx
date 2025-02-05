@@ -37,12 +37,7 @@ export const BrowseDataHeader = () => {
 };
 
 const LearnAboutDataLink = () => (
-  <Flex
-    p=".75rem"
-    justify="flex-end"
-    align="center"
-    gap="md"
-  >
+  <Flex p=".75rem" justify="flex-end" align="center" gap="md">
     <Link to="reference">
       <BrowseHeaderIconContainer>
         <LearnAboutDataIcon size={14} name="reference" />

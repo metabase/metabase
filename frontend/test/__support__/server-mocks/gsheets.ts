@@ -2,13 +2,15 @@ import fetchMock from "fetch-mock";
 
 import type { Settings } from "metabase-types/api";
 
-type Props = {
-  status?: never,
-  errorCode: number
-} | {
-  status: Settings["gsheets"]["status"],
-  errorCode?: never
-}
+type Props =
+  | {
+      status?: never;
+      errorCode: number;
+    }
+  | {
+      status: Settings["gsheets"]["status"];
+      errorCode?: never;
+    };
 
 export function setupGsheetsGetFolderEndpoint({ status, errorCode }: Props) {
   if (status) {

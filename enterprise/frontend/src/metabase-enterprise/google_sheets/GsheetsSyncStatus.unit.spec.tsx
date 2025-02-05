@@ -21,7 +21,9 @@ function TestComponent() {
   return (
     <>
       <GsheetsSyncStatus />
-      <button onClick={() => dispatch(reloadSettings())}>Test Settings Update</button>
+      <button onClick={() => dispatch(reloadSettings())}>
+        Test Settings Update
+      </button>
     </>
   );
 }
@@ -34,13 +36,16 @@ const setup = ({
   errorCode,
 }: {
   settingStatus: GsheetsStatus;
-  updatedSettingStatus?: GsheetsStatus
+  updatedSettingStatus?: GsheetsStatus;
   folderStatus: GsheetsStatus;
   isAdmin?: boolean;
   errorCode?: number;
 }) => {
   const updatedSettings = createMockSettings({
-    gsheets: { status: updatedSettingStatus ?? settingStatus, folder_url: null },
+    gsheets: {
+      status: updatedSettingStatus ?? settingStatus,
+      folder_url: null,
+    },
   });
 
   setupPropertiesEndpoints(updatedSettings);
@@ -50,8 +55,7 @@ const setup = ({
     ? setupGsheetsGetFolderEndpoint({ errorCode })
     : setupGsheetsGetFolderEndpoint({ status: folderStatus });
 
-  return renderWithProviders(
-  <TestComponent />, {
+  return renderWithProviders(<TestComponent />, {
     storeInitialState: {
       settings: createMockSettingsState({
         gsheets: {
@@ -88,7 +92,9 @@ describe("GsheetsSyncStatus", () => {
     userEvent.click(await screen.findByText("Test Settings Update"));
 
     // loading state
-    expect(await screen.findByText("Importing Google Sheets...")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Importing Google Sheets..."),
+    ).toBeInTheDocument();
   });
 
   it("should not render anything for non-admins", () => {
@@ -128,7 +134,9 @@ describe("GsheetsSyncStatus", () => {
     expect(screen.getByText("Importing Google Sheets...")).toBeInTheDocument();
 
     userEvent.click(await screen.findByLabelText("Dismiss"));
-    await waitFor(() => expect(screen.queryByText(/Google/i)).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByText(/Google/i)).not.toBeInTheDocument(),
+    );
   });
 
   it("should render completed state after initial status is loading", async () => {
