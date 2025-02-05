@@ -22,6 +22,7 @@
   margin: 0.5rem 0;
   padding: 0.625rem 0.75rem;
   transition: border 0.3s linear;
+  background: var(--mb-color-background);
 
   &.isFocused {
     border-color: var(--mb-color-brand);
@@ -41,6 +42,10 @@
 
   textarea {
     min-height: 5px;
+  }
+
+  :global(.ace_scroller) {
+    background: var(--mb-color-background);
   }
 
   :global(.ace_content *) {
