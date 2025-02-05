@@ -459,7 +459,7 @@ export const tabsReducer = createReducer<DashboardState>(
       },
     );
 
-    builder.addCase(renameTab, (state, { payload: { tabId, name } }) => {
+    builder.addCase(renameTab, (state, { type, payload: { tabId, name } }) => {
       const { prevTabs } = getPrevDashAndTabs({ state });
       const tabToRenameIndex = prevTabs.findIndex(({ id }) => id === tabId);
 
@@ -468,6 +468,8 @@ export const tabsReducer = createReducer<DashboardState>(
           `RENAME_TAB was dispatched but tabToRenameIndex (${tabToRenameIndex}) is invalid`,
         );
       }
+
+      markDashboardDirty(type, state);
 
       prevTabs[tabToRenameIndex].name = name;
     });

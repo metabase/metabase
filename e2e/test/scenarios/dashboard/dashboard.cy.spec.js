@@ -1182,24 +1182,13 @@ describe("scenarios > dashboard", () => {
   });
 
   describe("warn before leave", () => {
-    // NOTE: The implementation of these tests are a bit odd to circumvent issues related to react-router v3.
-    //
-    // It's not 100% clear what the exact issue is, but in some cases, the browser's route and react-router get out of sync.
-    // For example, visit the home page, navigate to a dashboard, edit the dashboard, refresh the page (clearing the browser history), add a card, and then go back using the browser's back button.
-    // Doing so will engage the prevent leave UI, but if you notice the route in the URL it will not be the edit dashboard page's URL.
-    // The tests below have to do extra work to not engage with this odd behavior, where that happens has been called out explicitly.
-    //
-    // router.setRouteLeaveHook, which is what we're leveraging for this feature, has some closed but undressed issues on the react-router repo. It's not exactly clear _what_ the
-    // bugs people are experiencing are, but it is clear other folks experience undefined behavior with this util as well. It seems like the best course of action is to revisit
-    // this after doing a react-router upgrade.
-
     it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
       cy.visit("/");
 
       // add
       createNewDashboard();
       addCard();
-      assertPreventGoBack();
+      assertPreventLeave({ openSidebar: false });
       H.saveDashboard();
 
       // edit
@@ -1208,22 +1197,13 @@ describe("scenarios > dashboard", () => {
         .findAllByTestId("dashcard-container", { scrollBehavior: false })
         .eq(0);
       dragRight(card, 100);
-      assertPreventGoBack();
-      H.saveDashboard();
-
-      // url state gets weird at this point, refreshing fixes this
-      cy.reload();
-
-      // add - without adding a card again + saving the url state gets wierd, so we do this again
-      createNewDashboard();
-      addCard();
-      assertPreventGoBack();
+      assertPreventLeave();
       H.saveDashboard();
 
       // remove
       H.editDashboard();
       H.removeDashboardCard();
-      assertPreventGoBack();
+      assertPreventLeave();
     });
 
     it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
@@ -1232,30 +1212,32 @@ describe("scenarios > dashboard", () => {
       // add tab
       createNewDashboard();
       H.createNewTab();
-      assertPreventGoBack();
+      assertPreventLeave();
       H.saveDashboard();
 
       // move tab
       H.editDashboard();
-      const tab = cy.findByRole("tab", { name: "Tab 2" });
-      dragRight(tab, -200);
-      assertPreventGoBack();
+      dragRight(cy.findByRole("tab", { name: "Tab 2" }), -200);
+      H.openQuestionsSidebar();
+      assertPreventLeave();
       H.saveDashboard();
 
       // duplicate tab
-      createNewDashboard(); // url state gets weird at this point, creating a new dashboard avoids this
+      H.editDashboard();
       H.duplicateTab("Tab 1");
-      assertPreventGoBack();
+      assertPreventLeave();
       H.saveDashboard();
 
       // remove tab
       H.editDashboard();
       H.deleteTab("Copy of Tab 1");
-      // go back extra times to account for tab id changes
-      cy.go("back");
-      cy.go("back");
-      assertPreventGoBack();
+      assertPreventLeave();
       H.saveDashboard();
+
+      // rename tab
+      H.editDashboard();
+      H.renameTab("Tab 2", "Foo tab");
+      assertPreventLeave();
     });
 
     function createNewDashboard() {
@@ -1278,12 +1260,15 @@ describe("scenarios > dashboard", () => {
         .trigger("mouseup");
     }
 
-    function assertPreventGoBack() {
-      cy.go("back");
+    function assertPreventLeave(options = { openSidebar: true }) {
+      if (options.openSidebar) {
+        H.openQuestionsSidebar();
+      }
+      cy.findByText("New Question").click();
       H.modal()
         .should("exist")
         .within(() => {
-          cy.findByText("Discard your changes?").should("exist");
+          cy.findByText("Save your changes?").should("exist");
           cy.findByRole("button", { name: "Cancel" }).click();
         });
     }

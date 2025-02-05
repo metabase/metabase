@@ -234,6 +234,14 @@ export function duplicateTab(tabName: string) {
   });
 }
 
+export function renameTab(tabName: string, newTabName: string) {
+  cy.findByRole("tab", { name: tabName }).findByRole("button").click();
+  popover().within(() => {
+    cy.findByText("Rename").click();
+  });
+  cy.findByRole("tab", { name: tabName }).type(newTabName + "{Enter}");
+}
+
 export function goToTab(tabName: string) {
   cy.findByRole("tab", { name: tabName }).click();
 }
