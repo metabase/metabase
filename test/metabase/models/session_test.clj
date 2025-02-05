@@ -129,3 +129,17 @@
                                                                        :embedded           false
                                                                        :ip_address         "0:0:0:0:0:0:0:1"})
           (is (true? @email-sent)))))))
+
+(deftest clean-sessions-test ()
+  (mt/with-temp [:model/User {user-id :id} {}
+                 :model/Session old-session {:id         "a"
+                                             :user_id    user-id
+                                             :created_at (t/minus (t/local-date) (t/months 1))}
+                 :model/Session new-session {:id         "b"
+                                             :user_id    user-id
+                                             :created_at (t/minus (t/local-date) (t/days 1))}]
+    (testing "session-cleanup deletes old sessions and keeps new enough ones"
+      (is (t2/select-one :model/Session :id "a"))
+      (session/cleanup-sessions)
+      (is (not (t2/select-one :model/Session :id "a")))
+      (is (t2/select-one :model/Session :id "b")))))
