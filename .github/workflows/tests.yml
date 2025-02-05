@@ -61,14 +61,14 @@ jobs:
     uses: ./.github/workflows/backend.yml
     secrets: inherit
     with:
-      skip: (needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true')
+      skip: needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true'
 
   driver-tests:
     needs: files-changed
     uses: ./.github/workflows/drivers.yml
     secrets: inherit
     with:
-      skip: needs.files-changed.outputs.e2e_alll != 'true'
+      skip: needs.files-changed.outputs.e2e_all != 'true'
 
   frontend-tests:
     needs: files-changed
@@ -82,4 +82,4 @@ jobs:
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:
-      skip: needs.files-changed.outputs.e2e_alll != 'true'
+      skip: needs.files-changed.outputs.e2e_all != 'true'
