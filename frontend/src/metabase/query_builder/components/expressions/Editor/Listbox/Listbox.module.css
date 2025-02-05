@@ -1,0 +1,62 @@
+.listbox {
+  flex-shrink: 1;
+  border-top: 1px solid var(--mb-color-border);
+  min-height: 4.2rem;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.item {
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+
+  &:hover,
+  &[aria-selected="true"] {
+    color: inherit;
+    background-color: var(--mb-color-focus);
+  }
+
+  .icon {
+    margin-right: 8px;
+    height: 14px;
+    width: 14px;
+  }
+}
+
+.label {
+  white-space: pre;
+}
+
+.highlight {
+  font-weight: bold;
+}
+
+.footer {
+  /* TODO: use correct color */
+  background-color: #fafafb;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  color: var(--mb-color-text-secondary);
+  border-top: 1px solid var(--mb-color-border);
+  font-size: 12px;
+}
+
+.key {
+  padding: 6px;
+  border-radius: 6px;
+  background-color: var(--mb-base-color-orion-10);
+  height: 12px;
+  width: 12px;
+  margin: 0 4px;
+
+  & + .key {
+    margin-left: 0;
+  }
+
+  &:first-child {
+    margin-left: 0;
+  }
+}
