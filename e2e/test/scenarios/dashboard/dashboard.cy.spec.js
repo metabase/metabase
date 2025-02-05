@@ -1197,7 +1197,7 @@ describe("scenarios > dashboard", () => {
       const card = cy
         .findAllByTestId("dashcard-container", { scrollBehavior: false })
         .eq(0);
-      dragRight(card, 100);
+      dragOnXAxis(card, 100);
       assertPreventLeave();
       H.saveDashboard();
 
@@ -1218,7 +1218,7 @@ describe("scenarios > dashboard", () => {
 
       // move tab
       H.editDashboard();
-      dragRight(cy.findByRole("tab", { name: "Tab 2" }), -200);
+      dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
       H.openQuestionsSidebar();
       assertPreventLeave();
       H.saveDashboard();
@@ -1249,7 +1249,7 @@ describe("scenarios > dashboard", () => {
       });
     }
 
-    function dragRight(el, distance) {
+    function dragOnXAxis(el, distance) {
       el.trigger("mousedown", { clientX: 0 })
         .trigger("mousemove", { clientX: distance })
         .trigger("mouseup");
