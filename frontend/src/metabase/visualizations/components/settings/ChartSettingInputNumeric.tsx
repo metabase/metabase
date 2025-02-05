@@ -1,6 +1,8 @@
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, useMemo, useState } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken, useGetCardQueryQuery } from "metabase/api";
 import { TextInput } from "metabase/ui";
 import { isVizSettingColumnReference } from "metabase-types/guards";
 
@@ -33,6 +35,7 @@ interface ChartSettingInputProps extends ChartSettingWidgetProps<number> {
   id?: string;
   placeholder?: string;
   getDefault?: () => string;
+  columnReferenceConfig: any;
 }
 
 export const ChartSettingInputNumeric = ({
@@ -47,6 +50,28 @@ export const ChartSettingInputNumeric = ({
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
   const defaultValueProps = getDefault ? { defaultValue: getDefault() } : {};
 
+  const { data: referencedCardDataset } = useGetCardQueryQuery(
+    isVizSettingColumnReference(value) ? { cardId: value.card_id } : skipToken,
+  );
+
+  const displayValue = useMemo(() => {
+    if (!value || !isVizSettingColumnReference(value)) {
+      return String(inputValue);
+    }
+    if (!referencedCardDataset) {
+      return "";
+    }
+    const colIndex = referencedCardDataset.data.cols.findIndex(
+      col => col.name === value.column_name,
+    );
+    if (colIndex === -1) {
+      return t`Unknown`;
+    }
+    const col = referencedCardDataset.data.cols[colIndex];
+    const val = referencedCardDataset.data.rows[colIndex];
+    return `${col.display_name} (${val})`;
+  }, [value, inputValue, referencedCardDataset]);
+
   return (
     <TextInput
       id={id}
@@ -55,11 +80,7 @@ export const ChartSettingInputNumeric = ({
       type="text"
       error={inputValue && isNaN(Number(inputValue))}
       disabled={isVizSettingColumnReference(value)}
-      value={
-        isVizSettingColumnReference(value)
-          ? `${value.column_name} (card ${value.card_id})`
-          : String(inputValue)
-      }
+      value={displayValue}
       onChange={(e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.value.split("").every(ch => ALLOWED_CHARS.has(ch))) {
           setInputValue(e.target.value);
