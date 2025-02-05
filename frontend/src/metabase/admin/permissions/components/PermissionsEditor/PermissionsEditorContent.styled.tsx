@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 export const PermissionEditorContentRoot = styled.div`
   display: flex;
   flex-direction: column;
-  padding-left: 32px;
+  padding-left: 2rem;
   height: 100%;
 `;
 
