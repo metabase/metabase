@@ -1,7 +1,13 @@
 import { currentCompletions } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -58,7 +64,7 @@ export function Tooltip({
       setIsHelpTextOpen(false);
       return;
     }
-    if (canShowBoth || completions.length === 0) {
+    if (!canShowBoth && completions.length === 0) {
       setIsHelpTextOpen(true);
       return;
     }
