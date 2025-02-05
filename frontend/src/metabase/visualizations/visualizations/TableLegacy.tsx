@@ -42,6 +42,7 @@ import {
 import type {
   DatasetColumn,
   DatasetData,
+  RawSeries,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -95,6 +96,14 @@ class Table extends Component<TableProps, TableState> {
       inline: true,
       widget: "toggle",
       default: true, // TODO: should be false by default
+    },
+    "table.column_totals": {
+      section: t`Columns`,
+      title: t`Show column totals`,
+      inline: true,
+      widget: "toggle",
+      getHidden: ([{ data }]: RawSeries) => data.rows_truncated != null,
+      getDefault: ([{ data }]: RawSeries) => data.rows_truncated == null,
     },
     "table.pivot": {
       section: t`Columns`,
@@ -448,7 +457,7 @@ class Table extends Component<TableProps, TableState> {
 
     const isPivoted = Table.isPivoted(series, settings);
     const areAllColumnsHidden = data?.cols.length === 0;
-    const TableComponent = isDashboard ? TableSimple : TableInteractive;
+    const TableComponent = TableInteractive;
 
     if (!data) {
       return null;

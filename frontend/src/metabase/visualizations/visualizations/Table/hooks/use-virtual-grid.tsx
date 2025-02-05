@@ -76,5 +76,6 @@ export const useVirtualGrid = ({
     virtualPaddingRight,
     rowVirtualizer,
     measureGrid,
+    scrollToRow: rowVirtualizer.scrollToIndex,
   };
 };

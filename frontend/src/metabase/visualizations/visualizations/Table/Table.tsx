@@ -23,6 +23,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
@@ -48,7 +49,9 @@ import { SortableHeader } from "./SortableHeader";
 import styles from "./Table.module.css";
 import { HEADER_HEIGHT, INDEX_COLUMN_ID, ROW_HEIGHT } from "./constants";
 import { useTableCellsMeasure } from "./hooks/use-cell-measure";
+import { useCellSelection } from "./hooks/use-cell-selection";
 import { useColumnResizeObserver } from "./hooks/use-column-resize-observer";
+import { useColumnTotals } from "./hooks/use-column-totals";
 import { useColumns } from "./hooks/use-columns";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { useVirtualGrid } from "./hooks/use-virtual-grid";
@@ -84,6 +87,7 @@ export const _Table = ({
   question,
   clicked,
   hasMetadataPopovers = true,
+  isDashboard,
 }: TableProps) => {
   const { rows, cols } = data;
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -261,11 +265,31 @@ export const _Table = ({
     virtualPaddingRight,
     rowVirtualizer,
     measureGrid,
+    scrollToRow,
   } = useVirtualGrid({
     bodyRef,
     table,
     measureRowHeight,
   });
+
+  const {
+    isCellSelected,
+    isRowSelected,
+    isCellCopied,
+    selectedCells,
+    ...cellSelection
+  } = useCellSelection({
+    table,
+    scrollToRow,
+  });
+
+  const columnTotals = useColumnTotals(
+    cols,
+    rows,
+    settings,
+    selectedCells,
+    table,
+  );
 
   const handleColumnResize = useCallback(
     (columnName: string, width: number) => {
@@ -290,7 +314,7 @@ export const _Table = ({
   );
 
   const isAddColumnButtonSticky = table.getTotalSize() >= width;
-  const hasAddColumnButton = onVisualizationClick != null;
+  const hasAddColumnButton = onVisualizationClick != null && !isDashboard;
   const addColumnButton = useMemo(
     () =>
       hasAddColumnButton ? (
@@ -492,7 +516,20 @@ export const _Table = ({
                       return (
                         <div
                           key={cell.id}
-                          className={styles.td}
+                          className={cx(styles.td, {
+                            [styles.cellSelected]: isCellSelected(cell),
+                          })}
+                          tabIndex={-1}
+                          onKeyDown={cellSelection.handleCellsKeyDown}
+                          onMouseDown={e =>
+                            cellSelection.handleCellMouseDown(e, cell)
+                          }
+                          onMouseUp={e =>
+                            cellSelection.handleCellMouseUp(e, cell)
+                          }
+                          onMouseOver={e =>
+                            cellSelection.handleCellMouseOver(e, cell)
+                          }
                           onClick={e =>
                             handleBodyCellClick(
                               e,
@@ -522,6 +559,56 @@ export const _Table = ({
                 );
               })}
             </div>
+            {columnTotals != null ? (
+              <div className={styles.tfoot}>
+                {table.getFooterGroups().map(footerGroup => (
+                  <div
+                    key={footerGroup.id}
+                    className={styles.tr}
+                    style={{ height: "32px" }}
+                  >
+                    {virtualPaddingLeft ? (
+                      <div style={{ width: virtualPaddingLeft }} />
+                    ) : null}
+                    {virtualColumns.map(virtualColumn => {
+                      const header = footerGroup.headers[virtualColumn.index];
+                      const datasetIndex =
+                        header.column.columnDef.meta?.datasetIndex;
+                      const columnTotal = columnTotals[datasetIndex];
+                      const rawValue = columnTotal?.value;
+                      const value =
+                        rawValue != null
+                          ? columnFormatters[datasetIndex]?.(rawValue)
+                          : null;
+
+                      const footerCell = flexRender(
+                        header.column.columnDef.footer,
+                        {
+                          ...header.getContext(),
+                          value,
+                          isSelected: columnTotal?.isSelected,
+                        },
+                      );
+
+                      return (
+                        <div
+                          key={header.id}
+                          style={{
+                            width: header.getSize(),
+                            position: "relative",
+                          }}
+                        >
+                          {footerCell}
+                        </div>
+                      );
+                    })}
+                    {virtualPaddingRight ? (
+                      <div style={{ width: virtualPaddingRight }} />
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
         {isAddColumnButtonSticky ? addColumnButton : null}

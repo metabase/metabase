@@ -1,4 +1,11 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Root } from "react-dom/client";
 import { type CSSProperties } from "react";
 
@@ -13,7 +20,7 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { OrderByDirection } from "metabase-lib/types";
-import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
+import { isFK, isNumber, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
   DatasetColumn,
@@ -51,6 +58,10 @@ import type Question from "metabase-lib/v1/Question";
 
 import { IndexCell } from "../cell/IndexCell";
 import { IndexHeaderCell } from "../cell/IndexHeaderCell";
+import { FooterCell } from "../cell/FooterCell";
+import _ from "underscore";
+import { sumMetric } from "metabase/visualizations/lib/dataset";
+import { t } from "ttag";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
@@ -204,13 +215,16 @@ export const useColumns = ({
   const columns: ColumnDef<RowValues, RowValue>[] = useMemo(() => {
     const indexColumn = columnHelper.display({
       id: INDEX_COLUMN_ID,
-      size: 46,
+      size: 52,
       enableResizing: false,
       cell: props => {
         return <IndexCell rowNumber={props.row.index + 1} />;
       },
       header: () => {
         return <IndexHeaderCell />;
+      },
+      footer: () => {
+        return <FooterCell value={t`Totals`} />;
       },
     });
     const dataColumns = cols.map((col, index) => {
@@ -232,9 +246,14 @@ export const useColumns = ({
       const id = isPivoted ? `${index}:${col.name}` : col.name;
       return columnHelper.accessor(row => row[index], {
         id,
-        header: memo(props => {
+        header: memo(() => {
           return (
             <HeaderCell name={columnName} align={align} sort={sortDirection} />
+          );
+        }),
+        footer: memo(({ value, isSelected }) => {
+          return (
+            <FooterCell align={align} value={value} isSelected={isSelected} />
           );
         }),
         cell: memo(

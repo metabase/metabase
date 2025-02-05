@@ -1,0 +1,18 @@
+.root {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  cursor: default;
+  font-weight: 600;
+  padding: 0 12px;
+  border-top: 1px solid var(--mb-color-border-alpha-30);
+  font-size: 12px;
+  background-color: var(--mb-color-bg-light);
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.selected {
+  color: var(--mb-color-text-brand);
+}

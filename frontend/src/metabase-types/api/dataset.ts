@@ -39,6 +39,7 @@ export interface DatasetColumn {
   aggregation_index?: number;
 
   aggregation_type?: AggregationType;
+  aggregation_function?: AggregationType;
 
   coercion_strategy?: string | null;
   visibility_type?: FieldVisibilityType;
