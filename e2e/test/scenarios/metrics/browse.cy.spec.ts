@@ -120,7 +120,7 @@ describe("scenarios > browse > metrics", () => {
     });
   });
 
-  describe("multiple metrics", () => {
+  describe("multiple metrics", { tags: "@flaky" }, () => {
     it("can browse metrics", () => {
       createMetrics(ALL_METRICS);
       cy.visit("/browse/metrics");
@@ -231,7 +231,7 @@ describe("scenarios > browse > metrics", () => {
     });
   });
 
-  describe("dot menu", () => {
+  describe("dot menu", { tags: "@flaky" }, () => {
     it("should be possible to bookmark a metrics from the dot menu", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
 
@@ -346,7 +346,7 @@ describe("scenarios > browse > metrics", () => {
     });
   });
 
-  describe("verified metrics", () => {
+  describe("verified metrics", { tags: "@flaky" }, () => {
     H.describeEE("on enterprise", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
