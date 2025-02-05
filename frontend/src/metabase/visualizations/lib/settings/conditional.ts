@@ -39,7 +39,7 @@ function checkCondition(condition: VizSettingValueCondition, series: Series) {
 }
 
 export function resolveConditions(conditions: any[], series: Series) {
-  for (const condition of conditions) {
+  for (const condition of conditions.toReversed()) {
     if (checkCondition(condition, series)) {
       return condition.value;
     }
