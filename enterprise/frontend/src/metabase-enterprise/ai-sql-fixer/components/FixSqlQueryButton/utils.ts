@@ -44,3 +44,7 @@ export function getFixedQuery(query: Lib.Query, fixes: SqlQueryFix[]) {
   const newSql = newSqlLines.join("\n");
   return Lib.withNativeQuery(query, newSql);
 }
+
+export function getFixedLineNumbers(fixes: SqlQueryFix[]) {
+  return fixes.map(fix => fix.line_number);
+}

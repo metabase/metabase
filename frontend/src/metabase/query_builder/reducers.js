@@ -183,7 +183,7 @@ export const uiControls = handleActions(
     [RUN_QUERY]: state => ({
       ...state,
       isRunning: true,
-      isNativeQueryFixApplied: false,
+      isSqlQueryFixApplied: false,
     }),
     [CANCEL_QUERY]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),

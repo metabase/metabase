@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
+import { useSelector } from "metabase/lib/redux";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import { getHighlightedSqlQueryLineNumbers } from "metabase/query_builder/selectors";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -17,6 +19,7 @@ export const ViewNativeQueryEditor = props => {
   } = props;
 
   const legacyQuery = question.legacyQuery();
+  const highlightedLineNumbers = useSelector(getHighlightedSqlQueryLineNumbers);
 
   // Normally, when users open native models,
   // they open an ad-hoc GUI question using the model as a data source
@@ -36,6 +39,7 @@ export const ViewNativeQueryEditor = props => {
         {...props}
         query={legacyQuery}
         viewHeight={height}
+        highlightedLineNumbers={highlightedLineNumbers}
         isOpen={legacyQuery.isEmpty() || isDirty}
         isInitiallyOpen={isNativeEditorOpen}
         datasetQuery={card && card.dataset_query}

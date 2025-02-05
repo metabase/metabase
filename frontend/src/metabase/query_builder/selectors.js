@@ -58,6 +58,8 @@ export const getIsShowingSnippetSidebar = state =>
   getUiControls(state).isShowingSnippetSidebar;
 export const getIsShowingDataReference = state =>
   getUiControls(state).isShowingDataReference;
+export const getHighlightedSqlQueryLineNumbers = state =>
+  getUiControls(state).highlightedSqlQueryLineNumbers;
 
 // This selector can be called from public questions / dashboards, which do not
 // have state.qb
@@ -764,9 +766,9 @@ const getNativeEditorSelectedRange = createSelector(
   uiControls => uiControls && uiControls.nativeEditorSelectedRange,
 );
 
-export const getisNativeQueryFixApplied = createSelector(
+export const getisSqlQueryFixApplied = createSelector(
   [getUiControls],
-  uiControls => uiControls && uiControls.isNativeQueryFixApplied,
+  uiControls => uiControls && uiControls.isSqlQueryFixApplied,
 );
 
 export const getIsTimeseries = createSelector(

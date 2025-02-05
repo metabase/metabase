@@ -6,13 +6,14 @@ import type { FixSqlQueryButtonProps } from "metabase/plugins";
 import { Button, Icon } from "metabase/ui";
 import { useGetFixedSqlQueryQuery } from "metabase-enterprise/api";
 
-import { getFixRequest, getFixedQuery } from "./utils";
+import { getFixRequest, getFixedLineNumbers, getFixedQuery } from "./utils";
 
 export function FixSqlQueryButton({
   query,
   queryError,
   queryErrorType,
   onQueryFix,
+  onHighlightLines,
 }: FixSqlQueryButtonProps) {
   const request = getFixRequest(query, queryError, queryErrorType);
   const { data, error, isFetching } = useGetFixedSqlQueryQuery(
@@ -23,6 +24,16 @@ export function FixSqlQueryButton({
     if (data) {
       onQueryFix(getFixedQuery(query, data.fixes));
     }
+  };
+
+  const handleMouseEnter = () => {
+    if (data) {
+      onHighlightLines(getFixedLineNumbers(data.fixes));
+    }
+  };
+
+  const handleMouseLeave = () => {
+    onHighlightLines([]);
   };
 
   if (!request) {
@@ -44,5 +55,12 @@ export function FixSqlQueryButton({
       children: t`Metabot can't fix it`,
     }));
 
-  return <Button {...props} onClick={handleClick} />;
+  return (
+    <Button
+      {...props}
+      onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    />
+  );
 }
