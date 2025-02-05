@@ -64,7 +64,12 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   },
   question: {
     backgroundColor: "transparent",
+
+    toolbar: {
+      backgroundColor: "var(--mb-color-background-disabled)",
+    },
   },
+
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.px,
