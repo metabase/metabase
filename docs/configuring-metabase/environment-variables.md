@@ -534,6 +534,17 @@ Allow admins to embed Metabase via the SDK?
 
 Allow admins to embed Metabase via static embedding?
 
+### `MB_ENABLE_FIELD_USAGE_ANALYSIS`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `enable-field-usage-analysis`
+
+Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the
+    application database.
+
+    Turn off by default since we havent had an user-facing feature that uses this data yet.
+
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -577,13 +588,6 @@ Allow caching results of queries that take a long time to run.
 - [Configuration file name](./config-file.md): `enable-xrays`
 
 Allow users to explore data using X-rays.
-
-### `MB_ENUM_CARDINALITY_THRESHOLD`
-
-- Type: integer
-- Default: `60`
-
-Enumerated field values with cardinality at or below this point are treated as enums in the pseudo-ddl used in some model prompts.
 
 ### `MB_FOLLOW_UP_EMAIL_SENT`
 
@@ -651,14 +655,6 @@ Custom URL for the help link.
 - [Configuration file name](./config-file.md): `humanization-strategy`
 
 To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’.
-
-### `MB_IS_METABOT_ENABLED`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `is-metabot-enabled`
-
-Is Metabot enabled?
 
 ### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
@@ -996,36 +992,6 @@ The custom illustration for the login page.
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
-### `MB_METABOT_DEFAULT_EMBEDDING_MODEL`
-
-- Type: string
-- Default: `text-embedding-ada-002`
-
-The default embeddings model to be used for metabot.
-
-### `MB_METABOT_FEEDBACK_URL`
-
-- Type: string
-- Default: `https://amtix3l3qvitb2qxstaqtcoqby0monuf.lambda-url.us-east-1.on.aws/`
-- [Configuration file name](./config-file.md): `metabot-feedback-url`
-
-The URL to which metabot feedback is posted.
-
-### `MB_METABOT_GET_PROMPT_TEMPLATES_URL`
-
-- Type: string
-- Default: `https://stkxezsr2kcnkhusi3fgcc5nqm0ttgfx.lambda-url.us-east-1.on.aws/`
-- [Configuration file name](./config-file.md): `metabot-get-prompt-templates-url`
-
-The URL in which metabot versioned prompt templates are stored.
-
-### `MB_METABOT_PROMPT_GENERATOR_TOKEN_LIMIT`
-
-- Type: integer
-- Default: `6000`
-
-When attempting to assemble prompts, the threshold at which prompt will no longer be appended to.
-
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
 - Type: keyword
@@ -1109,40 +1075,9 @@ The base URL where dashboard notitification links will point to instead of the M
 ### `MB_NOTIFICATION_THREAD_POOL_SIZE`
 
 - Type: integer
-- Default: `2`
+- Default: `3`
 
 The size of the thread pool used to send notifications.
-
-### `MB_NUM_METABOT_CHOICES`
-
-- Type: integer
-- Default: `1`
-
-Number of potential responses metabot will request. The first valid response is selected.
-
-### `MB_OPENAI_API_KEY`
-
-- Type: string
-- Default: `null`
-- [Configuration file name](./config-file.md): `openai-api-key`
-
-The OpenAI API Key.
-
-### `MB_OPENAI_MODEL`
-
-- Type: string
-- Default: `gpt-4-turbo-preview`
-- [Configuration file name](./config-file.md): `openai-model`
-
-The OpenAI Model (e.g. gpt-4-turbo-preview, gpt-4, gpt-3.5-turbo).
-
-### `MB_OPENAI_ORGANIZATION`
-
-- Type: string
-- Default: `null`
-- [Configuration file name](./config-file.md): `openai-organization`
-
-The OpenAI Organization ID.
 
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
@@ -1172,7 +1107,7 @@ Token for premium features. Go to the MetaStore to get yours!
 ### `MB_QUERY_ANALYSIS_ENABLED`
 
 - Type: boolean
-- Default: `true`
+- Default: `false`
 - [Configuration file name](./config-file.md): `query-analysis-enabled`
 
 Whether or not we analyze any queries at all.
@@ -1551,6 +1486,15 @@ Whether or not to display Metabase links outside admin settings.
 - [Configuration file name](./config-file.md): `show-metabot`
 
 Enables Metabot character on the home page.
+
+### `MB_SHOW_SDK_EMBED_TERMS`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `show-sdk-embed-terms`.
+- [Configuration file name](./config-file.md): `show-sdk-embed-terms`
+
+Check if admin should see the SDK licensing terms popup.
 
 ### `MB_SHOW_STATIC_EMBED_TERMS`
 
