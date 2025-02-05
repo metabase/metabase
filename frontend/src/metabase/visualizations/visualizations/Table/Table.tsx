@@ -23,6 +23,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
@@ -48,6 +49,7 @@ import { SortableHeader } from "./SortableHeader";
 import styles from "./Table.module.css";
 import { HEADER_HEIGHT, INDEX_COLUMN_ID, ROW_HEIGHT } from "./constants";
 import { useTableCellsMeasure } from "./hooks/use-cell-measure";
+import { useCellSelection } from "./hooks/use-cell-selection";
 import { useColumnResizeObserver } from "./hooks/use-column-resize-observer";
 import { useColumnTotals } from "./hooks/use-column-totals";
 import { useColumns } from "./hooks/use-columns";
@@ -270,6 +272,11 @@ export const _Table = ({
     table,
     measureRowHeight,
   });
+
+  const { isCellSelected, isRowSelected, isCellCopied, ...cellSelection } =
+    useCellSelection({
+      table,
+    });
 
   const handleColumnResize = useCallback(
     (columnName: string, width: number) => {
@@ -496,7 +503,20 @@ export const _Table = ({
                       return (
                         <div
                           key={cell.id}
-                          className={styles.td}
+                          className={cx(styles.td, {
+                            [styles.cellSelected]: isCellSelected(cell),
+                          })}
+                          tabIndex={-1}
+                          onKeyDown={cellSelection.handleCellsKeyDown}
+                          onMouseDown={e =>
+                            cellSelection.handleCellMouseDown(e, cell)
+                          }
+                          onMouseUp={e =>
+                            cellSelection.handleCellMouseUp(e, cell)
+                          }
+                          onMouseOver={e =>
+                            cellSelection.handleCellMouseOver(e, cell)
+                          }
                           onClick={e =>
                             handleBodyCellClick(
                               e,

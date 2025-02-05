@@ -45,6 +45,8 @@
   position: relative;
   background-color: var(--mb-color-bg-white);
   cursor: pointer;
+  user-select: none;
+  outline: none;
 }
 
 .resizer {
@@ -77,7 +79,7 @@
 }
 
 .td:hover {
-  background-color: color-mix(in srgb, var(--mb-color-brand), #fff 90%);
+  background-color: color-mix(in srgb, var(--mb-color-brand), #fff 80%);
 }
 
 .headerWrapper {
@@ -93,4 +95,8 @@
   position: sticky;
   bottom: 0;
   background-color: #fff;
+}
+
+.cellSelected {
+  background-color: color-mix(in srgb, var(--mb-color-brand), #fff 90%);
 }
