@@ -71,10 +71,7 @@
       (-> col
           update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
           lib/ref
-          ((fn [ref]
-             (if (:lib/external-remap col)
-               (lib.options/update-options ref assoc ::externally-remapped-field true)
-               ref)))
+          (cond-> (:lib/external-remap col) (lib.options/update-options assoc ::externally-remapped-field true))
           (cond-> (some #{:breakout} &parents) (copy-ident &match)))
       (lib.util/fresh-uuids &match))))
 
