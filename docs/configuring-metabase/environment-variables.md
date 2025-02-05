@@ -1487,24 +1487,6 @@ Whether or not to display Metabase links outside admin settings.
 
 Enables Metabot character on the home page.
 
-### `MB_SHOW_SDK_EMBED_TERMS`
-
-- Type: boolean
-- Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-sdk-embed-terms`.
-- [Configuration file name](./config-file.md): `show-sdk-embed-terms`
-
-Check if admin should see the SDK licensing terms popup.
-
-### `MB_SHOW_STATIC_EMBED_TERMS`
-
-- Type: boolean
-- Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-static-embed-terms`.
-- [Configuration file name](./config-file.md): `show-static-embed-terms`
-
-Check if the static embedding licensing should be hidden in the static embedding flow.
-
 ### `MB_SITE_LOCALE`
 
 - Type: string
