@@ -106,9 +106,9 @@ interface DashboardGridState {
   _lastProps?: LastProps;
 }
 
+/** Props from the previous render to use for comparison in getDerivedStateFromProps */
 type LastProps = {
   dashboard: Dashboard;
-  dashcardData: Record<string, unknown>;
   isEditing: boolean;
   selectedTabId: DashboardTabId | null;
 };
@@ -207,7 +207,6 @@ class DashboardGridInner extends Component<
       isAnimationPaused: true,
       _lastProps: {
         dashboard: props.dashboard,
-        dashcardData: props.dashcardData,
         isEditing: props.isEditing,
         selectedTabId: props.selectedTabId,
       },
@@ -253,61 +252,51 @@ class DashboardGridInner extends Component<
     const { dashboard, dashcardData, isEditing, selectedTabId } = nextProps;
     const lastProps = state._lastProps;
 
-    if (
-      !lastProps ||
-      !_.isEqual(dashboard.dashcards, lastProps.dashboard.dashcards) ||
-      !_.isEqual(dashcardData, lastProps.dashcardData) ||
-      isEditing !== lastProps.isEditing ||
-      selectedTabId !== lastProps.selectedTabId
-    ) {
-      const visibleCardIds = !isEditing
-        ? getVisibleCardIds(
-            dashboard.dashcards,
-            dashcardData,
-            state.visibleCardIds,
-          )
-        : new Set(dashboard.dashcards.map(card => card.id));
+    const visibleCardIds = !isEditing
+      ? getVisibleCardIds(
+          dashboard.dashcards,
+          dashcardData,
+          state.visibleCardIds,
+        )
+      : new Set(dashboard.dashcards.map(card => card.id));
 
-      const visibleCards = getVisibleCards(
-        dashboard.dashcards,
-        visibleCardIds,
+    const visibleCards = getVisibleCards(
+      dashboard.dashcards,
+      visibleCardIds,
+      isEditing,
+      selectedTabId,
+    );
+
+    const lastVisibleCards = lastProps?.dashboard?.dashcards
+      ? getVisibleCards(
+          lastProps.dashboard.dashcards,
+          state.visibleCardIds,
+          lastProps.isEditing,
+          lastProps.selectedTabId,
+        )
+      : [];
+
+    const hasVisibleDashcardsChanged = _.isEqual(
+      visibleCards,
+      lastVisibleCards,
+    );
+
+    const initialCardSizes =
+      !isEditing || !hasVisibleDashcardsChanged
+        ? getInitialCardSizes(visibleCards, state.initialCardSizes)
+        : state.initialCardSizes;
+
+    return {
+      visibleCardIds,
+      initialCardSizes,
+      layouts: getLayouts(visibleCards, state.initialCardSizes),
+      _lastProps: {
+        dashboard,
+        dashcardData,
         isEditing,
         selectedTabId,
-      );
-
-      const lastVisibleCards = lastProps?.dashboard?.dashcards
-        ? getVisibleCards(
-            lastProps.dashboard.dashcards,
-            state.visibleCardIds,
-            lastProps.isEditing,
-            lastProps.selectedTabId,
-          )
-        : [];
-
-      const hasVisibleDashcardsChanged = _.isEqual(
-        visibleCards,
-        lastVisibleCards,
-      );
-
-      const initialCardSizes =
-        !isEditing || !hasVisibleDashcardsChanged
-          ? getInitialCardSizes(visibleCards, state.initialCardSizes)
-          : state.initialCardSizes;
-
-      return {
-        visibleCardIds,
-        initialCardSizes,
-        layouts: getLayouts(visibleCards, state.initialCardSizes),
-        _lastProps: {
-          dashboard,
-          dashcardData,
-          isEditing,
-          selectedTabId,
-        },
-      };
-    }
-
-    return null;
+      },
+    };
   }
 
   onLayoutChange = ({
@@ -399,8 +388,6 @@ class DashboardGridInner extends Component<
   }
 
   renderAddSeriesModal() {
-    // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    const { addSeriesModalDashCard } = this.state;
     const isOpen =
       !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
     return (
