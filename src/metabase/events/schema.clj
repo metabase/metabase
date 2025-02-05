@@ -31,6 +31,9 @@
 (def ^:private card-hydrate
   [:model/Card :name :description])
 
+(def ^:private dashboard-hydrate
+  [:model/Dashboard :name :description])
+
 (let [default-schema (mc/schema
                       [:map {:closed true}
                        [:user-id  pos-int?]
@@ -191,7 +194,10 @@
                                          (with-hydrate :creator user-hydrate))
                                      [:alert {:optional true}
                                       [:map (-> [:card_id pos-int?]
-                                                (with-hydrate :card card-hydrate))]]])})
+                                                (with-hydrate :card card-hydrate))]]
+                                     [:dashboard_subscription {:optional true}
+                                      [:map (-> [:dashboard_id pos-int?]
+                                                (with-hydrate :dashboard dashboard-hydrate))]]])})
 
 (def topic->schema
   "Returns the schema for an event topic."

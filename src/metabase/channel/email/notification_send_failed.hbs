@@ -1,3 +1,12 @@
 {{> metabase/channel/email/_header.hbs }}
-Your {{#if (equals payload.event_info.payload_type "notification/card")}}alert{{else}}dashboard subscription{{/if}} of <a href="{{#if (equals payload.event_info.payload_type "notification/card")}}{{{card-url payload.event_info.alert.card_id}}}{{else}}{{{dashboard-url payload.dashboard_subscription.dashboard_id}}}{{/if}}">{{#if (equals payload.event_info.payload_type "notification/card")}}{{payload.event_info.alert.card.name}}{{else}}{{payload.event_info.dashboard_subscription.dashboard.name}}{{/if}}</a> failed to send with the following error: {{payload.event_info.error-message}}
+
+{{#with payload.event_info}}
+  Your {{#if (equals payload_type "notification/card")}}
+    alert of <a href="{{{card-url alert.card_id}}}">{{alert.card.name}}</a>
+  {{else}}
+    dashboard subscription of <a href="{{{dashboard-url dashboard_subscription.dashboard_id}}}">{{dashboard_subscription.dashboard.name}}</a>
+  {{/if}}
+  failed to send with the following error: {{error-message}}
+{{/with}}
+
 {{> metabase/channel/email/_footer.hbs }}

@@ -121,11 +121,12 @@
                                                                                    [:message :string]]])}}
                       (t2/select-one :model/TaskHistory :task "channel-send"))))))))))
 
-(deftest notification-send-failed-send-email-test
+(deftest alert-send-failed-send-email-test
   (testing "if a notification fails to send, we send the creator an email"
     (notification.tu/with-notification-testing-setup
       (mt/with-temp
-        [:model/Card         {card-id :id}  {:dataset_query (mt/mbql-query orders {:limit 1})}
+        [:model/Card         {card-id :id}  {:name          "Test Card"
+                                             :dataset_query (mt/mbql-query orders {:limit 1})}
          :model/Pulse        {pulse-id :id} {:name            "Test Pulse"
                                              :alert_condition "rows"
                                              :creator_id      (mt/user->id :crowberto)}
@@ -134,12 +135,54 @@
          :model/PulseChannel _              {:pulse_id pulse-id
                                              :channel_type "email"
                                              :details      {:emails ["foo@metabase.com"]}}]
-        (let [original-payload @#'notification.payload/payload]
+        (let [original-payload @#'notification.payload/payload
+              regexes         [#"failed to send with the following error: test-exception"
+                               (re-pattern (format "alert of <a href=\".*/question/%d\">Test Card</a>" card-id))]]
           (with-redefs [notification.payload/payload (fn [x]
                                                        (if (= {:payload_type :notification/card
                                                                :id           pulse-id}
                                                               (select-keys x [:payload_type :id]))
                                                          (throw (Exception. "test-exception"))
                                                          (original-payload x)))]
-            (notification.tu/with-captured-channel-send!
-              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))))
+            (is (=? {:recipients #{"crowberto@metabase.com"}
+                     :message  [(zipmap (map str regexes) (repeat true))]}
+                    (-> (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
+                        (notification.tu/with-captured-channel-send!)
+                        :channel/email
+                        first
+                        (#(apply mt/summarize-multipart-single-email % regexes)))))))))))
+
+(deftest dashboard-subscription-send-failed-send-email-test
+  (testing "if a dashboard subscription fails to send, we send the creator an email"
+    (notification.tu/with-notification-testing-setup
+      (mt/with-temp
+        [:model/Card          {card-id :id}     {:name          "Test Card"
+                                                 :dataset_query (mt/mbql-query orders {:limit 1})}
+         :model/Dashboard     {dashboard-id :id} {:name       "Test Dashboard"
+                                                  :creator_id (mt/user->id :crowberto)}
+         :model/DashboardCard _                 {:dashboard_id dashboard-id
+                                                 :card_id     card-id}
+         :model/Pulse         {pulse-id :id}    {:name         "Test Subscription"
+                                                 :dashboard_id dashboard-id
+                                                 :creator_id   (mt/user->id :crowberto)}
+         :model/PulseCard     _                 {:pulse_id          pulse-id
+                                                 :card_id           card-id}
+         :model/PulseChannel  _                 {:pulse_id     pulse-id
+                                                 :channel_type "email"
+                                                 :details      {:emails ["foo@metabase.com"]}}]
+        (let [original-payload @#'notification.payload/payload
+              regexes         [#"failed to send with the following error: test-exception"
+                               (re-pattern (format "dashboard subscription of <a href=\".*/dashboard/%d\">Test Dashboard</a>" dashboard-id))]]
+          (with-redefs [notification.payload/payload (fn [x]
+                                                       (if (= {:payload_type :notification/dashboard
+                                                               :id           pulse-id}
+                                                              (select-keys x [:payload_type :id]))
+                                                         (throw (Exception. "test-exception"))
+                                                         (original-payload x)))]
+            (is (=? {:recipients #{"crowberto@metabase.com"}
+                     :message    [(zipmap (map str regexes) (repeat true))]}
+                    (-> (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
+                        (notification.tu/with-captured-channel-send!)
+                        :channel/email
+                        first
+                        (#(apply mt/summarize-multipart-single-email % regexes)))))))))))
