@@ -10469,6 +10469,24 @@ databaseChangeLog:
                   type: ${timestamp_type}
                   remarks: The timestamp at which a user was deactivated
 
+  - changeSet:
+      id: v53.2025-01-05T00:00:01
+      author: escherize
+      comment: update enable-embedding-sdk with (exists? embedding-app-origins-sdk)
+      preConditions:
+        - onFail: MARK_RAN
+      rollback: # not needed
+      changes:
+        - sql: >
+            UPDATE setting
+            SET value = 'true'
+            WHERE key = 'enable-embedding-sdk'
+            AND EXISTS (
+                  SELECT 1
+                  FROM setting
+                  WHERE key = 'embedding-app-origins-sdk'
+            )
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
