@@ -12,6 +12,7 @@ import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import { equals } from "metabase/lib/utils";
 import { getIsShowingRawTable } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
@@ -31,13 +32,18 @@ import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
+import { resolveConditions } from "metabase/visualizations/lib/settings/conditional";
+import { resolveVizSettingValueReference } from "metabase/visualizations/lib/settings/references";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import { isRegularClickAction } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/v1/utils";
-import { isVizSettingColumnReference } from "metabase-types/guards";
+import {
+  isVizSettingColumnReference,
+  isVizSettingValueConditions,
+} from "metabase-types/guards";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
@@ -100,7 +106,8 @@ class Visualization extends PureComponent {
       !equals(
         newProps.selectedTimelineEventIds,
         this.props.selectedTimelineEventIds,
-      )
+      ) ||
+      !equals(newProps.referencedDatasets, this.props.referencedDatasets)
     ) {
       this.transform(newProps);
     }
@@ -151,7 +158,7 @@ class Visualization extends PureComponent {
     const series = transformed && transformed.series;
     const visualization = transformed && transformed.visualization;
     const computedSettings = !this.isLoading(series)
-      ? getComputedSettingsForSeries(series)
+      ? getComputedSettingsForSeries(series, newProps.referencedDatasets)
       : {};
 
     this.setState({
@@ -589,23 +596,47 @@ export default _.compose(
         isVizSettingColumnReference(rawSettings[key]),
       );
       return _.pick(rawSettings, settingsWithReferences);
-    }, [card, rawSettings]);
+    }, [card.display, rawSettings]);
+
+    const columnReferences = useMemo(() => {
+      const references = Object.values(vizSettingsWithColumnReferences);
+
+      if (rawSettings.series_settings) {
+        const colorReferences = Object.values(rawSettings.series_settings)
+          .map(settings => {
+            const colorSettingValue = settings.color;
+            if (isVizSettingValueConditions(colorSettingValue)) {
+              const resolvedValue = resolveConditions(
+                colorSettingValue,
+                rawSeries,
+              );
+              return isVizSettingColumnReference(resolvedValue)
+                ? resolvedValue
+                : null;
+            }
+            return isVizSettingColumnReference(colorSettingValue)
+              ? colorSettingValue
+              : null;
+          })
+          .filter(isNotNull);
+        references.push(...colorReferences);
+      }
+
+      return references;
+    }, [
+      rawSeries,
+      rawSettings.series_settings,
+      vizSettingsWithColumnReferences,
+    ]);
 
     const datasets = useMultipleCardQueries(
-      _.uniq(
-        Object.values(vizSettingsWithColumnReferences).map(ref => ref.card_id),
-      ),
+      _.uniq(columnReferences.map(ref => ref.card_id)),
     );
 
     const finalSettings = useMemo(() => {
       const referencedValues = Object.fromEntries(
         Object.entries(vizSettingsWithColumnReferences).map(([key, ref]) => {
-          const dataset = datasets[ref.card_id];
-          const columnIndex = dataset?.data?.cols.findIndex(
-            col => col.name === ref.column_name,
-          );
-          const value = dataset?.data?.rows?.[0]?.[columnIndex];
-          return [key, value];
+          return [key, resolveVizSettingValueReference(ref, datasets)];
         }),
       );
       return {
@@ -630,6 +661,7 @@ export default _.compose(
         {...props}
         rawSeries={finalSeries}
         forwardedRef={ref}
+        referencedDatasets={datasets}
       />
     );
   }),

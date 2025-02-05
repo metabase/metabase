@@ -88,13 +88,22 @@ export function getStoredSettingsForSeries(series) {
   return storedSettings;
 }
 
-export function getComputedSettingsForSeries(series) {
+export function getComputedSettingsForSeries(
+  series,
+  referencedDatasets = {}, // Record<CardId, Dataset>
+) {
   if (!series) {
     return {};
   }
   const settingsDefs = getSettingDefintionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
-  return getComputedSettings(settingsDefs, series, storedSettings);
+  return getComputedSettings(
+    settingsDefs,
+    series,
+    storedSettings,
+    {},
+    referencedDatasets,
+  );
 }
 
 export function getPersistableDefaultSettingsForSeries(series) {

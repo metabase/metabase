@@ -2,6 +2,7 @@ import type {
   Card,
   UnsavedCard,
   VizSettingColumnReference,
+  VizSettingValueCondition,
 } from "metabase-types/api";
 
 export function isSavedCard(card: Card | UnsavedCard): card is Card {
@@ -20,5 +21,15 @@ export function isVizSettingColumnReference(
     vizSettingValue.type === "card" &&
     typeof vizSettingValue.card_id === "number" &&
     typeof vizSettingValue.column_name === "string"
+  );
+}
+
+// TODO Rewrite
+export function isVizSettingValueConditions(
+  vizSettingValue: unknown,
+): vizSettingValue is VizSettingValueCondition[] {
+  return (
+    Array.isArray(vizSettingValue) &&
+    vizSettingValue.every(v => "column" in v && "operator" in v)
   );
 }

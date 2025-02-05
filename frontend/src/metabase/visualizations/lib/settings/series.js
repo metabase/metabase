@@ -1,5 +1,6 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -15,10 +16,12 @@ import {
   getSeriesDefaultLinearInterpolate,
   getSeriesDefaultShowSeriesValues,
 } from "metabase/visualizations/shared/settings/series";
+import { isVizSettingColumnReference } from "metabase-types/guards";
 
 import { getNameForCard } from "../series";
 
 import { nestedSettings } from "./nested";
+import { resolveVizSettingValueReference } from "./references";
 
 export function keyForSingleSeries(single) {
   // _seriesKey is sometimes set by transformSeries
@@ -223,9 +226,22 @@ export function seriesSetting({ readDependencies = [], def } = {}) {
     }),
     // colors must be computed as a whole rather than individually
     [SERIES_COLORS_SETTING_KEY]: {
-      getValue(series, settings) {
+      getValue(series, settings, extra, referencedDatasets) {
         const keys = series.map(single => keyForSingleSeries(single));
-        return getSeriesColors(keys, settings);
+        const colors = getSeriesColors(keys, series, settings);
+        for (const key in colors) {
+          const value = colors[key];
+          if (isVizSettingColumnReference(value)) {
+            colors[key] = resolveVizSettingValueReference(
+              value,
+              referencedDatasets,
+            );
+          }
+        }
+        return colors;
+      },
+      columnReferenceConfig: {
+        isValidColumn: () => true,
       },
     },
   };

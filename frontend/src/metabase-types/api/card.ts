@@ -185,6 +185,13 @@ export type VizSettingColumnReference = {
   column_name: string;
 };
 
+export type VizSettingValueCondition<T = unknown> = {
+  column: string;
+  operator: string; // TODO Turn into enum (=, !=, <, >, etc.)
+  compareValue: T;
+  value: T | VizSettingColumnReference;
+};
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;

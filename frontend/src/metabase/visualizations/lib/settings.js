@@ -33,6 +33,7 @@ export function getComputedSettings(
   object,
   storedSettings,
   extra = {},
+  referencedDatasets = {}, // Record<CardId, Dataset>
 ) {
   const computedSettings = {};
   for (const settingId in settingsDefs) {
@@ -43,6 +44,7 @@ export function getComputedSettings(
       object,
       storedSettings,
       extra,
+      referencedDatasets,
     );
   }
   return computedSettings;
@@ -55,6 +57,7 @@ function getComputedSetting(
   object,
   storedSettings,
   extra = {},
+  referencedDatasets = {}, // Record<CardId, Dataset>
 ) {
   if (settingId in computedSettings) {
     return;
@@ -70,6 +73,7 @@ function getComputedSetting(
       object,
       storedSettings,
       extra,
+      referencedDatasets,
     );
   }
 
@@ -85,6 +89,7 @@ function getComputedSetting(
         object,
         settings,
         extra,
+        referencedDatasets,
       ));
     }
 

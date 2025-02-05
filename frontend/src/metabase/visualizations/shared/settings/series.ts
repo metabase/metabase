@@ -2,19 +2,28 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import { resolveConditions } from "metabase/visualizations/lib/settings/conditional";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { Series, VisualizationSettings } from "metabase-types/api";
+import { isVizSettingValueConditions } from "metabase-types/guards";
 
 export const SERIES_SETTING_KEY = "series_settings";
 export const SERIES_COLORS_SETTING_KEY = "series_settings.colors";
 
 export const getSeriesColors = (
   seriesVizSettingsKeys: string[],
+  series: Series,
   settings: VisualizationSettings,
 ) => {
   const assignments = _.chain(seriesVizSettingsKeys)
     .map(key => [key, getIn(settings, [SERIES_SETTING_KEY, key, "color"])])
     .filter(([_key, color]) => color != null)
+    .map(([key, color]) => {
+      if (isVizSettingValueConditions(color)) {
+        return [key, resolveConditions(color, series)];
+      }
+      return [key, color];
+    })
     .object()
     .value();
 
