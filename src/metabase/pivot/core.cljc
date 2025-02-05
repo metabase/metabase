@@ -111,6 +111,37 @@
           (assoc-in [v :isCollapsed] false)))
     tree))
 
+(defn build-values-by-key
+  "Replicate valuesByKey construction"
+  [rows col-indexes row-indexes val-indexes col-settings cols]
+  ;; Construct valueKey row[[col-indexes val-indexes]]
+  (reduce (fn [acc row]
+            ;; Construct valueKey
+            (let [value-key    (mapv row (into col-indexes row-indexes))
+                  values       (mapv row val-indexes)
+                  value-cols   (mapv (fn [index]
+                                       (get-in col-settings [index :column]))
+                                     val-indexes)
+                  data         (vec (map-indexed (fn [index value]
+                                                   (sorted-map :value value
+                                                               :col (nth cols index)))
+                                                 row))
+                  ;; @tsp
+                  ;; This uses data as its starting point, which contains maps with :col as a key
+                  ;; The original frontend code calculates dimensions here by repeating the `data`
+                  ;; calculation but using :column as the key, then it filters
+                  dimensions   (->> data
+                                    (filter (fn [tmp]
+                                              (= (get-in tmp [:col :source]) "breakout"))))]
+              (assoc acc
+                     value-key
+                     (sorted-map :values values
+                                 :value-cols value-cols
+                                 :data data
+                                 :dimensions dimensions))))
+          (ordered-map/ordered-map)
+          rows))
+
 (defn build-pivot-trees
   "TODO"
   [rows col-indexes row-indexes _col-settings collapsed-subtotals]
