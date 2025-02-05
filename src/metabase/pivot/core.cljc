@@ -123,17 +123,17 @@
                                                    (sorted-map :value value
                                                                :col (nth cols index)))
                                                  row))
-                  ;; @tsp
-                  ;; This uses data as its starting point, which contains maps with :col as a key
-                  ;; The original frontend code calculates dimensions here by repeating the `data`
-                  ;; calculation but using :column as the key, then it filters
-                  dimensions   (->> data
+                  ;; @tsp TODO? this could use the `data` above
+                  dimensions   (->> row
+                                    (map-indexed (fn [index value]
+                                                   (sorted-map :value value
+                                                               :column (nth cols index))))
                                     (filter (fn [tmp]
-                                              (= (get-in tmp [:col :source]) "breakout"))))]
+                                              (= (get-in tmp [:column :source]) "breakout"))))]
               (assoc acc
                      value-key
                      (sorted-map :values values
-                                 :value-cols value-cols
+                                 :valueCols value-cols
                                  :data data
                                  :dimensions dimensions))))
           (ordered-map/ordered-map)
