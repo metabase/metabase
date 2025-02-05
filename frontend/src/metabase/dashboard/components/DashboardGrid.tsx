@@ -388,6 +388,9 @@ class DashboardGridInner extends Component<
   }
 
   renderAddSeriesModal() {
+    // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
+    const { addSeriesModalDashCard } = this.state;
+
     const isOpen =
       !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
     return (
