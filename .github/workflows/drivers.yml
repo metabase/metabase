@@ -772,10 +772,12 @@ jobs:
       matrix:
         job:
           - name: Redshift Upload Tests
+            skip: ${{ github.event_name == 'pull_request' }} # FIXME: temporary to alleviate pressure on redshift instances
             test-args: >-
               :only-tags [:mb/upload-tests]
               :fail-fast? true
           - name: Redshift (Excluding Upload Tests)
+            skip: false
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/upload-tests]
@@ -792,6 +794,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test ${{ matrix.job.name }}
+      if: ${{ !matrix.job.skip }}
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-redshift-ee'
@@ -799,7 +802,7 @@ jobs:
           ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: ${{ !matrix.job.skip && !cancelled() }}
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
