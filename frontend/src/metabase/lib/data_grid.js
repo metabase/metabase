@@ -29,15 +29,9 @@ export function multiLevelPivot(data, settings) {
     data.cols,
   );
 
-  console.log("TSP multiLevelPivot data: ", data)
-  console.log("TSP multiLevelPivot settings: ", settings)
-  console.log("TSP multiLevelPivot columnSplit: ", columnSplit)
-
   const columnsWithoutPivotGroup = data.cols.filter(
     col => !isPivotGroupColumn(col),
   );
-
-  console.log("TSP multiLevelPivot columnsWithoutPivotGroup: ", columnsWithoutPivotGroup)
 
   /*
   Map non-pivot group column names to their indices in the data columns map
@@ -70,10 +64,6 @@ export function multiLevelPivot(data, settings) {
       )
       .filter(index => index !== -1),
   );
-
-  console.log("TSP multiLevelPivot columnColumnIndexes: ", columnColumnIndexes);
-  console.log("TSP multiLevelPivot rowColumnIndexes: ", rowColumnIndexes);
-  console.log("TSP multiLevelPivot valueColumnIndexes: ", valueColumnIndexes);
 
   /*
   Split pivot table into sections. Taking our simple example of:
@@ -133,10 +123,6 @@ export function multiLevelPivot(data, settings) {
   */
   const { pivotData, columns } = Pivot.split_pivot_data(data);
 
-  console.log("TSP ########### Pivot.split_pivot_data ###########")
-  console.log("TSP multiLevelPivot pivotData: ", pivotData);
-  console.log("TSP multiLevelPivot columns: ", columns);
-
   /*
   Mapping from column index to its column specific settings, e.g.
   0: {
@@ -152,16 +138,12 @@ export function multiLevelPivot(data, settings) {
   const columnSettings = columns.map(column => settings.column(column));
   const allCollapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
 
-  console.log({ allCollapsedSubtotals });
+  console.log({ settings });
 
   const collapsedSubtotals = filterCollapsedSubtotals(
     allCollapsedSubtotals,
     rowColumnIndexes.map(index => columnSettings[index]),
   );
-
-  console.log("TSP multiLevelPivot columnSettings: ", columnSettings);
-  console.log("TSP multiLevelPivot allCollapsedSubtotals: ", allCollapsedSubtotals);
-  console.log("TSP multiLevelPivot collapsedSubtotals: ", collapsedSubtotals);
 
   // we build a tree for each tuple of pivoted column/row values seen in the data
   const columnColumnTree = [];
@@ -175,8 +157,6 @@ export function multiLevelPivot(data, settings) {
   const primaryRowsKey = JSON.stringify(
     _.range(columnColumnIndexes.length + rowColumnIndexes.length),
   );
-
-  console.log("TSP multiLevelPivot primaryRowsKey: ", primaryRowsKey)
 
   var count = 0
   for (const row of pivotData[primaryRowsKey]) {
@@ -203,12 +183,6 @@ export function multiLevelPivot(data, settings) {
     const valueColumns = valueColumnIndexes.map(
       index => columnSettings[index]?.column,
     );
-
-    console.log(`TSP multiLevelPivot ${count} columnColumnTree: `, columnColumnTree);
-    console.log(`TSP multiLevelPivot ${count} rowColumnTree: `, rowColumnTree);
-    console.log(`TSP multiLevelPivot ${count} valueKey: `, valueKey);
-    console.log(`TSP multiLevelPivot ${count} values: `, values);
-    console.log(`TSP multiLevelPivot ${count} valueColumns: `, valueColumns);
 
     valuesByKey[valueKey] = {
       values,
@@ -239,10 +213,6 @@ export function multiLevelPivot(data, settings) {
     }
   }
   Pivot.build_pivot_trees(pivotData[primaryRowsKey], columnColumnIndexes, rowColumnIndexes, columnSettings, collapsedSubtotals);
-
-  console.log({ columnColumnTree });
-  console.log({ rowColumnTree });
-  console.log({ valuesByKey });
 
   const subtotalValues = Pivot.subtotal_values(pivotData, valueColumnIndexes);
 
