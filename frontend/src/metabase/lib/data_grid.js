@@ -2,7 +2,8 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import * as Pivot from "cljs/metabase.pivot.core";
+import * as Pivot from "cljs/metabase.pivot.js";
+
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
@@ -47,6 +48,9 @@ export function multiLevelPivot(data, settings) {
 
   const columnSettings = columns.map(column => settings.column(column));
   const allCollapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
+
+  console.log({ allCollapsedSubtotals });
+
   const collapsedSubtotals = filterCollapsedSubtotals(
     allCollapsedSubtotals,
     rowColumnIndexes.map(index => columnSettings[index]),
@@ -63,6 +67,7 @@ export function multiLevelPivot(data, settings) {
   const primaryRowsKey = JSON.stringify(
     _.range(columnColumnIndexes.length + rowColumnIndexes.length),
   );
+
   for (const row of pivotData[primaryRowsKey]) {
     // mutate the trees to add the tuple from the current row
     updateValueObject(
@@ -101,18 +106,11 @@ export function multiLevelPivot(data, settings) {
     };
   }
 
-  // build objects to look up subtotal values
-  const oldSubtotalValues = {};
-  for (const [subtotalName, subtotal] of Object.entries(pivotData)) {
-    const indexes = JSON.parse(subtotalName);
-    oldSubtotalValues[subtotalName] = {};
-    for (const row of subtotal) {
-      const valueKey = JSON.stringify(indexes.map(index => row[index]));
-      oldSubtotalValues[subtotalName][valueKey] = valueColumnIndexes.map(
-        index => row[index],
-      );
-    }
-  }
+  Pivot.build_pivot_trees(pivotData[primaryRowsKey], columnColumnIndexes, rowColumnIndexes, columnSettings, collapsedSubtotals);
+
+  console.log({ columnColumnTree });
+  console.log({ rowColumnTree });
+  console.log({ valuesByKey });
 
   const subtotalValues = Pivot.subtotal_values(pivotData, valueColumnIndexes);
 
@@ -294,14 +292,14 @@ function createRowSectionGetter({
       data === undefined
         ? o
         : {
-            ...o,
-            clicked: { data, dimensions },
-            backgroundColor: colorGetter(
-              values[index],
-              o.rowIndex,
-              valueColumns[index].name,
-            ),
-          },
+          ...o,
+          clicked: { data, dimensions },
+          backgroundColor: colorGetter(
+            values[index],
+            o.rowIndex,
+            valueColumns[index].name,
+          ),
+        },
     );
   };
   return _.memoize(getter, (i1, i2) => [i1, i2].join());
@@ -389,14 +387,14 @@ function addSubtotal(
   const hasSubtotal = isSubtotalEnabled && shouldShowSubtotal;
   const subtotal = hasSubtotal
     ? [
-        {
-          value: t`Totals for ${item.value}`,
-          rawValue: item.rawValue,
-          span: 1,
-          isSubtotal: true,
-          children: [],
-        },
-      ]
+      {
+        value: t`Totals for ${item.value}`,
+        rawValue: item.rawValue,
+        span: 1,
+        isSubtotal: true,
+        children: [],
+      },
+    ]
     : [];
   if (item.isCollapsed) {
     return subtotal;
@@ -408,8 +406,8 @@ function addSubtotal(
       // add subtotals until the last level
       child.children.length > 0
         ? addSubtotal(child, showSubtotalsByColumn, {
-            shouldShowSubtotal: child.children.length > 1 || child.isCollapsed,
-          })
+          shouldShowSubtotal: child.children.length > 1 || child.isCollapsed,
+        })
         : child,
     ),
   };
@@ -548,7 +546,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
   }
 
   // provide some column metadata to maintain consistency
-  const cols = pivotValues.map(function (value, idx) {
+  const cols = pivotValues.map(function(value, idx) {
     if (idx === 0) {
       // first column is always the coldef of the normal column
       return data.cols[normalCol];
