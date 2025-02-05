@@ -61,7 +61,7 @@ jobs:
     uses: ./.github/workflows/backend.yml
     secrets: inherit
     with:
-      skip: needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true'
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
 
   driver-tests:
     needs: files-changed
