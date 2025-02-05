@@ -197,6 +197,9 @@ export const CustomExpressionEditor = {
       .contains(name)
       .first();
   },
+  helpTextHeader() {
+    return cy.findByTestId("expression-helper-popover-structure");
+  },
   helpText() {
     return cy.findByTestId("expression-helper");
   },

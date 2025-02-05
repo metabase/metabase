@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { MBQL_CLAUSES } from "metabase-lib/v1/expressions/config";
 import {
@@ -80,11 +80,7 @@ export function HelpText({
   const argIndex = enclosingFunction?.arg?.index ?? -1;
 
   return (
-    <Flex
-      className={S.helpText}
-      data-testid="expression-helper"
-      direction="column"
-    >
+    <>
       <Box
         className={S.usage}
         onMouseDown={handleMouseDown}
@@ -114,7 +110,7 @@ export function HelpText({
       </Box>
 
       {open && (
-        <Box className={S.info}>
+        <Box className={S.info} data-testid="expression-helper">
           <Box>{description}</Box>
 
           {args != null && (
@@ -155,6 +151,6 @@ export function HelpText({
           )}
         </Box>
       )}
-    </Flex>
+    </>
   );
 }

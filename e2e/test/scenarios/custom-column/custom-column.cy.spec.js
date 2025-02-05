@@ -1097,21 +1097,21 @@ describe("scenarios > question > custom column > help text", () => {
 
   it("should appear while inside a function", () => {
     H.enterCustomColumnDetails({ formula: "lower(", blur: false });
-    H.CustomExpressionEditor.helpText()
+    H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
       .should("contain", "lower(⟨text⟩)");
   });
 
   it("should appear after a field reference", () => {
     H.enterCustomColumnDetails({ formula: "lower([Category]", blur: false });
-    H.CustomExpressionEditor.helpText()
+    H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
       .should("contain", "lower(⟨text⟩)");
   });
 
   it("should not appear while outside a function", () => {
     H.enterCustomColumnDetails({ formula: "lower([Category])", blur: false });
-    H.CustomExpressionEditor.helpText().should("not.exist");
+    H.CustomExpressionEditor.helpTextHeader().should("not.exist");
   });
 
   it("should not appear when formula field is not in focus (metabase#15891)", () => {

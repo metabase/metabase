@@ -54,9 +54,12 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({ formula: "lower(", blur: false });
 
+    H.CustomExpressionEditor.helpTextHeader()
+      .should("be.visible")
+      .should("contain", "lower(⟨text⟩)");
+
     H.CustomExpressionEditor.helpText()
       .should("be.visible")
-      .should("contain", "lower(⟨text⟩)")
       .within(() => {
         cy.findByText("Returns the string of text in all lower case.").should(
           "be.visible",
