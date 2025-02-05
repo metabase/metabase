@@ -59,6 +59,7 @@ jobs:
           filters: .github/static-viz-sources.yaml
 
   backend-tests:
+    if: ${{ !cancelled() }}
     needs: [files-changed, static-viz-files-changed]
     uses: ./.github/workflows/backend.yml
     secrets: inherit
