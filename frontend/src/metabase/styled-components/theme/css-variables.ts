@@ -7,6 +7,7 @@ import type { MantineTheme } from "metabase/ui";
 
 /** Maps the CSS variable name to the corresponding theme key in the Embedding SDK theme. */
 const CSS_VARIABLES_TO_SDK_THEME_MAP = {
+  "--mb-overlay-z-index": "popover.zIndex",
   "--mb-color-tooltip-text": "tooltip.textColor",
   "--mb-color-tooltip-background": "tooltip.backgroundColor",
   "--mb-color-tooltip-background-focused": "tooltip.focusedBackgroundColor",
