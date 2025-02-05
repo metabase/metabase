@@ -1,6 +1,6 @@
 import { EditableDashboard } from "@metabase/embedding-sdk-react";
 
-import { createDashboard, describeEE } from "e2e/support/helpers";
+import { createDashboard } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -8,7 +8,7 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
-describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
+describe("scenarios > embedding-sdk > editable-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
