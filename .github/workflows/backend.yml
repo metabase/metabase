@@ -1,37 +1,19 @@
 name: Backend
 
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  workflow_call:
+    inputs:
+      skip:
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  files-changed:
-    name: Check which files changed
-    runs-on: ubuntu-22.04
-    timeout-minutes: 5
-    outputs:
-      backend_all: ${{ steps.changes.outputs.backend_all }}
-      frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
-
   static-viz-files-changed:
-    needs: files-changed
-    if: needs.files-changed.outputs.backend_all != 'true' && needs.files-changed.outputs.frontend_sources == 'true'
+    if: ${{ !inputs.skip }}
     name: Check whether static-viz files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -61,10 +43,7 @@ jobs:
           filters: .github/static-viz-sources.yaml
 
   be-linter-clj-kondo:
-    needs: [files-changed, static-viz-files-changed]
-    if: |
-      !cancelled() &&
-      (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     name: Clj-Kondo
@@ -78,11 +57,7 @@ jobs:
         run: ./bin/kondo.sh
 
   be-linter-eastwood:
-    needs: [files-changed, static-viz-files-changed]
-    if: |
-      !cancelled() &&
-      github.event.pull_request.draft == false &&
-      (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     name: Eastwood
@@ -99,11 +74,7 @@ jobs:
   # we have to extract that job manually here. Backend developers have requested that this
   # test runs at all times to give them an early warning sign is something is broken.
   be-tests-pre-check:
-    needs: [files-changed, static-viz-files-changed]
-    if: |
-      !cancelled() &&
-      github.event.pull_request.draft == true &&
-      (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     name: Backend Tests Pre-Check
     timeout-minutes: 60
@@ -135,11 +106,7 @@ jobs:
           fail-on-error: false
 
   be-tests:
-    needs: [files-changed, static-viz-files-changed]
-    if: |
-      !cancelled() &&
-      github.event.pull_request.draft == false &&
-      (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -210,10 +177,10 @@ jobs:
       # Depending on which files changed, we might either have to build static-viz
       # from scratch or download the previously built artifact
       - name: Build static-viz frontend
-        if: ${{ matrix.job.build-static-viz == 'true' && needs.files-changed.outputs.backend_all == 'true' }}
+        if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
         run: yarn build-static-viz
       - name: Download Static Viz Bundle Artifact
-        if: ${{ matrix.job.build-static-viz == 'true' && needs.static-viz-files-changed.outputs.static_viz == 'true' }}
+        if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
         uses: actions/download-artifact@v4
         with:
           name: static-viz-bundle-${{ github.sha }}
@@ -252,11 +219,7 @@ jobs:
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
-    needs: [files-changed, static-viz-files-changed]
-    if: |
-      !cancelled() &&
-      github.event.pull_request.draft == false &&
-      (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     strategy:
@@ -274,9 +237,7 @@ jobs:
         run: clojure -M:ee:drivers:check
 
   be-cljfmt:
-    needs: [files-changed]
-    if: |
-      !cancelled() && needs.files-changed.outputs.backend_all == 'true'
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     name: Cljfmt
