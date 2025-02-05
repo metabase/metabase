@@ -64,7 +64,11 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
     testCases.forEach(zIndexTestCase => {
       cy.get("@dashboardId").then(dashboardId => {
         mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
-          theme: { components: { popover: { zIndex: zIndexTestCase.input } } },
+          sdkProviderProps: {
+            theme: {
+              components: { popover: { zIndex: zIndexTestCase.input } },
+            },
+          },
         });
       });
 

@@ -4,6 +4,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 import * as jose from "jose";
 import type { JSX } from "react";
+import React from "react";
 
 import { USERS } from "e2e/support/cypress_data";
 import { signInAsAdminAndEnableEmbeddingSdkForE2e } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -53,13 +54,18 @@ export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
   }).as("jwtProvider");
 };
 
+export interface MountSdkContentOptions {
+  sdkProviderProps?: Partial<MetabaseProviderProps>;
+  strictMode?: boolean;
+}
+
 export function mountSdkContent(
   children: JSX.Element,
-  sdkProviderProps: Partial<MetabaseProviderProps> = {},
+  { sdkProviderProps, strictMode = false }: MountSdkContentOptions = {},
 ) {
   cy.intercept("GET", "/api/user/current").as("getUser");
 
-  cy.mount(
+  const reactNode = (
     <MetabaseProvider
       {...sdkProviderProps}
       authConfig={{
@@ -68,8 +74,14 @@ export function mountSdkContent(
       }}
     >
       {children}
-    </MetabaseProvider>,
+    </MetabaseProvider>
   );
+
+  if (strictMode) {
+    cy.mount(<React.StrictMode>{reactNode}</React.StrictMode>);
+  } else {
+    cy.mount(reactNode);
+  }
 
   cy.wait("@getUser").then(({ response }) => {
     expect(response?.statusCode).to.equal(200);
