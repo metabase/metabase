@@ -49,6 +49,7 @@ import {
   TOGGLE_DATA_REFERENCE,
   TOGGLE_SNIPPET_SIDEBAR,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
+  UPDATE_QUESTION,
   ZOOM_IN_ROW,
   onCloseChartSettings,
   onCloseChartType,
@@ -118,6 +119,12 @@ export const uiControls = handleActions(
       },
     },
 
+    [UPDATE_QUESTION]: {
+      next: (state, { payload }) => ({
+        ...state,
+        highlightedSqlQueryLineNumbers: [],
+      }),
+    },
     [TOGGLE_DATA_REFERENCE]: {
       next: (state, { payload }) => ({
         ...state,
