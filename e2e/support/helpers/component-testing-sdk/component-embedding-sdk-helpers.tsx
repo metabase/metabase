@@ -65,7 +65,7 @@ export function mountSdkContent(
 ) {
   cy.intercept("GET", "/api/user/current").as("getUser");
 
-  let reactNode = (
+  const reactNode = (
     <MetabaseProvider
       {...sdkProviderProps}
       authConfig={{
@@ -78,10 +78,10 @@ export function mountSdkContent(
   );
 
   if (strictMode) {
-    reactNode = <React.StrictMode>{reactNode}</React.StrictMode>;
+    cy.mount(<React.StrictMode>{reactNode}</React.StrictMode>);
+  } else {
+    cy.mount(reactNode);
   }
-
-  cy.mount(reactNode);
 
   cy.wait("@getUser").then(({ response }) => {
     expect(response?.statusCode).to.equal(200);
