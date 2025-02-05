@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [honey.sql.helpers :as sql.helpers]
    [metabase.search.appdb.index :as search.index]
-   [metabase.search.test-util :as search.tu]
    [metabase.search.task.search-index :as task]
+   [metabase.search.test-util :as search.tu]
    [toucan2.core :as t2]))
 
 ;; TODO this is coupled to appdb engines at the moment
