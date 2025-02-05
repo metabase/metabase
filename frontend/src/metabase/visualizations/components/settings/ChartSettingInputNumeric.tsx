@@ -68,7 +68,7 @@ export const ChartSettingInputNumeric = ({
       return t`Unknown`;
     }
     const col = referencedCardDataset.data.cols[colIndex];
-    const val = referencedCardDataset.data.rows[colIndex];
+    const val = referencedCardDataset.data.rows[0][colIndex];
     return `${col.display_name} (${val})`;
   }, [value, inputValue, referencedCardDataset]);
 
