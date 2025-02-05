@@ -619,6 +619,10 @@ export const getStackedTooltipModel = (
       }),
     );
 
+  const formatTotalWithGoal = (value: string, goal: number) => {
+    return `${value}  (Goal is ${goal})`;
+  };
+
   const rowsTotal = getTotalValue(stackSeriesRows);
   const isShowingTotalSensible = stackSeriesRows.length > 1;
   const header = String(
@@ -665,13 +669,28 @@ export const getStackedTooltipModel = (
       ? {
           name: t`Total`,
           values: [
-            formatter(rowsTotal),
-            formatPercent(getPercent(rowsTotal, rowsTotal) ?? 0),
+            settings["graph.show_goal"]
+              ? formatTotalWithGoal(
+                  formatter(rowsTotal),
+                  Number(settings["graph.goal_value"]),
+                )
+              : formatter(rowsTotal),
+            settings["graph.show_goal"]
+              ? formatPercentWithGoal(
+                  getPercent(rowsTotal, rowsTotal) ?? 0,
+                  getPercent(Number(settings["graph.goal_value"]), rowsTotal) ??
+                    0,
+                )
+              : formatPercent(getPercent(rowsTotal, rowsTotal) ?? 0),
           ],
         }
       : undefined,
   };
 };
+
+function formatPercentWithGoal(value: number, goal: number) {
+  return `${formatPercent(value)} | ${formatPercent(goal)} of goal`;
+}
 
 export const getOtherSeriesTooltipModel = (
   chartModel: BaseCartesianChartModel,
