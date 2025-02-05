@@ -73,7 +73,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: 'kondo'
+          m2-cache-key: "kondo"
       - name: Run clj-kondo
         run: ./bin/kondo.sh
 
@@ -81,7 +81,7 @@ jobs:
     needs: [files-changed, static-viz-files-changed]
     if: |
       !cancelled() &&
-      github.event.pull_request.draft == false &&
+      (github.event.pull_request.draft == false || (github.event.pull_request.draft == true && contains(github.event.pull_request.labels.*.name, 'run-tests'))) &&
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 20
@@ -138,7 +138,7 @@ jobs:
     needs: [files-changed, static-viz-files-changed]
     if: |
       !cancelled() &&
-      github.event.pull_request.draft == false &&
+      (github.event.pull_request.draft == false || (github.event.pull_request.draft == true && contains(github.event.pull_request.labels.*.name, 'run-tests'))) &&
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 60
@@ -149,33 +149,33 @@ jobs:
         job:
           - name: Enterprise Tests
             edition: ee
-            build-static-viz: 'false'
+            build-static-viz: "false"
             test-args: >-
               :only '"enterprise/backend/test"'
           - name: EE App DB Tests (Part 1)
             edition: ee
-            build-static-viz: 'true'
+            build-static-viz: "true"
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
               :partition/index 0
           - name: EE App DB Tests (Part 2)
             edition: ee
-            build-static-viz: 'true'
+            build-static-viz: "true"
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
               :partition/index 1
           - name: OSS App DB Tests (Part 1)
             edition: oss
-            build-static-viz: 'true'
+            build-static-viz: "true"
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
               :partition/index 0
           - name: OSS App DB Tests (Part 2)
             edition: oss
-            build-static-viz: 'true'
+            build-static-viz: "true"
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
@@ -255,7 +255,7 @@ jobs:
     needs: [files-changed, static-viz-files-changed]
     if: |
       !cancelled() &&
-      github.event.pull_request.draft == false &&
+      (github.event.pull_request.draft == false || (github.event.pull_request.draft == true && contains(github.event.pull_request.labels.*.name, 'run-tests'))) &&
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -285,7 +285,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: 'cljfmt'
+          m2-cache-key: "cljfmt"
       - name: Run cljfmt
         run: clojure -T:cljfmt check
 

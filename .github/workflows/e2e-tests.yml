@@ -68,7 +68,7 @@ jobs:
     needs: [files-changed, get-build-requirements]
     if: |
       !cancelled() &&
-      github.event.pull_request.draft == false &&
+      (github.event.pull_request.draft == false || (github.event.pull_request.draft == true && contains(github.event.pull_request.labels.*.name, 'run-tests'))) &&
       needs.files-changed.outputs.e2e_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 25
@@ -167,8 +167,8 @@ jobs:
 
   e2e-tests-result:
     needs:
-     - e2e-tests
-     - flaky-e2e-tests
+      - e2e-tests
+      - flaky-e2e-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: e2e-tests-result
