@@ -115,7 +115,6 @@ class Visualization extends PureComponent {
       series: null,
       visualization: null,
       computedSettings: {},
-      ...deriveStateFromProps(props),
     };
   }
 
