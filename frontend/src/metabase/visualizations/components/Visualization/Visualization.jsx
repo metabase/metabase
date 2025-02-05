@@ -132,7 +132,6 @@ class Visualization extends PureComponent {
       )
     ) {
       return {
-        ...state,
         ...deriveStateFromProps(props),
 
         // Reset the state to its initial values when these props have changed
