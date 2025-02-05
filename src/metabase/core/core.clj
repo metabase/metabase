@@ -166,7 +166,7 @@
    ;; start scheduler at end of init!
   (task/start-scheduler!)
    ;; In case we could not do this earlier (e.g. for DBs added via config file), because the scheduler was not up yet:
-  (database/check-and-schedule-tasks!)
+  (database/check-health-and-schedule-tasks!)
   (init-status/set-complete!)
   (user-kv.types/load-and-watch-schemas)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
