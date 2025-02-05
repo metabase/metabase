@@ -186,11 +186,12 @@
     (do
       (fetch-user user)
       (apply client-fn the-client user args))
-    (let [user-id (u/the-id user)]
+    (let [user-id (u/the-id user)
+          session-id (str (random-uuid))]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
       #_{:clj-kondo/ignore [:discouraged-var]}
-      (t2.with-temp/with-temp [:model/Session {session-id :id} {:id      (session/hash-session-id (str (random-uuid)))
+      (t2.with-temp/with-temp [:model/Session _ {:id      (session/hash-session-id session-id)
                                                                 :user_id user-id}]
         (apply the-client session-id args)))))
 
