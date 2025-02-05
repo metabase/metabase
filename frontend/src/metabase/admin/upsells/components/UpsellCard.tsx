@@ -86,6 +86,8 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
             onClickCapture={() => trackUpsellClicked({ source, campaign })}
             href={url}
             className={S.UpsellCTALink}
+            mx="md"
+            mb="lg"
           >
             {buttonText}
           </Box>

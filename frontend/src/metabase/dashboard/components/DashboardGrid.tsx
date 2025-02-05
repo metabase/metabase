@@ -39,6 +39,7 @@ import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import {
   type BaseDashboardCard,
   type Card,
+  type CardId,
   type DashCardId,
   type Dashboard,
   type DashboardCard,
@@ -98,6 +99,7 @@ interface DashboardGridState {
   replaceCardModalDashCard: BaseDashboardCard | null;
   isDragging: boolean;
   isAnimationPaused: boolean;
+  dashcardCountByCardId: Record<CardId, number>;
 }
 
 const mapStateToProps = (state: State) => ({
@@ -175,6 +177,9 @@ class DashboardGridInner extends Component<
 
     this.state = {
       visibleCardIds,
+      dashcardCountByCardId: this.getDashcardCountByCardId(
+        props.dashboard.dashcards,
+      ),
       initialCardSizes: this.getInitialCardSizes(props.dashboard.dashcards),
       layouts: this.getLayouts(props.dashboard.dashcards),
       addSeriesModalDashCard: null,
@@ -203,6 +208,16 @@ class DashboardGridInner extends Component<
   componentWillUnmount() {
     if (this._pauseAnimationTimer !== null) {
       clearTimeout(this._pauseAnimationTimer);
+    }
+  }
+
+  componentDidUpdate(prevProps: DashboardGridProps) {
+    if (prevProps.dashboard.dashcards !== this.props.dashboard.dashcards) {
+      this.setState({
+        dashcardCountByCardId: this.getDashcardCountByCardId(
+          this.props.dashboard.dashcards,
+        ),
+      });
     }
   }
 
@@ -357,6 +372,17 @@ class DashboardGridInner extends Component<
       : tabCards.filter(card => visibleCardIds.has(card.id));
   };
 
+  getDashcardCountByCardId = (cards: BaseDashboardCard[]) =>
+    _.countBy(cards, "card_id");
+
+  getIsLastDashboardQuestionDashcard = (dc: BaseDashboardCard): boolean => {
+    return Boolean(
+      dc.card.dashboard_id !== null &&
+        dc.card_id &&
+        this.state.dashcardCountByCardId[dc.card_id] <= 1,
+    );
+  };
+
   getLayouts(cards: BaseDashboardCard[]) {
     const desktop = cards.map(this.getLayoutForDashCard);
     const mobile = generateMobileLayout(desktop);
@@ -491,7 +517,9 @@ class DashboardGridInner extends Component<
     });
 
     this.props.addUndo({
-      message: t`Removed card`,
+      message: this.getIsLastDashboardQuestionDashcard(dc)
+        ? t`Trashed and removed card`
+        : t`Removed card`,
       undo: true,
       action: () =>
         this.props.undoRemoveCardFromDashboard({ dashcardId: dc.id }),
@@ -558,6 +586,7 @@ class DashboardGridInner extends Component<
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
         downloadsEnabled={downloadsEnabled}
         autoScroll={shouldAutoScrollTo}
+        isTrashedOnRemove={this.getIsLastDashboardQuestionDashcard(dashcard)}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
       />
     );
