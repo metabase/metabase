@@ -1067,35 +1067,37 @@ describe("issue 49882", () => {
   });
 
   it("does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)", () => {
-    const metaKey = Cypress.platform === "darwin" ? "Meta" : "Control";
-    const moveCursorBefore2ndCase = "{leftarrow}".repeat(41);
+    // This test used to use keyboard shortcuts to cut and paste but this
+    // seem impossible to emulate with CodeMirror in Cypress, so it's using allowFastSet
+    // instead.
 
     H.enterCustomColumnDetails({
       formula:
         'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])',
       blur: false,
+      allowFastSet: true,
     });
 
-    H.CustomExpressionEditor.get()
-      .realPress(["Shift", "ArrowLeft"])
-      .realPress(["Shift", "ArrowLeft"])
-      .realPress(["Shift", "ArrowLeft"])
-      .realPress(["Shift", "ArrowLeft"])
-      .realPress(["Shift", "ArrowLeft"])
-      .realPress(["Shift", "ArrowLeft"]);
+    // Cut [Tax]
+    H.CustomExpressionEditor.type(
+      'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), )',
+      {
+        allowFastSet: true,
+      },
+    );
 
-    cy.realPress([metaKey, "X"], { pressDelay: 100 });
-
-    H.CustomExpressionEditor.type(moveCursorBefore2ndCase, {
-      focus: false,
-      blur: false,
-    });
-
-    cy.realPress([metaKey, "V"], { pressDelay: 100 });
+    // Paste [Tax] before case
+    H.CustomExpressionEditor.type(
+      'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )',
+      {
+        allowFastSet: true,
+      },
+    );
 
     H.CustomExpressionEditor.shouldContain(
       'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )',
     );
+    H.CustomExpressionEditor.blur();
 
     H.popover()
       .findByText("Expecting comma but got case instead")
