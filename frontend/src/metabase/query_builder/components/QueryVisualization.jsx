@@ -8,7 +8,7 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useSelector } from "metabase/lib/redux";
-import { getisSqlQueryFixApplied } from "metabase/query_builder/selectors";
+import { getIsSqlQueryFixApplied } from "metabase/query_builder/selectors";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
@@ -34,7 +34,7 @@ export default function QueryVisualization(props) {
 
   const canRun = Lib.canRun(question.query(), question.type());
   const [warnings, setWarnings] = useState([]);
-  const isSqlQueryFixApplied = useSelector(getisSqlQueryFixApplied);
+  const isSqlQueryFixApplied = useSelector(getIsSqlQueryFixApplied);
 
   return (
     <div

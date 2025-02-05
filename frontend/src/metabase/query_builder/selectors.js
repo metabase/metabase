@@ -766,7 +766,7 @@ const getNativeEditorSelectedRange = createSelector(
   uiControls => uiControls && uiControls.nativeEditorSelectedRange,
 );
 
-export const getisSqlQueryFixApplied = createSelector(
+export const getIsSqlQueryFixApplied = createSelector(
   [getUiControls],
   uiControls => uiControls && uiControls.isSqlQueryFixApplied,
 );
