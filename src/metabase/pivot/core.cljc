@@ -225,19 +225,17 @@
                                 :children []
                                 }]
                               [])]
-    (def subtotal subtotal)
     (if (:isCollapsed row-item)
       subtotal
       (let [node (merge row-item
                         {:hasSubtotal has-subtotal
-                         :children (mapcat (fn [child] (if (not-empty (:children child))
-                                                         (add-subtotal child
-                                                                       rest-subs-by-col
-                                                                       (or (> (count (:children child)) 1)
-                                                                           (:isCollapsed child)))
-                                                         child))
-                                           (:children row-item))})]
-        (def node node)
+                         :children (map (fn [child] (if (not-empty (:children child))
+                                                      (add-subtotal child
+                                                                    rest-subs-by-col
+                                                                    (or (> (count (:children child)) 1)
+                                                                        (:isCollapsed child)))
+                                                      child))
+                                        (:children row-item))})]
         (if (not-empty subtotal)
           [node (first subtotal)]
           [node])))))
@@ -252,10 +250,5 @@
                               row-indexes)
         not-flat         (some #(> (count (:children %)) 1) row-tree)
         res              (mapcat (fn [row-item] (add-subtotal row-item show-subs-by-col (or not-flat (> (count (:children row-item)) 1)))) row-tree)]
-    (def col-settings col-settings)
-    (def row-tree row-tree)
-    (def res res)
-    (println "TSP show-subs-by-col" show-subs-by-col)
-    (println "TSP not-flat" not-flat)
     res))
 
