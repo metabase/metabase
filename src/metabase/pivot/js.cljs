@@ -26,7 +26,8 @@
   (let [result #js []]
     (doseq [[value tree-node] tree]
       (let [node #js {:value value
-                      :children (postprocess-tree (:children tree-node))}]
+                      :children (postprocess-tree (:children tree-node))
+                      :isCollapsed (:isCollapsed tree-node)}]
         (.push result node)))
     result))
 
@@ -46,7 +47,6 @@
                                        val-indexes
                                        col-settings
                                        collapsed-subtotals)]
-
     #js {:rowTree (-> trees :row-tree postprocess-tree)
          :colTree (-> trees :col-tree postprocess-tree)
          :valuesByKey (-> trees :values-by-key clj->js)}))
