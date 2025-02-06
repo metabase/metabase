@@ -4,6 +4,8 @@ import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
 import { Icon, type IconName } from "metabase/ui";
 
+import SS from "../Select.module.css";
+
 import S from "./SelectItem.module.css";
 import { getItemFontSize, getItemLineHeight } from "./utils";
 
@@ -34,7 +36,7 @@ export const SelectItem = forwardRef(function SelectItem(
   return (
     <Group
       ref={ref}
-      className={cx(S.item, className)}
+      className={cx(S.item, SS.SelectItems_Item, className)}
       fz={getItemFontSize(size)}
       lh={getItemLineHeight(size)}
       p="sm"
