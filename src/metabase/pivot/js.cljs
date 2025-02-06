@@ -50,3 +50,10 @@
     #js {:rowTree (-> trees :row-tree postprocess-tree)
          :colTree (-> trees :col-tree postprocess-tree)
          :valuesByKey (-> trees :values-by-key clj->js)}))
+
+(defn ^:export format-values-in-tree
+  "TODO"
+  [tree formatters cols]
+  (let [tree (js->clj tree :keywordize-keys true)
+        cols (js->clj cols)]
+    (clj->js (pivot/format-values-in-tree tree formatters cols))))

@@ -185,11 +185,12 @@ export function multiLevelPivot(data, settings) {
   );
 
   const topIndexColumns = columnColumnIndexes.map(index => columns[index]);
-  const formattedColumnTreeWithoutValues = formatValuesInTree(
+  const formattedColumnTreeWithoutValues = Pivot.format_values_in_tree(
     columnColumnTree,
     topIndexFormatters,
     topIndexColumns,
   );
+
   if (
     formattedColumnTreeWithoutValues.length > 1 &&
     settings["pivot.show_row_totals"]
@@ -202,7 +203,6 @@ export function multiLevelPivot(data, settings) {
       isGrandTotal: true,
     });
   }
-
   const columnIndex = addEmptyIndexItem(
     formattedColumnTreeWithoutValues.flatMap(root => enumeratePaths(root)),
   );
@@ -216,11 +216,12 @@ export function multiLevelPivot(data, settings) {
   );
 
   const leftIndexColumns = rowColumnIndexes.map(index => columns[index]);
-  const formattedRowTreeWithoutSubtotals = formatValuesInTree(
+  const formattedRowTreeWithoutSubtotals = Pivot.format_values_in_tree(
     rowColumnTree,
     leftIndexFormatters,
     leftIndexColumns,
   );
+
   const showSubtotalsByColumn = rowColumnIndexes.map(
     index => getIn(columnSettings, [index, COLUMN_SHOW_TOTALS]) !== false,
   );
@@ -376,20 +377,6 @@ function enumeratePaths(
   return children.length === 0
     ? [pathWithValue]
     : children.flatMap(child => enumeratePaths(child, pathWithValue));
-}
-
-function formatValuesInTree(
-  rowColumnTree,
-  [formatter, ...formatters],
-  [column, ...columns],
-) {
-  return rowColumnTree.map(({ value, children, ...rest }) => ({
-    ...rest,
-    value: formatter(value),
-    rawValue: value,
-    children: formatValuesInTree(children, formatters, columns),
-    clicked: { value, column, data: [{ value, col: column }] },
-  }));
 }
 
 // This might add value column(s) to the bottom of the top header tree.
