@@ -1,4 +1,6 @@
 import type { EditorState } from "@codemirror/state";
+import { createSelector } from "@reduxjs/toolkit";
+import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
@@ -225,9 +227,12 @@ export function matchCardIdAtCursor(
   return parsedId;
 }
 
-export function referencedQuestionIds(query: Lib.Query): CardId[] {
-  return Object.values(Lib.templateTags(query) ?? {})
-    .filter(tag => tag.type === "card")
-    .map(tag => tag["card-id"])
-    .filter(isNotNull);
-}
+export const getReferencedCardIds = createSelector(
+  (query: Lib.Query) => Lib.templateTags(query),
+  tags =>
+    Object.values(tags)
+      .filter(tag => tag.type === "card")
+      .map(tag => tag["card-id"])
+      .filter(isNotNull),
+  { argsMemoizeOptions: { resultEqualityCheck: shallowEqual } },
+);
