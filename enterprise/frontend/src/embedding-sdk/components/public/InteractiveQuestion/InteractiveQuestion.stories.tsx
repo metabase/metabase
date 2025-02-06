@@ -6,6 +6,7 @@ import {
   questionIdArgType,
   questionIds,
 } from "embedding-sdk/test/storybook-id-args";
+import { Box } from "metabase/ui";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
@@ -38,7 +39,11 @@ export default {
 };
 
 const Template: StoryFn<InteractiveQuestionComponentProps> = args => {
-  return <InteractiveQuestion {...args} />;
+  return (
+    <Box bg="var(--mb-color-background)" mih="100vh">
+      <InteractiveQuestion {...args} />
+    </Box>
+  );
 };
 
 export const Default = {
@@ -56,9 +61,11 @@ export const Default = {
 export const EditorOnly = {
   render(args: InteractiveQuestionComponentProps) {
     return (
-      <InteractiveQuestion {...args}>
-        <InteractiveQuestion.Editor />
-      </InteractiveQuestion>
+      <Box bg="var(--mb-color-background)" mih="100vh">
+        <InteractiveQuestion {...args}>
+          <InteractiveQuestion.Editor />
+        </InteractiveQuestion>
+      </Box>
     );
   },
 

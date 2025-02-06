@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
@@ -14,12 +15,12 @@ import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { getLearnUrl, getUpgradeUrl } from "metabase/selectors/settings";
 import { Alert, Box, Button, Icon, Stack, Text } from "metabase/ui";
 
-import SettingHeader from "../SettingHeader";
-import { SetByEnvVarWrapper } from "../SettingsSetting";
-import { SwitchWithSetByEnvVar } from "../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
-import { SettingTextInput } from "../widgets/SettingTextInput";
-
-import type { AdminSettingComponentProps } from "./types";
+import SettingHeader from "../../SettingHeader";
+import { SetByEnvVarWrapper } from "../../SettingsSetting";
+import { SwitchWithSetByEnvVar } from "../../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
+import { SettingTextInput } from "../../widgets/SettingTextInput";
+import { EmbeddingSdkLegaleseModal } from "../EmbeddingSdkLegaleseModal";
+import type { AdminSettingComponentProps } from "../types";
 
 const utmTags = {
   utm_source: "product",
@@ -33,6 +34,12 @@ export function EmbeddingSdkSettings({
 }: AdminSettingComponentProps) {
   const isEE = PLUGIN_EMBEDDING_SDK.isEnabled();
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
+  const showSdkEmbedTerms = useSetting("show-sdk-embed-terms");
+  const [
+    isLegaleseModalOpen,
+    { open: openLegaleseModal, close: closeLegaleseModal },
+  ] = useDisclosure(Boolean(isEmbeddingSdkEnabled && showSdkEmbedTerms));
+
   const canEditSdkOrigins = isEE && isEmbeddingSdkEnabled;
 
   const isHosted = useSetting("is-hosted?");
@@ -150,10 +157,19 @@ export function EmbeddingSdkSettings({
         <SwitchWithSetByEnvVar
           label={t`Enable Embedded analytics SDK`}
           settingKey="enable-embedding-sdk"
-          onChange={handleToggleEmbeddingSdk}
+          onChange={
+            !isEmbeddingSdkEnabled && showSdkEmbedTerms
+              ? openLegaleseModal
+              : handleToggleEmbeddingSdk
+          }
         />
-
+        <EmbeddingSdkLegaleseModal
+          opened={isLegaleseModalOpen}
+          onClose={closeLegaleseModal}
+          updateSetting={updateSetting}
+        />
         <Alert
+          data-testid="sdk-settings-alert-info"
           icon={
             <Icon color="var(--mb-color-text-secondary)" name="info_filled" />
           }
@@ -168,7 +184,6 @@ export function EmbeddingSdkSettings({
         >
           <Text size="sm">{apiKeyBannerText}</Text>
         </Alert>
-
         <Box>
           <SettingHeader
             id="get-started"
@@ -189,7 +204,6 @@ export function EmbeddingSdkSettings({
             href={quickStartUrl}
           >{t`Check out the Quick Start`}</Button>
         </Box>
-
         <Box>
           <SettingHeader
             id={sdkOriginsSetting.key}
@@ -199,13 +213,17 @@ export function EmbeddingSdkSettings({
             <SettingTextInput
               id={sdkOriginsSetting.key}
               setting={sdkOriginsSetting}
+              onClick={
+                isEmbeddingSdkEnabled && showSdkEmbedTerms
+                  ? openLegaleseModal
+                  : undefined
+              }
               onChange={handleChangeSdkOrigins}
               type="text"
               disabled={!canEditSdkOrigins}
             />
           </SetByEnvVarWrapper>
         </Box>
-
         {isEE && isHosted && (
           <Box>
             <SettingHeader
@@ -225,7 +243,6 @@ export function EmbeddingSdkSettings({
             >{t`Request version pinning`}</Button>
           </Box>
         )}
-
         <Text data-testid="sdk-documentation">
           {jt`Check out the ${(
             <ExternalLink key="sdk-doc" href={documentationUrl}>

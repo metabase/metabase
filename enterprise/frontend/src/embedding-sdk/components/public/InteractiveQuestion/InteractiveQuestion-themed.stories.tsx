@@ -6,7 +6,7 @@ import {
   defineMetabaseTheme,
 } from "embedding-sdk";
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import { getSdkStorybookDarkTheme } from "embedding-sdk/test/storybook-dark-theme";
+import { storybookThemes } from "embedding-sdk/test/storybook-themes";
 import { Box } from "metabase/ui";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
@@ -21,7 +21,7 @@ export default {
   },
 };
 
-const darkTheme = getSdkStorybookDarkTheme();
+const darkTheme = storybookThemes.dark;
 
 const Wrapper = ({
   children,

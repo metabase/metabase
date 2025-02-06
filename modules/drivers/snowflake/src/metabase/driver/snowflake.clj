@@ -688,10 +688,16 @@
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
-  (if-not (str/blank? (-> database :details :regionid))
-    (-> (update-in database [:details :account] #(str/join "." [% (-> database :details :regionid)]))
+  (cond-> database
+    (not (str/blank? (-> database :details :regionid)))
+    (-> (update-in [:details :account] #(str/join "." [% (-> database :details :regionid)]))
         (m/dissoc-in [:details :regionid]))
-    database))
+
+    (and
+     (get-in database [:details :password])
+     (nil? (get-in database [:details :private-key-path]))
+     (nil? (get-in database [:details :private-key-value])))
+    (assoc-in [:details :use-password] true)))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
 ;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're
