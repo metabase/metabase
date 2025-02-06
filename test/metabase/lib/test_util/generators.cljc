@@ -510,6 +510,11 @@
    (for [{:keys [query] :as ctx} (random-queries-from* (context-for starting-query) limit)]
      (vary-meta query assoc ::context (dissoc ctx :query)))))
 
+(defn random-query-from
+  "See the [[random-queries-from]]"
+  [query]
+  (first (random-queries-from query 1)))
+
 (defn- expected-total [step-kind]
   (fn [steps]
     (->> steps
