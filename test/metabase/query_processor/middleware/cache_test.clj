@@ -299,6 +299,35 @@
                    :status        :completed}
                   result)))))))
 
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest query-with-postgres-arrays-can-be-cached-test
+  (mt/test-driver :postgres
+    (with-mock-cache! [save-chan]
+      (mt/with-clock #t "2025-02-06T00:00:00.000Z[UTC]"
+        (let [query (mt/native-query {:query "select category_id, array_agg(name)
+                                              from venues
+                                              group by category_id
+                                              order by 1 asc
+                                              limit 2;"})
+              query (assoc query :cache-strategy (ttl-strategy))
+              original-result (qp/process-query query)
+              ;; clear any existing values in the `save-chan`
+              _               (while (a/poll! save-chan))
+              _               (mt/wait-for-result save-chan)
+              cached-result (qp/process-query query)]
+          (is (= true
+                 (boolean (#'cache/is-cacheable? query))))
+          (is (=? {:cache/details  {:cached     true
+                                    :updated_at #t "2025-02-06T00:00:00.000Z[UTC]"
+                                    :hash       some?}
+                   :row_count 2
+                   :status    :completed}
+                  (dissoc cached-result :data)))
+          (is (= (seq (-> original-result :cache/details :hash))
+                 (seq (-> cached-result :cache/details :hash))))
+          (is (= (dissoc original-result :cache/details)
+                 (dissoc cached-result :cache/details))))))))
+
 (deftest e2e-test
   (testing "Test that the caching middleware actually working in the context of the entire QP"
     (doseq [query [(mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
@@ -325,8 +354,8 @@
                          :status    :completed}
                         (dissoc cached-result :data))
                     "Results should be cached")
-                (is (= (seq (-> original-result :cache/details :cache-hash))
-                       (seq (-> cached-result :cache/details :cache-hash))))
+                (is (= (seq (-> original-result :cache/details :hash))
+                       (seq (-> cached-result :cache/details :hash))))
                 (is (= (dissoc original-result :cache/details)
                        (dissoc cached-result :cache/details))
                     "Cached result should be in the same format as the uncached result, except for added keys"))))))))

@@ -1107,6 +1107,37 @@
                   :recipient-type nil}
                  (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans"))))))))
 
+(deftest query-with-postgres-arrays-can-be-emailed-test
+  (mt/test-driver :postgres
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type     :native
+                                                              :native   {:query "select category_id, array_agg(name)
+                                                                                   from venues
+                                                                                   group by 1
+                                                                                   order by 1 asc
+                                                                                   limit 2;"}}}
+                   :model/Dashboard {dashboard-id :id} {:name "Venues by Category"}
+                   :model/DashboardCard _ {:card_id      card-id
+                                           :dashboard_id dashboard-id}]
+      (mt/with-fake-inbox
+        (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                                 (is (= {:ok true}
+                                        (mt/user-http-request :rasta :post 200 "pulse/test"
+                                                              {:name          (mt/random-name)
+                                                               :dashboard_id  dashboard-id
+                                                               :cards         [{:id                card-id
+                                                                                :include_csv       false
+                                                                                :include_xls       false}]
+                                                               :channels      [{:channel_type  "email"
+                                                                                :recipients    [(mt/fetch-user :rasta)]}]}))))]
+          (is (= {:message [{"Venues by Category" true}
+                            pulse.test-util/png-attachment]
+                  :message-type :attachments,
+                  :recipients #{"rasta@metabase.com"}
+                  :subject "Venues by Category"
+                  :recipient-type nil}
+                 (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Venues by Category"))))))))
+
 (deftest ^:parallel pulse-card-query-results-test
   (testing "viz-settings saved in the DB for a Card should be loaded"
     (is (some? (get-in (#'api.pulse/pulse-card-query-results
