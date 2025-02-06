@@ -28,6 +28,12 @@
                           codecs/bytes->b64-str)
                       id)
           results-url (str "/auto/dashboard/" entity-type "/" entity-id)]
+      (when (and (= k :table_id)
+                 (not (int? id))
+                 (not (and (string? id)
+                           (re-matches #"(?:card__)?\d+" id))))
+        (throw (ex-info "Invalid table_id" {:agent-error? true
+                                            :table_id id})))
       {:output (str (public-settings/site-url) results-url)
        :reactions [{:type :metabot.reaction/redirect :url results-url}]})
     (catch Exception e
