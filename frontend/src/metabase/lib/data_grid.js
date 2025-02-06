@@ -155,22 +155,7 @@ export function multiLevelPivot(data, settings) {
     leftIndexColumns,
   );
 
-  // Pivot.add_subtotals(formattedRowTreeWithoutSubtotals, rowColumnIndexes, columnSettings)
-
-  const showSubtotalsByColumn = rowColumnIndexes.map(
-    index => getIn(columnSettings, [index, COLUMN_SHOW_TOTALS]) !== false,
-  );
-
-  const formattedRowTree = settings["pivot.show_column_totals"]
-    ? addSubtotals(formattedRowTreeWithoutSubtotals, showSubtotalsByColumn)
-    : formattedRowTreeWithoutSubtotals;
-
-  console.log("TSP formattedRowTreeWithoutSubtotals: ", formattedRowTreeWithoutSubtotals);
-  console.log("TSP *OLD* showSubtotalsByColumn: ", showSubtotalsByColumn);
-  console.log("TSP *OLD* formattedRowTree: ", formattedRowTree);
-
-  const newFormattedRowTree = Pivot.add_subtotals(formattedRowTreeWithoutSubtotals, rowColumnIndexes, columnSettings)
-  console.log("TSP *NEW* newFormattedRowTree: ", newFormattedRowTree);
+  const formattedRowTree = Pivot.add_subtotals(formattedRowTreeWithoutSubtotals, rowColumnIndexes, columnSettings)
 
   if (
     formattedRowTreeWithoutSubtotals.length > 1 &&
