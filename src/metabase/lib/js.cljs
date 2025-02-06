@@ -2213,16 +2213,15 @@
   [column-extract-drill]
   (to-array (lib.core/extractions-for-drill column-extract-drill)))
 
-(defn ^:export pivot-types
-  "Returns a JS array of pivot types that are available in `a-drill-thru`, which must be a `pivot` drill-thru.
-
-  The list contains a subset of the strings `\"category\"`, `\"location\"` and `\"time\"`.
+(defn ^:export pivot-drill-details
+  "Returns a JS object with the details needed to render the complex UI for `pivot` drills.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [a-drill-thru]
-  (->> (lib.core/pivot-types a-drill-thru)
-       (map name)
-       to-array))
+  [{:keys [stage-number] :as a-drill-thru}]
+  #js {"stageIndex" stage-number
+       "pivotTypes" (->> (lib.core/pivot-types a-drill-thru)
+                         (map name)
+                         to-array)})
 
 (defn ^:export pivot-columns-for-type
   "Returns a JS array of pivotable columns for `a-drill-thru`, given the selected `pivot-type`.

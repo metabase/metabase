@@ -1,8 +1,9 @@
 (ns metabase.util.performance-test
-  (:require [clojure.test :refer :all]
-            [metabase.util.performance :as perf]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.util.performance :as perf]))
 
-(deftest concat-test
+(deftest ^:parallel concat-test
   (is (= [1 2 3 4 5] (perf/concat [1] [] [2] [3 4] nil '(5))))
   (is (= [] (perf/concat [] [])))
   (is (= [] (perf/concat [] [])))
@@ -25,7 +26,7 @@
   (is (= [] (mapv-via-run! inc [])))
   (is (= [1 2 3 4 5] (mapv-via-run! inc (range 5)))))
 
-(deftest transpose-test
+(deftest ^:parallel transpose-test
   (is (= [[1 2 3 4] [1 2 3 4] [1 2 3 4] [1 2 3 4] [1 2 3 4]]
          (perf/transpose [[1 1 1 1 1] [2 2 2 2 2] [3 3 3 3 3] [4 4 4 4 4]])
          (apply mapv vector [[1 1 1 1 1] [2 2 2 2 2] [3 3 3 3 3] [4 4 4 4 4]])))
