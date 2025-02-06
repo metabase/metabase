@@ -134,5 +134,7 @@ init()
     cleanup(1);
   });
 
+shell("echo 'hello world'");
+
 process.on("SIGTERM", cleanup);
 process.on("SIGINT", cleanup);

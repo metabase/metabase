@@ -30,7 +30,7 @@ async function parseArguments(args) {
   return await cypress.cli.parseRunArguments(cliArgs);
 }
 
-function shell(command, { quiet = Boolean(process.env.QUIET) } = {}) {
+function shell(command, { quiet = false } = {}) {
   const output = execSync(command, { stdio: quiet ? "pipe" : "inherit" });
   return output?.toString()?.trim();
 }
