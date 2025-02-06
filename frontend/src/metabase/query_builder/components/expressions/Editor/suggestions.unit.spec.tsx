@@ -11,6 +11,7 @@ import {
   POPULAR_FILTERS,
   POPULAR_FUNCTIONS,
 } from "metabase-lib/v1/expressions";
+import type { DatabaseFeature } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
@@ -100,9 +101,16 @@ describe("suggestFunctions", () => {
   function setup({
     startRule = "expression",
     reportTimezone = "America/New_York",
-  }: Partial<SuggestOptions>) {
+    features = undefined,
+  }: Partial<SuggestOptions> & {
+    features?: DatabaseFeature[];
+  }) {
     const metadata = createMockMetadata({
-      databases: [createSampleDatabase()],
+      databases: [
+        createSampleDatabase({
+          features,
+        }),
+      ],
     });
     const query = createQuery({ metadata });
     const source = suggestFunctions({
@@ -251,6 +259,44 @@ describe("suggestFunctions", () => {
         },
       ]);
     });
+
+    it("should not suggest unsupported functions", async () => {
+      const completer = setup({
+        startRule,
+        features: [],
+      });
+      const results = await completer("rege|");
+      expect(results).toEqual({
+        from: 0,
+        to: 4,
+        options: [],
+      });
+    });
+
+    it("should suggest supported functions", async () => {
+      const completer = setup({
+        startRule,
+        // @ts-expect-error: TODO should we add more string to the type?
+        features: ["regex"],
+      });
+      const results = await completer("rege|");
+      expect(results).toEqual({
+        from: 0,
+        to: 4,
+        options: [
+          {
+            label: "regexextract",
+            displayLabel: "regexextract",
+            detail:
+              "Extracts matching substrings according to a regular expression.",
+            matches: [[0, 3]],
+            icon: "function",
+            type: "function",
+            apply: expect.any(Function),
+          },
+        ],
+      });
+    });
   });
 
   describe("startRule = aggregation", () => {
@@ -287,9 +333,18 @@ describe("suggestFunctions", () => {
 });
 
 describe("suggestAggregations", () => {
-  function setup({ startRule = "aggregation" }: Partial<SuggestOptions>) {
+  function setup({
+    startRule = "aggregation",
+    features = [],
+  }: Partial<SuggestOptions> & {
+    features?: DatabaseFeature[];
+  }) {
     const metadata = createMockMetadata({
-      databases: [createSampleDatabase()],
+      databases: [
+        createSampleDatabase({
+          features,
+        }),
+      ],
     });
     const query = createQuery({ metadata });
     const source = suggestAggregations({
@@ -377,9 +432,42 @@ describe("suggestAggregations", () => {
     };
 
     it("should suggest aggregations", () => {
-      const completer = setup({ startRule });
+      const completer = setup({ startRule, features: [] });
       const results = completer("Coun|");
       expect(results).toEqual(RESULTS);
+    });
+
+    it("should not suggest unsupported aggregations", () => {
+      const completer = setup({ startRule });
+      const results = completer("StandardDev|");
+      expect(results).toEqual({
+        from: 0,
+        to: 11,
+        options: [],
+      });
+    });
+
+    it("should suggest supported aggregations", () => {
+      const completer = setup({
+        startRule,
+        features: ["standard-deviation-aggregations"],
+      });
+      const results = completer("StandardDev|");
+      expect(results).toEqual({
+        from: 0,
+        to: 11,
+        options: [
+          {
+            label: "StandardDeviation",
+            displayLabel: "StandardDeviation",
+            detail: "Calculates the standard deviation of the column.",
+            matches: [[0, 10]],
+            type: "aggregation",
+            icon: "function",
+            apply: expect.any(Function),
+          },
+        ],
+      });
     });
 
     it("should suggest aggregations, inside a word", () => {
