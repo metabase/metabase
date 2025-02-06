@@ -69,9 +69,10 @@
       (binding [h2/*allow-testing-h2-connections* true]
         (testing "successes"
           (mt/with-prometheus-system! [_ system]
-            (database/health-check-database! (mt/db))
-            (is (== 1 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
-            (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))
+            (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
+              (database/health-check-database! (mt/db))
+              (is (== 1 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))
 
         (testing "skip audit"
           (mt/with-prometheus-system! [_ system]
@@ -84,6 +85,13 @@
             (database/health-check-database! (:is_sample (mt/db)))
             (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
             (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))
+
+        (testing "failures for timeout"
+          (mt/with-prometheus-system! [_ system]
+            (mt/with-temporary-setting-values [db-connection-timeout-ms 0]
+              (database/health-check-database! (mt/db))
+              (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
+              (is (== 1 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))
 
         (testing "failures for bad connections"
           (when-let [bad-conn (tx/bad-connection-details driver/*driver*)]
