@@ -235,6 +235,8 @@ Options include:
 - [Side nav](#side_nav)
 - [Top nav](#top_nav)
 
+NOTE: ensure that the [Site URL](../configuring-metabase/settings#site-url) setting is correctly configured (should be your Metabase server URL), as otherwise we'll drop the query parameters if you're using (click behavior)[../dashboards/interactive#customizing-click-behavior].
+
 ### `action_buttons`
 
 Visible by default on question pages when the [header](#header) is enabled.
