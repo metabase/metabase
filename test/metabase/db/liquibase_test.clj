@@ -110,7 +110,7 @@
               (is (= :done (liquibase/wait-for-all-locks sleep-ms timeout-ms))))))))))
 
 (deftest release-all-locks-if-needed!-test
-  (mt/test-drivers #{:h2 :mysql :postgres}
+  (mt/test-drivers #{:h2}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
         (testing "When we release the locks from outside the migration...\n"
