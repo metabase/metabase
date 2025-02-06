@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: if ${{ intputs.ref }}
+          ref: ${{ inputs.ref }}
       # is fe needed? is that lib related?
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
