@@ -1112,10 +1112,10 @@
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                               :type     :native
                                                               :native   {:query "select category_id, array_agg(name)
-                                                                                   from venues
-                                                                                   group by 1
-                                                                                   order by 1 asc
-                                                                                   limit 2;"}}}
+                                                                                 from venues
+                                                                                 group by 1
+                                                                                 order by 1 as
+                                                                                 limit 2;"}}}
                    :model/Dashboard {dashboard-id :id} {:name "Venues by Category"}
                    :model/DashboardCard _ {:card_id      card-id
                                            :dashboard_id dashboard-id}]
