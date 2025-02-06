@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import React, { useMemo } from "react";
-=======
-import React, { useEffect } from "react";
->>>>>>> 6115ebd7c5 (Mantine v7-1 squash)
+import React, { useMemo, useEffect } from "react";
 import { ThemeProvider } from "metabase/ui";
 
 // @ts-expect-error: See metabase/lib/delay
@@ -64,15 +60,10 @@ const decorators = [
 
 function CssVariables() {
   const theme = useTheme();
-<<<<<<< HEAD
-=======
   useEffect(() => {
     // mantine v7 will not work correctly without this
     document.body.dir = "ltr";
   }, []);
-  const styles = css`
-    ${getMetabaseCssVariables(theme)}
->>>>>>> 6115ebd7c5 (Mantine v7-1 squash)
 
   // This can get expensive so we should memoize it separately
   const cssVariables = useMemo(() => getMetabaseCssVariables(theme), [theme]);
