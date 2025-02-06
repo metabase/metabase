@@ -70,15 +70,18 @@ export const useChartEvents = (
 
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
-      const nextCard =
-        rawSeries.find(series => series.card.id === cardId)?.card ?? card;
-      if (onChangeCardAndRun) {
-        onChangeCardAndRun({
-          nextCard,
-        });
+      if (VISUALIZER_DATA) {
+        const nextCard = metadata.question(cardId)?.card();
+        if (nextCard) {
+          onChangeCardAndRun?.({ nextCard });
+        }
+      } else {
+        const nextCard =
+          rawSeries.find(series => series.card.id === cardId)?.card ?? card;
+        onChangeCardAndRun?.({ nextCard });
       }
     },
-    [card, onChangeCardAndRun, rawSeries],
+    [VISUALIZER_DATA, card, metadata, onChangeCardAndRun, rawSeries],
   );
 
   const hoveredSeriesDataKey = useMemo(
