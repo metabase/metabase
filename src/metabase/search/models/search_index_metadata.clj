@@ -1,4 +1,4 @@
-(ns metabase.models.search-index-metadata
+(ns metabase.search.models.search-index-metadata
   (:require
    [java-time.api :as t]
    [metabase.models.interface :as mi]
