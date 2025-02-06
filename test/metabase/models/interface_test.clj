@@ -214,3 +214,17 @@
             :series_settings {:expression {:line.interpolate "step-after", :line.style "dotted"}}
             :graph.dimensions ["CREATED_AT"]}
            (mi/normalize-visualization-settings viz-settings)))))
+
+(deftest json-in-with-eliding
+  (is (= "{}" (#'mi/json-in-with-eliding {})))
+  (is (= (json/encode {:a "short"}) (#'mi/json-in-with-eliding {:a "short"})))
+  (is (= (json/encode {:a (str (apply str (repeat 247 "b")) "...")}) (#'mi/json-in-with-eliding {:a (apply str (repeat 500 "b"))})))
+  (is (= (json/encode {"ex-data" {"toucan2/context-trace" [["execute SQL with class com.mchange.v2.c3p0.impl.NewProxyConnection",
+                                                            {"toucan2.jdbc.query/sql-args" (str (apply str (repeat 247 "b")) "...")}]]}})
+         (#'mi/json-in-with-eliding {"ex-data" {"toucan2/context-trace" [["execute SQL with class com.mchange.v2.c3p0.impl.NewProxyConnection",
+                                                                          {"toucan2.jdbc.query/sql-args" (apply str (repeat 500 "b"))}]]}})))
+
+  (is (= (json/encode {:a (repeat 50 "x")}) (#'mi/json-in-with-eliding {:a (repeat 500 "x")})))
+
+  (testing "A passed string is not elided"
+    (is (= (apply str (repeat 1000 "a")) (#'mi/json-in-with-eliding (apply str (repeat 1000 "a")))))))

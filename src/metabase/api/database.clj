@@ -19,13 +19,13 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.field :refer [readable-fields-only]]
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.secret :as secret]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
@@ -86,7 +86,7 @@
     (assoc db
            :native_permissions
            (if (= :query-builder-and-native
-                  (data-perms/full-db-permission-for-user
+                  (perms/full-db-permission-for-user
                    api/*current-user-id*
                    :perms/create-queries
                    (u/the-id db)))
@@ -1108,10 +1108,10 @@
   [database-id schema-name]
   (or
    (contains? #{:query-builder :query-builder-and-native}
-              (data-perms/schema-permission-for-user api/*current-user-id*
-                                                     :perms/create-queries
-                                                     database-id
-                                                     schema-name))
+              (perms/schema-permission-for-user api/*current-user-id*
+                                                :perms/create-queries
+                                                database-id
+                                                schema-name))
    (current-user-can-manage-schema-metadata? database-id schema-name)))
 
 (api.macros/defendpoint :get "/:id/syncable_schemas"

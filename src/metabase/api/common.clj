@@ -120,7 +120,7 @@
 
 ;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic *current-user-permissions-set*
-  "Delay to the set of permissions granted to the current user. See documentation in [[metabase.models.permissions]] for
+  "Delay to the set of permissions granted to the current user. See documentation in [[metabase.permissions.models.permissions]] for
   more information about the Metabase permissions system."
   (atom #{}))
 

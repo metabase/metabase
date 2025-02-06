@@ -20,12 +20,11 @@
    [metabase.lib.util :as lib.util]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :as table]
-   [metabase.permissions.util :as perms-util]
+   [metabase.permissions.core :as perms]
    [metabase.public-settings :as public-settings]
    [metabase.sync.core :as sync]
    [metabase.upload.parsing :as upload-parsing]
@@ -461,7 +460,7 @@
       (ex-info (tru "Uploads are not enabled.")
                {:status-code 422})
 
-      (perms-util/sandboxed-user?)
+      (perms/sandboxed-user?)
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
 
@@ -482,16 +481,16 @@
                  {:status-code 422})
         (not
          (and
-          (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
-                                                                   :perms/view-data
-                                                                   (u/the-id db)))
+          (= :unrestricted (perms/full-db-permission-for-user api/*current-user-id*
+                                                              :perms/view-data
+                                                              (u/the-id db)))
           ;; previously this required `unrestricted` data access, i.e. not `no-self-service`, which corresponds to *both*
           ;; (at least) `:query-builder` plus unrestricted view-data
           (contains? #{:query-builder :query-builder-and-native}
-                     (data-perms/full-schema-permission-for-user api/*current-user-id*
-                                                                 :perms/create-queries
-                                                                 (u/the-id db)
-                                                                 schema-name))))
+                     (perms/full-schema-permission-for-user api/*current-user-id*
+                                                            :perms/create-queries
+                                                            (u/the-id db)
+                                                            schema-name))))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)

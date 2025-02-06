@@ -124,3 +124,9 @@
              (if-not (and config/ee-available? (:valid (premium-features/token-status)))
                (setting/get-value-of-type :boolean :show-static-embed-terms)
                false)))
+
+(defsetting show-sdk-embed-terms
+  (deferred-tru "Check if admin should see the SDK licensing terms popup")
+  :type    :boolean
+  :default true
+  :export? true)

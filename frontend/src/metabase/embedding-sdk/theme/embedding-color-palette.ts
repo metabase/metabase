@@ -16,7 +16,7 @@ import { getEmbeddingChartColors } from "./get-embedding-chart-colors";
  */
 export type MappableSdkColor = Exclude<MetabaseColor, "charts">;
 
-type NEW_SEMANTIC_COLOR =
+export type SemanticColorKey =
   | "text-primary"
   | "text-secondary"
   | "text-tertiary"
@@ -37,7 +37,7 @@ type NEW_SEMANTIC_COLOR =
  */
 export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   MappableSdkColor,
-  (ColorName | NEW_SEMANTIC_COLOR)[]
+  (ColorName | SemanticColorKey)[]
 > = {
   brand: ["brand"],
   "brand-hover": ["brand-light"],
