@@ -1,8 +1,10 @@
 import {
   CreateDashboardModal,
+  CreateQuestion,
   InteractiveQuestion,
   MetabaseProvider,
   StaticQuestion,
+  defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -25,6 +27,79 @@ describeEE("scenarios > embedding-sdk > styles", () => {
     cy.intercept("GET", "/api/user/current").as("getUser");
   });
 
+  describe("theming", () => {
+    const theme = defineMetabaseTheme({
+      colors: {
+        brand: "#FF0000",
+      },
+    });
+
+    it("should use the brand color from the theme", () => {
+      cy.mount(
+        <MetabaseProvider
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          theme={theme}
+        >
+          <CreateQuestion />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot()
+        .findByText("Pick your starting data")
+        .invoke("css", "color")
+        .should("equal", "rgb(255, 0, 0)");
+    });
+
+    it("should use the brand color from the app settings as fallback if they're present", () => {
+      cy.signInAsAdmin();
+      updateSetting(
+        // @ts-expect-error -- that function doesn't understand enterprise settings _yet_
+        "application-colors",
+        {
+          brand: "#00FF00",
+        },
+      );
+      cy.signOut();
+
+      cy.mount(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <CreateQuestion />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot()
+        .findByText("Pick your starting data")
+        .invoke("css", "color")
+        .should("equal", "rgb(0, 255, 0)");
+    });
+
+    it("but should prioritize the theme colors over the app settings", () => {
+      cy.signInAsAdmin();
+      updateSetting(
+        // @ts-expect-error -- that function doesn't understand enterprise settings _yet_
+        "application-colors",
+        {
+          brand: "#00FF00",
+        },
+      );
+      cy.signOut();
+
+      cy.mount(
+        <MetabaseProvider
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          theme={theme}
+        >
+          <CreateQuestion />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot()
+        .findByText("Pick your starting data")
+        .invoke("css", "color")
+        .should("equal", "rgb(255, 0, 0)");
+    });
+  });
+
   describe("style leaking", () => {
     it("[success scenario] should use the default fonts outside of our components, and Lato on our components", () => {
       wrapBrowserDefaultFont();
@@ -40,8 +115,6 @@ describeEE("scenarios > embedding-sdk > styles", () => {
             <div style={{ border: "1px solid black" }}>
               <h1>This is inside of the provider</h1>
             </div>
-
-            <StaticQuestion questionId={ORDERS_QUESTION_ID} />
           </MetabaseProvider>
         </div>,
       );
