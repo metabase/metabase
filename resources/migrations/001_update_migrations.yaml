@@ -10472,16 +10472,33 @@ databaseChangeLog:
   - changeSet:
       id: v53.2025-01-05T00:00:01
       author: escherize
-      comment: update enable-embedding-sdk with (exists? embedding-app-origins-sdk)
+      comment: set enable-embedding-sdk false when embedding-app-origins-sdk value exists
       preConditions:
         - onFail: MARK_RAN
       rollback: # not needed
       changes:
-        - sql: >-
-            UPDATE setting
-            SET value = 'false'
-            WHERE key = 'enable-embedding-sdk'
-            AND 'embedding-app-origins-sdk' NOT IN (SELECT key FROM setting);
+        - sql:
+            sql: >-
+              UPDATE setting
+              SET value = 'false'
+              WHERE key = 'enable-embedding-sdk'
+              AND 'embedding-app-origins-sdk' NOT IN (SELECT key FROM setting);
+            dbms: postgresql
+        - sql:
+            sql: >-
+              UPDATE setting
+              SET `value` = 'false'
+              WHERE `key` = 'enable-embedding-sdk'
+              AND 'embedding-app-origins-sdk' NOT IN (SELECT `key` FROM setting);
+            dbms: mysql,mariadb
+        - sql:
+            sql: >-
+              UPDATE setting
+              SET "VALUE" = 'false'
+              WHERE "KEY" = 'enable-embedding-sdk'
+              AND 'embedding-app-origins-sdk' NOT IN (SELECT "KEY" FROM setting);
+            dbms: h2
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
