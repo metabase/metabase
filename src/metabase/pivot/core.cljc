@@ -136,7 +136,7 @@
                                             {:value value
                                              :column (nth cols index)}))
                              (filter (fn [tmp]
-                                       (= (get-in tmp [:column :source]) "breakout"))))]
+                                       (= (get-in tmp [:column "source"]) "breakout"))))]
          (assoc acc
                 value-key
                 {:values values
