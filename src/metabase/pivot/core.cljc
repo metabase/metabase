@@ -192,3 +192,20 @@
     {:row-tree sorted-row-tree
      :col-tree sorted-col-tree
      :values-by-key values-by-key}))
+
+(defn format-values-in-tree
+  "Formats values in a row or column tree according to `formatters`"
+  [tree formatters cols]
+  (let [formatter (first formatters)
+        col       (first cols)]
+    (map
+     (fn [{:keys [value children] :as node}]
+       (assoc node
+              :value (formatter value)
+              :children (format-values-in-tree children (rest formatters) (rest cols))
+              :rawValue value
+              :clicked {:value value
+                        :column col
+                        :data [{:value value
+                                :col col}]}))
+     tree)))
