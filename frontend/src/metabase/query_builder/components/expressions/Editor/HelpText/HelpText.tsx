@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Box, Icon } from "metabase/ui";
+import { Box, Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { MBQL_CLAUSES } from "metabase-lib/v1/expressions/config";
 import {
@@ -83,33 +83,42 @@ export function HelpText({
 
   return (
     <>
-      <Box
+      <Flex
         className={S.usage}
         onMouseDown={handleMouseDown}
         data-testid="expression-helper-popover-structure"
       >
-        {structure}
-        {args != null && (
-          <>
-            (
-            {args.map(({ name }, index) => (
-              <span key={name}>
-                <span
-                  className={cx(S.arg, {
-                    [S.active]:
-                      argIndex === index ||
-                      (name === "…" && argIndex > args.length - 1),
-                  })}
-                >
-                  {wrapPlaceholder(name)}
+        <Box>
+          {structure}
+          {args != null && (
+            <>
+              (
+              {args.map(({ name }, index) => (
+                <span key={name}>
+                  <span
+                    className={cx(S.arg, {
+                      [S.active]:
+                        argIndex === index ||
+                        (name === "…" && argIndex > args.length - 1),
+                    })}
+                  >
+                    {wrapPlaceholder(name)}
+                  </span>
+                  {index < args.length - 1 && ", "}
                 </span>
-                {index < args.length - 1 && ", "}
-              </span>
-            ))}
-            )
-          </>
-        )}
-      </Box>
+              ))}
+              )
+            </>
+          )}
+        </Box>
+        <UnstyledButton className={S.toggle} px="sm">
+          <Icon
+            name="chevronright"
+            width={12}
+            className={cx(S.chevron, { [S.open]: open })}
+          />
+        </UnstyledButton>
+      </Flex>
 
       {open && (
         <Box className={S.info} data-testid="expression-helper">

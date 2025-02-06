@@ -1,5 +1,5 @@
 .usage {
-  padding: 0 0.5rem;
+  padding-left: 0.5rem;
   background-color: white;
   color: var(--mb-color-text-secondary);
   cursor: pointer;
@@ -12,6 +12,20 @@
 
   & + ul {
     height: calc(100% - 5rem);
+  }
+}
+
+.toggle {
+  margin-left: auto;
+  padding: 0 0.65rem;
+}
+
+.chevron {
+  color: var(--mb-color-text-secondary);
+  padding-top: 1px;
+
+  &.open {
+    transform: rotate(90deg);
   }
 }
 
