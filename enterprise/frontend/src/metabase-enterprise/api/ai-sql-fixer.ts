@@ -1,16 +1,13 @@
 import type {
-  FixNativeQueryRequest,
-  FixNativeQueryResponse,
+  FixSqlQueryRequest,
+  FixSqlQueryResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 
 export const aiSqlFixerApi = EnterpriseApi.injectEndpoints({
   endpoints: builder => ({
-    getFixedNativeQuery: builder.query<
-      FixNativeQueryResponse,
-      FixNativeQueryRequest
-    >({
+    getFixedSqlQuery: builder.query<FixSqlQueryResponse, FixSqlQueryRequest>({
       query: body => ({
         method: "POST",
         url: "/api/ee/ai-sql-fixer/fix",
@@ -20,4 +17,4 @@ export const aiSqlFixerApi = EnterpriseApi.injectEndpoints({
   }),
 });
 
-export const { useGetFixedNativeQueryQuery } = aiSqlFixerApi;
+export const { useGetFixedSqlQueryQuery } = aiSqlFixerApi;

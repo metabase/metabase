@@ -1,8 +1,8 @@
 import { PLUGIN_AI_SQL_FIXER } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { FixNativeQueryButton } from "./components/FixNativeQueryButton";
+import { FixSqlQueryButton } from "./components/FixSqlQueryButton";
 
 if (hasPremiumFeature("ai_sql_fixer")) {
-  PLUGIN_AI_SQL_FIXER.FixNativeQueryButton = FixNativeQueryButton;
+  PLUGIN_AI_SQL_FIXER.FixSqlQueryButton = FixSqlQueryButton;
 }
