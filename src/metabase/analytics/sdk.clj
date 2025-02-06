@@ -8,9 +8,10 @@
 
   then we can use the information on the tables to track information about the embedding client,
   and TODO: send it out in `summarize-execution`."
-  (:require [metabase.analytics.prometheus :as prometheus]
-            [metabase.util.log :as log]
-            [metabase.util.malli :as mu]))
+  (:require
+   [metabase.analytics.prometheus :as prometheus]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (def ^:dynamic *version* "Used to track information about the metabase embedding client version." nil)
 (def ^:dynamic *client* "Used to track information about the metabase embedding client." nil)
