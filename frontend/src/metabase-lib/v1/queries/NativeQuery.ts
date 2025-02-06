@@ -158,10 +158,15 @@ export default class NativeQuery extends AtomicQuery {
   setDatabaseId(databaseId: DatabaseId): NativeQuery {
     if (databaseId !== this._databaseId()) {
       const metadataProvider = Lib.metadataProvider(databaseId, this._metadata);
+      const extras = Lib.nativeExtras(this._query());
       const newQuery = Lib.withDifferentDatabase(
         this._query(),
         databaseId,
         metadataProvider,
+        {
+          collection: null,
+          ...extras,
+        },
       );
       return this._setQuery(newQuery);
     } else {
