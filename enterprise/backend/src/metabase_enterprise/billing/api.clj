@@ -1,4 +1,4 @@
-(ns metabase-enterprise.billing.billing
+(ns metabase-enterprise.billing.api
   "`/api/ee/billing/` endpoint(s)"
   (:require
    [clj-http.client :as http]
@@ -63,5 +63,3 @@
     (if (and token (str/starts-with? token "airgap_"))
       (billing-status)
       (fetch-billing-status* token email language))))
-
-(api/define-routes)

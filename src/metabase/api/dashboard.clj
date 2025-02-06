@@ -1429,5 +1429,3 @@
                        :dashcard-id  dashcard-id
                        :qp           qp.pivot/run-pivot-query}))
     (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
-
-(api/define-routes)

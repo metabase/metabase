@@ -4,6 +4,7 @@
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -88,13 +89,16 @@
 (defn- +check-sandboxes-enabled
   "Wrap the Ring handler to make sure sandboxes are enabled before allowing access to the API endpoints."
   [handler]
-  (fn [request respond raise]
-    (if-not (premium-features/enable-sandboxes?)
-      (raise (ex-info (str (tru "Error: sandboxing is not enabled for this instance.")
-                           " "
-                           (tru "Please check you have set a valid Enterprise token and try again."))
-                      {:status-code 403}))
-      (handler request respond raise))))
+  (open-api/handler-with-open-api-spec
+   (fn [request respond raise]
+     (if-not (premium-features/enable-sandboxes?)
+       (raise (ex-info (str (tru "Error: sandboxing is not enabled for this instance.")
+                            " "
+                            (tru "Please check you have set a valid Enterprise token and try again."))
+                       {:status-code 403}))
+       (handler request respond raise)))
+   (fn [prefix]
+     (open-api/open-api-spec handler prefix))))
 
 ;; All endpoints in this namespace require superuser perms to view
 ;;
@@ -104,4 +108,6 @@
 ;; TODO - defining the `check-superuser` check *here* means the API documentation function won't pick up on the "this
 ;; requires a superuser" stuff since it parses the `defendpoint` body to look for a call to `check-superuser`. I
 ;; suppose this doesn't matter (much) body since this is an enterprise endpoint and won't go in the dox anyway.
-(api/define-routes api/+check-superuser +check-sandboxes-enabled)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/mt/gtap` routes."
+  (api.macros/ns-handler *ns* api/+check-superuser +check-sandboxes-enabled))
