@@ -47,14 +47,24 @@ export function VisualizationError({
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const dispatch = useDispatch();
 
-  const handleNativeQueryFix = (newQuery: Lib.Query) => {
-    const newQuestion = question.setQuery(newQuery);
+  const handleNativeQueryFix = (
+    fixedQuery: Lib.Query,
+    fixedLineNumbers: number[],
+  ) => {
+    const newQuestion = question.setQuery(fixedQuery);
     dispatch(updateQuestion(newQuestion));
     dispatch(
       setUIControls({
+        highlightedNativeQueryLineNumbers: fixedLineNumbers,
         isNativeEditorOpen: true,
         isNativeQueryFixApplied: true,
       }),
+    );
+  };
+
+  const handleNativeQueryHighlight = (fixedLineNumbers: number[]) => {
+    dispatch(
+      setUIControls({ highlightedNativeQueryLineNumbers: fixedLineNumbers }),
     );
   };
 
@@ -146,6 +156,7 @@ export function VisualizationError({
                 queryError={error}
                 queryErrorType={errorType}
                 onQueryFix={handleNativeQueryFix}
+                onHighlightLines={handleNativeQueryHighlight}
               />
             )}
           </Flex>

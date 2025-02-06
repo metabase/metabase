@@ -38,6 +38,7 @@ function setup({
   fixQueryResponse,
 }: SetupOpts) {
   const onQueryFix = jest.fn();
+  const onHighlightLines = jest.fn();
 
   if (fixQueryResponse) {
     setupFixNativeQueryEndpoint(fixQueryResponse);
@@ -51,15 +52,11 @@ function setup({
       queryError={queryError}
       queryErrorType={queryErrorType}
       onQueryFix={onQueryFix}
+      onHighlightLines={onHighlightLines}
     />,
   );
 
-  const getFixedQuery = () => {
-    const [fixedQuery] = onQueryFix.mock.lastCall;
-    return fixedQuery;
-  };
-
-  return { onQueryFix, getFixedQuery };
+  return { onQueryFix, onHighlightLines };
 }
 
 function createNativeQuery(rawQuery: string) {
@@ -69,7 +66,7 @@ function createNativeQuery(rawQuery: string) {
 
 describe("FixSqlQueryButton", () => {
   it("should allow to apply a single query fix", async () => {
-    const { getFixedQuery } = setup({
+    const { onQueryFix } = setup({
       query: createNativeQuery("SELECT1 * FROM ORDERS"),
       fixQueryResponse: createMockFixSqlQueryResponse({
         fixes: [
@@ -85,12 +82,13 @@ describe("FixSqlQueryButton", () => {
       await screen.findByRole("button", { name: /Have Metabot fix it/ }),
     );
 
-    const fixedQuery = getFixedQuery();
+    const [fixedQuery, lineNumbers] = onQueryFix.mock.lastCall;
     expect(Lib.rawNativeQuery(fixedQuery)).toBe("SELECT * FROM ORDERS");
+    expect(lineNumbers).toEqual([1]);
   });
 
   it("should allow to apply multiple query fixes", async () => {
-    const { getFixedQuery } = setup({
+    const { onQueryFix } = setup({
       query: createNativeQuery("SELECT1 *\nFROM2 ORDERS\nWHERE 1=1"),
       fixQueryResponse: createMockFixSqlQueryResponse({
         fixes: [
@@ -110,10 +108,29 @@ describe("FixSqlQueryButton", () => {
       await screen.findByRole("button", { name: /Have Metabot fix it/ }),
     );
 
-    const fixedQuery = getFixedQuery();
+    const [fixedQuery, lineNumbers] = onQueryFix.mock.lastCall;
     expect(Lib.rawNativeQuery(fixedQuery)).toBe(
       "SELECT *\nFROM ORDERS\nWHERE 1=1",
     );
+    expect(lineNumbers).toEqual([1, 2]);
+  });
+
+  it("should highlight affected lines on hover", async () => {
+    const { onHighlightLines } = setup({
+      query: createNativeQuery("SELECT1 * FROM ORDERS"),
+      fixQueryResponse: createMockFixSqlQueryResponse({
+        fixes: [
+          createMockSqlQueryFix({
+            fixed_sql: "SELECT * FROM ORDERS",
+            line_number: 1,
+          }),
+        ],
+      }),
+    });
+    await userEvent.hover(
+      await screen.findByRole("button", { name: /Have Metabot fix it/ }),
+    );
+    expect(onHighlightLines).toHaveBeenLastCalledWith([1]);
   });
 
   it("should show an error message when fixes are empty", async () => {
