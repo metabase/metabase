@@ -11,16 +11,17 @@ import { ExpandButton } from "metabase/visualizations/components/TableInteractiv
 import type { TableCellFormatter } from "metabase/visualizations/types";
 import type { RowValue } from "metabase-types/api";
 
-import S from "./BodyCell.module.css";
+import type { TextAlign } from "../types";
 
-export type BodyCellVariant = "text" | "pill" | "minibar";
+import { BaseCell } from "./BaseCell";
+import S from "./BodyCell.module.css";
 
 export type BodyCellProps = {
   value: RowValue;
   formatter?: TableCellFormatter;
   backgroundColor?: string;
-  align?: "left" | "right";
-  variant?: BodyCellVariant;
+  align?: TextAlign;
+  variant?: "text" | "pill";
   wrap?: boolean;
   canExpand?: boolean;
   onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
@@ -51,23 +52,18 @@ export const BodyCell = memo(function BodyCell({
   );
 
   return (
-    <div
+    <BaseCell
+      align={align}
       className={cx(S.root, CS.hoverParent, CS.hoverVisibility, {
         [S.clickable]: !!onClick,
-        [S.alignLeft]: align === "left",
-        [S.alignRight]: align === "right",
         [S.pill]: variant === "pill",
       })}
-      style={{
-        backgroundColor,
-      }}
-      onClick={onClick}
+      backgroundColor={backgroundColor}
     >
       <div
         data-grid-cell-content
         className={cx(S.content, {
           [S.noWrap]: !wrap,
-          [S.minibar]: variant === "minibar",
         })}
         {...contentAttributes}
       >
@@ -86,6 +82,6 @@ export const BodyCell = memo(function BodyCell({
           onClick={handleExpandClick}
         />
       )}
-    </div>
+    </BaseCell>
   );
 });

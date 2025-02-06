@@ -221,7 +221,7 @@ class Table extends Component<TableProps, TableState> {
       click_behavior: {},
       text_align: {
         title: t`Align`,
-        widget: "segmentedControl",
+        widget: "select",
         getDefault: column => {
           return isNumber(column) ? "right" : "left";
         },
@@ -229,6 +229,7 @@ class Table extends Component<TableProps, TableState> {
           options: [
             { name: t`Left`, value: "left" },
             { name: t`Right`, value: "right" },
+            { name: t`Middle`, value: "middle" },
           ],
         },
       },

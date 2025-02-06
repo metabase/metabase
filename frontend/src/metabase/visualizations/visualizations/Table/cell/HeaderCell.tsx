@@ -1,31 +1,28 @@
-import cx from "classnames";
 import type React from "react";
 import { memo } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/ui";
 
-import styles from "./HeaderCell.module.css";
+import type { TextAlign } from "../types";
+
+import { BaseCell } from "./BaseCell";
+import S from "./HeaderCell.module.css";
 
 export type HeaderCellProps = {
-  align?: "left" | "right";
+  align?: TextAlign;
   name?: React.ReactNode;
   sort?: "asc" | "desc";
 };
 
 export const HeaderCell = memo(function HeaderCell({
   name,
-  align = "left",
+  align,
   sort,
 }: HeaderCellProps) {
   return (
-    <div
-      className={cx(styles.root, {
-        [styles.leftAligned]: align === "left",
-        [styles.rightAligned]: align === "right",
-      })}
-    >
-      <div data-grid-header-cell-content className={styles.content}>
+    <BaseCell className={S.root} align={align}>
+      <div data-grid-header-cell-content className={S.content}>
         {sort != null ? (
           <Icon
             mr="0.25rem"
@@ -35,6 +32,6 @@ export const HeaderCell = memo(function HeaderCell({
         ) : null}
         <Ellipsified tooltip={name}>{name}</Ellipsified>
       </div>
-    </div>
+    </BaseCell>
   );
 });

@@ -22,9 +22,9 @@ import type {
   RowValues,
 } from "metabase-types/api";
 
-import { BodyCell, type BodyCellVariant } from "../cell/BodyCell";
+import { BodyCell } from "../cell/BodyCell";
 import { HeaderCell } from "../cell/HeaderCell";
-import { MiniBar } from "../cell/MiniBarCell";
+import { MiniBarCell } from "../cell/MiniBarCell";
 import { pickRowsToMeasure } from "../utils";
 
 import "@tanstack/react-table";
@@ -51,6 +51,7 @@ import type Question from "metabase-lib/v1/Question";
 
 import { IndexCell } from "../cell/IndexCell";
 import { IndexHeaderCell } from "../cell/IndexHeaderCell";
+import { BodyCellVariant } from "../types";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
@@ -248,7 +249,8 @@ export const useColumns = ({
 
             if (variant === "minibar") {
               return (
-                <MiniBar
+                <MiniBarCell
+                  align={align}
                   backgroundColor={backgroundColor}
                   value={value}
                   formatter={columnFormatters[index]}

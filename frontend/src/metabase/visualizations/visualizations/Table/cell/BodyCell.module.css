@@ -6,13 +6,11 @@
   line-height: 18px;
   font-weight: 700;
   align-items: center;
-  justify-content: center;
   padding: 8px 12px;
   border-bottom: 1px solid var(--mb-color-border-alpha-30);
 }
 
 .content {
-  width: 100%;
   overflow: visible;
   line-height: 1.4;
 }
@@ -32,22 +30,15 @@
 }
 
 .pill .content {
-  display: inline-flex;
   color: var(--mb-color-brand);
   border: 1px solid var(--mb-color-brand-light);
   background-color: var(--mb-color-brand-lighter);
   border-radius: 99px;
-  padding: 2px 4px;
+  padding: 2px 8px;
   width: auto;
-  min-width: 35px;
-  justify-content: center;
+  min-width: 30px;
   text-overflow: ellipsis;
-  overflow: hidden;
-}
-
-.minibar {
-  border: 1px solid transparent;
-  border-radius: 99px;
+  text-align: center;
 }
 
 .alignLeft {

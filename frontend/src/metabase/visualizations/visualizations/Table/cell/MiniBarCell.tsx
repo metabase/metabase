@@ -6,6 +6,9 @@ import { alpha, color } from "metabase/lib/colors";
 import type { TableCellFormatter } from "metabase/visualizations/types";
 import type { RowValue } from "metabase-types/api";
 
+import type { TextAlign } from "../types";
+
+import { BaseCell } from "./BaseCell";
 import S from "./MiniBarCell.module.css";
 
 const BAR_HEIGHT = 8;
@@ -14,19 +17,21 @@ const BORDER_RADIUS = 3;
 
 const LABEL_MIN_WIDTH = 30;
 
-export interface MiniBarProps {
+export interface MiniBarCellProps {
   value: RowValue;
   extent: [number, number];
   formatter: TableCellFormatter;
-  backgroundColor: string;
+  backgroundColor?: string;
+  align?: TextAlign;
 }
 
-export const MiniBar = ({
+export const MiniBarCell = ({
   value,
   extent: [min, max],
   formatter,
   backgroundColor,
-}: MiniBarProps) => {
+  align,
+}: MiniBarCellProps) => {
   if (typeof value !== "number") {
     return null;
   }
@@ -62,7 +67,11 @@ export const MiniBar = ({
         };
 
   return (
-    <div className={S.root} style={{ backgroundColor }}>
+    <BaseCell
+      className={S.root}
+      backgroundColor={backgroundColor}
+      align={align}
+    >
       {/* TEXT VALUE */}
       <div
         className={cx(CS.textEllipsis, CS.textBold, CS.textRight, CS.flexFull)}
@@ -105,6 +114,6 @@ export const MiniBar = ({
           />
         )}
       </div>
-    </div>
+    </BaseCell>
   );
 };
