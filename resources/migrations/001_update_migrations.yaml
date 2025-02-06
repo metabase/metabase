@@ -10470,7 +10470,7 @@ databaseChangeLog:
                   remarks: The timestamp at which a user was deactivated
 
   - changeSet:
-      id: v53.2025-01-05T00:00:01
+      id: v52.2025-01-05T00:00:01
       author: escherize
       comment: set enable-embedding-sdk false when embedding-app-origins-sdk value exists
       preConditions:
