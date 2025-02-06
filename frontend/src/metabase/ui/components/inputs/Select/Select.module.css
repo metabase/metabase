@@ -20,6 +20,12 @@
   svg[data-error] {
     color: var(--mb-color-error);
   }
+
+  &:has([data-position]) {
+    .SelectInput {
+      padding-right: var(--input-right-section-width);
+    }
+  }
 }
 
 .Select {
