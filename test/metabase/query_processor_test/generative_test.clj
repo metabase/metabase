@@ -31,6 +31,8 @@
                   :mb-test-query-iteration-count "20" #_"100"
                   :mb-test-run-seed "-8532424533502079314")
   
+  (alter-var-root #'env assoc :mb-test-qgen-run "true")
+  
 
   )
 
@@ -44,8 +46,7 @@
           iterations (or (config/config-int :mb-test-query-iterations) 
                          100)]
       (tu.rng/with-generator [iterations query (try (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                        (lib.tu.gen/random-queries-from 1)
-                                                        first)
+                                                        lib.tu.gen/random-query-from)
                                                     (catch Throwable _t
                                                       (log/error "Initialization failed")
                                                       (log/errorf "Seed: %d" &seed)
