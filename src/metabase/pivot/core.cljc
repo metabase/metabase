@@ -229,7 +229,7 @@
       subtotal
       (let [node (merge row-item
                         {:hasSubtotal has-subtotal
-                         :children (map (fn [child] (if (not-empty (:children child))
+                         :children (mapcat (fn [child] (if (not-empty (:children child))
                                                       (add-subtotal child
                                                                     rest-subs-by-col
                                                                     (or (> (count (:children child)) 1)
