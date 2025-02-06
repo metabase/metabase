@@ -12,8 +12,6 @@ export {
   type CreateDashboardValues,
 } from "./CreateDashboardModal";
 export { CreateQuestion, type CreateQuestionProps } from "./CreateQuestion";
-export { FlexibleSizeComponent } from "./FlexibleSizeComponent";
-export type { FlexibleSizeProps } from "./FlexibleSizeComponent";
 export {
   EditableDashboard,
   InteractiveDashboard,
