@@ -19,11 +19,11 @@ import {
   Stack,
 } from "metabase/ui";
 
+import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
-} from "../../public/FlexibleSizeComponent";
-import { InteractiveQuestion } from "../../public/InteractiveQuestion";
+} from "../FlexibleSizeComponent";
 import { shouldShowSaveButton } from "../InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
