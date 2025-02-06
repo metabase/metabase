@@ -206,6 +206,7 @@ describe("scenarios > dashboard", () => {
       });
       H.entityPickerModal().button("Select").click();
 
+      cy.findByTestId("dashcard").should("be.visible");
       H.saveDashboard();
 
       cy.log(
