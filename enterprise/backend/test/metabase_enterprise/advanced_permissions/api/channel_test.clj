@@ -36,8 +36,7 @@
               (update-channel user 403)
               (create-channel :crowberto 200)
               (update-channel :crowberto 200)
-              (include-details :crowberto true)
-              (include-details user false)))
+              (include-details :crowberto true)))
 
           (testing "if `advanced-permissions` is enabled"
             (mt/with-premium-features #{:advanced-permissions}
@@ -46,8 +45,7 @@
                 (update-channel user 403)
                 (create-channel :crowberto 200)
                 (update-channel :crowberto 200)
-                (include-details :crowberto true)
-                (include-details user false))
+                (include-details :crowberto true))
 
               (testing "succeed if user's group has `setting` permission"
                 (perms/grant-application-permissions! group :setting)

@@ -38,11 +38,9 @@
       (perms/current-user-has-application-permissions? :setting)))
 
 (defmethod mi/can-read? :model/Channel
-  [channel]
+  [_channel]
   (or (mi/superuser?)
-      (case (:type channel)
-        :channel/http (perms/current-user-has-application-permissions? :setting)
-        false)))
+      (perms/current-user-has-application-permissions? :setting)))
 
 (t2/define-before-update :model/Channel
   [instance]
