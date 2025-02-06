@@ -209,3 +209,8 @@
                         :data [{:value value
                                 :col col}]}))
      tree)))
+
+(defn add-subtotals
+  "Adds subtotals to the row tree if needed, based on column settings."
+  [row-tree row-indexes col-settings]
+  :todo)
