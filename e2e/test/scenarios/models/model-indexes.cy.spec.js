@@ -123,28 +123,24 @@ describe("scenarios > model indexes", () => {
       .should("exist");
   });
 
-  it(
-    "should be able to search model index values and visit detail records",
-    { tags: "@flaky" },
-    () => {
-      createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
+  it("should be able to search model index values and visit detail records", () => {
+    createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
 
-      cy.visit("/");
+    cy.visit("/");
 
-      H.commandPaletteSearch("marble shoes", false);
-      H.commandPalette()
-        .findByRole("option", { name: "Small Marble Shoes" })
-        .click();
+    H.commandPaletteSearch("marble shoes", false);
+    H.commandPalette()
+      .findByRole("option", { name: "Small Marble Shoes" })
+      .click();
 
-      cy.wait("@dataset");
+    cy.wait("@dataset");
 
-      cy.findByTestId("object-detail").within(() => {
-        cy.findByRole("heading", { name: /Product/ });
-        cy.findByText("Small Marble Shoes");
-        cy.findByText("Doohickey");
-      });
-    },
-  );
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByRole("heading", { name: /Product/ });
+      cy.findByText("Small Marble Shoes");
+      cy.findByText("Doohickey");
+    });
+  });
 
   it("should be able to see details of a record outside the first 2000", () => {
     H.createQuestion(
