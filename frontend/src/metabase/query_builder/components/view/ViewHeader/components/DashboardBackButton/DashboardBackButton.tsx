@@ -9,7 +9,7 @@ import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 
 import DashboardBackButtonS from "./DashboardBackButton.module.css";
 
-type DashboardBackButtonProps = {
+export type DashboardBackButtonProps = {
   noLink?: boolean;
   onClick?: () => void;
 } & ActionIconProps;

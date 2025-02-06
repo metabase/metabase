@@ -2,17 +2,18 @@ import type { CSSProperties } from "react";
 
 import { InteractiveQuestion } from "embedding-sdk";
 import { FLEXIBLE_SIZE_DEFAULT_HEIGHT } from "embedding-sdk/components/public/FlexibleSizeComponent";
-import { Center, Icon, Popover } from "metabase/ui";
+import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 
 import ToolbarButtonS from "../../../styles/ToolbarButton.module.css";
 import { ToolbarButton } from "../../util/ToolbarButton";
 
 export const QuestionSettingsDropdown = ({
   height,
+  ...popoverProps
 }: {
   height?: CSSProperties["height"];
-}) => (
-  <Popover position="bottom-end">
+} & PopoverProps) => (
+  <Popover position="bottom-end" {...popoverProps}>
     <Popover.Target>
       <ToolbarButton
         isHighlighted={false}

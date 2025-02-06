@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { CSSProperties } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -39,8 +40,19 @@ export const getQuestionTitle = ({ question }: QuestionTitleProps): string => {
   return t`New question`;
 };
 
-export const QuestionTitle = ({ question }: QuestionTitleProps) => {
+export const QuestionTitle = ({
+  question,
+  className,
+  style,
+}: QuestionTitleProps & {
+  className?: string;
+  style?: CSSProperties;
+}) => {
   const questionTitle = getQuestionTitle({ question });
 
-  return <h2 className={cx(CS.h2, CS.textWrap)}>{questionTitle}</h2>;
+  return (
+    <h2 className={cx(CS.h2, CS.textWrap, className)} style={style}>
+      {questionTitle}
+    </h2>
+  );
 };
