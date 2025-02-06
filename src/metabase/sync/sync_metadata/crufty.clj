@@ -6,6 +6,10 @@
 
 ;; PUBLIC API
 
+(defn ->regex [pattern]
+  "Converts a pattern-string into a lower-cased regex."
+  (-> pattern u/lower-case-en re-pattern))
+
 (defn name?
   "Returns true if the table name re-find matches any of the (regex) patterns or pattern-strings (after getting passed
   through re-pattern).
@@ -17,4 +21,4 @@
   If you want to match a table or column name directly, use `^my-table$` or `^my-column$`."
   [nname {:keys [patterns pattern-strings]}]
   (matches-any-patterns? (u/lower-case-en nname)
-                         (concat patterns (map re-pattern pattern-strings))))
+                         (concat patterns (map ->regex pattern-strings))))

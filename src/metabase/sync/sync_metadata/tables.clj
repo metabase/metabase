@@ -84,6 +84,7 @@
   :database-local :only
   :visibility :internal
   :export? true
+  :default []
   :encryption :no)
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------

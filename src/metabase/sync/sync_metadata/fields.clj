@@ -60,6 +60,7 @@
   :type :json
   :database-local :only
   :visibility :internal
+  :default []
   :export? true
   :encryption :no)
 

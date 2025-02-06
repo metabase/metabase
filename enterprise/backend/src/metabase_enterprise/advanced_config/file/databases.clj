@@ -6,6 +6,7 @@
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.driver.util :as driver.u]
    [metabase.models.setting :refer [defsetting]]
+   [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -31,7 +32,7 @@
   (every? (fn [pattern]
             (try
               #_{:clj-kondo/ignore [:unused-value]}
-              (re-pattern pattern) true
+              (crufty/->regex pattern) true
               (catch Exception e (log/error e) false)))
           patterns))
 
@@ -39,7 +40,9 @@
   (s/and
    map?
    (fn cruft-patterns-are-valid? [settings]
-     (->> [(:auto_cruft_tables settings) (:auto_cruft_columns settings)] ;; validated then normalized
+     ;; _'s because this is validated first then normalized later
+     (->> [(:auto_cruft_tables settings)
+           (:auto_cruft_columns settings)]
           (remove nil?)
           (map valid-regex-patterns?)
           (every? true?)))))
