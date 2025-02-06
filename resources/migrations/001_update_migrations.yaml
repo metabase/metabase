@@ -10158,8 +10158,32 @@ databaseChangeLog:
             constraintName: idx_search_index_metadata_unique_status
             columnNames: engine, version, status
 
+### We're changing the ID from `v53.2025-01-05T00:00:01` to `v52.2025-01-05T00:00:01` in this backport. Here's why:
+###
+### ## Considerations
+### 1. The migration is idempotent, meaning it can safely run multiple times safely
+### 2. The migration runs quickly since it just checks 1 value and (potentially) sets 1 value
+### 3. Release branches (like release-x.52.x) don't get merged back into master
+###
+### ## Upgrade Scenarios
+### - Fresh v52 install: Will run the v52-versioned migration
+### - v52 -> v53 upgrade: Will run both migrations (v52 version from release branch, v53 version from master)
+###   - This is safe because:
+###     - The migration is idempotent
+###     - No checksum violations will occur (different IDs = different changesets)
+###     - Quick execution means minimal performance impact
+###   - The v52 migration will remain in the databasechangelog table but won't exist in the v53 changelog files
+###
+### ## Why This Approach?
+### While normally we want to avoid running the same migration twice during upgrades, in this case it's an acceptable trade-off because:
+### 1. The migration's idempotency ensures data consistency
+### 2. Quick execution minimizes upgrade impact
+### 3. This maintains our convention of migration IDs matching their release versions
+### 4. This is a P0 fix that can't wait for the next release
+###
+###  Note: For future migrations that we know will be backported, we should number them based on the lowest target version at creation time in master, per our changelog documentation.
   - changeSet:
-      id: v53.2025-01-05T00:00:01
+      id: v52.2025-01-05T00:00:01
       author: escherize
       comment: set enable-embedding-sdk false when embedding-app-origins-sdk value exists
       preConditions:
