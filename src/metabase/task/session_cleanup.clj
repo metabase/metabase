@@ -24,5 +24,5 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                     ;; run once a day
-                  cron/cron-schedule "0 0 2 * * ? *"))]
+                  (cron/cron-schedule "0 0 2 * * ? *")))]
     (task/schedule-task! job trigger)))
