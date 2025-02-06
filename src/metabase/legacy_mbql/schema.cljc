@@ -43,7 +43,7 @@
 ;;    the future we will likely add middleware that uses this metadata to automatically validate that a driver has the
 ;;    features needed to run the query in question.
 
-(def ^:private PositiveInt
+(mr/def :legacy-mbql/positive-int
   [:schema
    {:description "Must be a positive integer."}
    pos-int?])
@@ -60,7 +60,7 @@
   "Set of valid units for bucketing or comparing against a *time* Field."
   #{:default :millisecond :second :minute :minute-of-hour :hour :hour-of-day})
 
-(def datetime-bucketing-units
+(def ^:private datetime-bucketing-units
   "Set of valid units for bucketing or comparing against a *datetime* Field."
   (set/union date-bucketing-units time-bucketing-units))
 
@@ -75,7 +75,7 @@
   "Valid unit for time bucketing."
   (into [:enum {:error/message "time bucketing unit"}] time-bucketing-units))
 
-(mr/def :legacy-mbql/date-time-unit
+(mr/def :legacy-mbql/datetime-unit
   "Valid unit for *datetime* bucketing."
   (into [:enum {:error/message "datetime bucketing unit"}] datetime-bucketing-units))
 
@@ -149,7 +149,7 @@
    [:datetime (helpers/clause
                :absolute-datetime
                "datetime" ::lib.schema.literal/datetime
-               "unit"     :legacy-mbql/date-time-unit)]])
+               "unit"     :legacy-mbql/datetime-unit)]])
 
 (def ^:internal ^{:clause-name :absolute-datetime} absolute-datetime
   "Schema for an `:absolute-datetime` clause."
@@ -202,7 +202,7 @@
    [:database_type {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:base_type     {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic_type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-   [:unit          {:optional true} [:maybe :legacy-mbql/date-time-unit]]
+   [:unit          {:optional true} [:maybe :legacy-mbql/datetime-unit]]
    [:name          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 ;; Arguments to filter clauses are automatically replaced with [:value <value> <type-info>] clauses by the
@@ -262,7 +262,7 @@
 
     ;; Following option conveys temporal unit that was set on a ref in previous stages. For details refer to
     ;; [:metabase.lib.schema.ref/field.options] schema.
-    [:inherited-temporal-unit {:optional true} [:maybe :legacy-mbql/date-time-unit]]
+    [:inherited-temporal-unit {:optional true} [:maybe :legacy-mbql/datetime-unit]]
 
     [:source-field
      {:optional true
@@ -287,7 +287,7 @@
   values for comparison are `yyyy-MM-dd` date strings. See the `auto-bucket-datetimes` middleware for more details.
   `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they do any
   special datetime handling for plain `:field` clauses when their FieldOrExpression derives from `:type/DateTime`."}
-     [:maybe :legacy-mbql/date-time-unit]]
+     [:maybe :legacy-mbql/datetime-unit]]
 
     [:join-alias
      {:optional true
@@ -533,7 +533,7 @@
                      (if (number? x)
                        :number
                        :else))}
-   [:number PositiveInt]
+   [:number :legacy-mbql/positive-int]
    [:else   NumericExpression]])
 
 (def ^:private IntGreaterThanZeroOrNumericExpression
@@ -681,20 +681,20 @@
   to       TimezoneId
   from     (optional TimezoneId))
 
-(def ^:private ArithmeticDateTimeUnit
+(mr/def :legacy-mbql/arithmetic-datetime-unit
   [:enum {:error/message "datetime arithmetic unit"} :millisecond :second :minute :hour :day :week :month :quarter :year])
 
 (defclause ^{:requires-features #{:date-arithmetics}} datetime-add
   datetime DateTimeExpressionArg
   amount   NumericExpressionArg
-  unit     ArithmeticDateTimeUnit)
+  unit     :legacy-mbql/arithmetic-datetime-unit)
 
 (defclause ^{:requires-features #{:now}} now)
 
 (defclause ^{:requires-features #{:date-arithmetics}} datetime-subtract
   datetime DateTimeExpressionArg
   amount   NumericExpressionArg
-  unit     ArithmeticDateTimeUnit)
+  unit     :legacy-mbql/arithmetic-datetime-unit)
 
 (mr/def :legacy-mbql/datetime-expression
   (one-of + datetime-add datetime-subtract convert-timezone now))
@@ -717,7 +717,7 @@
 
 (defclause not, clause Filter)
 
-(def ^:private FieldOrExpressionRefOrRelativeDatetime
+(mr/def :legacy-mbql/field-or-expression-ref-or-relative-datetime
   [:multi
    {:error/message ":field or :expression reference or :relative-datetime"
     :error/fn      (constantly ":field or :expression reference or :relative-datetime")
@@ -736,7 +736,7 @@
     number?
     :string
     [:ref :legacy-mbql/temporal-literal]
-    FieldOrExpressionRefOrRelativeDatetime
+    :legacy-mbql/field-or-expression-ref-or-relative-datetime
     ExpressionArg
     value]])
 
@@ -757,7 +757,7 @@
            :string
            [:ref :legacy-mbql/temporal-literal]
            ExpressionArg
-           FieldOrExpressionRefOrRelativeDatetime]]])
+           :legacy-mbql/field-or-expression-ref-or-relative-datetime]]])
 
 (def ^:private OrderComparable
   "Schema for things that make sense in a filter like `>` or `<`, i.e. things that can be sorted."
@@ -809,22 +809,25 @@
 (defclause ^:sugar is-empty,  field Field)
 (defclause ^:sugar not-empty, field Field)
 
-(def ^:private StringFilterOptions
+(mr/def :legacy-mbql/string-filter-options
   [:map
    ;; default true
    [:case-sensitive {:optional true} :boolean]])
 
-(doseq [clause-keyword [::starts-with ::ends-with ::contains ::does-not-contain]]
+(doseq [clause-keyword [:legacy-mbql.clause/starts-with
+                        :legacy-mbql.clause/ends-with
+                        :legacy-mbql.clause/contains
+                        :legacy-mbql.clause/does-not-contain]]
   (mr/def clause-keyword
     [:or
      ;; Binary form
      (helpers/clause (keyword (name clause-keyword))
                      "field" StringExpressionArg
                      "string-or-field" StringExpressionArg
-                     "options" [:optional StringFilterOptions])
+                     "options" [:optional :legacy-mbql/string-filter-options])
      ;; Multi-arg form
      (helpers/clause (keyword (name clause-keyword))
-                     "options" StringFilterOptions
+                     "options" :legacy-mbql/string-filter-options
                      "field" StringExpressionArg
                      "string-or-field" StringExpressionArg
                      "second-string-or-field" StringExpressionArg
@@ -832,22 +835,24 @@
 
 (def ^{:clause-name :starts-with} starts-with
   "Schema for a valid :starts-with clause."
-  [:ref ::starts-with])
+  [:ref :legacy-mbql.clause/starts-with])
+
 (def ^{:clause-name :ends-with} ends-with
   "Schema for a valid :ends-with clause."
-  [:ref ::ends-with])
+  [:ref :legacy-mbql.clause/ends-with])
+
 (def ^{:clause-name :contains} contains
   "Schema for a valid :contains clause."
-  [:ref ::contains])
+  [:ref :legacy-mbql.clause/contains])
 
 ;; SUGAR: this is rewritten as [:not [:contains ...]]
 (def ^{:sugar       true
        :clause-name :does-not-contain}
   does-not-contain
   "Schema for a valid :does-not-contain clause."
-  [:ref ::does-not-contain])
+  [:ref :legacy-mbql.clause/does-not-contain])
 
-(def ^:private TimeIntervalOptions
+(mr/def :legacy-mbql/time-interval-options
   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
   ;; include them.
   [:map
@@ -872,12 +877,12 @@
            :int
            [:enum :current :last :next]]
   unit    [:ref :legacy-mbql/relative-datetime-unit]
-  options (optional TimeIntervalOptions))
+  options (optional :legacy-mbql/time-interval-options))
 
 (defclause ^:sugar during
   field   Field
   value   [:or ::lib.schema.literal/date ::lib.schema.literal/datetime]
-  unit    :legacy-mbql/date-time-unit)
+  unit    :legacy-mbql/datetime-unit)
 
 (defclause ^:sugar relative-time-interval
   col           Field
@@ -920,22 +925,22 @@
    [:boolean  BooleanExpression]
    [:else     (one-of segment)]])
 
-(def ^:private CaseClause
+(mr/def :legacy-mbql/case-clause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
 
-(def ^:private CaseClauses
-  [:maybe [:sequential CaseClause]])
+(mr/def :legacy-mbql/case-clauses
+  [:maybe [:sequential :legacy-mbql/case-clause]])
 
-(def ^:private CaseOptions
+(mr/def :legacy-mbql/case-options
   [:map
    {:error/message ":case options"}
    [:default {:optional true} ExpressionArg]])
 
 (defclause ^{:requires-features #{:basic-aggregations}} case
-  clauses CaseClauses, options (optional CaseOptions))
+  clauses :legacy-mbql/case-clauses, options (optional :legacy-mbql/case-options))
 
 (defclause ^:sugar ^{:requires-features #{:basic-aggregations}} [case:if if]
-  clauses CaseClauses, options (optional CaseOptions))
+  clauses :legacy-mbql/case-clauses, options (optional :legacy-mbql/case-options))
 
 (mr/def :legacy-mbql/numeric-expression
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff
@@ -1036,7 +1041,7 @@
    [:else (one-of avg cum-sum distinct stddev sum min max metric share count-where
                   sum-where case case:if median percentile ag:var cum-count count offset)]])
 
-(def ^:private AggregationOptions
+(mr/def :legacy-mbql/aggregation-options-map
   "Additional options for any aggregation clause when wrapping it in `:aggregation-options`."
   [:map
    {:error/message ":aggregation-options options"}
@@ -1047,7 +1052,7 @@
 
 (defclause aggregation-options
   aggregation :legacy-mbql/unnamed-aggregation
-  options     AggregationOptions)
+  options     :legacy-mbql/aggregation-options-map)
 
 (mr/def :legacy-mbql/aggregation
   [:multi
@@ -1084,14 +1089,14 @@
 
 ;;; ---------------------------------------------- Native [Inner] Query ----------------------------------------------
 
-(def ^:private TemplateTagType
+(mr/def :legacy-mbql/template-tag-type
   "Schema for valid values of template tag `:type`."
   [:enum :snippet :card :dimension :number :text :date])
 
-(def ^:private TemplateTag:Common
+(mr/def :legacy-mbql/template-tag:common
   "Things required by all template tag types."
   [:map
-   [:type         TemplateTagType]
+   [:type         :legacy-mbql/template-tag-type]
    [:name         ::lib.schema.common/non-blank-string]
    [:display-name ::lib.schema.common/non-blank-string]
    ;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
@@ -1109,13 +1114,13 @@
 (mr/def :legacy-mbql/template-tag:snippet
   "Schema for a native query snippet template tag."
   [:merge
-   TemplateTag:Common
+   :legacy-mbql/template-tag:common
    [:map
     [:type         [:= :snippet]]
     [:snippet-name ::lib.schema.common/non-blank-string]
-    [:snippet-id   PositiveInt]
+    [:snippet-id   :legacy-mbql/positive-int]
     ;; database to which this Snippet belongs. Doesn't always seen to be specified.
-    [:database {:optional true} PositiveInt]]])
+    [:database {:optional true} :legacy-mbql/positive-int]]])
 
 ;; Example:
 ;;
@@ -1127,15 +1132,15 @@
 (mr/def :legacy-mbql/template-tag:source-query
   "Schema for a source query template tag."
   [:merge
-   TemplateTag:Common
+   :legacy-mbql/template-tag:common
    [:map
     [:type    [:= :card]]
-    [:card-id PositiveInt]]])
+    [:card-id :legacy-mbql/positive-int]]])
 
-(def ^:private TemplateTag:Value:Common
+(mr/def :legacy-mbql/template-tag:value:common
   "Stuff shared between the Field filter and raw value template tag schemas."
   [:merge
-   TemplateTag:Common
+   :legacy-mbql/template-tag:common
    [:map
     ;; default value for this parameter
     [:default  {:optional true} :any]
@@ -1153,7 +1158,7 @@
 (mr/def :legacy-mbql/template-tag:field-filter
   "Schema for a field filter template tag."
   [:merge
-   TemplateTag:Value:Common
+   :legacy-mbql/template-tag:value:common
    [:map
     [:type        [:= :dimension]]
     [:dimension   field]
@@ -1181,7 +1186,7 @@
 (mr/def :legacy-mbql/template-tag:raw-value
   "Schema for a raw value template tag."
   [:merge
-   TemplateTag:Value:Common
+   :legacy-mbql/template-tag:value:common
    [:map
     [:type
      [:ref
@@ -1247,30 +1252,26 @@
                 (core/= tag-name (:name tag-definition)))
               m))]])
 
-(def ^:private NativeQuery:Common
+(mr/def :legacy-mbql/native-query:common
   [:map
    [:template-tags {:optional true} [:ref :legacy-mbql/template-tag-map]]
    ;; collection (table) this query should run against. Needed for MongoDB
    [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
-(def NativeQuery
+(mr/def :legacy-mbql/native-query
   "Schema for a valid, normalized native [inner] query."
   [:merge
-   NativeQuery:Common
+   :legacy-mbql/native-query:common
    [:map
     [:query :any]]])
 
 (mr/def :mbql-query/native-source-query
   [:merge
-   NativeQuery:Common
+   :legacy-mbql/native-query:common
    [:map
     [:native :any]]])
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
-
-(def ^:private MBQLQuery
-  "Schema for a valid, normalized MBQL [inner] query."
-  [:ref :legacy-mbql/mbql-query])
 
 (mr/def :legacy-mbql/source-query
   "Schema for a valid value for a `:source-query` clause."
@@ -1283,7 +1284,7 @@
    ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
    ;; queries).
    [:native [:ref :mbql-query/native-source-query]]
-   [:mbql   MBQLQuery]])
+   [:mbql   [:ref :legacy-mbql/mbql-query]]])
 
 (mr/def :legacy-mbql/source-query-metadata
   "Schema for the expected keys for a single column in `:source-metadata` (`:source-metadata` is a sequence of these
@@ -1311,7 +1312,7 @@
   "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
   #"^card__[1-9]\d*$")
 
-(def ^:private SourceTable
+(mr/def :legacy-mbql/source-table
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
   [:or
    ::lib.schema.id/table
@@ -1324,7 +1325,7 @@
   "Valid values of the `:strategy` key in a join map."
   #{:left-join :right-join :inner-join :full-join})
 
-(def JoinStrategy
+(mr/def :legacy-mbql/join-strategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
   driver supports `:full-join` before generating a Join clause using that strategy."
@@ -1334,7 +1335,7 @@
   "Schema for valid values of the MBQL `:fields` clause."
   [:ref :legacy-mbql/fields])
 
-(def ^:private JoinFields
+(mr/def :legacy-mbql/join-fields
   [:or
    {:error/message "Valid join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`."}
    [:enum :all :none]
@@ -1359,7 +1360,7 @@
      {:optional true
       :description "*What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where
   this is specified. YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!"}
-     SourceTable]
+     :legacy-mbql/source-table]
 
     [:source-query {:optional true} :legacy-mbql/source-query]
 
@@ -1376,7 +1377,7 @@
       :description "Defaults to `:left-join`; used for all automatically-generated JOINs
 
   Driver implementations: this is guaranteed to be present after pre-processing."}
-     JoinStrategy]
+     :legacy-mbql/join-strategy]
 
     [:fields
      {:optional true
@@ -1395,7 +1396,7 @@
 
   Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause with
   appropriate aliases."}
-     JoinFields]
+     :legacy-mbql/join-fields]
 
     [:alias
      {:optional true
@@ -1460,8 +1461,8 @@
     {:page 1, :items 10} = items 1-10
     {:page 2, :items 10} = items 11-20"
   [:map
-   [:page  PositiveInt]
-   [:items PositiveInt]])
+   [:page  :legacy-mbql/positive-int]
+   [:items :legacy-mbql/positive-int]])
 
 (mr/def :legacy-mbql/ident
   "Unique identifier string for new `:column` refs. The new refs aren't used in legacy MBQL (currently) but the
@@ -1489,10 +1490,11 @@
   [:map-of ::lib.schema.common/non-blank-string [:maybe :legacy-mbql/ident]])
 
 (mr/def :legacy-mbql/mbql-query
+  "Schema for a valid, normalized MBQL [inner] query."
   [:and
    [:map
     [:source-query       {:optional true} :legacy-mbql/source-query]
-    [:source-table       {:optional true} SourceTable]
+    [:source-table       {:optional true} :legacy-mbql/source-table]
     [:aggregation        {:optional true} [:sequential {:min 1} Aggregation]]
     [:aggregation-idents {:optional true} [:ref :legacy-mbql/indexed-idents]]
     [:breakout           {:optional true} [:sequential {:min 1} Field]]
@@ -1563,8 +1565,8 @@
 (defclause variable
   target template-tag)
 
-(def ^:private ParameterTarget
-  "Schema for the value of `:target` in a [[Parameter]]."
+(mr/def :legacy-mbql/parameter-target
+  "Schema for the value of `:target` in a parameter."
   ;; not 100% sure about this but `field` on its own comes from a Dashboard parameter and when it's wrapped in
   ;; `dimension` it comes from a Field filter template tag parameter (don't quote me on this -- working theory)
   [:or
@@ -1577,18 +1579,11 @@
   [:merge
    [:ref :metabase.lib.schema.parameter/parameter]
    [:map
-    [:target {:optional true} ParameterTarget]]])
-
-(def ^:private Parameter
-  "Alias for `:legacy-mbql/parameter`. Prefer using that directly going forward."
-  [:ref :legacy-mbql/parameter])
+    [:target {:optional true} :legacy-mbql/parameter-target]]])
 
 (mr/def :legacy-mbql/parameter-list
-  [:maybe [:sequential Parameter]])
-
-(def ^:private ParameterList
   "Schema for a list of `:parameters` as passed in to a query."
-  [:ref :legacy-mbql/parameter-list])
+  [:maybe [:sequential [:ref :legacy-mbql/parameter]]])
 
 ;;; ---------------------------------------------------- Options -----------------------------------------------------
 
@@ -1729,11 +1724,9 @@
    {:error/message "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)"}
    (complement :source-metadata)])
 
-(def ^:private Query
-  "Schema for an [outer] query, e.g. the sort of thing you'd pass to the query processor or save in `Card.dataset_query`."
-  [:ref :legacy-mbql/query])
-
 (mr/def :legacy-mbql/query
+  "Schema for an [outer] query, e.g. the sort of thing you'd pass to the query processor or save in
+  `Card.dataset_query`."
   [:and
    [:map
     [:database   {:optional true} :legacy-mbql/database-id]
@@ -1743,9 +1736,9 @@
       {:description "Type of query. `:query` = MBQL; `:native` = native."}
       :query :native]]
 
-    [:native     {:optional true} NativeQuery]
-    [:query      {:optional true} MBQLQuery]
-    [:parameters {:optional true} ParameterList]
+    [:native     {:optional true} :legacy-mbql/native-query]
+    [:query      {:optional true} :legacy-mbql/mbql-query]
+    [:parameters {:optional true} :legacy-mbql/parameter-list]
     ;;
     ;; OPTIONS
     ;;
@@ -1775,7 +1768,7 @@
 
 (def ^{:arglists '([query])} valid-query?
   "Is this a valid outer query? (Pre-compling a validator is more efficient.)"
-  (mr/validator Query))
+  (mr/validator :legacy-mbql/query))
 
 (defn validate-query
   "Validator for an outer query; throw an Exception explaining why the query is invalid if it is. Returns query if
@@ -1783,7 +1776,7 @@
   [query]
   (if (valid-query? query)
     query
-    (let [error     (mr/explain Query query)
+    (let [error     (mr/explain :legacy-mbql/query query)
           humanized (me/humanize error)]
       (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
                       {:error    humanized
