@@ -63,4 +63,4 @@
   (let [row-tree (js->clj row-tree :keywordize-keys true)
         row-indexes (js->clj row-indexes)
         col-settings (js->clj col-settings :keywordize-keys true)]
-    (pivot/add-subotals)))
+    (clj->js (pivot/add-subtotals row-tree row-indexes col-settings))))

@@ -211,7 +211,51 @@
                                 :col col}]}))
      tree)))
 
+(defn add-subtotal
+  "TODO"
+  [row-item show-subs-by-col should-show-subtotal]
+  (let [is-subtotal-enabled (first show-subs-by-col)
+        rest-subs-by-col    (rest show-subs-by-col)
+        has-subtotal        (and is-subtotal-enabled should-show-subtotal)
+        subtotal            (if has-subtotal
+                              [{:value (str "Totals for " (:value row-item))
+                                :rawValue (:rawValue row-item)
+                                :span 1
+                                :isSubtotal true
+                                :children []
+                                }]
+                              [])]
+    (def subtotal subtotal)
+    (if (:isCollapsed row-item)
+      subtotal
+      (let [node (merge row-item
+                        {:hasSubtotal has-subtotal
+                         :children (mapcat (fn [child] (if (not-empty (:children child))
+                                                         (add-subtotal child
+                                                                       rest-subs-by-col
+                                                                       (or (> (count (:children child)) 1)
+                                                                           (:isCollapsed child)))
+                                                         child))
+                                           (:children row-item))})]
+        (def node node)
+        (if (not-empty subtotal)
+          [node (first subtotal)]
+          [node])))))
+
+
+
 (defn add-subtotals
   "Adds subtotals to the row tree if needed, based on column settings."
   [row-tree row-indexes col-settings]
-  :todo)
+  (let [show-subs-by-col (map (fn [idx]
+                                (not= ((nth col-settings idx) :pivot_table.column_show_totals) false))
+                              row-indexes)
+        not-flat         (some #(> (count (:children %)) 1) row-tree)
+        res              (mapcat (fn [row-item] (add-subtotal row-item show-subs-by-col (or not-flat (> (count (:children row-item)) 1)))) row-tree)]
+    (def col-settings col-settings)
+    (def row-tree row-tree)
+    (def res res)
+    (println "TSP show-subs-by-col" show-subs-by-col)
+    (println "TSP not-flat" not-flat)
+    res))
+

@@ -155,6 +155,8 @@ export function multiLevelPivot(data, settings) {
     leftIndexColumns,
   );
 
+  // Pivot.add_subtotals(formattedRowTreeWithoutSubtotals, rowColumnIndexes, columnSettings)
+
   const showSubtotalsByColumn = rowColumnIndexes.map(
     index => getIn(columnSettings, [index, COLUMN_SHOW_TOTALS]) !== false,
   );
@@ -162,6 +164,13 @@ export function multiLevelPivot(data, settings) {
   const formattedRowTree = settings["pivot.show_column_totals"]
     ? addSubtotals(formattedRowTreeWithoutSubtotals, showSubtotalsByColumn)
     : formattedRowTreeWithoutSubtotals;
+
+  console.log("TSP formattedRowTreeWithoutSubtotals: ", formattedRowTreeWithoutSubtotals);
+  console.log("TSP *OLD* showSubtotalsByColumn: ", showSubtotalsByColumn);
+  console.log("TSP *OLD* formattedRowTree: ", formattedRowTree);
+
+  const newFormattedRowTree = Pivot.add_subtotals(formattedRowTreeWithoutSubtotals, rowColumnIndexes, columnSettings)
+  console.log("TSP *NEW* newFormattedRowTree: ", newFormattedRowTree);
 
   if (
     formattedRowTreeWithoutSubtotals.length > 1 &&
@@ -360,6 +369,10 @@ function addSubtotal(
   [isSubtotalEnabled, ...showSubtotalsByColumn],
   { shouldShowSubtotal = false } = {},
 ) {
+  console.log("TSP addSubtotal item: ", item);
+  console.log("TSP addSubtotal isSubtotalEnabled: ", isSubtotalEnabled);
+  console.log("TSP addSubtotal showSubtotalsByColumn: ", showSubtotalsByColumn);
+  console.log("TSP addSubtotal shouldShowSubtotal: ", shouldShowSubtotal);
   const hasSubtotal = isSubtotalEnabled && shouldShowSubtotal;
   const subtotal = hasSubtotal
     ? [
