@@ -36,7 +36,6 @@
    [metabase.api.pulse.unsubscribe]
    [metabase.api.revision]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.search]
    [metabase.api.segment]
    [metabase.api.session]
    [metabase.api.setting]
@@ -54,6 +53,7 @@
    [metabase.channel.api]
    [metabase.config :as config]
    [metabase.permissions.api]
+   [metabase.search.api]
    [metabase.setup.api]
    [metabase.sync.api]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -170,7 +170,7 @@
    "/public"               (+public-exceptions 'metabase.api.public)
    "/pulse"                pulse-routes
    "/revision"             (+auth 'metabase.api.revision)
-   "/search"               (+auth metabase.api.search/routes)
+   "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.api.segment)
    "/session"              metabase.api.session/routes
    "/setting"              (+auth 'metabase.api.setting)
