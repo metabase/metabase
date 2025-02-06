@@ -1,25 +1,17 @@
 name: Generative Query Test
 
 on:
-  # push:
-  #   branches:
-  #     - 'master'
-  #     - 'release-**'
-  # pull_request:
-  #   types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
     inputs:
       seed:
-        description: 'Seed value.'
+        description: 'Seed value (empty = random)'
         type: number
-        required: true
-        # TODO: Make this optional
-        default: 1
-      count:
-        description: 'Number of queries to generate'
+      iterations:
+        description: 'Number of test iterations (empty = 100)'
         type: number
-        required: true
-        default: 1
+      ref:
+        description: 'Ref to run generative tests on'
+        default: master
 
 jobs:
   generative-query-test:
@@ -28,11 +20,14 @@ jobs:
     name: Generative Query Test
     env:
       CI: 'true'
-      MB_TEST_SEED_VALUE: ${{ inputs.seed }}
-      MB_TEST_QUERY_ITERATION_COUNT: ${{ inputs.count }}
-      MB_TEST_RUN_GENERATIVE_TEST: true
+      MB_TEST_QGEN_SEED_VALUE: ${{ inputs.seed }}
+      MB_TEST_QGEN_ITERATIONS: ${{ inputs.iterations }}
+      # TODO: Will probably remove next line in favor of new cp root.
+      MB_TEST_QGEN_RUN: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: if ${{ intputs.ref }}
       # is fe needed? is that lib related?
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
