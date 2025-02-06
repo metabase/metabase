@@ -131,7 +131,6 @@
 
 (defmethod prometheus/known-labels :metabase-notification/send-ok [_] payload-labels)
 (defmethod prometheus/known-labels :metabase-notification/send-error [_] payload-labels)
-(defmethod prometheus/known-labels :metabase-notification/send-duration-ms [_] payload-labels)
 (defmethod prometheus/known-labels :metabase-notification/channel-send-ok [_] payload-channel-labels)
 (defmethod prometheus/known-labels :metabase-notification/channel-send-error [_] payload-channel-labels)
 

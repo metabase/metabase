@@ -13,6 +13,7 @@
    [iapetos.core :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.server.core :as server]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [potemkin :as p]
@@ -282,6 +283,13 @@
      :labels labels
      :value  (initial-value metric labels)}))
 
+(defn- qualified-vals
+  [m]
+  (update-vals m (fn [v] (cond
+                           (map? v) (qualified-vals v)
+                           (keyword? v) (u/qualified-name v)
+                           :else v))))
+
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
   will throw."
@@ -295,7 +303,7 @@
                                 [@c3p0-collector]
                                 (product-collectors)))]
     (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
-      (prometheus/inc registry metric labels value))
+      (prometheus/inc registry metric (qualified-vals labels) value))
     registry))
 
 (defn- start-web-server!
@@ -349,7 +357,7 @@
   ([metric labels amount]
    (when-not system
      (setup!))
-   (prometheus/observe (:registry system) metric labels amount)))
+   (prometheus/observe (:registry system) metric (qualified-vals labels) amount)))
 
 (defn inc!
   "Call iapetos.core/inc on the metric in the global registry.
@@ -362,7 +370,7 @@
   ([metric labels amount]
    (when-not system
      (setup!))
-   (prometheus/inc (:registry system) metric labels amount)))
+   (prometheus/inc (:registry system) metric (qualified-vals labels) amount)))
 
 (defn dec!
   "Call iapetos.core/dec on the metric in the global registry.
@@ -375,7 +383,7 @@
   ([metric labels amount]
    (when-not system
      (setup!))
-   (prometheus/dec (:registry system) metric labels amount)))
+   (prometheus/dec (:registry system) metric (qualified-vals labels) amount)))
 
 (defn set!
   "Call iapetos.core/set on the metric in the global registry.
@@ -387,7 +395,7 @@
   ([metric labels amount]
    (when-not system
      (setup!))
-   (prometheus/set (:registry system) metric labels amount)))
+   (prometheus/set (:registry system) metric (qualified-vals labels) amount)))
 
 (comment
   (require 'iapetos.export)
