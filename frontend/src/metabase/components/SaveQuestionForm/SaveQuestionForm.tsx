@@ -5,16 +5,16 @@ import { FormCollectionAndDashboardPicker } from "metabase/collections/container
 import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
 import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
 import { FormFooter } from "metabase/core/components/FormFooter";
-import FormTextArea from "metabase/core/components/FormTextArea";
 import {
   Form,
   FormErrorMessage,
   FormRadioGroup,
   FormSubmitButton,
   FormTextInput,
+  FormTextarea,
 } from "metabase/forms";
 import { isNullOrUndefined } from "metabase/lib/types";
-import { Button, Flex, Radio } from "metabase/ui";
+import { Button, Radio, Stack } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import S from "./SaveQuestionForm.module.css";
@@ -58,8 +58,8 @@ export const SaveQuestionForm = ({
   return (
     <Form>
       {showSaveType && (
-        <FormRadioGroup name="saveType" title={title}>
-          <Flex gap="sm" direction="column" mb="md">
+        <FormRadioGroup name="saveType" label={title}>
+          <Stack spacing="sm" my="md">
             <Radio
               name={overwriteOptionName}
               value="overwrite"
@@ -81,19 +81,19 @@ export const SaveQuestionForm = ({
               }}
               label={t`Save as new question`}
             />
-          </Flex>
+          </Stack>
         </FormRadioGroup>
       )}
       {values.saveType === "create" && (
-        <div>
+        <Stack spacing="sm">
           <FormTextInput
             name="name"
-            title={t`Name`}
+            label={t`Name`}
             placeholder={nameInputPlaceholder}
           />
-          <FormTextArea
+          <FormTextarea
             name="description"
-            title={t`Description`}
+            label={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
           />
           {isCollectionPickerEnabled && showPickerInput && (
@@ -112,7 +112,7 @@ export const SaveQuestionForm = ({
               }}
             />
           )}
-        </div>
+        </Stack>
       )}
       <FormFooter>
         <FormErrorMessage inline />
