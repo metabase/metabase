@@ -27,6 +27,7 @@ const StatusListing = () => {
   return (
     <StatusListingRoot data-testid="status-root-container">
       {isAdmin && <DatabaseStatus />}
+      {"TEST CODE DO NOT MERGE"}
       <FileUploadStatus />
       <DownloadsStatus />
     </StatusListingRoot>
