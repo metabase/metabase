@@ -210,9 +210,13 @@ No props. Uses question context for breakout functionality.
 
 #### `InteractiveQuestion.BreakoutDropdown`
 
-Dropdown interface for managing breakouts. Alternative to the badge-style breakout interface.
+Dropdown button for the Breakout component.
 
-No props. Uses question context for breakout functionality.
+Uses [Popover props](https://v6.mantine.dev/core/popover/?t=props) except `onClose`, `children`, and `opened` under the hood, as well as:
+| Prop | Type | Description |
+|------|------|-------------|
+| className | string | Custom CSS class name for styling the component |
+| style | React.CSSProperties | Inline styles to apply to the component |
 
 #### `InteractiveQuestion.Summarize`
 
