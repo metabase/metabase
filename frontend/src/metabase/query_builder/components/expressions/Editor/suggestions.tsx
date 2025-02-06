@@ -44,7 +44,6 @@ export type SuggestOptions = Omit<
   shortcuts?: Shortcut[];
 };
 
-// TODO: tests
 // TODO: use namespaced suggestion for fk sparator (eg. products.|
 
 export function suggestions(options: SuggestOptions) {
