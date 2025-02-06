@@ -45,8 +45,8 @@
     (assoc session :type session-type)))
 
 (def ^{:arglists '([session-id])} hash-session-id
-    "Hash the session-id for storage in the database"
-  (memo/lru (fn [session-id] (codecs/bytes->hex (buddy-hash/sha512 session-id))) {} :lru/threshold 100))
+  "Hash the session-id for storage in the database"
+  (memo/lru (fn [session-id] (codecs/bytes->hex (buddy-hash/sha512 (str session-id)))) {} :lru/threshold 100))
 
 (def ^:private CreateSessionUserInfo
   [:map
