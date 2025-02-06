@@ -125,7 +125,7 @@
 
 (def ^:private payload-labels         (for [payload-type (keys (methods notification.payload/payload))]
                                         {:payload-type payload-type}))
-(def ^:private payload-channel-labels (for [[payload-type channel-type] (methods channel/render-notification)]
+(def ^:private payload-channel-labels (for [[channel-type payload-type] (keys (methods channel/render-notification))]
                                         {:payload-type payload-type
                                          :channel-type channel-type}))
 
