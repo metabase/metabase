@@ -115,6 +115,8 @@ describeEE("scenarios > embedding-sdk > styles", () => {
             <div style={{ border: "1px solid black" }}>
               <h1>This is inside of the provider</h1>
             </div>
+
+            <StaticQuestion questionId={ORDERS_QUESTION_ID} />
           </MetabaseProvider>
         </div>,
       );
