@@ -230,9 +230,9 @@
                     {:order-by [[:ended_at :desc]]}))
 
 (def ^:dynamic ^:private *folder-setup-timeout-seconds*
-  "We want to avoid polling forever, even if harbormaster never finishes the sync, so if the sync does not happen
-  during this window, we'll error out, reset the gsheets status, and suggest trying again."
-  (* 5 60))
+  "We want to avoid polling forever, even if harbormaster never finishes the sync, so if the sync does not happen during
+  this window, we'll error out, reset the gsheets status, and suggest trying again."
+  (* 10 60))
 
 (defn- reset-gsheets-status []
   (gsheets! not-connected)
