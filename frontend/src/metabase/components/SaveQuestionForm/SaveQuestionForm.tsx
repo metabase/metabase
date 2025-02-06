@@ -14,7 +14,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { isNullOrUndefined } from "metabase/lib/types";
-import { Button, Radio, Stack } from "metabase/ui";
+import { Button, Radio, Stack, rem } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import S from "./SaveQuestionForm.module.css";
@@ -58,8 +58,19 @@ export const SaveQuestionForm = ({
   return (
     <Form>
       {showSaveType && (
-        <FormRadioGroup name="saveType" label={title}>
-          <Stack spacing="sm" my="md">
+        <FormRadioGroup
+          name="saveType"
+          label={title}
+          styles={{
+            label: {
+              fontWeight: 900,
+              fontSize: "0.77rem",
+              color: "var(--mb-color-text-medium)",
+              marginBottom: rem("7px"),
+            },
+          }}
+        >
+          <Stack spacing="sm" mb="md">
             <Radio
               name={overwriteOptionName}
               value="overwrite"
@@ -85,16 +96,34 @@ export const SaveQuestionForm = ({
         </FormRadioGroup>
       )}
       {values.saveType === "create" && (
-        <Stack spacing="sm">
+        <Stack spacing="md">
           <FormTextInput
             name="name"
             label={t`Name`}
             placeholder={nameInputPlaceholder}
+            styles={{
+              label: {
+                fontWeight: 900,
+                fontSize: "0.77rem",
+                color: "var(--mb-color-text-medium)",
+                marginBottom: rem("7px"),
+              },
+            }}
           />
+
           <FormTextarea
             name="description"
             label={t`Description`}
+            minRows={4}
             placeholder={t`It's optional but oh, so helpful`}
+            styles={{
+              label: {
+                fontWeight: 900,
+                fontSize: "0.77rem",
+                color: "var(--mb-color-text-medium)",
+                marginBottom: rem("7px"),
+              },
+            }}
           />
           {isCollectionPickerEnabled && showPickerInput && (
             <FormCollectionAndDashboardPicker
