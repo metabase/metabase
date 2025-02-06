@@ -111,8 +111,8 @@
           (is (= "audit__rP75CiURKZ-0pq" (t2/select-one-fn :entity_id 'Database :is_audit true))))
         (testing "tables have entity_ids derived from the fixed database entity_id"
           (is (= audit-table-eids
-                 (into {} (map (juxt :name :entity_id))
-                       (t2/reducible-select 'Table :db_id audit/audit-db-id)))))
+                 (->> (t2/reducible-select 'Table :db_id audit/audit-db-id)
+                      (into {} (map (juxt (comp u/lower-case-en :name) :entity_id)))))))
         (testing "tables have entity_ids derived from the fixed database entity_id"
           (doseq [table (t2/select ['Table :id :entity_id :name] :db_id audit/audit-db-id)
                   field (t2/select ['Field :entity_id :name] :table_id (:id table))]
@@ -124,6 +124,8 @@
         (let [table-ids (t2/update-returning-pks! :model/Table
                                                   {:db_id audit/audit-db-id}
                                                   {:entity_id nil})]
+          (is (= (count audit-table-eids)
+                 (count table-ids)))
           (t2/update! :model/Field {:table_id [:in table-ids]}
                       {:entity_id nil})
           (is (= [nil] (t2/select-fn-vec :entity_id :model/Database :is_audit true))
@@ -140,8 +142,8 @@
           (is (= ["audit__rP75CiURKZ-0pq"] (t2/select-fn-vec :entity_id 'Database :is_audit true))))
         (testing "tables have entity_ids derived from the fixed database entity_id"
           (is (= audit-table-eids
-                 (into {} (map (juxt :name :entity_id))
-                       (t2/reducible-select 'Table :db_id audit/audit-db-id)))))
+                 (->> (t2/reducible-select 'Table :db_id audit/audit-db-id)
+                      (into {} (map (juxt (comp u/lower-case-en :name) :entity_id)))))))
         (testing "tables have entity_ids derived from the fixed database entity_id"
           (doseq [table (t2/select ['Table :id :entity_id :name] :db_id audit/audit-db-id)
                   field (t2/select ['Field :entity_id :name] :table_id (:id table))]

@@ -229,12 +229,20 @@
   "audit__rP75CiURKZ-0pq")
 
 (defn- entity-id-for-table [table]
-  (-> [audit-db-entity-id (:schema table "(no schema)") (:name table)]
+  (-> [audit-db-entity-id
+       ;; The hard-coded entity_ids saved in the serdes export used a schema of "public", so that's now hard-coded.
+       ;; The schema (and spelling) used for the AppDB tables varies by engine, so it should not influence the idents.
+       "public"
+       ;; We use inconsistent upper and lower case table and field names for audit across AppDB engines; this uses
+       ;; lower case everywhere to make the entity IDs effectively hard-coded.
+       (u/lower-case-en (:name table))]
       serdes/raw-hash
       u/generate-nano-id))
 
 (defn- entity-id-for-field [table-eid field]
-  (-> [table-eid (:name field)]
+  ;; We use inconsistent upper and lower case table and field names for audit across AppDB engines; this uses lower
+  ;; case to make the entity IDs effectively hard-coded.
+  (-> [table-eid (u/lower-case-en (:name field))]
       serdes/raw-hash
       u/generate-nano-id))
 
