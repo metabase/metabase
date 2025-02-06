@@ -10477,14 +10477,14 @@ databaseChangeLog:
         - onFail: MARK_RAN
       rollback: # not needed
       changes:
-        - sql: >
+        - sql: >-
             UPDATE setting
             SET value = 'false'
             WHERE key = 'enable-embedding-sdk'
             AND NOT EXISTS (
-                  SELECT 1
-                  FROM setting
-                  WHERE key = 'embedding-app-origins-sdk'
+              SELECT 1
+              FROM setting
+              WHERE key = 'embedding-app-origins-sdk'
             );
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
