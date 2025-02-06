@@ -11,8 +11,7 @@
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
@@ -188,7 +187,7 @@
   making this easy to override in any places needed for a given driver."
   {:added "0.37.0" :arglists '([driver mbql-expr-or-object])}
   (fn [driver x]
-    [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
+    [(driver/dispatch-on-initialized-driver driver) (legacy-mbql/dispatch-by-clause-name-or-class x)])
   :hierarchy #'driver/hierarchy)
 
 (defn compiled
@@ -568,7 +567,7 @@
   (throw (ex-info (format "Don't know how to compile %s to Honey SQL: implement %s for %s"
                           (pr-str x)
                           `->honeysql
-                          (pr-str [driver (mbql.u/dispatch-by-clause-name-or-class x)]))
+                          (pr-str [driver (legacy-mbql/dispatch-by-clause-name-or-class x)]))
                   {:driver driver
                    :expr   x
                    :type   qp.error-type/driver})))
@@ -600,7 +599,7 @@
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name {::add/keys [source-table source-alias]} :as _clause]]
-  (let [expression-definition (mbql.u/expression-with-name *inner-query* expression-name)]
+  (let [expression-definition (legacy-mbql/expression-with-name *inner-query* expression-name)]
     (->honeysql driver (if (= source-table ::add/source)
                          (apply h2x/identifier :field source-query-alias source-alias)
                          expression-definition))))
@@ -960,7 +959,7 @@
          (h2x/with-database-type-info (h2x/database-type expr-hsql))))))
 
 (defn- interval? [expr]
-  (mbql.u/is-clause? :interval expr))
+  (legacy-mbql/is-clause? :interval expr))
 
 (defmethod ->honeysql [:sql :+]
   [driver [_ & args]]
@@ -1340,9 +1339,9 @@
 
 (def ^:private StringValueOrFieldOrExpression
   [:or
-   [:and mbql.s/value
+   [:and :legacy-mbql.clause/value
     [:fn {:error/message "string value"} #(string? (second %))]]
-   ::mbql.s/FieldOrExpressionDef])
+   :legacy-mbql/field-or-expression])
 
 (mu/defn- generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
@@ -1361,7 +1360,7 @@
 
 (defn- uuid-field?
   [x]
-  (and (mbql.u/mbql-clause? x)
+  (and (legacy-mbql/mbql-clause? x)
        (isa? (or (:effective-type (get x 2))
                  (:base-type (get x 2)))
              :type/UUID)))
@@ -1539,7 +1538,7 @@
    [:sequential :any]])
 
 (mu/defmethod join->honeysql :sql :- HoneySQLJoin
-  [driver {:keys [condition], join-alias :alias, :as join} :- mbql.s/Join]
+  [driver {:keys [condition], join-alias :alias, :as join} :- :legacy-mbql/join]
   [[(join-source driver join)
     (let [table-alias (->honeysql driver (h2x/identifier :table-alias join-alias))]
       [table-alias])]
@@ -1801,8 +1800,8 @@
 ;;; around [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]], which is
 ;;; written for pMBQL, so we can use it with a legacy inner query. Once we rework the SQL QP to use pMBQL we can remove
 ;;; this.
-(mu/defn- nest-breakouts-in-queries-with-window-fn-aggregations :- mbql.s/MBQLQuery
-  [inner-query :- mbql.s/MBQLQuery]
+(mu/defn- nest-breakouts-in-queries-with-window-fn-aggregations :- :legacy-mbql/mbql-query
+  [inner-query :- :legacy-mbql/mbql-query]
   (let [metadata-provider (qp.store/metadata-provider)
         database-id       (u/the-id (lib.metadata/database (qp.store/metadata-provider)))]
     (-> (lib.query/query-from-legacy-inner-query metadata-provider database-id inner-query)

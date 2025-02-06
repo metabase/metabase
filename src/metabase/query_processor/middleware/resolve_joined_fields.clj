@@ -2,8 +2,7 @@
   "Middleware that adds `:join-alias` info to `:field` clauses where needed."
   (:require
    [clojure.data :as data]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -27,9 +26,9 @@
 (mu/defn- add-join-alias
   [{:keys [table-id], field-id :id, :as field}
    {:keys [joins source-query]}   :- InnerQuery
-   [_ id-or-name opts :as clause] :- mbql.s/field:id]
+   [_ id-or-name opts :as clause] :- :legacy-mbql/field:id]
   (let [candidate-tables (filter (fn [join]
-                                   (when-let [source-table-id (mbql.u/join->source-table-id join)]
+                                   (when-let [source-table-id (legacy-mbql/join->source-table-id join)]
                                      (= source-table-id table-id)))
                                  joins)]
     (case (count candidate-tables)

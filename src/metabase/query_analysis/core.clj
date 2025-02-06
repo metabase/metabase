@@ -11,7 +11,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.public-settings :as public-settings]
@@ -117,7 +117,7 @@
      ;; For now, all model references are resolved transitively to the ultimate field ids.
      ;; We may want to change to record model references directly rather than resolving them.
      ;; This would remove the need to invalidate consuming cards when a given model changes.
-     :query      (explicit-references (mbql.u/referenced-field-ids query))
+     :query      (explicit-references (legacy-mbql/referenced-field-ids query))
      :mbql/query (explicit-references (lib.util/referenced-field-ids query)))))
 
 (defn- truncate-string [x]

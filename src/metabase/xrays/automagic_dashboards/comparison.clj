@@ -2,7 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -52,7 +52,7 @@
   [{{existing-filter-clause :filter} :query, :as query}, new-filter-clauses]
   (let [clauses           (filter identity (cons existing-filter-clause new-filter-clauses))
         new-filter-clause (when (seq clauses)
-                            (mbql.normalize/normalize-fragment [:query :filter] (cons :and clauses)))]
+                            (legacy-mbql/normalize-fragment [:query :filter] (cons :and clauses)))]
     (cond-> query
       (seq new-filter-clause) (assoc-in [:query :filter] new-filter-clause))))
 

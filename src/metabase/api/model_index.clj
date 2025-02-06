@@ -3,7 +3,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.models.model-index :as model-index]
    [metabase.task.index-values :as task.index-values]
    [metabase.util.i18n :refer [tru]]
@@ -13,7 +13,7 @@
 (defn- ensure-type
   "Ensure that the ref exists and is of type required for indexing."
   [t ref metadata]
-  (if-let [field (some (fn [f] (when ((comp #{(mbql.normalize/normalize-field-ref ref)} :field_ref) f)
+  (if-let [field (some (fn [f] (when ((comp #{(legacy-mbql/normalize-field-ref ref)} :field_ref) f)
                                  f))
                        metadata)]
     (let [type-slot (case t

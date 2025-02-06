@@ -8,8 +8,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.join.util :as lib.join.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -44,7 +43,7 @@
    [:alias        ::lib.schema.common/non-blank-string]
    [:fields       [:= :none]]
    [:strategy     [:= :left-join]]
-   [:condition    mbql.s/=]
+   [:condition    :legacy-mbql.clause/=]
    [:fk-field-id  ::lib.schema.id/field]])
 
 (mu/defn- fk-ids->join-infos :- [:maybe [:sequential JoinInfo]]
@@ -99,7 +98,7 @@
 (defn- distinct-fields [fields]
   (m/distinct-by
    (fn [field]
-     (lib.util.match/replace (mbql.u/remove-namespaced-options field)
+     (lib.util.match/replace (legacy-mbql/remove-namespaced-options field)
        [:field id-or-name (opts :guard map?)]
        [:field id-or-name (not-empty (dissoc opts :base-type :effective-type))]))
    fields))

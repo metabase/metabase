@@ -70,7 +70,7 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.database :as database]
@@ -173,7 +173,7 @@
                        (name-for-logging :model/Table field-table-id)
                        (name-for-logging :model/Field field-id)
                        clause)
-           (update query :filter mbql.u/combine-filter-clauses clause))
+           (update query :filter legacy-mbql/combine-filter-clauses clause))
          (do
            (log/tracef "Not adding filter clause for %s %s because we did not join against its Table"
                        (name-for-logging :model/Table field-table-id)

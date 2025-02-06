@@ -1,6 +1,6 @@
 (ns metabase.query-processor.streaming
   (:require
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -39,7 +39,7 @@
                                        (assoc col :display_name (:name col)))]
            (assoc col-with-display-name :name unique-name)))
        cols
-       (mbql.u/uniquify-names (map :name cols))))
+       (legacy-mbql/uniquify-names (map :name cols))))
 
 (defn- validate-table-columms
   "Validate that all of the columns in `table-columns` correspond to actual columns in `cols`, correlating them by

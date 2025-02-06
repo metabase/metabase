@@ -1,0 +1,72 @@
+(ns metabase.legacy-mbql.core
+  (:require
+   #?@(:clj
+       ([potemkin :as p]))
+   [metabase.legacy-mbql.normalize]
+   [metabase.legacy-mbql.predicates]
+   [metabase.legacy-mbql.schema]
+   [metabase.legacy-mbql.util]
+   [metabase.util.namespaces :as u.ns]))
+
+(comment
+  metabase.legacy-mbql.normalize/keep-me
+  metabase.legacy-mbql.predicates/keep-me
+  metabase.legacy-mbql.schema/keep-me
+  metabase.legacy-mbql.util/keep-me)
+
+(u.ns/import-fns
+ [metabase.legacy-mbql.normalize
+  normalize
+  normalize-field-ref
+  normalize-or-throw
+  normalize-tokens
+  normalize-fragment
+  normalize-source-metadata]
+ [metabase.legacy-mbql.predicates
+  DatetimeExpression?
+  DateTimeUnit?
+  Field?
+  Filter?]
+ [metabase.legacy-mbql.schema
+  valid-temporal-unit-for-base-type?]
+ [metabase.legacy-mbql.util
+  add-filter-clause
+  add-order-by-clause
+  aggregation-at-index
+  assoc-field-options
+  check-clause
+  combine-filter-clauses
+  desugar-expression
+  desugar-filter-clause
+  desugar-temporal-extract
+  dispatch-by-clause-name-or-class
+  expression-with-name
+  is-clause?
+  join->source-table-id
+  legacy-last-stage-number
+  map-stages
+  mbql-clause?
+  normalize-token
+  pre-alias-and-uniquify-aggregations
+  negate-filter-clause
+  query->max-rows-limit
+  query->source-table-id
+  referenced-field-ids
+  remove-namespaced-options
+  simplify-compound-filter
+  stage-path
+  unique-name-generator
+  uniquify-names
+  unwrap-field-clause
+  unwrap-field-or-expression-clause
+  update-field-options
+  with-temporal-unit
+  wrap-field-id-if-needed])
+
+#?(:clj
+   (p/import-vars
+    [metabase.legacy-mbql.schema
+     boolean-functions
+     join-strategies
+     numeric-functions
+     string-functions]))

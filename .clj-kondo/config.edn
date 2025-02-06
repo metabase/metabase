@@ -372,11 +372,12 @@
                                      metabase.integrations.google
                                      metabase.integrations.ldap
                                      metabase.integrations.slack}                                   ; TODO -- consolidate these into a real API namespace.
-    metabase.legacy-mbql           #{metabase.legacy-mbql.normalize
-                                     metabase.legacy-mbql.predicates
-                                     metabase.legacy-mbql.schema
-                                     metabase.legacy-mbql.schema.helpers
-                                     metabase.legacy-mbql.util}                                     ; TODO -- consolidate these into a real API namespace.
+    metabase.legacy-mbql           #{metabase.legacy-mbql.core
+                                     metabase.legacy-mbql.init
+                                     ;; These are used by `metabase.lib` -- because of circular deps between the two
+                                     ;; we cannot yet force everything to use the module namespace.
+                                     metabase.legacy-mbql.normalize
+                                     metabase.legacy-mbql.util}
     metabase.lib                   :any                                                             ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
     metabase.logger                #{metabase.logger metabase.logger.init}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
@@ -470,8 +471,16 @@
     metabase.events                :any
     metabase.formatter             :any
     metabase.integrations          :any
-    metabase.legacy-mbql           :any
-    metabase.lib                   :any
+    metabase.legacy-mbql           #{metabase.lib    ; TODO -- circular dep.
+                                     metabase.types
+                                     metabase.util}
+    metabase.lib                   #{metabase.config
+                                     metabase.driver       ; only used by [[metabase.lib.jvm]] -- should this be moved into a separate module?
+                                     metabase.legacy-mbql  ; TODO -- circular reference
+                                     metabase.models       ; only used by [[metabase.lib.jvm]]
+                                     metabase.plugins
+                                     metabase.types
+                                     metabase.util}
     metabase.logger                #{metabase.config
                                      metabase.plugins}
     metabase.models                :any
@@ -666,9 +675,7 @@
     metabase.eid-translation                                      eid-translation
     metabase.formatter                                            formatter
     metabase.http-client                                          client
-    metabase.legacy-mbql.normalize                                mbql.normalize
-    metabase.legacy-mbql.schema                                   mbql.s
-    metabase.legacy-mbql.util                                     mbql.u
+    metabase.legacy-mbql.core                                     legacy-mbql
     metabase.lib.util                                             lib.util
     metabase.lib.util.match                                       lib.util.match
     metabase.models.activity                                      activity

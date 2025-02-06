@@ -7,8 +7,7 @@
    [clojure.walk :as walk]
    [malli.error :as me]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -217,8 +216,8 @@
                       ;; legacy queries: just normalize them with the legacy normalization code for now... in the near
                       ;; future we'll probably convert to MLv2 before saving so everything in the app DB is MLv2
                       (case in-or-out
-                        :in  mbql.normalize/normalize
-                        :out mbql.normalize/normalize))]
+                        :in  legacy-mbql/normalize
+                        :out legacy-mbql/normalize))]
               (f query)))]
     (cond-> query
       (and (map? query) (seq query))
@@ -239,7 +238,7 @@
 (defn normalize-parameters-list
   "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
   [parameters]
-  (or (mbql.normalize/normalize-fragment [:parameters] parameters)
+  (or (legacy-mbql/normalize-fragment [:parameters] parameters)
       []))
 
 (defn- keywordize-temporal_units
@@ -271,14 +270,14 @@
 (def transform-field-ref
   "Transform field refs"
   {:in  json-in
-   :out (comp (catch-normalization-exceptions mbql.normalize/normalize-field-ref) json-out-with-keywordization)})
+   :out (comp (catch-normalization-exceptions legacy-mbql/normalize-field-ref) json-out-with-keywordization)})
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (seq (->> (map mbql.normalize/normalize-source-metadata metadata)
+    (seq (->> (map legacy-mbql/normalize-source-metadata metadata)
               ;; This is necessary, because in the wild, there may be cards created prior to this change.
               (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
               (map lib.binning/ensure-binning-in-display-name)))))
@@ -367,7 +366,7 @@
    to modern MBQL clauses so things work correctly."
   [viz-settings]
   (letfn [(normalize-column-settings-key [k]
-            (some-> k u/qualified-name json/decode mbql.normalize/normalize json/encode))
+            (some-> k u/qualified-name json/decode legacy-mbql/normalize json/encode))
           (normalize-column-settings [column-settings]
             (into {} (for [[k v] column-settings]
                        [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
@@ -381,7 +380,7 @@
              (fn [form]
                (try
                  (cond-> form
-                   (mbql-field-clause? form) mbql.normalize/normalize)
+                   (mbql-field-clause? form) legacy-mbql/normalize)
                  (catch Exception e
                    (log/warnf "Unable to normalize visualization-settings part %s: %s"
                               (u/pprint-to-str 'red form)
@@ -439,8 +438,8 @@
 
 (mr/def ::legacy-metric-segment-definition
   [:map
-   [:filter      {:optional true} [:maybe mbql.s/Filter]]
-   [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
+   [:filter      {:optional true} [:maybe :legacy-mbql/filter]]
+   [:aggregation {:optional true} [:maybe [:sequential :legacy-mbql/aggregation]]]])
 
 (defn- validate-legacy-metric-segment-definition
   [definition]
@@ -454,7 +453,7 @@
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-legacy-metric-segment-definition [definition]
   (when (seq definition)
-    (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
+    (u/prog1 (legacy-mbql/normalize-fragment [:query] definition)
       (validate-legacy-metric-segment-definition <>))))
 
 (def transform-legacy-metric-segment-definition

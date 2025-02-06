@@ -8,7 +8,7 @@
    [clojure.set :as set]
    [clojure.walk :as walk]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -165,7 +165,7 @@
 (defn- legacy-mbql-required-perms
   [query {:keys [throw-exceptions? already-preprocessed?]}]
   (try
-    (let [query (mbql.normalize/normalize query)]
+    (let [query (legacy-mbql/normalize query)]
       ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
       (if-let [source-card-id (qp.util/query->source-card-id query)]
         {:paths (source-card-read-perms source-card-id)}
@@ -185,7 +185,7 @@
     ;; that means no one will ever get to see it
     (catch Throwable e
       (let [e (ex-info "Error calculating permissions for query"
-                       {:query (or (u/ignore-exceptions (mbql.normalize/normalize query))
+                       {:query (or (u/ignore-exceptions (legacy-mbql/normalize query))
                                    query)}
                        e)]
         (if throw-exceptions? (throw e) (log/error e)))

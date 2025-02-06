@@ -15,7 +15,7 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.models.card :as card]
@@ -360,14 +360,14 @@
         (lib.util/truncate-alias % max-length)))))
 
 (defn- derive-display-names [driver header]
-  (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver " "))]
+  (let [generator-fn (legacy-mbql/unique-name-generator :unique-alias-fn (unique-alias-fn driver " "))]
     (mapv generator-fn
           (for [h header]
             (humanization/name->human-readable-name
              (normalize-display-name h))))))
 
 (defn- derive-column-names [driver header]
-  (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver "_"))]
+  (let [generator-fn (legacy-mbql/unique-name-generator :unique-alias-fn (unique-alias-fn driver "_"))]
     (mapv (comp keyword generator-fn)
           (for [h header] (normalize-column-name driver h)))))
 

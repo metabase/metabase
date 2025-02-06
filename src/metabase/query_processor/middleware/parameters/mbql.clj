@@ -3,8 +3,7 @@
   (:require
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -45,7 +44,7 @@
   "Convert `param-value` to a type appropriate for `param-type`.
   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead
   convert the parameters to integers or floating-point numbers."
-  [query param-type param-value field-clause :- mbql.s/Field]
+  [query param-type param-value field-clause :- :legacy-mbql/field]
   (cond
     ;; for `id` or `category` type params look up the base-type of the Field and see if it's a number or not.
     ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
@@ -63,34 +62,34 @@
     :else
     (to-numeric param-value)))
 
-(mu/defn- build-filter-clause :- [:maybe mbql.s/Filter]
+(mu/defn- build-filter-clause :- [:maybe :legacy-mbql/filter]
   [query {param-type :type, param-value :value, [_ field :as target] :target, :as param}]
   (cond
     (params.ops/operator? param-type)
     (params.ops/to-clause param)
     ;; multipe values. Recursively handle them all and glue them all together with an OR clause
     (sequential? param-value)
-    (mbql.u/simplify-compound-filter
+    (legacy-mbql/simplify-compound-filter
      (vec (cons :or (for [value param-value]
                       (build-filter-clause query {:type param-type, :value value, :target target})))))
 
     ;; single value, date range. Generate appropriate MBQL clause based on date string
     (params.dates/date-type? param-type)
     (params.dates/date-string->filter
-     (parse-param-value-for-type query param-type param-value (mbql.u/unwrap-field-or-expression-clause field))
+     (parse-param-value-for-type query param-type param-value (legacy-mbql/unwrap-field-or-expression-clause field))
      field)
 
     ;; TODO - We can't tell the difference between a dashboard parameter (convert to an MBQL filter) and a native
     ;; query template tag parameter without this. There's should be a better, less fragile way to do this. (Not 100%
     ;; sure why, but this is needed for GTAPs to work.)
-    (mbql.u/is-clause? :template-tag field)
+    (legacy-mbql/is-clause? :template-tag field)
     nil
 
     ;; single-value, non-date param. Generate MBQL [= [field <field> nil] <value>] clause
     :else
     [:=
-     (mbql.u/wrap-field-id-if-needed field)
-     (parse-param-value-for-type query param-type param-value (mbql.u/unwrap-field-or-expression-clause field))]))
+     (legacy-mbql/wrap-field-id-if-needed field)
+     (parse-param-value-for-type query param-type param-value (legacy-mbql/unwrap-field-or-expression-clause field))]))
 
 (defn- update-breakout-unit-in [query path target-field-id temporal-unit new-unit]
   (lib.util.match/replace-in
@@ -108,7 +107,7 @@
         base-type (or base-type
                       (when (integer? target-field-id)
                         (:base-type (lib.metadata/field (qp.store/metadata-provider) target-field-id))))
-        stage-path (into [:query] (mbql.u/stage-path (:query query) (:stage-number dim-opts)))]
+        stage-path (into [:query] (legacy-mbql/stage-path (:query query) (:stage-number dim-opts)))]
     (assert (some? base-type) "`base-type` is not set.")
     (when-not (qp.u.temporal-bucket/compatible-temporal-unit? base-type new-unit)
       (throw (ex-info (tru "This chart can not be broken out by the selected unit of time: {0}." value)
@@ -140,5 +139,5 @@
       :else
       (let [filter-clause (build-filter-clause query (assoc param :value param-value))
             [_ _ opts]    target
-            query         (mbql.u/add-filter-clause query (:stage-number opts) filter-clause)]
+            query         (legacy-mbql/add-filter-clause query (:stage-number opts) filter-clause)]
         (recur query rest)))))

@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.date-2 :as u.date]
@@ -91,7 +91,7 @@
   "Turn a field reference into a field."
   [root [item-type :as item-reference]]
   (case item-type
-    (:field "field") (let [normalized-field-reference (mbql.normalize/normalize item-reference)
+    (:field "field") (let [normalized-field-reference (legacy-mbql/normalize item-reference)
                            temporal-unit              (lib.util.match/match-one normalized-field-reference
                                                         [:field _ (opts :guard :temporal-unit)]
                                                         (:temporal-unit opts))

@@ -150,7 +150,7 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.db.query :as mdb.query]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.models.field :as field]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
@@ -902,7 +902,7 @@
 (defmethod automagic-analysis :model/Query
   [query {:keys [cell-query] :as opts}]
   (let [root       (->root query)
-        cell-query (when cell-query (mbql.normalize/normalize-fragment [:query :filter] cell-query))
+        cell-query (when cell-query (legacy-mbql/normalize-fragment [:query :filter] cell-query))
         opts       (cond-> opts
                      cell-query (assoc :cell-query cell-query))
         cell-url   (format "%sadhoc/%s/cell/%s" public-endpoint

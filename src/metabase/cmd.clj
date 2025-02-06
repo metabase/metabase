@@ -19,7 +19,7 @@
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
    [metabase.config :as config]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -175,12 +175,12 @@
    :arg-spec [["-m" "--mode (skip|update)" "Update or skip on conflicts."
                :default      :skip
                :default-desc "skip"
-               :parse-fn     mbql.u/normalize-token
+               :parse-fn     legacy-mbql/normalize-token
                :validate     [#{:skip :update} "Must be 'skip' or 'update'"]]
               ["-e" "--on-error (continue|abort)"  "Abort or continue on error."
                :default      :continue
                :default-desc "continue"
-               :parse-fn     mbql.u/normalize-token
+               :parse-fn     legacy-mbql/normalize-token
                :validate     [#{:continue :abort} "Must be 'continue' or 'abort'"]]]}
   [path & options]
   (log/warn (u/colorize :red "'load' is deprecated and will be removed in a future release. Please migrate to 'import'."))
@@ -200,7 +200,7 @@
               ["-s" "--state (active|all)" "When set to `active`, do not dump archived entities. Default behavior is `all`."
                :default      :all
                :default-desc "all"
-               :parse-fn     mbql.u/normalize-token
+               :parse-fn     legacy-mbql/normalize-token
                :validate     [#{:active :all} "Must be 'active' or 'all'"]]
               [nil "--include-entity-id"   "Include entity_id property in all dumped entities. Default: false."]]}
   [path & options]

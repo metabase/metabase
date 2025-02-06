@@ -6,7 +6,7 @@
    [metabase.api.common :as api]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.events :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.user-parameter-value :as user-parameter-value]
    [metabase.query-processor.card :as qp.card]
@@ -122,7 +122,7 @@
    dashcard-id    :- ::lib.schema.id/dashcard
    request-params :- [:maybe [:sequential :map]]]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
-  (let [request-params            (mbql.normalize/normalize-fragment [:parameters] request-params)
+  (let [request-params            (legacy-mbql/normalize-fragment [:parameters] request-params)
         dashboard                 (-> (t2/select-one :model/Dashboard :id dashboard-id)
                                       (t2/hydrate :resolved-params)
                                       (api/check-404))

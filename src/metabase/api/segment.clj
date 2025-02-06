@@ -4,7 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.util :as u]
@@ -60,7 +60,7 @@
         clean-body (u/select-keys-when body
                                        :present #{:description :caveats :points_of_interest}
                                        :non-nil #{:archived :definition :name :show_in_getting_started})
-        new-def    (->> clean-body :definition (mbql.normalize/normalize-fragment []))
+        new-def    (->> clean-body :definition (legacy-mbql/normalize-fragment []))
         new-body   (merge
                     (dissoc clean-body :revision_message)
                     (when new-def {:definition new-def}))

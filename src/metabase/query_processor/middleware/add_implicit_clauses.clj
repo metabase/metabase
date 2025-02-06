@@ -2,8 +2,7 @@
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:require
    [clojure.walk :as walk]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
@@ -26,7 +25,7 @@
        (remove #(#{:sensitive :retired} (:visibility-type %)))
        (sort-by (juxt :position (comp u/lower-case-en :name)))))
 
-(mu/defn sorted-implicit-fields-for-table :- mbql.s/Fields
+(mu/defn sorted-implicit-fields-for-table :- :legacy-mbql/fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
   in [[metabase.query-processor.sort]], for all the Fields in a given Table."
   [table-id :- ::lib.schema.id/table]
@@ -46,16 +45,16 @@
   [source-metadata]
   (->> source-metadata
        (map :field_ref)
-       (group-by #(some-> % (mbql.u/update-field-options dissoc :binning :temporal-unit :original-temporal-unit)))
+       (group-by #(some-> % (legacy-mbql/update-field-options dissoc :binning :temporal-unit :original-temporal-unit)))
        (reduce-kv (fn [duplicates ref-key field-refs]
                     (cond-> duplicates
                       (and ref-key (next field-refs))
                       (into (filter (comp (some-fn :binning :temporal-unit) #(get % 2))) field-refs)))
                   #{})))
 
-(mu/defn- source-metadata->fields :- mbql.s/Fields
+(mu/defn- source-metadata->fields :- :legacy-mbql/fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
-  [source-metadata :- [:sequential {:min 1} mbql.s/SourceQueryMetadata]]
+  [source-metadata :- [:sequential {:min 1} :legacy-mbql/source-query-metadata]]
   ;; We want to allow columns to be bucketed or binned in several different ways.
   ;; Such columns would be collapsed into a single column if referenced by ID,
   ;; so we make sure that they get a reference by name, which is unique.
@@ -73,8 +72,8 @@
        (let [not-multiply-bracketed? (not (contains? multiply-bucketed-refs field-ref))]
          (or (and not-multiply-bracketed?
                   (some-> (lib.util.match/match-one field-ref :field)
-                          (mbql.u/update-field-options dissoc :binning :temporal-unit)
-                          (cond-> coercion-strategy (mbql.u/assoc-field-options :qp/ignore-coercion true))))
+                          (legacy-mbql/update-field-options dissoc :binning :temporal-unit)
+                          (cond-> coercion-strategy (legacy-mbql/assoc-field-options :qp/ignore-coercion true))))
              ;; otherwise construct a field reference that can be used to refer to this Field.
              ;; Force string id field if expression contains just field. See issue #28451.
              (if (and (not= ref-type :expression)
@@ -94,7 +93,7 @@
   *  The query has no aggregations"
   [{:keys        [fields source-table source-query source-metadata]
     breakouts    :breakout
-    aggregations :aggregation} :- mbql.s/MBQLQuery]
+    aggregations :aggregation} :- :legacy-mbql/mbql-query]
   ;; if someone is trying to include an explicit `source-query` but isn't specifiying `source-metadata` warn that
   ;; there's nothing we can do to help them
   (when (and source-query
@@ -177,16 +176,16 @@
       (when-let [source-query (:source-query inner-query)]
         (has-window-function-aggregations? source-query))))
 
-(mu/defn- add-implicit-breakout-order-by :- mbql.s/MBQLQuery
+(mu/defn- add-implicit-breakout-order-by :- :legacy-mbql/mbql-query
   "Fields specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that Field is already
   *explicitly* referenced in `order-by`."
-  [inner-query :- mbql.s/MBQLQuery]
+  [inner-query :- :legacy-mbql/mbql-query]
   ;; Add a new [:asc <breakout-field>] clause for each breakout. The cool thing is `add-order-by-clause` will
   ;; automatically ignore new ones that are reference Fields already in the order-by clause
   (let [{breakouts :breakout, :as inner-query} (fix-order-by-field-refs inner-query)]
-    (reduce mbql.u/add-order-by-clause inner-query (when-not (has-window-function-aggregations? inner-query)
-                                                     (for [breakout breakouts]
-                                                       [:asc breakout])))))
+    (reduce legacy-mbql/add-order-by-clause inner-query (when-not (has-window-function-aggregations? inner-query)
+                                                          (for [breakout breakouts]
+                                                            [:asc breakout])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |

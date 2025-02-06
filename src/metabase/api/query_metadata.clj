@@ -2,7 +2,7 @@
   (:require
    [metabase.api.field :as api.field]
    [metabase.api.table :as api.table]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
@@ -79,7 +79,7 @@
 (defn batch-fetch-query-metadata
   "Fetch dependent metadata for ad-hoc queries."
   [queries]
-  (batch-fetch-query-metadata* (map mbql.normalize/normalize queries)))
+  (batch-fetch-query-metadata* (map legacy-mbql/normalize queries)))
 
 (defn batch-fetch-card-metadata
   "Fetch dependent metadata for cards.

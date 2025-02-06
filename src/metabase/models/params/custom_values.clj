@@ -7,7 +7,7 @@
   "
   (:require
    [clojure.string :as str]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
@@ -74,7 +74,7 @@
                                         (-> card :dataset_query :query))]
                  ;; MBQL query - hijack the final stage, drop its aggregation and breakout (if any).
                  (let [target-stage (:stage-number opts)
-                       last-stage   (mbql.u/legacy-last-stage-number inner-mbql)
+                       last-stage   (legacy-mbql/legacy-last-stage-number inner-mbql)
                        inner-mbql   (if (and target-stage last-stage
                                              (= (inc last-stage) target-stage))
                                       {:source-query inner-mbql}

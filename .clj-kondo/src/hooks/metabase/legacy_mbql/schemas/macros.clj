@@ -34,14 +34,22 @@
     =>
     (def ag:var [FieldOrExpressionDef])"
   [{:keys [node]}]
-  (let [[_defclause clause-name-form & arg-specs] (:children node)]
-    {:node (-> (hooks/list-node
-                (list
-                 (hooks/token-node 'def)
-                 (unwrap-defclause-clause-name clause-name-form)
-                 (hooks/string-node "Docstring.")
-                 (collect-defclause-body-schemas arg-specs)))
-               (with-meta (meta node)))}))
+  (let [[_defclause clause-name-form & arg-specs] (:children node)
+        clause-name-token     (unwrap-defclause-clause-name clause-name-form)
+        clause-schema-keyword (keyword "legacy-mbql.clause" (name (hooks/sexpr clause-name-token)))]
+    {:node (hooks/list-node
+            (list
+             (hooks/token-node 'do)
+             (-> (hooks/keyword-node clause-schema-keyword)
+                 (with-meta (meta clause-name-token))
+                 (hooks/reg-keyword! 'metabase.legacy-mbql.schema.macros/defclause))
+             (-> (hooks/list-node
+                  (list
+                   (hooks/token-node 'def)
+                   clause-name-token
+                   (hooks/string-node "Docstring.")
+                   (collect-defclause-body-schemas arg-specs)))
+                 (with-meta (meta node)))))}))
 
 (comment
   (defn- defclause* [form]

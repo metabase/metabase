@@ -10,6 +10,7 @@
    [metabase.config :as config]
    [metabase.driver.init]
    [metabase.events.init]
+   [metabase.legacy-mbql.init]
    [metabase.logger.init]
    [metabase.models.init]
    [metabase.notification.init]

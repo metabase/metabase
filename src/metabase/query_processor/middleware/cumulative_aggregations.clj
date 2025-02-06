@@ -19,7 +19,6 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
@@ -36,7 +35,7 @@
                           i)))
         (map not= coll-1 coll-2)))
 
-(mu/defn- replace-cumulative-ags :- mbql.s/Query
+(mu/defn- replace-cumulative-ags :- :legacy-mbql/query
   "Replace `cum-count` and `cum-sum` aggregations in `query` with `count` and `sum` aggregations, respectively."
   [query]
   (lib.util.match/replace-in query [:query :aggregation]

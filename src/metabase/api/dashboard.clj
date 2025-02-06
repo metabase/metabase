@@ -16,9 +16,7 @@
    [metabase.channel.email.messages :as messages]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
@@ -1107,7 +1105,7 @@
 
     (get-template-tag [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
   [dimension card]
-  (when-let [[_ tag] (mbql.u/check-clause :template-tag dimension)]
+  (when-let [[_ tag] (legacy-mbql/check-clause :template-tag dimension)]
     (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)])))
 
 (defn- param-type->op [type]
@@ -1116,13 +1114,13 @@
     :=))
 
 (mu/defn- param->fields
-  [{:keys [mappings] :as param} :- mbql.s/Parameter]
+  [{:keys [mappings] :as param} :- :legacy-mbql/parameter]
   (for [{:keys [target] {:keys [card]} :dashcard} mappings
-        :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                  (mbql.u/check-clause :dimension))]
+        :let  [[_ dimension] (->> (legacy-mbql/normalize-tokens target :ignore-path)
+                                  (legacy-mbql/check-clause :dimension))]
         :when dimension
         :let  [ttag      (get-template-tag dimension card)
-               dimension (condp mbql.u/is-clause? dimension
+               dimension (condp legacy-mbql/is-clause? dimension
                            :field        dimension
                            :expression   dimension
                            :template-tag (:dimension ttag)
@@ -1157,8 +1155,8 @@
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
         param           (get-in dashboard [:resolved-params param-key])
         results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_ field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                            (mbql.u/check-clause :dimension))]
+                              :let [[_ field-ref opts] (->> (legacy-mbql/normalize-tokens target :ignore-path)
+                                                            (legacy-mbql/check-clause :dimension))]
                               :when field-ref]
                           (custom-values/values-from-card card field-ref opts))]
     (when-some [values (seq (distinct (mapcat :values results)))]

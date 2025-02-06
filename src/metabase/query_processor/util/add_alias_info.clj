@@ -50,8 +50,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -105,7 +104,7 @@
     &match
 
     [:field id-or-name opts]
-    ;; this doesn't use [[mbql.u/update-field-options]] because this gets called a lot and the overhead actually adds up
+    ;; this doesn't use [[legacy-mbql/update-field-options]] because this gets called a lot and the overhead actually adds up
     ;; a bit
     [:field id-or-name (remove-namespaced-options (cond-> (dissoc opts :source-field :effective-type)
                                                     (integer? id-or-name) (dissoc :base-type)))]
@@ -169,7 +168,7 @@
     ((this-level-join-aliases inner-query) join-alias)))
 
 (mu/defn- field-instance :- [:maybe ::lib.schema.metadata/column]
-  [[_ id-or-name :as _field-clause] :- mbql.s/field]
+  [[_ id-or-name :as _field-clause] :- :legacy-mbql.clause/field]
   (when (integer? id-or-name)
     (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
 
@@ -205,7 +204,7 @@
         joins))
 
 (defn- fuzzify [clause]
-  (mbql.u/update-field-options clause dissoc :temporal-unit :binning))
+  (legacy-mbql/update-field-options clause dissoc :temporal-unit :binning))
 
 (defn- field-signature
   [field-clause]
@@ -216,7 +215,7 @@
                                                 :or   {normalize-fn normalize-clause}}]
   (let [normalized    (normalize-fn field-clause)
         all-exports   (exports source-query)
-        field-exports (filter (partial mbql.u/is-clause? :field)
+        field-exports (filter (partial legacy-mbql/is-clause? :field)
                               all-exports)]
     ;; first look for an EXACT match in the `exports`
     (or (m/find-first (fn [a-clause]
@@ -250,11 +249,11 @@
               ;; Expressions by exact name.
               (m/find-first (fn [[_ expression-name :as _expression-clause]]
                               (= expression-name field-name))
-                            (filter (partial mbql.u/is-clause? :expression) all-exports))
+                            (filter (partial legacy-mbql/is-clause? :expression) all-exports))
               ;; aggregation clauses from the previous stage based on their `::desired-alias`. If THAT doesn't work,
               ;; then try to match based on their `::source-alias` (not 100% sure why we're checking `::source-alias` at
               ;; all TBH -- Cam)
-              (when-let [ag-clauses (seq (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))]
+              (when-let [ag-clauses (seq (filter (partial legacy-mbql/is-clause? :aggregation-options) all-exports))]
                 (some (fn [k]
                         (m/find-first (fn [[_tag _ag-clause opts :as _aggregation-options-clause]]
                                         (= (get opts k) field-name))
@@ -281,7 +280,7 @@
          source-query
          source-metadata
          field-clause
-         :normalize-fn #(mbql.u/update-field-options (normalize-clause %) dissoc :join-alias))))))
+         :normalize-fn #(legacy-mbql/update-field-options (normalize-clause %) dissoc :join-alias))))))
 
 (defn- field-alias-in-join-at-this-level
   "If `field-clause` is the result of a join at this level, return the `::desired-alias` from that join (where the Field is
@@ -423,7 +422,7 @@
 (defmulti ^:private aggregation-name
   {:arglists '([mbql-clause])}
   (fn [x]
-    (when (mbql.u/mbql-clause? x)
+    (when (legacy-mbql/mbql-clause? x)
       (first x))))
 
 ;;; make sure we have an `:aggregation-options` or other fully-preprocessed aggregation clause (i.e., `:offset`) like we
@@ -508,7 +507,7 @@
           &match
 
           #{:field :aggregation :expression}
-          (mbql.u/update-field-options &match merge (clause-alias-info inner-query unique-alias-fn &match)))
+          (legacy-mbql/update-field-options &match merge (clause-alias-info inner-query unique-alias-fn &match)))
         (add-info-to-aggregation-definitions unique-alias-fn))))
 
 (defn add-alias-info

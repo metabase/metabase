@@ -13,8 +13,7 @@
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -176,7 +175,7 @@
   (when (map? query)
     (let [query-type (lib/normalized-query-type query)]
       (case query-type
-        :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+        :query      (-> query legacy-mbql/normalize qp.util/query->source-card-id)
         :mbql/query (-> query lib/normalize lib.util/source-card-id)
         nil))))
 
@@ -699,7 +698,7 @@
         joins))
 
 (defn- ensure-clause-idents-inner [inner-query ctx]
-  (mbql.u/map-stages
+  (legacy-mbql/map-stages
    (fn [query stage-number]
      (cond-> query
        (:aggregation query) (update :aggregation-idents
@@ -1142,7 +1141,7 @@
   eg. in [[breakouts-->identifier->action]] docstring. Then, dashcards are fetched and updates are generated
   by [[updates-for-dashcards]]. Updates are then executed."
   [card-before card-after]
-  (let [card->breakout     #(-> % :dataset_query mbql.normalize/normalize :query :breakout)
+  (let [card->breakout     #(-> % :dataset_query legacy-mbql/normalize :query :breakout)
         breakout-before    (card->breakout card-before)
         breakout-after     (card->breakout card-after)]
     (when-some [identifier->action (breakouts-->identifier->action breakout-before breakout-after)]

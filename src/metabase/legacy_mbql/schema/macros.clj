@@ -33,7 +33,7 @@
   (let [[symb-name clause-name] (if (vector? clause-name)
                                   clause-name
                                   [clause-name (or (:clause-name (meta clause-name)) clause-name)])
-        clause-registry-name    (keyword "metabase.legacy-mbql.schema" (name symb-name))]
+        clause-registry-name    (keyword "legacy-mbql.clause" (name symb-name))]
     `(do
        (mr/register! ~clause-registry-name
                      (metabase.legacy-mbql.schema.helpers/clause ~(keyword clause-name) ~@(stringify-names arg-names-and-schemas)))

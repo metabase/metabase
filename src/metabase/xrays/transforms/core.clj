@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
@@ -45,7 +44,7 @@
 (mu/defn- infer-resulting-dimensions :- DimensionBindings
   [bindings             :- Bindings
    {:keys [joins name]} :- Step
-   query                :- mbql.s/Query]
+   query                :- :legacy-mbql/query]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
                                   (get-in bindings [name :dimensions]))]
     (into {} (for [{:keys [name] :as col} (qp.preprocess/query->expected-cols query)]

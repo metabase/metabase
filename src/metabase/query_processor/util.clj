@@ -7,7 +7,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.util :as lib.schema.util]
@@ -18,7 +18,8 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.legacy-mbql.util]]
+;; TODO - I think most of the functions in this namespace that we don't remove could be moved
+;; to [[metabase.legacy-mbql.util]]
 
 (defn query-without-aggregations-or-limits?
   "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
@@ -115,7 +116,7 @@
                 ;; `process-userland-query-middleware` that occurs before normalization.
                 (binding [lib.schema.expression/*suppress-expression-type-check?* true]
                   (cond-> query
-                    (#{"query" "native"} (:type query)) (#(lib.convert/->pMBQL (mbql.normalize/normalize %)))
+                    (#{"query" "native"} (:type query)) (#(lib.convert/->pMBQL (legacy-mbql/normalize %)))
                     (#{:query :native} (:type query))   lib.convert/->pMBQL))
                 (catch Throwable e
                   (throw (ex-info "Error hashing query. Is this a valid query?"
@@ -148,7 +149,7 @@
 
 (defn- field-normalizer
   [field]
-  (let [[type id-or-name options] (mbql.normalize/normalize-tokens field)]
+  (let [[type id-or-name options] (legacy-mbql/normalize-tokens field)]
     [type id-or-name (select-keys options field-options-for-identification)]))
 
 (defn field->field-info

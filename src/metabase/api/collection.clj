@@ -16,7 +16,7 @@
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
@@ -466,7 +466,7 @@
 (defmethod post-process-collection-children :dataset
   [_ options collection rows]
   (let [queries-before (map :dataset_query rows)
-        queries-parsed (map (comp mbql.normalize/normalize json/decode) queries-before)]
+        queries-parsed (map (comp legacy-mbql/normalize json/decode) queries-before)]
     ;; We need to normalize the dataset queries for hydration, but reset the field to avoid leaking that transform.
     (->> (map #(assoc %2 :dataset_query %1) queries-parsed rows)
          upload/model-hydrate-based-on-upload
@@ -514,7 +514,7 @@
                        (string? (:dataset_query row)) json/decode)
         ;; TODO TB handle pMBQL native queries
         native-query (when (contains? parsed-query "native")
-                       (-> parsed-query mbql.normalize/normalize :native))]
+                       (-> parsed-query legacy-mbql/normalize :native))]
     (if-let [template-tags (:template-tags native-query)]
       (fully-parameterized-text? (:query native-query) template-tags)
       true)))

@@ -303,19 +303,19 @@
 (mr/def ::settings
   [:ref
    {:decode/normalize common/normalize-map}
-   :metabase.legacy-mbql.schema/Settings])
+   :legacy-mbql/settings])
 
 ;;; TODO -- move/copy this schema from the legacy schema to here
 (mr/def ::middleware-options
   [:ref
    {:decode/normalize common/normalize-map}
-   :metabase.legacy-mbql.schema/MiddlewareOptions])
+   :legacy-mbql/middleware-options])
 
 ;;; TODO -- move/copy this schema from the legacy schema to here
 (mr/def ::constraints
   [:ref
    {:decode/normalize common/normalize-map}
-   :metabase.legacy-mbql.schema/Constraints])
+   :legacy-mbql/constraints])
 
 (defn- serialize-query [query]
   ;; this stuff all gets added in when you actually run a query with one of the QP entrypoints, and is not considered
