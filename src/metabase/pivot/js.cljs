@@ -57,3 +57,10 @@
   (let [tree (js->clj tree :keywordize-keys true)
         cols (js->clj cols)]
     (clj->js (pivot/format-values-in-tree tree formatters cols))))
+
+(defn ^:export add-subtotals
+  [row-tree row-indexes col-settings]
+  (let [row-tree (js->clj row-tree :keywordize-keys true)
+        row-indexes (js->clj row-indexes)
+        col-settings (js->clj col-settings :keywordize-keys true)]
+    (pivot/add-subotals)))
