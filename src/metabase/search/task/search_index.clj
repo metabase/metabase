@@ -1,4 +1,4 @@
-(ns metabase.task.search-index
+(ns metabase.search.task.search-index
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
