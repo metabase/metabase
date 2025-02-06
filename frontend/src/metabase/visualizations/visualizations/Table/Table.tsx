@@ -21,8 +21,10 @@ import {
 import {
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
@@ -61,6 +63,8 @@ interface TableProps extends VisualizationProps {
   isPivoted?: boolean;
   hasMetadataPopovers?: boolean;
   question: Question;
+  canAddColumn?: boolean;
+  enableClientSideSorting?: boolean;
 }
 
 const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
@@ -71,6 +75,12 @@ const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
   return [INDEX_COLUMN_ID, ...dataColumns];
 };
 
+type ColumnSort = {
+  id: string;
+  desc: boolean;
+};
+type SortingState = ColumnSort[];
+
 export const _Table = ({
   data,
   series,
@@ -80,12 +90,33 @@ export const _Table = ({
   onVisualizationClick,
   onUpdateVisualizationSettings,
   isPivoted = false,
-  getColumnSortDirection,
+  getColumnSortDirection: getServerColumnSortDirection,
   question,
   clicked,
   hasMetadataPopovers = true,
+  className,
+  canAddColumn,
+  enableClientSideSorting,
 }: TableProps) => {
   const { rows, cols } = data;
+
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const getColumnSortDirection = useMemo(() => {
+    if (!enableClientSideSorting) {
+      return getServerColumnSortDirection;
+    }
+
+    return (columnIndex: number) => {
+      const col = cols[columnIndex];
+      const sortingState = sorting.find(sort => sort.id === col.name);
+      if (!sortingState) {
+        return undefined;
+      }
+      return sortingState.desc ? "desc" : "asc";
+    };
+  }, [sorting, cols, enableClientSideSorting, getServerColumnSortDirection]);
+
   const bodyRef = useRef<HTMLDivElement>(null);
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
     getColumnOrder(cols, settings["table.row_index"]),
@@ -134,8 +165,11 @@ export const _Table = ({
     state: {
       columnSizing,
       columnOrder,
+      sorting,
     },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     columnResizeMode: "onChange",
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizing,
@@ -290,7 +324,7 @@ export const _Table = ({
   );
 
   const isAddColumnButtonSticky = table.getTotalSize() >= width;
-  const hasAddColumnButton = onVisualizationClick != null;
+  const hasAddColumnButton = canAddColumn && onVisualizationClick != null;
   const addColumnButton = useMemo(
     () =>
       hasAddColumnButton ? (
@@ -357,6 +391,27 @@ export const _Table = ({
       event: React.MouseEvent<HTMLDivElement, MouseEvent>,
       columnName: string,
     ) => {
+      if (enableClientSideSorting) {
+        const currentSorting = sorting.find(
+          columnSorting => columnSorting.id === columnName,
+        );
+
+        if (currentSorting == null) {
+          setSorting(prev => [...prev, { id: columnName, desc: true }]);
+        } else if (currentSorting.desc) {
+          setSorting(prev =>
+            prev.map(sorting => {
+              if (sorting.id === columnName) {
+                return { ...sorting, desc: false };
+              }
+              return sorting;
+            }),
+          );
+        } else {
+          setSorting(prev => prev.filter(sorting => sorting.id !== columnName));
+        }
+        return;
+      }
       const columnIndex = data.cols.findIndex(col => col.name === columnName);
       if (columnIndex === -1) {
         return;
@@ -364,7 +419,7 @@ export const _Table = ({
       const clicked = getTableHeaderClickedObject(data, columnIndex, isPivoted);
       onVisualizationClick({ ...clicked, element: event.currentTarget });
     },
-    [data, isPivoted, onVisualizationClick],
+    [enableClientSideSorting, data, isPivoted, onVisualizationClick, sorting],
   );
 
   if (width == null || height == null) {
@@ -380,7 +435,11 @@ export const _Table = ({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div style={{ height, width }} className={styles.table} tabIndex={-1}>
+      <div
+        style={{ height, width }}
+        className={cx(className, styles.table)}
+        tabIndex={-1}
+      >
         <div
           ref={bodyRef}
           style={{

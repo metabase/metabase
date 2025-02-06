@@ -206,7 +206,9 @@ export const useColumns = ({
       id: INDEX_COLUMN_ID,
       size: 46,
       enableResizing: false,
+      enableSorting: false,
       cell: props => {
+        console.log(">>>index", props);
         return <IndexCell rowNumber={props.row.index + 1} />;
       },
       header: () => {

@@ -46,7 +46,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { TableSimple } from "../components/TableSimple";
 import type {
   ColumnSettingDefinition,
   ComputedVisualizationSettings,
@@ -448,7 +447,6 @@ class Table extends Component<TableProps, TableState> {
 
     const isPivoted = Table.isPivoted(series, settings);
     const areAllColumnsHidden = data?.cols.length === 0;
-    const TableComponent = isDashboard ? TableSimple : TableInteractive;
 
     if (!data) {
       return null;
@@ -493,13 +491,15 @@ class Table extends Component<TableProps, TableState> {
     }
 
     return (
-      <TableComponent
+      <TableInteractive
         {...this.props}
         question={this.state.question}
         data={data}
         isPivoted={isPivoted}
         getColumnTitle={this.getColumnTitle}
         getColumnSortDirection={this.getColumnSortDirection}
+        canAddColumn={!isDashboard}
+        enableClientSideSorting={isDashboard}
       />
     );
   }

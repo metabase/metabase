@@ -38,7 +38,10 @@ function getBoundingClientRectSafe(ref: {
   return ref.current?.getBoundingClientRect?.() ?? {};
 }
 
-function formatCellValueForSorting(value: RowValue, column: DatasetColumn) {
+export function formatCellValueForSorting(
+  value: RowValue,
+  column: DatasetColumn,
+) {
   if (typeof value === "string") {
     if (isID(column) && isPositiveInteger(value)) {
       return parseInt(value, 10);

@@ -10,13 +10,15 @@ export const HideColumnAction: LegacyDrill = ({
   settings,
 }) => {
   const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const isDashcard = clicked?.extraData?.dashcard != null;
 
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.column ||
     clicked?.extraData?.isRawTable ||
-    !isEditable
+    !isEditable ||
+    isDashcard
   ) {
     return [];
   }
