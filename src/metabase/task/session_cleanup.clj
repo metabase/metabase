@@ -1,9 +1,10 @@
 (ns metabase.task.session-cleanup
-  (:require [clojurewerkz.quartzite.jobs :as jobs]
-            [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clojurewerkz.quartzite.triggers :as triggers]
-            [metabase.models.session :as session]
-            [metabase.task :as task]))
+  (:require
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.cron :as cron]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.models.session :as session]
+   [metabase.task :as task]))
 
 (set! *warn-on-reflection* true)
 
