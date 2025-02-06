@@ -1,4 +1,4 @@
-(ns metabase.api.search-test
+(ns metabase.search.api-test
   "There are more tests around search in [[metabase.search.impl-test]]. TODO: we should move more of the tests
   below into that namespace."
   (:require

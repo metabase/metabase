@@ -1,4 +1,4 @@
-(ns hooks.metabase.api.search-test
+(ns hooks.metabase.search.api-test
   (:require [clj-kondo.hooks-api :as hooks]))
 
 (defn with-search-items-in-collection [{{[_ & args] :children, :as node} :node}]
