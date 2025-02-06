@@ -3,6 +3,7 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [buddy.core.nonce :as nonce]
+   [clojure.core.memoize :as memo]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -43,10 +44,13 @@
   (let [session-type (if anti-csrf-token :full-app-embed :normal)]
     (assoc session :type session-type)))
 
+(def ^:private hash-session-id-cache
+  (memo/lru (fn [session-id] (codecs/bytes->hex (buddy-hash/sha512 session-id))) {} :lru/threshold 100))
+
 (defn hash-session-id
   "Hash the session-id for storage in the database"
   [session-id]
-  (codecs/bytes->hex (buddy-hash/sha512 (str session-id))))
+  (hash-session-id-cache (str session-id)))
 
 (def ^:private CreateSessionUserInfo
   [:map

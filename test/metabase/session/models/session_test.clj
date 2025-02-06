@@ -158,3 +158,8 @@
         (session/cleanup-sessions!)
         (is (not (t2/exists? :model/Session :id (:id old-session))))
         (is (t2/exists? :model/Session :id (:id new-session)))))))
+
+(deftest hash-session-id-test
+  (is (= "ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff" (session/hash-session-id "test")))
+  (is (= "ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff" (session/hash-session-id "test")))
+  (is (= "6d201beeefb589b08ef0672dac82353d0cbd9ad99e1642c83a1601f3d647bcca003257b5e8f31bdc1d73fbec84fb085c79d6e2677b7ff927e823a54e789140d9" (session/hash-session-id "test2"))))
