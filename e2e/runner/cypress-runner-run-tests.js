@@ -57,7 +57,7 @@ const configs = {
   },
 };
 
-const runCypress = async (suite = "e2e", exitFunction = process.exit) => {
+const runCypress = async (suite = "e2e", exitFunction) => {
   const config = await configs[suite]();
 
   try {

@@ -18,7 +18,7 @@ const startServer = async () => {
 
 const runTests = async suite => {
   printBold(`Running ${suite} Cypress Tests`);
-  await runCypress(suite);
+  await runCypress(suite, process.exit);
 };
 
 if (mode === "start") {

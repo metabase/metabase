@@ -1,19 +1,24 @@
-const CypressBackend = require("./cypress-runner-backend");
-const runCypress = require("./cypress-runner-run-tests");
-const { printBold, shell } = require("./cypress-runner-utils");
+import CypressBackend from "./cypress-runner-backend";
+import runCypress from "./cypress-runner-run-tests";
+import {
+  booleanify,
+  printBold,
+  shell,
+  unBooleanify,
+} from "./cypress-runner-utils";
 
 // if you want to change these, set them as environment variables in your shell
 const userOptions = {
   TEST_SUITE: "e2e", // e2e | component
   MB_EDITION: "ee", // ee | oss
-  ENTERPRISE_TOKEN: null,
+  ENTERPRISE_TOKEN: "",
   START_CONTAINERS: true,
   STOP_CONTAINERS: false,
   BACKEND_PORT: 4000,
   OPEN_UI: true,
   SHOW_BACKEND_LOGS: false,
   QUIET: false,
-  ...process.env,
+  ...booleanify(process.env),
 };
 
 const derivedOptions = {
@@ -32,9 +37,7 @@ const options = {
   ...userOptions,
 };
 
-process.env = {
-  ...options,
-};
+process.env = unBooleanify(options);
 
 if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
   printBold(
@@ -110,7 +113,7 @@ const init = async () => {
   await runCypress(options.TEST_SUITE, cleanup);
 };
 
-const cleanup = async (exitCode = 0) => {
+const cleanup = async (exitCode: string | number = 0) => {
   if (options.BUILD_JAR) {
     printBold("⏳ Cleaning up...");
     await CypressBackend.stop();
@@ -125,7 +128,7 @@ const cleanup = async (exitCode = 0) => {
 };
 
 init()
-  .then(cleanup)
+  .then(() => cleanup(0))
   .catch(e => {
     console.error(e);
     cleanup(1);
