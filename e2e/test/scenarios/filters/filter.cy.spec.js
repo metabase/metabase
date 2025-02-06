@@ -292,7 +292,7 @@ describe("scenarios > question > filter", () => {
 
     H.enterCustomColumnDetails({ formula: "c", blur: false });
 
-    H.CustomExpressionEditor.completion("concat")
+    H.CustomExpressionEditor.completion("case")
       .parent()
       .should("have.attr", "aria-selected", "true");
 
@@ -303,7 +303,7 @@ describe("scenarios > question > filter", () => {
       .parent()
       .should("have.attr", "aria-selected", "true");
 
-    H.CustomExpressionEditor.completion("concat")
+    H.CustomExpressionEditor.completion("case")
       .parent()
       .should("have.attr", "aria-selected", "false");
   });
