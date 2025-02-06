@@ -19,10 +19,6 @@ export function EmbeddingSettings({
     updateSetting({ key: "enable-embedding-static" }, value);
   }
 
-  function handleToggleEmbeddingSdk(value: boolean) {
-    updateSetting({ key: "enable-embedding-sdk" }, value);
-  }
-
   function handleToggleInteractiveEmbedding(value: boolean) {
     updateSetting({ key: "enable-embedding-interactive" }, value);
   }
@@ -44,7 +40,7 @@ export function EmbeddingSettings({
           </Stack>
         </Box>
         <StaticEmbeddingOptionCard onToggle={handleToggleStaticEmbedding} />
-        <EmbeddingSdkOptionCard onToggle={handleToggleEmbeddingSdk} />
+        <EmbeddingSdkOptionCard updateSetting={updateSetting} />
         <InteractiveEmbeddingOptionCard
           onToggle={handleToggleInteractiveEmbedding}
         />

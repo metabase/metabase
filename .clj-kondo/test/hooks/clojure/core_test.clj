@@ -109,3 +109,16 @@
                               {:arglists '([card x y])}
                               (fn [card _ _]
                                 (-> card :visualization first))))))))
+
+(deftest require-newlines-test
+  (let [findings (atom [])]
+    (with-redefs [hooks/reg-finding! (fn [node]
+                                       (swap! findings conj node))]
+      (hooks.clojure.core/lint-ns
+       {:node     (hooks/parse-string "
+(ns metabase.task.cache
+  (:require [metabase.task.bunny]
+            [metabase.task.rabbit]))")})
+      (is (=? [{:message "Put your requires on a newline from the :require keyword [:metabase/require-shape-checker]",
+                :type    :metabase/require-shape-checker}]
+              @findings)))))

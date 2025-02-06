@@ -1,8 +1,8 @@
-(ns metabase.models.search-index-metadata-test
+(ns metabase.search.models.search-index-metadata-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.search-index-metadata :as search-index-metadata]
+   [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.connection :as t2.connection]

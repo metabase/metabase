@@ -230,6 +230,17 @@
                                  :message "Don't use prefix forms inside :require [:metabase/require-shape-checker]"
                                  :type    :metabase/require-shape-checker)))))
 
+(defn- lint-requires-on-new-lines [ns-form-node]
+  (let [[require-keyword first-require] (-> ns-form-node
+                                            ns-form-node->require-node
+                                            :children)]
+    (when-let [require-keyword-line (:row (meta require-keyword))]
+      (when-let [first-require-line (:row (meta first-require))]
+        (when (= require-keyword-line first-require-line)
+          (hooks/reg-finding! (assoc (meta first-require)
+                                     :message "Put your requires on a newline from the :require keyword [:metabase/require-shape-checker]"
+                                     :type    :metabase/require-shape-checker)))))))
+
 (defn- require-node->namespace-symb-nodes [require-node]
   (let [[_ns & args] (:children require-node)]
     (into []
@@ -323,8 +334,10 @@
                                          :type    :metabase/ns-module-checker)))))))))
 
 (defn lint-ns [x]
-  (lint-require-shapes (:node x))
-  (lint-modules (:node x) (get-in x [:config :linters :metabase/ns-module-checker]))
+  (doto (:node x)
+    lint-require-shapes
+    lint-requires-on-new-lines
+    (lint-modules (get-in x [:config :linters :metabase/ns-module-checker])))
   x)
 
 (defn- check-arglists [report-node arglists]
