@@ -1,7 +1,8 @@
 (ns metabase.test.util.random
   (:refer-clojure :exclude [rand rand-int rand-nth])
   (:require
-   [metabase.config :as config]))
+   [metabase.config :as config]
+   [clojure.test :as t :refer [is]]))
 
 (set! *warn-on-reflection* true)
 
@@ -43,10 +44,31 @@
         ;; test
         ;; WIPWIP: All error handling should reside in test for now
         (binding [*generator* generator#]
-          ;; Currently generating-expr could return :error to signal running the rest does not make sense.
-          (let [~bind-sym ~generating-expr]
-            (when-not (= :error ~bind-sym)
-              ~@body)))
+          (try
+            ;; Currently generating-expr could return :error to signal running the rest does not make sense.
+            (let [~bind-sym (try ~generating-expr
+                                 (catch Throwable t#
+                                   (throw (ex-info "Generation failed"
+                                                   {:seed ~'&seed}
+                                                   t#))))]
+              (try ~@body
+                   (catch Throwable t#
+                     (throw (ex-info "Execution failed"
+                                     {:seed ~'&seed
+                                      :at-the-moment-query ~generating-expr}
+                                     t#)))))
+            (catch Throwable t#
+              (is false
+                  (format (str "Message: `%s`\n"
+                               "Seed:    `%d`\n"
+                               (when (get (ex-data t#) :at-the-moment-query)
+                                 (format "Query:\n```\n%s\n```\n"
+                                         (with-out-str
+                                           (clojure.pprint/pprint
+                                            (get (ex-data t#)
+                                                 :at-the-moment-query))))))
+                          (.getMessage t#)
+                          ~'&seed)))))
         ;; recur
         (let [next-seed# (.nextLong generator#)]
           (recur (inc i#) next-seed# (java.util.Random. next-seed#)))))))

@@ -14,7 +14,11 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.util.random :as tu.rng]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   
+   [metabase.test-runner.assert-exprs :as ae]
+   
+   ))
 
 (set! *warn-on-reflection* true)
 
@@ -33,38 +37,44 @@
   
   (alter-var-root #'env assoc :mb-test-qgen-run "true")
   
+  (alter-var-root #'env assoc
+                  :mb-test-qgen-run "true"
+                  :mb-test-qgen-iterations "30")
+  
+  (alter-var-root #'env assoc
+                  #_#_:mb-test-qgen-seed "1595468655453985185"
+                  :mb-test-qgen-run "true"
+                  :mb-test-qgen-iterations "100")
+  
+  (alter-var-root #'env dissoc
+                  :mb-test-qgen-seed)
+  
 
   )
 
   ;; for qp generative testing there should be dedicated config namespace
   ;; should be part of init sequence for tests
   ;; should eg. parse json, that will be stored in `run-spec`
-(deftest ^:parallel basic-gen-query-test-2
+(deftest ^:parallel basic-gen-query-test-x
   (when (config/config-bool :mb-test-qgen-run)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-          ;; TODO: Probably common config ns
-          iterations (or (config/config-int :mb-test-query-iterations) 
+          ;; TODO: Probably common config ns.
+          iterations (or (:mb-test-qgen-iteration config/config-int)
                          100)]
-      (tu.rng/with-generator [iterations query (try (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                        lib.tu.gen/random-query-from)
-                                                    (catch Throwable _t
-                                                      (log/error "Initialization failed")
-                                                      (log/errorf "Seed: %d" &seed)
-                                                      :error))]
-        (try
-          (mt/with-temp
-            [:model/Card
-             {id :id}
-             {:dataset_query (lib.convert/->legacy-MBQL query)}]
-            (let [result (qp/process-query (lib/query mp (lib.metadata/card mp id)))]
-              (testing "Query execution was succesfully completed"
-                (is (= :completed
-                       (:status result))))
-              (testing "At least one column was returned"
-                (is (<= 1 (count (mt/cols result))))
-                (is (true? (apply (every-pred :name :base_type :display_name) (mt/cols result)))))))
-          (catch Throwable t
-            (log/error  "Test: `CURRENT_TEST_NAME` failed")
-            (log/errorf "Seed: %d" &seed)
-            (log/errorf "Query:\n %s" (with-out-str (clojure.pprint/pprint query)))))))))
+      (tu.rng/with-generator
+        [iterations
+         query
+         (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+             lib.tu.gen/random-query-from)]
+        (mt/with-temp
+          [:model/Card
+           {id :id}
+           {:dataset_query (lib.convert/->legacy-MBQL query)}]
+          (let [result (qp/process-query (lib/query mp (lib.metadata/card mp id)))]
+            (testing "Query execution was succesfully completed"
+              (is (= :completed
+                     (:status result))))
+            (testing "At least one column was returned"
+              (is (<= 1 (count (mt/cols result))))
+              (is (true? (apply (every-pred :name :base_type :display_name) (mt/cols result)))))))))))
 
