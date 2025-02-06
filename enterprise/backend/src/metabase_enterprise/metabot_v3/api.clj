@@ -161,7 +161,7 @@
    [:map
     [:output :string]]])
 
-(mr/def ::tool-request [:map [:session_id ms/UUIDString]])
+(mr/def ::tool-request [:map [:conversation_id ms/UUIDString]])
 
 (mr/def ::subscription-schedule
   (let [days ["sunday" "monday" "tuesday" "wednesday" "thursday" "friday" "saturday"]]
@@ -207,14 +207,14 @@
   "Create a dashboard subscription."
   [_route-params
    _query-params
-   {:keys [arguments session_id] :as body} :- [:merge
-                                               [:map [:arguments ::create-dashboard-subscription-arguments]]
-                                               ::tool-request]]
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::create-dashboard-subscription-arguments]]
+                                                    ::tool-request]]
   (metabot-v3.context/log body :llm.log/llm->be)
   (let [arguments (mc/encode ::query-metric-arguments
                              arguments (mtx/transformer {:name :api-request}))]
     (doto (-> (metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription arguments)
-              (assoc :session_id session_id))
+              (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
 (api.macros/defendpoint :post "/generate-insights" :- [:merge
@@ -228,30 +228,30 @@
   "Generate insights."
   [_route-params
    _query-params
-   {:keys [arguments session_id] :as body} :- [:merge
-                                               [:map [:arguments ::generate-insights-arguments]]
-                                               ::tool-request]]
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::generate-insights-arguments]]
+                                                    ::tool-request]]
   (metabot-v3.context/log body :llm.log/llm->be)
   (let [arguments (mc/encode ::generate-insights-arguments
                              arguments (mtx/transformer {:name :api-request}))]
     (doto (-> (metabot-v3.tools.generate-insights/generate-insights arguments)
-              (assoc :session_id session_id))
+              (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
 (api.macros/defendpoint :post "/query-metric" :- [:merge ::query-metric-result ::tool-request]
   "Construct a query from a metric."
   [_route-params
    _query-params
-   {:keys [arguments session_id] :as body} :- [:merge
-                                               [:map [:arguments ::query-metric-arguments]]
-                                               ::tool-request]]
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::query-metric-arguments]]
+                                                    ::tool-request]]
   (metabot-v3.context/log body :llm.log/llm->be)
   (let [arguments (mc/encode ::query-metric-arguments
                              arguments (mtx/transformer {:name :api-request}))]
     (doto (-> (mc/decode ::query-metric-result
                          (metabot-v3.tools.filters/query-metric arguments)
                          (mtx/transformer {:name :api-response}))
-              (assoc :session_id session_id))
+              (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
 (def ^{:arglists '([request respond raise])} routes
