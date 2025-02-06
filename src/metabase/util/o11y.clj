@@ -1,9 +1,10 @@
 (ns metabase.util.o11y
   "Observability"
-  (:require [medley.core :as m]
-            [metabase.util :as u]
-            [metabase.util.log :as log]
-            [steffan-westcott.clj-otel.api.trace.span :as span]))
+  (:require
+   [medley.core :as m]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 (set! *warn-on-reflection* true)
 
