@@ -1555,7 +1555,7 @@
    [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
    [:catn
     [:tag [:= :dimension]]
-    [:target [:schema [:or [:ref :legacy-mbql/field] [:ref ::template-tag]]]]
+    [:target [:schema [:or [:ref :legacy-mbql/field] [:ref :legacy-mbql.clause/template-tag]]]]
     [:options [:? [:maybe [:map {:error/message "dimension options"} [:stage-number {:optional true} :int]]]]]]])
 
 (def ^{:clause-name :dimension} ^:private dimension

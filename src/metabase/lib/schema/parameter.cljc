@@ -181,7 +181,7 @@
   [:ref :legacy-mbql.clause/field])
 
 (mr/def ::legacy-expression-ref
-  [:ref :metabase.legacy-mbql.schema/expression])
+  [:ref :legacy-mbql.clause/expression])
 
 (mr/def ::dimension.target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag
