@@ -104,7 +104,6 @@ export function suggestFields({
         from: token.start,
         to: token.end,
         options: columns,
-        filter: false,
       };
     }
 
@@ -114,7 +113,6 @@ export function suggestFields({
       from: token.start,
       to: token.end,
       options,
-      filter: false,
     };
   };
 }
@@ -169,7 +167,6 @@ export function suggestFunctions({
       from: token.start,
       to: token.end,
       options,
-      filter: false,
     };
   };
 }
@@ -217,7 +214,6 @@ export function suggestAggregations({
       from: token.start,
       to: token.end,
       options,
-      filter: false,
     };
   };
 }
@@ -332,7 +328,6 @@ export function suggestSegments({ query, stageIndex }: SuggestOptions) {
       from: token.start,
       to: token.end,
       options: matcher(token.text),
-      filter: false,
     };
   };
 }
@@ -370,7 +365,6 @@ export function suggestMetrics({
       from: token.start,
       to: token.end,
       options: matcher(token.text),
-      filter: false,
     };
   };
 }

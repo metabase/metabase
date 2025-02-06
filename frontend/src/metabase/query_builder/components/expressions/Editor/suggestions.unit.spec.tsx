@@ -121,7 +121,6 @@ describe("suggestFunctions", () => {
   }
 
   const RESULTS = {
-    filter: false,
     from: 0,
     to: 4,
     options: [
@@ -332,7 +331,6 @@ describe("suggestAggregations", () => {
     const startRule = "aggregation";
 
     const RESULTS = {
-      filter: false,
       from: 0,
       options: [
         {
@@ -482,7 +480,6 @@ describe("suggestFields", () => {
   }
 
   const RESULTS = {
-    filter: false,
     from: 0,
     to: 3,
     options: [
@@ -506,7 +503,6 @@ describe("suggestFields", () => {
   };
 
   const ALL_RESULTS = {
-    filter: false,
     from: 0,
     to: 1,
     options: [
@@ -930,7 +926,6 @@ describe("suggestSegments", () => {
     const complete = setup();
     const results = complete("Fo|");
     expect(results).toEqual({
-      filter: false,
       from: 0,
       to: 2,
       options: [
@@ -949,7 +944,6 @@ describe("suggestSegments", () => {
     const complete = setup();
     const results = complete("F|o");
     expect(results).toEqual({
-      filter: false,
       from: 0,
       to: 2,
       options: [
