@@ -44,13 +44,9 @@
   (let [session-type (if anti-csrf-token :full-app-embed :normal)]
     (assoc session :type session-type)))
 
-(def ^:private hash-session-id-cache
+(def ^{:arglists '([session-id])} hash-session-id
+    "Hash the session-id for storage in the database"
   (memo/lru (fn [session-id] (codecs/bytes->hex (buddy-hash/sha512 session-id))) {} :lru/threshold 100))
-
-(defn hash-session-id
-  "Hash the session-id for storage in the database"
-  [session-id]
-  (hash-session-id-cache (str session-id)))
 
 (def ^:private CreateSessionUserInfo
   [:map
