@@ -10,11 +10,13 @@ import {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-type QuestionTitleProps = {
+type GetQuestionTitleProps = {
   question?: Question;
 };
 
-export const getQuestionTitle = ({ question }: QuestionTitleProps): string => {
+export const getQuestionTitle = ({
+  question,
+}: GetQuestionTitleProps): string => {
   if (!question) {
     return t`New question`;
   }
@@ -40,14 +42,16 @@ export const getQuestionTitle = ({ question }: QuestionTitleProps): string => {
   return t`New question`;
 };
 
+type QuestionTitleProps = GetQuestionTitleProps & {
+  className?: string;
+  style?: CSSProperties;
+};
+
 export const QuestionTitle = ({
   question,
   className,
   style,
-}: QuestionTitleProps & {
-  className?: string;
-  style?: CSSProperties;
-}) => {
+}: QuestionTitleProps) => {
   const questionTitle = getQuestionTitle({ question });
 
   return (
