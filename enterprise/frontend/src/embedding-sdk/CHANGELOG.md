@@ -1,3 +1,29 @@
+## [0.53.2](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.1-nightly...embedding-sdk-0.53.2) (2025-02-05)
+
+
+### Bug Fixes
+
+* **sdk:** Add segmented button for chart settings ([#52076](https://github.com/metabase/metabase/issues/52076)) ([f18e43a](https://github.com/metabase/metabase/commit/f18e43a0f02e953cc7c7ffebcddd912c281f4cad))
+* **sdk:** add theme change transition to the root element ([#52427](https://github.com/metabase/metabase/issues/52427)) ([af09494](https://github.com/metabase/metabase/commit/af094941c884db522f46d6f2007b2e1014f2219f))
+* **sdk:** disable dashboard card click behavior and prevent url formatting ([#51290](https://github.com/metabase/metabase/issues/51290)) ([ea4ee80](https://github.com/metabase/metabase/commit/ea4ee806aa4a9f488de4361008e7f2206e50340f))
+* **sdk:** echarts tooltip is cut off below the viewport height ([#52310](https://github.com/metabase/metabase/issues/52310)) ([88141a8](https://github.com/metabase/metabase/commit/88141a8fca9009506c98658b39f8d537f8f31b9d))
+* **sdk:** echarts tooltip is cut off below the viewport height ([#52822](https://github.com/metabase/metabase/issues/52822)) ([#53191](https://github.com/metabase/metabase/issues/53191)) ([caece0d](https://github.com/metabase/metabase/commit/caece0d1843466f7532a29360f41abdc4bcb1f64))
+* **sdk:** fix data picker crash by using mantine popover ([#52096](https://github.com/metabase/metabase/issues/52096)) ([6ef8258](https://github.com/metabase/metabase/commit/6ef825835aa194547b606aa3c149fdda0d9418c9))
+* **sdk:** Fix nextJS compatibility layer missing components ([#52672](https://github.com/metabase/metabase/issues/52672)) ([a904c1e](https://github.com/metabase/metabase/commit/a904c1e5be990708ee9ce2e95679bd75b46c0ef1))
+* **sdk:** fix save question form's cancel button height ([#52504](https://github.com/metabase/metabase/issues/52504)) ([e3cdbbf](https://github.com/metabase/metabase/commit/e3cdbbf7a8ac5f18a016e16781784ad7d25899eb))
+* **sdk:** remove error about stageIndex prop being passed to dom element ([#53165](https://github.com/metabase/metabase/issues/53165)) ([#53212](https://github.com/metabase/metabase/issues/53212)) ([55eb0f4](https://github.com/metabase/metabase/commit/55eb0f434478652a0399279b11d59d6b19ccebab))
+* **sdk:** remove unsafe lifecycle errors from Visualization ([#52885](https://github.com/metabase/metabase/issues/52885)) ([#53221](https://github.com/metabase/metabase/issues/53221)) ([d0341b4](https://github.com/metabase/metabase/commit/d0341b46acd01c1a2a98f6b578a4fcac25c78f68))
+* **sdk:** Standardize SDK components errors with different ID formats ([#49714](https://github.com/metabase/metabase/issues/49714)) ([3527c91](https://github.com/metabase/metabase/commit/3527c911d7556a068581c5240f2d6f6f2c338bb5)), closes [metabase#51969](https://github.com/metabase/issues/51969)
+
+
+### Features
+
+* **sdk:** Add option to remove dashboard footer ([#52555](https://github.com/metabase/metabase/issues/52555)) ([#52936](https://github.com/metabase/metabase/issues/52936)) ([e72730f](https://github.com/metabase/metabase/commit/e72730f7bf01cbaa5cf45ec60abafe93b9bbf38e))
+* **sdk:** apply theming to interactive question modules ([#52513](https://github.com/metabase/metabase/issues/52513)) ([#53164](https://github.com/metabase/metabase/issues/53164)) ([1c31131](https://github.com/metabase/metabase/commit/1c3113141bd41b19ae09217a2a84d21b1d0a4fe6))
+* **sdk:** granular documentation links in usage problem banner ([#52257](https://github.com/metabase/metabase/issues/52257)) ([3bcf2d5](https://github.com/metabase/metabase/commit/3bcf2d5989490a0316ca8b7d83e4c9724cff33a3))
+
+
+
 ## [0.53.1-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.4-nightly...embedding-sdk-0.53.1-nightly) (2025-01-13)
 
 
