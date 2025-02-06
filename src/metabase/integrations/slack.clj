@@ -223,9 +223,11 @@
 (defn conversations-list
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages).
   By default only fetches channels, and returns them with their # prefix. Note the call to [[paged-list-request]] will
-  only fetch the first [[max-list-results]] items."
-  [& {:keys [oauth-scopes query-parameters]}]
-  (let [types  (if (contains? oauth-scopes "groups:read")
+  only fetch the first [[max-list-results]] items.
+
+  Pass :private-channels true to request private channels (requires the groups:read oauth-scope)."
+  [& {:keys [private-channels query-parameters]}]
+  (let [types  (if private-channels
                  "public_channel,private_channel"
                  "public_channel")
         params (merge {:exclude_archived true, :types types} query-parameters)]
@@ -295,7 +297,8 @@
   (when (slack-configured?)
     (log/info "Refreshing slack channels and usernames.")
     (let [users (future (vec (users-list)))
-          conversations (future (vec (conversations-list {:oauth-scopes (oauth-scopes)})))]
+          private-channels? #(contains? (oauth-scopes) "groups:read")
+          conversations (future (vec (conversations-list :private-channels (private-channels?))))]
       (slack-cached-channels-and-usernames! {:channels (concat @conversations @users)})
       (slack-channels-and-usernames-last-updated! (t/zoned-date-time)))))
 

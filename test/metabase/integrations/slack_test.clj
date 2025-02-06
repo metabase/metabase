@@ -92,7 +92,7 @@
   (testing "conversations-list"
     (test-auth! conversations-endpoint slack/conversations-list)
 
-    (testing "private_channel is only requested if the groups:read scope is available"
+    (testing ":private_channel flag determines the \"types\" param sent to slack"
       (are [opts conversation-types]
            (let [request (atom nil)]
              (http-fake/with-fake-routes
@@ -106,9 +106,9 @@
              (let [{:keys [query-string]} @request
                    {:keys [types]}        (parse-query-string query-string)]
                (= conversation-types types)))
-        {}                               "public_channel"
-        {:oauth-scopes #{}}              "public_channel"
-        {:oauth-scopes #{"groups:read"}} "public_channel,private_channel"))
+        {}                        "public_channel"
+        {:private-channels false} "public_channel"
+        {:private-channels true}  "public_channel,private_channel"))
 
     (testing "should be able to fetch channels and paginate"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
