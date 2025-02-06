@@ -104,6 +104,7 @@ export function suggestFields({
         from: token.start,
         to: token.end,
         options: columns,
+        filter: false,
       };
     }
 
@@ -319,9 +320,18 @@ export function suggestSegments({ query, stageIndex }: SuggestOptions) {
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
 
-    if (!token || token.text.startsWith("[")) {
-      // Cursor is inside a field reference tag
+    if (!token) {
       return null;
+    }
+
+    const word = token.text.replace(/^\[/, "").replace(/\]$/, "");
+    if (word === "") {
+      return {
+        from: token.start,
+        to: token.end,
+        options: segments,
+        filter: false,
+      };
     }
 
     return {
@@ -359,6 +369,16 @@ export function suggestMetrics({
 
     if (!token) {
       return null;
+    }
+
+    const word = token.text.replace(/^\[/, "").replace(/\]$/, "");
+    if (word === "") {
+      return {
+        from: token.start,
+        to: token.end,
+        options: metrics,
+        filter: false,
+      };
     }
 
     return {
@@ -462,13 +482,15 @@ function fuzzyMatcher(options: Completion[]) {
   });
 
   return function (word: string) {
-    return fuse
-      .search(word)
-      .filter(result => (result.score ?? 0) < 0.5)
-      .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
-      .map(result => ({
-        ...result.item,
-        matches: result.matches?.flatMap(match => match.indices) ?? [],
-      }));
+    return (
+      fuse
+        .search(word)
+        // .filter(result => (result.score ?? 0) <= 1)
+        .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
+        .map(result => ({
+          ...result.item,
+          matches: result.matches?.flatMap(match => match.indices) ?? [],
+        }))
+    );
   };
 }

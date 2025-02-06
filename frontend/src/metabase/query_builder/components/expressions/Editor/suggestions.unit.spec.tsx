@@ -179,6 +179,42 @@ describe("suggestFunctions", () => {
         icon: "function",
         apply: expect.any(Function),
       },
+      {
+        apply: expect.any(Function),
+        detail:
+          'Returns the localized short name ("Apr") for the given month number (4)',
+        displayLabel: "monthName",
+        icon: "function",
+        label: "monthName",
+        matches: [
+          [1, 2],
+          [5, 5],
+        ],
+        type: "function",
+      },
+      {
+        apply: expect.any(Function),
+        detail:
+          "Takes a datetime and returns an integer (1-12) with the number of the month in the year.",
+        displayLabel: "month",
+        icon: "function",
+        label: "month",
+        matches: [[1, 2]],
+        type: "function",
+      },
+      {
+        apply: expect.any(Function),
+        detail:
+          "Looks at the values in each argument in order and returns the first non-null value for each row.",
+        displayLabel: "coalesce",
+        icon: "function",
+        label: "coalesce",
+        matches: [
+          [0, 1],
+          [6, 6],
+        ],
+        type: "function",
+      },
     ],
   };
 
@@ -266,11 +302,9 @@ describe("suggestFunctions", () => {
         features: [],
       });
       const results = await completer("rege|");
-      expect(results).toEqual({
-        from: 0,
-        to: 4,
-        options: [],
-      });
+      expect(
+        results?.options.find(option => option.label === "regexextract"),
+      ).toBe(undefined);
     });
 
     it("should suggest supported functions", async () => {
@@ -280,21 +314,17 @@ describe("suggestFunctions", () => {
         features: ["regex"],
       });
       const results = await completer("rege|");
-      expect(results).toEqual({
-        from: 0,
-        to: 4,
-        options: [
-          {
-            label: "regexextract",
-            displayLabel: "regexextract",
-            detail:
-              "Extracts matching substrings according to a regular expression.",
-            matches: [[0, 3]],
-            icon: "function",
-            type: "function",
-            apply: expect.any(Function),
-          },
-        ],
+      expect(
+        results?.options.find(option => option.label === "regexextract"),
+      ).toEqual({
+        label: "regexextract",
+        displayLabel: "regexextract",
+        detail:
+          "Extracts matching substrings according to a regular expression.",
+        matches: [[0, 3]],
+        icon: "function",
+        type: "function",
+        apply: expect.any(Function),
       });
     });
   });
@@ -418,6 +448,19 @@ describe("suggestAggregations", () => {
             [10, 13],
           ],
           type: "aggregation",
+        },
+        {
+          detail: "The rolling sum of a column across a breakout.",
+          displayLabel: "CumulativeSum",
+          label: "CumulativeSum",
+          matches: [
+            [0, 1],
+            [3, 3],
+            [11, 11],
+          ],
+          icon: "function",
+          type: "aggregation",
+          apply: expect.any(Function),
         },
       ],
       to: 4,
@@ -593,6 +636,7 @@ describe("suggestFields", () => {
   const ALL_RESULTS = {
     from: 0,
     to: 1,
+    filter: false,
     options: [
       {
         label: "[Email]",
@@ -1010,22 +1054,44 @@ describe("suggestSegments", () => {
     };
   }
 
+  const RESULTS = {
+    from: 0,
+    to: 2,
+    options: [
+      {
+        label: "[Foo]",
+        displayLabel: "Foo",
+        type: "segment",
+        icon: "segment",
+        matches: [[0, 2]],
+      },
+    ],
+  };
+
+  const ALL_RESULTS = {
+    from: 0,
+    to: 1,
+    filter: false,
+    options: [
+      {
+        label: "[Foo]",
+        displayLabel: "Foo",
+        type: "segment",
+        icon: "segment",
+      },
+      {
+        label: "[Bar]",
+        displayLabel: "Bar",
+        type: "segment",
+        icon: "segment",
+      },
+    ],
+  };
+
   it("should suggest segments", () => {
     const complete = setup();
-    const results = complete("Fo|");
-    expect(results).toEqual({
-      from: 0,
-      to: 2,
-      options: [
-        {
-          label: "[Foo]",
-          displayLabel: "Foo",
-          type: "segment",
-          icon: "segment",
-          matches: [[0, 1]],
-        },
-      ],
-    });
+    const results = complete("Foo|");
+    expect(results).toEqual({ ...RESULTS, to: 3 });
   });
 
   it("should suggest segments, inside word", () => {
@@ -1044,5 +1110,41 @@ describe("suggestSegments", () => {
         },
       ],
     });
+  });
+
+  it("should suggest segments when typing [", () => {
+    const complete = setup();
+    const results = complete("[|");
+    expect(results).toEqual(ALL_RESULTS);
+  });
+
+  it("should suggest segments when inside []", () => {
+    const complete = setup();
+    const results = complete("[|]");
+    expect(results).toEqual({ ...ALL_RESULTS, to: 2 });
+  });
+
+  it("should suggest segments in an open [", () => {
+    const complete = setup();
+    const results = complete("[Fo|");
+    expect(results).toEqual({ ...RESULTS, to: 3 });
+  });
+
+  it("should suggest segments in an open [, inside a word", () => {
+    const complete = setup();
+    const results = complete("[F|o");
+    expect(results).toEqual({ ...RESULTS, to: 3 });
+  });
+
+  it("should suggest segments inside []", () => {
+    const complete = setup();
+    const results = complete("[Fo|]");
+    expect(results).toEqual({ ...RESULTS, to: 4 });
+  });
+
+  it("should suggest segments in [], inside a word", () => {
+    const complete = setup();
+    const results = complete("[F|o]");
+    expect(results).toEqual({ ...RESULTS, to: 4 });
   });
 });
