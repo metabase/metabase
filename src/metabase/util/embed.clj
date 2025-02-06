@@ -129,4 +129,6 @@
   (deferred-tru "Check if admin should see the SDK licensing terms popup")
   :type    :boolean
   :default true
+  :can-read-from-env? false
+  :doc false
   :export? true)
