@@ -43,6 +43,14 @@
   [refresh-task-fn]
   (.submit ^ExecutorService @pool ^Callable refresh-task-fn))
 
+(defn discarding-rff
+  "Returns a reducing function that discards result rows and returns an empty map."
+  [_metadata]
+  (fn default-rf
+    ([] {})
+    ([result] result)
+    ([result _row] result)))
+
 (defn- refresh-task
   "Returns a function that serially reruns queries based on `refresh-defs`, and discards the results. Each refresh
   definition contains a card-id, an optional dashboard-id, and a list of queries to rerun."
@@ -57,7 +65,8 @@
           {:executed-by  nil
            :context      :cache-refresh
            :card-id      card-id
-           :dashboard-id dashboard-id}))
+           :dashboard-id dashboard-id})
+         discarding-rff)
         (catch Exception e
           (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e)))))))
 
@@ -75,6 +84,7 @@
           (let [rerun-cutoff (duration-ago config)]
             {:nest
              {:select   [[:q.query :query]
+                         [:qc.query_hash :cache-hash]
                          [:qe.card_id :card-id]
                          [:qe.dashboard_id :dashboard-id]
                          [[:count :q.query_hash] :count]]
@@ -100,8 +110,8 @@
                              ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
                             [:not= :qe.context (name :cache-refresh)]]
                            [:= :qe.parameterized false])]
-              :group-by [:q.query_hash :q.query :qe.card_id :qe.dashboard_id]}}))]
-    {:select [:u.query :u.card-id :u.dashboard-id :u.count]
+              :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}}))]
+    {:select [:u.query :u.cache-hash :u.card-id :u.dashboard-id :u.count]
      :from   [[{:union queries} :u]]}))
 
 (defn- select-parameterized-queries
@@ -125,6 +135,13 @@
             parameterized-queries (t2/select :model/Query (duration-queries-to-rerun-honeysql cache-configs true))]
         (concat base-queries (select-parameterized-queries parameterized-queries))))))
 
+(defn- clear-duration-caches!
+  "Deletes any existing cache entries for queries that we are about to re-run, so that subsequent tasks don't also try
+  to re-run them before the cache has been refreshed."
+  [queries]
+  (t2/delete! :model/QueryCache
+              {:where [:in :query_hash (map :cache-hash queries)]}))
+
 (defn- maybe-refresh-duration-caches!
   []
   (when-let [queries (seq (duration-queries-to-rerun))]
@@ -135,6 +152,7 @@
                                     :dashboard-id dashboard-id
                                     :queries (map :query queries)})))
           task         (refresh-task refresh-defs)]
+      (clear-duration-caches! queries)
       (if *run-cache-refresh-async*
         (submit-refresh-task-async! task)
         (task)))))
