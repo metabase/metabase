@@ -18,8 +18,9 @@ import type { SelectionRange } from "../types";
 
 export type CodeMirrorEditorProps = {
   query: Lib.Query;
-  onChange?: (queryText: string) => void;
+  highlightedLineNumbers?: number[];
   readOnly?: boolean;
+  onChange?: (queryText: string) => void;
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
   onSelectionChange?: (range: SelectionRange) => void;
@@ -31,29 +32,32 @@ export interface CodeMirrorEditorRef {
 }
 
 import S from "./CodeMirrorEditor.module.css";
-import { useExtensions } from "./extensions";
+import { useExtensions, useHighlightLines } from "./extensions";
 import { convertIndexToPosition, matchCardIdAtCursor } from "./util";
 
 export const CodeMirrorEditor = forwardRef<
   CodeMirrorEditorRef,
   CodeMirrorEditorProps
->(function CodeMirrorEditor(props, ref) {
-  const editor = useRef<ReactCodeMirrorRef>(null);
-  const {
+>(function CodeMirrorEditor(
+  {
     query,
-    onChange,
+    highlightedLineNumbers,
     readOnly,
+    onChange,
     onSelectionChange,
     onRightClickSelection,
     onCursorMoveOverCardTag,
-  } = props;
-
+  },
+  ref,
+) {
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
   const extensions = useExtensions(query);
+  useHighlightLines(editorRef, highlightedLineNumbers);
 
   useImperativeHandle(ref, () => {
     return {
       focus() {
-        editor.current?.editor?.focus();
+        editorRef.current?.editor?.focus();
       },
       getSelectionTarget() {
         return document.querySelector(".cm-selectionBackground");
@@ -86,7 +90,7 @@ export const CodeMirrorEditor = forwardRef<
 
   useEffect(() => {
     function handler(evt: MouseEvent) {
-      const selection = editor.current?.state?.selection.main;
+      const selection = editorRef.current?.state?.selection.main;
       if (!selection) {
         return;
       }
@@ -106,7 +110,7 @@ export const CodeMirrorEditor = forwardRef<
 
   return (
     <CodeMirror
-      ref={editor}
+      ref={editorRef}
       data-testid="native-query-editor"
       className={S.editor}
       extensions={extensions}

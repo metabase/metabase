@@ -576,19 +576,20 @@ const defaultMetabotContextValue: MetabotContext = {
   registerChatContextProvider: () => () => {},
 };
 
-export type FixNativeQueryButtonProps = {
+export type FixSqlQueryButtonProps = {
   query: Lib.Query;
   queryError: DatasetError;
   queryErrorType: DatasetErrorType | undefined;
-  onQueryFix: (newQuery: Lib.Query) => void;
+  onQueryFix: (fixedQuery: Lib.Query, fixedLineNumbers: number[]) => void;
+  onHighlightLines: (fixedLineNumbers: number[]) => void;
 };
 
 export type PluginAiSqlFixer = {
-  FixNativeQueryButton: ComponentType<FixNativeQueryButtonProps>;
+  FixSqlQueryButton: ComponentType<FixSqlQueryButtonProps>;
 };
 
 export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
-  FixNativeQueryButton: PluginPlaceholder,
+  FixSqlQueryButton: PluginPlaceholder,
 };
 
 export const PLUGIN_METABOT = {
