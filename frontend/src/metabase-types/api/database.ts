@@ -17,6 +17,8 @@ export type DatabaseFeature =
   | "basic-aggregations"
   | "binning"
   | "case-sensitivity-string-filter-options"
+  | "convert-timezone"
+  | "datetime-diff"
   | "dynamic-schema"
   | "expression-aggregations"
   | "expressions"
@@ -26,6 +28,7 @@ export type DatabaseFeature =
   | "percentile-aggregations"
   | "persist-models"
   | "persist-models-enabled"
+  | "regex"
   | "schemas"
   | "set-timezone"
   | "left-join"
@@ -35,7 +38,9 @@ export type DatabaseFeature =
   | "nested-field-columns"
   | "advanced-math-expressions"
   | "connection-impersonation"
-  | "connection-impersonation-requires-role";
+  | "connection-impersonation-requires-role"
+  | "native-requires-specified-collection"
+  | "window-functions/offset";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
