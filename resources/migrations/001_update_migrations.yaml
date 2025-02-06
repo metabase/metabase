@@ -10481,11 +10481,7 @@ databaseChangeLog:
             UPDATE setting
             SET value = 'false'
             WHERE key = 'enable-embedding-sdk'
-            AND NOT EXISTS (
-              SELECT 1
-              FROM setting
-              WHERE key = 'embedding-app-origins-sdk'
-            );
+            AND 'embedding-app-origins-sdk' NOT IN (SELECT key FROM setting);
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
