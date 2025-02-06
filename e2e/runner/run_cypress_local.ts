@@ -60,11 +60,6 @@ printBold(`Running Cypress with options:
 `);
 
 const init = async () => {
-  if (options.TEST_SUITE === "component") {
-    printBold("⏳ Building embedding SDK");
-    shell("yarn build-embedding-sdk");
-  }
-
   if (options.START_CONTAINERS) {
     printBold("⏳ Starting containers");
     shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml up -d");
@@ -105,7 +100,7 @@ const init = async () => {
   const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
   if (!isFrontendRunning && options.TEST_SUITE === "e2e") {
     printBold(
-      "\n\n⚠️⚠️ You don't have your frontend running. You should probably run yarn build-hot ⚠️⚠️\n\n",
+      "⚠️⚠️ You don't have your frontend running. You should probably run yarn build-hot ⚠️⚠️",
     );
   }
 
@@ -133,8 +128,6 @@ init()
     console.error(e);
     cleanup(1);
   });
-
-shell("echo 'hello world'");
 
 process.on("SIGTERM", cleanup);
 process.on("SIGINT", cleanup);

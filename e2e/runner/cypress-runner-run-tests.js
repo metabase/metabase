@@ -6,6 +6,7 @@ const DEFAULT_PORT = 4000;
 const getHost = () =>
   `http://localhost:${process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
 
+// This is a map of all possible Cypress configurations we can run.
 const configs = {
   e2e: async () => {
     const defaultConfig = {
@@ -15,7 +16,7 @@ const configs = {
         baseUrl: getHost(),
       },
       testingType: "e2e",
-      openMode: args["--open"] || process.env.OPEN_UI,
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
     };
 
     const userArgs = await parseArguments(args);
@@ -50,14 +51,25 @@ const configs = {
         baseUrl: getHost(),
       },
       testingType: "component",
-      openMode: args["--open"] || process.env.OPEN_UI,
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
     };
 
     return sdkComponentConfig;
   },
 };
 
+/**
+ * This simply runs cypress through the javascript API rather than the CLI, and
+ * lets us conditionally load a config file and some other options along with it.
+ */
 const runCypress = async (suite = "e2e", exitFunction) => {
+  if (!configs[suite]) {
+    console.error(
+      `Invalid suite: ${suite}, try one of: ${Object.keys(configs)}`,
+    );
+    await exitFunction(1);
+  }
+
   const config = await configs[suite]();
 
   try {
