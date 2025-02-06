@@ -16,7 +16,6 @@ import type { DatabaseId, Group } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
-import ToolbarUpsell from "../../components/ToolbarUpsell";
 import {
   LOAD_DATA_PERMISSIONS_FOR_GROUP,
   restoreLoadedPermissions,
@@ -33,10 +32,6 @@ type DataPermissionsPageProps = {
   databases: Database[];
   groups: Group[];
 };
-
-export const DATA_PERMISSIONS_TOOLBAR_CONTENT = [
-  <ToolbarUpsell key="upsell" />,
-];
 
 function DataPermissionsPage({
   children,
@@ -98,7 +93,6 @@ function DataPermissionsPage({
       diff={diff}
       isDirty={isDirty}
       route={route}
-      toolbarRightContent={DATA_PERMISSIONS_TOOLBAR_CONTENT}
       helpContent={<DataPermissionsHelp />}
       showSplitPermsModal={showSplitPermsModal}
     >

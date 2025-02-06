@@ -1,7 +1,8 @@
 (ns metabase.api.user-key-value-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.user-key-value.types :as user-kv.types]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.user-key-value.types :as user-kv.types]
+   [metabase.test :as mt]))
 
 (def ^:private test-types-dir
   "These schemas are only loaded in tests.
