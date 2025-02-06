@@ -1,5 +1,3 @@
-import { omit } from "underscore";
-
 import type { ButtonProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -35,7 +33,7 @@ export const SaveButton = (buttonProps: ButtonProps = {}) => {
     <ToolbarButton
       label="Save"
       disabled={!isSaveButtonEnabled}
-      {...omit(buttonProps, "disabled")}
+      {...buttonProps}
     />
   );
 };

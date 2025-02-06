@@ -2,16 +2,10 @@ import { useQuestionVisualization } from "embedding-sdk/components/private/Inter
 import CS from "metabase/css/core/index.css";
 import { ChartTypeSettings } from "metabase/query_builder/components/chart-type-selector";
 import type { StackProps } from "metabase/ui";
-import type { CardDisplayType } from "metabase-types/api";
 
 import { useSensibleVisualizations } from "../hooks/use-sensible-visualizations";
 
-export const ChartTypeSelector = ({
-  onChange,
-  ...stackProps
-}: {
-  onChange?: (display: CardDisplayType) => void;
-} & StackProps) => {
+export const ChartTypeSelector = (stackProps: StackProps) => {
   const { sensibleVisualizations, nonSensibleVisualizations } =
     useSensibleVisualizations();
 
@@ -28,10 +22,7 @@ export const ChartTypeSelector = ({
       sensibleVisualizations={sensibleVisualizations}
       nonSensibleVisualizations={nonSensibleVisualizations}
       selectedVisualization={selectedVisualization}
-      onSelectVisualization={(display: CardDisplayType) => {
-        onChange?.(display);
-        updateQuestionVisualization(display);
-      }}
+      onSelectVisualization={updateQuestionVisualization}
     />
   );
 };

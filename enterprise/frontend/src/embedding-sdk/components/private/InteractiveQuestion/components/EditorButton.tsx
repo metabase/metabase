@@ -6,11 +6,11 @@ import { ActionIcon, type ActionIconProps, Icon } from "metabase/ui";
 
 import S from "./EditorButton.module.css";
 export const EditorButton = ({
-  isOpen,
+  isOpen = false,
   onClick,
   ...actionIconProps
 }: {
-  isOpen: boolean;
+  isOpen?: boolean;
 } & ActionIconProps &
   HTMLAttributes<HTMLButtonElement>) => {
   const { question } = useInteractiveQuestionContext();
