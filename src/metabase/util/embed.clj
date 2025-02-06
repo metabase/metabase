@@ -129,4 +129,6 @@
   (deferred-tru "Check if admin should see the SDK licensing terms popup")
   :type    :boolean
   :default true
+  :database-local :only
+  :doc false
   :export? true)
