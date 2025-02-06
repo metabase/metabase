@@ -53,9 +53,7 @@
   "Read a liquibase migration file and returns all the migration id that is applied to `db-type`.
   Ids are orderer in the order it's defined in migration file."
   [file-path db-type]
-  (let [content (u.yaml/from-file (io/resource file-path))
-        ;; 109 is a DATABASECHANGELOGLOCK alter that isn't used anymore and does not fail on error
-        migration-lock-changeset? (fn [id] (and (#{:mysql :mariadb} db-type) (#{"109"} id)))]
+  (let [content (u.yaml/from-file (io/resource file-path))]
     (->> (:databaseChangeLog content)
          ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current db-type
          (remove (fn [{{:keys [dbms]} :changeSet}] (and (not (str/blank? dbms))
@@ -63,7 +61,6 @@
          ;; remove ignored changeSets
          (remove #(get-in % [:changeSet :ignore]))
          (map #(str (get-in % [:changeSet :id])))
-         (remove migration-lock-changeset?)
          (remove str/blank?))))
 
 (deftest consolidate-liquibase-changesets-test
