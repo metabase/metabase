@@ -149,7 +149,7 @@
     (track-queue-size!)))
 
 (defn- index-worker-exists? []
-  (task/job-exists? @(requiring-resolve 'metabase.task.search-index/update-job-key)))
+  (task/job-exists? @(requiring-resolve 'metabase.search.task.search-index/update-job-key)))
 
 (defn ingest-maybe-async!
   "Update or create any search index entries related to the given updates.
