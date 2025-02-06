@@ -358,7 +358,7 @@ class DashboardGridInner extends Component<
 
   getIsLastDashboardQuestionDashcard = (dc: BaseDashboardCard): boolean => {
     return Boolean(
-      dc.card.dashboard_id !== null &&
+      dc.card.dashboardId !== null &&
         dc.card_id &&
         this.state.dashcardCountByCardId[dc.card_id] <= 1,
     );
