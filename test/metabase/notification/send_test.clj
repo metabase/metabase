@@ -1,6 +1,7 @@
 (ns metabase.notification.send-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
    [metabase.notification.send :as notification.send]
@@ -118,3 +119,23 @@
                                                                                    [:timestamp :string]
                                                                                    [:message :string]]])}}
                       (t2/select-one :model/TaskHistory :task "channel-send"))))))))))
+
+(deftest send-notification-record-prometheus-metrics-test
+  (mt/with-prometheus-system! [_ system]
+    (notification.tu/with-notification-testing-setup
+      (let [n (models.notification/create-notification!
+               {:payload_type :notification/testing}
+               nil
+               [{:channel_type notification.tu/test-channel-type
+                 :channel_id   (-> (t2/select :model/Channel)
+                                   (first)
+                                   :id)
+                 :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+        (notification.tu/with-captured-channel-send!
+          (notification.send/send-notification-sync! n))
+        (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/send-ok {:payload-type :notification/testing})))
+        (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/channel-send-ok {:payload-type :notification/testing
+                                                                                                       :channel-type :channel/email})))
+        #_(is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/channel-send-ok {:payload-type :notification/testing
+                                                                                                         :channel-type "slack"})))))))
+

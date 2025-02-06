@@ -243,7 +243,7 @@
    (prometheus/gauge :metabase-search/engine-active
                      {:description "Whether a given engine is active. This does NOT mean that it is the default."
                       :labels [:engine]})
-
+   ;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."
                         :labels [:payload-type]})
@@ -259,9 +259,8 @@
    (prometheus/counter :metabase-notification/channel-send-error
                        {:description "Number of errors when sending channel notifications."
                         :labels [:payload-type :channel-type]})
-   (prometheus/gauge :metabase-notification/concurrent-sends
-                     {:description "Number of concurrent notification sends."
-                      :labels [:payload-type :channel-type]})])
+   (prometheus/gauge :metabase-notification/concurrent-tasks
+                     {:description "Number of concurrent notification sends."})])
 
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."
@@ -338,6 +337,19 @@
              (log/info "Prometheus web-server shut down")
              (catch Exception e
                (log/warn e "Error stopping prometheus web-server")))))))
+
+(defn observe!
+  "Call iapetos.core/observe on the metric in the global registry.
+   Inits registry if it's not been initialized yet."
+  ([metric] (observe! metric nil 1))
+  ([metric labels-or-amount]
+   (if (seq? labels-or-amount)
+     (observe! metric labels-or-amount 1)
+     (observe! metric nil labels-or-amount)))
+  ([metric labels amount]
+   (when-not system
+     (setup!))
+   (prometheus/observe (:registry system) metric labels amount)))
 
 (defn inc!
   "Call iapetos.core/inc on the metric in the global registry.
