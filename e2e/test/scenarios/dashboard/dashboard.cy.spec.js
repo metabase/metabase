@@ -352,6 +352,34 @@ describe("scenarios > dashboard", () => {
           .and("contain", "18,760");
       });
 
+      it("should save changes to a dashboard after using the 'Add a chart' button from an empty tab (metabase#53132)", () => {
+        cy.log("add an existing card");
+        H.editDashboard();
+        cy.findByTestId("dashboard-header").icon("add").click();
+        H.sidebar().findByText("Orders, Count").click();
+        cy.findByTestId("dashboard-header").icon("add").click();
+
+        cy.log("create a tab to access emtpy state again");
+        H.createNewTab();
+        cy.findByTestId("dashboard-empty-state")
+          .findByText("Add a chart")
+          .click();
+
+        cy.log("save changes before leaving");
+        H.sidebar().findByText("New SQL query").click();
+        H.modal().findByRole("button", { name: "Save changes" }).click();
+
+        cy.log("create a dashboard question");
+        H.NativeEditor.focus().type("SELECT 1");
+        H.saveQuestion("Foo question");
+
+        cy.log(
+          "should have persisted changes from when dashboard was saved before creating a question",
+        );
+        cy.findAllByRole("tab", { name: /Tab \d/ }).should("have.length", 2);
+        H.getDashboardCards().should("have.length", 2);
+      });
+
       it("should allow navigating to the notebook editor directly from a dashboard card", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
         H.showDashboardCardActions();
