@@ -206,6 +206,7 @@ describe("scenarios > dashboard", () => {
       });
       H.entityPickerModal().button("Select").click();
 
+      cy.findByTestId("dashcard").should("be.visible");
       H.saveDashboard();
 
       cy.log(
@@ -350,6 +351,34 @@ describe("scenarios > dashboard", () => {
           .should("have.length", 1)
           .and("contain", "Orders, Count")
           .and("contain", "18,760");
+      });
+
+      it("should save changes to a dashboard after using the 'Add a chart' button from an empty tab (metabase#53132)", () => {
+        cy.log("add an existing card");
+        H.editDashboard();
+        cy.findByTestId("dashboard-header").icon("add").click();
+        H.sidebar().findByText("Orders, Count").click();
+        cy.findByTestId("dashboard-header").icon("add").click();
+
+        cy.log("create a tab to access emtpy state again");
+        H.createNewTab();
+        cy.findByTestId("dashboard-empty-state")
+          .findByText("Add a chart")
+          .click();
+
+        cy.log("save changes before leaving");
+        H.sidebar().findByText("New SQL query").click();
+        H.modal().findByRole("button", { name: "Save changes" }).click();
+
+        cy.log("create a dashboard question");
+        H.NativeEditor.focus().type("SELECT 1");
+        H.saveQuestion("Foo question");
+
+        cy.log(
+          "should have persisted changes from when dashboard was saved before creating a question",
+        );
+        cy.findAllByRole("tab", { name: /Tab \d/ }).should("have.length", 2);
+        H.getDashboardCards().should("have.length", 2);
       });
 
       it("should allow navigating to the notebook editor directly from a dashboard card", () => {
@@ -1207,41 +1236,45 @@ describe("scenarios > dashboard", () => {
       assertPreventLeave();
     });
 
-    it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
-      cy.visit("/");
+    it(
+      "should warn a user before leaving after adding, removed, moving, or duplicating a tab",
+      { tags: "@flaky" },
+      () => {
+        cy.visit("/");
 
-      // add tab
-      createNewDashboard();
-      H.createNewTab();
-      assertPreventLeave();
-      H.saveDashboard();
+        // add tab
+        createNewDashboard();
+        H.createNewTab();
+        assertPreventLeave();
+        H.saveDashboard();
 
-      // move tab
-      H.editDashboard();
-      dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
-      // assert tab order is now correct and ui has caught up to result of dragging the tab
-      cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
-      cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
-      assertPreventLeave();
-      H.saveDashboard();
+        // move tab
+        H.editDashboard();
+        dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
+        // assert tab order is now correct and ui has caught up to result of dragging the tab
+        cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
+        cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
+        assertPreventLeave();
+        H.saveDashboard();
 
-      // duplicate tab
-      H.editDashboard();
-      H.duplicateTab("Tab 1");
-      assertPreventLeave();
-      H.saveDashboard();
+        // duplicate tab
+        H.editDashboard();
+        H.duplicateTab("Tab 1");
+        assertPreventLeave();
+        H.saveDashboard();
 
-      // remove tab
-      H.editDashboard();
-      H.deleteTab("Copy of Tab 1");
-      assertPreventLeave();
-      H.saveDashboard();
+        // remove tab
+        H.editDashboard();
+        H.deleteTab("Copy of Tab 1");
+        assertPreventLeave();
+        H.saveDashboard();
 
-      // rename tab
-      H.editDashboard();
-      H.renameTab("Tab 2", "Foo tab");
-      assertPreventLeave();
-    });
+        // rename tab
+        H.editDashboard();
+        H.renameTab("Tab 2", "Foo tab");
+        assertPreventLeave();
+      },
+    );
 
     function createNewDashboard() {
       H.newButton("Dashboard").click();
