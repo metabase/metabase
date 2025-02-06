@@ -344,3 +344,31 @@
 (deftest slack-cache-updated-at-nil
   (tu/with-temporary-setting-values [slack-channels-and-usernames-last-updated nil]
     (is (= (var-get #'slack/zoned-time-epoch) (slack/slack-channels-and-usernames-last-updated)))))
+
+(def auth-endpoint #"^https://slack\.com/api/auth\.test.*")
+
+(deftest refresh-channels-and-usernames!-test
+  (testing "Chooses correct value for :private-channels if groups:read scope is available"
+    (are [oauth-scopes conversation-types]
+         (let [request (atom nil)]
+           (tu/with-temporary-setting-values [slack-app-token "test"
+                                              slack-token nil]
+             (http-fake/with-fake-routes
+               {auth-endpoint
+                (constantly
+                 {:status 200
+                  :body (json/encode {:ok true})
+                  :headers {"x-oauth-scopes" oauth-scopes}})
+                conversations-endpoint
+                (fn [req]
+                  (reset! request req)
+                  {:status 200, :body (json/encode {:ok true})})
+                users-endpoint
+                (constantly {:status 200, :body (json/encode {:ok true})})}
+               (slack/refresh-channels-and-usernames!)
+               (let [{:keys [query-string]} @request
+                     {:keys [types]}        (parse-query-string query-string)]
+                 (= conversation-types types)))))
+
+      ""            "public_channel"
+      "groups:read" "public_channel,private_channel")))
