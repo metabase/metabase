@@ -169,4 +169,37 @@ describe("GsheetsSyncStatus", () => {
       await screen.findByText(/Error importing Google Sheets/),
     ).toBeInTheDocument();
   });
+
+  it("should clear error if the user tries to connect again", async () => {
+    setup({
+      settingStatus: "loading",
+      folderStatus: "not-connected",
+      errorCode: 500,
+      updatedSettingStatus: "not-connected",
+    });
+
+    // initial loading state
+    expect(screen.getByText("Importing Google Sheets...")).toBeInTheDocument();
+
+    // not-connected state
+    await waitFor(() =>
+      expect(screen.queryByText(/Google/i)).not.toBeInTheDocument(),
+    );
+  });
+
+  it("should disappear if state changes from loading to not-connected without an error", async () => {
+    setup({
+      settingStatus: "loading",
+      folderStatus: "not-connected",
+      updatedSettingStatus: "not-connected",
+    });
+
+    // initial loading state
+    expect(screen.getByText("Importing Google Sheets...")).toBeInTheDocument();
+
+    // not-connected state
+    await waitFor(() =>
+      expect(screen.queryByText(/Google/i)).not.toBeInTheDocument(),
+    );
+  });
 });

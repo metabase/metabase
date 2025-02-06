@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -25,38 +25,45 @@ export const GsheetsSyncStatus = () => {
   const [forceHide, setForceHide] = useState(
     !isAdmin || settingStatus !== "loading",
   );
-  const syncError = useRef<{ error: boolean; message?: string }>({
-    error: false,
-  });
+  const [syncError, setSyncError] = useState({ error: false, message: "" });
 
-  const shouldPoll =
-    isAdmin && !syncError.current.error && settingStatus === "loading";
+  const shouldPoll = isAdmin && settingStatus === "loading";
 
-  const { data: folderSync, error: folderSyncError } = useGetGsheetsFolderQuery(
+  const { currentData: folderSync, error: apiError } = useGetGsheetsFolderQuery(
     shouldPoll ? undefined : skipToken,
     { pollingInterval: 3000 },
   );
 
-  if (folderSyncError) {
-    // if there is an error from the folder query, we want to stop polling and save the error
-    syncError.current = {
-      error: true,
-      message: (folderSyncError as ErrorPayload)?.data?.message,
-    };
-  }
-
-  // if our polling endpoint changes away from loading, refresh the settings
+  // if our polling endpoint changes away from loading, refresh the settings and show error, if any
   useEffect(() => {
-    if (folderSync?.status !== "loading" || syncError.current.error) {
+    if (folderSync?.status !== "loading" || apiError) {
+      if (apiError) {
+        setSyncError({
+          error: true,
+          message: (apiError as ErrorPayload)?.data?.message ?? "",
+        });
+      }
       dispatch(reloadSettings());
     }
-  }, [folderSync, dispatch, settingStatus, syncError.current.error]);
+  }, [folderSync, dispatch, settingStatus, apiError]);
 
-  // if our setting changed to loading from something else, reset the force hide
   useEffect(() => {
+    // if our setting changed to loading from something else, reset the force hide and clear any errors
     if (settingStatus === "loading" && previousSettingStatus !== "loading") {
       setForceHide(false);
-      syncError.current = { error: false };
+      setSyncError({
+        error: false,
+        message: "",
+      });
+    }
+
+    // if our setting changed to not-connected from loading and we don't have an error, force hide
+    if (
+      settingStatus === "not-connected" &&
+      previousSettingStatus === "loading" &&
+      !syncError.error
+    ) {
+      setForceHide(true);
     }
   }, [settingStatus, previousSettingStatus, syncError]);
 
@@ -66,7 +73,7 @@ export const GsheetsSyncStatus = () => {
 
   const displayStatus = match({
     folderSyncStatus: folderSync?.status,
-    folderSyncError: syncError.current?.error,
+    folderSyncError: syncError.error,
     settingStatus,
   })
     .returnType<GsheetsStatus>()
@@ -81,7 +88,7 @@ export const GsheetsSyncStatus = () => {
     <GsheetsSyncStatusView
       status={displayStatus}
       db_id={folderSync?.db_id}
-      error={syncError.current.message ?? ""}
+      error={syncError.message ?? ""}
       onClose={() => setForceHide(true)}
     />
   );
