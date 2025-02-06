@@ -200,7 +200,7 @@ export const BaseChartSettings = ({
             />
           </SectionContainer>
         )}
-        <ChartSettingsListContainer>
+        <ChartSettingsListContainer data-testid="chartsettings-list-container">
           <ChartSettingsWidgetList
             widgets={visibleWidgets}
             extraWidgetProps={extraWidgetProps}
