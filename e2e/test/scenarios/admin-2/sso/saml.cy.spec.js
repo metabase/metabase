@@ -116,13 +116,6 @@ const enterSamlSettings = () => {
       /SAML Identity Provider URL/,
       "https://example.test",
     );
-    // paste this long value to not waste time typing
-    cy.findByLabelText(/SAML Identity Provider Certificate/)
-      .click()
-      .invoke("val", certificate);
-    // do a little typing to invoke the blur event
-    cy.findByLabelText(/SAML Identity Provider Certificate/)
-      .type("a{backspace}")
-      .blur();
+    H.typeAndBlurUsingLabel(/SAML Identity Provider Certificate/, certificate);
   });
 };
