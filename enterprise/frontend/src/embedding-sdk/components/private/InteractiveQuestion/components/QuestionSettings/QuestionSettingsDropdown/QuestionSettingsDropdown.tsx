@@ -12,7 +12,7 @@ export const QuestionSettingsDropdown = ({
   ...popoverProps
 }: {
   height?: CSSProperties["height"];
-} & PopoverProps) => (
+} & Omit<PopoverProps, "children"> = {}) => (
   <Popover position="bottom-end" {...popoverProps}>
     <Popover.Target>
       <ToolbarButton

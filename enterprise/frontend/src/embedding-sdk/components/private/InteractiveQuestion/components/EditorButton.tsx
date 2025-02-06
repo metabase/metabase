@@ -1,3 +1,5 @@
+import type { HTMLAttributes } from "react";
+
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import { ActionIcon, type ActionIconProps, Icon } from "metabase/ui";
@@ -5,10 +7,12 @@ import { ActionIcon, type ActionIconProps, Icon } from "metabase/ui";
 import S from "./EditorButton.module.css";
 export const EditorButton = ({
   isOpen,
+  onClick,
   ...actionIconProps
 }: {
   isOpen: boolean;
-} & ActionIconProps) => {
+} & ActionIconProps &
+  HTMLAttributes<HTMLButtonElement>) => {
   const { question } = useInteractiveQuestionContext();
 
   return (

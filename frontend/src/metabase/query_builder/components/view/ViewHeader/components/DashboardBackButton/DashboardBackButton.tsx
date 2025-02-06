@@ -1,3 +1,4 @@
+import type { HTMLAttributes } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -12,7 +13,8 @@ import DashboardBackButtonS from "./DashboardBackButton.module.css";
 export type DashboardBackButtonProps = {
   noLink?: boolean;
   onClick?: () => void;
-} & ActionIconProps;
+} & ActionIconProps &
+  HTMLAttributes<HTMLButtonElement>;
 
 export function DashboardBackButton({
   noLink,
