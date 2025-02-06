@@ -31,8 +31,8 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   showSidebarTitle: false,
   modal: null,
   modalContext: null,
-  highlightedSqlQueryLineNumbers: [],
-  isSqlQueryFixApplied: false,
+  isNativeQueryFixApplied: false,
+  highlightedNativeQueryLineNumbers: [],
 };
 
 export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {

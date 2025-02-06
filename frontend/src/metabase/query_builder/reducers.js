@@ -122,7 +122,9 @@ export const uiControls = handleActions(
     [UPDATE_QUESTION]: {
       next: (state, { payload }) => ({
         ...state,
-        highlightedSqlQueryLineNumbers: [],
+        highlightedNativeQueryLineNumbers: state.isNativeQueryFixApplied
+          ? DEFAULT_UI_CONTROLS.highlightedNativeQueryLineNumbers
+          : state.highlightedNativeQueryLineNumbers,
       }),
     },
     [TOGGLE_DATA_REFERENCE]: {
@@ -190,8 +192,9 @@ export const uiControls = handleActions(
     [RUN_QUERY]: state => ({
       ...state,
       isRunning: true,
-      isSqlQueryFixApplied: false,
-      highlightedSqlQueryLineNumbers: [],
+      isNativeQueryFixApplied: false,
+      highlightedNativeQueryLineNumbers:
+        DEFAULT_UI_CONTROLS.highlightedNativeQueryLineNumbers,
     }),
     [CANCEL_QUERY]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),

@@ -52,15 +52,15 @@ export function VisualizationError({
     dispatch(updateQuestion(newQuestion));
     dispatch(
       setUIControls({
-        highlightedSqlQueryLineNumbers: lineNumbers,
+        highlightedNativeQueryLineNumbers: lineNumbers,
         isNativeEditorOpen: true,
-        isSqlQueryFixApplied: true,
+        isNativeQueryFixApplied: true,
       }),
     );
   };
 
   const handleSqlQueryHighlight = (lineNumbers: number[]) => {
-    dispatch(setUIControls({ highlightedSqlQueryLineNumbers: lineNumbers }));
+    dispatch(setUIControls({ highlightedNativeQueryLineNumbers: lineNumbers }));
   };
 
   const isNative = question && Lib.queryDisplayInfo(query).isNative;

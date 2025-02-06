@@ -50,8 +50,8 @@ export interface QueryBuilderUIControls {
   modal: QueryModalType | null;
   modalContext: TimelineEventId | null;
   dataReferenceStack: null;
-  highlightedSqlQueryLineNumbers: number[];
-  isSqlQueryFixApplied: boolean;
+  isNativeQueryFixApplied: boolean;
+  highlightedNativeQueryLineNumbers: number[];
 }
 
 export interface QueryBuilderLoadingControls {

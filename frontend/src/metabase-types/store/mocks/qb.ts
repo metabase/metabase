@@ -33,8 +33,8 @@ export const createMockQueryBuilderUIControlsState = (
   modal: null,
   modalContext: null,
   dataReferenceStack: null,
-  highlightedSqlQueryLineNumbers: [],
-  isSqlQueryFixApplied: false,
+  isNativeQueryFixApplied: false,
+  highlightedNativeQueryLineNumbers: [],
   ...opts,
 });
 
