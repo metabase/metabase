@@ -20,7 +20,7 @@ jobs:
     name: Generative Query Test
     env:
       CI: 'true'
-      MB_TEST_QGEN_SEED_VALUE: ${{ inputs.seed }}
+      MB_TEST_QGEN_SEED: ${{ inputs.seed }}
       MB_TEST_QGEN_ITERATIONS: ${{ inputs.iterations }}
       # TODO: Will probably remove next line in favor of new cp root.
       MB_TEST_QGEN_RUN: true

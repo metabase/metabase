@@ -26,7 +26,7 @@
 
 (defn initial-seed
   []
-  (or (config/config-long :mb-test-run-seed)
+  (or (config/config-long :mb-test-qgen-seed)
       (.nextLong ^java.util.Random *generator*)))
 
 ;; initial seed or nothing

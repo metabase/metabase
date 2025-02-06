@@ -38,9 +38,11 @@
   ;; should be part of init sequence for tests
   ;; should eg. parse json, that will be stored in `run-spec`
 (deftest ^:parallel basic-gen-query-test-2
-  (when (config/config-bool :mb-test-run-generative-test)
+  (when (config/config-bool :mb-test-qgen-run)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-          iterations (config/config-int :mb-test-query-iteration-count)]
+          ;; TODO: Probably common config ns
+          iterations (or (config/config-int :mb-test-query-iterations) 
+                         100)]
       (tu.rng/with-generator [iterations query (try (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                                         (lib.tu.gen/random-queries-from 1)
                                                         first)
@@ -61,7 +63,7 @@
                 (is (<= 1 (count (mt/cols result))))
                 (is (true? (apply (every-pred :name :base_type :display_name) (mt/cols result)))))))
           (catch Throwable t
-            (log/error "Test: `CURRENT_TEST_NAME` failed")
+            (log/error  "Test: `CURRENT_TEST_NAME` failed")
             (log/errorf "Seed: %d" &seed)
             (log/errorf "Query:\n %s" (with-out-str (clojure.pprint/pprint query)))))))))
 
