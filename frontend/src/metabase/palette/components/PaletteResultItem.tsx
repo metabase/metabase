@@ -41,6 +41,8 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       c={active ? "var(--mb-color-text-white)" : "var(--mb-color-text-dark)"}
       aria-label={item.name}
       aria-disabled={item.disabled ? true : false}
+      // eslint-disable-next-line react/forbid-component-props
+      sx={item.extra?.sx}
     >
       {/** Icon Container */}
       {icon && (

@@ -1,3 +1,4 @@
+import type { Sx } from "@mantine/core"; // eslint-disable-line no-restricted-imports
 import type { LocationDescriptor } from "history";
 import type { Action, ActionImpl } from "kbar";
 import type React from "react";
@@ -18,6 +19,7 @@ interface PaletteActionExtras {
     iconColor?: string;
     /** subtext: text to come after the item name */
     subtext?: React.ReactNode;
+    sx?: Sx;
   };
   disabled?: boolean;
 }

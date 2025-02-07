@@ -45,11 +45,14 @@ export const useMetabotAgent = () => {
     confirmationOptions,
     dismissUserMessage: (messageIndex: number) =>
       dispatch(dismissUserMessage(messageIndex)),
-    submitInput: async (message: string) => {
-      const context = getChatContext();
-      const history = sendMessageReq.data?.history || [];
-      await dispatch(submitInput({ message, context, history }));
-    },
+    submitInput: useCallback(
+      async (message: string) => {
+        const context = getChatContext();
+        const history = sendMessageReq.data?.history || [];
+        await dispatch(submitInput({ message, context, history }));
+      },
+      [dispatch, getChatContext, sendMessageReq.data?.history],
+    ),
     isDoingScience: sendMessageReq.isLoading || isProcessing,
   };
 };
