@@ -29,12 +29,28 @@
               {})))))
   (testing "Tables"
     (let [results-url "/auto/dashboard/table/42"]
+      (are [id] (= {:output (str (public-settings/site-url) results-url)
+                    :reactions [{:type :metabot.reaction/redirect :url results-url}]}
+                   (metabot-v3.tools.interface/*invoke-tool*
+                    :metabot.tool/generate-insights
+                    {:for {:table_id id}}
+                    {}))
+        42
+        "42"))
+    (let [results-url "/auto/dashboard/table/card__42"]
       (is (= {:output (str (public-settings/site-url) results-url)
               :reactions [{:type :metabot.reaction/redirect :url results-url}]}
              (metabot-v3.tools.interface/*invoke-tool*
               :metabot.tool/generate-insights
-              {:for {:table_id 42}}
-              {})))))
+              {:for {:table_id "card__42"}}
+              {}))))
+    (are [id] (= {:output "Invalid table_id"}
+                 (metabot-v3.tools.interface/*invoke-tool*
+                  :metabot.tool/generate-insights
+                  {:for {:table_id id}}
+                  {}))
+      :42
+      "table_name"))
   (testing "Queries"
     (let [query-id (u/generate-nano-id)
           query {:database 1
