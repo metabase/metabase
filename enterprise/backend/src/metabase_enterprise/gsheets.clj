@@ -102,6 +102,8 @@
                      (u/prog1 not-connected
                        (setting/set-value-of-type! :json :gsheets <>)))))
 
+(defn- seconds-from-epoch-now [] (.getEpochSecond (t/instant)))
+
 (mr/def ::gsheets [:map
                    [:status                      [:enum "not-connected" "loading" "complete"]]
                    [:folder_url {:optional true} ms/NonBlankString]])
@@ -193,18 +195,10 @@
     (error-response-in-body (tru "Google Sheets integration is not enabled.") {:status-code 402}))
   {:email (hm-service-account-email)})
 
-(defn- seconds-from-epoch-now []
-  (.getEpochSecond (t/instant)))
-
-(defn- check-allowed-url [url]
-  (when-not (re-matches #".*drive\.google\.com.*" url)
-    (tru "Only Google Drive URLs are allowed at this time.") {}))
-
 (api.macros/defendpoint :post "/folder" :- ::gsheets
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
   [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
   (api/check-superuser)
-  (check-allowed-url url)
   (let [[status response] (hm-create-gdrive-conn url)]
     (if (= status :ok)
       (u/prog1 {:status "loading"
@@ -308,7 +302,7 @@
   (api.macros/ns-handler *ns*))
 
 (comment
-  (require '[metabase.util.json :as json]) ;; TEMP (gsheets)
+   ;; TEMP (gsheets)
 
   (def drive-folder-url
     "https://drive.google.com/drive/folders/1H2gz8_TUsCNyFpooFeQB8Y7FXRZA_esH?usp=drive_link")
@@ -325,9 +319,15 @@
 
   (reset-gsheets-status)
 
-  ;; need an "attached dwh" locally?
-  (t2/update! :model/Database 1 {:is_attached_dwh true})
 
-  (t2/update! :model/Database 1 {:is_attached_dwh true
-                                 :settings (json/encode {:auto-cruft-tables ["^feedback$"]
-                                                         :auto-cruft-columns ["^email$"]})}))
+  (require '[metabase.util.json :as json])
+  ;; need an "attached dwh" locally?
+  (t2/update! :model/Database 1
+              {:is_attached_dwh true
+               :settings
+               (json/encode
+                {:auto-cruft-tables [".*_dlt_loads$", ".*_dlt_pipeline_state$", ".*_dlt_sentinel_table$",
+                ".*_dlt_spreadsheet_info$", ".*_dlt_version$"]
+                 :auto-cruft-columns ["^_dlt_id$", "^_dlt_load_id$"]})})
+
+  )

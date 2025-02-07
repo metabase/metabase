@@ -162,6 +162,18 @@
           (is (partial= {:status "complete" :folder_url gdrive-link :db_id 1}
                         (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder"))))))))
 
+(deftest get-folder-timeout-test
+  (with-sample-db-as-dwh
+    (with-redefs [hm.client/make-request (partial mock-make-request (+syncing (happy-responses)))]
+      (let [resp (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link})]
+        (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly nil)
+                      gsheets.api/seconds-from-epoch-now (constantly
+                                                          ;; set "now" to 1 second after now + folder upload time:
+                                                          (+ 1 @#'gsheets.api/*folder-setup-timeout-seconds* (:folder-upload-time resp)))]
+          (is (= {:errors true, :message "Timeout syncing google drive folder, please try again."}
+                 (mt/user-http-request :crowberto :get 408 "ee/gsheets/folder"))
+              "When we timeout, we should return an error."))))))
+
 (deftest delete-folder-test
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
     (with-redefs [hm.client/make-request (partial mock-make-request (happy-responses))]
