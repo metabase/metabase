@@ -3,7 +3,7 @@ import {
   autocompletion,
   moveCompletionSelection,
 } from "@codemirror/autocomplete";
-import { insertTab } from "@codemirror/commands";
+import { indentMore } from "@codemirror/commands";
 import {
   HighlightStyle,
   foldService,
@@ -118,7 +118,7 @@ function disableCmdEnter() {
       },
       {
         key: "Tab",
-        run: insertTab,
+        run: indentMore,
       },
       {
         key: "Mod-j",
