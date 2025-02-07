@@ -20,7 +20,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.test-metadata :as meta]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
@@ -4217,7 +4216,7 @@
                                      :type card-type}))))))))
 
 (deftest cannot-save-metric-with-formula-cycle
-  (testing (str "Cannot join a metric with itself.")
+  (testing "Cannot join a metric with itself."
     (let [mp (mt/metadata-provider)
           query-a (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $q
                     (lib/aggregate $q (lib/count))
