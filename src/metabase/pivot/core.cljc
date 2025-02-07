@@ -240,8 +240,6 @@
           [node (first subtotal)]
           [node])))))
 
-
-
 (defn add-subtotals
   "Adds subtotals to the row tree if needed, based on column settings."
   [row-tree row-indexes col-settings]
@@ -251,4 +249,57 @@
         not-flat         (some #(> (count (:children %)) 1) row-tree)
         res              (mapcat (fn [row-item] (add-subtotal row-item show-subs-by-col (or not-flat (> (count (:children row-item)) 1)))) row-tree)]
     res))
+
+(comment
+;;function addValueColumnNodes(nodes, valueColumns) {
+;;  const leafNodes = valueColumns.map(([column, columnSettings]) => {
+;;    return {
+;;      value: columnSettings.column_title || displayNameForColumn(column),
+;;      children: [],
+;;      isValueColumn: true,
+;;    };
+;;  });
+;;  if (nodes.length === 0) {
+;;    return leafNodes;
+;;  }
+;;  if (valueColumns.length <= 1) {
+;;    return nodes;
+;;  }
+;;  function updateNode(node) {
+;;    const children =
+;;      node.children.length === 0 ? leafNodes : node.children.map(updateNode);
+;;    return { ...node, children };
+;;  }
+;;  return nodes.map(updateNode);
+;;}
+)
+
+(defn- display-name-for-col
+  "@tsp - ripped from frontend/src/metabase/lib/formatting/column.ts"
+  [column]
+  (or (:display_name (:remapped_to_column column))
+   (:display_name column)
+   "(empty)"))
+
+(defn- update-node
+  "TODO"
+  [node leaf-nodes]
+  (let [new-children (if (empty? (:children node))
+                       leaf-nodes
+                       (map #(update-node % leaf-nodes) (:children node)))]
+    (merge node {:children new-children})))
+
+(defn add-value-column-nodes
+  "TODO"
+  [col-tree col-indexes col-settings]
+  (let [val-cols (map (fn [idx] [(:column (nth col-settings idx)) (nth col-settings idx)]) col-indexes)
+        leaf-nodes (map (fn [[col col-setting]] {:value (or (:column_title col-setting) (display-name-for-col col))
+                                                 :children []
+                                                 :isValueColumn true})
+                        val-cols)]
+    (if (empty? col-tree)
+      leaf-nodes)
+    (if (<= (count val-cols) 1)
+      col-tree)
+    (map #(update-node % leaf-nodes) col-tree)))
 
