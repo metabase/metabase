@@ -5,7 +5,6 @@ import { merge } from "icepick";
 import { type ReactNode, useMemo } from "react";
 
 import { getThemeOverrides } from "../../../theme";
-import { themeColor } from "../../../utils/colors";
 import { DatesProvider } from "../DatesProvider";
 
 import "@mantine/core/styles.css"; // TODO: how to use in embedding?
@@ -30,8 +29,37 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     return {
       ...theme,
       fn: {
-        themeColor: (colorName: string) =>
-          themeColor(colorName, theme as MantineTheme),
+        themeColor: (
+          color: string,
+          shade?: number,
+          primaryFallback: boolean = true,
+          useSplittedShade: boolean = true,
+        ) => {
+          if (typeof color === "string" && color.includes(".")) {
+            const [splitterColor, _splittedShade] = color.split(".");
+            const splittedShade = parseInt(_splittedShade, 10);
+
+            if (
+              splitterColor in theme.colors &&
+              splittedShade >= 0 &&
+              splittedShade < 10
+            ) {
+              return theme.colors[splitterColor][
+                typeof shade === "number" && !useSplittedShade
+                  ? shade
+                  : splittedShade
+              ];
+            }
+          }
+
+          const _shade = typeof shade === "number" ? shade : theme.primaryShade;
+
+          return color in theme.colors
+            ? theme.colors[color][_shade]
+            : primaryFallback
+              ? theme.colors[theme.primaryColor][_shade]
+              : color;
+        },
       },
     } as MantineTheme;
   }, [props.theme]);
