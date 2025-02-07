@@ -48,12 +48,6 @@ export function multiLevelPivot(data, settings) {
 
   const { pivotData, columns } = Pivot.split_pivot_data(data);
 
-  console.log("TSP columnSplit: ", columnSplit);
-  console.log("TSP columns: ", columns);
-  console.log("TSP columnColumnIndexes: ", columnColumnIndexes);
-  console.log("TSP rowColumnIndexes: ", rowColumnIndexes);
-  console.log("TSP valueColumnIndexes: ", valueColumnIndexes);
-
   const columnSettings = columns.map(column => settings.column(column));
   const allCollapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
 
@@ -66,7 +60,6 @@ export function multiLevelPivot(data, settings) {
     _.range(columnColumnIndexes.length + rowColumnIndexes.length),
   );
 
-  const startBuildPivots = performance.now();
   const { rowTree, colTree, valuesByKey } = Pivot.build_pivot_trees(
     pivotData[primaryRowsKey],
     columns,
@@ -76,15 +69,7 @@ export function multiLevelPivot(data, settings) {
     columnSettings,
     collapsedSubtotals,
   );
-  const endBuildPivots = performance.now();
-  console.log(`TSP Pivot.build_pivot_trees took: ${endBuildPivots - startBuildPivots} ms`);
 
-  console.log("TSP BEFORE valuesByKey: ", valuesByKey);
-
-  // @tsp TESTING
-  // Iterate through valuesByKey and update valuesByKey[key].data[...] to add .col from .colIdx
-  // Using performance.now()
-  const start = performance.now();
   for (const [_, rowVal] of Object.entries(valuesByKey)) {
     rowVal["valueColumns"] = valueColumnIndexes.map(index => columns[index])
     for (const [_, dataVal] of Object.entries(rowVal.data)) {
@@ -94,10 +79,6 @@ export function multiLevelPivot(data, settings) {
       dimVal["column"] = columns[dimVal['colIdx']]
     }
   }
-  // Your code here
-  const end = performance.now();
-  console.log(`TSP adding cols took: ${end - start} ms`);
-  console.log("TSP END valuesByKey: ", valuesByKey);
 
   const rowColumnTree = rowTree || [];
   const columnColumnTree = colTree || [];
