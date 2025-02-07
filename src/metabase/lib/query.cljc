@@ -21,6 +21,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   #?(:clj [metabase.models.card.metadata :as card.metadata])
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -458,6 +459,7 @@
         card (when card-id (lib.metadata/card metadata-provider card-id))
         expanded-query (some->> card
                                 :dataset-query
+                                #?(:clj card.metadata/normalize-dataset-query)
                                 (query metadata-provider))]
     (stage-seq card-id expanded-query)))
 
