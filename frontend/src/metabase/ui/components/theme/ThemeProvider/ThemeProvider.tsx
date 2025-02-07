@@ -70,7 +70,7 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
       theme={theme}
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
       cssVariablesSelector=".mb-wrapper"
-      withStaticClasses={false}
+      classNamesPrefix="mb-mantine"
     >
       <_CompatibilityEmotionThemeProvider theme={theme}>
         <DatesProvider>{props.children}</DatesProvider>

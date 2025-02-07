@@ -45,9 +45,11 @@
 }
 
 /* Brought from Mantine v7 CSS reset */
-input,
-button,
-textarea,
-select {
-  font: inherit;
+:where(:global(.mb-wrapper)) {
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+  }
 }
