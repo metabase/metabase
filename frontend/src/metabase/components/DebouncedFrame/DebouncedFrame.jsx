@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import { Component, forwardRef } from "react";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -89,7 +89,16 @@ class DebouncedFrame extends Component {
         : this.props;
     return (
       <div
-        ref={r => (this._container = r)}
+        ref={r => {
+          if (this.props.forwardedRef) {
+            if (typeof this.props.forwardedRef === "function") {
+              this.props.forwardedRef(r);
+            } else {
+              this.props.forwardedRef = r;
+            }
+          }
+          return (this._container = r);
+        }}
         className={cx(className, CS.relative)}
         style={{
           overflow: "hidden",
@@ -107,4 +116,10 @@ class DebouncedFrame extends Component {
   }
 }
 
-export default ExplicitSize()(DebouncedFrame);
+const DebouncedFrameForwardRef = forwardRef(
+  function _DebouncedFrameRefWrapper(props, ref) {
+    return <DebouncedFrame {...props} forwardedRef={ref} />;
+  },
+);
+
+export default ExplicitSize()(DebouncedFrameForwardRef);

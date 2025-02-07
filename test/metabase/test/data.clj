@@ -42,7 +42,7 @@
     :as schema-migrations-test.impl]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]

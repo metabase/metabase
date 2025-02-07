@@ -17,12 +17,12 @@
    [metabase.models.interface :as mi]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
-   [metabase.models.permissions :as perms]
    [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
+   [metabase.permissions.core :as perms]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
@@ -46,7 +46,7 @@
 
 (doto :model/Dashboard
   (derive :metabase/model)
-  (derive ::perms/use-parent-collection-perms)
+  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 

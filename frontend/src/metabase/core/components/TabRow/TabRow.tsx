@@ -13,8 +13,11 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useMergedRef } from "@mantine/hooks";
 import {
   type ReactNode,
+  type Ref,
+  forwardRef,
   useCallback,
   useLayoutEffect,
   useRef,
@@ -39,95 +42,102 @@ interface TabRowProps<T> extends TabListProps<T> {
   ) => void;
 }
 
-function TabRowInner<T>({
-  width,
-  onChange,
-  children,
-  itemIds,
-  handleDragEnd,
-  ...props
-}: TabRowProps<T>) {
-  const tabListRef = useRef<HTMLDivElement>(null);
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const [showScrollRight, setShowScrollRight] = useState(false);
-  const showScrollLeft = scrollPosition > 0;
+const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
+  function TabRowInner<T>(
+    {
+      width,
+      onChange,
+      children,
+      itemIds,
+      handleDragEnd,
+      ...props
+    }: TabRowProps<T>,
+    ref: Ref<HTMLDivElement>,
+  ) {
+    const tabListRef = useRef<HTMLDivElement>(null);
+    const mergedRef = useMergedRef(tabListRef, ref);
 
-  const itemsCount = itemIds?.length ?? 0;
-  const previousItemsCount = usePreviousDistinct(itemsCount) ?? 0;
+    const [scrollPosition, setScrollPosition] = useState(0);
+    const [showScrollRight, setShowScrollRight] = useState(false);
+    const showScrollLeft = scrollPosition > 0;
 
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 10 },
-  });
+    const itemsCount = itemIds?.length ?? 0;
+    const previousItemsCount = usePreviousDistinct(itemsCount) ?? 0;
 
-  // Needed for DnD e2e tests to work
-  // See https://github.com/clauderic/dnd-kit/issues/208#issuecomment-824469766
-  const mouseSensor = useSensor(MouseSensor, {
-    activationConstraint: { distance: 10 },
-  });
+    const pointerSensor = useSensor(PointerSensor, {
+      activationConstraint: { distance: 10 },
+    });
 
-  const scroll = useCallback(
-    (direction: "left" | "right") => {
-      if (!tabListRef.current || !width) {
+    // Needed for DnD e2e tests to work
+    // See https://github.com/clauderic/dnd-kit/issues/208#issuecomment-824469766
+    const mouseSensor = useSensor(MouseSensor, {
+      activationConstraint: { distance: 10 },
+    });
+
+    const scroll = useCallback(
+      (direction: "left" | "right") => {
+        if (!tabListRef.current || !width) {
+          return;
+        }
+        const left = width * (direction === "left" ? -1 : 1);
+        tabListRef.current.scrollBy?.({ left, behavior: "instant" });
+      },
+      [width],
+    );
+
+    useLayoutEffect(() => {
+      if (itemsCount - previousItemsCount === 1) {
+        scroll("right");
+      }
+    }, [itemsCount, previousItemsCount, scroll]);
+
+    useLayoutEffect(() => {
+      if (!width || !tabListRef.current) {
         return;
       }
-      const left = width * (direction === "left" ? -1 : 1);
-      tabListRef.current.scrollBy?.({ left, behavior: "instant" });
-    },
-    [width],
-  );
 
-  useLayoutEffect(() => {
-    if (itemsCount - previousItemsCount === 1) {
-      scroll("right");
-    }
-  }, [itemsCount, previousItemsCount, scroll]);
+      setShowScrollRight(
+        Math.round(scrollPosition + width) < tabListRef.current?.scrollWidth,
+      );
+    }, [scrollPosition, width]);
 
-  useLayoutEffect(() => {
-    if (!width || !tabListRef.current) {
-      return;
-    }
+    const onDragEnd = (event: DragEndEvent) => {
+      if (!event.over || !handleDragEnd) {
+        return;
+      }
+      handleDragEnd(event.active.id, event.over.id);
+    };
 
-    setShowScrollRight(
-      Math.round(scrollPosition + width) < tabListRef.current?.scrollWidth,
-    );
-  }, [scrollPosition, width]);
-
-  const onDragEnd = (event: DragEndEvent) => {
-    if (!event.over || !handleDragEnd) {
-      return;
-    }
-    handleDragEnd(event.active.id, event.over.id);
-  };
-
-  return (
-    <TabList
-      onChange={onChange as (value: unknown) => void}
-      onScroll={event => setScrollPosition(event.currentTarget.scrollLeft)}
-      ref={tabListRef}
-      {...props}
-    >
-      <DndContext
-        onDragEnd={onDragEnd}
-        modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
-        sensors={[pointerSensor, mouseSensor]}
-        collisionDetection={tabsCollisionDetection}
+    return (
+      <TabList
+        onChange={onChange as (value: unknown) => void}
+        onScroll={event => setScrollPosition(event.currentTarget.scrollLeft)}
+        ref={mergedRef}
+        {...props}
       >
-        <SortableContext
-          items={itemIds ?? []}
-          strategy={horizontalListSortingStrategy}
+        <DndContext
+          onDragEnd={onDragEnd}
+          modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
+          sensors={[pointerSensor, mouseSensor]}
+          collisionDetection={tabsCollisionDetection}
         >
-          {children}
-        </SortableContext>
-      </DndContext>
-      {showScrollLeft && (
-        <ScrollArrow direction="left" onClick={() => scroll("left")} />
-      )}
-      {showScrollRight && (
-        <ScrollArrow direction="right" onClick={() => scroll("right")} />
-      )}
-    </TabList>
-  );
-}
+          <SortableContext
+            items={itemIds ?? []}
+            strategy={horizontalListSortingStrategy}
+          >
+            {children}
+          </SortableContext>
+        </DndContext>
+        {showScrollLeft && (
+          <ScrollArrow direction="left" onClick={() => scroll("left")} />
+        )}
+        {showScrollRight && (
+          <ScrollArrow direction="right" onClick={() => scroll("right")} />
+        )}
+      </TabList>
+    );
+  },
+);
 
 export const TabRow = ExplicitSize<TabRowProps<unknown>>()(TabRowInner) as <T>(
   props: TabRowProps<T>,

@@ -7,11 +7,7 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  createDashboard,
-  describeEE,
-  getTextCardDetails,
-} from "e2e/support/helpers";
+import { createDashboard, getTextCardDetails } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -20,7 +16,7 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Stack } from "metabase/ui";
 
-describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
+describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
