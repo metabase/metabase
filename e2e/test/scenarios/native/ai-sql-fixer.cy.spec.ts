@@ -4,7 +4,7 @@ const { H } = cy;
 
 const FIX_MESSAGE = "Fixes applied. Run your query to view results.";
 
-H.describeEE("scenarios > native > ai sql fixer", () => {
+describe("scenarios > native > ai sql fixer", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

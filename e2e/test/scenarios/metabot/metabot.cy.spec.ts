@@ -4,7 +4,6 @@ import {
   closeMetabotViaShortcutKey,
   metabotChatInput,
   mockMetabotResponse,
-  onlyOnEE,
   openMetabotViaNewMenu,
   openMetabotViaShortcutKey,
   popover,
@@ -42,7 +41,6 @@ describe("Metabot UI", () => {
   // token feature has been disabled so skipping for now - there's currently decent coverage for UI related things in our unit tests
   describe.skip("EE", () => {
     beforeEach(() => {
-      onlyOnEE();
       setTokenFeatures("all");
       cy.visit("/");
       cy.wait("@sessionProperties");
