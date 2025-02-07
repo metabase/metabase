@@ -467,12 +467,15 @@
   (let [card-id  (:source-card  stage)
         table-id (:source-table stage)
         from-id  (::from-card   stage)]
-    (cond-> graph
-      card-id  (dep/depend [:card from-id] [:card  card-id])
-      table-id (dep/depend [:card from-id] [:table table-id]))))
+    (try
+      (cond-> graph
+        card-id  (dep/depend [:card from-id] [:card  card-id])
+        table-id (dep/depend [:card from-id] [:table table-id]))
+      (catch #?(:clj Exception :cljs :default) _e
+        (throw (ex-info (i18n/tru "Cannot save card with cycles.") {}))))))
 
-(defn- build-graph [graph source-id metadata-provider dataset-query]
-  (loop [graph graph
+(defn- build-graph [source-id metadata-provider dataset-query]
+  (loop [graph (dep/graph)
          stages-visited 0
          stages (stage-seq source-id dataset-query)]
     (cond
@@ -480,7 +483,7 @@
       graph
 
       (> stages-visited 50)
-      (throw (ex-info "Too much recursion; giving up." {}))
+      (throw (ex-info (i18n/tru "The chain of dependencies is too long to save card.") {}))
 
       :else
       (let [[stage & stages] stages]
@@ -488,21 +491,12 @@
                (inc stages-visited)
                (concat stages (expand-stage metadata-provider stage)))))))
 
-(defn- has-no-cycles?
-  [card-id dataset-query]
-  (try
-    ;; build a graph of dependencies from the stages
-    ;; throws ex-info if there's a cycle
-    (build-graph (dep/graph) card-id dataset-query dataset-query)
-    ;; no throw, so return true
-    true
-    (catch #?(:clj clojure.lang.ExceptionInfo
-              :cljs js/Error) _e
-      false)))
-
-(defn can-overwrite?
-  "Returns true if the card with given `card-id` can be overwritten with `dataset-query`.
+(defn check-overwrite
+  "Returns nil if the card with given `card-id` can be overwritten with `dataset-query`.
+  Throws `ExceptionInfo` with a user-facing message otherwise.
 
   Currently checks for cycles (self-referencing queries)."
   [card-id dataset-query]
-  (has-no-cycles? card-id dataset-query))
+  (build-graph card-id dataset-query dataset-query)
+  ;; return nil if nothing throws
+  nil)

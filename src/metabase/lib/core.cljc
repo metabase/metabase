@@ -311,10 +311,10 @@
  [lib.normalize
   normalize]
  [lib.query
-  can-overwrite?
   can-preview
   can-run
   can-save
+  check-overwrite
   preview-query
   query
   stage-count
