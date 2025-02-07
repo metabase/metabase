@@ -126,7 +126,6 @@
                          (fn [index value]
                            {:value value
                             :colIdx index})
-                            ;;:col (nth cols index)})
                          row)
              ;; @tsp TODO? this could use the `data` above
              dimensions (->> row
@@ -138,7 +137,6 @@
          (assoc acc
                 value-key
                 {:values values
-                 ;;:valueColumns value-cols
                  :data data
                  :dimensions dimensions})))
      {}
@@ -171,8 +169,7 @@
 (defn build-pivot-trees
   "TODO"
   [rows cols row-indexes col-indexes val-indexes col-settings collapsed-subtotals]
-  (let [start (js/Date.now)
-        {:keys [row-tree col-tree]}
+  (let [{:keys [row-tree col-tree]}
         (reduce
          (fn [{:keys [row-tree col-tree]} row]
            (let [row-path (select-indexes row row-indexes)
@@ -187,9 +184,7 @@
         col-sort-orders (sort-orders-from-settings col-settings col-indexes)
         sorted-row-tree (sort-tree collapsed-row-tree row-sort-orders)
         sorted-col-tree (sort-tree col-tree col-sort-orders)
-        values-by-key   (build-values-by-key rows cols row-indexes col-indexes val-indexes)
-        end (js/Date.now)]
-    (println "TSP build-pivot-trees took: " (- end start) "ms")
+        values-by-key   (build-values-by-key rows cols row-indexes col-indexes val-indexes)]
     {:row-tree sorted-row-tree
      :col-tree sorted-col-tree
      :values-by-key values-by-key}))
@@ -249,30 +244,6 @@
         not-flat         (some #(> (count (:children %)) 1) row-tree)
         res              (mapcat (fn [row-item] (add-subtotal row-item show-subs-by-col (or not-flat (> (count (:children row-item)) 1)))) row-tree)]
     res))
-
-(comment
-;;function addValueColumnNodes(nodes, valueColumns) {
-;;  const leafNodes = valueColumns.map(([column, columnSettings]) => {
-;;    return {
-;;      value: columnSettings.column_title || displayNameForColumn(column),
-;;      children: [],
-;;      isValueColumn: true,
-;;    };
-;;  });
-;;  if (nodes.length === 0) {
-;;    return leafNodes;
-;;  }
-;;  if (valueColumns.length <= 1) {
-;;    return nodes;
-;;  }
-;;  function updateNode(node) {
-;;    const children =
-;;      node.children.length === 0 ? leafNodes : node.children.map(updateNode);
-;;    return { ...node, children };
-;;  }
-;;  return nodes.map(updateNode);
-;;}
-)
 
 (defn- display-name-for-col
   "@tsp - ripped from frontend/src/metabase/lib/formatting/column.ts"
