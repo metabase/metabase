@@ -11,7 +11,7 @@ import {
   setupSaml,
 } from "./shared/helpers";
 
-H.describeEE("scenarios > admin > settings > SSO > SAML", () => {
+describe("scenarios > admin > settings > SSO > SAML", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

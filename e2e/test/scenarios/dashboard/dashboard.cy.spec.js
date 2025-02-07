@@ -1533,7 +1533,7 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
   });
 });
 
-H.describeEE("scenarios > dashboard > caching", () => {
+describe("scenarios > dashboard > caching", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

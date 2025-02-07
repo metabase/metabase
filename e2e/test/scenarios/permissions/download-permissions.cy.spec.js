@@ -22,7 +22,7 @@ const {
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DOWNLOAD_PERMISSION_INDEX = 2;
 
-H.describeEE("scenarios > admin > permissions > data > downloads", () => {
+describe("scenarios > admin > permissions > data > downloads", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
