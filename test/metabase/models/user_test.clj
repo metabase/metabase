@@ -412,10 +412,9 @@
     (testing "should clear out all existing Sessions"
       (mt/with-temp [:model/User {user-id :id} {}]
         (dotimes [_ 2]
-          (t2/insert! :model/Session {
-              :id (session/generate-session-id)
-              :key_hashed (session/hash-session-key (session/generate-session-key)),
-              :user_id user-id}))
+          (t2/insert! :model/Session {:id (session/generate-session-id)
+                                      :key_hashed (session/hash-session-key (session/generate-session-key)),
+                                      :user_id user-id}))
         (letfn [(session-count [] (t2/count :model/Session :user_id user-id))]
           (is (= 2
                  (session-count)))
