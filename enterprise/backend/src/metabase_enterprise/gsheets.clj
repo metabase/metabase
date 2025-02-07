@@ -165,6 +165,17 @@
             (filter is-gdrive? (or (some-> response :body) [])))
       [])))
 
+(mu/defn- hm-delete-conn :- ::hm.client/http-reply
+  "Delete (presumably a gdrive) connection on HM."
+  [conn-id]
+  (hm.client/make-request :delete (str "/api/v2/mb/connections/" conn-id)))
+
+(defn- reset-gsheets-status []
+  (gsheets! not-connected)
+  (doseq [{:keys [id]} (hm-get-gdrive-conns)]
+    (hm-delete-conn id))
+  not-connected)
+
 (mu/defn hm-get-gdrive-conn :- ::hm.client/http-reply
   "Get a specific gdrive connection by id."
   [id]
@@ -177,11 +188,6 @@
   [drive-folder-url]
   (hm.client/make-request :post "/api/v2/mb/connections" {:type "gdrive" :secret {:resources [drive-folder-url]}}))
 
-(mu/defn- hm-delete-conn :- ::hm.client/http-reply
-  "Delete (presumably a gdrive) connection on HM."
-  [conn-id]
-  (hm.client/make-request :delete (str "/api/v2/mb/connections/" conn-id)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; FE <-> MB APIs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -192,6 +198,7 @@
   []
   (api/check-superuser)
   (when-not (api.auth/show-google-sheets-integration)
+    (reset-gsheets-status)
     (error-response-in-body (tru "Google Sheets integration is not enabled.") {:status-code 402}))
   {:email (hm-service-account-email)})
 
@@ -206,8 +213,10 @@
                 :folder-upload-time (seconds-from-epoch-now)
                 :gdrive/conn-id (-> response :body :id)}
         (gsheets! <>))
-      (error-response-in-body
-       (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions.")))))
+      (do
+        (reset-gsheets-status)
+        (error-response-in-body
+         (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions."))))))
 
 (defn- sync-complete? [{:keys [status last-dwh-sync last-gdrive-conn-sync]}]
   (and (= status "active") ;; HM says the connection is active
@@ -227,12 +236,6 @@
   "We want to avoid polling forever, even if harbormaster never finishes the sync, so if the sync does not happen during
   this window, we'll error out, reset the gsheets status, and suggest trying again."
   (* 10 60))
-
-(defn- reset-gsheets-status []
-  (gsheets! not-connected)
-  (doseq [{:keys [id]} (hm-get-gdrive-conns)]
-    (hm-delete-conn id))
-  not-connected)
 
 (defn- handle-get-folder [attached-dwh]
   (let [[sstatus {conn :body}] (try (hm-get-gdrive-conn (:gdrive/conn-id (gsheets)))
@@ -272,9 +275,11 @@
                    :mb/sync-info {:status                status
                                   :last-dwh-sync         last-dwh-sync
                                   :last-gdrive-conn-sync last-gdrive-conn-sync})))
-      (error-response-in-body
-       (tru "Unable to find google drive connection.")
-       {:status-code 404}))))
+      (do
+        (reset-gsheets-status)
+        (error-response-in-body
+         (tru "Unable to find google drive connection.")
+         {:status-code 404})))))
 
 (api.macros/defendpoint :get "/folder" :- ::gsheets
   "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to
@@ -286,6 +291,7 @@
   (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
     (when-not (some? attached-dwh)
       (snowplow/track-event! ::snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
+      (reset-gsheets-status)
       (error-response-in-body (tru "No attached dwh found.")))
     (handle-get-folder attached-dwh)))
 
@@ -325,9 +331,7 @@
   (t2/update! :model/Database 1
               {:is_attached_dwh true
                :settings
-               (json/encode
-                {:auto-cruft-tables [".*_dlt_loads$", ".*_dlt_pipeline_state$", ".*_dlt_sentinel_table$",
-                ".*_dlt_spreadsheet_info$", ".*_dlt_version$"]
-                 :auto-cruft-columns ["^_dlt_id$", "^_dlt_load_id$"]})})
+               (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"
+                    "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")})
 
   )
