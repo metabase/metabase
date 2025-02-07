@@ -1,5 +1,5 @@
 const YAML = require("json-to-pretty-yaml");
-const rspack = require("@rspack/core");
+const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
@@ -115,29 +115,12 @@ module.exports = env => {
         "embedding-sdk": SDK_SRC_PATH,
         "process/browser": require.resolve("process/browser"),
       },
-      fallback: {
-        crypto: require.resolve("crypto-browserify"),
-        stream: require.resolve("stream-browserify"),
-        buffer: require.resolve("buffer/"),
-        process: require.resolve("process/browser"),
-      },
     },
     optimization: {
       minimize: false,
     },
     plugins: [
-      new rspack.EnvironmentPlugin({
-        EMBEDDING_SDK_VERSION: null,
-        IS_EMBEDDING_SDK_BUILD: false,
-      }),
-      new rspack.NormalModuleReplacementPlugin(
-        /node_modules\/@reduxjs\/toolkit\/.*\/process$/,
-        "process/browser",
-      ),
-      new rspack.ProvidePlugin({
-        process: "process/browser",
-        Buffer: ["buffer", "Buffer"],
-      }),
+      new NodePolyfillPlugin(),
       new StatsWriterPlugin({
         stats: {
           modules: true,
