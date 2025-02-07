@@ -10,19 +10,26 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/generate-insights
-  [_tool-name {what-for :for :as _arguments} env]
+(defn generate-insights
+  "Generate insights."
+  [{what-for :for, env ::env}]
   (try
-    (let [[k id] (some #(find what-for %) [:metric_id :table_id :report_id :query_id])
+    (let [[k id] (some #(find what-for %) [:metric_id :table_id :report_id :query_id :query])
           entity-type (case k
                         (:metric_id :report_id) "question"
                         :table_id "table"
-                        :query_id "adhoc"
+                        (:query :query_id) "adhoc"
                         (throw (ex-info (str "Cannot generate insights for " what-for) {:agent-error? true})))
-          entity-id (if (= entity-type "adhoc")
+          entity-id (case k
+                      :query_id
                       (-> env
                           (env/find-query id)
                           (or (throw (ex-info (str "No query found with query_id " id) {:agent-error? true})))
+                          json/encode
+                          .getBytes
+                          codecs/bytes->b64-str)
+                      :query
+                      (-> id
                           json/encode
                           .getBytes
                           codecs/bytes->b64-str)
@@ -32,3 +39,7 @@
        :reactions [{:type :metabot.reaction/redirect :url results-url}]})
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))
+
+(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/generate-insights
+  [_tool-name arguments env]
+  (generate-insights (assoc arguments ::env env)))
