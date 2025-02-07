@@ -273,6 +273,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         <Icon
           name="close"
           className={cx(CS.cursorPointer, CS.textLight, CS.textMediumHover)}
+          style={{ minWidth: 16 }}
           onClick={e => {
             e.stopPropagation();
             onRemove();

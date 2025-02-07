@@ -1,4 +1,4 @@
-(ns metabase.api.search
+(ns metabase.search.api
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -12,8 +12,8 @@
    [metabase.request.core :as request]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.task.search-index :as task.search-index]
    [metabase.task :as task]
-   [metabase.task.search-index :as task.search-index]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
