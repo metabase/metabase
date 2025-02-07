@@ -1,0 +1,86 @@
+name: Run tests
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      backend_all: ${{ steps.changes.outputs.backend_all }}
+      frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  static-viz-files-changed:
+    name: Check whether static-viz files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      static_viz: ${{ steps.static_viz.outputs.static_viz }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "files-changed"
+      - name: Build static-viz frontend
+        run: yarn build-static-viz
+      - name: Upload Static Viz Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-viz-bundle-${{ github.sha }}
+          path: resources/frontend_client/app/dist
+
+      - name: Check for static viz changes
+        uses: dorny/paths-filter@v3.0.0
+        id: static_viz
+        with:
+          token: ${{ github.token }}
+          filters: .github/static-viz-sources.yaml
+
+  backend-tests:
+    if: ${{ !cancelled() }}
+    needs: [files-changed, static-viz-files-changed]
+    uses: ./.github/workflows/backend.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
+
+  driver-tests:
+    needs: files-changed
+    uses: ./.github/workflows/drivers.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
+
+  frontend-tests:
+    needs: files-changed
+    uses: ./.github/workflows/frontend.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
+
+  e2e-tests:
+    needs: files-changed
+    uses: ./.github/workflows/e2e-tests.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}

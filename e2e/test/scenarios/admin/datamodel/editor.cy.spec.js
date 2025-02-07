@@ -441,7 +441,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
   });
 
-  H.describeEE("data model permissions", () => {
+  describe("data model permissions", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
