@@ -1186,7 +1186,7 @@ describe("issue 43077", () => {
   });
 });
 
-H.describeEE("issue 49160", () => {
+describe("issue 49160", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

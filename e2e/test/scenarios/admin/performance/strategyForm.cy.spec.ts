@@ -117,7 +117,7 @@ describe("scenarios > admin > performance > strategy form", () => {
     });
   });
 
-  H.describeEE("ee", () => {
+  describe("ee", () => {
     beforeEach(() => {
       H.restore();
       interceptPerformanceRoutes();

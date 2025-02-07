@@ -15,7 +15,7 @@ function checkLogo() {
 
 const MB = 1024 * 1024;
 
-H.describeEE("formatting > whitelabel", () => {
+describe("formatting > whitelabel", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
