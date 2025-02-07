@@ -5,16 +5,17 @@ import { QuestionNotebookButton } from "metabase/query_builder/components/view/V
 import { ActionIcon, type ActionIconProps, Icon } from "metabase/ui";
 
 import S from "./EditorButton.module.css";
-export const EditorButton = ({
-  isOpen = false,
-  onClick,
-  ...actionIconProps
-}: {
+
+export type EditorButtonProps = {
   isOpen?: boolean;
 } & ActionIconProps &
-  HTMLAttributes<HTMLButtonElement>) => {
-  const { question } = useInteractiveQuestionContext();
+  HTMLAttributes<HTMLButtonElement>;
 
+export const EditorButton = ({
+  isOpen = false,
+  ...actionIconProps
+}: EditorButtonProps) => {
+  const { question } = useInteractiveQuestionContext();
   return (
     question &&
     QuestionNotebookButton.shouldRender({

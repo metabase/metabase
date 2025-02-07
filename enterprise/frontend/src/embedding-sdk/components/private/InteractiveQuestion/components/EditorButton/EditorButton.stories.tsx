@@ -1,29 +1,29 @@
 import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import { Box, Stack } from "metabase/ui";
+import { Box } from "metabase/ui";
 
-import { QuestionSettings } from "./QuestionSettings";
+import { EditorButton, type EditorButtonProps } from "./EditorButton";
 
-const QUESTION_ID = (window as any).QUESTION_ID || 11;
+const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/QuestionSettings",
-  component: QuestionSettings,
+  title: "EmbeddingSDK/InteractiveQuestion/EditorButton",
+  component: EditorButton,
   parameters: {
     layout: "fullscreen",
+  },
+  args: {
+    isOpen: false,
   },
   decorators: [CommonSdkStoryWrapper],
 };
 
 export const Default = {
-  render() {
+  render(args: EditorButtonProps) {
     return (
       <Box p="lg">
         <InteractiveQuestion questionId={QUESTION_ID}>
-          <Stack>
-            <InteractiveQuestion.QuestionSettings />
-            <InteractiveQuestion.QuestionVisualization />
-          </Stack>
+          <InteractiveQuestion.EditorButton {...args} />
         </InteractiveQuestion>
       </Box>
     );

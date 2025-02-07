@@ -5,7 +5,7 @@ import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
 import type { ButtonProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { useInteractiveQuestionContext } from "../context";
+import { useInteractiveQuestionContext } from "../../context";
 
 export const QuestionResetButton = ({
   onClick,
