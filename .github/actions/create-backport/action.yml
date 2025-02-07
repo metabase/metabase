@@ -80,14 +80,13 @@ runs:
         github-token: ${{ inputs.github-token-2 }}
         number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
 
-    # FIXME - disabled for testing
-    # - name: Enable Pull Request Automerge
-    #   if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
-    #   uses: peter-evans/enable-pull-request-automerge@v2
-    #   with:
-    #     token: ${{ inputs.github-token }}
-    #     pull-request-number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
-    #     merge-method: squash
+    - name: Enable Pull Request Automerge
+      if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
+      uses: peter-evans/enable-pull-request-automerge@v2
+      with:
+        token: ${{ inputs.github-token }}
+        pull-request-number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
+        merge-method: squash
 
     - uses: ./.github/actions/notify-pull-request
       if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'true' }}

@@ -1,7 +1,7 @@
 name: Auto-backport
 on:
   pull_request:
-    # types: [closed, labeled] FIXME FOR TESTING
+    types: [closed, labeled]
 
 env:
   closed: closed
@@ -75,8 +75,7 @@ jobs:
         uses: ./.github/actions/create-backport
         with:
           target-version: ${{ fromJson(steps.get-latest-release-version.outputs.result).latest }}
-          # backport-commit: ${{ steps.find_commit.outputs.commit-sha }}
-          backport-commit: 5cad344fd0245bcef82797c23fd63074f0b26e7f # FIXME FOR TESTING
+          backport-commit: ${{ steps.find_commit.outputs.commit-sha }}
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           github-token-2: ${{ secrets.GITHUB_TOKEN }}
 
@@ -85,8 +84,7 @@ jobs:
         uses: ./.github/actions/create-backport
         with:
           target-version: ${{ fromJson(steps.get-latest-release-version.outputs.result).secondLatest }}
-          # backport-commit: ${{ steps.find_commit.outputs.commit-sha }}
-          backport-commit: 5cad344fd0245bcef82797c23fd63074f0b26e7f # FIXME FOR TESTING
+          backport-commit: ${{ steps.find_commit.outputs.commit-sha }}
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           github-token-2: ${{ secrets.GITHUB_TOKEN }}
 
@@ -95,8 +93,7 @@ jobs:
         uses: ./.github/actions/create-backport
         with:
           target-version: ${{ fromJson(steps.get-latest-release-version.outputs.result).thirdLatest }}
-          # backport-commit: ${{ steps.find_commit.outputs.commit-sha }}
-          backport-commit: 5cad344fd0245bcef82797c23fd63074f0b26e7f # FIXME FOR TESTING
+          backport-commit: ${{ steps.find_commit.outputs.commit-sha }}
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           github-token-2: ${{ secrets.GITHUB_TOKEN }}
 
