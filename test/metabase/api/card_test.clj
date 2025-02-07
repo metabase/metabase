@@ -4213,16 +4213,16 @@
                                                                     (lib.metadata/field mp (mt/id :orders :id))
                                                                     right-column)]))]
               (mt/user-http-request :crowberto :put 400 (str "card/" id)
-                                  {:dataset_query (lib/->legacy-MBQL query-with-self-join)
-                                   :type card-type}))))))))
+                                    {:dataset_query (lib/->legacy-MBQL query-with-self-join)
+                                     :type card-type}))))))))
 
 (deftest cannot-save-metric-with-formula-cycle
   (testing (str "Cannot join a metric with itself.")
     (let [mp (mt/metadata-provider)
           query-a (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $q
-                  (lib/aggregate $q (lib/count))
-                  (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
-                                                 (lib/breakoutable-columns $q))))]
+                    (lib/aggregate $q (lib/count))
+                    (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
+                                                   (lib/breakoutable-columns $q))))]
       (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :metric}]
         (let [query-b (lib/aggregate query-a (lib.metadata/metric mp id-a))]
           (mt/with-temp [:model/Card {id-b :id} {:dataset_query (lib/->legacy-MBQL query-b) :type :metric}]
