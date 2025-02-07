@@ -1,8 +1,8 @@
 (ns metabase-enterprise.advanced-permissions.api.channel-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.permissions :as perms]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]))
 
 (comment

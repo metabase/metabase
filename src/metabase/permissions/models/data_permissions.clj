@@ -1,4 +1,4 @@
-(ns metabase.models.data-permissions
+(ns metabase.permissions.models.data-permissions
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -161,6 +161,13 @@
 (def ^:dynamic *use-perms-cache?*
   "Bind to `false` to intentionally bypass the permissions cache and fetch data straight from the DB."
   true)
+
+(defmacro disable-perms-cache
+  "Intentionally bypass the permissions cache and fetch data straight from the DB."
+  {:style/indent 0}
+  [& body]
+  `(binding [*use-perms-cache?* false]
+     ~@body))
 
 (defn- get-permissions [user-id perm-type db-id]
   (if (or (= user-id api/*current-user-id*)

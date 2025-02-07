@@ -47,13 +47,13 @@
                          :parameters request-parameters}
                         e))))))
 
-(defn- implicit-action-table
-  [card_id]
-  (let [card (t2/select-one :model/Card :id card_id)
+(mu/defn- implicit-action-table
+  [card-id :- pos-int?]
+  (let [card (t2/select-one :model/Card :id card-id)
         {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
     (t2/hydrate (t2/select-one :model/Table :id table-id) :fields)))
 
-(defn- execute-custom-action [action request-parameters]
+(defn- execute-custom-action! [action request-parameters]
   (let [{action-type :type} action]
     (actions/check-actions-enabled! action)
     (let [model (t2/select-one :model/Card :id (:model_id action))]
@@ -151,7 +151,7 @@
                                     :type "id"
                                     :value [(get simple-parameters pk-field-name)]}]))))
 
-(defn- execute-implicit-action
+(defn- execute-implicit-action!
   [action request-parameters]
   (let [implicit-action (keyword (:kind action))
         {:keys [query row-parameters]} (build-implicit-query action implicit-action request-parameters)
@@ -189,9 +189,9 @@
         request-parameters     (merge missing-param-defaults request-parameters)]
     (case (:type action)
       :implicit
-      (execute-implicit-action action request-parameters)
+      (execute-implicit-action! action request-parameters)
       (:query :http)
-      (execute-custom-action action request-parameters)
+      (execute-custom-action! action request-parameters)
       (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action)))))
 
 (mu/defn execute-dashcard!

@@ -177,6 +177,8 @@
   metabase.models.setting/defsetting                                                   [[:block 1]]
   metabase.models.setting.multi-setting/define-multi-setting                           [[:inner 0]]
   metabase.models.task-history/with-task-history                                       [[:block 1]]
+  metabase.permissions.core/allow-changing-all-users-group-members                     [[:block 0]]
+  metabase.permissions.core/disable-perms-cache                                        [[:block 0]]
   metabase.query-processor-test.pipeline-queries-test/pmbql-query                      [[:block 1]]
   metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                  [[:block 1]]
   metabase.query-processor.debug/debug>                                                [[:block 0]]

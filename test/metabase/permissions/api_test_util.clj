@@ -1,8 +1,8 @@
-(ns metabase.api.permissions-test-util
+(ns metabase.permissions.api-test-util
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase.api.permission-graph :as api.permission-graph]
+   [metabase.permissions.api.permission-graph :as api.permission-graph]
    [metabase.util.malli.registry :as mr]))
 
 (def ^:private graph-output-schema

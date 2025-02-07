@@ -7,7 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.config :as config]
-   [metabase.permissions.util :as perms-util]
+   [metabase.permissions.core :as perms]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.search.config :as search.config]
@@ -172,8 +172,8 @@
                 :created-at                          created-at
                 :created-by                          (set created-by)
                 :current-user-id                     api/*current-user-id*
-                :is-impersonated-user?               (perms-util/impersonated-user?)
-                :is-sandboxed-user?                  (perms-util/sandboxed-user?)
+                :is-impersonated-user?               (perms/impersonated-user?)
+                :is-sandboxed-user?                  (perms/sandboxed-user?)
                 :is-superuser?                       api/*is-superuser?*
                 :current-user-perms                  @api/*current-user-permissions-set*
                 :filter-items-in-personal-collection filter-items-in-personal-collection
