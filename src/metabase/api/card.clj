@@ -246,8 +246,7 @@
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
   [metadata-provider dataset-query]
-  (let [pMBQL-query (-> dataset-query card.metadata/normalize-dataset-query)]
-    (lib/query metadata-provider pMBQL-query)))
+  (->> dataset-query card.metadata/normalize-dataset-query (lib/query metadata-provider)))
 
 (defn- card-columns-from-names
   [card names]
