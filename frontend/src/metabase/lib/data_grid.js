@@ -6,6 +6,7 @@ import * as Pivot from "cljs/metabase.pivot.js";
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
+import { NodeListContainer } from "metabase/query_builder/components/dataref/NodeList.styled";
 
 export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
@@ -139,14 +140,7 @@ export function multiLevelPivot(data, settings) {
   const columnIndex = addEmptyIndexItem(
     formattedColumnTreeWithoutValues.flatMap(root => enumeratePaths(root)),
   );
-  const valueColumns = valueColumnIndexes.map(index => [
-    columns[index],
-    columnSettings[index],
-  ]);
-  const formattedColumnTree = addValueColumnNodes(
-    formattedColumnTreeWithoutValues,
-    valueColumns,
-  );
+  const formattedColumnTree = Pivot.add_value_column_nodes(formattedColumnTreeWithoutValues, valueColumnIndexes, columnSettings)
 
   const leftIndexColumns = rowColumnIndexes.map(index => columns[index]);
   const formattedRowTreeWithoutSubtotals = Pivot.format_values_in_tree(
@@ -354,10 +348,6 @@ function addSubtotal(
   [isSubtotalEnabled, ...showSubtotalsByColumn],
   { shouldShowSubtotal = false } = {},
 ) {
-  console.log("TSP addSubtotal item: ", item);
-  console.log("TSP addSubtotal isSubtotalEnabled: ", isSubtotalEnabled);
-  console.log("TSP addSubtotal showSubtotalsByColumn: ", showSubtotalsByColumn);
-  console.log("TSP addSubtotal shouldShowSubtotal: ", shouldShowSubtotal);
   const hasSubtotal = isSubtotalEnabled && shouldShowSubtotal;
   const subtotal = hasSubtotal
     ? [
