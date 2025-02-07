@@ -1,6 +1,7 @@
 import registerCypressGrep from "@cypress/grep"; // eslint-disable-line import/order
 registerCypressGrep();
 
+import "../support/commands/timeline/customStyles";
 import "@cypress/skip-test/support";
 import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
