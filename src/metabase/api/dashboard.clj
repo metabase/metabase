@@ -1088,10 +1088,11 @@
   [_route-params
    _query-params
    dashboard]
-  (let [parent-collection-id (if api/*is-superuser?*
-                               (:id (xrays/get-or-create-root-container-collection))
-                               (t2/select-one-fn :id 'Collection
-                                                 :personal_owner_id api/*current-user-id*))
+  (let [parent-collection-id (:id (xrays/get-or-create-container-collection
+                                   (if api/*is-superuser?*
+                                     "/"
+                                     (collection/children-location
+                                      (t2/select-one :model/Collection :personal_owner_id api/*current-user-id*)))))
         dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))
