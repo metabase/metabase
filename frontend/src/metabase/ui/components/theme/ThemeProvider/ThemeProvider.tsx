@@ -24,7 +24,7 @@ interface ThemeProviderProps {
 export const ThemeProvider = (props: ThemeProviderProps) => {
   // Merge default theme overrides with user-provided theme overrides
   const theme = useMemo(() => {
-    const theme = merge(getThemeOverrides(), props.theme);
+    const theme = merge(getThemeOverrides(), props.theme) as MantineTheme;
 
     return {
       ...theme,
@@ -52,7 +52,8 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
             }
           }
 
-          const _shade = typeof shade === "number" ? shade : theme.primaryShade;
+          const _shade =
+            typeof shade === "number" ? shade : (theme.primaryShade as number);
 
           return color in theme.colors
             ? theme.colors[color][_shade]
@@ -68,6 +69,8 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     <MantineProvider
       theme={theme}
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
+      cssVariablesSelector=".mb-wrapper"
+      withStaticClasses={false}
     >
       <_CompatibilityEmotionThemeProvider theme={theme}>
         <DatesProvider>{props.children}</DatesProvider>

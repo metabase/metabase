@@ -43,3 +43,11 @@
 .input[type="search"] {
   -webkit-appearance: none;
 }
+
+/* Brought from Mantine v7 CSS reset */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
