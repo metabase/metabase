@@ -132,8 +132,8 @@
   (let [ip-address   (request/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
-                       (let [{session-uuid :id, :as session} (login username password (request/device-info request))
-                             response                        {:id (str session-uuid)}]
+                       (let [{session-key :key, :as session} (login username password (request/device-info request))
+                             response                        {:id (str session-key)}]
                          (request/set-session-cookies request response session request-time)))]
     (if throttling-disabled?
       (do-login)
@@ -144,12 +144,13 @@
 
 (api.macros/defendpoint :delete "/"
   "Logout."
-  ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
-  [_route-params _query-params _body {:keys [metabase-session-id], :as _request}]
-  (let [hashed-session-id (session/hash-session-id metabase-session-id)]
-    (api/check-exists? :model/Session hashed-session-id)
-    (t2/delete! :model/Session :id hashed-session-id)
-    (request/clear-session-cookie api/generic-204-no-content)))
+  ;; `metabase-session-key` gets added automatically by the [[metabase.server.middleware.session]] middleware
+  [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
+  (api/validate-session-key metabase-session-key)
+  (let [session-key-hashed (session/hash-session-key metabase-session-key)]
+    (let [rows-deleted (t2/delete! :model/Session {:where [:or [:= :key_hashed session-key-hashed] [:= :id metabase-session-key]]})]
+      (api/check-404 (> rows-deleted 0))
+      (request/clear-session-cookie api/generic-204-no-content))))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
@@ -256,9 +257,9 @@
             ;; Send all the active admins an email :D
             (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User :id user-id)))
           ;; after a successful password update go ahead and offer the client a new session that they can use
-          (let [{session-uuid :id, :as session} (session/create-session! :password user (request/device-info request))
+          (let [{session-key :key, :as session} (session/create-session! :password user (request/device-info request))
                 response                        {:success    true
-                                                 :session_id (str session-uuid)}]
+                                                 :session_id (str session-key)}]
             (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
@@ -287,8 +288,8 @@
   ;; Verify the token is valid with Google
   (letfn [(do-login []
             (let [user (sso/do-google-auth request)
-                  {session-uuid :id, :as session} (session/create-session! :sso user (request/device-info request))
-                  response {:id (str session-uuid)}
+                  {session-key :key, :as session} (session/create-session! :sso user (request/device-info request))
+                  response {:id (str session-key)}
                   user (t2/select-one [:model/User :id :is_active], :email (:email user))]
               (if (and user (:is_active user))
                 (request/set-session-cookies request

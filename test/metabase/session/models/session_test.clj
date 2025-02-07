@@ -15,18 +15,21 @@
    [toucan2.core :as t2]))
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
+(def ^:private test-id "abcde12345")
 
   ;; for some reason Toucan seems to be busted with models with non-integer IDs and `with-temp` doesn't seem to work
   ;; the way we'd expect :/
 (defn- new-session! []
-  (try
-    (first (t2/insert-returning-instances! :model/Session {:id (session/hash-session-id (str test-uuid)), :user_id (mt/user->id :trashbird)}))
-    (finally
-      (t2/delete! :model/Session :id (session/hash-session-id (str test-uuid))))))
+  (let [session-id test-id]
+    (try
+      (first (t2/insert-returning-instances! :model/Session {:id session-id :key_hashed (session/hash-session-key (str test-uuid)), :user_id (mt/user->id :trashbird)}))
+      (finally
+        (t2/delete! :model/Session :id test-id)))))
 
 (deftest new-session-include-test-test
   (testing "when creating a new Session, it should come back with an added `:type` key"
-    (is (=? {:id              (session/hash-session-id "092797dd-a82a-4748-b393-697d7bb9ab65")
+    (is (=? {:id              test-id
+             :key_hashed      (session/hash-session-key "092797dd-a82a-4748-b393-697d7bb9ab65")
              :user_id         (mt/user->id :trashbird)
              :anti_csrf_token nil
              :type            :normal}
@@ -36,7 +39,8 @@
   (testing "if request is an embedding request, we should get ourselves an embedded Session"
     (request/with-current-request {:headers {"x-metabase-embedded" "true"}}
       (with-redefs [session/random-anti-csrf-token (constantly "315c1279c6f9f873bf1face7afeee420")]
-        (is (=? {:id              (session/hash-session-id "092797dd-a82a-4748-b393-697d7bb9ab65")
+        (is (=? {:id              test-id
+                 :key_hashed      (session/hash-session-key "092797dd-a82a-4748-b393-697d7bb9ab65")
                  :user_id         (mt/user->id :trashbird)
                  :anti_csrf_token "315c1279c6f9f873bf1face7afeee420"
                  :type            :full-app-embed}
@@ -120,8 +124,8 @@
                                                                        :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
                                                                        :embedded           true
                                                                        :ip_address         "0:0:0:0:0:0:0:1"})]
-      (is (string/valid-uuid? (:id session)))
-      (is (= (session/hash-session-id (:id session)) (t2/select-one-pk :model/Session :user_id user-id))))))
+      (is (string/valid-uuid? (:key session)))
+      (is (= (session/hash-session-key (:key session)) (t2/select-one-fn :key_hashed :model/Session :user_id user-id))))))
 
 (deftest email-depending-on-embedded
   (let [email-sent (atom false)]
@@ -159,7 +163,7 @@
         (is (not (t2/exists? :model/Session :id (:id old-session))))
         (is (t2/exists? :model/Session :id (:id new-session)))))))
 
-(deftest hash-session-id-test
-  (is (= "ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff" (session/hash-session-id "test")))
-  (is (= "ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff" (session/hash-session-id "test")))
-  (is (= "6d201beeefb589b08ef0672dac82353d0cbd9ad99e1642c83a1601f3d647bcca003257b5e8f31bdc1d73fbec84fb085c79d6e2677b7ff927e823a54e789140d9" (session/hash-session-id "test2"))))
+(deftest hash-session-key-test
+  (is (= "ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff" (session/hash-session-key "test")))
+  (is (= "ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff" (session/hash-session-key "test")))
+  (is (= "6d201beeefb589b08ef0672dac82353d0cbd9ad99e1642c83a1601f3d647bcca003257b5e8f31bdc1d73fbec84fb085c79d6e2677b7ff927e823a54e789140d9" (session/hash-session-key "test2"))))

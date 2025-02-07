@@ -35,50 +35,50 @@
 (set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                wrap-session-id                                                 |
+;;; |                                                wrap-session-key                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ^String metabase-session-header "x-metabase-session")
 
-(defmulti ^:private wrap-session-id-with-strategy
-  "Attempt to add `:metabase-session-id` to `request` based on a specific strategy. Return modified request if
+(defmulti ^:private wrap-session-key-with-strategy
+  "Attempt to add `:metabase-session-key` to `request` based on a specific strategy. Return modified request if
   successful or `nil` if we should try another strategy."
   {:arglists '([strategy request])}
   (fn [strategy _]
     strategy))
 
-(defmethod wrap-session-id-with-strategy :embedded-cookie
+(defmethod wrap-session-key-with-strategy :embedded-cookie
   [_ {:keys [cookies headers], :as request}]
   (when-let [session (get-in cookies [request/metabase-embedded-session-cookie :value])]
     (when-let [anti-csrf-token (get headers request/anti-csrf-token-header)]
-      (assoc request :metabase-session-id session, :anti-csrf-token anti-csrf-token :metabase-session-type :full-app-embed))))
+      (assoc request :metabase-session-key session, :anti-csrf-token anti-csrf-token :metabase-session-type :full-app-embed))))
 
-(defmethod wrap-session-id-with-strategy :normal-cookie
+(defmethod wrap-session-key-with-strategy :normal-cookie
   [_ {:keys [cookies], :as request}]
   (when-let [session (get-in cookies [request/metabase-session-cookie :value])]
     (when (seq session)
-      (assoc request :metabase-session-id session :metabase-session-type :normal))))
+      (assoc request :metabase-session-key session :metabase-session-type :normal))))
 
-(defmethod wrap-session-id-with-strategy :header
+(defmethod wrap-session-key-with-strategy :header
   [_ {:keys [headers], :as request}]
   (when-let [session (get headers metabase-session-header)]
     (when (seq session)
-      (assoc request :metabase-session-id session))))
+      (assoc request :metabase-session-key session))))
 
-(defmethod wrap-session-id-with-strategy :best
+(defmethod wrap-session-key-with-strategy :best
   [_ request]
   (some
    (fn [strategy]
-     (wrap-session-id-with-strategy strategy request))
+     (wrap-session-key-with-strategy strategy request))
    [:embedded-cookie :normal-cookie :header]))
 
-(defn wrap-session-id
-  "Middleware that sets the `:metabase-session-id` keyword on the request if a session id can be found.
+(defn wrap-session-key
+  "Middleware that sets the `:metabase-session-key` keyword on the request if a session id can be found.
   We first check the request :cookies for `metabase.SESSION`, then if no cookie is found we look in the http headers
   for `X-METABASE-SESSION`. If neither is found then no keyword is bound to the request."
   [handler]
   (fn [request respond raise]
-    (let [request (or (wrap-session-id-with-strategy :best request)
+    (let [request (or (wrap-session-key-with-strategy :best request)
                       request)]
       (handler request respond raise))))
 
@@ -100,7 +100,7 @@
                 :left-join [[:core_user :user] [:= :session.user_id :user.id]]
                 :where     [:and
                             [:= :user.is_active true]
-                            [:= :session.id [:raw "?"]]
+                            [:or [:= :session.id [:raw "?"]] [:= :session.key_hashed [:raw "?"]]]
                             (let [oldest-allowed [:inline (sql.qp/add-interval-honeysql-form db-type
                                                                                              :%now
                                                                                              (- max-age-minutes)
@@ -146,14 +146,14 @@
                                                  [:is :pgm.is_group_manager true]]))))))))
 
 (defn- current-user-info-for-session
-  "Return User ID and superuser status for Session with `session-id` if it is valid and not expired."
-  [session-id anti-csrf-token]
-  (when (and session-id (init-status/complete?))
+  "Return User ID and superuser status for Session with `session-key` if it is valid and not expired."
+  [session-key anti-csrf-token]
+  (when (and session-key (init-status/complete?))
     (let [sql    (session-with-id-query (mdb/db-type)
                                         (config/config-int :max-session-age)
                                         (if (seq anti-csrf-token) :full-app-embed :normal)
                                         (premium-features/enable-advanced-permissions?))
-          params (concat [(session/hash-session-id session-id)]
+          params (concat [session-key (session/hash-session-key session-key)]
                          (when (seq anti-csrf-token)
                            [anti-csrf-token]))]
       (some-> (t2/query-one (cons sql params))
@@ -188,10 +188,10 @@
         (dissoc user-data :api-key)))))
 
 (defn- merge-current-user-info
-  [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
+  [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (merge
    request
-   (or (current-user-info-for-session metabase-session-id anti-csrf-token)
+   (or (current-user-info-for-session metabase-session-key anti-csrf-token)
        (current-user-info-for-api-key x-api-key))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))

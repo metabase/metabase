@@ -62,3 +62,8 @@
   (if (> (count s) max-length)
     (str (subs s 0 (- max-length 3)) "...")
     s))
+
+(defn random-string
+  "Returns a string of `n` random alphanumeric characters."
+  [n]
+  (apply str (take n (repeatedly #(rand-nth "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))))

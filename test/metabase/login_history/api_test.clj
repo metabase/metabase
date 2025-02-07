@@ -15,17 +15,18 @@
 
 (deftest login-history-test
   (testing "GET /api/login-history/current"
-    (let [session-id (str (random-uuid))
+    (let [session-key (session/generate-session-key)
+          session-id (session/generate-session-id)
           device-id  "e9b49ec7-bc64-4a83-9b1a-ecd3ae26ba9d"
-          session-id-hashed (session/hash-session-id session-id)]
+          session-key-hashed (session/hash-session-key session-key)]
       (mt/with-temp [:model/User         user {}
-                     :model/Session      _    {:id session-id-hashed, :user_id (u/the-id user)}
+                     :model/Session      _    {:id session-id :key_hashed session-key-hashed, :user_id (u/the-id user)}
                      :model/LoginHistory _    {:timestamp          #t "2021-03-18T19:52:41.808482Z"
                                                :user_id            (u/the-id user)
                                                :device_id          device-id
                                                :device_description windows-user-agent
                                                :ip_address         "185.233.100.23"
-                                               :session_id         session-id-hashed}
+                                               :session_id         session-id}
                      :model/LoginHistory _    {:timestamp          #t "2021-03-18T20:04:24.727300Z"
                                                :user_id            (u/the-id user)
                                                :device_id          device-id
@@ -89,4 +90,4 @@
                       [:active             [:= false]]
                       [:location           [:maybe [:re "Virginia, United States"]]]
                       [:timezone           [:maybe [:= "ET"]]]]]
-                    (mt/client session-id :get 200 "login-history/current")))))))
+                    (mt/client session-key :get 200 "login-history/current")))))))

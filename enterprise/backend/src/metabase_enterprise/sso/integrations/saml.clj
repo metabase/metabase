@@ -238,10 +238,11 @@
                                          {:idp-cert idp-cert
                                           :issuer (sso-settings/saml-identity-provider-issuer)
                                           :response-validators [:signature :require-authenticated :issuer]})]
-      (if-let [metabase-session-id (and (saml/logout-success? response)
-                                        (get-in cookies [request/metabase-session-cookie :value]))]
+      (if-let [metabase-session-key (and (saml/logout-success? response)(get-in cookies [request/metabase-session-cookie :value]))]
         (do
-          (t2/delete! :model/Session :id (session/hash-session-id metabase-session-id))
+          (api/validate-session-key metabase-session-key)
+          ;; NOTE: Only safe to compare the plaintext session-key to core_session.id because of the call to `validate-session-key` above
+          (t2/delete! :model/Session {:where [:or [:= (session/hash-session-key metabase-session-key) :key_hashed] [:= metabase-session-key :id]]})
           (request/clear-session-cookie (response/redirect (urls/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

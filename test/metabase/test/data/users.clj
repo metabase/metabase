@@ -137,9 +137,9 @@
 (mu/defn ^:private authenticate! :- ms/UUIDString
   "Create a new `:model/Session` for one of the test users."
   [username :- TestUserName]
-  (let [session-token (str (random-uuid))]
-    (t2/insert! :model/Session {:id (session/hash-session-id session-token), :user_id (user->id username)})
-    session-token))
+  (let [session-key (session/generate-session-key)]
+    (t2/insert! :model/Session {:id (session/generate-session-id) :key_hashed (session/hash-session-key session-key), :user_id (user->id username)})
+    session-key))
 
 (mu/defn username->token :- ms/UUIDString
   "Return cached session token for a test User, logging in first if needed."
@@ -187,13 +187,14 @@
       (fetch-user user)
       (apply client-fn the-client user args))
     (let [user-id (u/the-id user)
-          session-id (str (random-uuid))]
+          session-key (session/generate-session-key)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
       #_{:clj-kondo/ignore [:discouraged-var]}
-      (t2.with-temp/with-temp [:model/Session _ {:id      (session/hash-session-id session-id)
+      (t2.with-temp/with-temp [:model/Session _ {:id (session/generate-session-id)
+                                                 :key_hashed (session/hash-session-key session-key)
                                                  :user_id user-id}]
-        (apply the-client session-id args)))))
+        (apply the-client session-key args)))))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-http-request

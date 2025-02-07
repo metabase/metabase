@@ -35,7 +35,9 @@
 (t2/define-before-insert :model/Session
   [session]
   (when (or (uuid? (:id session)) (string/valid-uuid? (:id session)))
-    (throw (RuntimeException. "Session id not be stored plaintext in the session table.")))
+    (throw (RuntimeException. "Session id should not be stored plaintext in the session table.")))
+  (when (or (uuid? (:key_hashed session)) (string/valid-uuid? (:key_hashed session)))
+    (throw (RuntimeException. "Session key should not be stored plaintext in the session table.")))
   (cond-> session
     (some-> (request/current-request) request/embedded?) (assoc :anti_csrf_token (random-anti-csrf-token))))
 
@@ -44,9 +46,9 @@
   (let [session-type (if anti-csrf-token :full-app-embed :normal)]
     (assoc session :type session-type)))
 
-(def ^{:arglists '([session-id])} hash-session-id
-  "Hash the session-id for storage in the database"
-  (memo/lru (fn [session-id] (codecs/bytes->hex (buddy-hash/sha512 (str session-id)))) {} :lru/threshold 100))
+(def ^{:arglists '([session-key])} hash-session-key
+  "Hash the session-key for storage in the database"
+  (memo/lru (fn [session-key] (codecs/bytes->hex (buddy-hash/sha512 (str session-key)))) {} :lru/threshold 100))
 
 (def ^:private CreateSessionUserInfo
   [:map
@@ -58,22 +60,34 @@
   [:and
    [:map-of :keyword :any]
    [:map
-    [:id string?]
+    [:key string?]
     [:type [:enum :normal :full-app-embed]]]])
 
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is currently either `:password` (for email + password login) or
-  `:sso` (for other login types). Returns the newly generated Session with the id as the plain-text session-id."
+  `:sso` (for other login types). Returns the newly generated Session with the id as the plain-text session-key."
   {:arglists '([session-type user device-info])}
   (fn [session-type & _]
     session-type))
 
+(defn generate-session-key
+  "Generate a new session key."
+  []
+  (str (random-uuid)))
+
+(defn generate-session-id
+  "Generate a new id for the session table."
+  []
+  (string/random-string 12))
+
 (mu/defmethod create-session! :sso :- SessionSchema
   [_ user :- CreateSessionUserInfo device-info :- request/DeviceInfo]
-  (let [session-id (random-uuid)
-        session-id-hashed (hash-session-id session-id)
+  (let [session-key (generate-session-key)
+        session-key-hashed (hash-session-key session-key)
+        session-id (generate-session-id)
         session (first (t2/insert-returning-instances! :model/Session
-                                                       :id session-id-hashed
+                                                       :id session-id
+                                                       :key_hashed session-key-hashed
                                                        :user_id (u/the-id user)))]
     (assert (map? session))
     (let [event {:user-id (u/the-id user)}]
@@ -81,7 +95,7 @@
       (when (nil? (:last_login user))
         (events/publish-event! :event/user-joined event)))
     (login-history/record-login-history! session-id user device-info)
-    (assoc session :id session-id)))
+    (assoc session :key session-key)))
 
 (mu/defmethod create-session! :password :- SessionSchema
   [session-type

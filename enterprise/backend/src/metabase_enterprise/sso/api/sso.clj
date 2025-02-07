@@ -68,18 +68,20 @@
 (api.macros/defendpoint :post "/logout"
   "Logout."
   [_route-params _query-params _body {cookies :cookies, :as _request}]
-  (let [metabase-session-id (get-in cookies [request/metabase-session-cookie :value])
-        metabase-session-id-hashed (session/hash-session-id metabase-session-id)]
-    (api/check-exists? :model/Session metabase-session-id-hashed)
+  (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
+        metabase-session-key-hashed (session/hash-session-key metabase-session-key)]
+    (api/validate-session-key metabase-session-key)
     (let [{:keys [email sso_source]}
           (t2/query-one {:select [:u.email :u.sso_source]
                          :from   [[:core_user :u]]
                          :join   [[:core_session :session] [:= :u.id :session.user_id]]
-                         :where  [:= :session.id metabase-session-id]})]
+                         :where  [:= :session.id metabase-session-key]})]
       ;; If a user doesn't have SLO setup on their IdP,
       ;; they will never hit "/handle_slo" so we must delete the session here:
-      (when-not (sso-settings/saml-slo-enabled)
-        (t2/delete! :model/Session :id metabase-session-id-hashed))
+      ;; NOTE: Only safe to compare the plaintext session-key to core_session.id because of the call to `validate-session-key` above
+      (let [deleted-rows (when-not (sso-settings/saml-slo-enabled)
+        (t2/delete! :model/Session {:where [:or [:= metabase-session-key-hashed :key_hashed] [:= metabase-session-key :id]]})]
+        (api/check-404 (> deleted-rows 0))))
       {:saml-logout-url
        (when (and (sso-settings/saml-slo-enabled)
                   (= sso_source "saml"))
