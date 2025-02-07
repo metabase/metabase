@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
+import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import {
   BackButton,
   Breakout,
@@ -32,7 +33,6 @@ import {
   type InteractiveQuestionResultProps,
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { FlexibleSizeProps } from "embedding-sdk/components/public/FlexibleSizeComponent";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId?: InteractiveQuestionProviderProps["cardId"];

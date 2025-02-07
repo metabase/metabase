@@ -219,7 +219,7 @@ The example of the artifacts for a failed test in "Onboarding" directory:
 
 ## Running Cypress tests against Metabase® Enterprise Edition™
 
-Prior to running Cypress against Metabase® Enterprise Edition™, set `MB_EDITION=ee` environment variable. We have a special `describe` block called `describeEE` that will conditionally skip or run tests based on the edition.
+Prior to running Cypress against Metabase® Enterprise Edition™, set `MB_EDITION=ee` environment variable.
 
 **Enterprise instance will start without a premium token!**
 
@@ -235,7 +235,6 @@ MB_EDITION=ee CYPRESS_ALL_FEATURES_TOKEN=xxxxxx CYPRESS_NO_FEATURES_TOKEN=xxxxxx
 
 If you navigate to the `/admin/settings/license` page, the license input field should display the active token. Be careful when sharing screenshots!
 
-- If tests under `describeEE` block are greyed out and not running, make sure you spun up Metabase® Enterprise Edition™.
 - If tests start running but the enterprise features are missing: make sure that the token you use has corresponding feature flags enabled.
 - If everything with the token seems to be okay, go nuclear and destroy all Java processes: run `killall java` and restart Cypress.
 

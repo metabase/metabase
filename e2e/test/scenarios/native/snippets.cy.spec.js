@@ -153,7 +153,6 @@ describe("scenarios > question > snippets", () => {
 
 describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore();
   });
 
@@ -171,7 +170,7 @@ describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
   });
 });
 
-H.describeEE("scenarios > question > snippets (EE)", () => {
+describe("scenarios > question > snippets (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

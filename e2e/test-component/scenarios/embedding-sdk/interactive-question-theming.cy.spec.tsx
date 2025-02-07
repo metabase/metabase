@@ -5,7 +5,7 @@ import {
 import Color from "color";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion, describeEE } from "e2e/support/helpers";
+import { createQuestion } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -22,7 +22,7 @@ const darken = (color: string | undefined, amount: number) =>
 const lighten = (color: string | undefined, amount: number) =>
   Color(color).lighten(amount).rgb().toString();
 
-describeEE(
+describe(
   "scenarios > embedding-sdk > interactive-question > theming",
   // realHover color check is flaky 10% of the time so a retry is added
   { retries: { runMode: 2, openMode: 2 } },

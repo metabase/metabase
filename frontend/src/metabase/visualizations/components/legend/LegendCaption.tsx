@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { useCallback, useState } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -8,6 +7,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import type { IconProps } from "metabase/ui";
 
 import LegendActions from "./LegendActions";
 import {
@@ -18,18 +18,7 @@ import {
   LegendRightContent,
 } from "./LegendCaption.styled";
 
-const propTypes = {
-  className: PropTypes.string,
-  title: PropTypes.string,
-  description: PropTypes.string,
-  getHref: PropTypes.func,
-  icon: PropTypes.object,
-  actionButtons: PropTypes.node,
-  onSelectTitle: PropTypes.func,
-  width: PropTypes.number,
-};
-
-function shouldHideDescription(width) {
+function shouldHideDescription(width: number | undefined) {
   const HIDE_DESCRIPTION_THRESHOLD = 100;
   return width != null && width < HIDE_DESCRIPTION_THRESHOLD;
 }
@@ -41,7 +30,18 @@ function shouldHideDescription(width) {
  */
 const HREF_PLACEHOLDER = "#";
 
-const LegendCaption = ({
+interface LegendCaptionProps {
+  className?: string;
+  title: string;
+  description?: string;
+  getHref?: () => string | undefined;
+  icon?: IconProps;
+  actionButtons?: React.ReactNode;
+  onSelectTitle?: () => void;
+  width?: number;
+}
+
+export const LegendCaption = ({
   className,
   title,
   description,
@@ -50,7 +50,7 @@ const LegendCaption = ({
   actionButtons,
   onSelectTitle,
   width,
-}) => {
+}: LegendCaptionProps) => {
   /*
    * Optimization: lazy computing the href on title focus & mouseenter only.
    * Href computation uses getNewCardUrl, which makes a few MLv2 calls,
@@ -100,6 +100,7 @@ const LegendCaption = ({
             maxWidth="22em"
           >
             <LegendDescriptionIcon
+              name="info"
               className={cx(CS.hoverChild, CS.hoverChildSmooth)}
             />
           </Tooltip>
@@ -109,7 +110,3 @@ const LegendCaption = ({
     </LegendCaptionRoot>
   );
 };
-
-LegendCaption.propTypes = propTypes;
-
-export default LegendCaption;

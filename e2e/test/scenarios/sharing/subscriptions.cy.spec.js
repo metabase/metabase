@@ -485,7 +485,6 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("OSS email subscriptions", { tags: ["@OSS", "external"] }, () => {
     beforeEach(() => {
-      H.onlyOnOSS();
       cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
       H.setupSMTP();
     });
@@ -547,7 +546,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
-  H.describeEE("EE email subscriptions", { tags: "@external" }, () => {
+  describe("EE email subscriptions", { tags: "@external" }, () => {
     beforeEach(() => {
       H.setTokenFeatures("all");
       H.setupSMTP();

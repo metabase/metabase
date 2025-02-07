@@ -19,7 +19,7 @@ import type {
   Parameter,
 } from "metabase-types/api";
 
-H.describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
+describe("scenarios > embedding-sdk > editable-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 

@@ -38,7 +38,7 @@ const CREATED_AT_FIELD_REF: ConcreteFieldReference = [
   { "base-type": "type/DateTime" },
 ];
 
-H.describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
+describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
