@@ -146,8 +146,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
-
-
   #_:clj-kondo/ignore ;;nocommit
   (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
            '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
@@ -157,11 +155,6 @@
   (mc/validate
    :metabase.lib.schema.parameter/dimension
    [:dimension [:field 1 {}] {:stage-number 7}])
-
-  #_:clj-kondo/ignore ;;nocommit
-  (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
-           '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
-           '[malli.transform :as mtx])
 
 
   ;; This returns nil, but when we start adding :stage-number in :options, we want it to break instead
