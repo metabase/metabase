@@ -120,6 +120,7 @@
   :type    :boolean
   :default true
   :export? true
+  :doc false
   :getter  (fn []
              (if-not (and config/ee-available? (:valid (premium-features/token-status)))
                (setting/get-value-of-type :boolean :show-static-embed-terms)
