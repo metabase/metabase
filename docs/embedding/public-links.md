@@ -82,7 +82,7 @@ If you want to embed your question or dashboard as an iframe in a simple web pag
 
 1. Click on the **Sharing** icon for your question or dashboard.
 2. Click **Embed**.
-3. Click **Public embed**.
+3. In the bottom of the embedding popup, click on **Get embedding code**.
 4. Copy the iframe snippet Metabase generates for you.
 5. Paste the iframe snippet in your destination of choice.
 
