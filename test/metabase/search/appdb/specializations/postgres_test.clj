@@ -57,4 +57,3 @@
   (testing "single quotes"
     (is (= "'you''re':*"
            (search-expr "you're")))))
-
