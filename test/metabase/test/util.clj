@@ -14,6 +14,7 @@
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.models.collection :as collection]
@@ -1595,5 +1596,5 @@
            (registry/get
             {:name      (name metric)
              :namespace (namespace metric)}
-            labels)
+            (#'prometheus/qualified-vals labels))
            ops/read-value)))
