@@ -6,7 +6,6 @@
    [metabase.db :as mdb]
    [metabase.driver.h2 :as h2]
    [metabase.test :as mt]
-   [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -72,7 +71,7 @@
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
 
-(defn- run-cruft-tables [crufted-table-setting freq message]
+(defn- run-cruft-tables! [crufted-table-setting freq message]
   (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
     (try
       (let [sync-future (@#'advanced-config.file.databases/init-from-config-file!
@@ -92,8 +91,9 @@
 
 (deftest sync-cruft-tables-test
   (testing "`init-from-config-file!` returns syncs database in a separate thread by default"
-    (run-cruft-tables ["^venues$"] {:cruft 1 nil 7} "VENUES table is marked crufty")
-    (run-cruft-tables ["."]        {:cruft 8}       "All tables marked crufty")))
+    (run-cruft-tables! []           {nil 8}          "No tables marked crufty")
+    (run-cruft-tables! ["^venues$"] {:cruft 1 nil 7} "VENUES table is marked crufty")
+    (run-cruft-tables! ["."]        {:cruft 8}       "All tables marked crufty")))
 
 (deftest disable-sync-test
   (testing "We should be able to disable sync for new Databases by specifying a Setting in the config file"

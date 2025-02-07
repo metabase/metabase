@@ -6,8 +6,9 @@
 
 ;; PUBLIC API
 
-(defn ->regex [pattern]
+(defn ->regex
   "Converts a pattern-string into a lower-cased regex."
+  [pattern]
   (-> pattern u/lower-case-en re-pattern))
 
 (defn name?

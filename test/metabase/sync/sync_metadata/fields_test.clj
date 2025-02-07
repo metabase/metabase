@@ -13,7 +13,6 @@
    [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
