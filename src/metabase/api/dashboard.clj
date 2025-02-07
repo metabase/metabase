@@ -1136,11 +1136,13 @@
 
         filterable-columns (into {}
                                  (map (fn [[card-id card]]
-                                        [card-id
-                                         (->> card
-                                              :dataset_query
-                                              (lib/query (metadata-providers (:database_id card)))
-                                              lib/filterable-columns)]))
+                                        (let [dataset-query (:dataset_query card)]
+                                          [card-id
+                                           (if (seq dataset-query)
+                                             (->> dataset-query
+                                                  (lib/query (metadata-providers (:database_id card)))
+                                                  lib/filterable-columns)
+                                             [])])))
                                  cards)]
     (for [{:keys [target] {:keys [card]} :dashcard} mappings
           :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
