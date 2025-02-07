@@ -10,7 +10,7 @@ import {
   questionSettingsSidesheet,
 } from "../admin/performance/helpers/e2e-strategy-form-helpers";
 
-H.describeEE("scenarios > question > caching", () => {
+describe("scenarios > question > caching", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

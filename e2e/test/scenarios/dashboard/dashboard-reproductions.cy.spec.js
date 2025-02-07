@@ -641,7 +641,7 @@ describe("issue 28756", () => {
   });
 });
 
-H.describeEE("issue 29076", () => {
+describe("issue 29076", () => {
   beforeEach(() => {
     H.restore();
 
