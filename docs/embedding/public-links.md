@@ -49,7 +49,7 @@ https://www.example.com/public/question/cf347ce0-90bb-4669-b73b-56c73edd10cb.csv
 
 By default, Metabase will export the results of a question that include any formatting you added (for example, if you formatted a column with floats to display as a percentage (0.42 -> 42%)).
 
-See docs for the [export format endpoint](https://www.metabase.com/docs/latest/api/public#get-apipubliccarduuidqueryexport-format).
+See docs for the [export format endpoint](https://www.metabase.com/docs/latest/api#tag/public/GET/public/card/{uuid}/query/{export-format}).
 
 ## Simulating drill-through with public links
 
