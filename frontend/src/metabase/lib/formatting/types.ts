@@ -36,6 +36,7 @@ export interface OptionsType extends TimeOnlyOptions {
   stringifyNull?: boolean;
   show_mini_bar?: boolean;
   suffix?: string;
+  timezone?: string;
   type?: string;
   view_as?: string | null;
   weekday_enabled?: boolean;

@@ -1,4 +1,5 @@
 import cx from "classnames";
+import dayjs from "dayjs";
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import Mustache from "mustache";
@@ -137,7 +138,6 @@ export function formatValueRaw(
     remap: true,
     ...options,
   };
-
   const { column } = options;
 
   const remapped = getRemappedValue(value as string | number, options);
@@ -184,7 +184,10 @@ export function formatValueRaw(
     return formatTime(value as Moment, column.unit, options);
   } else if (column && column.unit != null) {
     return formatDateTimeWithUnit(
-      value as string | number,
+      dayjs
+        .tz("" + value, options.timezone)
+        .utc()
+        .toISOString(),
       column.unit,
       options,
     );

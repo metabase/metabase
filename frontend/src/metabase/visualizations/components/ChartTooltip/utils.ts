@@ -12,11 +12,13 @@ export const formatValueForTooltip = ({
   column,
   settings,
   isAlreadyScaled,
+  timezone,
 }: {
   value?: unknown;
   column?: RemappingHydratedDatasetColumn | DatasetColumn | null;
   settings?: ComputedVisualizationSettings;
   isAlreadyScaled?: boolean;
+  timezone?: string;
 }) => {
   const options: OptionsType = {
     ...(settings && settings.column && column
@@ -24,6 +26,7 @@ export const formatValueForTooltip = ({
       : { column }),
     type: "tooltip",
     majorWidth: 0,
+    timezone,
   };
 
   if (isAlreadyScaled) {

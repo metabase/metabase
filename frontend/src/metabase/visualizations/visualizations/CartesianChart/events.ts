@@ -40,6 +40,7 @@ import type {
   DimensionModel,
   SeriesModel,
   StackModel,
+  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
@@ -162,7 +163,7 @@ const getEventColumnsData = (
   seriesModel: SeriesModel,
   dataIndex: number,
 ): DataPoint[] => {
-  const datum = chartModel.dataset[dataIndex];
+  const datum = chartModel.transformedDataset[dataIndex];
 
   const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
 
@@ -214,18 +215,24 @@ const computeDiffWithPreviousPeriod = (
     return null;
   }
 
-  const datum = chartModel.dataset[dataIndex];
+  const datum = chartModel.transformedDataset[dataIndex];
 
   const currentValue = datum[seriesModel.dataKey];
   const currentDate = parseTimestamp(datum[X_AXIS_DATA_KEY]);
   const previousValue =
-    chartModel.dataset[dataIndex - 1]?.[seriesModel.dataKey];
+    chartModel.transformedDataset[dataIndex - 1]?.[seriesModel.dataKey];
 
+  // console.log({
+  //   dataIndex,
+  //   currentValue,
+  //   currentDate: currentDate.toISOString(),
+  //   previousValue,
+  // });
   if (previousValue == null || currentValue == null) {
     return null;
   }
   const previousDate = parseTimestamp(
-    chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY],
+    chartModel.transformedDataset[dataIndex - 1][X_AXIS_DATA_KEY],
   );
 
   const unit = isQuarterInterval(chartModel.xAxisModel.interval)
@@ -243,7 +250,7 @@ const computeDiffWithPreviousPeriod = (
     getDaylightSavingsChangeTolerance(chartModel.xAxisModel.interval.unit);
 
   // Comparing the 2nd and 1st quarter of the year needs to be checked
-  // specially, because there are fewer days in this period due to Feburary
+  // specially, because there are fewer days in this period due to February
   // being shorter than a normal month (89 days in a normal year, 90 days in a
   // leap year).
   if (!isOneIntervalAgo && unit === "quarter") {
@@ -282,7 +289,8 @@ export const canBrush = (
   );
 };
 
-function getDataIndex(
+function getDatum(
+  dataset: ChartDataset,
   transformedDataset: ChartDataset,
   echartsDataIndex: number | undefined,
 ) {
@@ -292,7 +300,12 @@ function getDataIndex(
 
   const originalDataIndex =
     transformedDataset[echartsDataIndex][ORIGINAL_INDEX_DATA_KEY];
-  return originalDataIndex ?? echartsDataIndex;
+
+  if (originalDataIndex) {
+    return dataset[originalDataIndex];
+  }
+
+  return transformedDataset[echartsDataIndex];
 }
 
 export const getSeriesHovered = (
@@ -300,20 +313,29 @@ export const getSeriesHovered = (
   event: EChartsSeriesMouseEvent,
 ) => {
   const { dataIndex: echartsDataIndex, seriesId } = event;
-  const dataIndex = getDataIndex(
+  const datum = getDatum(
+    chartModel.dataset,
     chartModel.transformedDataset,
     echartsDataIndex,
   );
   const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
 
-  if (seriesIndex < 0 || dataIndex == null) {
+  if (seriesIndex < 0 || !datum) {
     return;
   }
 
   return {
     index: seriesIndex,
-    datumIndex: dataIndex,
+    datum,
   };
+};
+
+const getTimezone = (xAxisModel: XAxisModel) => {
+  if (!isTimeSeriesAxis(xAxisModel)) {
+    return undefined;
+  }
+
+  return xAxisModel.timezone;
 };
 
 const getAdditionalTooltipRowsData = (
@@ -324,6 +346,8 @@ const getAdditionalTooltipRowsData = (
 ): EChartsTooltipRow[] => {
   const additionalColumns = new Set(settings["graph.tooltip_columns"]);
   const data = getEventColumnsData(chartModel, seriesModel, dataIndex);
+
+  const timezone = getTimezone(chartModel.xAxisModel);
 
   return data
     .filter(
@@ -340,6 +364,7 @@ const getAdditionalTooltipRowsData = (
             column: data.col,
             settings,
             isAlreadyScaled: true,
+            timezone,
           }),
         ],
       };
@@ -353,19 +378,23 @@ export const getTooltipModel = (
   display: CardDisplayType,
   seriesDataKey: DataKey,
 ): EChartsTooltipModel | null => {
-  const dataIndex = getDataIndex(
+  const datum = getDatum(
+    chartModel.dataset,
     chartModel.transformedDataset,
     echartsDataIndex,
   );
 
-  if (dataIndex == null) {
+  if (!datum) {
     return null;
   }
 
-  const datum = chartModel.dataset[dataIndex];
-
   if (seriesDataKey === OTHER_DATA_KEY) {
-    return getOtherSeriesTooltipModel(chartModel, settings, dataIndex, datum);
+    return getOtherSeriesTooltipModel(
+      chartModel,
+      settings,
+      echartsDataIndex,
+      datum,
+    );
   }
 
   const seriesIndex = findSeriesModelIndexById(chartModel, seriesDataKey);
@@ -384,7 +413,7 @@ export const getTooltipModel = (
       chartModel,
       datum,
       settings,
-      dataIndex,
+      echartsDataIndex,
       hoveredSeries,
       display,
     );
@@ -397,16 +426,17 @@ export const getTooltipModel = (
       settings,
       seriesStack,
       seriesDataKey,
-      dataIndex,
+      echartsDataIndex,
       datum,
       hoveredSeries,
     );
   }
+
   return getSeriesComparisonTooltipModel(
     chartModel,
     settings,
     datum,
-    dataIndex,
+    echartsDataIndex,
     hoveredSeries,
   );
 };
@@ -424,6 +454,7 @@ const getSingleSeriesTooltipModel = (
       value: datum[X_AXIS_DATA_KEY],
       column: chartModel.dimensionModel.column,
       settings,
+      timezone: getTimezone(chartModel.xAxisModel),
     }),
   );
 
@@ -453,6 +484,7 @@ const getSingleSeriesTooltipModel = (
           column: series.column,
           settings,
           isAlreadyScaled: true,
+          timezone: getTimezone(chartModel.xAxisModel),
         }),
       ],
     };
@@ -499,6 +531,7 @@ const getSeriesComparisonTooltipModel = (
       value: datum[X_AXIS_DATA_KEY],
       column: chartModel.dimensionModel.column,
       settings,
+      timezone: getTimezone(chartModel.xAxisModel),
     }),
   );
 
@@ -528,6 +561,7 @@ const getSeriesComparisonTooltipModel = (
             column: seriesModel.column,
             settings,
             isAlreadyScaled: true,
+            timezone: getTimezone(chartModel.xAxisModel),
           }),
           prevValue,
         ].filter(isNotNull),
@@ -616,6 +650,7 @@ export const getStackedTooltipModel = (
         settings,
         column:
           chartModel.leftAxisModel?.column ?? chartModel.rightAxisModel?.column,
+        timezone: getTimezone(chartModel.xAxisModel),
       }),
     );
 
@@ -626,6 +661,7 @@ export const getStackedTooltipModel = (
       value: datum[X_AXIS_DATA_KEY],
       column: chartModel.dimensionModel.column,
       settings,
+      timezone: getTimezone(chartModel.xAxisModel),
     }),
   );
 
@@ -706,6 +742,7 @@ export const getOtherSeriesTooltipModel = (
           column: row.column,
           isAlreadyScaled: true,
           settings,
+          timezone: getTimezone(chartModel.xAxisModel),
         }),
         row.prevValue,
       ],
@@ -724,6 +761,7 @@ export const getOtherSeriesTooltipModel = (
           column:
             chartModel.leftAxisModel?.column ??
             chartModel.rightAxisModel?.column,
+          timezone: getTimezone(chartModel.xAxisModel),
         }),
       ),
     ],
@@ -735,6 +773,7 @@ export const getOtherSeriesTooltipModel = (
         value: datum[X_AXIS_DATA_KEY],
         column: chartModel.dimensionModel.column,
         settings,
+        timezone: getTimezone(chartModel.xAxisModel),
       }),
     ),
     rows,
@@ -807,7 +846,8 @@ export const getSeriesClickData = (
   event: EChartsSeriesMouseEvent,
 ): ClickObject | undefined => {
   const { seriesId, dataIndex: echartsDataIndex } = event;
-  const dataIndex = getDataIndex(
+  const datum = getDatum(
+    chartModel.dataset,
     chartModel.transformedDataset,
     echartsDataIndex,
   );
@@ -816,15 +856,14 @@ export const getSeriesClickData = (
 
   if (
     seriesIndex < 0 ||
-    dataIndex == null ||
+    echartsDataIndex == null ||
+    !datum ||
     seriesModel?.dataKey === OTHER_DATA_KEY
   ) {
     return;
   }
 
-  const datum = chartModel.dataset[dataIndex];
-
-  const data = getEventColumnsData(chartModel, seriesModel, dataIndex);
+  const data = getEventColumnsData(chartModel, seriesModel, echartsDataIndex);
   const dimensions = getEventDimensions(
     chartModel,
     datum,
