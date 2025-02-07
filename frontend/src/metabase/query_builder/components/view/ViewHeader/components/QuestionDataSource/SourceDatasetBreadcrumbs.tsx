@@ -2,9 +2,8 @@ import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import Tooltip from "metabase/core/components/Tooltip";
-import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
+import { Box, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
@@ -46,16 +45,20 @@ export function SourceDatasetBreadcrumbs({
         question.isArchived() ? (
           <Tooltip
             key="dataset-name"
-            tooltip={t`This model is archived and shouldn't be used.`}
-            maxWidth="auto"
-            placement="bottom"
+            label={t`This model is archived and shouldn't be used.`}
+            maw="auto"
+            position="bottom"
           >
-            <HeadBreadcrumbs.Badge
-              inactiveColor="text-light"
-              icon={{ name: "warning", color: color("danger") }}
-            >
-              {question.displayName()}
-            </HeadBreadcrumbs.Badge>
+            {/* We use a box here for ref forwarding */}
+            <Box>
+              <HeadBreadcrumbs.Badge
+                inactiveColor="text-light"
+                icon={{ name: "warning", color: "var(--mb-color-danger)" }}
+                to={Urls.question(question.card())}
+              >
+                {question.displayName()}
+              </HeadBreadcrumbs.Badge>
+            </Box>
           </Tooltip>
         ) : (
           <HeadBreadcrumbs.Badge
