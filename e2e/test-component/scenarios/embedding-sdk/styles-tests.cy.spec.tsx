@@ -6,7 +6,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { describeEE, modal, updateSetting } from "e2e/support/helpers";
+import { modal, updateSetting } from "e2e/support/helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
   mockAuthProviderAndJwtSignIn,
@@ -14,7 +14,7 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
-describeEE("scenarios > embedding-sdk > styles", () => {
+describe("scenarios > embedding-sdk > styles", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 

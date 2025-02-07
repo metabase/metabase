@@ -577,7 +577,7 @@ describe("scenarios > filters > sql filters > values source", () => {
   });
 });
 
-H.describeEE("scenarios > filters > sql filters > values source", () => {
+describe("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
