@@ -1,4 +1,4 @@
-(ns metabase.models.timeline-event
+(ns metabase.timeline.models.timeline-event
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]

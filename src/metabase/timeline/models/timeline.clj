@@ -1,8 +1,8 @@
-(ns metabase.models.timeline
+(ns metabase.timeline.models.timeline
   (:require
    [metabase.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
-   [metabase.models.timeline-event :as timeline-event]
+   [metabase.timeline.models.timeline-event :as timeline-event]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

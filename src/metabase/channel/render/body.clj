@@ -9,11 +9,11 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.formatter :as formatter]
-   [metabase.models.timeline-event :as timeline-event]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as common]
+   [metabase.timeline.core :as timeline]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs tru]]
@@ -373,7 +373,7 @@
                              :collection_id collection_id
                              :archived false)]
     (->> (t2/hydrate timelines :creator [:collection :can_write])
-         (map #(timeline-event/include-events-singular % {:events/all? true})))))
+         (map #(timeline/include-events-singular % {:events/all? true})))))
 
 (defn- add-dashcard-timeline-events
   "If there's a timeline associated with this card, add its events in."

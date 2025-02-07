@@ -1,11 +1,12 @@
-(ns metabase.api.timeline
+(ns metabase.timeline.api.timeline
   "/api/timeline endpoints."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.timeline-event :as timeline-event]
+   [metabase.timeline.models.timeline :as timeline]
+   [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.registry :as mr]
@@ -110,3 +111,42 @@
   (api/write-check :model/Timeline id)
   (t2/delete! :model/Timeline :id id)
   api/generic-204-no-content)
+
+(api.macros/defendpoint :get "/collection/root"
+  "Fetch the root Collection's timelines."
+  [_route-params
+   {:keys [include archived]} :- [:map
+                                  [:include  {:optional true} [:maybe [:= "events"]]]
+                                  [:archived {:default false} [:maybe :boolean]]]]
+  (api/read-check collection/root-collection)
+  (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
+                                          :timeline/archived? archived}))
+
+(api.macros/defendpoint :get "/collection/:id"
+  "Fetch a specific Collection's timelines."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [include archived]} :- [:map
+                                  [:include  {:optional true} [:maybe [:= "events"]]]
+                                  [:archived {:default false} [:maybe :boolean]]]]
+  (api/read-check (t2/select-one :model/Collection :id id))
+  (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
+                                         :timeline/archived? archived}))
+
+;;; TODO -- this seems to be unused on the FE -- confirm with FE and remove entirely.
+(api.macros/defendpoint :get "/card/:id"
+  "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [include start end]} :- [:map
+                                   [:include {:optional true} [:maybe [:= "events"]]]
+                                   [:start   {:optional true} [:maybe ms/TemporalString]]
+                                   [:end     {:optional true} [:maybe ms/TemporalString]]]]
+  (let [{:keys [collection_id] :as _card} (api/read-check :model/Card id)]
+    ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
+    ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
+    ;; the read-checks are particularly fast on multiple items
+    (timeline/timelines-for-collection collection_id
+                                       {:timeline/events? (= include "events")
+                                        :events/start     (when start (u.date/parse start))
+                                        :events/end       (when end (u.date/parse end))})))
