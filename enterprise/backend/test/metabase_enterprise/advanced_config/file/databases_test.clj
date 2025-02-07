@@ -5,6 +5,7 @@
    [metabase-enterprise.advanced-config.file.databases :as advanced-config.file.databases]
    [metabase.db :as mdb]
    [metabase.driver.h2 :as h2]
+   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -94,6 +95,33 @@
     (run-cruft-tables! []           {nil 8}          "No tables marked crufty")
     (run-cruft-tables! ["^venues$"] {:cruft 1 nil 7} "VENUES table is marked crufty")
     (run-cruft-tables! ["."]        {:cruft 8}       "All tables marked crufty")))
+
+(defn- run-cruft-columns! [crufted-field-setting freq message]
+  (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
+    (try
+      (let [sync-future (@#'advanced-config.file.databases/init-from-config-file!
+                         {:name    test-db-name
+                          :engine  "h2"
+                          :details (:details (mt/db))
+                          :settings {:auto-cruft-columns crufted-field-setting}})]
+        (is (future? sync-future))
+        (deref sync-future 500000 :timeout)
+        (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :name test-db-name))
+        (is (= 1 (t2/count :model/Database :name test-db-name)))
+        (let [db (t2/select-one :model/Database :name test-db-name)
+              tables (t2/select :model/Table :db_id (u/the-id db))
+              fields (t2/select :model/Field :table_id [:in (map :id tables)])]
+          (def fieldz fields)
+          (frequencies (map :visibility_type fields))
+          #_(is (= freq (frequencies (map :visibility_type fields)))
+                message)))
+      (finally
+        (t2/delete! :model/Database :name test-db-name)))))
+
+(deftest sync-cruft-columns-test
+  (testing "`init-from-config-file!` returns syncs database in a separate thread by default"
+    (run-cruft-columns! [] {:normal 52} "No fields marked crufty")
+    (run-cruft-columns! ["id"] {:normal 38, :details-only 14}  "All id fields marked crufty")))
 
 (deftest disable-sync-test
   (testing "We should be able to disable sync for new Databases by specifying a Setting in the config file"

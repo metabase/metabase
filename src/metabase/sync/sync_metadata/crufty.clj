@@ -4,6 +4,7 @@
 (defn- matches-any-patterns? [name patterns]
   (some #(re-find % name) patterns))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; PUBLIC API
 
 (defn ->regex
