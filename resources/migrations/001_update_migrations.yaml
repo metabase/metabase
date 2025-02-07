@@ -10532,6 +10532,8 @@ databaseChangeLog:
 
   - changeSet:
       id: v53.2025-02-21T20:43:40
+  - changeSet:
+      id: v52.2025-02-05T20:43:40
       author: nvoxland
       comment: Delete everything from the core_session table because checks are now assuming a hashed session id
       changes:
@@ -10540,6 +10542,7 @@ databaseChangeLog:
       rollback:
         - delete:
             tableName: core_session
+
 
   - changeSet:
       id: v54.2025-01-30T16:10:55

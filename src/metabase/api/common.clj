@@ -86,6 +86,7 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as string]
    [potemkin :as p]
    [toucan2.core :as t2]))
 
@@ -202,6 +203,14 @@
   [tst field-name message]
   (when-not tst
     (throw-invalid-param-exception (str field-name) message)))
+
+(defn validate-session-key
+  "Validates that the given session-key looks like it could be a session id. Returns a 403 if it does not.
+
+  SECURITY NOTE: This needs to be called in any function that will directly compare the session-key against the core_session.id table for backwards-compatibility reasons
+  If this is NOT called before queries against core_session.id, attackers with access to the database can impersonate users by passing the core_session.id as their session cookie"
+  [session-key]
+  (check-403 (string/valid-uuid? session-key)))
 
 ;;; ---------------------------------------------- api-let, api->, etc. ----------------------------------------------
 

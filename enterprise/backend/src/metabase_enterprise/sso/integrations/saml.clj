@@ -248,8 +248,11 @@
   (if (sso-settings/saml-slo-enabled)
     (let [xml-str (base64-decode (:SAMLResponse params))
           success? (slo-success? xml-str)]
-      (if-let [metabase-session-id (and success? (get-in cookies [request/metabase-session-cookie :value]))]
-        (do (t2/delete! :model/Session :id (session/hash-session-id metabase-session-id))
-            (request/clear-session-cookie (response/redirect (urls/site-url))))
+      (if-let [metabase-session-key (and success? (get-in cookies [request/metabase-session-cookie :value]))]
+        (do
+          (api/validate-session-key metabase-session-key)
+          ;; NOTE: Only safe to compare the plaintext session-key to core_session.id because of the call to `validate-session-key` above
+          (t2/delete! :model/Session {:where [:or [:= (session/hash-session-key metabase-session-key) :key_hashed] [:= metabase-session-key :id]]})
+          (request/clear-session-cookie (response/redirect (urls/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

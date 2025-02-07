@@ -26,26 +26,25 @@
    identity
    (fn [e] (throw e))))
 
-(defn- request-with-session-id
-  "Creates a mock Ring request with the given session-id applied"
-  [session-id]
+(defn- request-with-session-key
+  "Creates a mock Ring request with the given session-key applied"
+  [session-key]
   (-> (ring.mock/request :get "/anyurl")
-      (assoc :metabase-session-id session-id)))
-
-(defn- random-session-id []
-  (str (random-uuid)))
+      (assoc :metabase-session-key session-key)))
 
 (deftest wrap-current-user-info-test
   (testing "Valid requests should add `metabase-user-id` to requests with valid session info"
-    (let [session-id (random-session-id)
-          session-id-hashed (session/hash-session-id session-id)]
+    (let [session-id (session/generate-session-id)
+          session-key (session/generate-session-key)
+          session-key-hashed (session/hash-session-key session-key)]
       (try
-        (t2/insert! :model/Session {:id      session-id-hashed
-                                    :user_id (test.users/user->id :rasta)})
+        (t2/insert! :model/Session {:id         session-id
+                                    :key_hashed session-key-hashed
+                                    :user_id    (test.users/user->id :rasta)})
         (is (= (test.users/user->id :rasta)
-               (-> (auth-enforced-handler (request-with-session-id session-id))
+               (-> (auth-enforced-handler (request-with-session-key session-key))
                    :metabase-user-id)))
-        (finally (t2/delete! :model/Session :id session-id-hashed)))))
+        (finally (t2/delete! :model/Session :id session-id)))))
 
   (testing "Invalid requests should return unauthed response"
     (testing "when no session ID is sent with request"
@@ -56,30 +55,34 @@
     (testing "when an expired session ID is sent with request"
       ;; create a new session (specifically created some time in the past so it's EXPIRED) should fail due to session
       ;; expiration
-      (let [session-id (random-session-id)
-            session-id-hashed (session/hash-session-id session-id)]
+      (let [session-id (session/generate-session-id)
+            session-key (session/generate-session-key)
+            session-key-hashed (session/hash-session-key session-key)]
         (try
-          (t2/insert! :model/Session {:id      session-id-hashed
+          (t2/insert! :model/Session {:id      session-id
+                                      :key_hashed session-key-hashed
                                       :user_id (test.users/user->id :rasta)})
-          (t2/update! (t2/table-name :model/Session) {:id session-id-hashed}
+          (t2/update! (t2/table-name :model/Session) {:id session-id}
                       {:created_at (t/instant 1000)})
           (is (= request/response-unauthentic
-                 (auth-enforced-handler (request-with-session-id session-id))))
-          (finally (t2/delete! :model/Session :id session-id-hashed)))))
+                 (auth-enforced-handler (request-with-session-key session-key))))
+          (finally (t2/delete! :model/Session :id session-id)))))
 
     (testing "when a Session tied to an inactive User is sent with the request"
       ;; create a new session (specifically created some time in the past so it's EXPIRED)
       ;; should fail due to inactive user
       ;; NOTE that :trashbird is our INACTIVE test user
-      (let [session-id (random-session-id)
-            session-id-hashed (session/hash-session-id session-id)]
+      (let [session-id (session/generate-session-id)
+            session-key (session/generate-session-key)
+            session-key-hashed (session/hash-session-key session-key)]
         (try
-          (t2/insert! :model/Session {:id      session-id-hashed
-                                      :user_id (test.users/user->id :trashbird)})
+          (t2/insert! :model/Session {:id         session-id
+                                      :key_hashed session-key-hashed
+                                      :user_id    (test.users/user->id :trashbird)})
           (is (= request/response-unauthentic
                  (auth-enforced-handler
-                  (request-with-session-id session-id))))
-          (finally (t2/delete! :model/Session :id session-id-hashed)))))))
+                  (request-with-session-key session-key))))
+          (finally (t2/delete! :model/Session :id session-id)))))))
 
 ;;; ------------------------------------------ TEST wrap-static-api-key middleware ------------------------------------------
 
@@ -95,7 +98,7 @@
 (deftest wrap-static-api-key-test
   (testing "No API key in the request"
     (is (nil?
-         (:metabase-session-id
+         (:metabase-session-key
           (wrapped-api-key-handler
            (ring.mock/request :get "/anyurl"))))))
 

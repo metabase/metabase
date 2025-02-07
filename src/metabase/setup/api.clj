@@ -141,13 +141,13 @@
                 ;; this because there is `io!` in this block
                 (setting.cache/restore-cache!)
                 (throw e))))]
-    (let [{:keys [user-id session-id session]} (create!)
+    (let [{:keys [user-id session-key session]} (create!)
           superuser (t2/select-one :model/User :id user-id)]
       (events/publish-event! :event/user-login {:user-id user-id})
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))
       ;; return response with session ID and set the cookie as well
-      (request/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
+      (request/set-session-cookies request {:key session-key} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
 ;;; Admin Checklist
 
