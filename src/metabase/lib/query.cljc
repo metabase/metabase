@@ -451,13 +451,13 @@
     :else
     []))
 
-(defn- stage-seq [card-id dataset-query]
-  (map #(assoc % ::from-card card-id) (stage-seq* dataset-query)))
+(defn- stage-seq [card-id query]
+  (map #(assoc % ::from-card card-id) (stage-seq* query)))
 
 (defn- expand-stage [metadata-provider stage]
   (let [card-id (:source-card stage)
-        card (when card-id (lib.metadata/card metadata-provider card-id))
-        expanded-query (some->> card
+        expanded-query (some->> card-id
+                                (lib.metadata/card metadata-provider)
                                 :dataset-query
                                 #?(:clj card.metadata/normalize-dataset-query)
                                 (query metadata-provider))]
@@ -474,10 +474,10 @@
       (catch #?(:clj Exception :cljs :default) _e
         (throw (ex-info (i18n/tru "Cannot save card with cycles.") {}))))))
 
-(defn- build-graph [source-id metadata-provider dataset-query]
+(defn- build-graph [source-id metadata-provider query]
   (loop [graph (dep/graph)
          stages-visited 0
-         stages (stage-seq source-id dataset-query)]
+         stages (stage-seq source-id query)]
     (cond
       (empty? stages)
       graph
@@ -492,11 +492,11 @@
                (concat stages (expand-stage metadata-provider stage)))))))
 
 (defn check-overwrite
-  "Returns nil if the card with given `card-id` can be overwritten with `dataset-query`.
+  "Returns nil if the card with given `card-id` can be overwritten with `query`.
   Throws `ExceptionInfo` with a user-facing message otherwise.
 
   Currently checks for cycles (self-referencing queries)."
-  [card-id dataset-query]
-  (build-graph card-id dataset-query dataset-query)
+  [card-id query]
+  (build-graph card-id query query)
   ;; return nil if nothing throws
   nil)
