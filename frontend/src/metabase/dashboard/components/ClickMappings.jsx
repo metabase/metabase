@@ -7,7 +7,7 @@ import _ from "underscore";
 
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
-import { getParameters } from "metabase/dashboard/selectors";
+import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -134,6 +134,7 @@ export const ClickMappingsConnected = _.compose(
     const { object, isDashboard, dashcard, clickBehavior } = props;
     let parameters = getParameters(state, props);
     const metadata = getMetadata(state);
+    const dashcardData = getDashcardData(state, dashcard.id);
     const question = new Question(dashcard.card, metadata);
 
     if (props.excludeParametersSources) {
@@ -156,8 +157,12 @@ export const ClickMappingsConnected = _.compose(
       ({ id }) =>
         getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
     );
+
+    const availableColumns =
+      Object.values(dashcardData).flatMap(dataset => dataset.data.cols) ?? [];
+
     const sourceOptions = {
-      column: dashcard.card.result_metadata?.filter(isMappableColumn) || [],
+      column: availableColumns.filter(isMappableColumn),
       parameter: parameters,
     };
     return { setTargets, unsetTargets, sourceOptions, question };
