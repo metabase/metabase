@@ -835,8 +835,7 @@
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/search
   :test/search
-  {:exec-args {:only [metabase.api.search-test
-                      "test/metabase/search"]}}
+  {:exec-args {:only ["test/metabase/search"]}}
 
   ;; test custom clj-kondo linters and hooks.
   ;;

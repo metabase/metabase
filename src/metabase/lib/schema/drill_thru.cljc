@@ -126,7 +126,8 @@
    ::drill-thru.common
    [:map
     [:type   [:= :drill-thru/pivot]]
-    [:pivots [:map-of ::pivot-types [:sequential [:ref ::lib.schema.metadata/column]]]]]])
+    [:pivots [:map-of ::pivot-types [:sequential [:ref ::lib.schema.metadata/column]]]]
+    [:stage-number number?]]])
 
 (mr/def ::drill-thru.sort
   [:merge

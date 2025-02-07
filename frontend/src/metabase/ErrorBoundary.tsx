@@ -1,15 +1,22 @@
-import type { ComponentType, ErrorInfo } from "react";
-import { Component } from "react";
+import type {
+  ComponentType,
+  ErrorInfo,
+  ForwardedRef,
+  PropsWithChildren,
+} from "react";
+import { Component, forwardRef } from "react";
 
 import { SmallGenericError } from "metabase/components/ErrorPages";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class ErrorBoundary extends Component<
-  React.PropsWithChildren<{
-    onError?: (errorInfo: ErrorInfo) => void;
-    errorComponent?: ComponentType;
-    message?: string;
-  }>,
+interface ErrorBoundaryProps extends PropsWithChildren {
+  onError?: (errorInfo: ErrorInfo) => void;
+  errorComponent?: ComponentType;
+  message?: string;
+  forwardedRef?: ForwardedRef<HTMLDivElement>;
+}
+
+class ErrorBoundaryInner extends Component<
+  ErrorBoundaryProps,
   {
     hasError: boolean;
   }
@@ -44,6 +51,7 @@ export default class ErrorBoundary extends Component<
         : SmallGenericError;
       return (
         <ErrorComponent
+          ref={this.props.forwardedRef}
           message={this.props.message}
           data-testid="error-boundary"
         />
@@ -53,3 +61,10 @@ export default class ErrorBoundary extends Component<
     return this.props.children;
   }
 }
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default forwardRef<HTMLDivElement, ErrorBoundaryProps>(
+  function ErrorBoundary(props, ref) {
+    return <ErrorBoundaryInner {...props} forwardedRef={ref} />;
+  },
+);

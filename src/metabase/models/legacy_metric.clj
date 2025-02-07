@@ -6,10 +6,10 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -26,7 +26,7 @@
 (defmethod mi/can-read? :model/LegacyMetric
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
-     (data-perms/user-has-permission-for-table?
+     (perms/user-has-permission-for-table?
       api/*current-user-id*
       :perms/manage-table-metadata
       :yes

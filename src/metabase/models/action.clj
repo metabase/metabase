@@ -8,6 +8,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -90,8 +91,10 @@
       (t2/delete! :model/DashboardCard :action_id id)
       (check-model-is-not-a-saved-question model-id))))
 
-(defmethod mi/perms-objects-set :model/Action
-  [instance read-or-write]
+(mu/defmethod mi/perms-objects-set :model/Action :- [:set {:min 1} :string]
+  [instance      :- [:map
+                     [:model_id pos-int?]]
+   read-or-write :- [:enum :read :write]]
   (mi/perms-objects-set (t2/select-one :model/Card :id (:model_id instance)) read-or-write))
 
 (def action-columns
