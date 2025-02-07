@@ -4237,7 +4237,7 @@
       (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :metric}]
         (let [query-b (lib/aggregate query-a (lib.metadata/metric mp id-a))]
           (mt/with-temp [:model/Card {id-b :id} {:dataset_query (lib/->legacy-MBQL query-b) :type :metric}]
-            (let [query-with-cycle (lib/aggregate query-b (lib.metadata/metric mp id-b))]
+            (let [query-with-cycle (lib/aggregate query-a (lib.metadata/metric mp id-b))]
               (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
                                     {:dataset_query (lib/->legacy-MBQL query-with-cycle)
                                      :type :metric}))))))))
