@@ -65,7 +65,7 @@ The data section is where you select the data you want to work with. Here you'll
 
 You can see the data source in a new browser tab by Cmd/Ctrl+Clicking on the data source's name in the query builder.
 
-To choose which columns to include in your query, click on the arrow next to the data source. You'll also be able [hide columns](../visualizations/table.md#add) from the table view once you visualize your results.
+To choose which columns to include in your query, click on the arrow next to the data source. You'll also be able [hide columns](../visualizations/table.md#rearranging-adding-and-removing-columns) from the table view once you visualize your results.
 
 ### Adding or removing columns in a table
 
