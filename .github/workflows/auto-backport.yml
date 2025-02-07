@@ -3,10 +3,6 @@ on:
   pull_request:
     types: [closed, labeled]
 
-env:
-  closed: closed
-  has-backport-label: backport
-
 jobs:
   create-backport:
     if: | # the PR must be closed and have a backport label
