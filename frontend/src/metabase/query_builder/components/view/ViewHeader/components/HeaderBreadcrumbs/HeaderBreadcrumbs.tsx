@@ -55,6 +55,7 @@ export function HeadBreadcrumbs({
       className={cx(HeaderBreadcrumbsS.Container, {
         [HeaderBreadcrumbsS.headVariant]: variant === "head",
       })}
+      maw="100%"
       {...props}
     >
       {parts.map((part, index) => {

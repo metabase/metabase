@@ -171,6 +171,12 @@
 }
 
 .SavedQuestionLeftSideRoot {
+  flex-grow: 1;
+  overflow: hidden;
+  /* hack to fully show child textarea with a border */
+  padding-left: 0.5rem;
+  margin-left: -0.5rem;
+
   .SavedQuestionHeaderButtonContainer {
     transition: all 400ms ease;
     position: relative;
