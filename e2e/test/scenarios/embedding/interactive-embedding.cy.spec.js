@@ -17,7 +17,7 @@ import {
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-H.describeEE("scenarios > embedding > full app", () => {
+describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

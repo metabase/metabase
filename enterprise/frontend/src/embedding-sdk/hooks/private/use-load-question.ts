@@ -54,6 +54,7 @@ export interface LoadQuestionHookResult {
 export function useLoadQuestion({
   cardId,
   options,
+  // Passed when navigating from `InteractiveDashboard` or `EditableDashboard`
   deserializedCard,
   initialSqlParameters,
 }: LoadSdkQuestionParams): LoadQuestionHookResult {
@@ -82,7 +83,7 @@ export function useLoadQuestion({
   // Avoid re-running the query if the parameters haven't changed.
   const sqlParameterKey = getParameterDependencyKey(initialSqlParameters);
 
-  const shouldLoadQuestion = cardId != null;
+  const shouldLoadQuestion = cardId != null || deserializedCard != null;
   const [isQuestionLoading, setIsQuestionLoading] =
     useState(shouldLoadQuestion);
 

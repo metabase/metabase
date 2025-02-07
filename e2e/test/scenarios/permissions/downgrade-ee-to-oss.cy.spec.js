@@ -6,7 +6,7 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 const EE_DATA_ACCESS_PERMISSION_INDEX = 0;
 const OSS_NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
-H.describeEE("scenarios > admin > permissions > downgrade ee to oss", () => {
+describe("scenarios > admin > permissions > downgrade ee to oss", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

@@ -266,7 +266,7 @@ describe("scenarios > admin > settings > public sharing", () => {
   });
 });
 
-H.describeEE(
+describe(
   "scenarios > sharing > approved domains (EE)",
   { tags: "@external" },
   () => {
