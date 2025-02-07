@@ -124,7 +124,7 @@ const URL_WITH_FILLED_PARAMS = URL_WITH_PARAMS.replace(
   .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
   .replace(`{{${DASHBOARD_FILTER_TEXT.slug}}}`, FILTER_VALUE);
 
-H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
+describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

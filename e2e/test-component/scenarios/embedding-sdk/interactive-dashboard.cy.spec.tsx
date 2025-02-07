@@ -1,32 +1,56 @@
+const { H } = cy;
 import {
   InteractiveDashboard,
   InteractiveQuestion,
 } from "@metabase/embedding-sdk-react";
 
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  createDashboard,
-  describeEE,
-  getTextCardDetails,
-} from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { defer } from "metabase/lib/promise";
 import { Stack } from "metabase/ui";
+import type {
+  ConcreteFieldReference,
+  DashboardCard,
+  Parameter,
+} from "metabase-types/api";
 
-describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
+const { ORDERS } = SAMPLE_DATABASE;
+
+const DATE_FILTER: Parameter = {
+  id: "2",
+  name: "Date filter",
+  slug: "filter-date",
+  type: "date/all-options",
+};
+const CREATED_AT_FIELD_REF: ConcreteFieldReference = [
+  "field",
+  ORDERS.CREATED_AT,
+  { "base-type": "type/DateTime" },
+];
+
+describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    const textCard = getTextCardDetails({ col: 16, text: "Test text card" });
-    const questionCard = {
+    const textCard = H.getTextCardDetails({ col: 16, text: "Test text card" });
+    const questionCard: Partial<DashboardCard> = {
       id: ORDERS_DASHBOARD_DASHCARD_ID,
+      parameter_mappings: [
+        {
+          parameter_id: DATE_FILTER.id,
+          card_id: ORDERS_QUESTION_ID,
+          target: ["dimension", CREATED_AT_FIELD_REF],
+        },
+      ],
       card_id: ORDERS_QUESTION_ID,
       row: 0,
       col: 0,
@@ -34,9 +58,10 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
       size_y: 8,
     };
 
-    createDashboard({
+    H.createDashboard({
       name: "Orders in a dashboard",
       dashcards: [questionCard, textCard],
+      parameters: [DATE_FILTER],
     }).then(({ body: dashboard }) => {
       cy.wrap(dashboard.id).as("dashboardId");
       cy.wrap(dashboard.entity_id).as("dashboardEntityId");
@@ -132,6 +157,37 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
           cy.findByText("Test text card").should("not.exist");
         });
       });
+    });
+  });
+
+  it('should drill dashboards with filter values and not showing "Question not found" error (EMB-84)', () => {
+    cy.get("@dashboardId").then(dashboardId => {
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
+
+    H.filterWidget().eq(0).click();
+    H.popover().button("Previous 12 months").click();
+
+    const { promise, resolve: resolveCardEndpoint } = defer();
+
+    /**
+     * This seems to be the only reliable way to force the error to stay, and we will resolve
+     * the promise that will cause the error to go away manually after asserting that it's not there.
+     */
+    cy.intercept("get", "/api/card/*", req => {
+      return promise.then(() => {
+        req.continue();
+      });
+    }).as("getCard");
+
+    getSdkRoot().within(() => {
+      H.getDashboardCard().findByText("Orders").click();
+      cy.findByText("Question not found")
+        .should("not.exist")
+        .then(() => {
+          resolveCardEndpoint();
+        });
+      cy.findByText("New question").should("be.visible");
     });
   });
 });
