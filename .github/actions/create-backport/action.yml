@@ -92,10 +92,10 @@ runs:
       if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'true' }}
       with:
         include-log: false
-        message: Manual conflict resolution is required
+        message: Manual conflict resolution is required on \#${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
 
     - uses: ./.github/actions/notify-pull-request
       if: ${{ failure() }}
       with:
         include-log: true
-        message: Something went wrong while creating a backport
+        message: Something went wrong while creating backport

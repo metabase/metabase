@@ -25,7 +25,7 @@ runs:
           const shouldIncludeLog = ${{ inputs.include-log }}.toString() === "true";
           const author = context.payload.sender.login;
 
-          let body = `@${author} ${message} on #${pr.number}`;
+          let body = `@${author} ${message}`;
 
           if (shouldIncludeLog) {
             const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
