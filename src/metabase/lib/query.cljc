@@ -435,17 +435,17 @@
       (dissoc a-query :lib/metadata)
       lib.cache/discard-query-cache))
 
-(defn- stage-seq* [dataset-query]
+(defn- stage-seq* [dq-fragment]
   (cond
-    (vector? dataset-query)
-    (case (first dataset-query)
+    (vector? dq-fragment)
+    (case (first dq-fragment)
       :metric
-      [{:source-card (get dataset-query 2)}]
+      [{:source-card (get dq-fragment 2)}]
 
-      (mapcat stage-seq* dataset-query))
+      (mapcat stage-seq* dq-fragment))
 
-    (map? dataset-query)
-    (concat (:stages dataset-query) (mapcat stage-seq* (vals dataset-query)))
+    (map? dq-fragment)
+    (concat (:stages dq-fragment) (mapcat stage-seq* (vals dq-fragment)))
 
     :else
     []))
