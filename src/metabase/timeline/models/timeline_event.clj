@@ -103,6 +103,15 @@
   ([timeline options]
    (first (include-events [timeline] options))))
 
+(defn dashcard-timeline-events
+  "Look for a timeline and corresponding events associated with this dashcard."
+  [{{:keys [collection_id] :as _card} :card}]
+  (let [timelines (t2/select :model/Timeline
+                             :collection_id collection_id
+                             :archived false)]
+    (->> (t2/hydrate timelines :creator [:collection :can_write])
+         (map #(include-events-singular % {:events/all? true})))))
+
 ;;;; model
 
 (defmethod serdes/hash-fields :model/TimelineEvent

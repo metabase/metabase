@@ -8,4 +8,4 @@
 
 (p/import-vars
  [metabase.timeline.models.timeline-event
-  include-events-singular])
+  dashcard-timeline-events])
