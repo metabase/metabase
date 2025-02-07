@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.email :as email]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
@@ -271,32 +270,30 @@
               :message      "101. Metabase will make you a better person")
              (@inbox "test@test.com")))))
     (testing "metrics collection"
-      (let [calls (atom nil)]
-        (with-redefs [prometheus/inc! #(swap! calls conj %)]
-          (with-fake-inbox
-            (email/send-message!
-             :subject      "101 Reasons to use Metabase"
-             :recipients   ["test@test.com"]
-             :message-type :html
-             :message      "101. Metabase will make you a better person")))
-        (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
-        (is (= 0 (count (filter #{:metabase-email/message-errors} @calls))))))
-    (testing "error metrics collection"
-      (let [calls        (atom nil)
-            retry-config (assoc (#'retry/retry-configuration)
-                                :max-attempts 1
-                                :initial-interval-millis 1)
-            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (with-redefs [prometheus/inc!   #(swap! calls conj %)
-                      retry/decorate    (rt/test-retry-decorate-fn test-retry)
-                      email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+      (tu/with-prometheus-system! [_ system]
+        (with-fake-inbox
           (email/send-message!
            :subject      "101 Reasons to use Metabase"
            :recipients   ["test@test.com"]
            :message-type :html
            :message      "101. Metabase will make you a better person"))
-        (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
-        (is (= 1 (count (filter #{:metabase-email/message-errors} @calls))))))
+        (is (= 1.0 (tu/metric-value system :metabase-email/messages)))
+        (is (= 0.0 (tu/metric-value system :metabase-email/message-errors)))))
+    (testing "error metrics collection"
+      (let [retry-config (assoc (#'retry/retry-configuration)
+                                :max-attempts 1
+                                :initial-interval-millis 1)
+            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+        (tu/with-prometheus-system! [_ system]
+          (with-redefs [retry/decorate    (rt/test-retry-decorate-fn test-retry)
+                        email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+            (email/send-message!
+             :subject      "101 Reasons to use Metabase"
+             :recipients   ["test@test.com"]
+             :message-type :html
+             :message      "101. Metabase will make you a better person"))
+          (is (= 1.0 (tu/metric-value system :metabase-email/messages)))
+          (is (= 1.0 (tu/metric-value system :metabase-email/message-errors))))))
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=

@@ -4,6 +4,7 @@
    [clojure.test :refer [are deftest is]]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.sdk :as sdk]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [ring.mock.request :as ring.mock]))
 
@@ -39,44 +40,44 @@
     "1.1.1"))
 
 (deftest embeding-mw-bumps-metrics-with-react-sdk-client-header
-  (let [prometheus-standin (atom {})]
-    (with-redefs [prometheus/inc! (fn [k] (swap! prometheus-standin update k (fnil inc 0)))]
-      ;; X-Metabase-Client header == "embedding-sdk-react" => SDK context
-      (let [request (mock-request {:client @#'sdk/embedding-sdk-client})
-            good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
-            bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
-            ignored (sdk/embedding-mw (fn [_ respond _] (respond {:status 302})))
-            exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
-        (ignored request identity identity)
-        (is (= {} @prometheus-standin))
-        (good request identity identity)
-        (is (= {:metabase-sdk/response-ok 1} @prometheus-standin))
-        (bad request identity identity)
-        (is (= {:metabase-sdk/response-ok 1
-                :metabase-sdk/response-error 1} @prometheus-standin))
-        (exception request identity identity)
-        (is (= {:metabase-sdk/response-ok 1
-                :metabase-sdk/response-error 2} @prometheus-standin))))))
+  (mt/with-prometheus-system! [_ system]
+    ;; X-Metabase-Client header == "embedding-sdk-react" => SDK context
+    (let [request (mock-request {:client @#'sdk/embedding-sdk-client})
+          good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
+          bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
+          ignored (sdk/embedding-mw (fn [_ respond _] (respond {:status 302})))
+          exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
+      (ignored request identity identity)
+      (is (= 0.0 (mt/metric-value system :metabase-sdk/response-ok)))
+      (is (= 0.0 (mt/metric-value system :metabase-sdk/response-error)))
+      (good request identity identity)
+      (is (= 1.0 (mt/metric-value system :metabase-sdk/response-ok)))
+      (bad request identity identity)
+      (is (= 1.0 (mt/metric-value system :metabase-sdk/response-ok)))
+      (is (= 1.0 (mt/metric-value system :metabase-sdk/response-error)))
+      (exception request identity identity)
+      (is (= 1.0 (mt/metric-value system :metabase-sdk/response-ok)))
+      (is (= 2.0 (mt/metric-value system :metabase-sdk/response-error))))))
 
 (deftest embeding-mw-bumps-metrics-with-iframe-client-header
-  (let [prometheus-standin (atom {})]
-    (with-redefs [prometheus/inc! (fn [k] (swap! prometheus-standin update k (fnil inc 0)))]
-      ;; X-Metabase-Client header == "embedding-sdk-react" => SDK context
-      (let [request (mock-request {:client @#'sdk/embedding-iframe-client})
-            good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
-            bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
-            ignored (sdk/embedding-mw (fn [_ respond _] (respond {:status 302})))
-            exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
-        (ignored request identity identity)
-        (is (= {} @prometheus-standin))
-        (good request identity identity)
-        (is (= {:metabase-embedding-iframe/response-ok 1} @prometheus-standin))
-        (bad request identity identity)
-        (is (= {:metabase-embedding-iframe/response-ok 1
-                :metabase-embedding-iframe/response-error 1} @prometheus-standin))
-        (exception request identity identity)
-        (is (= {:metabase-embedding-iframe/response-ok 1
-                :metabase-embedding-iframe/response-error 2} @prometheus-standin))))))
+  (mt/with-prometheus-system! [_ system]
+    ;; X-Metabase-Client header == "embedding-sdk-react" => SDK context
+    (let [request (mock-request {:client @#'sdk/embedding-iframe-client})
+          good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
+          bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
+          ignored (sdk/embedding-mw (fn [_ respond _] (respond {:status 302})))
+          exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
+      (ignored request identity identity)
+      (is (= 0.0 (mt/metric-value system :metabase-embedding-iframe/response-ok)))
+      (is (= 0.0 (mt/metric-value system :metabase-embedding-iframe/response-error)))
+      (good request identity identity)
+      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response-ok)))
+      (bad request identity identity)
+      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response-ok)))
+      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response-error)))
+      (exception request identity identity)
+      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response-ok)))
+      (is (= 2.0 (mt/metric-value system :metabase-embedding-iframe/response-error))))))
 
 (deftest embeding-mw-does-not-bump-metrics-with-random-sdk-header
   (let [prometheus-standin (atom {})]

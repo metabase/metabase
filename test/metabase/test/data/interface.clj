@@ -31,6 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.random :as u.random]
    [methodical.core :as methodical]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -835,3 +836,43 @@
   {:arglists '([driver database view-name options])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
+
+(defmulti bad-connection-details
+  "Returns a map that when merged with details will produce a failing connection to db."
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod bad-connection-details :default
+  [_driver]
+  {:user (u.random/random-name)})
+
+(doseq [driver [:h2 :sqlite]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    nil))
+
+(doseq [driver [:bigquery-cloud-sdk]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:project-id (u.random/random-name)}))
+
+(doseq [driver [:redshift :snowflake :vertica :sparksql]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:db (u.random/random-name)}))
+
+(doseq [driver [:oracle]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:service-name (u.random/random-name)}))
+
+(doseq [driver [:presto-jdbc :databricks]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:catalog (u.random/random-name)}))
+
+(doseq [driver [:athena]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:access_key (u.random/random-name)}))
