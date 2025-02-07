@@ -22,6 +22,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -299,28 +300,49 @@
                    :status        :completed}
                   result)))))))
 
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(defmulti native-array-query
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-array-query :default
+  [_driver]
+  "select array['a', 'b', 'c']")
+
+(doseq [driver [:redshift :databricks]]
+  (defmethod native-array-query driver
+    [_driver]
+    "select array('a', 'b', 'c')"))
+
+(doseq [driver [:mysql :sqlite]]
+  (defmethod native-array-query driver
+    [_driver]
+    "select json_array('a', 'b', 'c')"))
+
+(defmethod native-array-query :snowflake
+  [_driver]
+  "select array_construct('a', 'b', 'c')")
+
+(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite]]
+  (defmethod driver/database-supports? [driver :test/array]
+    [_driver _feature _database]
+    true))
+
 (deftest query-with-postgres-arrays-can-be-cached-test
-  (mt/test-driver :postgres
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/array)
     (with-mock-cache! [save-chan]
       (mt/with-clock #t "2025-02-06T00:00:00.000Z[UTC]"
-        (let [query (mt/native-query {:query "select category_id, array_agg(name)
-                                              from venues
-                                              group by category_id
-                                              order by 1 asc
-                                              limit 2;"})
+        (let [query (mt/native-query {:query (native-array-query driver/*driver*)})
               query (assoc query :cache-strategy (ttl-strategy))
               original-result (qp/process-query query)
               ;; clear any existing values in the `save-chan`
               _               (while (a/poll! save-chan))
               _               (mt/wait-for-result save-chan)
               cached-result (qp/process-query query)]
-          (is (= true
-                 (boolean (#'cache/is-cacheable? query))))
           (is (=? {:cache/details  {:cached     true
                                     :updated_at #t "2025-02-06T00:00:00.000Z[UTC]"
                                     :hash       some?}
-                   :row_count 2
+                   :row_count 1
                    :status    :completed}
                   (dissoc cached-result :data)))
           (is (= (seq (-> original-result :cache/details :hash))

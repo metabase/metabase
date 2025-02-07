@@ -10,6 +10,7 @@
    [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
+   [metabase.driver :as driver]
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
    [metabase.models.pulse-channel :as pulse-channel]
@@ -20,6 +21,7 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -1107,15 +1109,39 @@
                   :recipient-type nil}
                  (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans"))))))))
 
+(defmulti native-array-query
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-array-query :default
+  [_driver]
+  "select array['a', 'b', 'c']")
+
+(doseq [driver [:redshift :databricks]]
+  (defmethod native-array-query driver
+    [_driver]
+    "select array('a', 'b', 'c')"))
+
+(doseq [driver [:mysql :sqlite]]
+  (defmethod native-array-query driver
+    [_driver]
+    "select json_array('a', 'b', 'c')"))
+
+(defmethod native-array-query :snowflake
+  [_driver]
+  "select array_construct('a', 'b', 'c')")
+
+(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite :vertica]]
+  (defmethod driver/database-supports? [driver :test/array]
+    [_driver _feature _database]
+    true))
+
 (deftest query-with-postgres-arrays-can-be-emailed-test
-  (mt/test-driver :postgres
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/array)
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                               :type     :native
-                                                              :native   {:query "select category_id, array_agg(name)
-                                                                                 from venues
-                                                                                 group by 1
-                                                                                 order by 1 as
-                                                                                 limit 2;"}}}
+                                                              :native   {:query (native-array-query driver/*driver*)}}}
                    :model/Dashboard {dashboard-id :id} {:name "Venues by Category"}
                    :model/DashboardCard _ {:card_id      card-id
                                            :dashboard_id dashboard-id}]
