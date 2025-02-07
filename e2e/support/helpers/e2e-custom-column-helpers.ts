@@ -12,8 +12,14 @@ const metaKey = isMac ? "Meta" : "Control";
 /**
  * @param {Object} option
  * @param {string} option.formula
- * @param {string=} option.name
- * @param {boolean} option.blur true by default. However, if you need to examine the popover in the test, it should be set to false so the popover is not dismissed
+ * @param {string} option.name
+ * @param {boolean} [option.blur]
+ *   true by default. However, if you need to examine the popover in the test, it should be set to false so the popover is not dismissed
+ * @param {boolean} [option.allowFastSet]
+ *   Because CodeMirror uses a contenteditable div, and it is not possible to use cy.type() on it, we emulate .type with realPress.
+ *   This does not always work, since realPress() does not support all characters. Setting this to true will enable an escape hatch
+ *   that uses cy.invoke('text') under the hood, to allow for formulas that contain unsupported characters.
+ *   This has some other sideeffects however, so use it sparingly.
  */
 export function enterCustomColumnDetails({
   formula,
@@ -62,6 +68,18 @@ export const CustomExpressionEditor = {
   get() {
     return cy.findByTestId("custom-expression-query-editor");
   },
+  /**
+   * @param {string} text the formula to type
+   * @param {Object} options
+   * @param {boolean} [options.focus]
+   *   true by default. Set to false to stop the helper from explicitly focussing the formula input.
+   * @param {boolean} [options.allowFastSet]
+   *   true by default. However, if you need to examine the popover in the test, it should be set to false so the popover is not dismissed
+   *   Because CodeMirror uses a contenteditable div, and it is not possible to use cy.type() on it, we emulate .type with realPress.
+   *   This does not always work, since realPress() does not support all characters. Setting this to true will enable an escape hatch
+   *   that uses cy.invoke('text') under the hood, to allow for formulas that contain unsupported characters.
+   *   This has some other sideeffects however, so use it sparingly.
+   */
   type(
     text: string,
     {
