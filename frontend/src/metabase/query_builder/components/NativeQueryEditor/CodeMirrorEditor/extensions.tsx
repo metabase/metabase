@@ -7,8 +7,6 @@ import { indentMore } from "@codemirror/commands";
 import {
   HighlightStyle,
   foldService,
-  indentService,
-  indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
 import { Prec } from "@codemirror/state";
@@ -87,7 +85,6 @@ export function useExtensions(query: Lib.Query): Extension[] {
       highlighting(),
       tagDecorator(),
       folds(),
-      indentation(),
       disableCmdEnter(),
     ]
       .flat()
@@ -130,23 +127,6 @@ function disableCmdEnter() {
       },
     ]),
   );
-}
-
-function indentation() {
-  return [
-    // set indentation to tab
-    indentUnit.of("\t"),
-
-    // persist the indentation from the previous line
-    indentService.of((context, pos) => {
-      const previousLine = context.lineAt(pos, -1);
-      const previousLineText = previousLine.text.replaceAll(
-        "\t",
-        " ".repeat(context.state.tabSize),
-      );
-      return previousLineText.match(/^(\s)*/)?.[0].length ?? 0;
-    }),
-  ];
 }
 
 function nonce() {
