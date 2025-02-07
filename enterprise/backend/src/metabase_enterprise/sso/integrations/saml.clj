@@ -78,7 +78,7 @@
                                    (group-names->ids group-names)
                                    (all-mapped-group-ids)))))
 
-(mu/defn- fetch-or-create-user! :- [:maybe [:map [:id ms/UUIDString]]]
+(mu/defn- fetch-or-create-user! :- [:maybe [:map [:key ms/UUIDString]]]
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-enabled)

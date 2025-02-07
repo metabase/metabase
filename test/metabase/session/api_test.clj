@@ -36,7 +36,7 @@
 
 (def ^:private SessionResponse
   [:map
-   [:id ms/UUIDString]])
+   [:key ms/UUIDString]])
 
 (def ^:private session-cookie request/metabase-session-cookie)
 
