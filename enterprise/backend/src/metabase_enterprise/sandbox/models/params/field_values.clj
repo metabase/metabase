@@ -192,12 +192,41 @@
           (get "id-or-name"))
   ;; => 1
 
-  (some-> (mc/parse :metabase.lib.schema.parameter/dimension
-                    [:dimension [:field 1 {}]])
-          ;; => {:tag :dimension, :target [:field {"tag" :field, "id-or-name" 1, "options" {}}], :options nil}
-          :target
-          second
-          (get "id-or-name"))
+  (-> (mc/parse :metabase.lib.schema.parameter/dimension
+                [:dimension [:field 1 {}]])
+      ;; => {:tag :dimension, :target [:field {"tag" :field, "id-or-name" 1, "options" {}}], :options nil}
+      :target
+      second
+      (get "id-or-name"))
   ;; => 1
+
+
+  ;; mc/parse returns :malli.core/invalid when it is unable to parse. we can use that to throw when the shape is not one
+  ;; we expected:
+
+  (defn util-parse [schema value]
+    (let [parsed (mc/parse schema value)]
+      (when (= parsed :malli.core/invalid)
+        (throw (ex-info "Invalid parse:"
+                        {:invalid-parse true :schema schema :value value})))
+      parsed))
+
+
+  (mapv #(try
+           (util-parse :metabase.lib.schema.parameter/dimension %)
+           (catch Exception e (ex-data e)))
+        [[:dimension [:field 1 {}]]
+         [:dimension [:field 1 {}] {:stage-number 7}]
+         [:dimension [:field 1 {}] {:stage-number 7}
+          "my new thing that isnt in the schema"]])
+
+  ;;=>
+  [{:tag :dimension, :target [:field {"tag" :field, "id-or-name" 1, "options" {}}], :options nil}
+   {:tag :dimension, :target [:field {"tag" :field, "id-or-name" 1, "options" {}}], :options {:stage-number 7}}
+   {:invalid-parse true,
+    :schema :metabase.lib.schema.parameter/dimension,
+    :value [:dimension [:field 1 {}] {:stage-number 7} "my new thing that isnt in the schema"]}]
+
+
 
   )
