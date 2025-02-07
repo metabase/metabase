@@ -64,3 +64,10 @@
         row-indexes (js->clj row-indexes)
         col-settings (js->clj col-settings :keywordize-keys true)]
     (clj->js (pivot/add-subtotals row-tree row-indexes col-settings))))
+
+(defn ^:export add-value-column-nodes
+  [col-tree col-indexes col-settings]
+  (let [col-tree (js->clj col-tree :keywordize-keys true)
+        col-indexes (js->clj col-indexes)
+        col-settings (js->clj col-settings :keywordize-keys true)]
+    (clj->js (pivot/add-value-column-nodes col-tree col-indexes col-settings))))
