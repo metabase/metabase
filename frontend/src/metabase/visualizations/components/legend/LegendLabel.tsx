@@ -15,7 +15,7 @@ interface Props {
   children: ReactNode;
   className?: string;
   href?: LinkProps["to"];
-  onClick: MouseEventHandler;
+  onClick?: MouseEventHandler;
   onFocus: FocusEventHandler;
   onMouseEnter: MouseEventHandler;
 }
@@ -33,12 +33,12 @@ export const LegendLabel = ({
       // Prefer programmatic onClick handling over native browser's href handling.
       // This helps to avoid e.g. 2 tabs opening when ctrl + clicking the link.
       event.preventDefault();
-      onClick(event);
+      onClick?.(event);
     },
     [onClick],
   );
 
-  if (!href) {
+  if (!href || !onClick) {
     return (
       <div
         className={cx(S.text, className, {

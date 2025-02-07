@@ -2,12 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { FlexibleSizeComponent } from "embedding-sdk";
 import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Button, Group, Icon, Stack, Tabs } from "metabase/ui";
 
 import type { InteractiveQuestionProps } from "../../public/InteractiveQuestion";
+import { FlexibleSizeComponent } from "../FlexibleSizeComponent";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
 import QuestionEditorS from "./QuestionEditor.module.css";
