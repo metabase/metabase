@@ -1,4 +1,4 @@
-(ns metabase.models.user-key-value.types
+(ns metabase.user-key-value.models.user-key-value.types
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -43,7 +43,7 @@
   "When the key-value pair expires"
   :time/instant)
 
-(mu/defn defnamespace
+(mu/defn- defnamespace
   "Declare a new namespace with a schema for the value"
   [namespace :- ::namespace
    schema]
@@ -82,20 +82,20 @@
 
 (def ^:private types-dir "user_key_value_types")
 
-(defn- load-schema
+(defn- load-schema!
   "Loads a schema with the provided namespace"
   [schema namespace]
   (defnamespace namespace schema)
   (update-user-key-value-schema!))
 
-(defn- load-schema-from-file
+(defn- load-schema-from-file!
   "Load a schema from an EDN file, using its filename as the namespace."
   [^File file]
   (let [namespace (file->namespace file)
         schema  (-> file slurp edn/read-string)]
-    (load-schema schema namespace)))
+    (load-schema! schema namespace)))
 
-(defn watch-directory
+(defn watch-directory!
   "Only used in dev. Watch a directory for changes and call the callback with the affected file."
   [dir callback]
   (let [^WatchService watcher (.newWatchService (FileSystems/getDefault))
@@ -118,19 +118,19 @@
           (.reset key)
           (recur))))))
 
-(defn handle-file-change
+(defn handle-file-change!
   "Only used in dev. Handle a file change in the types directory."
   [^File file action]
   (case action
-    :create (load-schema-from-file file)
-    :modify (load-schema-from-file file)
+    :create (load-schema-from-file! file)
+    :modify (load-schema-from-file! file)
     :delete (let [namespace (file->namespace file)]
               ;; this is kind of silly. we don't have a way to delete something from the registry, so just hackily
               ;; make a schema that can't ever be valid. In production, we're not going to be watching files, so
               ;; this is solely for dev.
               (defnamespace namespace [:and true? false?]))))
 
-(defn load-all-schemas-prod
+(defn load-all-schemas-prod!
   "Loads all type schemas from the a given resource path. This is the production code path which doesn't implement
   file-watching, and works when running in a JAR."
   [dir]
@@ -156,13 +156,13 @@
                      []
                      ds)]
         (doseq [[schema namespace] schemas]
-          (load-schema schema namespace))
+          (load-schema! schema namespace))
         (update-user-key-value-schema!)))))
 
-(defn load-and-watch-schemas
+(defn load-and-watch-schemas!
   "In production, just load the schemas. In development, watch for changes as well."
   []
-  (load-all-schemas-prod types-dir)
+  (load-all-schemas-prod! types-dir)
   ;; in dev, watch both types directories for changes
   (when config/is-dev?
-    (watch-directory (io/file (io/resource types-dir)) handle-file-change)))
+    (watch-directory! (io/file (io/resource types-dir)) handle-file-change!)))

@@ -82,7 +82,7 @@
     :model/Timeline                          metabase.models.timeline
     :model/TimelineEvent                     metabase.models.timeline-event
     :model/User                              metabase.models.user
-    :model/UserKeyValue                      metabase.models.user-key-value
+    :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.models.user-parameter-value
     :model/ViewLog                           metabase.models.view-log})
 

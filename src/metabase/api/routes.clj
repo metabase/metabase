@@ -47,7 +47,6 @@
    [metabase.api.timeline]
    [metabase.api.timeline-event]
    [metabase.api.user]
-   [metabase.api.user-key-value]
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
    [metabase.channel.api]
@@ -56,6 +55,7 @@
    [metabase.search.api]
    [metabase.setup.api]
    [metabase.sync.api]
+   [metabase.user-key-value.api]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase.api.action/keep-me
@@ -95,10 +95,10 @@
          metabase.api.timeline/keep-me
          metabase.api.timeline-event/keep-me
          metabase.api.user/keep-me
-         metabase.api.user-key-value/keep-me
          metabase.api.util/keep-me
          metabase.permissions.api/keep-me
-         metabase.setup.api/keep-me)
+         metabase.setup.api/keep-me
+         metabase.user-key-value.api/keep-me)
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
   "Always 'falls thru' to the next handler."
@@ -183,7 +183,7 @@
    "/timeline"             (+auth 'metabase.api.timeline)
    "/timeline-event"       (+auth 'metabase.api.timeline-event)
    "/user"                 (+auth 'metabase.api.user)
-   "/user-key-value"       (+auth 'metabase.api.user-key-value)
+   "/user-key-value"       (+auth 'metabase.user-key-value.api)
    "/util"                 'metabase.api.util})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
