@@ -18,13 +18,17 @@
    (fn [template] (format template prefix table-name))
    ["CREATE UNIQUE INDEX %s_identity_idx ON %s (model, model_id)"]))
 
+(def ^:private upsert-lock (Object.))
+
 (defmethod specialization/batch-upsert! :h2 [table entries]
   ;; it's in memory, let's just do it quick and dirty (HoneySQL can't speak MERGE WITH)
   ;; TODO just generate raw SQL
-  (when (seq entries)
-    (doseq [{:keys [model model_id]} entries]
-      (t2/delete! table :model model :model_id (str model_id)))
-    (t2/insert! table entries)))
+  (locking upsert-lock
+    (when (seq entries)
+      (doseq [[model model-entries] (group-by :model entries)]
+        (let [ids (map (comp str :model_id) model-entries)]
+          (t2/delete! table :model model :model_id [:in ids])))
+      (t2/insert! table entries))))
 
 (defn- wildcard-tokens [search-term]
   (->> (str/split search-term #"\s+")
