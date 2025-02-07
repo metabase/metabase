@@ -29,8 +29,7 @@
   get-dashboard-template
   get-dashboard-templates]
  [metabase.xrays.automagic-dashboards.populate
-  create-collection!
-  get-or-create-root-container-collection]
+  get-or-create-container-collection]
  [metabase.xrays.related
   related]
  [metabase.xrays.transforms.dashboard
