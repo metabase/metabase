@@ -132,21 +132,3 @@
   (api/read-check (t2/select-one :model/Collection :id id))
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))
-
-;;; TODO -- this seems to be unused on the FE -- confirm with FE and remove entirely.
-(api.macros/defendpoint :get "/card/:id"
-  "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [include start end]} :- [:map
-                                   [:include {:optional true} [:maybe [:= "events"]]]
-                                   [:start   {:optional true} [:maybe ms/TemporalString]]
-                                   [:end     {:optional true} [:maybe ms/TemporalString]]]]
-  (let [{:keys [collection_id] :as _card} (api/read-check :model/Card id)]
-    ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
-    ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
-    ;; the read-checks are particularly fast on multiple items
-    (timeline/timelines-for-collection collection_id
-                                       {:timeline/events? (= include "events")
-                                        :events/start     (when start (u.date/parse start))
-                                        :events/end       (when end (u.date/parse end))})))
