@@ -116,6 +116,13 @@ const enterSamlSettings = () => {
       /SAML Identity Provider URL/,
       "https://example.test",
     );
-    H.typeAndBlurUsingLabel(/SAML Identity Provider Certificate/, certificate);
+    // paste this long value to not waste time typing
+    cy.findByLabelText(/SAML Identity Provider Certificate/)
+      .click()
+      .invoke("val", certificate);
+    // do a little typing to invoke the blur event
+    cy.findByLabelText(/SAML Identity Provider Certificate/)
+      .type("a{backspace}")
+      .blur();
   });
 };
