@@ -13,38 +13,35 @@
 
 (deftest ^:parallel schema-sample-test
   (mt/with-driver :h2
-    (let [query {:database 1
+    (let [query {:database (mt/id)
                  :native {:query (str "SELECT * FROM x.orders1"
                                       " INNER JOIN products ON orders1.product_id = products.id"
                                       " INNER JOIN ANALYTIC_EVENT ON true")}}]
-      (is (= "CREATE TABLE PUBLIC.PRODUCTS (
-  ID BIGINT,
-  EAN CHARACTER,
-  TITLE CHARACTER VARYING,
-  CATEGORY CHARACTER VARYING,
-  VENDOR CHARACTER VARYING,
-  PRICE DOUBLE PRECISION,
-  RATING DOUBLE PRECISION,
-  CREATED_AT TIMESTAMP
-);
-CREATE TABLE PUBLIC.ANALYTIC_EVENTS (
-  ID BIGINT,
-  ACCOUNT_ID BIGINT,
-  EVENT CHARACTER VARYING,
-  TIMESTAMP TIMESTAMP,
-  PAGE_URL CHARACTER VARYING,
-  BUTTON_LABEL CHARACTER VARYING
-);
-CREATE TABLE PUBLIC.ORDERS (
-  ID BIGINT,
-  USER_ID INTEGER,
-  PRODUCT_ID INTEGER,
-  SUBTOTAL DOUBLE PRECISION,
-  TAX DOUBLE PRECISION,
-  TOTAL DOUBLE PRECISION,
-  DISCOUNT DOUBLE PRECISION,
-  CREATED_AT TIMESTAMP,
-  QUANTITY INTEGER
-);
-"
+      (is (= (str "CREATE TABLE PUBLIC.PRODUCTS (\n"
+                  "  ID BIGINT,\n"
+                  "  EAN CHARACTER VARYING,\n"
+                  "  TITLE CHARACTER VARYING,\n"
+                  "  CATEGORY CHARACTER VARYING,\n"
+                  "  VENDOR CHARACTER VARYING,\n"
+                  "  PRICE DOUBLE PRECISION,\n"
+                  "  RATING DOUBLE PRECISION,\n"
+                  "  CREATED_AT TIMESTAMP WITH TIME ZONE\n"
+                  ");\n"
+                  "CREATE TABLE PUBLIC.ORDERS (\n"
+                  "  ID BIGINT,\n"
+                  "  USER_ID INTEGER,\n"
+                  "  PRODUCT_ID INTEGER,\n"
+                  "  SUBTOTAL DOUBLE PRECISION,\n"
+                  "  TAX DOUBLE PRECISION,\n"
+                  "  TOTAL DOUBLE PRECISION,\n"
+                  "  DISCOUNT DOUBLE PRECISION,\n"
+                  "  CREATED_AT TIMESTAMP WITH TIME ZONE,\n"
+                  "  QUANTITY INTEGER\n"
+                  ");\n"
+                  "CREATE TABLE PUBLIC.USERS (\n"
+                  "  ID BIGINT,\n"
+                  "  NAME CHARACTER VARYING,\n"
+                  "  LAST_LOGIN TIMESTAMP,\n"
+                  "  PASSWORD CHARACTER VARYING\n"
+                  ");\n")
              (#'ai-sql-fixer.api/schema-sample query {:all-tables-limit 5}))))))
