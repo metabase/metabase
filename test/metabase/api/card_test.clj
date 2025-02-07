@@ -10,7 +10,8 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
    [metabase.api.card :as api.card]
-   [metabase.api.common.openapi]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.driver :as driver]
@@ -20,12 +21,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.card.metadata :as card.metadata]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
@@ -705,24 +706,27 @@
 
 (deftest ^:parallel doc-test
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
-    (let [openapi-object             (metabase.api.common.openapi/openapi-object #'api.card/routes)
+    (let [openapi-object             (open-api/open-api-spec (api.macros/ns-handler 'metabase.api.card) "/api/card")
           schemas                    (get-in openapi-object [:components :schemas])
-          body-properties            (get-in openapi-object [:paths "/" :post :requestBody :content "application/json" :schema :properties])
-          type-schema-ref            (some-> (get-in body-properties [:type :$ref])
+          body-properties            (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
+          _                          (is (some? body-properties))
+          type-schema-ref            (some-> (get-in body-properties ["type" :$ref])
                                              (str/replace #"^#/components/schemas/" "")
                                              (str/replace #"\Q~1\E" "/"))
+          _                          (is (some? type-schema-ref))
           type-schema                (get schemas type-schema-ref)
-          result-metadata-schema-ref (some-> (get-in body-properties [:result_metadata :$ref])
+          result-metadata-schema-ref (some-> (get-in body-properties ["result_metadata" :$ref])
                                              (str/replace #"^#/components/schemas/" "")
                                              (str/replace #"\Q~1\E" "/"))
+          _                          (is (some? result-metadata-schema-ref))
           result-metadata-schema     (get schemas result-metadata-schema-ref)]
       (testing 'type
-        (testing type-schema-ref
-          (is (=? {:type "string", :enum [:question :metric :model]}
+        (testing (pr-str type-schema-ref)
+          (is (=? {:type :string, :enum [:question :metric :model]}
                   type-schema))))
       (testing 'result_metadata
         (testing (pr-str result-metadata-schema-ref)
-          (is (=? {:type        "array"
+          (is (=? {:type        :array
                    :description "value must be an array of valid results column metadata maps."
                    :optional    true}
                   result-metadata-schema)))))))

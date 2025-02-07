@@ -52,5 +52,3 @@
   "Deletes a KV-pair for the user"
   [{nmspace :namespace, k :key}]
   (user-key-value/delete! api/*current-user-id* nmspace k))
-
-(api/define-routes)

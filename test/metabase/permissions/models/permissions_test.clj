@@ -1,9 +1,9 @@
-(ns metabase.models.permissions-test
+(ns metabase.permissions.models.permissions-test
   (:require
    [clojure.test :refer :all]
    [metabase.models.collection :as collection]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -19,7 +19,7 @@
 (deftest ^:parallel collection-path-test
   (doseq [[perms-type f-symb] {:read      'collection-read-path
                                :readwrite 'collection-readwrite-path}
-          :let                [f (ns-resolve 'metabase.models.permissions f-symb)]]
+          :let                [f (ns-resolve 'metabase.permissions.models.permissions f-symb)]]
     (doseq [[input expected]
             {1                                                        {:read      "/collection/1/read/"
                                                                        :readwrite "/collection/1/"}
@@ -43,7 +43,7 @@
              Exception
              (f input)))))))
 
-;;; This originally lived in [[metabase.models.permissions]] but it is only used in tests these days so I moved it here.
+;;; This originally lived in [[metabase.permissions.models.permissions]] but it is only used in tests these days so I moved it here.
 (defn is-permissions-set?
   "Is `permissions-set` a valid set of permissions object paths?"
   ^Boolean [permissions-set]

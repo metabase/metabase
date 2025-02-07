@@ -1,4 +1,4 @@
-(ns metabase.api.permissions
+(ns metabase.permissions.api
   "/api/permissions endpoints."
   (:require
    [clojure.data :as data]
@@ -9,14 +9,14 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
-   [metabase.api.permission-graph :as api.permission-graph]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-revision :as perms-revision]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.permissions.api.permission-graph :as api.permission-graph]
+   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-revision :as perms-revision]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
@@ -344,5 +344,3 @@
     (validation/check-manager-of-group (:group_id membership))
     (t2/delete! :model/PermissionsGroupMembership :id id)
     api/generic-204-no-content))
-
-(api/define-routes)

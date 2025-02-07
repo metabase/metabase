@@ -14,8 +14,7 @@
    [metabase.driver :as driver]
    [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -181,7 +180,7 @@
                                         mdb.query/query
                                         (mapv :user_id)))
         user-ids (filter
-                  #(data-perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
+                  #(perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
                   user-ids-with-monitoring)]
     (into
      []
