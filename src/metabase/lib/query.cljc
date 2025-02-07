@@ -450,8 +450,8 @@
     :else
     []))
 
-(defn- stage-seq [card-id query]
-  (map #(assoc % ::from-card card-id) (stage-seq* query)))
+(defn- stage-seq [card-id a-query]
+  (map #(assoc % ::from-card card-id) (stage-seq* a-query)))
 
 (defn- expand-stage [metadata-provider stage]
   (let [card-id (:source-card stage)
@@ -472,10 +472,10 @@
       (catch #?(:clj Exception :cljs :default) _e
         (throw (ex-info (i18n/tru "Cannot save card with cycles.") {}))))))
 
-(defn- build-graph [source-id metadata-provider query]
+(defn- build-graph [source-id metadata-provider a-query]
   (loop [graph (dep/graph)
          stages-visited 0
-         stages (stage-seq source-id query)]
+         stages (stage-seq source-id a-query)]
     (cond
       (empty? stages)
       graph
@@ -494,7 +494,7 @@
   Throws `ExceptionInfo` with a user-facing message otherwise.
 
   Currently checks for cycles (self-referencing queries)."
-  [card-id query]
-  (build-graph card-id query query)
+  [card-id new-query]
+  (build-graph card-id new-query new-query)
   ;; return nil if nothing throws
   nil)
