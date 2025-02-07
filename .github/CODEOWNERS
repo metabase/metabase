@@ -125,8 +125,6 @@ test/metabase/driver @metabase/drivers
 src/metabase/eid_translation @metabase/core-backend-admin-webapp
 test/metabase/eid_translation @metabase/core-backend-admin-webapp
 
-src/metabase/embed @metabase/embedding
-test/metabase/embed @metabase/embedding
 
 src/metabase/events @metabase/devexp
 test/metabase/events @metabase/devexp
