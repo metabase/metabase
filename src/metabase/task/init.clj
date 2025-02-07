@@ -14,7 +14,6 @@
    [metabase.task.notification]
    [metabase.task.persist-refresh]
    [metabase.task.refresh-slack-channel-user-cache]
-   [metabase.task.search-index]
    [metabase.task.send-anonymous-stats]
    [metabase.task.send-pulses]
    [metabase.task.task-history-cleanup]
