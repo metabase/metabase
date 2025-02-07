@@ -185,6 +185,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           .then(() => {
             resolveCardEndpoint();
           });
+        cy.findByText("New question").should("be.visible");
       });
     });
   });
