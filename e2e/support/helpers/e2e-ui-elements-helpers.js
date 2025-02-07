@@ -8,7 +8,8 @@ export function popover(testid) {
   return cy.get(selector).filter(":visible").should("be.visible");
 }
 
-const HOVERCARD_ELEMENT = ".mantine-HoverCard-dropdown[role='dialog']:visible";
+const HOVERCARD_ELEMENT =
+  ".mb-mantine-HoverCard-dropdown[role='dialog']:visible";
 
 export function hovercard() {
   cy.get(HOVERCARD_ELEMENT, { timeout: 6000 }).should("be.visible");
@@ -24,13 +25,13 @@ export function menu() {
 }
 
 export function modal() {
-  const MODAL_SELECTOR = ".mantine-Modal-content[role='dialog']";
+  const MODAL_SELECTOR = ".mb-mantine-Modal-content[role='dialog']";
   const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
 export function tooltip() {
-  return cy.get(".mantine-Tooltip-tooltip, [role='tooltip']");
+  return cy.get(".mb-mantine-Tooltip-tooltip, [role='tooltip']");
 }
 
 export function selectDropdown() {
