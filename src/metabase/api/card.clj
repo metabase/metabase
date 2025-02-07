@@ -246,7 +246,7 @@
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
   [metadata-provider dataset-query]
-  (let [pMBQL-query (-> dataset-query card.metadata/normalize-dataset-query lib.convert/->pMBQL)]
+  (let [pMBQL-query (-> dataset-query card.metadata/normalize-dataset-query)]
     (lib/query metadata-provider pMBQL-query)))
 
 (defn- card-columns-from-names
@@ -582,6 +582,15 @@
            type] :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
   (check-if-card-can-be-saved dataset_query type)
+  (when-some [query (some-> dataset_query
+                            :database
+                            lib.metadata.jvm/application-database-metadata-provider
+                            (dataset-query->query dataset_query))]
+    (when (not (lib/can-overwrite? id query))
+      (throw (ex-info (tru "Cannot overwrite this card with the query; it cannot be saved.")
+                      {:type        type
+                       :status-code 400}))))
+  (throw (ex-info "DEATH!" {:status-code 500}))
   (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
                                            [:moderation_reviews :moderator_details])
         card-updates           (api/updates-with-archived-directly card-before-update card-updates)

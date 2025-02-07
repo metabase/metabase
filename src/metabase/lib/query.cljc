@@ -25,7 +25,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [weavejester.dependency :as dep]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
   [_query _stage-number _x]
@@ -433,3 +434,73 @@
   (-> a-query
       (dissoc a-query :lib/metadata)
       lib.cache/discard-query-cache))
+
+(defn- stage-seq* [dataset-query]
+  (cond
+    (vector? dataset-query)
+    (case (first dataset-query)
+      :metric
+      [{:source-card (get dataset-query 2)}]
+
+      (mapcat stage-seq* dataset-query))
+
+    (map? dataset-query)
+    (concat (:stages dataset-query) (mapcat stage-seq* (vals dataset-query)))
+
+    :else
+    []))
+
+(defn- stage-seq [card-id dataset-query]
+  (map #(assoc % ::from-card card-id) (stage-seq* dataset-query)))
+
+(defn- expand-stage [metadata-provider stage]
+  (let [card-id (:source-card stage)
+        card (when card-id (lib.metadata/card metadata-provider card-id))
+        expanded-query (some->> card
+                                :dataset-query
+                                (query metadata-provider))]
+    (stage-seq card-id expanded-query)))
+
+(defn- add-stage-dep [graph stage]
+  (let [card-id  (:source-card  stage)
+        table-id (:source-table stage)
+        from-id  (::from-card   stage)]
+    (cond-> graph
+      card-id  (dep/depend [:card from-id] [:card  card-id])
+      table-id (dep/depend [:card from-id] [:table table-id]))))
+
+(defn- build-graph [graph source-id metadata-provider dataset-query]
+  (loop [graph graph
+         stages-visited 0
+         stages (stage-seq source-id dataset-query)]
+    (cond
+      (empty? stages)
+      graph
+
+      (> stages-visited 50)
+      (throw (ex-info "Too much recursion; giving up." {}))
+
+      :else
+      (let [[stage & stages] stages]
+        (recur (add-stage-dep graph stage)
+               (inc stages-visited)
+               (concat stages (expand-stage metadata-provider stage)))))))
+
+(defn- has-no-cycles?
+  [card-id dataset-query]
+  (try
+    ;; build a graph of dependencies from the stages
+    ;; throws ex-info if there's a cycle
+    (build-graph (dep/graph) card-id dataset-query dataset-query)
+    ;; no throw, so return true
+    true
+    (catch #?(:clj clojure.lang.ExceptionInfo
+              :cljs js/Error) _e
+      false)))
+
+(defn can-overwrite?
+  "Returns true if the card with given `card-id` can be overwritten with `dataset-query`.
+
+  Currently checks for cycles (self-referencing queries)."
+  [card-id dataset-query]
+  (has-no-cycles? card-id dataset-query))

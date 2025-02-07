@@ -120,6 +120,7 @@
  [lib.common
   external-op]
  [lib.convert
+  ->legacy-MBQL
   ->pMBQL]
  [lib.database
   database-id]
@@ -310,6 +311,7 @@
  [lib.normalize
   normalize]
  [lib.query
+  can-overwrite?
   can-preview
   can-run
   can-save
