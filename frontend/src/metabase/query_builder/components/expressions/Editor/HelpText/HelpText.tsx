@@ -38,6 +38,7 @@ export type HelpTextProps = {
   query: Lib.Query;
   metadata: Metadata;
   reportTimezone?: string;
+  height?: string | number;
 };
 
 function getDatabase(query: Lib.Query, metadata: Metadata) {
@@ -52,6 +53,7 @@ export function HelpText({
   query,
   metadata,
   reportTimezone,
+  height = "auto",
 }: HelpTextProps) {
   const database = getDatabase(query, metadata);
   const helpText =
@@ -121,7 +123,7 @@ export function HelpText({
       </Flex>
 
       {open && (
-        <Box className={S.info} data-testid="expression-helper">
+        <Box className={S.info} data-testid="expression-helper" mah={height}>
           <Box>{description}</Box>
 
           {args != null && (

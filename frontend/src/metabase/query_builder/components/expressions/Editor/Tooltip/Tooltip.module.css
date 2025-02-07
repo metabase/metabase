@@ -1,5 +1,5 @@
 .dropdown {
-  display: flex;
+  overflow: hidden;
 }
 
 .tooltip {
@@ -7,9 +7,8 @@
   z-index: 1000;
   width: 400px;
   box-shadow: rgba(0, 0, 0, 0.05) 0 4px 20px 0;
-  flex-grow: 1;
-  flex-direction: column;
   font-size: 14px;
+  overflow: hidden;
 
   &:empty {
     display: none;

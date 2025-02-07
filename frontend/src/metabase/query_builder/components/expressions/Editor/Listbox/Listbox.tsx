@@ -21,11 +21,13 @@ export function Listbox({
   view,
   query,
   stageIndex,
+  height = "auto",
 }: {
   state: EditorState;
   view: EditorView;
   query: Lib.Query;
   stageIndex: number;
+  height: string | number;
 }) {
   const { options, selectedOption } = useCompletions(state);
 
@@ -48,7 +50,7 @@ export function Listbox({
   }
 
   return (
-    <>
+    <Box h={height}>
       <ul role="listbox" className={S.listbox}>
         <DelayGroup>
           {options.map((completion, index) => (
@@ -65,7 +67,7 @@ export function Listbox({
         </DelayGroup>
       </ul>
       <Footer />
-    </>
+    </Box>
   );
 }
 
