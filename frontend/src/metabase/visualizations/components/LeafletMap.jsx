@@ -174,9 +174,9 @@ export default class LeafletMap extends Component {
 
       // Longitudes should be wrapped to the canonical range [-180, 180]. If the delta is >= 360,
       // select the full range; otherwise, you wind up selecting only the overlapping portion.
-      const longDelta = Math.abs(bounds.getEast() - bounds.getWest());
-      const west = longDelta >= 360 ? -180 : bounds.getSouthWest().wrap().lng;
-      const east = longDelta >= 360 ? 180 : bounds.getNorthEast().wrap().lng;
+      const lngDelta = Math.abs(bounds.getEast() - bounds.getWest());
+      const west = lngDelta >= 360 ? -180 : bounds.getSouthWest().wrap().lng;
+      const east = lngDelta >= 360 ? 180 : bounds.getNorthEast().wrap().lng;
 
       const filterBounds = {
         north: bounds.getNorth(),
