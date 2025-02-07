@@ -4200,8 +4200,8 @@
                     (lib/aggregate (lib/count))
                     (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
                                                             (lib/breakoutable-columns $q)))))]
-      (doseq [card-type [:question :metric :model]]
-        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query (lib/->legacy-MBQL query) :type card-type}]
+      (doseq [card-type-a [:question :metric :model]]
+        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query (lib/->legacy-MBQL query) :type card-type-a}]
           (let [card (lib.metadata/card mp id)
                 columns (lib/returned-columns (lib/query mp card))
                 right-column (m/find-first (comp #{"ID"} :display-name) columns)
@@ -4210,22 +4210,22 @@
                                                                 [(lib/=
                                                                   (lib.metadata/field mp (mt/id :orders :id))
                                                                   right-column)]))]
-            (doseq [card-type [:question :metric :model]]
+            (doseq [card-type-b [:question :metric :model]]
               (mt/user-http-request :crowberto :put 400 (str "card/" id)
                                     {:dataset_query (lib/->legacy-MBQL query-with-self-join)
-                                     :type card-type}))))))))
+                                     :type card-type-b}))))))))
 
 (deftest cannot-use-self-as-source
   (testing "Cannot use self as source for card."
     (let [mp (mt/metadata-provider)
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-      (doseq [card-type [:question :model]]
-        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query (lib/->legacy-MBQL query) :type card-type}]
+      (doseq [card-type-a [:question :model]]
+        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query (lib/->legacy-MBQL query) :type card-type-a}]
           (let [query-with-self-source (lib/with-different-table query (str "card__" id))]
-            (doseq [card-type [:question :model]]
+            (doseq [card-type-b [:question :model]]
               (mt/user-http-request :crowberto :put 400 (str "card/" id)
                                     {:dataset_query (lib/->legacy-MBQL query-with-self-source)
-                                     :type card-type}))))))))
+                                     :type card-type-b}))))))))
 
 (deftest cannot-save-metric-with-formula-cycle
   (testing "Cannot aggregate a metric with itself."
@@ -4249,8 +4249,8 @@
                       (lib/aggregate (lib/count))
                       (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
                                                               (lib/breakoutable-columns $q)))))]
-      (doseq [card-type [:question :metric :model]]
-        (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type card-type}]
+      (doseq [card-type-a [:question :metric :model]]
+        (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type card-type-a}]
           (let [card-a (lib.metadata/card mp id-a)
                 columns (lib/returned-columns (lib/query mp card-a))
                 right-column-a (m/find-first (comp #{"ID"} :display-name) columns)
@@ -4259,8 +4259,8 @@
                                                    [(lib/=
                                                      (lib.metadata/field mp (mt/id :orders :id))
                                                      right-column-a)]))]
-            (doseq [card-type [:question :metric :model]]
-              (mt/with-temp [:model/Card {id-b :id} {:dataset_query (lib/->legacy-MBQL query-b) :type card-type}]
+            (doseq [card-type-b [:question :metric :model]]
+              (mt/with-temp [:model/Card {id-b :id} {:dataset_query (lib/->legacy-MBQL query-b) :type card-type-b}]
                 (let [card-b (lib.metadata/card mp id-b)
                       columns (lib/returned-columns (lib/query mp card-b))
                       left-column-b (m/find-first (comp #{"ID"} :display-name) columns)
@@ -4269,7 +4269,7 @@
                                                              [(lib/=
                                                                left-column-b
                                                                right-column-a)]))]
-                  (doseq [card-type [:question :metric :model]]
+                  (doseq [card-type-c [:question :metric :model]]
                     (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
                                           {:dataset_query (lib/->legacy-MBQL query-cycle)
-                                           :type card-type})))))))))))
+                                           :type card-type-c})))))))))))
