@@ -590,7 +590,6 @@
       (throw (ex-info (tru "Cannot overwrite this card with the query; it cannot be saved.")
                       {:type        type
                        :status-code 400}))))
-  (throw (ex-info "DEATH!" {:status-code 500}))
   (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
                                            [:moderation_reviews :moderator_details])
         card-updates           (api/updates-with-archived-directly card-before-update card-updates)
