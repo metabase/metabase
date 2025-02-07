@@ -30,7 +30,6 @@ const DATE_FILTER: Parameter = {
   name: "Date filter",
   slug: "filter-date",
   type: "date/all-options",
-  default: "2024-01-01~2024-12-31",
 };
 const CREATED_AT_FIELD_REF: ConcreteFieldReference = [
   "field",
@@ -165,6 +164,10 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     cy.get("@dashboardId").then(dashboardId => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
     });
+
+    H.filterWidget().eq(0).click();
+    H.popover().button("Previous 12 months").click();
+
     const { promise, resolve: resolveCardEndpoint } = defer();
 
     /**
