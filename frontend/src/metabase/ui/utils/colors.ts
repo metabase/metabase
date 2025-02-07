@@ -46,11 +46,11 @@ const CUSTOM_COLORS = [
   "warning",
   "white",
   // TODO: Check with an adult and make sure this is okay
-  // "text-primary",
-  // "text-secondary",
-  // "text-tertiary",
-  // "background",
-  // "background-disabled",
+  "text-primary",
+  "text-secondary",
+  "text-tertiary",
+  "background",
+  "background-disabled",
 ] as const;
 
 export function getColorShades(colorName: string): ColorShades {
@@ -78,17 +78,6 @@ export function getThemeColors(): Record<string, ColorShades> {
       CUSTOM_COLORS.map(name => [name, getColorShades(legacyColor(name))]),
     ),
   };
-}
-
-export function themeColor(
-  colorName: string,
-  theme: MantineTheme,
-  primaryFallback: boolean = true,
-): string {
-  return (
-    theme.colors[colorName]?.[0] ??
-    (primaryFallback ? theme.primaryColor : "transparent")
-  );
 }
 
 /**
