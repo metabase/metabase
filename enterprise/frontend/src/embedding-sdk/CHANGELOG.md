@@ -1,3 +1,14 @@
+## [0.53.3](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.2...embedding-sdk-0.53.3) (2025-02-08)
+
+
+### Bug Fixes
+
+* **sdk:** fix minWidth console error in dashboard grid ([#52880](https://github.com/metabase/metabase/issues/52880)) ([#53126](https://github.com/metabase/metabase/issues/53126)) ([516d202](https://github.com/metabase/metabase/commit/516d20216d5e019338b4eb257c1aa555a23c83b1))
+* **sdk:** Remove ExplicitSize findDOMNode console errors ([#52253](https://github.com/metabase/metabase/issues/52253)) ([#52994](https://github.com/metabase/metabase/issues/52994)) ([c6cd8e4](https://github.com/metabase/metabase/commit/c6cd8e40213e7beca9084313b90f4f452d080da7))
+* **sdk:** remove unsafe lifecycle errors from DashboardGrid ([#53213](https://github.com/metabase/metabase/issues/53213)) ([#53238](https://github.com/metabase/metabase/issues/53238)) ([42be2aa](https://github.com/metabase/metabase/commit/42be2aaa4af32ee8b29b8d02d40d376f284815c8))
+
+
+
 ## [0.53.2](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.1-nightly...embedding-sdk-0.53.2) (2025-02-05)
 
 
