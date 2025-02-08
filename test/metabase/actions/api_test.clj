@@ -1,9 +1,9 @@
-(ns ^:mb/driver-tests metabase.api.action-test
+(ns ^:mb/driver-tests metabase.actions.api-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.actions.api :as api.action]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.api.action :as api.action]
    [metabase.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

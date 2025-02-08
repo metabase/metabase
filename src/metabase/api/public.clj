@@ -16,7 +16,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.action :as action]
    [metabase.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
@@ -351,7 +350,7 @@
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid :archived false))
   (actions/fetch-values
-   (api/check-404 (action/dashcard->action dashcard-id))
+   (api/check-404 (actions/dashcard->action dashcard-id))
    (json/decode parameters)))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
@@ -414,7 +413,7 @@
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
   (validation/check-public-sharing-enabled)
-  (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
+  (let [action (api/check-404 (actions/select-action :public_uuid uuid :archived false))]
     (actions/check-actions-enabled! action)
     (public-action action)))
 
@@ -713,7 +712,7 @@
         ;; failing because there are no current user perms; if this Dashcard is public
         ;; you're by definition allowed to run it without a perms check anyway
         (request/as-admin
-          (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
+          (let [action (api/check-404 (actions/select-action :public_uuid uuid :archived false))]
             (snowplow/track-event! ::snowplow/action
                                    {:event     :action-executed
                                     :source    :public_form
