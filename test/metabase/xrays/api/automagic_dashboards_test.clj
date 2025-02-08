@@ -1,8 +1,8 @@
-(ns metabase.api.automagic-dashboards-test
+(ns metabase.xrays.api.automagic-dashboards-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.automagic-dashboards :as api.magic]
+   [metabase.xrays.api.automagic-dashboards :as api.magic]
    [metabase.models.model-index :as model-index]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]

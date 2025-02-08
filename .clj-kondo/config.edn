@@ -584,7 +584,6 @@
     metabase.analyze.fingerprint.schema                           fingerprint.schema
     metabase.api.activity                                         api.activity
     metabase.api.alert                                            api.alert
-    metabase.api.automagic-dashboards                             api.magic
     metabase.api.bookmark                                         api.bookmark
     metabase.api.card                                             api.card
     metabase.api.card-test                                        api.card-test
@@ -884,7 +883,6 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase.api.alert-test/with-alert-in-collection!                                                                         hooks.common/with-four-bindings
-   metabase.api.automagic-dashboards-test/with-indexed-model!                                                                hooks.metabase.api.automagic-dashboards-test/with-indexed-model!
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.card-test/with-persistence-setup!                                                                            hooks.common/with-one-top-level-binding
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
@@ -991,7 +989,8 @@
    metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
-   metabase.util/format-color                                                                                                hooks.metabase.util/format-color}
+   metabase.util/format-color                                                                                                hooks.metabase.util/format-color
+   metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                             macros.quartz/build-job
