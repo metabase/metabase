@@ -341,6 +341,7 @@
                                      metabase.api.dataset
                                      metabase.api.macros
                                      metabase.api.open-api
+                                     metabase.api.query-metadata
                                      metabase.api.routes
                                      metabase.api.util.handlers}                                    ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
     metabase.audit                 #{metabase.audit}
@@ -438,7 +439,8 @@
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}
     metabase.util                  :any                                                             ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
-    metabase.xrays                 #{metabase.xrays.core}}
+    metabase.xrays                 #{metabase.xrays.api
+                                     metabase.xrays.core}}
 
    ;; Map of module => other modules you're allowed to use there. You have two options here:
    ;;
