@@ -1,8 +1,8 @@
-(ns metabase.models.timeline
+(ns metabase.timeline.models.timeline
   (:require
    [metabase.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
-   [metabase.models.timeline-event :as timeline-event]
+   [metabase.timeline.models.timeline-event :as timeline-event]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -37,11 +37,11 @@
     (nil? collection-id) (->> (map collection.root/hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
+;;;; serialization
+
 (defmethod serdes/hash-fields :model/Timeline
   [_timeline]
   [:name (serdes/hydrated-hash :collection) :created_at])
-
-;;;; serialization
 
 (defmethod serdes/dependencies "Timeline" [{:keys [collection_id]}]
   [[{:model "Collection" :id collection_id}]])

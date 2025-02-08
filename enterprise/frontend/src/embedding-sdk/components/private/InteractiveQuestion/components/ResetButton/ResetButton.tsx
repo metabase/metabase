@@ -1,20 +1,22 @@
+import type { MouseEvent } from "react";
+
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
 import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
+import type { ButtonProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { useInteractiveQuestionContext } from "../context";
+import { useInteractiveQuestionContext } from "../../context";
 
 export const QuestionResetButton = ({
   onClick,
-}: {
-  onClick?: () => void;
-} = {}) => {
+  ...buttonProps
+}: ButtonProps = {}) => {
   const { question, originalQuestion, onReset } =
     useInteractiveQuestionContext();
 
-  const handleReset = () => {
+  const handleReset = (e: MouseEvent<HTMLButtonElement>) => {
     onReset();
-    onClick?.();
+    onClick?.(e);
   };
 
   const isQuestionChanged = originalQuestion
@@ -27,5 +29,5 @@ export const QuestionResetButton = ({
     return null;
   }
 
-  return <ResetButton onClick={handleReset} />;
+  return <ResetButton onClick={handleReset} {...buttonProps} />;
 };
