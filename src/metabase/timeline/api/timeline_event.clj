@@ -1,11 +1,11 @@
-(ns metabase.api.timeline-event
+(ns metabase.timeline.api.timeline-event
   "/api/timeline-event endpoints."
   (:require
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.collection :as collection]
-   [metabase.models.timeline-event :as timeline-event]
+   [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]

@@ -1,10 +1,10 @@
-(ns metabase.models.timeline-test
+(ns metabase.timeline.models.timeline-test
   "Tests for the Timeline model."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.timeline :as timeline]
-   [metabase.models.timeline-event :as timeline-event]
    [metabase.test :as mt]
+   [metabase.timeline.models.timeline :as timeline]
+   [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
