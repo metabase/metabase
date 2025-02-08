@@ -1,3 +1,13 @@
+## [0.52.10](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.9...embedding-sdk-0.52.10) (2025-02-08)
+
+
+### Bug Fixes
+
+* **sdk:** remove unsafe lifecycle errors from DashboardGrid ([#53239](https://github.com/metabase/metabase/issues/53239)) ([19add48](https://github.com/metabase/metabase/commit/19add485177598faf3036b081bc97e253a2256a0)), closes [#53213](https://github.com/metabase/metabase/issues/53213)
+* **sdk:** remove unsafe lifecycle errors from Visualization ([#52885](https://github.com/metabase/metabase/issues/52885)) ([#53222](https://github.com/metabase/metabase/issues/53222)) ([6dda072](https://github.com/metabase/metabase/commit/6dda072e383005cbac9ea5eb6a581648b90fe46b))
+
+
+
 ## [0.52.9](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.8...embedding-sdk-0.52.9) (2025-02-05)
 
 
