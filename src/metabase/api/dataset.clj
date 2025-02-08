@@ -28,9 +28,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.regex :as u.regex]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]
-   [metabase.util.regex :as u.regex]))
+   [toucan2.core :as t2]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
