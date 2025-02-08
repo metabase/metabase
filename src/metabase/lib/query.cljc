@@ -102,6 +102,7 @@
   [_query _card-type]
   true)
 
+;;; TODO FIXME -- boolean functions should end in `?`
 (mu/defn can-save :- :boolean
   "Returns whether `query` for a card of `card-type` can be saved."
   [query :- ::lib.schema/query

@@ -1,8 +1,8 @@
-(ns metabase.api.revision-test
+(ns metabase.revisions.api-test
   (:require
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.models.revision :as revision]
+   [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -530,3 +530,98 @@
         (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
           (revision/revert! {:entity :model/Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
         (is (= "A dashboard" (t2/select-one-fn :name :model/Dashboard :id dashboard-id)))))))
+
+(deftest fetch-dashboard-revisions-test
+  (testing "GET /api/revision/dashboard/:id"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                   :model/Revision  _ {:model        "Dashboard"
+                                       :model_id     dashboard-id
+                                       :object       {:name         "b"
+                                                      :description  nil
+                                                      :cards        [{:size_x  4
+                                                                      :size_y  4
+                                                                      :row     0
+                                                                      :col     0
+                                                                      :card_id 123
+                                                                      :series  []}]}
+                                       :is_creation  true}
+                   :model/Revision  _ {:model    "Dashboard"
+                                       :model_id dashboard-id
+                                       :user_id  (mt/user->id :crowberto)
+                                       :object   {:name         "c"
+                                                  :description  "something"
+                                                  :cards        [{:size_x  5
+                                                                  :size_y  3
+                                                                  :row     0
+                                                                  :col     0
+                                                                  :card_id 123
+                                                                  :series  [8 9]}]}
+                                       :message  "updated"}]
+      (is (=? [{:is_reversion          false
+                :is_creation           false
+                :message               "updated"
+                :user                  {:first_name "Crowberto"}
+                :metabase_version      config/mb-version-string
+                :diff                  {:before {:name        "b"
+                                                 :description nil
+                                                 :cards       [{:series nil, :size_y 4, :size_x 4}]}
+                                        :after  {:name        "c"
+                                                 :description "something"
+                                                 :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
+                :has_multiple_changes true
+                :description          "added a description and renamed it from \"b\" to \"c\", modified the cards and added some series to card 123."}
+               {:is_reversion         false
+                :is_creation          true
+                :message              nil
+                :user                 {:first_name "Rasta"}
+                :metabase_version      config/mb-version-string
+                :diff                 nil
+                :has_multiple_changes false
+                :description          "created this."}]
+              (mt/user-http-request :crowberto :get 200 (format "revision/dashboard/%d" dashboard-id)))))))
+
+(deftest segment-revisions-permissions-test
+  (testing "GET /api/revision/segment/:id"
+    (testing "test security. Requires read perms for the Table it references"
+      (mt/with-temp [:model/Database db {}
+                     :model/Table    table   {:db_id (u/the-id db)}
+                     :model/Segment  segment {:table_id (u/the-id table)}]
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "revision/segment/%d" (u/the-id segment))))))))))
+
+(deftest segment-revisions-test
+  (testing "GET /api/revision/segment/:id"
+    (mt/with-temp
+      [:model/Database {database-id :id} {}
+       :model/Table    {table-id :id}    {:db_id database-id}
+       :model/Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)
+                                          :table_id   table-id
+                                          :definition {:database 123
+                                                       :query    {:filter [:= [:field 2 nil] "cans"]}}}
+       :model/Revision _                 {:model       "Segment"
+                                          :model_id    id
+                                          :object      {:name       "b"
+                                                        :definition {:filter [:and [:> 1 25]]}}
+                                          :is_creation true}
+       :model/Revision _                 {:model    "Segment"
+                                          :model_id id
+                                          :user_id  (mt/user->id :crowberto)
+                                          :object   {:name       "c"
+                                                     :definition {:filter [:and [:> 1 25]]}}
+                                          :message  "updated"}]
+      (mt/with-full-data-perms-for-all-users!
+        (is (=? [{:is_reversion false
+                  :is_creation  false
+                  :message      "updated"
+                  :user         {:first_name "Crowberto"}
+                  :diff         {:name {:before "b" :after "c"}}
+                  :description  "renamed this Segment from \"b\" to \"c\"."}
+                 {:is_reversion false
+                  :is_creation  true
+                  :message      nil
+                  :user         {:first_name "Rasta"}
+                  :diff         {:name       {:after "b"}
+                                 :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
+                  :description  "created this."}]
+                (mt/user-http-request :rasta :get 200 (format "revision/segment/%d" id))))))))

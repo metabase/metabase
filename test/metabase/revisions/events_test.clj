@@ -1,9 +1,9 @@
-(ns metabase.events.revision-test
+(ns metabase.revisions.events-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.events :as events]
-   [metabase.models.dashboard :as dashboard]
+   [metabase.revisions.impl.dashboard :as impl.dashboard]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -148,7 +148,7 @@
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
               :object       (assoc (dashboard->revision-object dashboard)
-                                   :cards [(assoc (apply dissoc dashcard @#'dashboard/excluded-columns-for-dashcard-revision) :series [])])
+                                   :cards [(assoc (apply dissoc dashcard @#'impl.dashboard/excluded-columns-for-dashcard-revision) :series [])])
               :is_reversion false
               :is_creation  false}
              (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]

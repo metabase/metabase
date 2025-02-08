@@ -24,11 +24,11 @@
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as models.pulse]
-   [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
+   [metabase.revisions.core :as revisions]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -729,7 +729,8 @@
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
 
-(mu/defn- coalesce-edit-info :- last-edit/MaybeAnnotated
+;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
+(mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
   [row]

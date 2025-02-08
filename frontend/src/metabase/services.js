@@ -377,7 +377,7 @@ export const RevisionApi = {
 };
 
 export const RevisionsApi = {
-  get: GET("/api/:entity/:id/revisions"),
+  get: GET("/api/revision/:entity/:id"),
 };
 
 export const SessionApi = {

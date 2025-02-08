@@ -35,8 +35,6 @@
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.pulse :as models.pulse]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.models.revision :as revision]
-   [metabase.models.revision.last-edit :as last-edit]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -45,6 +43,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.request.core :as request]
+   [metabase.revisions.core :as revisions]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -80,7 +79,7 @@
    {:keys [f]} :- [:map
                    [:f {:optional true} [:maybe [:enum "all" "mine" "archived"]]]]]
   (let [dashboards (dashboards-list f)
-        edit-infos (:dashboard (last-edit/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
+        edit-infos (:dashboard (revisions/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
     (into []
           (map (fn [{:keys [id] :as dashboard}]
                  (if-let [edit-info (get edit-infos id)]
@@ -148,7 +147,7 @@
     (-> dash
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
-        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
+        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
 
@@ -510,7 +509,7 @@
    {dashboard-load-id :dashboard_load_id}]
   (with-dashboard-load-id dashboard-load-id
     (let [dashboard (get-dashboard id)]
-      (u/prog1 (first (last-edit/with-last-edit-info [dashboard] :dashboard))
+      (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
 (api.macros/defendpoint :get "/:id/items"
@@ -930,7 +929,7 @@
         (track-dashcard-and-tab-events! dashboard @changes-stats)
         (-> dashboard
             hydrate-dashboard-details
-            (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))))
+            (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))))
 
 (def ^:private DashUpdates
   "Schema for Dashboard Updates."
@@ -987,27 +986,6 @@
   (let [dashboard (update-dashboard id {:dashcards cards :tabs tabs})]
     {:cards (:dashcards dashboard)
      :tabs  (:tabs dashboard)}))
-
-(api.macros/defendpoint :get "/:id/revisions"
-  "Fetch `Revisions` for Dashboard with ID."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/read-check :model/Dashboard id)
-  (revision/revisions+details :model/Dashboard id))
-
-(api.macros/defendpoint :post "/:id/revert"
-  "Revert a Dashboard to a prior `Revision`."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   {:keys [revision_id]} :- [:map
-                             [:revision_id ms/PositiveInt]]]
-  (api/write-check :model/Dashboard id)
-  (revision/revert!
-   {:entity      :model/Dashboard
-    :id          id
-    :user-id     api/*current-user-id*
-    :revision-id revision_id}))
 
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."

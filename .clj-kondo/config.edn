@@ -395,6 +395,9 @@
     metabase.query-analysis        #{metabase.query-analysis.core
                                      metabase.query-analysis.init}
     metabase.request               #{metabase.request.core}
+    metabase.revisions             #{metabase.revisions.api
+                                     metabase.revisions.core
+                                     metabase.revisions.init}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search.core
                                      metabase.search.init
@@ -500,6 +503,11 @@
                                      metabase.permissions
                                      metabase.public-settings
                                      metabase.util}
+    metabase.revisions             #{metabase.api
+                                     metabase.config
+                                     metabase.events
+                                     metabase.models
+                                     metabase.util}
     metabase.sample-data           :any
     metabase.search                :any
     metabase.server                :any
@@ -603,7 +611,6 @@
     metabase.api.preview-embed                                    api.preview-embed
     metabase.api.public                                           api.public
     metabase.api.pulse                                            api.pulse
-    metabase.api.revision                                         api.revision
     metabase.api.segment                                          api.segment
     metabase.api.session                                          api.session
     metabase.api.setting                                          api.setting
@@ -724,6 +731,7 @@
     metabase.query-processor.timezone                             qp.timezone
     metabase.query-processor.util                                 qp.util
     metabase.request.core                                         request
+    metabase.revisions.core                                       revisions
     metabase.search.config                                        search.config
     metabase.search.filter                                        search.filter
     metabase.search.in-place.filter                               search.in-place.filter
@@ -796,12 +804,10 @@
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
-  metabase.api.common/defroutes                                                         clojure.core/def
   metabase.api.common/let-404                                                           clojure.core/let
-  metabase.search.api-test/do-test-users                                                clojure.core/let
-  metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
   metabase.channel.impl.http-test/with-captured-http-requests                           clojure.core/fn
   metabase.channel.impl.http-test/with-server                                           clojure.core/let
+  metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
   metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
   metabase.db.data-migrations/defmigration                                              clojure.core/def
@@ -819,8 +825,8 @@
   metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
   metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
-  metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
   metabase.premium-features.core/define-premium-feature                                 clojure.core/def
+  metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
   metabase.pulse.send-test/with-pulse-for-card                                          clojure.core/let
   metabase.query-processor-test.pipeline-queries-test/pmbql-query                       clojure.core/->
   metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                   clojure.core/->
@@ -828,6 +834,7 @@
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
+  metabase.search.api-test/do-test-users                                                clojure.core/let
   metabase.sync.util/sum-for                                                            clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                            clojure.core/let
   metabase.test.data.interface/defdataset                                               clojure.core/def

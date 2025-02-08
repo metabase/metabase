@@ -1,9 +1,8 @@
-(ns metabase.api.revision
+(ns metabase.revisions.api
   (:require
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.revision :as revision]
+   [metabase.revisions.models.revision :as revision]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -30,19 +29,32 @@
   "Revert an object to a prior revision."
   [_route-params
    _query-params
-   {:keys [entity id revision_id]} :- [:map
-                                       [:id          ms/PositiveInt]
-                                       [:entity      Entity]
-                                       [:revision_id ms/PositiveInt]]]
+   {:keys [entity id], revision-id :revision_id} :- [:map
+                                                     [:id          ms/PositiveInt]
+                                                     [:entity      Entity]
+                                                     [:revision_id ms/PositiveInt]]]
   (let [[model instance] (model-and-instance entity id)
         _                (api/write-check instance)
-        revision         (api/check-404 (t2/select-one :model/Revision :model (name model), :model_id id, :id revision_id))]
+        revision         (api/check-404 (t2/select-one :model/Revision :model (name model), :model_id id, :id revision-id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
-    (when (= model :model/Card)
-      (api.card/check-permissions-for-query (get-in revision [:object :dataset_query])))
+    (api/write-check model (:object revision))
     ;; ok, we're g2g
     (revision/revert!
      {:entity      model
       :id          id
       :user-id     api/*current-user-id*
-      :revision-id revision_id})))
+      :revision-id revision-id})))
+
+(api.macros/defendpoint :get "/dashboard/:id"
+  "Fetch `Revisions` for Dashboard with ID."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/read-check :model/Dashboard id)
+  (revision/revisions+details :model/Dashboard id))
+
+(api.macros/defendpoint :get "/segment/:id"
+  "Fetch `Revisions` for `Segment` with ID."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/read-check :model/Segment id)
+  (revision/revisions+details :model/Segment id))

@@ -14,6 +14,7 @@
    [metabase.models.init]
    [metabase.notification.init]
    [metabase.query-analysis.init]
+   [metabase.revisions.init]
    [metabase.search.init]
    [metabase.sync.init]
    [metabase.task.init]))
