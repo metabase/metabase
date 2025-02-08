@@ -325,6 +325,8 @@
    ;; PRO TIP: Check out the `dev.deps-graph` namespace for helpful tools to see where a module is used externally.
    :api-namespaces
    {metabase.actions               #{metabase.actions.core}
+    metabase.activity-feed         #{metabase.activity-feed.api
+                                     metabase.activity-feed.init}
     metabase.analytics             #{metabase.analytics.prometheus
                                      metabase.analytics.snowplow
                                      metabase.analytics.stats
@@ -451,6 +453,12 @@
    ;;    other modules are allowed to be referenced; this is the default for any modules that aren't listed here.
    :allowed-modules
    {metabase.actions               :any
+    metabase.activity-feed         #{metabase.api
+                                     metabase.config
+                                     metabase.db
+                                     metabase.events
+                                     metabase.models
+                                     metabase.util}
     metabase.analytics             :any
     metabase.analyze               :any
     metabase.api                   :any
@@ -580,7 +588,6 @@
     metabase.analyze.fingerprint.fingerprinters                   fingerprinters
     metabase.analyze.fingerprint.insights                         insights
     metabase.analyze.fingerprint.schema                           fingerprint.schema
-    metabase.api.activity                                         api.activity
     metabase.api.alert                                            api.alert
     metabase.api.automagic-dashboards                             api.magic
     metabase.api.bookmark                                         api.bookmark
