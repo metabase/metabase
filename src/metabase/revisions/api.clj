@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.models.card :as card]
    [metabase.revisions.models.revision :as revision]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
@@ -46,7 +47,9 @@
         revision         (api/check-404 (t2/select-one :model/Revision :model (name model), :model_id id, :id revision-id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
     (when (= model :model/Card)
-      (api/write-check model (select-keys (:object revision) [:dataset_query])))
+      ;; TODO -- we should be using something like `api/read-check` for this, but unfortunately the impl for Cards
+      ;; doesn't actually check important stuff like this.
+      (card/check-permissions-for-query (get-in revision [:object :dataset_query])))
     ;; ok, we're g2g
     (revision/revert!
      {:entity      model
