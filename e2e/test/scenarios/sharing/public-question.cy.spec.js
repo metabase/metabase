@@ -238,7 +238,7 @@ describe("scenarios > question > public link with extension", () => {
   );
 });
 
-H.describeEE("scenarios [EE] > public > question", () => {
+describe("scenarios [EE] > public > question", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
 
