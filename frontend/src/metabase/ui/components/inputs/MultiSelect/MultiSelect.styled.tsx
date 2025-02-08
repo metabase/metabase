@@ -39,6 +39,7 @@ export const getMultiSelectOverrides =
           color: "text-dark",
         },
         "data-testid": "multi-select",
+        inputWrapperOrder: ["label", "description", "input", "error"],
       },
       styles: (
         theme,
@@ -126,6 +127,9 @@ export const getMultiSelectOverrides =
           backgroundColor: "var(--mb-color-background)",
           borderColor: "var(--mb-color-border)",
           overflow: "auto",
+        },
+        error: {
+          "&::first-letter": { textTransform: "capitalize" },
         },
       }),
       variants: {

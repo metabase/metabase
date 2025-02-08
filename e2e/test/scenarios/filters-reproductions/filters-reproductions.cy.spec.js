@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -46,13 +46,14 @@ describe.skip("issue 12496", () => {
   });
 
   const datePickerInput = (picker, input) =>
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy
       .findAllByTestId("specific-date-picker")
       .eq(picker)
       .find("input")
       .eq(input);
   const setup = unit => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: `Orders by Created At: ${unit}`,
         query: {
@@ -358,6 +359,7 @@ describe("issue 22230", () => {
   });
 
   it("should be able to filter on an aggregation (metabase#22230)", () => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.popover().within(() => {
@@ -386,7 +388,7 @@ describe("issue 22730", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "22730",
         native: {
@@ -494,7 +496,7 @@ describe("issue 24994", () => {
   });
 
   it("should allow updating filters (metabase#24994)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     // Three filters
     cy.findByTestId("filters-visibility-control").contains("3").click();
@@ -565,6 +567,7 @@ describe("issue 25378", () => {
   });
 
   it("should be able to use relative date filter on a breakout after the aggregation (metabase#25378)", () => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.popover().within(() => {
@@ -669,7 +672,9 @@ describe("issue 25990", () => {
   it("should allow to filter by a column in a joined table (metabase#25990)", () => {
     H.visitQuestionAdhoc(questionDetails);
 
-    H.queryBuilderHeader().button("Filter").click();
+    H.queryBuilderHeader()
+      .button(/Filter/)
+      .click();
 
     H.modal().within(() => {
       cy.findByText("People").click();
@@ -707,6 +712,7 @@ describe("issue 25994", () => {
   });
 
   it("should be possible to use 'between' dates filter after aggregation (metabase#25994)", () => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.popover().within(() => {
@@ -750,7 +756,7 @@ describe.skip("issue 26861", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(nativeQuery, { visitQuestion: true });
+    H.createNativeQuestion(nativeQuery, { visitQuestion: true });
   });
 
   it("exclude filter shouldn't break native questions with field filters (metabase#26861)", () => {
@@ -787,7 +793,7 @@ describe("issue 27123", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("exclude filter should not resolve to 'Days of the week' regardless of the chosen granularity  (metabase#27123)", () => {
@@ -850,7 +856,7 @@ describe("issue 30312", () => {
   });
 
   it("can use a drill filter on an aggregated column (metabase#30312)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -902,7 +908,7 @@ describe("issue 31340", () => {
 
     cy.wait("@fieldUpdate");
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": PEOPLE_ID,
@@ -972,7 +978,9 @@ describe("issue 36508", () => {
       { visitQuestion: true },
     );
 
-    cy.button("Filter").click();
+    cy.findByTestId("qb-header")
+      .button(/Filter/)
+      .click();
 
     H.modal().within(() => {
       cy.findByText("Summaries").click();
@@ -1017,7 +1025,7 @@ describe("metabase#32985", () => {
       fk_target_field_id: REVIEWS.REVIEWER,
     });
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.tableHeaderClick("Email");
 
@@ -1230,8 +1238,8 @@ describe("issue 40622", () => {
 
 describe("45252", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.resetTestTable({ type: "postgres", table: "many_data_types" });
     H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_data_types" });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -1271,7 +1279,9 @@ describe("45252", { tags: "@external" }, () => {
     H.assertQueryBuilderRowCount(2);
 
     cy.log("filter modal - existing filter");
-    H.queryBuilderHeader().button("Filter").click();
+    H.queryBuilderHeader()
+      .button(/Filter/)
+      .click();
     H.modal().within(() => {
       cy.findByTestId("filter-column-Binary")
         .findByLabelText("Is empty")
@@ -1283,7 +1293,9 @@ describe("45252", { tags: "@external" }, () => {
     H.assertQueryBuilderRowCount(0);
 
     cy.log("filter modal - json column");
-    H.queryBuilderHeader().button("Filter").click();
+    H.queryBuilderHeader()
+      .button(/Filter/)
+      .click();
     H.modal().within(() => {
       cy.findByTestId("filter-column-Binary")
         .findByLabelText("Not empty")
@@ -1450,6 +1462,7 @@ describe("issue 47887", () => {
     });
 
     cy.findByTestId("notebook-button").click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.popover().within(() => {
@@ -1480,6 +1493,7 @@ describe("Issue 48851", () => {
       cy.findByText("Is").click();
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Contains").click();
     H.popover()
       .first()
@@ -1503,6 +1517,7 @@ describe("issue 49321", () => {
       cy.findByText("Title").click();
       cy.findByText("Is").click();
     });
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Contains").click();
 
     H.popover().then($popover => {
@@ -1585,7 +1600,8 @@ describe("issue 44665", () => {
   });
 
   it("should use the correct widget for the default value picker (metabase#44665)", () => {
-    H.openNativeEditor().type("select * from {{param");
+    H.startNewNativeQuestion().type("select * from {{param");
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar()
       .last()
       .within(() => {
@@ -1599,6 +1615,7 @@ describe("issue 44665", () => {
       cy.button("Done").click();
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar().last().findByText("Enter a default value…").click();
     H.popover().within(() => {
       cy.findByPlaceholderText("Enter a default value…")
@@ -1611,6 +1628,7 @@ describe("issue 44665", () => {
       cy.findByText("baz").should("not.exist");
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar()
       .last()
       .within(() => {

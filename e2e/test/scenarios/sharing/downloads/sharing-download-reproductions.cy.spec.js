@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -14,7 +14,7 @@ describe("issue 10803", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "10803",
         native: {
@@ -40,7 +40,7 @@ describe("issue 10803", () => {
       // Add a space at the end of the query to make it "dirty"
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
-      H.focusNativeEditor().type("{movetoend} ");
+      H.NativeEditor.focus().type("{movetoend} ");
 
       H.runNativeQuery();
       H.downloadAndAssert({ fileType, raw: true }, testWorkbookDatetimes);
@@ -84,17 +84,15 @@ describe.skip("issue 18219", () => {
 
   testCases.forEach(fileType => {
     it("should format temporal units on export (metabase#18219)", () => {
-      cy.createQuestion(questionDetails).then(
-        ({ body: { id: questionId } }) => {
-          H.visitQuestion(questionId);
+      H.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+        H.visitQuestion(questionId);
 
-          cy.findByText("Created At: Year");
-          cy.findByText("2022");
-          cy.findByText("744");
+        cy.findByText("Created At: Year");
+        cy.findByText("2022");
+        cy.findByText("744");
 
-          H.downloadAndAssert({ fileType, questionId, raw: true }, assertion);
-        },
-      );
+        H.downloadAndAssert({ fileType, questionId, raw: true }, assertion);
+      });
     });
 
     function assertion(sheet) {
@@ -266,7 +264,7 @@ describe("issue 18440", () => {
     });
 
     it(`export should include a column with remapped values for ${fileType} for a saved question (metabase#18440-2)`, () => {
-      cy.createQuestion({ query }).then(({ body: { id } }) => {
+      H.createQuestion({ query }).then(({ body: { id } }) => {
         H.visitQuestion(id);
 
         cy.findByText("Product ID");
@@ -392,7 +390,7 @@ describe("issue 19889", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    H.createNativeQuestion(questionDetails, {
       loadMetadata: true,
       wrapId: true,
     });
@@ -440,7 +438,7 @@ describe("issue 19889", () => {
     it("should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
-      H.focusNativeEditor().type(
+      H.NativeEditor.focus().type(
         '{selectall}select 1 "column x", 2 "column y", 3 "column c"',
       );
 
@@ -477,13 +475,13 @@ describe("metabase#28834", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    H.createNativeQuestion(questionDetails, {
       loadMetadata: true,
       wrapId: true,
     });
 
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
-    H.focusNativeEditor().type(', select 2 "column b"');
+    H.NativeEditor.focus().type(', select 2 "column b"');
   });
 
   it("should be able to export unsaved native query results as CSV even after the query has changed", () => {

@@ -25,6 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
    [taoensso.nippy :as nippy]
@@ -161,9 +162,29 @@
   [obj]
   (json-out obj false))
 
+(defn- elide-data [obj]
+  (walk/postwalk (fn [x] (cond
+                           (string? x) (string/elide x 250)
+                           (and (sequential? x) (> (count x) 50)) (take 50 x)
+                           :else x)) obj))
+
+(defn- json-in-with-eliding
+  [obj]
+  (if (string? obj)
+    obj
+    (json/encode (elide-data obj))))
+
 (def transform-json
   "Transform for json."
   {:in  json-in
+   :out json-out-with-keywordization})
+
+(def transform-json-eliding
+  "Serializes object as JSON, but:
+    - elides any long strings to a max of 250 chars
+    - limits sequences to the first 50 entries
+   Useful for debugging/human-consuming information which can be unbounded-ly large"
+  {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
 (defn- serialize-mlv2-query
@@ -559,6 +580,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; TODO -- consider moving all this stuff into the `permissions` module
+
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
   ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
@@ -658,16 +682,22 @@
 (defn- current-user-has-root-permissions? []
   (contains? (current-user-permissions-set) "/"))
 
-(defn- check-perms-with-fn
-  ([fn-symb read-or-write a-model object-id]
+(mu/defn- check-perms-with-fn
+  ([fn-symb       :- qualified-symbol?
+    read-or-write :- [:enum :read :write]
+    a-model       :- qualified-keyword?
+    object-id     :- [:or pos-int? string?]]
    (or (current-user-has-root-permissions?)
        (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (first (t2/primary-keys a-model)) object-id))))
 
-  ([fn-symb read-or-write object]
+  ([fn-symb       :- qualified-symbol?
+    read-or-write :- [:enum :read :write]
+    object        :- :map]
    (and object
         (check-perms-with-fn fn-symb (perms-objects-set object read-or-write))))
 
-  ([fn-symb perms-set]
+  ([fn-symb   :- qualified-symbol?
+    perms-set :- [:set :string]]
    (let [f (requiring-resolve fn-symb)]
      (assert f)
      (u/prog1 (f (current-user-permissions-set) perms-set)
@@ -678,14 +708,14 @@
   "Implementation of [[can-read?]]/[[can-write?]] for the old permissions system. `true` if the current user has *full*
   permissions for the paths returned by its implementation of [[perms-objects-set]]. (`read-or-write` is either `:read` or
   `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
-  (partial check-perms-with-fn 'metabase.models.permissions/set-has-full-permissions-for-set?))
+  (partial check-perms-with-fn 'metabase.permissions.models.permissions/set-has-full-permissions-for-set?))
 
 (def ^{:arglists '([read-or-write model object-id] [read-or-write object] [perms-set])}
   current-user-has-partial-permissions?
   "Implementation of [[can-read?]]/[[can-write?]] for the old permissions system. `true` if the current user has *partial*
   permissions for the paths returned by its implementation of [[perms-objects-set]]. (`read-or-write` is either `:read` or
   `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
-  (partial check-perms-with-fn 'metabase.models.permissions/set-has-partial-permissions-for-set?))
+  (partial check-perms-with-fn 'metabase.permissions.models.permissions/set-has-partial-permissions-for-set?))
 
 (defmethod can-read? ::read-policy.always-allow
   ([_instance]

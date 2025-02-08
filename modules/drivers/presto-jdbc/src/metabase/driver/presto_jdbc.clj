@@ -23,6 +23,7 @@
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -132,6 +133,10 @@
 (defmethod sql.qp/->honeysql [:presto-jdbc Boolean]
   [_ bool]
   [:raw (if bool "TRUE" "FALSE")])
+
+(defmethod sql.qp/->honeysql [:presto-jdbc (Class/forName "[B")]
+  [_driver bs]
+  [:from_base64 (u/encode-base64-bytes bs)])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
   [_ [_ t]]
@@ -757,6 +762,8 @@
   ^LocalTime [^java.sql.Time sql-time]
   ;; Java 11 adds a simpler `ofInstant` method, but since we need to run on JDK 8, we can't use it
   ;; https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/LocalTime.html#ofInstant(java.time.Instant,java.time.ZoneId)
+  ;;
+  ;; TODO -- we run on Java 21+ now!!! FIXME !!!!!
   (let [^LocalTime lt (t/local-time sql-time)
         ^Long millis  (mod (.getTime sql-time) 1000)]
     (.with lt ChronoField/MILLI_OF_SECOND millis)))

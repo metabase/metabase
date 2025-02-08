@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
    [metabase-enterprise.test :as met]
-   [metabase.models.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

@@ -1,0 +1,56 @@
+name: Generative Query Test
+
+on:
+  # push:
+  #   branches:
+  #     - 'master'
+  #     - 'release-**'
+  # pull_request:
+  #   types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Seed value.'
+        type: number
+        required: true
+        # TODO: Make this optional
+        default: 1
+      count:
+        description: 'Number of queries to generate'
+        type: number
+        required: true
+        default: 1
+
+jobs:
+  generative-query-test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    name: Generative Query Test
+    env:
+      CI: 'true'
+      MB_TEST_SEED_VALUE: ${{ inputs.seed }}
+      MB_TEST_QUERY_ITERATION_COUNT: ${{ inputs.count }}
+      MB_TEST_RUN_GENERATIVE_TEST: true
+    steps:
+      - uses: actions/checkout@v4
+      # is fe needed? is that lib related?
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: generative-query-test
+
+      - name: Run test
+        run: clojure -X:dev:ci:test:ee:ee-dev :only 'metabase.query-processor-test.generative-test'
+
+      - name: Publish Test Report (JUnit)
+        uses: dorny/test-reporter@v1
+        if: failure()
+        with:
+          path: "target/junit/**/*_test.xml"
+          name: JUnit Test Report (Generative Query test)
+          reporter: java-junit
+          list-suites: failed
+          list-tests: failed
+          fail-on-error: false

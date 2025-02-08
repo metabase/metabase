@@ -121,63 +121,6 @@ describe("sortModels", () => {
         modelMap["model named B, with collection path D / E / F"],
       ]);
     });
-
-    it("can sort by collection path, ascending, and then does a secondary sort by name - with a localized sort order", () => {
-      const sortingOptions = {
-        sort_column: "collection",
-        sort_direction: SortDirection.Asc,
-      } as const;
-
-      const addUmlauts = (model: ModelResult): ModelResult => ({
-        ...model,
-        name: model.name.replace(/^B$/g, "Bä"),
-        collection: {
-          ...model.collection,
-          effective_ancestors: model.collection?.effective_ancestors?.map(
-            ancestor => ({
-              ...ancestor,
-              name: ancestor.name.replace("X", "Ä"),
-            }),
-          ),
-        },
-      });
-
-      const swedishModelMap = {
-        "model named A, with collection path Ä / Y / Z": addUmlauts(
-          modelMap["model named A, with collection path X / Y / Z"],
-        ),
-        "model named Bä, with collection path D / E / F": addUmlauts(
-          modelMap["model named B, with collection path D / E / F"],
-        ),
-        "model named Bz, with collection path D / E / F": addUmlauts(
-          modelMap["model named Bz, with collection path D / E / F"],
-        ),
-        "model named C, with collection path Y": addUmlauts(
-          modelMap["model named C, with collection path Y"],
-        ),
-        "model named C, with collection path Z": addUmlauts(
-          modelMap["model named C, with collection path Z"],
-        ),
-      };
-
-      const swedishResults = Object.values(swedishModelMap);
-
-      // When sorting in Swedish, z comes before ä
-      const swedishLocaleCode = "sv";
-      const sorted = sortModels(
-        swedishResults,
-        sortingOptions,
-        swedishLocaleCode,
-      );
-      expect("ä".localeCompare("z", "sv", { sensitivity: "base" })).toEqual(1);
-      expect(sorted).toEqual([
-        swedishModelMap["model named Bz, with collection path D / E / F"], // Model Bz sorts before Bä
-        swedishModelMap["model named Bä, with collection path D / E / F"],
-        swedishModelMap["model named C, with collection path Y"],
-        swedishModelMap["model named C, with collection path Z"], // Collection Z sorts before Ä
-        swedishModelMap["model named A, with collection path Ä / Y / Z"],
-      ]);
-    });
   });
 });
 

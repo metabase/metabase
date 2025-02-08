@@ -17,7 +17,6 @@ import {
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
-import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
@@ -49,6 +48,7 @@ const InteractiveDashboardInner = ({
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
+  withFooter = true,
   hiddenParameters = [],
   drillThroughQuestionHeight,
   plugins,
@@ -70,6 +70,7 @@ const InteractiveDashboardInner = ({
     dashboardId,
     withDownloads,
     withTitle,
+    withFooter,
     hiddenParameters,
     initialParameters,
   });
@@ -84,7 +85,6 @@ const InteractiveDashboardInner = ({
   });
 
   const { theme } = useEmbedTheme();
-  const { font } = useEmbedFont();
 
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
@@ -111,13 +111,13 @@ const InteractiveDashboardInner = ({
             background={displayOptions.background}
             titled={displayOptions.titled}
             cardTitled={withCardTitle}
+            withFooter={displayOptions.withFooter}
             theme={theme}
             isFullscreen={isFullscreen}
             onFullscreenChange={onFullscreenChange}
             refreshPeriod={refreshPeriod}
             onRefreshPeriodChange={onRefreshPeriodChange}
             setRefreshElapsedHook={setRefreshElapsedHook}
-            font={font}
             bordered={displayOptions.bordered}
             navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
             onLoad={onLoad}

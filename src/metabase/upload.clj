@@ -7,6 +7,7 @@
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -19,12 +20,11 @@
    [metabase.lib.util :as lib.util]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :as table]
-   [metabase.permissions.util :as perms-util]
+   [metabase.permissions.core :as perms]
    [metabase.public-settings :as public-settings]
    [metabase.sync.core :as sync]
    [metabase.upload.parsing :as upload-parsing]
@@ -35,6 +35,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
+   (com.ibm.icu.text Transliterator)
    (java.io File InputStreamReader Reader)
    (java.nio.charset StandardCharsets)
    (org.apache.tika Tika)
@@ -144,11 +145,24 @@
                 (t/plus (t/seconds 1))
                 (t/truncate-to :seconds))))))
 
+(def ^:private transliterator
+  (Transliterator/getInstance "Arabic-Latin; Bulgarian-Latin/BGN; Greek-Latin/BGN; Any-Latin; Latin-ASCII"))
+
+(defn- transliterate [s]
+  (when-not (str/blank? s)
+    (-> (.transliterate ^Transliterator transliterator ^String s)
+        (str/replace #"\s+" "_")
+        (str/replace #"[^\w]+" "_")
+        (str/replace #"_{2,}" "_")
+        (str/replace #"^_|_$" ""))))
+
 (defn- unique-table-name
   "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplied `table-name` if necessary)."
   [driver table-name]
+  ;; TODO we should not rely on the timestamp to make the filename unique
+  ;; Ideally we would add an incrementing count, but it may be cheaper and easier to include some randomness.
   (let [time-format                 "_yyyyMMddHHmmss"
-        slugified-name               (or (u/slugify table-name) "")
+        slugified-name              (or (u/not-blank (transliterate table-name)) "blank")
         ;; since both the time-format and the slugified-name contain only ASCII characters, we can behave as if
         ;; [[driver/table-name-length-limit]] were defining a length in characters.
         max-length                  (- (min-safe (driver/table-name-length-limit driver)
@@ -446,7 +460,7 @@
       (ex-info (tru "Uploads are not enabled.")
                {:status-code 422})
 
-      (perms-util/sandboxed-user?)
+      (perms/sandboxed-user?)
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
 
@@ -467,16 +481,16 @@
                  {:status-code 422})
         (not
          (and
-          (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
-                                                                   :perms/view-data
-                                                                   (u/the-id db)))
+          (= :unrestricted (perms/full-db-permission-for-user api/*current-user-id*
+                                                              :perms/view-data
+                                                              (u/the-id db)))
           ;; previously this required `unrestricted` data access, i.e. not `no-self-service`, which corresponds to *both*
           ;; (at least) `:query-builder` plus unrestricted view-data
           (contains? #{:query-builder :query-builder-and-native}
-                     (data-perms/full-schema-permission-for-user api/*current-user-id*
-                                                                 :perms/create-queries
-                                                                 (u/the-id db)
-                                                                 schema-name))))
+                     (perms/full-schema-permission-for-user api/*current-user-id*
+                                                            :perms/create-queries
+                                                            (u/the-id db)
+                                                            schema-name))))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)
@@ -633,6 +647,7 @@
                                       :model-id (:id card)))
         (assoc card :table-id (:id table)))
       (catch Throwable e
+        (prometheus/inc! :metabase-csv-upload/failed)
         (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
                                                            :event :csv-upload-failed))
 
@@ -819,6 +834,7 @@
 
           {:row-count row-count})))
     (catch Throwable e
+      (prometheus/inc! :metabase-csv-upload/failed)
       (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
                                                          :event :csv-append-failed))
       (throw e))))

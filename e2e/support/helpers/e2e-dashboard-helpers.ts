@@ -28,10 +28,12 @@ export function getDashboardCards() {
 }
 
 export function getDashboardCard(index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return getDashboardCards().eq(index);
 }
 
 export function ensureDashboardCardHasText(text: string, index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("dashcard").eq(index).should("contain", text);
 }
 
@@ -232,6 +234,14 @@ export function duplicateTab(tabName: string) {
   });
 }
 
+export function renameTab(tabName: string, newTabName: string) {
+  cy.findByRole("tab", { name: tabName }).findByRole("button").click();
+  popover().within(() => {
+    cy.findByText("Rename").click();
+  });
+  cy.findByRole("tab", { name: tabName }).type(newTabName + "{Enter}");
+}
+
 export function goToTab(tabName: string) {
   cy.findByRole("tab", { name: tabName }).click();
 }
@@ -296,7 +306,7 @@ export function resizeDashboardCard({
 
 /** Opens the dashboard info sidesheet */
 export function openDashboardInfoSidebar() {
-  dashboardHeader().icon("info").click();
+  dashboardHeader().findByLabelText("More info").click();
   return sidesheet();
 }
 /** Closes the dashboard info sidesheet */

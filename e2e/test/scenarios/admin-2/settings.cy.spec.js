@@ -1,4 +1,5 @@
-import { H } from "e2e/support";
+const { H } = cy;
+const { IS_ENTERPRISE } = Cypress.env();
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -21,7 +22,6 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     "should prompt admin to migrate to a hosted instance",
     { tags: "@OSS" },
     () => {
-      H.onlyOnOSS();
       cy.visit("/admin/settings/setup");
 
       cy.findByTestId("upsell-card").findByText(/Migrate to Metabase Cloud/);
@@ -279,14 +279,15 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
     { tags: "@OSS" },
     () => {
-      H.isEE && H.setTokenFeatures("all");
+      IS_ENTERPRISE && H.setTokenFeatures("all");
 
-      const lastItem = H.isOSS ? "Cloud" : "Appearance";
+      const lastItem = !IS_ENTERPRISE ? "Cloud" : "Appearance";
 
       cy.visit("/admin/settings/setup");
       cy.findByTestId("admin-list-settings-items").within(() => {
         cy.findAllByTestId("settings-sidebar-link").as("settingsOptions");
         cy.get("@settingsOptions").first().contains("Setup");
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.get("@settingsOptions").last().contains(lastItem);
       });
     },
@@ -338,7 +339,6 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
 
 describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore();
     cy.signInAsAdmin();
   });
@@ -352,7 +352,7 @@ describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   });
 });
 
-H.describeEE("scenarios > admin > settings (EE)", () => {
+describe("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -416,6 +416,7 @@ describe.skip(
     }
 
     function getCellText() {
+      // eslint-disable-next-line no-unsafe-element-filtering
       return cy.get("[data-testid=cell-data]").eq(-1).invoke("text");
     }
 
@@ -466,7 +467,8 @@ describe.skip(
         cy.findByText("Saved");
 
         // Run the query and save the question
-        H.openNativeEditor({ databaseName: "QA Postgres12" }).type(nativeQuery);
+        H.startNewNativeQuestion().as("editor");
+        cy.get("@editor").type(nativeQuery);
         H.runNativeQuery();
 
         getCellText().then(res => {
@@ -685,7 +687,7 @@ describe("scenarios > admin > license and billing", () => {
     cy.signInAsAdmin();
   });
 
-  H.describeEE("store info", () => {
+  describe("store info", () => {
     it("should show the user a link to the store for an unlincensed enterprise instance", () => {
       cy.visit("/admin/settings/license");
       cy.findByTestId("license-and-billing-content")
@@ -782,7 +784,7 @@ describe("scenarios > admin > localization", () => {
     // summarize: Count by CreatedAt: Week
 
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.createQuestion({
+    H.createQuestion({
       name: "Orders created before June 1st 2022",
       query: {
         "source-table": ORDERS_ID,
@@ -807,7 +809,7 @@ describe("scenarios > admin > localization", () => {
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "13604",
       query: {
         "source-table": ORDERS_ID,
@@ -855,7 +857,7 @@ describe("scenarios > admin > localization", () => {
   // TODO:
   //  - Keep an eye on this test in CI and update the week range as needed.
   it("should respect start of the week in SQL questions with filters (metabase#14294)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "14294",
         native: {
@@ -1020,7 +1022,9 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.wait(2000).findAllByText("Select…").first().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("NAME").click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText("Select…").last().click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText("NAME").last().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add map").click();
@@ -1114,6 +1118,7 @@ describe("scenarios > admin > settings > map settings", () => {
 // docker run -p 9080:8080/tcp tarampampam/webhook-tester:1.1.0 serve --create-session 00000000-0000-0000-0000-000000000000
 describe("notifications", { tags: "@external" }, () => {
   beforeEach(() => {
+    H.resetWebhookTester();
     H.restore();
     cy.signInAsAdmin();
     cy.request({

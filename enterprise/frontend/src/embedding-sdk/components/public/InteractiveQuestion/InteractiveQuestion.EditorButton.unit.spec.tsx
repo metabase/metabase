@@ -80,7 +80,7 @@ const setup = ({
   renderWithSDKProviders(
     <InteractiveQuestion questionId={TEST_CARD.id}>
       <div>Look! A Button! 👇</div>
-      <InteractiveQuestion.NotebookButton onClick={clickSpy} isOpen={isOpen} />
+      <InteractiveQuestion.EditorButton onClick={clickSpy} isOpen={isOpen} />
     </InteractiveQuestion>,
     {
       sdkProviderProps: {

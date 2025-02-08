@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
@@ -299,14 +299,14 @@ describe("scenarios > question > download", () => {
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
-      cy.createQuestion({
+      H.createQuestion({
         name: "20868",
         query: {
           "source-table": ORDERS_ID,
         },
         display: "table",
       }).then(({ body: { id: questionId } }) => {
-        cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+        H.createDashboard().then(({ body: { id: dashboardId } }) => {
           cy.request("PUT", `/api/dashboard/${dashboardId}`, {
             parameters: [
               {
@@ -377,7 +377,7 @@ describe("scenarios > question > download", () => {
 
   describe("png images", () => {
     it("from dashboards", () => {
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardName: "saving pngs dashboard",
         questions: [canSavePngQuestion, cannotSavePngQuestion],
       }).then(({ dashboard }) => {
@@ -405,7 +405,7 @@ describe("scenarios > question > download", () => {
     });
 
     it("from query builder", () => {
-      cy.createQuestion(canSavePngQuestion, { visitQuestion: true });
+      H.createQuestion(canSavePngQuestion, { visitQuestion: true });
 
       cy.findByTestId("download-button").click();
 
@@ -416,7 +416,7 @@ describe("scenarios > question > download", () => {
 
       cy.verifyDownload(".png", { contains: true });
 
-      cy.createQuestion(cannotSavePngQuestion, { visitQuestion: true });
+      H.createQuestion(cannotSavePngQuestion, { visitQuestion: true });
 
       cy.findByTestId("download-button").click();
 
@@ -436,7 +436,7 @@ describe("scenarios > dashboard > download pdf", () => {
 
   it("should allow you to download a PDF of a dashboard", () => {
     const date = Date.now();
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       dashboardName: `saving pdf dashboard - ${date}`,
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
@@ -461,7 +461,7 @@ H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
   });
 
   it("should allow you to download a PDF of a dashboard", () => {
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       dashboardName: "test dashboard",
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
@@ -477,7 +477,7 @@ H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
   });
 
   it("should send the `download_results_clicked` event when downloading dashcards results", () => {
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       dashboardName: "saving pngs dashboard",
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {

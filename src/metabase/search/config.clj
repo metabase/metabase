@@ -2,7 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.permissions.util :as perms.u]
+   [metabase.permissions.core :as perms]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -234,7 +234,7 @@
    [:context               {:optional true} [:maybe :keyword]]
    [:is-impersonated-user? {:optional true} [:maybe :boolean]]
    [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
-   [:current-user-perms [:set perms.u/PathSchema]]
+   [:current-user-perms [:set perms/PathSchema]]
 
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
@@ -260,6 +260,7 @@
 
 (defmulti column->string
   "Turn a complex column into a string"
+  {:arglists '([column-value model column-name])}
   (fn [_column-value model column-name]
     [(keyword model) column-name]))
 

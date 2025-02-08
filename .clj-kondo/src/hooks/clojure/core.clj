@@ -74,22 +74,22 @@
      metabase.models.model-index/add-values!
      metabase.models.moderation-review/create-review!
      metabase.models.on-demand-test/add-dashcard-with-parameter-mapping!
-     metabase.models.permissions/grant-application-permissions!
-     metabase.models.permissions/grant-collection-read-permissions!
-     metabase.models.permissions/grant-collection-readwrite-permissions!
-     metabase.models.permissions/grant-full-data-permissions!
-     metabase.models.permissions/grant-native-readwrite-permissions!
-     metabase.models.permissions/grant-permissions!
-     metabase.models.permissions/revoke-application-permissions!
-     metabase.models.permissions/revoke-data-perms!
-     metabase.models.permissions/update-data-perms-graph!
-     metabase.models.permissions/update-group-permissions!
      metabase.models.persisted-info/ready-database!
      metabase.models.setting-test/test-user-local-allowed-setting!
      metabase.models.setting-test/test-user-local-only-setting!
      metabase.models.setting.cache/restore-cache!
      metabase.models.setting/set!
      metabase.models.setting/validate-settings-formatting!
+     metabase.permissions.models.permissions/grant-application-permissions!
+     metabase.permissions.models.permissions/grant-collection-read-permissions!
+     metabase.permissions.models.permissions/grant-collection-readwrite-permissions!
+     metabase.permissions.models.permissions/grant-full-data-permissions!
+     metabase.permissions.models.permissions/grant-native-readwrite-permissions!
+     metabase.permissions.models.permissions/grant-permissions!
+     metabase.permissions.models.permissions/revoke-application-permissions!
+     metabase.permissions.models.permissions/revoke-data-perms!
+     metabase.permissions.models.permissions/update-data-perms-graph!
+     metabase.permissions.models.permissions/update-group-permissions!
      metabase.permissions.test-util/with-restored-perms!
      metabase.pulse.send/send-notifications!
      metabase.pulse.send/send-pulse!
@@ -230,6 +230,17 @@
                                  :message "Don't use prefix forms inside :require [:metabase/require-shape-checker]"
                                  :type    :metabase/require-shape-checker)))))
 
+(defn- lint-requires-on-new-lines [ns-form-node]
+  (let [[require-keyword first-require] (-> ns-form-node
+                                            ns-form-node->require-node
+                                            :children)]
+    (when-let [require-keyword-line (:row (meta require-keyword))]
+      (when-let [first-require-line (:row (meta first-require))]
+        (when (= require-keyword-line first-require-line)
+          (hooks/reg-finding! (assoc (meta first-require)
+                                     :message "Put your requires on a newline from the :require keyword [:metabase/require-shape-checker]"
+                                     :type    :metabase/require-shape-checker)))))))
+
 (defn- require-node->namespace-symb-nodes [require-node]
   (let [[_ns & args] (:children require-node)]
     (into []
@@ -323,6 +334,55 @@
                                          :type    :metabase/ns-module-checker)))))))))
 
 (defn lint-ns [x]
-  (lint-require-shapes (:node x))
-  (lint-modules (:node x) (get-in x [:config :linters :metabase/ns-module-checker]))
+  (doto (:node x)
+    lint-require-shapes
+    lint-requires-on-new-lines
+    (lint-modules (get-in x [:config :linters :metabase/ns-module-checker])))
+  x)
+
+(defn- check-arglists [report-node arglists]
+  (letfn [(reg-bad-arglists! []
+            (hooks/reg-finding!
+             (assoc (meta report-node)
+                    :message ":arglists should be a quoted list of vectors [:metabase/check-defmulti-arglists]"
+                    :type :metabase/check-defmulti-arglists)))
+          (reg-bad-arg! []
+            (hooks/reg-finding!
+             (assoc (meta report-node)
+                    :message ":arglists should contain actual arg names, not underscore (unused) symbols [:metabase/check-defmulti-arglists]"
+                    :type    :metabase/check-defmulti-arglists)))
+          (underscore-arg? [arg]
+            (and (symbol? arg)
+                 (str/starts-with? arg "_")))
+          (check-arglist [arglist]
+            (cond
+              (not (vector? arglist))        (reg-bad-arglists!)
+              (some underscore-arg? arglist) (reg-bad-arg!)))]
+    (if-not (and (seq? arglists)
+                 (= (first arglists) 'quote)
+                 (seq (second arglists)))
+      (reg-bad-arglists!)
+      (let [[_quote arglists] arglists]
+        (doseq [arglist arglists]
+          (check-arglist arglist))))))
+
+(defn- defmulti-check-for-arglists-metadata
+  "Make sure a [[defmulti]] has an attribute map with `:arglists` metadata."
+  [node]
+  (let [[_defmulti _symb & args] (:children node)
+        [_docstring & args]      (if (hooks/string-node? (first args))
+                                   args
+                                   (cons nil args))
+        attr-map                 (when (hooks/map-node? (first args))
+                                   (first args))
+        arglists                 (some-> attr-map hooks/sexpr :arglists seq)]
+    (if (not (seq? arglists))
+      (hooks/reg-finding!
+       (assoc (meta node)
+              :message "All defmultis should have an attribute map with :arglists metadata. [:metabase/check-defmulti-arglists]"
+              :type    :metabase/check-defmulti-arglists))
+      (check-arglists attr-map arglists))))
+
+(defn lint-defmulti [x]
+  (defmulti-check-for-arglists-metadata (:node x))
   x)

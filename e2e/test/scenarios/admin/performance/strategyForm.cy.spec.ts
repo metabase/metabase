@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
@@ -117,7 +117,7 @@ describe("scenarios > admin > performance > strategy form", () => {
     });
   });
 
-  H.describeEE("ee", () => {
+  describe("ee", () => {
     beforeEach(() => {
       H.restore();
       interceptPerformanceRoutes();

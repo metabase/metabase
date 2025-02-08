@@ -23,6 +23,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       clearButtonProps: {
         color: "text-dark",
       },
+      inputWrapperOrder: ["label", "description", "input", "error"],
     }),
     styles: (theme, _, { size = "md" }) => ({
       ...getSelectInputOverrides(theme),
@@ -59,6 +60,7 @@ export const getSelectInputOverrides = (
     },
     error: {
       ref: getStylesRef("error"),
+      "&::first-letter": { textTransform: "capitalize" },
     },
     wrapper: {
       ref: getStylesRef("wrapper"),

@@ -12,15 +12,17 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   createQuestion,
-  describeEE,
   popover,
+  tableAllFieldsHiddenImage,
   tableHeaderClick,
   tableInteractive,
 } from "e2e/support/helpers";
 import {
+  METABASE_INSTANCE_URL,
   mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   mountSdkContent,
+  mountSdkContentAndAssertNoKnownErrors,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -31,7 +33,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 type InteractiveQuestionProps = ComponentProps<typeof InteractiveQuestion>;
 
-describeEE("scenarios > embedding-sdk > interactive-question", () => {
+describe("scenarios > embedding-sdk > interactive-question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
@@ -69,6 +71,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("cell-data").last().click();
 
     cy.on("uncaught:exception", error => {
@@ -91,15 +94,32 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
-    tableInteractive().findByText("Max of Quantity").should("be.visible");
+    const firstColumnName = "Product ID";
+    const lastColumnName = "Max of Quantity";
+    const columnNames = [firstColumnName, lastColumnName];
 
-    tableHeaderClick("Max of Quantity");
+    columnNames.forEach(columnName => {
+      tableInteractive().findByText(columnName).should("be.visible");
 
-    popover()
-      .findByTestId("click-actions-sort-control-formatting-hide")
-      .click();
+      tableHeaderClick(columnName);
 
-    tableInteractive().findByText("Max of Quantity").should("not.exist");
+      popover()
+        .findByTestId("click-actions-sort-control-formatting-hide")
+        .click();
+
+      const lastColumnName = "Max of Quantity";
+
+      if (columnName !== lastColumnName) {
+        tableInteractive().findByText(columnName).should("not.exist");
+      } else {
+        tableInteractive().should("not.exist");
+
+        tableAllFieldsHiddenImage()
+          .should("be.visible")
+          .should("have.attr", "src")
+          .and("include", METABASE_INSTANCE_URL);
+      }
+    });
   });
 
   it("can save a question to a default collection", () => {
@@ -272,6 +292,14 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
 
     cy.on("uncaught:exception", error => {
       expect(error.message.includes("Stage 1 does not exist")).to.be.false;
+    });
+  });
+
+  it("does not contain known console errors (metabase#48497)", () => {
+    cy.get<number>("@questionId").then(questionId => {
+      mountSdkContentAndAssertNoKnownErrors(
+        <InteractiveQuestion questionId={questionId} />,
+      );
     });
   });
 

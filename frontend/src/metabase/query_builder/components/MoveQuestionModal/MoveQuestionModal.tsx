@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import { getDashboard, useUpdateCardMutation } from "metabase/api";
@@ -158,9 +158,18 @@ export const MoveQuestionModal = ({
           onClose={onClose}
           title={
             <Title fz="1.25rem" lh={1.5}>
-              {t`Do you still want this question to appear in`}{" "}
-              <Icon name="dashboard" style={{ marginBottom: -2 }} size={20} />{" "}
-              <Dashboards.Name id={question.dashboardId()} />
+              {c(
+                "{0} is the dashboard name the question currently has dashcards in",
+              ).jt`Do you still want this question to appear in ${(
+                <>
+                  <Icon
+                    name="dashboard"
+                    style={{ marginBottom: -2 }}
+                    size={20}
+                  />{" "}
+                  <Dashboards.Name id={question.dashboardId()} />
+                </>
+              )}?`}
             </Title>
           }
           message={

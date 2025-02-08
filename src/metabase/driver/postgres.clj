@@ -840,6 +840,17 @@
    (keyword "timestamp with time zone")    :type/DateTimeWithLocalTZ
    (keyword "timestamp without time zone") :type/DateTime})
 
+(defmethod driver/dynamic-database-types-lookup :postgres
+  [_driver database database-types]
+  (when (seq database-types)
+    (let [ts (enum-types database)]
+      (not-empty
+       (into {}
+             (comp
+              (filter ts)
+              (map #(vector % :type/PostgresEnum)))
+             database-types)))))
+
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
   [_driver database-type]
   (default-base-types database-type))
@@ -945,6 +956,10 @@
       (some-> (.getString rs i) u/parse-currency))
     (fn []
       (.getObject rs i))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/SQLXML]
+  [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
+  (fn [] (.getString rs i)))
 
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :postgres

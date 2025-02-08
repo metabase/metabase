@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { InputSettingType } from "./actions";
+
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -214,6 +216,7 @@ export const tokenFeatures = [
   "upload_management",
   "collection_cleanup",
   "query_reference_validation",
+  "cache_preemptive",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -232,7 +235,9 @@ export interface SettingDefinition<Key extends SettingKey = SettingKey> {
   is_env_setting?: boolean;
   value?: SettingValue<Key>;
   default?: SettingValue<Key>;
+  display_name?: string;
   description?: string | ReactNode | null;
+  type?: InputSettingType;
 }
 
 export type UpdateChannel = "latest" | "beta" | "nightly";
@@ -243,6 +248,8 @@ export interface OpenAiModel {
 }
 
 export type HelpLinkSetting = "metabase" | "hidden" | "custom";
+
+export type AutocompleteMatchStyle = "off" | "prefix" | "substring";
 
 export interface UploadsSettings {
   db_id: number | null;
@@ -307,6 +314,7 @@ interface AdminSettings {
   "version-info": VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
+  "show-sdk-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
@@ -365,7 +373,7 @@ interface PublicSettings {
   "ldap-group-membership-filter": string;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
-  "native-query-autocomplete-match-style": "substring" | "prefix" | "off";
+  "native-query-autocomplete-match-style": AutocompleteMatchStyle;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
