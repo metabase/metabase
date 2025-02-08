@@ -82,7 +82,7 @@ describe("scenarios > organization > timelines > collection", () => {
         ],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
 
       cy.findByPlaceholderText("Search for an event").type("V1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -211,7 +211,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
     it("should edit an event", () => {
       H.createTimelineWithEvents({ events: [{ name: "RC1" }] });
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
 
       openMenu("RC1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -234,7 +234,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [{ name: "RC2" }],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
       H.modal().findByText("Metrics").click();
       openMenu("RC2");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -265,7 +265,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [{ name: "RC2" }],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
       H.modal().findByText("Metrics").click();
       openMenu("RC2");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -290,7 +290,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [{ name: "RC1" }, { name: "RC2" }],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
 
       openMenu("RC1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -311,7 +311,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [{ name: "RC1" }, { name: "RC2" }],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
 
       openMenu("RC1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -333,7 +333,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [{ name: "RC1", archived: true }],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
       openMenu("Releases");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("View archived events").click();
@@ -361,7 +361,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [{ name: "RC1", archived: true }],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
       openMenu("Releases");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("View archived events").click();
@@ -382,7 +382,7 @@ describe("scenarios > organization > timelines > collection", () => {
       H.createTimeline({ name: "Releases" });
       H.createTimeline({ name: "Metrics" });
 
-      cy.visit("/timeline/collection/root/1");
+      cy.visit("/collection/root/timelines/1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
 
@@ -394,7 +394,7 @@ describe("scenarios > organization > timelines > collection", () => {
     it("should not allow navigating back when there is only one timeline in a collection", () => {
       H.createTimeline({ name: "Releases" });
 
-      cy.visit("/timeline/collection/root/1");
+      cy.visit("/collection/root/timelines/1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
       cy.icon("chevronleft").should("not.exist");
@@ -406,7 +406,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [{ name: "RC1" }],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
       openMenu("Releases");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New timeline").click();
@@ -427,7 +427,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [{ name: "RC1" }],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
       openMenu("Releases");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit timeline details").click();
@@ -446,7 +446,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [{ name: "RC1" }],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
       openMenu("Our analytics events");
       H.popover().findByText("Move timeline").click();
 
@@ -471,7 +471,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [{ name: "RC1" }, { name: "RC2" }],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
       openMenu("Releases");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit timeline details").click();
@@ -505,7 +505,7 @@ describe("scenarios > organization > timelines > collection", () => {
         description: "[Holiday list](https://metabase.test)",
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Release notes").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -525,7 +525,7 @@ describe("scenarios > organization > timelines > collection", () => {
         ],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Release notes").should("be.visible");
     });
@@ -536,7 +536,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [{ name: "RC1" }, { name: "RC2" }],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
       openMenu("Releases");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit timeline details").click();
@@ -565,7 +565,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [{ name: "RC1" }, { name: "RC2" }],
       });
 
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
       openMenu("Releases");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit timeline details").click();
@@ -630,7 +630,7 @@ describe("scenarios > organization > timelines > collection", () => {
       setFormattingSettings({
         "type/Temporal": { date_style: "YYYY/M/D" },
       });
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
 
       openMenu("RC1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -651,7 +651,7 @@ describe("scenarios > organization > timelines > collection", () => {
       setFormattingSettings({
         "type/Temporal": { time_style: "HH:mm" },
       });
-      cy.visit("/timeline/collection/root");
+      cy.visit("/collection/root/timelines");
 
       openMenu("RC1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
