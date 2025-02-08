@@ -199,6 +199,9 @@ test/metabase/sync @metabase/drivers
 src/metabase/task @metabase/devexp
 test/metabase/task @metabase/devexp
 
+src/metabase/timeline @metabase/core-backend-dashviz
+test/metabase/timeline @metabase/core-backend-dashviz
+
 src/metabase/types @metabase/core-backend-querying
 test/metabase/types @metabase/core-backend-querying
 

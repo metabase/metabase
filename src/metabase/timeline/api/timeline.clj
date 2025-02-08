@@ -1,11 +1,12 @@
-(ns metabase.api.timeline
+(ns metabase.timeline.api.timeline
   "/api/timeline endpoints."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.timeline-event :as timeline-event]
+   [metabase.timeline.models.timeline :as timeline]
+   [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.registry :as mr]
@@ -110,3 +111,24 @@
   (api/write-check :model/Timeline id)
   (t2/delete! :model/Timeline :id id)
   api/generic-204-no-content)
+
+(api.macros/defendpoint :get "/collection/root"
+  "Fetch the root Collection's timelines."
+  [_route-params
+   {:keys [include archived]} :- [:map
+                                  [:include  {:optional true} [:maybe [:= "events"]]]
+                                  [:archived {:default false} [:maybe :boolean]]]]
+  (api/read-check collection/root-collection)
+  (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
+                                          :timeline/archived? archived}))
+
+(api.macros/defendpoint :get "/collection/:id"
+  "Fetch a specific Collection's timelines."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [include archived]} :- [:map
+                                  [:include  {:optional true} [:maybe [:= "events"]]]
+                                  [:archived {:default false} [:maybe :boolean]]]]
+  (api/read-check (t2/select-one :model/Collection :id id))
+  (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
+                                         :timeline/archived? archived}))
