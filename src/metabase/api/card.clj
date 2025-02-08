@@ -478,7 +478,7 @@
   (collection/check-write-perms-for-collection collection-id)
   (-> (card/create-card! card @api/*current-user*)
       hydrate-card-details
-      (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))
+      (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))
 
 (api.macros/defendpoint :post "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
@@ -489,7 +489,7 @@
         new-card  (assoc orig-card :name new-name)]
     (-> (card/create-card! new-card @api/*current-user*)
         hydrate-card-details
-        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))))
+        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 

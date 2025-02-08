@@ -37,7 +37,8 @@
         _                (api/write-check instance)
         revision         (api/check-404 (t2/select-one :model/Revision :model (name model), :model_id id, :id revision-id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
-    (api/write-check model (:object revision))
+    (when (= model :model/Card)
+      (api/write-check model (select-keys (:object revision) [:dataset_query])))
     ;; ok, we're g2g
     (revision/revert!
      {:entity      model
