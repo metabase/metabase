@@ -436,6 +436,8 @@
                                      metabase.task.index-values
                                      metabase.task.init
                                      metabase.task.persist-refresh} ; TODO -- move this stuff into appropriate modules
+    metabase.timeline              #{metabase.timeline.api
+                                     metabase.timeline.core}
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}
     metabase.util                  :any                                                             ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
@@ -514,6 +516,7 @@
     metabase.setup                 :any
     metabase.sync                  :any
     metabase.task                  :any
+    metabase.timeline              :any
     metabase.types                 #{metabase.util}
     metabase.upload                :any
     metabase.util                  :any ; TODO -- this should probably be #{}
@@ -619,8 +622,6 @@
     metabase.api.table                                            api.table
     metabase.api.task                                             api.task
     metabase.api.tiles                                            api.tiles
-    metabase.api.timeline                                         api.timeline
-    metabase.api.timeline-event                                   api.timeline-event
     metabase.api.user                                             api.user
     metabase.api.util                                             api.util
     metabase.channel.core                                         channel
@@ -692,8 +693,6 @@
     metabase.models.pulse-channel-recipient                       pulse-channel-recipient
     metabase.models.query.permissions                             query-perms
     metabase.models.setting.cache                                 setting.cache
-    metabase.models.timeline                                      timeline
-    metabase.models.timeline-event                                timeline-event
     metabase.notification.core                                    notification
     metabase.notification.test-util                               notification.tu
     metabase.permissions.core                                     perms
@@ -757,6 +756,7 @@
     metabase.test.redefs                                          test.redefs
     metabase.test.util.js                                         test.js
     metabase.test.util.timezone                                   test.tz
+    metabase.timeline.core                                        timeline
     metabase.timeseries-query-processor-test.util                 tqpt
     metabase.util.cron                                            u.cron
     metabase.util.currency                                        currency

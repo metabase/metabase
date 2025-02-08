@@ -273,7 +273,7 @@ export const GoogleApi = {
 
 export const TimelineApi = {
   list: GET("/api/timeline"),
-  listForCollection: GET("/api/collection/:collectionId/timelines"),
+  listForCollection: GET("/api/timeline/collection/:collectionId"),
   get: GET("/api/timeline/:id"),
   create: POST("/api/timeline"),
   update: PUT("/api/timeline/:id"),
