@@ -18,7 +18,7 @@ import {
  * that configuring the schedule strategy causes the cache to be invalidated at
  * the appointed time. Nor do they check that the cron expression retrieved
  * from the API is displayed in the UI. */
-H.describeEE("scenarios > admin > performance > schedule strategy", () => {
+describe("scenarios > admin > performance > schedule strategy", () => {
   beforeEach(() => {
     H.restore();
     interceptPerformanceRoutes();

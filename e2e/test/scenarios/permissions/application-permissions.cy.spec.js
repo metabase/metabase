@@ -13,7 +13,7 @@ const SUBSCRIPTIONS_INDEX = 2;
 
 const NORMAL_USER_ID = 2;
 
-H.describeEE("scenarios > admin > permissions > application", () => {
+describe("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

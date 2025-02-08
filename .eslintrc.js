@@ -107,8 +107,7 @@ module.exports = {
           "And",
           "When",
           "Then",
-          "describeWithSnowplow",
-          "describeEE",
+          "describeWithSnowplow"
         ],
       },
     ],

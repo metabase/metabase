@@ -86,7 +86,9 @@
         (qs/get-job scheduler job-key)
         (catch JobPersistenceException e
           (when (instance? ClassNotFoundException (.getCause e))
-            (log/infof "Deleting job %s due to class not found" (.getName ^JobKey job-key))
+            (log/warnf "Deleting job %s due to class not found (%s)"
+                       (.getName ^JobKey job-key)
+                       (ex-message (.getCause e)))
             (qs/delete-job scheduler job-key)))))))
 
 (defn- init-scheduler!
