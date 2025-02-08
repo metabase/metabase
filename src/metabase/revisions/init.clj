@@ -6,5 +6,4 @@
    ;; https://linear.app/metabase/issue/DEV-326
    [metabase.revisions.impl.card]
    [metabase.revisions.impl.dashboard]
-   [metabase.revisions.impl.legacy-metric]
    [metabase.revisions.impl.segment]))

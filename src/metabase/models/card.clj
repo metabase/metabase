@@ -116,6 +116,10 @@
                       (when (instance? Throwable required-perms)
                         required-perms))))))
 
+;; TODO -- super duper concerning that the `can-write?` method for a Card doesn't call [[check-if-card-can-be-saved]]
+;; and [[check-permissions-for-query]]. AFAIK some of the Card API endpoints call them but it seems worrisome that this
+;; is not part of this method
+
 (defmethod mi/can-write? :model/Card
   ([instance]
    ;; Cards in audit collection should not be writable.
@@ -126,14 +130,7 @@
         ;; Is a direct descendant of audit collection
         (= (:collection_id instance) (:id (audit/default-audit-collection))))
      false
-     (and
-      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))
-      (try
-        (check-if-card-can-be-saved instance)
-        (check-permissions-for-query (:dataset_query instance))
-        true
-        (catch Throwable _e
-          false)))))
+     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Card :id pk))))
 

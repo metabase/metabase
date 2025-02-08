@@ -4,16 +4,24 @@
    [metabase.api.macros :as api.macros]
    [metabase.revisions.models.revision :as revision]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.regex :as u.regex]
    [toucan2.core :as t2]))
+
+(def ^:private entity->model
+  {"card"      :model/Card
+   "dashboard" :model/Dashboard
+   "segment"   :model/Segment})
 
 (def ^:private Entity
   "Schema for a valid revisionable entity name."
-  [:enum "card" "dashboard"])
+  (into
+   [:enum {:api/regex (u.regex/re-or (keys entity->model))}]
+   (keys entity->model)))
 
 (defn- model-and-instance [entity-name id]
-  (case entity-name
-    "card"      [:model/Card (t2/select-one :model/Card :id id)]
-    "dashboard" [:model/Dashboard (t2/select-one :model/Dashboard :id id)]))
+  (let [model (entity->model entity-name)]
+    (assert (keyword? model))
+    [model (t2/select-one model :id id)]))
 
 (api.macros/defendpoint :get "/"
   "Get revisions of an object."
@@ -46,16 +54,12 @@
       :user-id     api/*current-user-id*
       :revision-id revision-id})))
 
-(api.macros/defendpoint :get "/dashboard/:id"
-  "Fetch `Revisions` for Dashboard with ID."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/read-check :model/Dashboard id)
-  (revision/revisions+details :model/Dashboard id))
-
-(api.macros/defendpoint :get "/segment/:id"
-  "Fetch `Revisions` for `Segment` with ID."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/read-check :model/Segment id)
-  (revision/revisions+details :model/Segment id))
+(api.macros/defendpoint :get "/:entity/:id"
+  "Fetch `Revisions` for an object with ID."
+  [{:keys [id entity]} :- [:map
+                           [:entity Entity]
+                           [:id     ms/PositiveInt]]]
+  (let [model (entity->model entity)]
+    (assert (keyword? model))
+    (api/read-check model id)
+    (revision/revisions+details model id)))

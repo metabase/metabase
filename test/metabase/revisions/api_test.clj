@@ -44,7 +44,7 @@
 ;  3. :description is calculated
 
 ;; case with no revisions (maintains backwards compatibility with old installs before revisions)
-(deftest no-revisions-test
+(deftest ^:parallel no-revisions-test
   (testing "Loading revisions, where there are no revisions, should work"
     (mt/with-temp [:model/Card {:keys [id]}]
       (is (= [{:user {}, :diff nil, :description "modified this.", :has_multiple_changes false}]
@@ -580,6 +580,146 @@
                 :description          "created this."}]
               (mt/user-http-request :crowberto :get 200 (format "revision/dashboard/%d" dashboard-id)))))))
 
+(deftest revert-dashboard-test
+  (testing "POST /api/revision/revert <Dashboard>"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                   :model/Revision  {revision-id :id} {:model       "Dashboard"
+                                                       :model_id    dashboard-id
+                                                       :object      {:name        "a"
+                                                                     :description nil
+                                                                     :cards       []}
+                                                       :is_creation true}
+                   :model/Revision  _                 {:model    "Dashboard"
+                                                       :model_id dashboard-id
+                                                       :user_id  (mt/user->id :crowberto)
+                                                       :object   {:name        "b"
+                                                                  :description nil
+                                                                  :cards       []}
+                                                       :message  "updated"}]
+      (is (=? {:is_reversion         true
+               :message              nil
+               :user                 {:first_name "Crowberto"}
+               :metabase_version     config/mb-version-string
+               :diff                 {:before {:name "b"}
+                                      :after  {:name "a"}}
+               :has_multiple_changes false
+               :description          "reverted to an earlier version."}
+              (dissoc (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                            {:id dashboard-id, :entity "dashboard", :revision_id revision-id})
+                      :id :timestamp)))
+      (is (=? [{:is_reversion         true
+                :is_creation          false
+                :message              nil
+                :user                 {:first_name "Crowberto"}
+                :metabase_version     config/mb-version-string
+                :diff                 {:before {:name "b"}
+                                       :after  {:name "a"}}
+                :has_multiple_changes false
+                :description          "reverted to an earlier version."}
+               {:is_reversion         false
+                :is_creation          false
+                :message              "updated"
+                :user                 {:first_name "Crowberto"}
+                :metabase_version     config/mb-version-string
+                :diff                 {:before {:name "a"}
+                                       :after  {:name "b"}}
+                :has_multiple_changes false
+                :description          "renamed this Dashboard from \"a\" to \"b\"."}
+               {:is_reversion         false
+                :is_creation          true
+                :message              nil
+                :user                 {:first_name "Rasta"}
+                :diff                 nil
+                :has_multiple_changes false
+                :description          "created this."}]
+              (mt/user-http-request :crowberto :get 200 (format "revision/dashboard/%d" dashboard-id)))))))
+
+(defn- dashboard-revisions-api [dash-id]
+  (mt/user-http-request :rasta :get 200 (str "revision/dashboard/" dash-id)))
+
+(defn- revert-dashboard-api! [dash-id rev-id]
+  (mt/user-http-request :rasta :post 200 (str "revision/revert")
+                        {:id dash-id, :entity :dashboard, :revision_id rev-id}))
+
+(defn- update-dashcards! [dash-id card-ids]
+  (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id)
+                        {:dashcards (map-indexed (fn [idx card-id]
+                                                   {:id (- (inc idx))
+                                                    :card_id card-id
+                                                    :col 0
+                                                    :row idx
+                                                    :size_x 10
+                                                    :size_y 10})
+                                                 card-ids)}))
+
+(deftest revert-dashboard-behaves-for-dashboard-questions
+  (testing "POST /api/revision/revert <Dashboard>"
+    (testing "My DQ is moved to another Dashboard"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Dashboard {other-dash-id :id} {}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id}
+                     :model/Card {card-id :id} {}]
+        (update-dashcards! dash-id [card-id dq-id])
+        (update-dashcards! dash-id [])
+        (t2/update! :model/Card dq-id {:dashboard_id other-dash-id})
+        (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
+        (is (= #{card-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))
+        (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))))))
+
+(deftest revert-dashboard-behaves-for-dashboard-questions-2
+  (testing "POST /api/revision/revert <Dashboard>"
+    (testing "My DQ is turned into a regular Question in a collection"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id}
+                     :model/Card {card-id :id} {}]
+        (update-dashcards! dash-id [card-id dq-id])
+        ;; make it a non-DQ before removing it, otherwise it will be auto-archived
+        (t2/update! :model/Card dq-id {:dashboard_id nil})
+        (update-dashcards! dash-id [])
+        (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
+        (is (= #{dq-id card-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))
+        (is (= 2 (t2/count :model/DashboardCard :dashboard_id dash-id)))))))
+
+(deftest revert-dashboard-behaves-for-dashboard-questions-3
+  (testing "POST /api/revision/revert <Dashboard>"
+    (testing "A regular card is moved to another Dashboard"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Dashboard {other-dash-id :id} {}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id}
+                     :model/Card {card-id :id} {}]
+        (update-dashcards! dash-id [card-id dq-id])
+        (update-dashcards! dash-id [])
+        (t2/update! :model/Card card-id {:dashboard_id other-dash-id})
+        (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
+        (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))
+        (is (= #{dq-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))))))
+
+(deftest revert-dashboard-behaves-for-dashboard-questions-4
+  (testing "POST /api/revision/revert <Dashboard>"
+    (testing "A card becomes a model"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id
+                                              :name "Total orders per month"
+                                              :display :line
+                                              :visualization_settings
+                                              {:graph.dimensions ["CREATED_AT"]
+                                               :graph.metrics ["sum"]}
+                                              :dataset_query
+                                              (mt/$ids
+                                                {:database (mt/id)
+                                                 :type     :query
+                                                 :query    {:source-table $$orders
+                                                            :aggregation  [[:sum $orders.total]]
+                                                            :breakout     [!month.orders.created_at]}})}]
+        (update-dashcards! dash-id [dq-id])
+        ;; turn it into a model outside the DQ
+        (t2/update! :model/Card dq-id {:dashboard_id nil :type :model})
+        ;; remove it from the dashboard
+        (update-dashcards! dash-id [])
+        (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
+        (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))
+        (is (= #{dq-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))))))
+
 (deftest segment-revisions-permissions-test
   (testing "GET /api/revision/segment/:id"
     (testing "test security. Requires read perms for the Table it references"
@@ -625,3 +765,87 @@
                                  :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
                   :description  "created this."}]
                 (mt/user-http-request :rasta :get 200 (format "revision/segment/%d" id))))))))
+
+(deftest ^:parallel segment-revert-permissions-test
+  (testing "POST /api/revision/revert <Segment>"
+    (testing "test security.  requires superuser perms"
+      (mt/with-temp [:model/Segment {:keys [id]}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "revision/revert" {:id id, :entity "segment", :revision_id 56})))))))
+
+(deftest ^:parallel segment-revert-input-validation-test
+  (testing "POST /api/revision/revert <Segment>"
+    (is (=? {:errors {:revision_id "value must be an integer greater than zero."}}
+            (mt/user-http-request :crowberto :post 400 "revision/revert" {:id 1, :entity "segment"})))
+    (is (=? {:errors {:revision_id "value must be an integer greater than zero."}}
+            (mt/user-http-request :crowberto :post 400 "revision/revert" {:id 1, :entity "segment", :revision_id "foobar"})))))
+
+(deftest segment-revert-test
+  (testing "POST /api/revision/revert <Segment>"
+    (mt/with-temp
+      [:model/Database {database-id :id} {}
+       :model/Table    {table-id :id}    {:db_id database-id}
+       :model/Segment  {:keys [id]}      {:creator_id              (mt/user->id :crowberto)
+                                          :table_id                table-id
+                                          :name                    "One Segment to rule them all, one segment to define them"
+                                          :description             "One segment to bring them all, and in the DataModel bind them"
+                                          :show_in_getting_started false
+                                          :caveats                 nil
+                                          :points_of_interest      nil
+                                          :definition              {:filter [:= [:field 2 nil] "cans"]}}
+       :model/Revision {revision-id :id} {:model       "Segment"
+                                          :model_id    id
+                                          :object      {:creator_id              (mt/user->id :crowberto)
+                                                        :table_id                table-id
+                                                        :name                    "One Segment to rule them all, one segment to define them"
+                                                        :description             "One segment to bring them all, and in the DataModel bind them"
+                                                        :show_in_getting_started false
+                                                        :caveats                 nil
+                                                        :points_of_interest      nil
+                                                        :definition              {:filter [:= [:field 2 nil] "cans"]}}
+                                          :is_creation true}
+       :model/Revision _                 {:model    "Segment"
+                                          :model_id id
+                                          :user_id  (mt/user->id :crowberto)
+                                          :object   {:creator_id              (mt/user->id :crowberto)
+                                                     :table_id                table-id
+                                                     :name                    "Changed Segment Name"
+                                                     :description             "One segment to bring them all, and in the DataModel bind them"
+                                                     :show_in_getting_started false
+                                                     :caveats                 nil
+                                                     :points_of_interest      nil
+                                                     :definition              {:filter [:= [:field 2 nil] "cans"]}}
+                                          :message  "updated"}]
+      (testing "the api response"
+        (is (=? {:is_reversion true
+                 :is_creation  false
+                 :message      nil
+                 :user         {:first_name "Crowberto"}
+                 :diff         {:name {:before "Changed Segment Name"
+                                       :after  "One Segment to rule them all, one segment to define them"}}
+                 :description  "reverted to an earlier version."}
+                (mt/user-http-request :crowberto :post 200 "revision/revert" {:id id, :entity "segment", :revision_id revision-id}))))
+      (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
+        (is (=? [{:is_reversion true
+                  :is_creation  false
+                  :message      nil
+                  :user         {:first_name "Crowberto"}
+                  :diff         {:name {:before "Changed Segment Name"
+                                        :after  "One Segment to rule them all, one segment to define them"}}
+                  :description  "reverted to an earlier version."}
+                 {:is_reversion false
+                  :is_creation  false
+                  :message      "updated"
+                  :user         {:first_name "Crowberto"}
+                  :diff         {:name {:after  "Changed Segment Name"
+                                        :before "One Segment to rule them all, one segment to define them"}}
+                  :description  "renamed this Segment from \"One Segment to rule them all, one segment to define them\" to \"Changed Segment Name\"."}
+                 {:is_reversion false
+                  :is_creation  true
+                  :message      nil
+                  :user         {:first_name "Rasta"}
+                  :diff         {:name        {:after "One Segment to rule them all, one segment to define them"}
+                                 :description {:after "One segment to bring them all, and in the DataModel bind them"}
+                                 :definition  {:after {:filter ["=" ["field" 2 nil] "cans"]}}}
+                  :description  "created this."}]
+                (mt/user-http-request :crowberto :get 200 (format "revision/segment/%d" id))))))))
