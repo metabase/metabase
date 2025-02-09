@@ -65,7 +65,7 @@
     ;; then we create a session right away because we want our new user logged in to continue the setup process
     (let [session (session/create-session! :password new-user device-info)]
       ;; return user ID, session ID, and the Session object itself
-      {:session-id (:id session), :user-id user-id, :session session})))
+      {:session-key (:key session), :user-id user-id, :session session})))
 
 (defn- setup-maybe-create-and-invite-user! [{:keys [email] :as user}, invitor]
   (when email

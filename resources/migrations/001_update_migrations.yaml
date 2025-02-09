@@ -10533,6 +10533,7 @@ databaseChangeLog:
   - changeSet:
       id: v53.2025-02-21T20:43:40
       author: nvoxland
+      comment: Replacing storing the session key in the "id" column in favor of storing a new hashed version
       preConditions:
       changes:
         - addColumn:
@@ -10542,6 +10543,7 @@ databaseChangeLog:
                   name: key_hashed
                   type: varchar(254)
                   value: "upgrade placeholder"
+                  remarks: Hashed version of the session key
                   constraints:
                     nullable: false
 
