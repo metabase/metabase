@@ -211,7 +211,7 @@
                                                     [:map [:arguments ::create-dashboard-subscription-arguments]]
                                                     ::tool-request]]
   (metabot-v3.context/log body :llm.log/llm->be)
-  (let [arguments (mc/encode ::query-metric-arguments
+  (let [arguments (mc/encode ::create-dashboard-subscription-arguments
                              arguments (mtx/transformer {:name :api-request}))]
     (doto (-> (metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription arguments)
               (assoc :conversation_id conversation_id))
