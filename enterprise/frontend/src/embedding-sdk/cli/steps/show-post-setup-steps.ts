@@ -12,6 +12,8 @@ import { checkIsInNextJsProject } from "../utils/nextjs-helpers";
 import { printEmptyLines, printWithPadding } from "../utils/print";
 
 export const showPostSetupSteps: CliStepMethod = async state => {
+  const isNextJs = await checkIsInNextJsProject();
+
   const STEP_1 = `
   Generated an example Express.js server directory in "${state.mockServerDir}".
 
@@ -20,7 +22,10 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   ${green("npm run start")}
 `;
 
-  const importPath = getSuggestedImportPath(state.reactComponentDir);
+  const importPath = getSuggestedImportPath({
+    isNextJs,
+    componentDir: state.reactComponentDir,
+  });
 
   const STEP_2 = `
   Import the component in your React frontend. For example:
@@ -46,8 +51,6 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   }
 
   POST_SETUP_STEPS.push(STEP_2);
-
-  const isNextJs = await checkIsInNextJsProject();
 
   if (isNextJs) {
     POST_SETUP_STEPS.push(getNextJsSetupMessage(state.reactComponentDir ?? ""));

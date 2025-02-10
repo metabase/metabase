@@ -2,7 +2,10 @@ import fs from "fs/promises";
 
 import { input } from "@inquirer/prompts";
 
-import { GENERATED_COMPONENTS_DEFAULT_PATH } from "../constants/config";
+import {
+  GENERATED_COMPONENTS_DEFAULT_PATH,
+  GENERATED_COMPONENTS_DEFAULT_PATH_NEXTJS,
+} from "../constants/config";
 import { getGeneratedComponentFilesMessage } from "../constants/messages";
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
 import type { CliStepMethod } from "../types/cli";
@@ -27,9 +30,13 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   // eslint-disable-next-line no-constant-condition -- ask until user provides a valid path
   while (true) {
+    const defaultComponentPath = isNextJs
+      ? GENERATED_COMPONENTS_DEFAULT_PATH_NEXTJS
+      : GENERATED_COMPONENTS_DEFAULT_PATH;
+
     path = await input({
       message: "Where do you want to save the example React components?",
-      default: GENERATED_COMPONENTS_DEFAULT_PATH,
+      default: defaultComponentPath,
     });
 
     // Create a directory if it doesn't already exist.

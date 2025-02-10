@@ -21,3 +21,6 @@ export const HARDCODED_JWT_SHARED_SECRET =
 export const SANDBOXED_GROUP_NAMES = ["Customer A", "Customer B", "Customer C"];
 
 export const GENERATED_COMPONENTS_DEFAULT_PATH = "./src/components/metabase";
+
+// Next.js does not have a `src` directory, so we default to `./components` instead.
+export const GENERATED_COMPONENTS_DEFAULT_PATH_NEXTJS = "./components/metabase";
