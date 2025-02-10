@@ -1,6 +1,6 @@
 (ns metabase.lib.types.isa
   "Ported from frontend/src/metabase-lib/types/utils/isa.js"
-  (:refer-clojure :exclude [isa? any? boolean? number? string? integer?])
+  (:refer-clojure :exclude [isa? any? boolean? number? string? integer? decimal?])
   (:require
    [medley.core :as m]
    [metabase.lib.types.constants :as lib.types.constants]
@@ -184,6 +184,16 @@
   "Is `column` a integer column?"
   [column]
   (field-type? ::lib.types.constants/integer column))
+
+(defn ^:export big-integer?
+  "Is `column` a big integer column?"
+  [column]
+  (clojure.core/isa? (:effective-type column) :type/BigInteger))
+
+(defn ^:export decimal?
+  "Is `column` a decimal column?"
+  [column]
+  (clojure.core/isa? (:effective-type column) :type/Decimal))
 
 (defn ^:export time?
   "Is `column` a time?"

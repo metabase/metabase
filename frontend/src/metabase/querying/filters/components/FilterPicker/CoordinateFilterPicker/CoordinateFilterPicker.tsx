@@ -7,10 +7,11 @@ import {
   type NumberValue,
   useCoordinateFilter,
 } from "metabase/querying/filters/hooks/use-coordinate-filter";
-import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
+import { NumberFilterInput } from "../../NumberFilterInput";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
@@ -149,13 +150,14 @@ function CoordinateValueInput({
   if (valueCount === 1) {
     return (
       <Flex p="md">
-        <NumberInput
+        <NumberFilterInput
           value={values[0]}
+          column={column}
           placeholder={t`Enter a number`}
           autoFocus
           w="100%"
           aria-label={t`Filter value`}
-          onChange={(newValue: number) => onChange([newValue])}
+          onChange={newValue => onChange([newValue])}
         />
       </Flex>
     );
@@ -164,17 +166,19 @@ function CoordinateValueInput({
   if (valueCount === 2) {
     return (
       <Flex align="center" justify="center" p="md">
-        <NumberInput
+        <NumberFilterInput
           value={values[0]}
+          column={column}
           placeholder={t`Min`}
           autoFocus
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
+          onChange={newValue => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
-        <NumberInput
+        <NumberFilterInput
           value={values[1]}
+          column={column}
           placeholder={t`Max`}
-          onChange={(newValue: number) => onChange([values[0], newValue])}
+          onChange={newValue => onChange([values[0], newValue])}
         />
       </Flex>
     );
@@ -183,38 +187,42 @@ function CoordinateValueInput({
   if (valueCount === 4) {
     return (
       <Stack align="center" justify="center" spacing="sm" p="md">
-        <NumberInput
+        <NumberFilterInput
           label={t`Upper latitude`}
           value={values[0]}
+          column={column}
           placeholder="90"
           autoFocus
-          onChange={(newValue: number) =>
+          onChange={newValue =>
             onChange([newValue, values[1], values[2], values[3]])
           }
         />
         <Flex align="center" justify="center" gap="sm">
-          <NumberInput
+          <NumberFilterInput
             label={t`Left longitude`}
             value={values[1]}
+            column={column}
             placeholder="-180"
-            onChange={(newValue: number) =>
+            onChange={newValue =>
               onChange([values[0], newValue, values[2], values[3]])
             }
           />
-          <NumberInput
+          <NumberFilterInput
             label={t`Right longitude`}
             value={values[3]}
+            column={column}
             placeholder="180"
-            onChange={(newValue: number) =>
+            onChange={newValue =>
               onChange([values[0], values[1], values[2], newValue])
             }
           />
         </Flex>
-        <NumberInput
+        <NumberFilterInput
           label={t`Lower latitude`}
           value={values[2]}
+          column={column}
           placeholder="-90"
-          onChange={(newValue: number) =>
+          onChange={newValue =>
             onChange([values[0], values[1], newValue, values[3]])
           }
         />
