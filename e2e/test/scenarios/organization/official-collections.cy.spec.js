@@ -11,7 +11,7 @@ const TEST_QUESTION_QUERY = {
   breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }]],
 };
 
-H.describeEE("official collections", () => {
+describe("official collections", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

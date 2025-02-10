@@ -51,6 +51,8 @@ See [Upgrading Metabase](upgrading-metabase.md).
 - [Running on Azure Web Apps](running-metabase-on-azure.md)
 - [Running on Debian as a service](running-metabase-on-debian.md)
 
+We currently do not distribute Metabase on AWS Marketplace or Azure Marketplace.
+
 ## Connect with a Metabase Expert
 
 If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).
