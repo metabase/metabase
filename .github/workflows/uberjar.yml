@@ -157,24 +157,24 @@ jobs:
 
     - name: Retag and push images if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:latest && docker push ${{ github.repository_owner }}/metabase-enterprise-head:latest
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:latest && docker push --platform linux/amd64,linux/arm64 ${{ github.repository_owner }}/metabase-enterprise-head:latest
 
     # TODO: remove when we're done testing metabot
     - name: Retag and push images if metabot-v3-second-try (ee)
       if: ${{ (github.ref_name == 'metabot-v3-second-try') && matrix.edition == 'ee' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:metabot && docker push ${{ github.repository_owner }}/metabase-enterprise-head:metabot
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:metabot && docker push --platform	linux/amd64,linux/arm64 ${{ github.repository_owner }}/metabase-enterprise-head:metabot
 
     - name: Retag and push images if master (oss)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss ${{ github.repository_owner }}/metabase-head:latest && docker push ${{ github.repository_owner }}/metabase-head:latest
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss ${{ github.repository_owner }}/metabase-head:latest && docker push --platform linux/amd64,linux/arm64 ${{ github.repository_owner }}/metabase-head:latest
 
     - name: Retag and push images if master (ee-extra)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee-extra' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-extra ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest && docker push ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-extra ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest && docker push --platform	linux/amd64,linux/arm64 ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest
 
     - name: Retag and push images if dev branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }} && docker push ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }} && docker push --platform linux/amd64,linux/arm64 ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
 
     - name: Run Trivy vulnerability scanner if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
