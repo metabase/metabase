@@ -1930,126 +1930,6 @@
          (mt/user-http-request :crowberto :delete 404 "card/12345"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                  Timelines                                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- timelines-request
-  [card include-events?]
-  (if include-events?
-    (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card) "/timelines") :include "events")
-    (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card) "/timelines"))))
-
-(defn- timelines-range-request
-  [card {:keys [start end]}]
-  (apply mt/user-http-request (concat [:rasta :get 200
-                                       (str "card/" (u/the-id card) "/timelines")
-                                       :include "events"]
-                                      (when start [:start start])
-                                      (when end [:end end]))))
-
-(defn- timeline-names [timelines]
-  (->> timelines (map :name) set))
-
-(defn- event-names [timelines]
-  (->> timelines (mapcat :events) (map :name) set))
-
-(deftest timelines-test
-  (testing "GET /api/card/:id/timelines"
-    (mt/with-temp [:model/Collection coll-a {:name "Collection A"}
-                   :model/Collection coll-b {:name "Collection B"}
-                   :model/Collection coll-c {:name "Collection C"}
-                   :model/Card card-a {:name          "Card A"
-                                       :collection_id (u/the-id coll-a)}
-                   :model/Card card-b {:name          "Card B"
-                                       :collection_id (u/the-id coll-b)}
-                   :model/Card card-c {:name          "Card C"
-                                       :collection_id (u/the-id coll-c)}
-                   :model/Timeline tl-a {:name          "Timeline A"
-                                         :collection_id (u/the-id coll-a)}
-                   :model/Timeline tl-b {:name          "Timeline B"
-                                         :collection_id (u/the-id coll-b)}
-                   :model/Timeline _ {:name          "Timeline B-old"
-                                      :collection_id (u/the-id coll-b)
-                                      :archived      true}
-                   :model/Timeline _ {:name          "Timeline C"
-                                      :collection_id (u/the-id coll-c)}
-                   :model/TimelineEvent _ {:name        "event-aa"
-                                           :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _ {:name        "event-ab"
-                                           :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _ {:name        "event-ba"
-                                           :timeline_id (u/the-id tl-b)}
-                   :model/TimelineEvent _ {:name        "event-bb"
-                                           :timeline_id (u/the-id tl-b)
-                                           :archived    true}]
-      (testing "Timelines in the collection of the card are returned"
-        (is (= #{"Timeline A"}
-               (timeline-names (timelines-request card-a false)))))
-      (testing "Timelines in the collection have a hydrated `:collection` key"
-        (is (= #{(u/the-id coll-a)}
-               (->> (timelines-request card-a false)
-                    (map #(get-in % [:collection :id]))
-                    set))))
-      (testing "check that `:can_write` key is hydrated"
-        (is (every?
-             #(contains? % :can_write)
-             (map :collection (timelines-request card-a false)))))
-      (testing "Only un-archived timelines in the collection of the card are returned"
-        (is (= #{"Timeline B"}
-               (timeline-names (timelines-request card-b false)))))
-      (testing "Timelines have events when `include=events` is passed"
-        (is (= #{"event-aa" "event-ab"}
-               (event-names (timelines-request card-a true)))))
-      (testing "Timelines have only un-archived events when `include=events` is passed"
-        (is (= #{"event-ba"}
-               (event-names (timelines-request card-b true)))))
-      (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
-        (is (= '()
-               (->> (timelines-request card-c true) first :events)))))))
-
-(deftest timelines-range-test
-  (testing "GET /api/card/:id/timelines?include=events&start=TIME&end=TIME"
-    (mt/with-temp [:model/Collection collection {:name "Collection"}
-                   :model/Card card {:name          "Card A"
-                                     :collection_id (u/the-id collection)}
-                   :model/Timeline tl-a {:name          "Timeline A"
-                                         :collection_id (u/the-id collection)}
-                   ;; the temp defaults set {:time_matters true}
-                   :model/TimelineEvent _ {:name        "event-a"
-                                           :timeline_id (u/the-id tl-a)
-                                           :timestamp   #t "2020-01-01T10:00:00.0Z"}
-                   :model/TimelineEvent _ {:name        "event-b"
-                                           :timeline_id (u/the-id tl-a)
-                                           :timestamp   #t "2021-01-01T10:00:00.0Z"}
-                   :model/TimelineEvent _ {:name        "event-c"
-                                           :timeline_id (u/the-id tl-a)
-                                           :timestamp   #t "2022-01-01T10:00:00.0Z"}
-                   :model/TimelineEvent _ {:name        "event-d"
-                                           :timeline_id (u/the-id tl-a)
-                                           :timestamp   #t "2023-01-01T10:00:00.0Z"}]
-      (testing "Events are properly filtered when given only `start=` parameter"
-        (is (= #{"event-c" "event-d"}
-               (event-names (timelines-range-request card {:start "2022-01-01T10:00:00.0Z"})))))
-      (testing "Events are properly filtered when given only `end=` parameter"
-        (is (= #{"event-a" "event-b" "event-c"}
-               (event-names (timelines-range-request card {:end "2022-01-01T10:00:00.0Z"})))))
-      (testing "Events are properly filtered when given `start=` and `end=` parameters"
-        (is (= #{"event-b" "event-c"}
-               (event-names (timelines-range-request card {:start "2020-12-01T10:00:00.0Z"
-                                                           :end   "2022-12-01T10:00:00.0Z"})))))
-      (mt/with-temp [:model/TimelineEvent _ {:name         "event-a2"
-                                             :timeline_id  (u/the-id tl-a)
-                                             :timestamp    #t "2020-01-01T10:00:00.0Z"
-                                             :time_matters false}]
-        (testing "Events are properly filtered considering the `time_matters` state."
-          ;; notice that event-a and event-a2 have the same timestamp, but different time_matters states.
-          ;; time_matters = false effectively means "We care only about the DATE of this event", so
-          ;; if a start or end timestamp is on the same DATE (regardless of time), include the event
-          (is (= #{"event-a2"}
-                 (event-names (timelines-range-request card {:start "2020-01-01T11:00:00.0Z"
-                                                             :end   "2020-12-01T10:00:00.0Z"})))))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            CSV/JSON/XLSX DOWNLOADS                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -4192,3 +4072,84 @@
             :moderation_status nil}
            (-> (mt/user-http-request :rasta :get 200 (str "card/" card-id))
                :dashboard)))))
+
+(deftest cannot-join-question-with-itself
+  (testing "Cannot join card with itself."
+    (let [mp (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/aggregate (lib/count))
+                    (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
+                                                            (lib/breakoutable-columns $q)))))]
+      (doseq [card-type-a [:question :metric :model]]
+        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query (lib/->legacy-MBQL query) :type card-type-a}]
+          (let [card (lib.metadata/card mp id)
+                columns (lib/returned-columns (lib/query mp card))
+                right-column (m/find-first (comp #{"ID"} :display-name) columns)
+                query-with-self-join (lib/join query
+                                               (lib/join-clause card
+                                                                [(lib/=
+                                                                  (lib.metadata/field mp (mt/id :orders :id))
+                                                                  right-column)]))]
+            (doseq [card-type-b [:question :metric :model]]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id)
+                                    {:dataset_query (lib/->legacy-MBQL query-with-self-join)
+                                     :type card-type-b}))))))))
+
+(deftest cannot-use-self-as-source
+  (testing "Cannot use self as source for card."
+    (let [mp (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (doseq [card-type-a [:question :model]]
+        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query (lib/->legacy-MBQL query) :type card-type-a}]
+          (let [query-with-self-source (lib/with-different-table query (str "card__" id))]
+            (doseq [card-type-b [:question :model]]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id)
+                                    {:dataset_query (lib/->legacy-MBQL query-with-self-source)
+                                     :type card-type-b}))))))))
+
+(deftest cannot-save-metric-with-formula-cycle
+  (testing "Cannot aggregate a metric with itself."
+    (let [mp (mt/metadata-provider)
+          query-a (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/count))
+                      (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
+                                                              (lib/breakoutable-columns $q)))))]
+      (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :metric}]
+        (let [query-b (lib/aggregate query-a (lib.metadata/metric mp id-a))]
+          (mt/with-temp [:model/Card {id-b :id} {:dataset_query (lib/->legacy-MBQL query-b) :type :metric}]
+            (let [query-with-cycle (lib/aggregate query-a (lib.metadata/metric mp id-b))]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
+                                    {:dataset_query (lib/->legacy-MBQL query-with-cycle)
+                                     :type :metric}))))))))
+
+(deftest cannot-join-question-with-other-question-joining-original
+  (testing "Cannot join in a chain of cards to make cycle."
+    (let [mp (mt/metadata-provider)
+          query-a (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/count))
+                      (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
+                                                              (lib/breakoutable-columns $q)))))]
+      (doseq [card-type-a [:question :metric :model]]
+        (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type card-type-a}]
+          (let [card-a (lib.metadata/card mp id-a)
+                columns (lib/returned-columns (lib/query mp card-a))
+                right-column-a (m/find-first (comp #{"ID"} :display-name) columns)
+                query-b (lib/join query-a
+                                  (lib/join-clause card-a
+                                                   [(lib/=
+                                                     (lib.metadata/field mp (mt/id :orders :id))
+                                                     right-column-a)]))]
+            (doseq [card-type-b [:question :metric :model]]
+              (mt/with-temp [:model/Card {id-b :id} {:dataset_query (lib/->legacy-MBQL query-b) :type card-type-b}]
+                (let [card-b (lib.metadata/card mp id-b)
+                      columns (lib/returned-columns (lib/query mp card-b))
+                      left-column-b (m/find-first (comp #{"ID"} :display-name) columns)
+                      query-cycle (lib/join query-a
+                                            (lib/join-clause card-b
+                                                             [(lib/=
+                                                               left-column-b
+                                                               right-column-a)]))]
+                  (doseq [card-type-c [:question :metric :model]]
+                    (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
+                                          {:dataset_query (lib/->legacy-MBQL query-cycle)
+                                           :type card-type-c})))))))))))
