@@ -1,7 +1,6 @@
 name: Build + Docker Uberjar
 
 on:
-  pull_request: # FIXME: uncomment when ready
   push:
     branches:
       - "master"
