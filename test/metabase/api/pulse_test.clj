@@ -1133,12 +1133,12 @@
   "select array_construct('a', 'b', 'c')")
 
 (doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite :vertica]]
-  (defmethod driver/database-supports? [driver :test/array]
+  (defmethod driver/database-supports? [driver :test/arrays]
     [_driver _feature _database]
     true))
 
-(deftest query-with-postgres-arrays-can-be-emailed-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :test/array)
+(deftest array-query-can-be-emailed-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/arrays)
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                               :type     :native
                                                               :native   {:query (native-array-query driver/*driver*)}}}

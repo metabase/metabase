@@ -324,12 +324,12 @@
   "select array_construct('a', 'b', 'c')")
 
 (doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite]]
-  (defmethod driver/database-supports? [driver :test/array]
+  (defmethod driver/database-supports? [driver :test/arrays]
     [_driver _feature _database]
     true))
 
-(deftest query-with-postgres-arrays-can-be-cached-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :test/array)
+(deftest array-query-can-be-cached-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/arrays)
     (with-mock-cache! [save-chan]
       (mt/with-clock #t "2025-02-06T00:00:00.000Z[UTC]"
         (let [query (mt/native-query {:query (native-array-query driver/*driver*)})
