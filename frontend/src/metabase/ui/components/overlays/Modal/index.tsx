@@ -1,5 +1,6 @@
 import { Modal as MantineModal, type ModalProps } from "@mantine/core";
 import type { ModalRootProps } from "@mantine/core/lib/Modal/ModalRoot/ModalRoot";
+import _ from "underscore";
 
 import { PreventEagerPortal } from "metabase/ui";
 
@@ -15,11 +16,14 @@ export const Modal = (props: ModalProps) => {
   );
 };
 
-const ModalRoot = (props: ModalRootProps) => (
-  <PreventEagerPortal>
-    <MantineModal.Root {...props} />
-  </PreventEagerPortal>
-);
+const ModalRoot = (props: ModalRootProps) => {
+  const { withinPortal, ...rootProps } = props;
+  return (
+    <PreventEagerPortal {...props}>
+      <MantineModal.Root {...rootProps} />
+    </PreventEagerPortal>
+  );
+};
 
 Modal.Root = ModalRoot;
 Modal.Overlay = MantineModal.Overlay;
