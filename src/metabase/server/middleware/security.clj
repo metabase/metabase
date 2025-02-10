@@ -4,9 +4,9 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.analytics :as analytics]
    [metabase.config :as config]
    [metabase.embed.settings :as embed.settings]
+   [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.util.log :as log]
@@ -159,7 +159,7 @@
                                  "metabase.us10.list-manage.com"
                                  ;; Snowplow analytics
                                  (when (public-settings/anon-tracking-enabled)
-                                   (analytics/snowplow-url))
+                                   (setting/get-value-of-type :string :snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
                                    "*:8080 ws://*:8080")

@@ -1,10 +1,10 @@
 (ns metabase.analytics.settings
   (:require
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]))
 
 (defsetting prometheus-server-port
   (deferred-tru (str "Port to serve prometheus metrics from. If set, prometheus collectors are registered"
