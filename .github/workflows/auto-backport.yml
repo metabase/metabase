@@ -92,4 +92,3 @@ jobs:
           backport-commit: ${{ steps.find_commit.outputs.commit-sha }}
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           github-token-2: ${{ secrets.GITHUB_TOKEN }}
-
