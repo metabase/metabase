@@ -117,6 +117,7 @@
   format-name
   id
   mbql-query
+  metadata-provider
   native-query
   query
   run-mbql-query

@@ -28,7 +28,6 @@
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision.last-edit :as last-edit]
-   [metabase.models.timeline :as timeline]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.card :as qp.card]
@@ -38,7 +37,6 @@
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -245,9 +243,12 @@
 
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
-  [metadata-provider dataset-query]
-  (let [pMBQL-query (-> dataset-query card.metadata/normalize-dataset-query lib.convert/->pMBQL)]
-    (lib/query metadata-provider pMBQL-query)))
+  ([dataset-query]
+   (some-> (:database dataset-query)
+           lib.metadata.jvm/application-database-metadata-provider
+           (dataset-query->query dataset-query)))
+  ([metadata-provider dataset-query]
+   (some->> dataset-query card.metadata/normalize-dataset-query (lib/query metadata-provider))))
 
 (defn- card-columns-from-names
   [card names]
@@ -434,23 +435,6 @@
       :last-cursor last_cursor
       :page-size   (request/limit)})))
 
-(api.macros/defendpoint :get "/:id/timelines"
-  "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [include start end]} :- [:map
-                                   [:include {:optional true} [:maybe [:= "events"]]]
-                                   [:start   {:optional true} [:maybe ms/TemporalString]]
-                                   [:end     {:optional true} [:maybe ms/TemporalString]]]]
-  (let [{:keys [collection_id] :as _card} (api/read-check :model/Card id)]
-    ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
-    ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
-    ;; the read-checks are particularly fast on multiple items
-    (timeline/timelines-for-collection collection_id
-                                       {:timeline/events? (= include "events")
-                                        :events/start     (when start (u.date/parse start))
-                                        :events/end       (when end (u.date/parse end))})))
-
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
 (defn check-permissions-for-query
@@ -481,8 +465,7 @@
 (defn- check-if-card-can-be-saved
   [dataset-query card-type]
   (when (and dataset-query (= card-type :metric))
-    (when-not (lib/can-save (dataset-query->query (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-                                                  dataset-query) card-type)
+    (when-not (lib/can-save (dataset-query->query dataset-query) card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (clojure.core/name card-type))
                       {:type        card-type
                        :status-code 400})))))
@@ -582,6 +565,11 @@
            type] :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
   (check-if-card-can-be-saved dataset_query type)
+  (when-some [query (dataset-query->query dataset_query)]
+    (try
+      (lib/check-overwrite id query)
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
   (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
                                            [:moderation_reviews :moderator_details])
         card-updates           (api/updates-with-archived-directly card-before-update card-updates)

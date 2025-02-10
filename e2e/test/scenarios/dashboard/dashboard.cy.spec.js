@@ -206,6 +206,7 @@ describe("scenarios > dashboard", () => {
       });
       H.entityPickerModal().button("Select").click();
 
+      cy.findByTestId("dashcard").should("be.visible");
       H.saveDashboard();
 
       cy.log(
@@ -1556,7 +1557,7 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
   });
 });
 
-H.describeEE("scenarios > dashboard > caching", () => {
+describe("scenarios > dashboard > caching", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

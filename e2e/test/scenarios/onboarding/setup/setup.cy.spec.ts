@@ -1,4 +1,5 @@
 const { H } = cy;
+const { IS_ENTERPRISE } = Cypress.env();
 import { USERS } from "e2e/support/cypress_data";
 import { SUBSCRIBE_URL } from "metabase/setup/constants";
 
@@ -222,7 +223,6 @@ describe("scenarios > setup", () => {
   });
 
   it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
-    H.onlyOnEE();
     H.setTokenFeatures("none");
     H.mockSessionProperty("is-hosted?", true);
 
@@ -402,7 +402,7 @@ describe("scenarios > setup", () => {
   });
 });
 
-H.describeEE("scenarios > setup (EE)", () => {
+describe("scenarios > setup (EE)", () => {
   beforeEach(() => H.restore("blank"));
 
   it("should ask for a license token on self-hosted", () => {
@@ -519,7 +519,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       });
 
       // This step is only visile on EE builds
-      if (H.isEE) {
+      if (IS_ENTERPRISE) {
         goodEvents++; // 10/11 - setup/step_seen "commercial_license"
         H.expectGoodSnowplowEvent({
           event: "step_seen",
@@ -538,7 +538,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       goodEvents++; // 11/12 - setup/step_seen "data_usage"
       H.expectGoodSnowplowEvent({
         event: "step_seen",
-        step_number: H.isEE ? 6 : 5,
+        step_number: IS_ENTERPRISE ? 6 : 5,
         step: "data_usage",
       });
 
@@ -548,7 +548,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       goodEvents++; // 13/14- setup/step_seen "completed"
       H.expectGoodSnowplowEvent({
         event: "step_seen",
-        step_number: H.isEE ? 7 : 6,
+        step_number: IS_ENTERPRISE ? 7 : 6,
         step: "completed",
       });
 
@@ -636,7 +636,7 @@ const fillUserAndContinue = ({
 };
 
 const skipLicenseStepOnEE = () => {
-  if (H.isEE) {
+  if (IS_ENTERPRISE) {
     cy.findByText("Activate your commercial license").should("exist");
     cy.button("Skip").click();
   }
