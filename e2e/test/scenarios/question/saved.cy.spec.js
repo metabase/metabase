@@ -281,7 +281,7 @@ describe("scenarios > question > saved", () => {
     H.openQuestionActions();
     H.popover().findByText("Duplicate").click();
 
-    H.modal().then($el => {
+    H.modal().should($el => {
       const $modal = $el[0];
       expect($modal.clientWidth).to.be.equal($modal.scrollWidth);
     });
