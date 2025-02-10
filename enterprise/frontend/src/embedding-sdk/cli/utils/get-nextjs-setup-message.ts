@@ -35,7 +35,7 @@ export const getNextJsSetupMessages = async ({
 
     // If the user already has an _app.tsx or layout.tsx, we need to show them the snippet,
     // so they can add the example providers and the example CSS to their file.
-    componentSnippet += `Next, add the example providers and the example CSS to your ${layoutFile} file. For example:
+    componentSnippet += `Next, add the example providers and the example CSS to your ${green(layoutFile)} file. For example:
 
   ${green(layoutSnippet)}`;
   } else {
