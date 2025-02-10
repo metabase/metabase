@@ -555,7 +555,14 @@ jobs:
         with:
           result-encoding: string
           script: | # js
-            const { publishRelease, getCanonicalVersion, getMilestoneIssues, getWebsiteChangelog, getMajorVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const {
+              publishRelease,
+              getCanonicalVersion,
+              getGenericVersion,
+              getMilestoneIssues,
+              getWebsiteChangelog,
+              getMajorVersion
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const version = '${{ inputs.version }}';
 
@@ -583,7 +590,7 @@ jobs:
               repo: '${{ vars.WEBSITE_REPO }}',
               event_type: 'update-changelog',
               client_payload: {
-                version,
+                version: getGenericVersion(version),
                 majorVersion: getMajorVersion(version),
                 text: changelogText,
               }
