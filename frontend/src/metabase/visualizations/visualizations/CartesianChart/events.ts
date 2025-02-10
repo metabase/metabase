@@ -162,7 +162,7 @@ const getEventColumnsData = (
   seriesModel: SeriesModel,
   dataIndex: number,
 ): DataPoint[] => {
-  const datum = chartModel.dataset[dataIndex];
+  const datum = chartModel.transformedDataset[dataIndex];
 
   const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
 
@@ -214,18 +214,18 @@ const computeDiffWithPreviousPeriod = (
     return null;
   }
 
-  const datum = chartModel.dataset[dataIndex];
+  const datum = chartModel.transformedDataset[dataIndex];
 
   const currentValue = datum[seriesModel.dataKey];
   const currentDate = parseTimestamp(datum[X_AXIS_DATA_KEY]);
   const previousValue =
-    chartModel.dataset[dataIndex - 1]?.[seriesModel.dataKey];
+    chartModel.transformedDataset[dataIndex - 1]?.[seriesModel.dataKey];
 
   if (previousValue == null || currentValue == null) {
     return null;
   }
   const previousDate = parseTimestamp(
-    chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY],
+    chartModel.transformedDataset[dataIndex - 1][X_AXIS_DATA_KEY],
   );
 
   const unit = isQuarterInterval(chartModel.xAxisModel.interval)
@@ -362,7 +362,7 @@ export const getTooltipModel = (
     return null;
   }
 
-  const datum = chartModel.dataset[dataIndex];
+  const datum = chartModel.transformedDataset[echartsDataIndex];
 
   if (seriesDataKey === OTHER_DATA_KEY) {
     return getOtherSeriesTooltipModel(chartModel, settings, dataIndex, datum);
@@ -406,7 +406,7 @@ export const getTooltipModel = (
     chartModel,
     settings,
     datum,
-    dataIndex,
+    echartsDataIndex,
     hoveredSeries,
   );
 };
