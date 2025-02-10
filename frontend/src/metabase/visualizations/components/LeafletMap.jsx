@@ -181,8 +181,8 @@ export default class LeafletMap extends Component {
       const filterBounds = {
         north: bounds.getNorth(),
         south: bounds.getSouth(),
-        west: west,
-        east: east,
+        west,
+        east,
       };
       const updatedQuery = Lib.updateLatLonFilter(
         query,
