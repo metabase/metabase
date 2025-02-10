@@ -394,6 +394,27 @@ describe("scenarios > question > native", () => {
     cy.get("@lines").eq(4).should("have.text", "  }");
     cy.get("@lines").eq(5).should("have.text", "]");
   });
+
+  it(
+    "it should insert a two spaces when pressing tab in json-like languages",
+    { tags: "@mongo" },
+    () => {
+      const MONGO_DB_NAME = "QA Mongo";
+
+      H.restore("mongo-5");
+      cy.signInAsAdmin();
+
+      H.startNewNativeQuestion();
+      cy.findByTestId("gui-builder-data").click();
+      cy.findByLabelText(MONGO_DB_NAME).click();
+
+      H.NativeEditor.type("{tab}");
+
+      H.NativeEditor.get().should("be.visible").get(".cm-line").as("lines");
+
+      cy.get("@lines").eq(0).should("have.text", "  ");
+    },
+  );
 });
 
 // causes error in cypress 13

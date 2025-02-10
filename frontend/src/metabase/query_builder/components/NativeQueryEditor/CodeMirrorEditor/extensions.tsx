@@ -7,6 +7,7 @@ import { indentMore } from "@codemirror/commands";
 import {
   HighlightStyle,
   foldService,
+  indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
 import { Prec } from "@codemirror/state";
@@ -19,7 +20,11 @@ import {
   keymap,
 } from "@codemirror/view";
 import { type Tag, tags } from "@lezer/highlight";
-import type { EditorState, Extension } from "@uiw/react-codemirror";
+import type {
+  EditorState,
+  Extension,
+  Transaction,
+} from "@uiw/react-codemirror";
 import cx from "classnames";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
@@ -115,7 +120,7 @@ function disableCmdEnter() {
       },
       {
         key: "Tab",
-        run: indentMore,
+        run: insertIndent,
       },
       {
         key: "Mod-j",
@@ -265,4 +270,27 @@ function tagDecorator() {
       decorations: instance => instance.tags,
     },
   );
+}
+
+export function insertIndent({
+  state,
+  dispatch,
+}: {
+  state: EditorState;
+  dispatch: (tr: Transaction) => void;
+}) {
+  if (state.selection.ranges.some(r => !r.empty)) {
+    return indentMore({ state, dispatch });
+  }
+
+  const indent = state.facet(indentUnit);
+
+  dispatch(
+    state.update(state.replaceSelection(indent), {
+      scrollIntoView: true,
+      userEvent: "input",
+    }),
+  );
+
+  return true;
 }
