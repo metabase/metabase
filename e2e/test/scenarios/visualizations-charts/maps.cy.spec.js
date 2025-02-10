@@ -251,6 +251,136 @@ describe("scenarios > visualizations > maps", () => {
     // selecting area at the map provides different filter values, so the simplified assertion is used
     cy.findByTestId("filter-pill").should("have.length", 1);
   });
+
+  it("should handle brush filters that exceed 360 deg of longitude", () => {
+    cy.viewport(1280, 800);
+
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PEOPLE_ID,
+        },
+      },
+      display: "map",
+      visualization_settings: {
+        "map.center_latitude": 0,
+        "map.center_longitude": 0,
+        "map.zoom": 0,
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+      },
+    });
+
+    cy.get(".CardVisualization").realHover();
+    cy.findByTestId("visualization-root")
+      .findByText("Draw box to filter")
+      .click();
+
+    cy.findByTestId("visualization-root")
+      .realMouseDown({ x: 10, y: 10 })
+      .realMouseMove(1270, 600)
+      .realMouseUp();
+
+    cy.wait("@dataset");
+
+    cy.get(".CardVisualization").should("exist");
+    cy.findByTestId("question-row-count").findByText(
+      "Showing first 2,000 rows",
+    );
+    cy.findAllByTestId("filter-pill")
+      .should("have.length", 1)
+      .contains("Longitude is between -180 and 180");
+  });
+
+  it("should handle brush filters that cross the 180th meridian", () => {
+    cy.viewport(1280, 800);
+
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PEOPLE_ID,
+        },
+      },
+      display: "map",
+      visualization_settings: {
+        "map.center_latitude": 0,
+        "map.center_longitude": 0,
+        "map.zoom": 0,
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+      },
+    });
+
+    cy.get(".CardVisualization").realHover();
+    cy.findByTestId("visualization-root")
+      .findByText("Draw box to filter")
+      .click();
+
+    cy.findByTestId("visualization-root")
+      .realMouseDown({ x: 100, y: 100 })
+      .realMouseMove(200, 200)
+      .realMouseUp();
+
+    cy.wait("@dataset");
+
+    const lngRegex = /\d+(\.\d+)?/.source;
+
+    cy.get(".CardVisualization").should("exist");
+    cy.findByTestId("question-row-count").findByText("Showing 9 rows");
+    cy.findAllByTestId("filter-pill")
+      .should("have.length", 1)
+      .contains(
+        new RegExp(
+          `(Latitude is between .*) and Longitude is between ${lngRegex} and 180` +
+            ` or \\1 and Longitude is between -180 and -${lngRegex}`,
+        ),
+      );
+  });
+
+  it("should handle brush filters that select zero data points", () => {
+    cy.viewport(1280, 800);
+
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PEOPLE_ID,
+        },
+      },
+      display: "map",
+      visualization_settings: {
+        "map.center_latitude": 0,
+        "map.center_longitude": 0,
+        "map.zoom": 0,
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+      },
+    });
+
+    cy.get(".CardVisualization").realHover();
+    cy.findByTestId("visualization-root")
+      .findByText("Draw box to filter")
+      .click();
+
+    cy.findByTestId("visualization-root")
+      .realMouseDown({ x: 10, y: 10 })
+      .realMouseMove(20, 20)
+      .realMouseUp();
+
+    cy.wait("@dataset");
+
+    cy.get(".CardVisualization").should("not.exist");
+    cy.findByTestId("question-row-count").findByText("Showing 0 rows");
+    cy.findAllByTestId("filter-pill").should("have.length", 1);
+  });
 });
 
 function toggleFieldSelectElement(field) {
