@@ -7,6 +7,7 @@ import {
   getNextJsSetupMessage,
 } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
+import { checkIsInNextJsProject } from "../utils/check-nextjs-project";
 import { getSuggestedImportPath } from "../utils/get-suggested-import-path";
 import { printEmptyLines, printWithPadding } from "../utils/print";
 
@@ -45,6 +46,8 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   }
 
   POST_SETUP_STEPS.push(STEP_2);
+
+  const isNextJs = await checkIsInNextJsProject();
 
   if (isNextJs) {
     POST_SETUP_STEPS.push(getNextJsSetupMessage(state.reactComponentDir ?? ""));
