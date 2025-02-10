@@ -58,24 +58,26 @@
   definition contains a card-id, an optional dashboard-id, and a list of queries to rerun."
   [refresh-defs]
   (fn []
-    (doseq [{:keys [card-id dashboard-id queries]} refresh-defs]
-      ;; Annotate the query with its cache strategy in the format expected by the QP
-      (let [cache-strategy (strategies/cache-strategy (t2/select-one :model/Card :id card-id)
-                                                      dashboard-id)]
-        (doseq [query queries]
-          (try
-            (qp/process-query
-             (qp/userland-query
-              (-> query
-                  (assoc-in [:middleware :ignore-cached-results?] true)
-                  (assoc :cache-strategy cache-strategy))
-              {:executed-by  nil
-               :context      :cache-refresh
-               :card-id      card-id
-               :dashboard-id dashboard-id})
-             discarding-rff)
-            (catch Exception e
-              (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e)))))))))
+    (let [card-ids    (into #{} (map :card-id refresh-defs))
+          cards       (t2/select :model/Card :id [:in card-ids])
+          cards-by-id (group-by :id cards)]
+      (doseq [{:keys [card-id dashboard-id queries]} refresh-defs]
+        ;; Annotate the query with its cache strategy in the format expected by the QP
+        (let [cache-strategy (strategies/cache-strategy (first (get cards-by-id card-id)) dashboard-id)]
+          (doseq [query queries]
+            (try
+              (qp/process-query
+               (qp/userland-query
+                (-> query
+                    (assoc-in [:middleware :ignore-cached-results?] true)
+                    (assoc :cache-strategy cache-strategy))
+                {:executed-by  nil
+                 :context      :cache-refresh
+                 :card-id      card-id
+                 :dashboard-id dashboard-id})
+               discarding-rff)
+              (catch Exception e
+                (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e))))))))))
 
 (defn- duration-ago
   [{:keys [duration unit]}]
@@ -146,8 +148,7 @@
   "Deletes any existing cache entries for queries that we are about to re-run, so that subsequent tasks don't also try
   to re-run them before the cache has been refreshed."
   [queries]
-  (t2/delete! :model/QueryCache
-              {:where [:in :query_hash (map :cache-hash queries)]}))
+  (t2/delete! :model/QueryCache :query_hash [:in (map :cache-hash queries)]))
 
 (defn- maybe-refresh-duration-caches!
   []
