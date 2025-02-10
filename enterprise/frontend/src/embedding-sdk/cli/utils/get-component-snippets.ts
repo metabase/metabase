@@ -1,9 +1,9 @@
 import {
+  ANALYTICS_PAGE_SNIPPET,
   ANALYTICS_PROVIDER_SNIPPET_MINIMAL,
   ANALYTICS_PROVIDER_SNIPPET_WITH_USER_SWITCHER,
   THEME_SWITCHER_SNIPPET,
   getAnalyticsDashboardSnippet,
-  getAnalyticsPageSnippet,
   getEmbeddingProviderSnippet,
   getUserSwitcherSnippet,
 } from "../snippets";
@@ -64,7 +64,7 @@ export function getComponentSnippets(options: Options): SampleComponent[] {
     components.push({
       fileName: "analytics-page",
       componentName: "AnalyticsPage",
-      content: getAnalyticsPageSnippet({ isNextJs }).trim(),
+      content: ANALYTICS_PAGE_SNIPPET.trim(),
     });
   }
 
