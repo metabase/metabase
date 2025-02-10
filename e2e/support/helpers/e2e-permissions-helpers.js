@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { popover } from "e2e/support/helpers";
+import { modal, popover } from "e2e/support/helpers";
 
 export function selectSidebarItem(item) {
   cy.findAllByRole("menuitem").contains(item).click();
@@ -131,15 +131,17 @@ export function assertSameBeforeAndAfterSave(assertionCallback) {
   assertionCallback();
 }
 
-export function assertDatasetReqIsSandboxed(options = {}) {
-  const { requestAlias = "@dataset", columnId, columnAssertion } = options;
-
+export function assertDatasetReqIsSandboxed({
+  requestAlias = "@dataset",
+  columnId,
+  columnAssertion,
+} = {}) {
   cy.get(requestAlias).should(({ response }) => {
     // check if data is reporting itself as sandboxed
     const { data } = response.body;
     expect(data.is_sandboxed).to.equal(true);
 
-    // if options to make assertions on a columns data
+    // if options to make assertions on a column's data
     if (columnId && columnAssertion) {
       const colIndex = data.cols.findIndex(c => c.id === columnId);
       expect(colIndex).to.be.gte(0);
@@ -163,5 +165,19 @@ export function blockUserGroupPermissions(groupId, databaseId = SAMPLE_DB_ID) {
         "create-queries": "no",
       },
     },
+  });
+}
+
+export function saveChangesToPermissions() {
+  cy.log("Save changes to permissions");
+
+  cy.findByTestId("edit-bar")
+    .findByRole("button", { name: "Save changes" })
+    .click();
+
+  modal().within(() => {
+    cy.findByText("Save permissions?");
+    cy.findByText("Are you sure you want to do this?");
+    cy.button("Yes").click();
   });
 }
