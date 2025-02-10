@@ -22,7 +22,7 @@ const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const VIEW_DATA_PERMISSION_INDEX = 0;
 
-describe("formatting > sandboxes", () => {
+describe("admin > permissions > sandboxes (tested via the API)", () => {
   describe("admin", () => {
     beforeEach(() => {
       H.restore();
@@ -82,11 +82,21 @@ describe("formatting > sandboxes", () => {
       // Orders join Products
       createJoinedQuestion(QUESTION_NAME);
 
+      const userAttribute = "state";
+
       cy.sandboxTable({
         table_id: ORDERS_ID,
         group_id: DATA_GROUP,
         attribute_remappings: {
-          [USER_ATTRIBUTE]: ["dimension", ["field", ORDERS.USER_ID, null]],
+          [userAttribute]: [
+            "dimension",
+            [
+              "field",
+              PEOPLE.STATE,
+              { "base-type": "type/Text" },
+              { "stage-number": 0 },
+            ],
+          ],
         },
       });
 
