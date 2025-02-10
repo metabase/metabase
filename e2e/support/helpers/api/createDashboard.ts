@@ -23,6 +23,10 @@ interface Options {
    * Defaults to "dashboardId".
    */
   idAlias?: string;
+  /** Assign aliases to dashcard ids. There can be fewer aliases than
+   * dashcards. If you just need an alias for the first dashcard's id, just
+   * provide one alias */
+  dashcardIdAliases?: string[];
 }
 
 export const createDashboard = (
@@ -37,7 +41,11 @@ export const createDashboard = (
     dashcards,
     ...restDashboardDetails
   } = dashboardDetails;
-  const { wrapId = false, idAlias = "dashboardId" } = options;
+  const {
+    wrapId = false,
+    idAlias = "dashboardId",
+    dashcardIdAliases,
+  } = options;
 
   cy.log(`Create a dashboard: ${name}`);
 
@@ -61,6 +69,14 @@ export const createDashboard = (
           enable_embedding,
           embedding_params,
           dashcards,
+        }).then(({ body }) => {
+          const dashboard = body as Dashboard;
+          dashcardIdAliases?.forEach((alias: string, index: number) => {
+            const dashcard = dashboard.dashcards[index];
+            if (dashcard) {
+              cy.wrap(dashcard.id).as(alias);
+            }
+          });
         });
       }
     });
