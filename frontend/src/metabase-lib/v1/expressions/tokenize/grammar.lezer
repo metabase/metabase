@@ -1,0 +1,147 @@
+@top Expression { expression }
+
+@skip { space }
+
+@precedence {
+  not @left,
+  sum @left,
+  subtract @left,
+  product @left,
+  quotient @left,
+  and @left,
+  or @left,
+  gt @left,
+  gte @left,
+  lt @left,
+  lte @left,
+  eq @left,
+  neq @left
+}
+
+expression {
+  Number
+| String
+| Boolean
+| Reference
+| BinaryExpression
+| ParenExpression
+| CallExpression
+| UnaryExpression
+}
+
+BinaryExpression {
+  expression !sum "+" expression
+| expression !subtract "-" expression
+| expression !product "*" expression
+| expression !quotient "/" expression
+| expression !and And expression
+| expression !or Or expression
+| expression !gt ">" expression
+| expression !gte ">=" expression
+| expression !lt "<" expression
+| expression !lte "<=" expression
+| expression !eq "=" expression
+| expression !neq "!=" expression
+}
+
+UnaryExpression {
+  !not Not expression
+}
+
+
+ParenExpression {
+  "(" expression ")"
+}
+
+CallExpression {
+  Identifier "(" ")"
+| Identifier "(" ArgList ")"
+}
+
+ArgList {
+  Arg ("," Arg)*
+}
+
+Arg {
+  expression
+}
+
+@skip {} {
+  String[isolate] {
+    '"' (stringContentDouble | Escape)* ('"' | "\n")
+  | "'" (stringContentSingle | Escape)* ("'" | "\n")
+  }
+}
+
+@tokens {
+  space { @whitespace+ }
+  hex { $[0-9a-fA-F] }
+
+  Number {
+    (@digit ("_" | @digit)* ("." ("_" | @digit)*)?
+  | "." @digit ("_" | @digit)*) (("e" | "E") ("+" | "-")? ("_" | @digit)*)?
+  | "0x" ($[0-9a-fA-F] | "_")
+  | "0b" $[01_]+ "n"?
+  | "0o" $[0-7_]+ "n"?
+  }
+
+  stringContentSingle { ![\\\n']+ }
+  stringContentDouble { ![\\\n"]+ }
+
+  Reference {
+      "[" ![\[]* "]"
+    | "[" ![\[\],]* ("]" | "\n")?
+  }
+
+  Identifier {
+    $[a-zA-Z_]$[a-zA-Z0-9_.]*
+  }
+
+  True {
+    // parse all cases from "true" to "TRUE"
+    $[Tt]$[Rr]$[Uu]$[Ee]
+  }
+
+  False {
+    // parse all cases from "false" to "FALSE"
+    $[Ff]$[Aa]$[Ll]$[Ss]$[Ee]
+  }
+
+  Boolean {
+    True
+  | False
+  }
+
+  Not {
+    // parse all cases of "not" to "NOT"
+    $[Nn]$[Oo]$[Tt]
+  }
+
+  And {
+    $[Aa]$[Nn]$[Dd]
+  }
+
+  Or {
+    $[Oo]$[Rr]
+  }
+
+  @precedence { Not, And, Or, Boolean, Identifier }
+
+  Escape {
+    "\\" ("x" hex hex | "u" ("{" hex+ "}" | hex hex hex hex) | ![xu])
+  }
+
+  "("
+  ")"
+  "+"
+  "-"
+  "*"
+  "/"
+  "="
+  "!="
+  "<"
+  "<="
+  ">"
+  ">="
+  ","
+}
