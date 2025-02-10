@@ -7,7 +7,7 @@
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -647,7 +647,7 @@
                                       :model-id (:id card)))
         (assoc card :table-id (:id table)))
       (catch Throwable e
-        (prometheus/inc! :metabase-csv-upload/failed)
+        (analytics/inc! :metabase-csv-upload/failed)
         (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
                                                            :event :csv-upload-failed))
 
@@ -834,7 +834,7 @@
 
           {:row-count row-count})))
     (catch Throwable e
-      (prometheus/inc! :metabase-csv-upload/failed)
+      (analytics/inc! :metabase-csv-upload/failed)
       (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
                                                          :event :csv-append-failed))
       (throw e))))

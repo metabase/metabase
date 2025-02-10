@@ -104,12 +104,12 @@
 
 (def ^:private ui-colors #{:brand :filter :summarize})
 
-(defn appearance-ui-colors-changed?
+(defn- appearance-ui-colors-changed?
   "Returns true if the 'User Interface Colors' have been customized"
   []
   (boolean (seq (select-keys (public-settings/application-colors) ui-colors))))
 
-(defn appearance-chart-colors-changed?
+(defn- appearance-chart-colors-changed?
   "Returns true if the 'Chart Colors' have been customized"
   []
   (boolean (seq (apply dissoc (public-settings/application-colors) ui-colors))))

@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [iapetos.registry :as registry]
+   [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.search.core :as search]
    [metabase.test :as mt]
@@ -164,16 +165,16 @@
 (deftest inc!-test
   (testing "inc starts a system if it wasn't started"
     (with-redefs [prometheus/system nil]
-      (prometheus/inc! :metabase-email/messages) ; << Does not throw.
+      (analytics/inc! :metabase-email/messages) ; << Does not throw.
       (is (approx= 1 (mt/metric-value @#'prometheus/system :metabase-email/messages)))))
   (testing "inc throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? RuntimeException
                             #"error when updating metric"
-                            (prometheus/inc! :metabase-email/unknown-metric)))))
+                            (analytics/inc! :metabase-email/unknown-metric)))))
   (testing "inc is recorded for known metrics"
     (mt/with-prometheus-system! [_ system]
-      (prometheus/inc! :metabase-email/messages)
+      (analytics/inc! :metabase-email/messages)
       (is (approx= 1 (mt/metric-value system :metabase-email/messages))))))
 
 (deftest search-engine-metrics-test
