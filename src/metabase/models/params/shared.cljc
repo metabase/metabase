@@ -9,7 +9,7 @@
    #?@(:cljs
        (["moment" :as moment]))
    [clojure.string :as str]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs trsn]])
   (:import
@@ -258,10 +258,10 @@
        :cljs (clj->js tag-names))))
 
 (defn- normalize-parameter
-  "Normalize a single parameter by calling [[mbql.normalize/normalize-fragment]] on it, and converting all string keys
+  "Normalize a single parameter by calling [[legacy-mbql/normalize-fragment]] on it, and converting all string keys
   to keywords."
   [parameter]
-  (-> (mbql.normalize/normalize-fragment [:parameters] [parameter])
+  (-> (legacy-mbql/normalize-fragment [:parameters] [parameter])
       first
       (update-keys keyword)))
 

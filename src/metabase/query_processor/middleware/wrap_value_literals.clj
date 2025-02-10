@@ -4,8 +4,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -32,7 +31,7 @@
   `->honeysql` method implementations so drivers have the information they need to handle raw values like Strings,
   which may need to be parsed as a certain type."
   {:arglists '([field-clause])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  legacy-mbql/dispatch-by-clause-name-or-class)
 
 (defmethod type-info :default [_] nil)
 
@@ -260,7 +259,7 @@
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 
-(def ^:private raw-value? (complement mbql.u/mbql-clause?))
+(def ^:private raw-value? (complement legacy-mbql/mbql-clause?))
 
 (defn wrap-value-literals-in-mbql
   "Given a normalized mbql query (important to desugar forms like `[:does-not-contain ...]` -> `[:not [:contains
@@ -310,7 +309,7 @@
     (binding [*inner-query* inner-query]
       (wrap-value-literals-in-mbql inner-query))))
 
-(mu/defn wrap-value-literals :- mbql.s/Query
+(mu/defn wrap-value-literals :- :legacy-mbql/query
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for
   datetime strings, etc.) clauses which include info about the Field they are being compared to. This is done mostly
   to make it easier for drivers to write implementations that rely on multimethod dispatch (by clause name) -- they

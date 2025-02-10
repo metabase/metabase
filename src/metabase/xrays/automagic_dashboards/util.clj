@@ -4,9 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.legacy-mbql.predicates :as mbql.preds]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -39,10 +37,10 @@
   (filter #(-> % :entity_type (isa? tablespec)) tables))
 
 (def ^{:arglists '([metric]) :doc "Is metric a saved metric?"} saved-metric?
-  (partial mbql.u/is-clause? :metric))
+  (partial legacy-mbql/is-clause? :metric))
 
 (def ^{:arglists '([metric]) :doc "Is this a custom expression?"} custom-expression?
-  (partial mbql.u/is-clause? :aggregation-options))
+  (partial legacy-mbql/is-clause? :aggregation-options))
 
 (def ^{:arglists '([metric]) :doc "Is this an adhoc metric?"} adhoc-metric?
   (complement (some-fn saved-metric? custom-expression?)))
@@ -56,7 +54,7 @@
   [clause]
   (lib.util.match/match-one clause [:field id _] id))
 
-(mu/defn collect-field-references :- [:maybe [:sequential mbql.s/field]]
+(mu/defn collect-field-references :- [:maybe [:sequential :legacy-mbql.clause/field]]
   "Collect all `:field` references from a given form."
   [form]
   (lib.util.match/match form :field &match))
@@ -64,7 +62,7 @@
 (mu/defn ->field :- [:maybe (ms/InstanceOf :model/Field)]
   "Return `Field` instance for a given ID or name in the context of root."
   [{{result-metadata :result_metadata} :source, :as root}
-   field-id-or-name-or-clause :- [:or ms/PositiveInt ms/NonBlankString [:fn mbql.preds/Field?]]]
+   field-id-or-name-or-clause :- [:or ms/PositiveInt ms/NonBlankString :legacy-mbql/field]]
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
                      (field-reference->id field-id-or-name-or-clause)
                      field-id-or-name-or-clause)]

@@ -2,8 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -49,13 +48,13 @@
   "Filter function for valid tuples for indexing: an id and a value."
   [[id v]] (and id v))
 
-(mu/defn- fix-expression-refs :- mbql.s/Field
+(mu/defn- fix-expression-refs :- :legacy-mbql/field
   "Convert expression ref into a field ref.
 
   Expression refs (`[:expression \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
   don't, (and shouldn't) care that those are expressions. They are just another field. The field type is always
   `:type/Text` enforced by the endpoint to create model indexes."
-  [field-ref :- mbql.s/Field
+  [field-ref :- :legacy-mbql/field
    base-type :- ::lib.schema.common/base-type]
   (case (first field-ref)
     :field field-ref
@@ -78,7 +77,7 @@
   (let [model     (t2/select-one :model/Card :id (:model_id model-index))
         fix       (mu/fn [field-ref :- some?
                           base-type :- ::lib.schema.common/base-type]
-                    (-> field-ref mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
+                    (-> field-ref legacy-mbql/normalize-field-ref (fix-expression-refs base-type)))
         ;; :type/Text and :type/Integer are ensured at creation time on the api.
         value-ref (-> model-index :value_ref (fix :type/Text))
         pk-ref    (-> model-index :pk_ref (fix :type/Integer))]

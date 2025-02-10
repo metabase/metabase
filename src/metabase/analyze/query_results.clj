@@ -8,9 +8,7 @@
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.analyze.fingerprint.insights :as insights]
    [metabase.analyze.fingerprint.schema :as fingerprint.schema]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.predicates :as mbql.preds]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
@@ -27,13 +25,13 @@
    ms/KeywordOrString
    [:fn
     {:error/message "Valid field datetime unit keyword or string"}
-    #(mbql.preds/DateTimeUnit? (keyword %))]])
+    #(legacy-mbql/DateTimeUnit? (keyword %))]])
 
 (mr/def ::MaybeUnnormalizedReference
   [:fn
    {:error/message "Field or aggregation reference as it comes in to the API"}
    (fn [x]
-     (mr/validate mbql.s/Reference (mbql.normalize/normalize-tokens x)))])
+     (mr/validate :legacy-mbql/reference (legacy-mbql/normalize-tokens x)))])
 
 (mr/def ::ResultColumnMetadata
   [:map

@@ -13,8 +13,7 @@
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -261,7 +260,7 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
-(mu/defn- field->clause :- mbql.s/field
+(mu/defn- field->clause :- :legacy-mbql.clause/field
   [driver     :- :keyword
    field      :- ::lib.schema.metadata/column
    param-type :- ::lib.schema.parameter/type
@@ -314,7 +313,7 @@
       (params.ops/operator? param-type)
       (->> (assoc params :target [:template-tag (field->clause driver field param-type value)])
            params.ops/to-clause
-           mbql.u/desugar-filter-clause
+           legacy-mbql/desugar-filter-clause
            qp.wrap-value-literals/wrap-value-literals-in-mbql
            ->honeysql
            (honeysql->replacement-snippet-info driver))
@@ -322,7 +321,7 @@
       (params.dates/exclusion-date-type param-type value)
       (let [field-clause (field->clause driver field param-type value)]
         (->> (params.dates/date-string->filter value field-clause)
-             mbql.u/desugar-filter-clause
+             legacy-mbql/desugar-filter-clause
              qp.wrap-value-literals/wrap-value-literals-in-mbql
              ->honeysql
              (honeysql->replacement-snippet-info driver)))

@@ -3,8 +3,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -33,7 +32,7 @@
 
 (defn- extract-dimensions
   [mbql]
-  (lib.util.match/match (mbql.normalize/normalize mbql) [:dimension dimension & _] dimension))
+  (lib.util.match/match (legacy-mbql/normalize mbql) [:dimension dimension & _] dimension))
 
 (def ^:private ^{:arglists '([m])} stringify-keys
   (partial m/map-keys name))
@@ -60,7 +59,7 @@
 (def ^:private JoinStrategy
   [:schema
    {:decode/transform-spec keyword}
-   mbql.s/JoinStrategy])
+   :legacy-mbql/join-strategy])
 
 (def ^:private Joins
   [:sequential

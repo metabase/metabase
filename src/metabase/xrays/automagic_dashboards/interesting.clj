@@ -44,9 +44,7 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.models.field :as field]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -105,7 +103,7 @@
                                    :type/DateTime
                                    ((juxt :earliest :latest))
                                    (map u.date/parse))
-        can-use?  #(mbql.s/valid-temporal-unit-for-base-type? (:base_type field) %)]
+        can-use?  #(legacy-mbql/valid-temporal-unit-for-base-type? (:base_type field) %)]
     (if (and earliest latest)
       (let [duration   (u.date/period-duration earliest latest)
             less-than? #(u.date/greater-than-period-duration? % duration)]
@@ -121,7 +119,7 @@
 
 (defmethod ->reference [:mbql :model/Field]
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
-  (let [reference (mbql.normalize/normalize
+  (let [reference (legacy-mbql/normalize
                    (cond
                      link               [:field id {:source-field link}]
                      fk_target_field_id [:field fk_target_field_id {:source-field id}]
@@ -129,12 +127,12 @@
                      :else              [:field name {:base-type base_type}]))]
     (cond
       (isa? base_type :type/Temporal)
-      (mbql.u/with-temporal-unit reference (keyword (or aggregation
-                                                        (optimal-temporal-resolution field))))
+      (legacy-mbql/with-temporal-unit reference (keyword (or aggregation
+                                                             (optimal-temporal-resolution field))))
 
       (and aggregation
            (isa? base_type :type/Number))
-      (mbql.u/update-field-options reference assoc-in [:binning :strategy] (keyword aggregation))
+      (legacy-mbql/update-field-options reference assoc-in [:binning :strategy] (keyword aggregation))
 
       :else
       reference)))

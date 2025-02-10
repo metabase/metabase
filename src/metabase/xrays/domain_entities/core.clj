@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -45,7 +45,7 @@
     (if maybe-dimension
       (let [field-clause (get-in bindings [table-or-dimension :dimensions maybe-dimension])]
         (cond-> field-clause
-          (not= source table-or-dimension) (mbql.u/assoc-field-options :join-alias table-or-dimension)))
+          (not= source table-or-dimension) (legacy-mbql/assoc-field-options :join-alias table-or-dimension)))
       (get-in bindings [source :dimensions table-or-dimension]))))
 
 (mu/defn resolve-dimension-clauses

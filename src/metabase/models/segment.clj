@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -89,7 +89,7 @@
                             (lib.metadata.protocols/store-metadatas!
                              (map #(lib.metadata.jvm/instance->metadata % :metadata/segment)
                                   segments)))
-        field-ids         (mbql.u/referenced-field-ids (map :definition segments))
+        field-ids         (legacy-mbql/referenced-field-ids (map :definition segments))
         fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
         table-ids         (into #{}
                                 cat

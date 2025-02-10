@@ -3,7 +3,7 @@
   (:require
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.metadata :as qp.metadata]
@@ -47,7 +47,7 @@ saved later when it is ready."
   (log/debug "Querying for metadata and blending model metadata")
   (let [futur     (legacy-result-metadata-future query)
         metadata' (if valid-metadata?
-                    (map mbql.normalize/normalize-source-metadata metadata)
+                    (map legacy-mbql/normalize-source-metadata metadata)
                     original-metadata)
         result    (deref futur metadata-sync-wait-ms ::timed-out)]
     (if (= result ::timed-out)
@@ -75,7 +75,7 @@ saved later when it is ready."
   [dataset-query]
   (if (= (lib/normalized-query-type dataset-query) :mbql/query)
     (lib/normalize dataset-query)
-    (mbql.normalize/normalize dataset-query)))
+    (legacy-mbql/normalize dataset-query)))
 
 (mu/defn maybe-async-result-metadata :- ::maybe-async-result-metadata
   "Return result metadata for the passed in `query`. If metadata needs to be recalculated, waits up to

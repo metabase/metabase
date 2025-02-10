@@ -9,7 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.params.custom-values :as custom-values]
@@ -149,7 +149,7 @@
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]]]
   (let [viz-settings                  (-> visualization-settings
-                                          (update :table.columns mbql.normalize/normalize)
+                                          (update :table.columns legacy-mbql/normalize)
                                           mb.viz/norm->db)
         query                         (-> query
                                           (assoc :viz-settings viz-settings)

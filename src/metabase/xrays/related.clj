@@ -4,8 +4,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.malli.registry :as mr]
@@ -28,11 +27,11 @@
 
 (defn- strip-idents [clause]
   (cond-> clause
-    (mbql.u/is-clause? :field clause) (update 2 dissoc :ident)))
+    (legacy-mbql/is-clause? :field clause) (update 2 dissoc :ident)))
 
 (defn- collect-context-bearing-forms
   [form]
-  (let [form (mbql.normalize/normalize-fragment [:query :filter] form)]
+  (let [form (legacy-mbql/normalize-fragment [:query :filter] form)]
     (into #{}
           (comp (filter (mr/validator ContextBearingForm))
                 (map #(update % 0 qp.util/normalize-token))

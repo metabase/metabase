@@ -13,9 +13,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -85,21 +83,21 @@
   [[_ tag] card]
   (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(mu/defn param-target->field-clause :- [:maybe mbql.s/Field]
+(mu/defn param-target->field-clause :- [:maybe :legacy-mbql/field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target card]
-  (let [target (mbql.normalize/normalize target)]
-    (when (mbql.u/is-clause? :dimension target)
+  (let [target (legacy-mbql/normalize target)]
+    (when (legacy-mbql/is-clause? :dimension target)
       (let [[_ dimension] target
-            field-form    (if (mbql.u/is-clause? :template-tag dimension)
+            field-form    (if (legacy-mbql/is-clause? :template-tag dimension)
                             (template-tag->field-form dimension card)
                             dimension)]
         ;; Being extra safe here since we've got many reports on this cause loading dashboard to fail
         ;; for unknown reasons. See #8917
         (if field-form
           (try
-            (mbql.u/unwrap-field-or-expression-clause field-form)
+            (legacy-mbql/unwrap-field-or-expression-clause field-form)
             (catch Exception e
               (log/error e "Failed unwrap field form" field-form)))
           (log/error "Could not find matching field clause for target:" target))))))
@@ -355,12 +353,12 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- card->template-tag-field-clauses :- [:set mbql.s/field]
+(mu/defn- card->template-tag-field-clauses :- [:set :legacy-mbql.clause/field]
   "Return a set of `:field` clauses referenced in template tag parameters in `card`."
   [card]
   (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
              :when                      dimension
-             :let                       [field (mbql.u/unwrap-field-clause dimension)]
+             :let                       [field (legacy-mbql/unwrap-field-clause dimension)]
              :when                      field]
          field)))
 

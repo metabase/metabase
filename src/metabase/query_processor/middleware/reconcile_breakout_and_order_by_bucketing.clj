@@ -34,11 +34,10 @@
   generate one that directly corresponds to the bad example above. This middleware finds these cases and rewrites the
   query to look like the good example."
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]))
 
-(mu/defn- reconcile-bucketing :- mbql.s/Query
+(mu/defn- reconcile-bucketing :- :legacy-mbql/query
   [{{breakouts :breakout} :query, :as query} :- :map]
   ;; Look for bucketed fields in the `breakout` clause and build a map of unbucketed reference -> bucketed reference,
   ;; like:

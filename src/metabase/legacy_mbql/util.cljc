@@ -4,7 +4,9 @@
   (:require
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
-        [metabase.models.dispatch :as models.dispatch]])
+        ;; only used for model dispatch, this is not actually doing app DB stuff.
+        ^{:clj-kondo/ignore [:discouraged-namespace]}
+        [toucan2.core :as t2]])
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
@@ -97,7 +99,7 @@
               ;; simplify the elements of the vector
               (mapv simplify-compound-filter x)))))
 
-(mu/defn combine-filter-clauses :- mbql.s/Filter
+(mu/defn combine-filter-clauses :- :legacy-mbql/filter
   "Combine two filter clauses into a single clause in a way that minimizes slapping a bunch of `:and`s together if
   possible."
   [filter-clause & more-filter-clauses]
@@ -125,27 +127,27 @@
                      (- (legacy-last-stage-number inner-query) stage-number))]
       (into [] (repeat elements :source-query)))))
 
-(mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
+(mu/defn add-filter-clause-to-inner-query :- :legacy-mbql/mbql-query
   "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
   needed.
 
   Stage numbers work as in [[add-filter-clause]]."
-  [inner-query  :- mbql.s/MBQLQuery
+  [inner-query  :- :legacy-mbql/mbql-query
    stage-number :- [:maybe number?]
-   new-clause   :- [:maybe mbql.s/Filter]]
+   new-clause   :- [:maybe :legacy-mbql/filter]]
   (if (not new-clause)
     inner-query
     (let [path (stage-path inner-query stage-number)]
       (update-in inner-query (conj path :filter) combine-filter-clauses new-clause))))
 
-(mu/defn add-filter-clause :- mbql.s/Query
+(mu/defn add-filter-clause :- :legacy-mbql/query
   "Add an additional filter clause to an `outer-query` at stage `stage-number`
   or at the last stage if `stage-number` is `nil`. If `new-clause` is `nil` this is a no-op.
 
   Stage numbers can be negative: `-1` refers to the last stage, `-2` to the penultimate stage, etc."
-  [outer-query  :- mbql.s/Query
+  [outer-query  :- :legacy-mbql/query
    stage-number :- [:maybe number?]
-   new-clause   :- [:maybe mbql.s/Filter]]
+   new-clause   :- [:maybe :legacy-mbql/filter]]
   (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
 
 (defn- map-stages*
@@ -432,10 +434,10 @@
     [:day-name column]
     (recur (temporal-case-expression column :day-of-week 7))))
 
-(mu/defn desugar-expression :- ::mbql.s/FieldOrExpressionDef
+(mu/defn desugar-expression :- :legacy-mbql/field-or-expression
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
-  [expression :- ::mbql.s/FieldOrExpressionDef]
+  [expression :- :legacy-mbql/field-or-expression]
   ;; The `mbql.jvm-u/desugar-host-and-domain` is implemented only for jvm because regexes are not compatible with
   ;; Safari.
   (let [desugar-host-and-domain* #?(:clj  mbql.jvm-u/desugar-host-and-domain
@@ -451,12 +453,12 @@
   (cond-> clause
     (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
 
-(mu/defn desugar-filter-clause :- mbql.s/Filter
+(mu/defn desugar-filter-clause :- :legacy-mbql/filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
   that needs to enumerate all the possible filter types (such as driver query processor implementations, or the
   implementation [[negate-filter-clause]] below.)"
-  [filter-clause :- mbql.s/Filter]
+  [filter-clause :- :legacy-mbql/filter]
   (-> filter-clause
       desugar-current-relative-datetime
       desugar-in
@@ -495,11 +497,11 @@
 (defmethod negate* :starts-with [clause] [:not clause])
 (defmethod negate* :ends-with   [clause] [:not clause])
 
-(mu/defn negate-filter-clause :- mbql.s/Filter
+(mu/defn negate-filter-clause :- :legacy-mbql/filter
   "Return the logical compliment of an MBQL filter clause, generally without using `:not` (except for the string
   filter clause types). Useful for generating highly optimized filter clauses and for drivers that do not support
   top-level `:not` filter clauses."
-  [filter-clause :- mbql.s/Filter]
+  [filter-clause :- :legacy-mbql/filter]
   (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))
 
 (mu/defn query->source-table-id :- [:maybe pos-int?]
@@ -540,11 +542,11 @@
   [join]
   (query->source-table-id {:type :query, :query join}))
 
-(mu/defn add-order-by-clause :- mbql.s/MBQLQuery
+(mu/defn add-order-by-clause :- :legacy-mbql/mbql-query
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
-  [inner-query     :- mbql.s/MBQLQuery
-   [dir orderable] :- ::mbql.s/OrderBy]
+  [inner-query     :- :legacy-mbql/mbql-query
+   [dir orderable] :- :legacy-mbql/order-by]
   (let [existing-orderables (into #{}
                                   (map (fn [[_dir orderable]]
                                          orderable))
@@ -569,7 +571,7 @@
              (when (map? x)
                (:lib/type x)))
            (model-type [#?(:clj x :cljs _x)]
-             #?(:clj (models.dispatch/model x)
+             #?(:clj (t2/model x)
                 :cljs nil))]
      (or
       (clause-type x)
@@ -579,7 +581,7 @@
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
-(mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
+(mu/defn expression-with-name :- :legacy-mbql/field-or-expression
   "Return the expression referenced by a given `expression-name`."
   [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
   (let [allowed-names [(u/qualified-name expression-name) (keyword expression-name)]]
@@ -599,7 +601,7 @@
                             :tried           allowed-names
                             :found           found}))))))))
 
-(mu/defn aggregation-at-index :- ::mbql.s/Aggregation
+(mu/defn aggregation-at-index :- :legacy-mbql/aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
    This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations. To
    support nested queries, you'll need to keep tract of how many `:source-query`s deep you've traveled; pass in this
@@ -607,7 +609,7 @@
   ([query index]
    (aggregation-at-index query index 0))
 
-  ([query         :- mbql.s/Query
+  ([query         :- :legacy-mbql/query
     index         :- ::lib.schema.common/int-greater-than-or-equal-to-zero
     nesting-level :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
    (if (zero? nesting-level)
@@ -769,7 +771,7 @@
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
   the `metabase.legacy-mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
   [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential ::mbql.s/Aggregation]]
+   aggregations         :- [:sequential :legacy-mbql/aggregation]]
   (lib.util.match/replace aggregations
     [:aggregation-options _ (_ :guard :name)]
     &match
@@ -784,7 +786,7 @@
   "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with
   `uniquify-named-aggregations`."
   [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential ::mbql.s/Aggregation]]
+   aggregations         :- [:sequential :legacy-mbql/aggregation]]
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
       uniquify-named-aggregations))
 
@@ -846,10 +848,10 @@
   [[_ _ opts]]
   opts)
 
-(mu/defn update-field-options :- mbql.s/Reference
+(mu/defn update-field-options :- :legacy-mbql/reference
   "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."
   {:arglists '([field-or-ag-ref-or-expression-ref f & args])}
-  [[clause-type id-or-name opts] :- mbql.s/Reference f & args]
+  [[clause-type id-or-name opts] :- :legacy-mbql/reference f & args]
   (let [opts (not-empty (remove-empty (apply f opts args)))]
     ;; `:field` clauses should have a `nil` options map if there are no options. `:aggregation` and `:expression`
     ;; should get the arg removed if it's `nil` or empty. (For now. In the future we may change this if we make the
@@ -936,7 +938,7 @@
     :else
     field-id-or-form))
 
-(mu/defn unwrap-field-clause :- [:maybe mbql.s/field]
+(mu/defn unwrap-field-clause :- [:maybe :legacy-mbql.clause/field]
   "Unwrap something that contains a `:field` clause, such as a template tag.
   Also handles unwrapped integers for legacy compatibility.
 
@@ -946,7 +948,7 @@
     [:field field-form nil]
     (lib.util.match/match-one field-form :field)))
 
-(mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
+(mu/defn unwrap-field-or-expression-clause :- :legacy-mbql/field
   "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
   legacy compatibility."
   [field-or-ref-form]

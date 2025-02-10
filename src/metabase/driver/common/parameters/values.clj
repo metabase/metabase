@@ -11,7 +11,6 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -87,7 +86,7 @@
 
   Targeting template tags by ID is preferable (as of version 44) but targeting by name is supported for backwards
   compatibility."
-  [tag :- mbql.s/TemplateTag]
+  [tag :- :legacy-mbql/template-tag]
   (let [target-type (case (:type tag)
                       :dimension :dimension
                       :variable)]
@@ -111,8 +110,8 @@
 
 (mu/defn- tag-params
   "Return params from the provided `params` list targeting the provided `tag`."
-  [tag    :- mbql.s/TemplateTag
-   params :- [:maybe [:sequential mbql.s/Parameter]]]
+  [tag    :- :legacy-mbql/template-tag
+   params :- [:maybe [:sequential :legacy-mbql/parameter]]]
   (let [tag-target? (tag-target-pred tag)]
     (seq (for [param params
                :when (tag-target? (:target param))]
@@ -132,8 +131,8 @@
 (mu/defn- field-filter-value
   "Get parameter value(s) for a Field filter. Returns map if there is a normal single value, or a vector of maps for
   multiple values."
-  [tag    :- mbql.s/TemplateTag
-   params :- [:maybe [:sequential mbql.s/Parameter]]]
+  [tag    :- :legacy-mbql/template-tag
+   params :- [:maybe [:sequential :legacy-mbql/parameter]]]
   (let [matching-params  (tag-params tag params)
         tag-opts         (:options tag)
         normalize-params (fn [params]
@@ -192,8 +191,8 @@
       params/no-value)))
 
 (mu/defmethod parse-tag :dimension :- [:maybe FieldFilter]
-  [{field-filter :dimension, :as tag} :- mbql.s/TemplateTag
-   params                             :- [:maybe [:sequential mbql.s/Parameter]]]
+  [{field-filter :dimension, :as tag} :- :legacy-mbql/template-tag
+   params                             :- [:maybe [:sequential :legacy-mbql/parameter]]]
   (params/map->FieldFilter
    {:field (let [field-id (field-filter->field-id field-filter)]
              (or (lib.metadata/field (qp.store/metadata-provider) field-id)
@@ -202,7 +201,7 @@
     :value (field-filter-value tag params)}))
 
 (mu/defmethod parse-tag :card :- ReferencedCardQuery
-  [{:keys [card-id], :as tag} :- mbql.s/TemplateTag _params]
+  [{:keys [card-id], :as tag} :- :legacy-mbql/template-tag _params]
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
@@ -233,7 +232,7 @@
                 e))))))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
-  [{:keys [snippet-name snippet-id], :as tag} :- mbql.s/TemplateTag
+  [{:keys [snippet-name snippet-id], :as tag} :- :legacy-mbql/template-tag
    _params]
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
@@ -252,8 +251,8 @@
 
 (mu/defn- param-value-for-raw-value-tag
   "Get the value that should be used for a raw value (i.e., non-Field filter) template tag from `params`."
-  [tag    :- mbql.s/TemplateTag
-   params :- [:maybe [:sequential mbql.s/Parameter]]]
+  [tag    :- :legacy-mbql/template-tag
+   params :- [:maybe [:sequential :legacy-mbql/parameter]]]
   (let [matching-param (when-let [matching-params (not-empty (tag-params tag params))]
                          ;; double-check and make sure we didn't end up with multiple mappings or something crazy like that.
                          (when (> (count matching-params) 1)
@@ -385,8 +384,8 @@
 (mu/defn- value-for-tag :- ParsedParamValue
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`
    sequence. The `value` is something that can be compiled to SQL via `->replacement-snippet-info`."
-  [tag    :- mbql.s/TemplateTag
-   params :- [:maybe [:sequential mbql.s/Parameter]]]
+  [tag    :- :legacy-mbql/template-tag
+   params :- [:maybe [:sequential :legacy-mbql/parameter]]]
   (try
     (parse-value-for-type (:type tag) (parse-tag tag params))
     (catch Throwable e

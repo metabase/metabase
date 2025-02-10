@@ -4,9 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -48,7 +46,7 @@
   [parameters]
   (into #{}
         (keep (fn [{:keys [target]}]
-                (when (mbql.u/is-clause? :dimension target)
+                (when (legacy-mbql/is-clause? :dimension target)
                   (get-in target [2 :stage-number]))))
         parameters))
 
@@ -60,14 +58,14 @@
   [parameters]
   (mapv (fn [{:keys [target], :as parameter}]
           (cond-> parameter
-            (and (mbql.u/is-clause? :dimension target)
+            (and (legacy-mbql/is-clause? :dimension target)
                  (some? (get-in target [2 :stage-number])))
             (assoc-in [:target 2 :stage-number] -1)))
         parameters))
 
 (defn- last-stage-number
   [outer-query]
-  (mbql.u/legacy-last-stage-number (:query outer-query)))
+  (legacy-mbql/legacy-last-stage-number (:query outer-query)))
 
 (defn- nest-query
   [query]
@@ -79,7 +77,7 @@
   (mapv (fn [{param-type :type, :keys [target], :as parameter}]
           (cond-> parameter
             (and (= param-type :temporal-unit)
-                 (mbql.u/is-clause? :dimension target)
+                 (legacy-mbql/is-clause? :dimension target)
                  (nil? (get-in target [2 :stage-number])))
             (assoc-in [:target 2 :stage-number] -2)))
         parameters))
@@ -210,7 +208,7 @@
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
   with template tags in the query for Card with `card-id`."
   [card-id    :- ::lib.schema.id/card
-   parameters :- mbql.s/ParameterList]
+   parameters :- :legacy-mbql/parameter-list]
   (when-not *allow-arbitrary-mbql-parameters*
     (let [template-tags (card-template-tag-parameters card-id)]
       (doseq [request-parameter parameters
@@ -294,7 +292,7 @@
                      (and (= (:type card) :model) (seq (:result_metadata card)))
                      (assoc :metadata/model-metadata (:result_metadata card)))]
     (when (seq parameters)
-      (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
+      (validate-card-parameters card-id (legacy-mbql/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]

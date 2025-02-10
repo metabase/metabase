@@ -7,8 +7,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.lib.ident :as lib.ident]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
@@ -127,7 +125,7 @@
    [:map
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
-    [:order-by        {:optional true} (helpers/distinct (helpers/non-empty [:sequential ::mbql.s/OrderBy]))]
+    [:order-by        {:optional true} :legacy-mbql/order-bys]
     [:rff             {:optional true} fn?]]])
 
 (defn- text-field?

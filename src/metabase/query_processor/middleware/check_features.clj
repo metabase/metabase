@@ -2,7 +2,7 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -29,7 +29,7 @@
      :stddev
      :standard-deviation-aggregations
 
-     (join :guard (every-pred map? (comp mbql.s/join-strategies :strategy)))
+     (join :guard (every-pred map? (comp legacy-mbql/join-strategies :strategy)))
      (let [{:keys [strategy]} join]
        (assert-driver-supports strategy)))))
 

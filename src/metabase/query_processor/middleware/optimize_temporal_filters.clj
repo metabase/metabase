@@ -3,8 +3,7 @@
   `optimize-temporal-filters` for more details."
   (:require
    [clojure.walk :as walk]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
@@ -21,7 +20,7 @@
 ;;; TODO -- we can use [[metabase.lib/temporal-bucket]] for this once we convert this middleware to MLv2
 (defmulti ^:private temporal-unit
   {:arglists '([expression])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  legacy-mbql/dispatch-by-clause-name-or-class)
 
 (defmethod temporal-unit :default
   [_expr]
@@ -44,7 +43,7 @@
   unit)
 
 (defn- temporal-ref? [x]
-  (and (mbql.u/is-clause? #{:field :expression} x)
+  (and (legacy-mbql/is-clause? #{:field :expression} x)
        (or (temporal-unit x)
            (let [[_field _id-or-name opts] x]
              (when-let [expr-type ((some-fn :effective-type :base-type) opts)]
@@ -60,7 +59,7 @@
 
 (defmulti ^:private can-optimize-filter?
   {:arglists '([mbql-clause])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  legacy-mbql/dispatch-by-clause-name-or-class)
 
 (defn- optimizable-temporal-value?
   "Can `temporal-value` clause can be optimized?"
@@ -176,7 +175,7 @@
 (defn- change-temporal-unit-to-default [field]
   (lib.util.match/replace field
     [(_ :guard #{:field :expression}) _ (_ :guard (comp optimizable-units :temporal-unit))]
-    (mbql.u/update-field-options &match assoc :temporal-unit :default)
+    (legacy-mbql/update-field-options &match assoc :temporal-unit :default)
 
     [:absolute-datetime t _unit]
     [:absolute-datetime t :default]))
@@ -185,13 +184,13 @@
   "Get a clause representing the *lower* bound that should be used when converting a `temporal-value-clause` (e.g.
   `:absolute-datetime` or `:relative-datetime`) to an optimized range."
   {:arglists '([temporal-value-clause temporal-unit])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  legacy-mbql/dispatch-by-clause-name-or-class)
 
 (defmulti ^:private temporal-value-upper-bound
   "Get a clause representing the *upper* bound that should be used when converting a `temporal-value-clause` (e.g.
   `:absolute-datetime` or `:relative-datetime`) to an optimized range."
   {:arglists '([temporal-value-clause temporal-unit])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  legacy-mbql/dispatch-by-clause-name-or-class)
 
 (defmethod temporal-value-lower-bound :default
   [_temporal-value-clause _temporal-unit]
@@ -211,23 +210,23 @@
                  (not= field-unit :default))
         field-unit)))
 
-(mu/defmethod temporal-value-lower-bound :absolute-datetime :- mbql.s/absolute-datetime
+(mu/defmethod temporal-value-lower-bound :absolute-datetime :- :legacy-mbql.clause/absolute-datetime
   [[_ t unit] temporal-unit]
   (let [target-unit (target-unit-for-new-bound unit temporal-unit)]
     [:absolute-datetime (temporal-literal-lower-bound target-unit t) :default]))
 
-(mu/defmethod temporal-value-upper-bound :absolute-datetime :- mbql.s/absolute-datetime
+(mu/defmethod temporal-value-upper-bound :absolute-datetime :- :legacy-mbql.clause/absolute-datetime
   [[_ t unit] temporal-unit]
   (let [target-unit (target-unit-for-new-bound unit temporal-unit)]
     [:absolute-datetime (temporal-literal-upper-bound target-unit t) :default]))
 
-(mu/defmethod temporal-value-lower-bound :relative-datetime :- [:maybe mbql.s/relative-datetime]
+(mu/defmethod temporal-value-lower-bound :relative-datetime :- [:maybe :legacy-mbql.clause/relative-datetime]
   [[_ n unit] temporal-unit]
   (when-not (= temporal-unit :default)
     (let [target-unit (target-unit-for-new-bound unit temporal-unit)]
       [:relative-datetime (if (= n :current) 0 n) target-unit])))
 
-(mu/defmethod temporal-value-upper-bound :relative-datetime :- [:maybe mbql.s/relative-datetime]
+(mu/defmethod temporal-value-upper-bound :relative-datetime :- [:maybe :legacy-mbql.clause/relative-datetime]
   [[_ n unit] temporal-unit]
   (when-not (= temporal-unit :default)
     (let [target-unit (target-unit-for-new-bound unit temporal-unit)]
@@ -238,10 +237,10 @@
        (= (temporal-unit x) :day)))
 
 (defmulti ^:private optimize-filter
-  "Optimize a filter clause against a temporal-bucketed `:field` or `:expression` clause and `:absolute-datetime` or `:relative-datetime`
-  value by converting to an unbucketed range."
+  "Optimize a filter clause against a temporal-bucketed `:field` or `:expression` clause and `:absolute-datetime` or
+  `:relative-datetime` value by converting to an unbucketed range."
   {:arglists '([clause])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  legacy-mbql/dispatch-by-clause-name-or-class)
 
 (defmethod optimize-filter :=
   [[_tag field temporal-value]]
@@ -263,7 +262,7 @@
   (if (date-field-with-day-bucketing? field)
     [:!= (change-temporal-unit-to-default field) (change-temporal-unit-to-default temporal-value)]
     (when-let [optimized ((get-method optimize-filter :=) filter-clause)]
-      (mbql.u/negate-filter-clause optimized))))
+      (legacy-mbql/negate-filter-clause optimized))))
 
 (defn- optimize-comparison-filter
   [optimize-temporal-value-fn [tag field temporal-value] new-filter-type]
@@ -306,7 +305,7 @@
 
 (defn- optimize-temporal-filters* [query]
   (lib.util.match/replace query
-    (_ :guard (partial mbql.u/is-clause? (set (keys (methods optimize-filter)))))
+    (_ :guard (partial legacy-mbql/is-clause? (set (keys (methods optimize-filter)))))
     (or (when (can-optimize-filter? &match)
           (u/prog1 (optimize-filter &match)
             (if <>
@@ -354,5 +353,5 @@
          (let [optimized (optimize-temporal-filters* form)]
            ;; if we did some optimizations, we should flatten/deduplicate the filter clauses afterwards.
            (cond-> optimized
-             (not= optimized form) (update :filter mbql.u/combine-filter-clauses)))))
+             (not= optimized form) (update :filter legacy-mbql/combine-filter-clauses)))))
      query)))

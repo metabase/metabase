@@ -178,10 +178,10 @@
 ;;; is not ported to MLv2 yet, so conversion isn't implemented YET.
 
 (mr/def ::legacy-field-ref
-  [:ref :metabase.legacy-mbql.schema/field])
+  [:ref :legacy-mbql.clause/field])
 
 (mr/def ::legacy-expression-ref
-  [:ref :metabase.legacy-mbql.schema/expression])
+  [:ref :legacy-mbql.clause/expression])
 
 (mr/def ::dimension.target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag

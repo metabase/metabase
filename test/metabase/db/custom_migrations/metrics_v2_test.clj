@@ -5,8 +5,7 @@
    [malli.error :as me]
    [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
@@ -148,10 +147,10 @@
                json/decode+kw)))))
 
 (def query-validator
-  (mr/validator mbql.s/MBQLQuery))
+  (mr/validator :legacy-mbql/mbql-query))
 
 (def query-explainer
-  (mr/explainer mbql.s/MBQLQuery))
+  (mr/explainer :legacy-mbql/mbql-query))
 
 (deftest migrate-metrics-to-v2-test
   (impl/test-migrations ["v51.2024-05-13T15:30:57" "v51.2024-05-13T16:00:00"] [migrate!]
@@ -217,7 +216,7 @@
           original-query (:dataset_query card)
           normalized-query #(-> %
                                 json/decode+kw
-                                mbql.normalize/normalize
+                                legacy-mbql/normalize
                                 :query)]
       (testing "sanity"
         (is (t2/exists? :metric))

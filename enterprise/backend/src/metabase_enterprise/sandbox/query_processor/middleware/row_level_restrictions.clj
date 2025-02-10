@@ -9,7 +9,6 @@
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db :as mdb]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -119,8 +118,8 @@
   (mapv (partial attr-remapping->parameter (:login_attributes @*current-user*))
         attribute-remappings))
 
-(mu/defn- preprocess-source-query :- mbql.s/SourceQuery
-  [source-query :- mbql.s/SourceQuery]
+(mu/defn- preprocess-source-query :- :legacy-mbql/source-query
+  [source-query :- :legacy-mbql/source-query]
   (try
     (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                         :type     :query
@@ -228,7 +227,7 @@
 
 (mu/defn- gtap->source :- [:map
                            [:source-query :any]
-                           [:source-metadata {:optional true} [:sequential mbql.s/SourceQueryMetadata]]]
+                           [:source-metadata {:optional true} [:sequential :legacy-mbql/source-query-metadata]]]
   "Get the source query associated with a `gtap`."
   [{card-id :card_id, table-id :table_id, :as gtap} :- :map]
   (-> ((if card-id

@@ -2,7 +2,6 @@
   "Middleware that handles `:binning` strategy in `:field` clauses. This adds extra info to the `:binning` options maps
   that contain the information Query Processors will need in order to perform binning."
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
@@ -19,12 +18,12 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private FieldIDOrName->Filters
-  [:map-of [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string] [:sequential mbql.s/Filter]])
+  [:map-of [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string] [:sequential :legacy-mbql/filter]])
 
 (mu/defn- filter->field-map :- FieldIDOrName->Filters
   "Find any comparison or `:between` filter and return a map of referenced Field ID or Name -> all the clauses the reference
   it."
-  [filter-clause :- [:maybe mbql.s/Filter]]
+  [filter-clause :- [:maybe :legacy-mbql/filter]]
   (reduce
    (partial merge-with concat)
    {}
@@ -90,13 +89,13 @@
     ;; for field literals, we require `source-metadata` from the source query
     (matching-metadata-from-source-metadata field-id-or-name source-metadata)))
 
-(mu/defn- update-binned-field :- mbql.s/field
+(mu/defn- update-binned-field :- :legacy-mbql.clause/field
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
   and calculate the number of bins and bin width for this field. `field-id->filters` contains related criteria that
   could narrow the domain for the field. This info is saved as part of each `binning-strategy` clause."
   [{:keys [source-metadata], :as _inner-query}
    field-id-or-name->filters                  :- FieldIDOrName->Filters
-   [_ id-or-name {:keys [binning], :as opts}] :- mbql.s/field]
+   [_ id-or-name {:keys [binning], :as opts}] :- :legacy-mbql.clause/field]
   (let [metadata                                   (matching-metadata id-or-name source-metadata)
         {:keys [min-value max-value], :as min-max} (extract-bounds id-or-name
                                                                    (:fingerprint metadata)

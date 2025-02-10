@@ -4,8 +4,7 @@
    [clojure.set :as set]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -23,9 +22,9 @@
 ;; entire query
 (def ^:private SourceQueryAndMetadata
   [:map
-   [:source-query    mbql.s/SourceQuery]
-   [:database        ::mbql.s/DatabaseID]
-   [:source-metadata [:maybe [:sequential mbql.s/SourceQueryMetadata]]]
+   [:source-query    :legacy-mbql/source-query]
+   [:database        :legacy-mbql/database-id]
+   [:source-metadata [:maybe [:sequential :legacy-mbql/source-query-metadata]]]
    [:source-query/model?   {:optional true} :boolean]
    [:persisted-info/native {:optional true} :string]])
 
@@ -82,7 +81,7 @@
                                          (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                                          persisted-info)))
               :database        database-id
-              :source-metadata (sequence (comp (map mbql.normalize/normalize-source-metadata)
+              :source-metadata (sequence (comp (map legacy-mbql/normalize-source-metadata)
                                                (remove :remapped_from))
                                          result-metadata)}
        (= card-type :model) (assoc :source-query/model? true)))))

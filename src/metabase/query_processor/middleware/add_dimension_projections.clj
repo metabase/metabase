@@ -29,9 +29,7 @@
    [clojure.data :as data]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.schema.helpers :as helpers]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -63,7 +61,7 @@
 (mu/defn- fields->field-id->remapping-dimension :- [:maybe [:map-of ::lib.schema.id/field ExternalRemappingDimension]]
   "Given a sequence of field clauses (from the `:fields` clause), return a map of `:field-id` clause (other clauses
   are ineligable) to a remapping dimension information for any Fields that have an `external` type dimension remapping."
-  [fields :- [:maybe [:sequential mbql.s/Field]]]
+  [fields :- [:maybe [:sequential :legacy-mbql/field]]]
   (when-let [field-ids (not-empty (set (lib.util.match/match fields [:field (id :guard integer?) _] id)))]
     (let [field-metadatas (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column field-ids)]
       (when-let [remap-field-ids (not-empty (into #{}
@@ -89,8 +87,8 @@
 
 (def ^:private RemapColumnInfo
   [:map
-   [:original-field-clause mbql.s/field]
-   [:new-field-clause      mbql.s/field]
+   [:original-field-clause :legacy-mbql.clause/field]
+   [:new-field-clause      :legacy-mbql.clause/field]
    [:dimension             ExternalRemappingDimension]])
 
 (mu/defn- remap-column-infos :- [:maybe [:sequential RemapColumnInfo]]
@@ -98,7 +96,7 @@
   and the Dimension that suggested the remapping, which is used later in this middleware for post-processing. Order is
   important here, because the results are added to the `:fields` column in order. (TODO - why is it important, if they
   get hidden when displayed anyway?)"
-  [fields :- [:maybe [:sequential mbql.s/Field]]]
+  [fields :- [:maybe [:sequential :legacy-mbql/field]]]
   (when-let [field-id->remapping-dimension (fields->field-id->remapping-dimension fields)]
     ;; Reconstruct how we uniquify names in [[metabase.query-processor.middleware.annotate]]
     (let [name-generator (lib.util/unique-name-generator (qp.store/metadata-provider))
@@ -122,51 +120,51 @@
                                           :field-name                (-> dimension :field-id unique-name)
                                           :human-readable-field-name (-> dimension :human-readable-field-id unique-name))}))))))
 
-(mu/defn- add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- [:maybe [:sequential mbql.s/Field]]
+(mu/defn- add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- [:maybe [:sequential :legacy-mbql/field]]
   "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` to any Field clauses that are
   remapped-from."
   [infos  :- [:maybe [:sequential RemapColumnInfo]]
-   fields :- [:maybe [:sequential mbql.s/Field]]]
+   fields :- [:maybe [:sequential :legacy-mbql/field]]]
   (let [field->remapped-col (into {} (map (juxt :original-field-clause :new-field-clause)) infos)]
     (mapv
      (fn [field]
        (let [[_ _ {::keys [new-field-dimension-id]}] (get field->remapped-col field)]
          (cond-> field
-           new-field-dimension-id (mbql.u/update-field-options assoc ::original-field-dimension-id new-field-dimension-id))))
+           new-field-dimension-id (legacy-mbql/update-field-options assoc ::original-field-dimension-id new-field-dimension-id))))
      fields)))
 
-(mu/defn- add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id :- [:maybe [:sequential mbql.s/Field]]
+(mu/defn- add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id :- [:maybe [:sequential :legacy-mbql/field]]
   "Rewrite existing `:fields` in a query. Add `::new-field-dimension-id` to any existing remap-to Fields that *would*
   have been added if they did not already exist."
   [infos  :- [:maybe [:sequential RemapColumnInfo]]
-   fields :- [:maybe [:sequential mbql.s/Field]]]
+   fields :- [:maybe [:sequential :legacy-mbql/field]]]
   (let [normalized-clause->new-options (into {}
                                              (map (juxt (fn [{clause :new-field-clause}]
-                                                          (mbql.u/remove-namespaced-options clause))
+                                                          (legacy-mbql/remove-namespaced-options clause))
                                                         (fn [{[_ _ options] :new-field-clause}]
                                                           options)))
                                              infos)]
     (mapv (fn [field]
-            (let [options (normalized-clause->new-options (mbql.u/remove-namespaced-options field))]
+            (let [options (normalized-clause->new-options (legacy-mbql/remove-namespaced-options field))]
               (cond-> field
-                options (mbql.u/update-field-options merge options))))
+                options (legacy-mbql/update-field-options merge options))))
           fields)))
 
-(mu/defn- add-fk-remaps-rewrite-existing-fields :- [:maybe [:sequential mbql.s/Field]]
+(mu/defn- add-fk-remaps-rewrite-existing-fields :- [:maybe [:sequential :legacy-mbql/field]]
   "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` and ::new-field-dimension-id` where
   appropriate."
   [infos  :- [:maybe [:sequential RemapColumnInfo]]
-   fields :- [:maybe [:sequential mbql.s/Field]]]
+   fields :- [:maybe [:sequential :legacy-mbql/field]]]
   (->> fields
        (add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id infos)
        (add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id infos)))
 
-(mu/defn- add-fk-remaps-rewrite-order-by :- [:maybe [:sequential ::mbql.s/OrderBy]]
+(mu/defn- add-fk-remaps-rewrite-order-by :- [:maybe [:sequential :legacy-mbql/order-by]]
   "Order by clauses that include an external remapped column should be replace that original column in the order by with
   the newly remapped column. This should order by the text of the remapped column vs. the id of the source column
   before the remapping"
-  [field->remapped-col :- [:map-of mbql.s/field mbql.s/field]
-   order-by-clauses    :- [:maybe [:sequential ::mbql.s/OrderBy]]]
+  [field->remapped-col :- [:map-of :legacy-mbql.clause/field :legacy-mbql.clause/field]
+   order-by-clauses    :- [:maybe [:sequential :legacy-mbql/order-by]]]
   (into []
         (comp (map (fn [[direction field, :as order-by-clause]]
                      (if-let [remapped-col (get field->remapped-col field)]
@@ -180,15 +178,19 @@
   (into []
         (comp (mapcat (fn [field]
                         (if-let [[_ _ {::keys [new-field-dimension-id]} :as remapped-col] (get field->remapped-col field)]
-                          [remapped-col (mbql.u/update-field-options field assoc ::original-field-dimension-id new-field-dimension-id)]
+                          [remapped-col (legacy-mbql/update-field-options field assoc ::original-field-dimension-id new-field-dimension-id)]
                           [field])))
               (distinct))
         breakout-clause))
 
 (def ^:private QueryAndRemaps
   [:map
-   [:remaps [:maybe (helpers/distinct [:sequential ExternalRemappingDimension])]]
-   [:query  mbql.s/Query]])
+   [:remaps [:maybe [:and
+                     [:sequential ExternalRemappingDimension]
+                     [:fn
+                      {:error/message "remaps must be distinct"}
+                      (some-fn empty? distinct?)]]]]
+   [:query  :legacy-mbql/query]])
 
 (defn- add-fk-remaps-one-level
   [{:keys [fields order-by breakout breakout-idents], {source-query-remaps ::remaps} :source-query, :as query}]
@@ -199,14 +201,14 @@
       (let [;; make a map of field-id-clause -> fk-clause from the tuples
             original->remapped             (into {} (map (juxt :original-field-clause :new-field-clause)) infos)
             existing-fields                (add-fk-remaps-rewrite-existing-fields infos fields)
-            ;; don't add any new entries for fields that already exist. Use [[mbql.u/remove-namespaced-options]] here so
+            ;; don't add any new entries for fields that already exist. Use [[legacy-mbql/remove-namespaced-options]] here so
             ;; we don't add new entries even if the existing Field has some extra info e.g. extra unknown namespaced
             ;; keys.
-            existing-normalized-fields-set (into #{} (map mbql.u/remove-namespaced-options) existing-fields)
+            existing-normalized-fields-set (into #{} (map legacy-mbql/remove-namespaced-options) existing-fields)
             new-fields                     (into
                                             existing-fields
                                             (comp (map :new-field-clause)
-                                                  (remove (comp existing-normalized-fields-set mbql.u/remove-namespaced-options)))
+                                                  (remove (comp existing-normalized-fields-set legacy-mbql/remove-namespaced-options)))
                                             infos)
             new-breakout                   (add-fk-remaps-rewrite-breakout original->remapped breakout)
             new-breakout-idents            (merge (lib.ident/indexed-idents new-breakout)

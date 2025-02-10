@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.models.setting :as setting]
@@ -209,7 +209,7 @@
 
 (defmethod normalize-action-arg-map :row/create
   [_action query]
-  (mbql.normalize/normalize-or-throw query))
+  (legacy-mbql/normalize-or-throw query))
 
 (s/def :actions.args.crud.row.create/create-row
   (s/map-of string? any?))
@@ -233,7 +233,7 @@
 
 (defmethod normalize-action-arg-map :row/update
   [_action query]
-  (mbql.normalize/normalize-or-throw query))
+  (legacy-mbql/normalize-or-throw query))
 
 (s/def :actions.args.crud.row.update.query/filter
   vector?) ; MBQL filter clause
@@ -265,7 +265,7 @@
 
 (defmethod normalize-action-arg-map :row/delete
   [_action query]
-  (mbql.normalize/normalize-or-throw query))
+  (legacy-mbql/normalize-or-throw query))
 
 (s/def :actions.args.crud.row.delete.query/filter
   vector?) ; MBQL filter clause

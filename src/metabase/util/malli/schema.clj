@@ -5,8 +5,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.dispatch :as models.dispatch]
@@ -176,8 +175,8 @@
   REST API at all? MBQL clauses are not things we should ask for as API parameters."
   (mu/with-api-error-message
    [:fn (fn [k]
-          ((comp (mr/validator mbql.s/Field)
-                 mbql.normalize/normalize-tokens) k))]
+          ((comp (mr/validator :legacy-mbql/field)
+                 legacy-mbql/normalize-tokens) k))]
    (deferred-tru "value must an array with :field id-or-name and an options map")))
 
 (def CoercionStrategyKeywordOrString

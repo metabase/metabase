@@ -6,7 +6,6 @@
    [metabase.actions.http-action :as http-action]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.action :as action]
@@ -100,7 +99,7 @@
                 :destination-parameters destination-param-ids})))
 
 (mu/defn- build-implicit-query :- [:map
-                                   [:query          ::mbql.s/Query]
+                                   [:query          :legacy-mbql/query]
                                    [:row-parameters ::lib.schema.actions/row]
                                    ;; TODO -- the schema for these should probably be
                                    ;; `:metabase.lib.schema.parameter/parameter` instead of `:any`, but I'm not

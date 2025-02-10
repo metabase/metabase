@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.limit
   "Middleware that handles limiting the maximum number of rows returned by a query."
   (:require
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.util :as qp.util]))
@@ -31,14 +31,14 @@
 
 (defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned. This is either:
-  1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query
+  1. the output of [[metabase.legacy-mbql.core/query->max-rows-limit]] when called on the given query
   2. the value of `pubic-settings/download-row-limit`
      a. if it is less than [[metabase.query-processor.interface/absolute-max-results]] or
      b. if it is greater and the export is NOT xlsx otherwise,
   3. [[metabase.query-processor.interface/absolute-max-results]] (a constant, non-nil backstop value)"
   [query]
   (when-not (disable-max-results? query)
-    (cond-> (or (mbql.u/query->max-rows-limit query)
+    (cond-> (or (legacy-mbql/query->max-rows-limit query)
                 (public-settings/download-row-limit)
                 qp.i/absolute-max-results)
       (xlsx-export? query)

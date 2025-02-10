@@ -2,8 +2,7 @@
   "Helper functions and macros for writing tests for automagic dashboards."
   (:require
    [clojure.test :refer :all]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]))
@@ -35,8 +34,8 @@
   (testing "Card should be valid"
     (testing (format "\nCard =\n%s\n" (u/pprint-to-str card))
       (testing "Card query should be valid"
-        (is (malli= mbql.s/Query
-                    (mbql.normalize/normalize query)))))))
+        (is (malli= :legacy-mbql/query
+                    (legacy-mbql/normalize query)))))))
 
 (defn test-dashboard-is-valid
   "Is generated dashboard valid?

@@ -8,8 +8,7 @@
                {:source-field 5}]]
      :value [3 5]}"
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
@@ -63,12 +62,12 @@
                        :field-id    (second field)
                        :type        qp.error-type/invalid-parameter})))))
 
-(mu/defn to-clause :- mbql.s/Filter
+(mu/defn to-clause :- :legacy-mbql/filter
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
   [{param-type :type [a b :as param-value] :value [_ field :as _target] :target options :options :as _param}]
   (verify-type-and-arity field param-type param-value)
-  (let [field'  (mbql.u/wrap-field-id-if-needed field)
+  (let [field'  (legacy-mbql/wrap-field-id-if-needed field)
         opts-fn (operator-options-fn param-type)]
     (case (operator-arity param-type)
       :binary   (opts-fn [(keyword (name param-type)) field' a b] options)

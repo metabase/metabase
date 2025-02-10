@@ -3,7 +3,7 @@
 
   (`:segment` forms are expanded into filter clauses.)"
   (:require
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -59,7 +59,7 @@
                 :query    (merge {:source-table table-id}
                                  definition)
                 :database (u/the-id (lib.metadata/database metadata-providerable))}
-               mbql.normalize/normalize
+               legacy-mbql/normalize
                lib.convert/->pMBQL
                (lib.util/query-stage -1))
     (log/tracef "to pMBQL\n%s" (u/pprint-to-str <>))))

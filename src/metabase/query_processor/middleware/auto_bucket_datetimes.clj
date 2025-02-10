@@ -4,7 +4,7 @@
   `yyyy-MM-dd` format datetime strings."
   (:require
    [medley.core :as m]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -63,13 +63,13 @@
 
 (defn- auto-bucketable-value? [v]
   (or (yyyy-MM-dd-date-string? v)
-      (mbql.u/is-clause? :relative-datetime v)))
+      (legacy-mbql/is-clause? :relative-datetime v)))
 
 (mu/defn- filter-clause?
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/stage-path
    x]
-  (and (mbql.u/mbql-clause? x)
+  (and (legacy-mbql/mbql-clause? x)
        (when-let [expr-type (try
                               (lib.walk/apply-f-for-stage-at-path lib/type-of query stage-path x)
                               (catch Throwable e
@@ -82,7 +82,7 @@
    stage-path :- ::lib.walk/stage-path
    x]
   (and (filter-clause? query stage-path x)
-       (not (mbql.u/is-clause? #{:and :or :not} x))))
+       (not (legacy-mbql/is-clause? #{:and :or :not} x))))
 
 (mr/def ::do-not-bucket-reason
   [:and
@@ -103,7 +103,7 @@
     (cond
       ;; *  is not an equality or comparison filter. e.g. wouldn't make sense to bucket a field and then check if it is
       ;;    `NOT NULL`
-      (not (mbql.u/is-clause? #{:= :!= :< :> :<= :>= :between} x))
+      (not (legacy-mbql/is-clause? #{:= :!= :< :> :<= :>= :between} x))
       :do-not-bucket-reason/not-equality-or-comparison-filter
 
       ;; *  has arguments that aren't `yyyy-MM-dd` date strings. The only reason we auto-bucket datetime clauses in the
@@ -123,12 +123,12 @@
 
     ;; do not auto-bucket clauses inside a `:time-interval` filter: it already supplies its own unit
     ;; do not auto-bucket clauses inside a `:datetime-diff` clause: the precise timestamp is needed for the difference
-    (mbql.u/is-clause? #{:time-interval :datetime-diff} x)
+    (legacy-mbql/is-clause? #{:time-interval :datetime-diff} x)
     :do-not-bucket-reason/bucketed-or-precise-operation
 
     ;; do not autobucket clauses that already have a temporal unit, or have a binning strategy
-    (and (or (mbql.u/is-clause? :expression x)
-             (mbql.u/is-clause? :field x))
+    (and (or (legacy-mbql/is-clause? :expression x)
+             (legacy-mbql/is-clause? :field x))
          (let [[_tag opts _id-or-name] x]
            ((some-fn :temporal-unit :binning) opts)))
     :do-not-bucket-reason/field-with-bucketing-or-binning

@@ -9,7 +9,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -111,7 +111,7 @@
   "Convert an `:expression` reference from a source query into an appropriate `:field` clause for use in the surrounding
   query."
   [{:keys [source-query], :as query} [_ expression-name opts :as _clause]]
-  (let [expression-definition        (mbql.u/expression-with-name query expression-name)
+  (let [expression-definition        (legacy-mbql/expression-with-name query expression-name)
         {base-type :base_type}       (some-> expression-definition annotate/infer-expression-type)
         {::add/keys [desired-alias]} (lib.util.match/match-one source-query
                                        [:expression (_ :guard (partial = expression-name)) source-opts]
@@ -153,7 +153,7 @@
     ;; In fact, we don't mark all Fields, only the ones we deem coercible. Marking all would make a bunch of tests
     ;; fail, but it might still make sense. For example, #48721 would have been avoided by unconditional marking.
     (_ :guard coercible-field-ref?)
-    (recur (mbql.u/update-field-options &match assoc :qp/ignore-coercion true))
+    (recur (legacy-mbql/update-field-options &match assoc :qp/ignore-coercion true))
 
     [:field id-or-name (opts :guard :join-alias)]
     (let [{::add/keys [desired-alias]} (lib.util.match/match-one (:source-query query)

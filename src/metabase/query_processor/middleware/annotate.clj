@@ -6,9 +6,7 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -44,7 +42,7 @@
    [:source       [:enum :aggregation :fields :breakout :native]]
    ;; a field clause that can be used to refer to this Field if this query is subsequently used as a source query.
    ;; Added by this middleware as one of the last steps.
-   [:field_ref {:optional true} mbql.s/Reference]])
+   [:field_ref {:optional true} [:ref :legacy-mbql/reference]]])
 
 ;; TODO - I think we should change the signature of this to `(column-info query cols rows)`
 (defmulti column-info
@@ -81,7 +79,7 @@
                          :type             qp.error-type/qp}))))))
 
 (defn- annotate-native-cols [cols]
-  (let [unique-name-fn (mbql.u/unique-name-generator)]
+  (let [unique-name-fn (legacy-mbql/unique-name-generator)]
     (mapv (fn [{col-name :name, base-type :base_type, :as driver-col-metadata}]
             (let [col-name (name col-name)]
               (merge
@@ -105,7 +103,7 @@
 ;;; |                                       Adding :cols info for MBQL queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- join-with-alias :- [:maybe mbql.s/Join]
+(mu/defn- join-with-alias :- [:maybe :legacy-mbql/join]
   [{:keys [joins source-query]} :- :map
    join-alias                   :- ::lib.schema.common/non-blank-string]
   (or (some
@@ -143,7 +141,7 @@
     true
 
     :+
-    (some (partial mbql.u/is-clause? :interval) (rest clause))
+    (some (partial legacy-mbql/is-clause? :interval) (rest clause))
 
     _ false))
 
@@ -167,28 +165,28 @@
     (boolean? expression)
     {:base_type :type/Boolean}
 
-    (mbql.u/is-clause? :field expression)
+    (legacy-mbql/is-clause? :field expression)
     (col-info-for-field-clause {} expression)
 
-    (mbql.u/is-clause? :coalesce expression)
+    (legacy-mbql/is-clause? :coalesce expression)
     (select-keys (infer-expression-type (second expression)) type-info-columns)
 
-    (mbql.u/is-clause? :length expression)
+    (legacy-mbql/is-clause? :length expression)
     {:base_type :type/BigInteger}
 
-    (mbql.u/is-clause? :case expression)
+    (legacy-mbql/is-clause? :case expression)
     (let [[_ clauses] expression]
       (some
        (fn [[_ expression]]
          ;; get the first non-nil val
          (when (and (not= expression nil)
-                    (or (not (mbql.u/is-clause? :value expression))
+                    (or (not (legacy-mbql/is-clause? :value expression))
                         (let [[_ value] expression]
                           (not= value nil))))
            (select-keys (infer-expression-type expression) type-info-columns)))
        clauses))
 
-    (mbql.u/is-clause? :convert-timezone expression)
+    (legacy-mbql/is-clause? :convert-timezone expression)
     {:converted_timezone (nth expression 2)
      :base_type          :type/DateTime}
 
@@ -205,13 +203,13 @@
     (merge (select-keys (infer-expression-type (second expression)) [:converted_timezone])
            {:base_type :type/DateTime})
 
-    (mbql.u/is-clause? mbql.s/string-functions expression)
+    (legacy-mbql/is-clause? legacy-mbql/string-functions expression)
     {:base_type :type/Text}
 
-    (mbql.u/is-clause? mbql.s/numeric-functions expression)
+    (legacy-mbql/is-clause? legacy-mbql/numeric-functions expression)
     {:base_type :type/Float}
 
-    (mbql.u/is-clause? mbql.s/boolean-functions expression)
+    (legacy-mbql/is-clause? legacy-mbql/boolean-functions expression)
     {:base_type :type/Boolean}
 
     :else
@@ -223,7 +221,7 @@
   don't believe me remove this and run `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` and you
   will see."
   [a-ref]
-  (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
+  (let [a-ref (legacy-mbql/remove-namespaced-options a-ref)]
     (lib.util.match/replace a-ref
       [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
       (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
@@ -234,7 +232,7 @@
 (defn- col-info-for-expression
   [inner-query [_expression expression-name {:keys [temporal-unit] :as _opts} :as clause]]
   (merge
-   (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
+   (infer-expression-type (legacy-mbql/expression-with-name inner-query expression-name))
    {:name            expression-name
     :display_name    expression-name
     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
@@ -244,7 +242,7 @@
      {:unit temporal-unit})))
 
 (mu/defn- col-info-for-field-clause*
-  [{:keys [source-metadata], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
+  [{:keys [source-metadata], :as inner-query} [_ id-or-name opts :as clause] :- :legacy-mbql.clause/field]
   (let [stage-is-from-source-card? (:qp/stage-had-source-card inner-query)
         join                       (when (:join-alias opts)
                                      (join-with-alias inner-query (:join-alias opts)))
@@ -261,8 +259,8 @@
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
     (cond-> {:field_ref (-> clause
-                            mbql.u/remove-namespaced-options
-                            (mbql.u/update-field-options dissoc :ident))}
+                            legacy-mbql/remove-namespaced-options
+                            (legacy-mbql/update-field-options dissoc :ident))}
       (:base-type opts)
       (assoc :base_type (:base-type opts))
 
@@ -307,10 +305,10 @@
       ;; For IMPLICIT joins, remove `:join-alias` in the resulting Field ref -- it got added there during
       ;; preprocessing by us, and wasn't there originally. Make sure the ref has `:source-field`.
       (:fk-field-id join)
-      (update :field_ref mbql.u/update-field-options (fn [opts]
-                                                       (-> opts
-                                                           (dissoc :join-alias)
-                                                           (assoc :source-field (:fk-field-id join)))))
+      (update :field_ref legacy-mbql/update-field-options (fn [opts]
+                                                            (-> opts
+                                                                (dissoc :join-alias)
+                                                                (assoc :source-field (:fk-field-id join)))))
 
       ;; If source Field (for an IMPLICIT join) is specified in either the field ref or matching join, make sure we
       ;; return it as `fk_field_id`. (Not sure what situations it would actually be present in one but not the other
@@ -325,13 +323,13 @@
       ;; removing `:join-alias` from fields from the right side of the join.
       (and stage-is-from-source-card?
            (not join-is-at-current-level?))
-      (update :field_ref mbql.u/update-field-options dissoc :join-alias))))
+      (update :field_ref legacy-mbql/update-field-options dissoc :join-alias))))
 
 (mu/defn- col-info-for-field-clause :- [:map
-                                        [:field_ref mbql.s/Field]]
+                                        [:field_ref :legacy-mbql/field]]
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
   [inner-query :- :map
-   clause      :- mbql.s/Field]
+   clause      :- :legacy-mbql/field]
   (lib.util.match/match-one clause
     :expression
     (col-info-for-expression inner-query &match)
@@ -352,7 +350,7 @@
        (qp.store/metadata-provider)
        (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
                              (:id (lib.metadata/database (qp.store/metadata-provider)))
-                             (mbql.normalize/normalize-fragment [:query] inner-query))))
+                             (legacy-mbql/normalize-fragment [:query] inner-query))))
       (catch Throwable e
         (throw (ex-info (tru "Error converting query to pMBQL: {0}" (ex-message e))
                         {:inner-query inner-query, :type qp.error-type/qp}
@@ -548,7 +546,7 @@
   (map (fn [col unique-name]
          (assoc col :name unique-name))
        cols
-       (mbql.u/uniquify-names (map :name cols))))
+       (legacy-mbql/uniquify-names (map :name cols))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           add-column-info middleware                                           |

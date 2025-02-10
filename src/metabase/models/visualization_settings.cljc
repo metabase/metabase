@@ -19,20 +19,13 @@
   In general, conversion functions in this namespace (i.e. those that convert various pieces from one form to the other)
   will be prefixed with either `db->norm` or `norm->db`, depending on which direction they implement.
   "
-  #?@
-   (:clj
-    [(:require
-      [clojure.set :as set]
-      [clojure.spec.alpha :as s]
-      [medley.core :as m]
-      [metabase.legacy-mbql.normalize :as mbql.normalize]
-      [metabase.util.json :as json])]
-    :cljs
-    [(:require
-      [clojure.set :as set]
-      [clojure.spec.alpha :as s]
-      [medley.core :as m]
-      [metabase.legacy-mbql.normalize :as mbql.normalize])]))
+  (:require
+   #?@(:clj
+       ([metabase.util.json :as json]))
+   [clojure.set :as set]
+   [clojure.spec.alpha :as s]
+   [medley.core :as m]
+   [metabase.legacy-mbql.core :as legacy-mbql]))
 
 ;;; -------------------------------------------------- Main API --------------------------------------------------
 
@@ -459,7 +452,7 @@
                        (if (dimension-param-mapping? v)
                          (let [parsed-id (-> (if (keyword? k) (keyname k) k)
                                              parse-json-string
-                                             mbql.normalize/normalize-tokens)]
+                                             legacy-mbql/normalize-tokens)]
                            [parsed-id (cond-> v
                                         (:source v) (assoc ::param-mapping-source
                                                            (db->norm-param-ref parsed-id (:source v)))

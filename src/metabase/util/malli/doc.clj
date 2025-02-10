@@ -371,7 +371,7 @@
   [{:keys [target-dir]
     :or   {target-dir "docs/legacy-mbql"}}]
   (require 'metabase.legacy-mbql.schema)
-  (generate-documentation! :metabase.legacy-mbql.schema/Query
+  (generate-documentation! :legacy-mbql/query
                            target-dir))
 
 (defn generate-pmbql-dox

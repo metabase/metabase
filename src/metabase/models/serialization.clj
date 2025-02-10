@@ -57,7 +57,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
@@ -1045,12 +1045,12 @@
 (defn- mbql-entity-reference?
   "Is given form an MBQL entity reference?"
   [form]
-  (mbql.normalize/is-clause? #{:field :field-id :fk-> :dimension :metric :segment} form))
+  (legacy-mbql/is-clause? #{:field :field-id :fk-> :dimension :metric :segment} form))
 
 (defn- mbql-id->fully-qualified-name
   [mbql]
   (-> mbql
-      mbql.normalize/normalize-tokens
+      legacy-mbql/normalize-tokens
       (lib.util.match/replace
         ;; `integer?` guard is here to make the operation idempotent
         [:field (id :guard integer?) opts]

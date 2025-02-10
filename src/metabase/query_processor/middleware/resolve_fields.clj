@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.resolve-fields
   "Middleware that resolves the Fields referenced by a query."
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -40,7 +39,7 @@
           id)))
 
 (mu/defmethod field-ids ::legacy :- [:set ::lib.schema.id/field]
-  [query :- ::mbql.s/Query]
+  [query :- :legacy-mbql/query]
   (into (set (lib.util.match/match (:query query) [:field (id :guard integer?) _] id))
         (comp cat (keep :id))
         (lib.util.match/match (:query query) {:source-metadata source-metadata} source-metadata)))

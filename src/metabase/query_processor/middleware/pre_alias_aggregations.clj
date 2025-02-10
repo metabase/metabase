@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.pre-alias-aggregations
   (:require
    [metabase.driver :as driver]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.query-processor.middleware.annotate :as annotate]))
 
 (defn- ag-name [inner-query ag-clause]
@@ -14,7 +14,7 @@
        original-ag
        (with-meta updated-ag {:auto-generated? true})))
    aggregations
-   (mbql.u/pre-alias-and-uniquify-aggregations (partial ag-name inner-query) aggregations)))
+   (legacy-mbql/pre-alias-and-uniquify-aggregations (partial ag-name inner-query) aggregations)))
 
 (defn pre-alias-aggregations-in-inner-query
   "Make sure all aggregations have aliases, and all aliases are unique, in an 'inner' MBQL query."

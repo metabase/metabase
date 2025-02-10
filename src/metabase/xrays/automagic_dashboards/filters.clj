@@ -1,7 +1,6 @@
 (ns metabase.xrays.automagic-dashboards.filters
   (:require
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.models.field :as field]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -141,7 +140,7 @@
   [[clause-name, :as filter-clause]]
   (when (seq filter-clause)
     (if (= clause-name :and)
-      (rest (mbql.u/simplify-compound-filter filter-clause))
+      (rest (legacy-mbql/simplify-compound-filter filter-clause))
       [filter-clause])))
 
 (defn inject-refinement
@@ -164,6 +163,6 @@
     (if (seq existing-filters)
       ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
       ;; normalize them before passing them to `combine-filter-clauses`, which validates its input
-      (apply mbql.u/combine-filter-clauses (map (partial mbql.normalize/normalize-fragment [:query :filter])
-                                                (cons refinement existing-filters)))
+      (apply legacy-mbql/combine-filter-clauses (map (partial legacy-mbql/normalize-fragment [:query :filter])
+                                                     (cons refinement existing-filters)))
       refinement)))

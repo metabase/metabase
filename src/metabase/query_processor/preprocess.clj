@@ -1,6 +1,5 @@
 (ns metabase.query-processor.preprocess
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -53,7 +52,7 @@
 ;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-pmbql]], and will then see the
 ;;; flavor of MBQL it is written for.
 
-(mu/defn- ->legacy :- mbql.s/Query
+(mu/defn- ->legacy :- :legacy-mbql/query
   [query]
   (lib.convert/->legacy-MBQL query))
 

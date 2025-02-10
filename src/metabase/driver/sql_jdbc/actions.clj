@@ -10,7 +10,6 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -278,7 +277,7 @@
   [driver
    action
    database
-   {database-id :database :keys [create-row] :as query} :- ::mbql.s/Query]
+   {database-id :database :keys [create-row] :as query} :- :legacy-mbql/query]
   (let [raw-hsql    (mbql-query->raw-hsql driver query)
         create-hsql (-> raw-hsql
                         (assoc :insert-into (first (:from raw-hsql)))

@@ -4,8 +4,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.core :as legacy-mbql]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -67,7 +66,7 @@
                        (top-left :lon)
                        (bottom-right :lat)
                        (bottom-right :lon)]]
-    (update details :filter mbql.u/combine-filter-clauses inside-filter)))
+    (update details :filter legacy-mbql/combine-filter-clauses inside-filter)))
 
 ;;; --------------------------------------------------- RENDERING ----------------------------------------------------
 
@@ -182,7 +181,7 @@
         lon-field-ref (field-ref lon-field)
 
         query
-        (mbql.normalize/normalize (json/decode+kw query))
+        (legacy-mbql/normalize (json/decode+kw query))
 
         updated-query (query->tiles-query query {:zoom zoom :x x :y y
                                                  :lat-field lat-field-ref
