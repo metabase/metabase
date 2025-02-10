@@ -8,7 +8,7 @@ export function getNextJsAppSnippet({
   const getImport = (pathName: string) =>
     path.normalize(`../${generatedDir}/${pathName}`);
 
-  return `
+  const snippet = `
   import type { AppProps } from 'next/app'
 
   import { AnalyticsProvider } from "${getImport("analytics-provider")}"
@@ -26,4 +26,6 @@ export function getNextJsAppSnippet({
     )
   }
   `;
+
+  return snippet.trim();
 }
