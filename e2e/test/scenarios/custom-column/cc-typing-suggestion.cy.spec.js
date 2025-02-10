@@ -79,6 +79,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   });
 
   it("should always show the help text popover on top of the custom expression widget (metabase#52711)", () => {
+    cy.viewport(1200, 900);
     addCustomColumn();
     H.enterCustomColumnDetails({ formula: "concat", blur: false });
 
