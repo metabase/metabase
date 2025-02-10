@@ -25,24 +25,26 @@ export const getNextJsSetupMessages = async ({
 
   const snippets = [];
 
-  // If the user already has an _app.tsx or layout.tsx, we need to show them the snippet,
-  // so they can add the example providers and the example CSS to their file.
-  // Otherwise, we automatically generate the needed files.
+  let componentSnippet = `Added an analytics-demo route in your "${green(router)}" directory.\n`;
+
   if (hasNextJsCustomAppOrRootLayout) {
-    snippets.push(`
+    // If the user already has an _app.tsx or layout.tsx, we need to show them the snippet,
+    // so they can add the example providers and the example CSS to their file.
+    componentSnippet += `
   Add the example providers and the example CSS to your _app.${componentExtension} file. For example:
 
-  ${green(getNextJsCustomAppOrRootLayoutSnippet(componentPath))}`);
+  ${green(getNextJsCustomAppOrRootLayoutSnippet(componentPath))}`;
+  } else {
+    // Otherwise, we tell them that we've generated the needed files.
+    componentSnippet += `An example Next.js ${router === "app" ? "root layout" : "custom app"} is also added to your ${router} directory.`;
   }
 
-  snippets.push(`
-  Created an analytics-demo route in your "${green(router)}" directory.
+  snippets.push(componentSnippet);
 
+  snippets.push(`
   Instead of having a separate Express.js server, you can create API routes
   for them. See the examples from ${green(LINK_TO_NEXT_JS_SAMPLE)}.
-  `);
 
-  snippets.push(`
   If the import for "${packageName}" is not resolving, add the following to your tsconfig.json:
 
   ${green(`{
