@@ -49,7 +49,8 @@
 
 (defn- most-recent-cache-entry
   []
-  (t2/select-one :model/QueryCache {:order-by [[:updated_at :desc]]}))
+  (t2/select-one :model/QueryCache {:order-by [[:updated_at :desc]]
+                                    :limit 1}))
 
 (defn- expire-most-recent-cache-entry!
   "Manually expire the most recently updated cache entry by setting its updated_at back by 24 hours"

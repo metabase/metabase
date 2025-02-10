@@ -4,9 +4,11 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase-enterprise.cache.strategies :as strategies]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task :as task]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -44,10 +46,10 @@
   (.submit ^ExecutorService @pool ^Callable refresh-task-fn))
 
 (defn discarding-rff
-  "Returns a reducing function that discards result rows and returns an empty map."
+  "Returns a reducing function that discards result rows"
   [_metadata]
-  (fn default-rf
-    ([] {})
+  (fn discarding-rf
+    ([] {:rows []})
     ([result] result)
     ([result _row] result)))
 
@@ -56,19 +58,24 @@
   definition contains a card-id, an optional dashboard-id, and a list of queries to rerun."
   [refresh-defs]
   (fn []
-    (doseq [{:keys [card-id dashboard-id queries]} refresh-defs
-            query queries]
-      (try
-        (qp/process-query
-         (qp/userland-query
-          (assoc-in query [:middleware :ignore-cached-results?] true)
-          {:executed-by  nil
-           :context      :cache-refresh
-           :card-id      card-id
-           :dashboard-id dashboard-id})
-         discarding-rff)
-        (catch Exception e
-          (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e)))))))
+    (doseq [{:keys [card-id dashboard-id queries]} refresh-defs]
+      ;; Annotate the query with its cache strategy in the format expected by the QP
+      (let [cache-strategy (strategies/cache-strategy (t2/select-one :model/Card :id card-id)
+                                                      dashboard-id)]
+        (doseq [query queries]
+          (try
+            (qp/process-query
+             (qp/userland-query
+              (-> query
+                  (assoc-in [:middleware :ignore-cached-results?] true)
+                  (assoc :cache-strategy cache-strategy))
+              {:executed-by  nil
+               :context      :cache-refresh
+               :card-id      card-id
+               :dashboard-id dashboard-id})
+             discarding-rff)
+            (catch Exception e
+              (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e)))))))))
 
 (defn- duration-ago
   [{:keys [duration unit]}]
@@ -267,11 +274,10 @@
         invalidated-count
         (count
          (for [{:keys [id config refresh_automatically] :as cache-config} (select-ready-to-run :schedule)]
-           (do
-             (t2/update! :model/CacheConfig
-                         {:id id}
-                         {:next_run_at    (calc-next-run (:schedule config) now)
-                          :invalidated_at now})
+           (u/prog1 (t2/update! :model/CacheConfig
+                                {:id id}
+                                {:next_run_at    (calc-next-run (:schedule config) now)
+                                 :invalidated_at now})
              (when (and (premium-features/enable-preemptive-caching?)
                         refresh_automatically)
                (refresh-schedule-cache! cache-config)))))]
