@@ -243,9 +243,12 @@
 
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
-  [metadata-provider dataset-query]
-  (let [pMBQL-query (-> dataset-query card.metadata/normalize-dataset-query lib.convert/->pMBQL)]
-    (lib/query metadata-provider pMBQL-query)))
+  ([dataset-query]
+   (some-> (:database dataset-query)
+           lib.metadata.jvm/application-database-metadata-provider
+           (dataset-query->query dataset-query)))
+  ([metadata-provider dataset-query]
+   (some->> dataset-query card.metadata/normalize-dataset-query (lib/query metadata-provider))))
 
 (defn- card-columns-from-names
   [card names]
@@ -462,8 +465,7 @@
 (defn- check-if-card-can-be-saved
   [dataset-query card-type]
   (when (and dataset-query (= card-type :metric))
-    (when-not (lib/can-save (dataset-query->query (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-                                                  dataset-query) card-type)
+    (when-not (lib/can-save (dataset-query->query dataset-query) card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (clojure.core/name card-type))
                       {:type        card-type
                        :status-code 400})))))
@@ -563,6 +565,11 @@
            type] :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
   (check-if-card-can-be-saved dataset_query type)
+  (when-some [query (dataset-query->query dataset_query)]
+    (try
+      (lib/check-overwrite id query)
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
   (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
                                            [:moderation_reviews :moderator_details])
         card-updates           (api/updates-with-archived-directly card-before-update card-updates)
