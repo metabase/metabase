@@ -48,4 +48,4 @@
                       ");\n")
                  normalize)
              (-> (#'ai-sql-fixer.api/schema-sample query {:all-tables-limit 5})
-                   normalize))))))
+                 normalize))))))
