@@ -268,7 +268,7 @@ describe("scenarios > question > saved", () => {
     cy.url().should("include", "/dashboard/");
   });
 
-  it("should not add scrollbar to duplicate modal if question name is long", () => {
+  it("should not add scrollbar to duplicate modal if question name is long (metabase#53364)", () => {
     H.createQuestion(
       {
         name: "A".repeat(240),
