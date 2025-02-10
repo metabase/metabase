@@ -175,6 +175,7 @@
       font-style: italic;
     }
 
+    .cm-token-brace,
     .cm-token-squareBracket {
       color: var(--mb-color-brand);
     }

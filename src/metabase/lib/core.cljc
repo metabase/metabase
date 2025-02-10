@@ -120,6 +120,7 @@
  [lib.common
   external-op]
  [lib.convert
+  ->legacy-MBQL
   ->pMBQL]
  [lib.database
   database-id]
@@ -314,6 +315,7 @@
   can-preview
   can-run
   can-save
+  check-overwrite
   preview-query
   query
   stage-count

@@ -3,11 +3,10 @@ import {
   autocompletion,
   moveCompletionSelection,
 } from "@codemirror/autocomplete";
-import { insertTab } from "@codemirror/commands";
+import { indentMore } from "@codemirror/commands";
 import {
   HighlightStyle,
   foldService,
-  indentService,
   indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
@@ -28,6 +27,7 @@ import {
   type ReactCodeMirrorRef,
   StateEffect,
   StateField,
+  type Transaction,
 } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { getNonce } from "get-nonce";
@@ -95,7 +95,6 @@ export function useExtensions(query: Lib.Query): Extension[] {
       highlightTags(),
       highlightLines(),
       folds(),
-      indentation(),
       disableCmdEnter(),
     ]
       .flat()
@@ -126,7 +125,7 @@ function disableCmdEnter() {
       },
       {
         key: "Tab",
-        run: insertTab,
+        run: insertIndent,
       },
       {
         key: "Mod-j",
@@ -138,23 +137,6 @@ function disableCmdEnter() {
       },
     ]),
   );
-}
-
-function indentation() {
-  return [
-    // set indentation to tab
-    indentUnit.of("\t"),
-
-    // persist the indentation from the previous line
-    indentService.of((context, pos) => {
-      const previousLine = context.lineAt(pos, -1);
-      const previousLineText = previousLine.text.replaceAll(
-        "\t",
-        " ".repeat(context.state.tabSize),
-      );
-      return previousLineText.match(/^(\s)*/)?.[0].length ?? 0;
-    }),
-  ];
 }
 
 function nonce() {
@@ -293,6 +275,29 @@ function highlightTags() {
       decorations: instance => instance.tags,
     },
   );
+}
+
+export function insertIndent({
+  state,
+  dispatch,
+}: {
+  state: EditorState;
+  dispatch: (tr: Transaction) => void;
+}) {
+  if (state.selection.ranges.some(r => !r.empty)) {
+    return indentMore({ state, dispatch });
+  }
+
+  const indent = state.facet(indentUnit);
+
+  dispatch(
+    state.update(state.replaceSelection(indent), {
+      scrollIntoView: true,
+      userEvent: "input",
+    }),
+  );
+
+  return true;
 }
 
 const highlightLinesEffect = StateEffect.define<Range<Decoration>[]>();
