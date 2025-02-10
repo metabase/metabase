@@ -2,8 +2,8 @@ import cx from "classnames";
 import type { ElementType, HTMLAttributes } from "react";
 import { forwardRef } from "react";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import { Icon, type IconProps } from "metabase/ui";
+import { Tooltip } from "metabase/ui";
 
 import S from "./DashCardActionButton.module.css";
 
@@ -25,7 +25,9 @@ const DashActionButton = forwardRef<HTMLAnchorElement, Props>(
         className={cx(S.StyledAnchor, props.className)}
         ref={ref}
       >
-        <Tooltip tooltip={tooltip}>{children}</Tooltip>
+        <Tooltip label={tooltip} disabled={!tooltip}>
+          {children}
+        </Tooltip>
       </Component>
     );
   },
