@@ -98,7 +98,7 @@ export async function generateNextJsCustomAppOrRootLayoutFile(
 export async function generateNextJsDemoFiles({
   hasNextJsCustomAppOrRootLayout,
   reactComponentPath,
-  componentExtension,
+  componentExtension: extension,
 }: {
   hasNextJsCustomAppOrRootLayout: boolean;
   reactComponentPath: string;
@@ -116,12 +116,14 @@ export async function generateNextJsDemoFiles({
     await generateNextJsCustomAppOrRootLayoutFile(reactComponentPath);
   }
 
-  const pageComponentPath =
-    router === "app"
-      ? `app/analytics-demo/page.${componentExtension}`
-      : `pages/analytics-demo.${componentExtension}`;
-
   const snippet = await getNextJsAnalyticsPageSnippet(reactComponentPath);
 
-  fs.writeFileSync(`./${pageComponentPath}`, snippet);
+  if (router === "app") {
+    fs.mkdirSync("./app/analytics-demo", { recursive: true });
+    fs.writeFileSync(`./app/analytics-demo/page.${extension}`, snippet);
+  }
+
+  if (router === "pages") {
+    fs.writeFileSync(`./pages/analytics-demo.${extension}`, snippet);
+  }
 }
