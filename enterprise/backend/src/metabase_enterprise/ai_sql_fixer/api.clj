@@ -53,6 +53,8 @@
                   (t2.realize/realize table))))
         (t2/reducible-select [:model/Table :id :name :schema]
                              :db_id database-id
+                             :active true
+                             :visibility_type nil
                              :id [:not-in used-ids]
                              {:limit max-schema-candidate-tables})))
 
@@ -111,7 +113,11 @@
   ([query]
    (schema-sample query nil))
   ([{:keys [database] :as query} {:keys [all-tables-limit] :or {all-tables-limit max-schema-sample-tables}}]
-   (let [tables (t2/select [:model/Table :id :name :schema] :db_id database {:limit (inc all-tables-limit)})
+   (let [tables (t2/select [:model/Table :id :name :schema]
+                           :db_id database
+                           :active true
+                           :visibility_type nil
+                           {:limit (inc all-tables-limit)})
          tables (if (> (count tables) all-tables-limit)
                   (used-tables query)
                   tables)
