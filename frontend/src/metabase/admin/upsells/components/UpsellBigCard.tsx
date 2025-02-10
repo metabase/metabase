@@ -1,12 +1,11 @@
 import { useMount } from "react-use";
 
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
-import S from "./UpsellCard.module.css";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
-import C from "./Upsells.module.css";
-import { UpsellCTALink } from "./Upsells.styled";
+import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
@@ -44,7 +43,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   return (
     <Box
       data-testid="upsell-big-card"
-      className={C.UpsellBigCardComponent}
+      className={S.UpsellBigCardComponent}
       {...props}
     >
       <Flex px="xl" py="md">
@@ -56,17 +55,13 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
           <Text lh="lg" mb="lg">
             {children}
           </Text>
-          <Box
-            component={UpsellCTALink}
-            onClickCapture={() => trackUpsellClicked({ source, campaign })}
-            href={url}
+          <ExternalLink
             className={S.UpsellCTALink}
-            py="0.75rem"
-            px="md"
-            style={{ fontSize: "0.875rem" }}
+            href={url}
+            onClickCapture={() => trackUpsellClicked({ source, campaign })}
           >
             {buttonText}
-          </Box>
+          </ExternalLink>
         </Stack>
       </Flex>
       {illustrationSrc && (
