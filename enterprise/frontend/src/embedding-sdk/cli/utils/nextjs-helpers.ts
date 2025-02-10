@@ -1,4 +1,4 @@
-import fs from "fs/promises";
+import fs from "fs";
 
 import path from "path";
 
@@ -87,11 +87,11 @@ export async function generateNextJsCustomAppOrRootLayoutFile(
   const snippet = await getNextJsCustomAppOrRootLayoutSnippet(componentPath);
 
   if (router === "pages") {
-    await fs.writeFile(`./pages/_app.${extension}`, snippet);
+    fs.writeFileSync(`./pages/_app.${extension}`, snippet);
   }
 
   if (router === "app") {
-    await fs.writeFile(`./app/layout.${extension}`, snippet);
+    fs.writeFileSync(`./app/layout.${extension}`, snippet);
   }
 }
 
@@ -121,8 +121,7 @@ export async function generateNextJsDemoFiles({
       ? `app/analytics-demo/page.${componentExtension}`
       : `pages/analytics-demo.${componentExtension}`;
 
-  const pageComponentSnippet =
-    await getNextJsAnalyticsPageSnippet(reactComponentPath);
+  const snippet = await getNextJsAnalyticsPageSnippet(reactComponentPath);
 
-  await fs.writeFile(`./${pageComponentPath}`, pageComponentSnippet);
+  fs.writeFileSync(`./${pageComponentPath}`, snippet);
 }
