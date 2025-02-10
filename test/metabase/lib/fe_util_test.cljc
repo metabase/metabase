@@ -187,11 +187,11 @@
 
 (def bigint-string
   "A large integer that cannot be represented as a JS number."
-  "9007199254740992")
+  "9007199254740993")
 
 (def bigdecimal-string
   "A large decimal number that cannot be represented as a JS number."
-  "9007199254740992.10")
+  "9007199254740993.10")
 
 (deftest ^:parallel number-filter-parts-test
   (let [query  (lib.tu/venues-query)
