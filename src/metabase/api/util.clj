@@ -5,7 +5,6 @@
    [clj-http.client :as http]
    [crypto.random :as crypto-random]
    [environ.core :refer [env]]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -123,7 +122,7 @@
   "Returns database connection pool info for the current Metabase instance."
   []
   (validation/check-has-application-permission :monitoring)
-  (let [pool-info (prometheus/connection-pool-info)
+  (let [pool-info (analytics/connection-pool-info)
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
     (assoc (response/response {:connection-pools pool-info}) :headers headers, :status 200)))
 

@@ -20,7 +20,7 @@
   `(binding [*version* ~value]
      ~@body))
 
-(defn get-version "Returns `*version*` dynamic var" [] *version*)
+(defn get-version "Returns [[*version*]]." [] *version*)
 
 (def ^:dynamic *client* "Used to track information about the metabase embedding client." nil)
 
@@ -29,7 +29,7 @@
   `(binding [*client* ~value]
      ~@body))
 
-(defn get-client "Returns `*client*` dynamic var" [] *client*)
+(defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 
 (mu/defn include-sdk-info :- :map
   "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going

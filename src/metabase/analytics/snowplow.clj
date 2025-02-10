@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
-   [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.util.date-2 :as u.date]
@@ -64,71 +64,29 @@
   "Malli enum for valid Snowplow schemas"
   (into [:enum] (keys schema->version)))
 
-(defsetting analytics-uuid
-  (deferred-tru
-   (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
-        "This is a public setting since some analytics events are sent prior to initial setup."))
-  :encryption :no
-  :visibility :public
-  :base       setting/uuid-nonce-base
-  :doc        false)
-
-(defsetting snowplow-available
-  (deferred-tru
-   (str "Boolean indicating whether a Snowplow collector is available to receive analytics events. "
-        "Should be set via environment variable in Cypress tests or during local development."))
-  :type       :boolean
-  :visibility :public
-  :default    config/is-prod?
-  :doc        false
-  :audit      :never)
-
-(defsetting snowplow-enabled
-  (deferred-tru
-   (str "Boolean indicating whether analytics events are being sent to Snowplow. "
-        "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
-  :type       :boolean
-  :setter     :none
-  :getter     (fn [] (and (snowplow-available)
-                          (public-settings/anon-tracking-enabled)))
-  :visibility :public
-  :doc        false)
-
-(defsetting snowplow-url
-  (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
-  :encryption :no
-  :default    (if config/is-prod?
-                "https://sp.metabase.com"
-                ;; See the iglu-schema-registry repo for instructions on how to run Snowplow Micro locally for development
-                "http://localhost:9090")
-  :visibility :public
-  :audit      :never
-  :doc        false)
-
-(defn- first-user-creation
-  "Returns the earliest user creation timestamp in the database"
-  []
-  (:min (t2/select-one [:model/User [:%min.date_joined :min]])))
-
 ;; We need to declare `track-event!` up front so that we can use it in the custom getter of `instance-creation`.
 ;; We can't move `instance-creation` below `track-event!` because it has to be defined before `context`, which is called
 ;; by `track-event!`.
 (declare track-event!)
 
-(defsetting instance-creation
-  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
-  :visibility :public
-  :setter     :none
-  :getter     (fn []
-                (when-not (t2/exists? :model/Setting :key "instance-creation")
-                  ;; For instances that were started before this setting was added (in 0.41.3), use the creation
-                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
-                  ;; is first read.
-                  (let [value (or (first-user-creation) (t/offset-date-time))]
-                    (setting/set-value-of-type! :timestamp :instance-creation value)
-                    (track-event! ::account {:event :new_instance_created} nil)))
-                (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
-  :doc false)
+(letfn [(^{:doc "Returns the earliest user creation timestamp in the database"}
+         first-user-creation []
+         (:min (t2/select-one [:model/User [:%min.date_joined :min]])))]
+  ;; [[instance-creation]] should live in analytics.settings, but it would cause a circular dep with [[track-event!]]
+  (defsetting instance-creation
+    (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
+    :visibility :public
+    :setter     :none
+    :getter     (fn []
+                  (when-not (t2/exists? :model/Setting :key "instance-creation")
+                    ;; For instances that were started before this setting was added (in 0.41.3), use the creation
+                    ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
+                    ;; is first read.
+                    (let [value (or (first-user-creation) (t/offset-date-time))]
+                      (setting/set-value-of-type! :timestamp :instance-creation value)
+                      (track-event! ::account {:event :new_instance_created} nil)))
+                  (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
+    :doc false))
 
 (defn- tracker-config
   []
@@ -145,7 +103,7 @@
                    (.setConnectionManager (PoolingHttpClientConnectionManager.))
                    (.setDefaultRequestConfig request-config)
                    (.build))
-        http-client-adapter (ApacheHttpClientAdapter. (snowplow-url) client)]
+        http-client-adapter (ApacheHttpClientAdapter. (analytics.settings/snowplow-url) client)]
     (NetworkConfiguration. http-client-adapter)))
 
 (defn- emitter-config
@@ -186,7 +144,7 @@
   []
   (new SelfDescribingJson
        (str "iglu:com.metabase/instance/jsonschema/" (schema->version ::instance))
-       {"id"                           (analytics-uuid)
+       {"id"                           (analytics.settings/analytics-uuid)
         "version"                      {"tag" (:tag (public-settings/version))}
         "token_features"               (m/map-keys name (public-settings/token-features))
         "created_at"                   (instance-creation)
@@ -221,7 +179,7 @@
    (track-event! schema data api/*current-user-id*))
 
   ([schema :- SnowplowSchema data user-id]
-   (when (snowplow-enabled)
+   (when (analytics.settings/snowplow-enabled)
      (try
        (let [^SelfDescribing$Builder2 builder (-> (. SelfDescribing builder)
                                                   (.eventData (payload schema (schema->version schema) data))

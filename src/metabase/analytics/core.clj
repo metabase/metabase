@@ -2,11 +2,14 @@
   (:require
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.sdk :as sdk]
+   [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.analytics.stats :as stats]
    [potemkin :as p]))
 
+
 (comment
+  analytics.settings/keep-me
   prometheus/keep-me
   sdk/keep-me
   snowplow/keep-me
@@ -28,15 +31,19 @@
   with-client! get-client
   with-version! get-version]
 
- [snowplow
+ [analytics.settings
 
   analytics-uuid
-  instance-creation
+  prometheus-server-port
   snowplow-available
   snowplow-available!
   snowplow-enabled
   snowplow-url
-  snowplow-url!
+  snowplow-url!]
+
+ [snowplow
+
+  instance-creation
   track-event!]
 
  [stats
@@ -44,4 +51,3 @@
   environment-type
   legacy-anonymous-usage-stats
   phone-home-stats!])
-
