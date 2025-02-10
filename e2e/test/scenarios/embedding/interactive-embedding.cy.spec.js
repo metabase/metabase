@@ -248,13 +248,20 @@ describe("scenarios > embedding > full app", () => {
         H.popover().findByText("Orders").click();
 
         // Multi-stage data picker
+        cy.intercept("GET", "/api/search*", req => {
+          if (req.query.limit === "0") {
+            req.continue(res => {
+              // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
+              res.body.total = 100;
+            });
+          }
+        });
         H.visitFullAppEmbeddingUrl({
           url: "/collection/root",
           qs: {
             top_nav: true,
             new_button: true,
             side_nav: false,
-            multi_stage_data_picker: true,
           },
         });
 
@@ -747,11 +754,20 @@ describe("scenarios > embedding > full app", () => {
     function startNewEmbeddingQuestion({
       isMultiStageDataPicker = false,
     } = {}) {
+      if (isMultiStageDataPicker) {
+        cy.intercept("GET", "/api/search*", req => {
+          if (req.query.limit === "0") {
+            req.continue(res => {
+              // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
+              res.body.total = 100;
+            });
+          }
+        });
+      }
       H.visitFullAppEmbeddingUrl({
         url: "/",
         qs: {
           new_button: true,
-          multi_stage_data_picker: isMultiStageDataPicker,
         },
       });
       cy.button("New").click();

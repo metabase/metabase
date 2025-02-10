@@ -14,11 +14,7 @@ import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import {
-  getEmbedOptions,
-  getIsEmbedded,
-  getIsEmbeddingSdk,
-} from "metabase/selectors/embed";
+import { getIsEmbedded, getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
@@ -212,8 +208,6 @@ function EmbeddingDataPicker({
   isDisabled,
   onChange,
 }: LegacyDataPickerProps) {
-  // XXX: Flip to the previous picker when there's more than 100 data sources
-  // XXX: Make this customizable through props in interactive embedding and in the SDK
   const { data: dataSourceCountData, isLoading: isDataSourceCountLoading } =
     useSearchQuery({
       models: ["dataset", "table"],
@@ -239,17 +233,12 @@ function EmbeddingDataPicker({
   const context = useNotebookContext();
   const modelList = getModelFilterList(context, hasMetrics);
 
-  // (metabase#52889)
-  const isUserSpecifyComplexDataPicker = useSelector(
-    state => getEmbedOptions(state).multi_stage_data_picker,
-  );
-
   if (isDataSourceCountLoading) {
     return null;
   }
 
   const shouldUseSimpleDataPicker = Number(dataSourceCountData?.total) < 100;
-  if (shouldUseSimpleDataPicker && !isUserSpecifyComplexDataPicker) {
+  if (shouldUseSimpleDataPicker) {
     return (
       <SimpleDataPicker
         key={pickerInfo?.tableId}

@@ -9,7 +9,6 @@ export interface InteractiveEmbeddingOptions {
   header?: boolean;
   additional_info?: boolean;
   action_buttons?: boolean;
-  multi_stage_data_picker?: boolean;
 }
 
 export interface EmbedState {
