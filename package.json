@@ -21,6 +21,7 @@
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
     "@juggle/resize-observer": "^3.4.0",
+    "@lezer/generator": "^1.7.2",
     "@lezer/highlight": "^1.2.1",
     "@mantine/core": "^6.0.13",
     "@mantine/dates": "^6.0.13",
