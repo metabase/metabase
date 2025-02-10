@@ -17,7 +17,6 @@ describe("scenarios > collections > clean up", () => {
 
   describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
-      H.onlyOnOSS();
       cy.signInAsAdmin();
     });
 
@@ -30,8 +29,8 @@ describe("scenarios > collections > clean up", () => {
     });
   });
 
-  H.describeEE("ee", () => {
-    H.describeEE("action menu", () => {
+  describe("ee", () => {
+    describe("action menu", () => {
       it("should show in proper contexts", () => {
         cy.signInAsAdmin();
         H.setTokenFeatures("all");
