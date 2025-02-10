@@ -13,26 +13,36 @@ jobs:
     name: Check which files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 5
+    env:
+      RUN_ALL: ${{ contains(github.pull_request.head_commit.message, '[run all]') || contains(github.push.head_commit.message, '[run all]') }}
     outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
-      backend_all: ${{ steps.changes.outputs.backend_all }}
-      frontend_all: ${{ steps.changes.outputs.frontend_all }}
-      frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
+      e2e_all: ${{ steps.changes.outputs.e2e_all || env.RUN_ALL }}
+      backend_all: ${{ steps.changes.outputs.backend_all || env.RUN_ALL }}
+      frontend_all: ${{ steps.changes.outputs.frontend_all || env.RUN_ALL }}
+      frontend_sources: ${{ steps.changes.outputs.frontend_sources || env.RUN_ALL }}
     steps:
       - uses: actions/checkout@v4
+        if: ${{ !env.RUN_ALL }}
       - name: Test which files changed
+        if: ${{ !env.RUN_ALL }}
         uses: dorny/paths-filter@v3.0.0
         id: changes
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+      - name: Run all tests
+        if: ${{ env.RUN_ALL }}
+        run: |
+          echo "Running all tests"
 
   static-viz-files-changed:
     name: Check whether static-viz files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 10
+    env:
+      RUN_ALL: ${{ contains(github.pull_request.head_commit.message, '[run all]') || contains(github.push.head_commit.message, '[run all]') }}
     outputs:
-      static_viz: ${{ steps.static_viz.outputs.static_viz }}
+      static_viz: ${{ steps.static_viz.outputs.static_viz || env.RUN_ALL }}
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
