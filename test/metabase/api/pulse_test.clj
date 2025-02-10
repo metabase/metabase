@@ -1,4 +1,4 @@
-(ns metabase.api.pulse-test
+(ns ^:mb/driver-tests metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require
    [clojure.string :as str]
@@ -1109,39 +1109,9 @@
                   :recipient-type nil}
                  (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans"))))))))
 
-(defmulti native-array-query
-  {:arglists '([driver])}
-  tx/dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod native-array-query :default
-  [_driver]
-  "select array['a', 'b', 'c']")
-
-(doseq [driver [:redshift :databricks]]
-  (defmethod native-array-query driver
-    [_driver]
-    "select array('a', 'b', 'c')"))
-
-(doseq [driver [:mysql :sqlite]]
-  (defmethod native-array-query driver
-    [_driver]
-    "select json_array('a', 'b', 'c')"))
-
-(defmethod native-array-query :snowflake
-  [_driver]
-  "select array_construct('a', 'b', 'c')")
-
-(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite :vertica]]
-  (defmethod driver/database-supports? [driver :test/arrays]
-    [_driver _feature _database]
-    true))
-
 (deftest array-query-can-be-emailed-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/arrays)
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                              :type     :native
-                                                              :native   {:query (native-array-query driver/*driver*)}}}
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query (tx/native-array-query driver/*driver*)})}
                    :model/Dashboard {dashboard-id :id} {:name "Venues by Category"}
                    :model/DashboardCard _ {:card_id      card-id
                                            :dashboard_id dashboard-id}]
