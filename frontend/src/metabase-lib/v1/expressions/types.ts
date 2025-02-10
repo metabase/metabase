@@ -55,7 +55,8 @@ export type ErrorWithMessage = {
 
 export type Token = {
   type: number;
-  op?: string;
   start: number;
   end: number;
+  op?: string;
+  value?: string;
 };
