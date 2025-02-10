@@ -1,5 +1,6 @@
 import { blue, green, yellow } from "chalk";
-import path from "path";
+
+import { getNextJsAppSnippet } from "../snippets/nextjs-app";
 
 import {
   CONTAINER_NAME,
@@ -98,10 +99,13 @@ export const CONTINUE_SETUP_ON_WARNING_MESSAGE = `Do you want to continue setup?
 const LINK_TO_NEXT_JS_GUIDE = `https://www.metabase.com/docs/latest/embedding/sdk/next-js`;
 
 export const getNextJsSetupMessage = (generatedDir: string) => `
-  Please import the example CSS in your _app.js file. For example:
-  ${green(`import "${path.normalize(`../${generatedDir}/analytics.css`)}"`)}
+  Please setup the embedding provider and import an example CSS file in your
+  _app.js or _app.tsx file. For example:
+
+  ${green(getNextJsAppSnippet({ generatedDir }))}
 
   If the SDK import for /nextjs is not resolving, add the following to your tsconfig.json:
+
   ${green(`{
     "module": "NodeNext",
     "moduleResolution": "nodenext",
