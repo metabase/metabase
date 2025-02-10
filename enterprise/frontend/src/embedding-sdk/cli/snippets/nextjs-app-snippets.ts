@@ -10,8 +10,6 @@ function getNextJsCustomAppSnippet(componentPath: string) {
     path.normalize(`../${componentPath}/${pathName}`);
 
   const snippet = `
-  import type { AppProps } from 'next/app'
-
   import { AnalyticsProvider } from "${getImport("analytics-provider")}"
   import { EmbeddingProvider } from "${getImport("embedding-provider")}"
 
@@ -42,8 +40,6 @@ function getNextJsRootLayoutSnippet(componentPath: string) {
     path.normalize(`../${componentPath}/${pathName}`);
 
   const snippet = `
-  import type { AppProps } from 'next/app'
-
   import { AnalyticsProvider } from "${getImport("analytics-provider")}"
   import { EmbeddingProvider } from "${getImport("embedding-provider")}"
 
