@@ -21,22 +21,24 @@ export const getNextJsSetupMessages = async ({
 
   const router = await checkIfUsingAppOrPagesRouter();
   const isInTypeScriptProject = await checkIsInTypeScriptProject();
-  const componentExtension = isInTypeScriptProject ? "tsx" : "jsx";
+  const componentExtension = isInTypeScriptProject ? "tsx" : "js";
 
   const snippets = [];
 
-  let componentSnippet = `Added an analytics-demo route in your "${green(router)}" directory.\n`;
+  let componentSnippet = `Added an analytics-demo route to your "${green(router)}" directory.\n`;
 
   if (hasNextJsCustomAppOrRootLayout) {
-    const rootLayoutSnippet =
+    const layoutSnippet =
       await getNextJsCustomAppOrRootLayoutSnippet(componentPath);
+
+    const layoutFile = `${router === "app" ? "app/layout" : "pages/_app"}.${componentExtension}`;
 
     // If the user already has an _app.tsx or layout.tsx, we need to show them the snippet,
     // so they can add the example providers and the example CSS to their file.
     componentSnippet += `
-  Add the example providers and the example CSS to your _app.${componentExtension} file. For example:
+  Next, add the example providers and the example CSS to your ${layoutFile} file. For example:
 
-  ${green(rootLayoutSnippet)}`;
+  ${green(layoutSnippet)}`;
   } else {
     // Otherwise, we tell them that we've generated the needed files.
     componentSnippet += `An example Next.js ${router === "app" ? "root layout" : "custom app"} is also added to your ${router} directory.`;
