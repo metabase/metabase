@@ -408,7 +408,7 @@ describe("DataStep", () => {
       it("should not show the tooltip", async () => {
         setup({ isEmbeddingSdk: true });
 
-        await userEvent.hover(screen.getByText("Orders"));
+        await userEvent.hover(await screen.findByText("Orders"));
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
       });
 
@@ -419,7 +419,7 @@ describe("DataStep", () => {
             isEmbeddingSdk: true,
           });
 
-          const dataSource = screen.getByText("Orders");
+          const dataSource = await screen.findByText("Orders");
           fireEvent.click(dataSource, clickConfig);
 
           expect(await screen.findByText("Products")).toBeInTheDocument();
@@ -433,7 +433,7 @@ describe("DataStep", () => {
           isEmbeddingSdk: true,
         });
 
-        const dataSource = screen.getByText("Orders");
+        const dataSource = await screen.findByText("Orders");
         const middleClick = new MouseEvent("auxclick", {
           bubbles: true,
           button: 1,
