@@ -117,7 +117,7 @@ describe("parseNumberForColumn", () => {
       stringColumns: [bigDecimalColumn],
     },
   ])(
-    "should parse value based on the column effective type",
+    'should parse value "$value" based on the column effective type',
     ({ value, numberColumns, stringColumns }) => {
       numberColumns.forEach(column => {
         expect(parseNumberForColumn(value, column)).toBe(Number(value));
@@ -128,7 +128,7 @@ describe("parseNumberForColumn", () => {
     },
   );
 
-  it.each(["", " ", "10a", "Infinity", "-Infinity", "NaN"])(
+  it.each(["", " ", "Infinity", "-Infinity", "NaN"])(
     "should ignore invalid input",
     value => {
       columns.forEach(column => {
