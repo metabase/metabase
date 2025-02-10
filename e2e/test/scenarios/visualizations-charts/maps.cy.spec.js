@@ -241,15 +241,15 @@ describe("scenarios > visualizations > maps", () => {
       .click();
 
     cy.findByTestId("visualization-root")
-      .realMouseDown(500, 500)
-      .realMouseMove(600, 600)
-      .realMouseUp(600, 600);
+      .realMouseDown({ x: 600, y: 400 })
+      .realMouseMove(1200, 600)
+      .realMouseUp();
 
     cy.wait("@dataset");
 
     cy.get(".CardVisualization").should("exist");
     // selecting area at the map provides different filter values, so the simplified assertion is used
-    cy.findByTestId("filter-pill").should("have.length", 1);
+    cy.findAllByTestId("filter-pill").should("have.length", 1);
   });
 
   it("should handle brush filters that exceed 360 deg of longitude", () => {
