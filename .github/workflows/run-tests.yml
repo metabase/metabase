@@ -21,6 +21,10 @@ jobs:
       frontend_all: ${{ steps.changes.outputs.frontend_all || env.RUN_ALL }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources || env.RUN_ALL }}
     steps:
+      - name: test
+        run: | # bash
+          echo "env ${{ env.RUN_ALL }}"
+          echo "head_commit ${{ github.pull_request.head_commit.message }}"
       - uses: actions/checkout@v4
         if: ${{ !env.RUN_ALL }}
       - name: Test which files changed
