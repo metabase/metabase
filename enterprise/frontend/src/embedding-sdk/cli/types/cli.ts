@@ -42,6 +42,9 @@ export type CliState = Partial<{
 
   /** Directory where the React components are saved to */
   reactComponentPath: string;
+
+  /** Whether the Next.js custom app or root layout file already exists */
+  hasNextJsCustomAppOrRootLayout: boolean;
 }>;
 
 export type CliError = {

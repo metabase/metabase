@@ -56,9 +56,13 @@ export const showPostSetupSteps: CliStepMethod = async state => {
 
   // Show the Next.js setup messages if the project is using Next.js.
   if (isNextJs) {
-    const messages = await getNextJsSetupMessages(
-      state.reactComponentPath ?? "",
-    );
+    const messages = await getNextJsSetupMessages({
+      componentPath: state.reactComponentPath ?? "",
+
+      // Did the project initially have a custom app or root layout file?
+      hasNextJsCustomAppOrRootLayout:
+        state.hasNextJsCustomAppOrRootLayout ?? false,
+    });
 
     POST_SETUP_STEPS.push(...messages);
   }

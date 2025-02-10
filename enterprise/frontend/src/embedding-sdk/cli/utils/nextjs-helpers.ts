@@ -2,7 +2,7 @@ import fs from "fs";
 
 import path from "path";
 
-import { getNextJsCustomAppSnippet } from "../snippets/nextjs-app-snippets";
+import { getNextJsCustomAppOrRootLayoutSnippet } from "../snippets/nextjs-app-snippets";
 
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
 import { getProjectDependenciesFromPackageJson } from "./get-package-version";
@@ -31,7 +31,7 @@ export async function checkIsInNextJsProject() {
  * Check if the current project is using the app or page router.
  * Prioritizes the app router (more modern) if both are present.
  */
-export async function checkIfUsingAppOrPageRouter() {
+export async function checkIfUsingAppOrPagesRouter() {
   if (hasPathInProject("app")) {
     return "app";
   }
@@ -50,8 +50,8 @@ export async function checkIfUsingAppOrPageRouter() {
  * @see https://nextjs.org/docs/pages/building-your-application/routing/custom-app
  * @see https://nextjs.org/docs/app/api-reference/file-conventions/layout#root-layouts
  */
-export async function checkIfNextJsCustomAppExists() {
-  const router = await checkIfUsingAppOrPageRouter();
+export async function checkIfNextJsCustomAppOrRootLayoutExists() {
+  const router = await checkIfUsingAppOrPagesRouter();
 
   // App router uses the `app/layout` root layout file.
   if (router === "app") {
@@ -76,24 +76,20 @@ export async function checkIfNextJsCustomAppExists() {
 export const withNextJsDirective = (source: string, isNextJs: boolean) =>
   isNextJs ? `'use client'\n${source}` : source;
 
-export async function generateCustomNextJsAppOrRootLayoutFile(
-  pathPrefix: string,
+export async function generateNextJsCustomAppOrRootLayoutFile(
+  componentPath: string,
 ) {
-  const hasNextJsCustomApp = await checkIfNextJsCustomAppExists();
-
-  // Do not generate a custom app or root layout if one already exists.
-  if (hasNextJsCustomApp) {
-    return;
-  }
-
-  const router = await checkIfUsingAppOrPageRouter();
+  const router = await checkIfUsingAppOrPagesRouter();
   const isInTypeScriptProject = await checkIsInTypeScriptProject();
-  const componentExtension = isInTypeScriptProject ? "tsx" : "jsx";
+  const extension = isInTypeScriptProject ? "tsx" : "js";
+
+  const snippet = await getNextJsCustomAppOrRootLayoutSnippet(componentPath);
 
   if (router === "pages") {
-    fs.writeFileSync(
-      `./pages/_app.${componentExtension}`,
-      getNextJsCustomAppSnippet({ generatedDir: pathPrefix }),
-    );
+    fs.writeFileSync(`./pages/_app.${extension}`, snippet);
+  }
+
+  if (router === "app") {
+    fs.writeFileSync(`./app/layout.${extension}`, snippet);
   }
 }

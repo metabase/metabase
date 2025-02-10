@@ -1,15 +1,13 @@
 import path from "path";
 
+import { checkIfUsingAppOrPagesRouter } from "../utils/nextjs-helpers";
+
 /**
  * Custom app snippets for the Pages Router.
  */
-export function getNextJsCustomAppSnippet({
-  generatedDir,
-}: {
-  generatedDir: string;
-}) {
+function getNextJsCustomAppSnippet(componentPath: string) {
   const getImport = (pathName: string) =>
-    path.normalize(`../${generatedDir}/${pathName}`);
+    path.normalize(`../${componentPath}/${pathName}`);
 
   const snippet = `
   import type { AppProps } from 'next/app'
@@ -39,13 +37,9 @@ export function getNextJsCustomAppSnippet({
  *
  * @see https://nextjs.org/docs/app/api-reference/file-conventions/layout#root-layouts
  */
-export function getNextJsRootLayoutSnippet({
-  generatedDir,
-}: {
-  generatedDir: string;
-}) {
+function getNextJsRootLayoutSnippet(componentPath: string) {
   const getImport = (pathName: string) =>
-    path.normalize(`../${generatedDir}/${pathName}`);
+    path.normalize(`../${componentPath}/${pathName}`);
 
   const snippet = `
   import type { AppProps } from 'next/app'
@@ -71,4 +65,20 @@ export function getNextJsRootLayoutSnippet({
   `;
 
   return snippet.trim();
+}
+
+export async function getNextJsCustomAppOrRootLayoutSnippet(
+  componentPath: string,
+): Promise<string> {
+  const router = await checkIfUsingAppOrPagesRouter();
+
+  if (router === "app") {
+    return getNextJsRootLayoutSnippet(componentPath);
+  }
+
+  if (router === "pages") {
+    return getNextJsCustomAppSnippet(componentPath);
+  }
+
+  return "";
 }
