@@ -1,4 +1,4 @@
-(ns metabase.models.user-key-value
+(ns metabase.user-key-value.models.user-key-value
   "This namespace allows the frontend to store and retrieve arbitrary key-value pairs for individual users in the
   database.
 
@@ -34,7 +34,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase.models.user-key-value.types :as types]
+   [metabase.user-key-value.models.user-key-value.types :as types]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
