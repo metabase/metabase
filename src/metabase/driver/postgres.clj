@@ -520,7 +520,7 @@
 
     ;; postgres returns timestamp or timestamptz from `date_trunc`, so cast back if we've got a date column
     "date"
-    (h2x/cast "date" [:date_trunc (h2x/literal unit) (->timestamp expr)])
+    (h2x/cast "date" [:date_trunc (h2x/literal unit) expr])
 
     #_else
     (let [expr' (->timestamp expr)]
