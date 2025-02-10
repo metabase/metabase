@@ -12,6 +12,7 @@
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
+   [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -191,6 +192,16 @@
    [:email :string]
    [:schedule ::subscription-schedule]])
 
+(mr/def ::find-metric-result
+  [:or
+   [:map [:structured_output [:map
+                              [:id :int]
+                              [:name :string]
+                              [:description [:maybe :string]]
+                              [:default_time_dimension_field_id [:maybe ::result-column]]
+                              [:queryable_dimensions [:sequential ::result-column]]]]]
+   [:map [:output :string]]])
+
 (mr/def ::generate-insights-arguments
   [:map
    {:encode/api-request #(update-keys % u/->kebab-case-en)
@@ -216,6 +227,20 @@
     (doto (-> (metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription arguments)
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/find-metric" :- [:merge ::find-metric-result ::tool-request]
+  "Construct a query from a metric."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments [:map [:message :string]]]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log body :llm.log/llm->be)
+  (doto (-> (mc/decode ::find-metric-result
+                       (metabot-v3.tools.find-metric/find-metric arguments)
+                       (mtx/transformer {:name :api-response}))
+            (assoc :conversation_id conversation_id))
+    (metabot-v3.context/log :llm.log/be->llm)))
 
 (api.macros/defendpoint :post "/generate-insights" :- [:merge
                                                        [:map
