@@ -149,6 +149,7 @@
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired."
   [session-key anti-csrf-token]
   (when (and session-key (init-status/complete?))
+    (api/validate-session-key session-key)
     (let [sql    (session-with-id-query (mdb/db-type)
                                         (config/config-int :max-session-age)
                                         (if (seq anti-csrf-token) :full-app-embed :normal)

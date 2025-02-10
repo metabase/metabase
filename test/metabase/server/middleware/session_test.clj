@@ -16,7 +16,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -176,6 +177,18 @@
               :user              {:id    (mt/user->id :crowberto)
                                   :email (:email (mt/fetch-user :crowberto))}}
              (simple-auth-handler {:headers {"x-api-key" "mb_superuser"}}))))))
+
+(deftest cannot-use-session-id-for-auth
+  (testing "The session id is checked on requests, but only for uuid-formatted keys. Allowing users to auth with core_session.id values would be a security risk."
+    (try
+      (t2/insert! :model/Session {:id         test-session-id
+                                  :key_hashed test-session-key-hashed
+                                  :user_id    (mt/user->id :lucky)})
+      (is (thrown? ExceptionInfo
+            (#'mw.session/current-user-info-for-session test-session-id nil)))
+      (finally
+        (t2/delete! :model/Session :id test-session-id)))))
+
 
 (deftest current-user-info-for-session-test
   (testing "make sure the `current-user-info-for-session` logic is working correctly"
