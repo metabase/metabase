@@ -281,10 +281,12 @@ jobs:
           no-cache: true
           push: true
       - name: Launch ${{ matrix.edition }} Ubuntu based container
-        run: docker run --rm -dp 3001:3000 localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}-ubuntu
+        run: docker run --rm -dp 3001:3000 --name metabase localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}-ubuntu
         timeout-minutes: 5
       - name: Is Docker with Ubuntu running?
         run: docker ps
+      - name: See what's happening inside metabase container
+        run: docker logs metabase -f
       - name: Wait for Ubuntu-based Metabase container to start and reach 100% health
         run: while ! curl 'http://localhost:3001/api/health' | grep '{"status":"ok"}'; do sleep 1; done
         timeout-minutes: 3
