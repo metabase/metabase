@@ -51,10 +51,9 @@
 
 (def ^:private Base64EncodedJSON
   [:fn
-   {:description "base-64 encoded JSON"
+   {:description "form-encoded base-64-encoded JSON"
     :error/fn    (fn [_ _]
-                   (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))
-    :api/regex   #"[A-Za-z0-9+/=]+"}
+                   (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))}
    decode-base64-json])
 
 (api.macros/defendpoint :get "/database/:id/candidates"
@@ -337,8 +336,8 @@
     (automagic-dashboards.comparison/comparison-dashboard dashboard left right {})))
 
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
-  "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;
-   compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
+  "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template
+  `dashboard-template`; compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
   [{:keys [entity entity-id-or-query prefix dashboard-template
            comparison-entity comparison-entity-id-or-query]} :- [:map
                                                                  [:entity             Entity]
