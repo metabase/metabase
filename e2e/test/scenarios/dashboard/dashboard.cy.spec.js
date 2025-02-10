@@ -1242,7 +1242,7 @@ describe("scenarios > dashboard", () => {
       createNewDashboard();
       H.createNewTab();
       assertPreventLeave();
-      H.saveDashboard({ waitMs: 250 }); // editing immediately after saving can cause flaky test behavior, add a wait step first
+      H.saveDashboard();
 
       // move tab
       H.editDashboard();
@@ -1251,19 +1251,19 @@ describe("scenarios > dashboard", () => {
       cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
       cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
       assertPreventLeave();
-      H.saveDashboard({ waitMs: 250 }); // editing immediately after saving can cause flaky test behavior, add a wait step first
+      H.saveDashboard();
 
       // duplicate tab
       H.editDashboard();
       H.duplicateTab("Tab 1");
       assertPreventLeave();
-      H.saveDashboard({ waitMs: 250 }); // editing immediately after saving can cause flaky test behavior, add a wait step first
+      H.saveDashboard();
 
       // remove tab
       H.editDashboard();
       H.deleteTab("Copy of Tab 1");
       assertPreventLeave();
-      H.saveDashboard({ waitMs: 250 }); // editing immediately after saving can cause flaky test behavior, add a wait step first
+      H.saveDashboard();
 
       // rename tab
       H.editDashboard();
