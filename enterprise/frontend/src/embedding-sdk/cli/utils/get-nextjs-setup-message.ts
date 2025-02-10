@@ -8,7 +8,6 @@ import { getNextJsCustomAppOrRootLayoutSnippet } from "../snippets/nextjs-app-sn
 
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
 import { checkIfUsingAppOrPagesRouter } from "./nextjs-helpers";
-import { getSdkPackageName } from "./snippets-helpers";
 
 export const getNextJsSetupMessages = async ({
   componentPath,
@@ -17,8 +16,6 @@ export const getNextJsSetupMessages = async ({
   componentPath: string;
   hasNextJsCustomAppOrRootLayout: boolean;
 }): Promise<string[]> => {
-  const packageName = getSdkPackageName({ isNextJs: true });
-
   const router = await checkIfUsingAppOrPagesRouter();
   const isInTypeScriptProject = await checkIsInTypeScriptProject();
   const componentExtension = isInTypeScriptProject ? "tsx" : "js";
@@ -48,13 +45,6 @@ export const getNextJsSetupMessages = async ({
   snippets.push(`
   Instead of having a separate Express.js server, you can create API routes
   for them. See the examples from ${green(LINK_TO_NEXT_JS_SAMPLE)}.
-
-  If the import for "${packageName}" is not resolving, add the following to your tsconfig.json:
-
-  ${green(`{
-    "module": "NodeNext",
-    "moduleResolution": "nodenext",
-  }`)}
 
   For guides on using Next.js with Embedding SDK, see
   ${green(LINK_TO_NEXT_JS_GUIDE)}
