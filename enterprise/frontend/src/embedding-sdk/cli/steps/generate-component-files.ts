@@ -14,7 +14,7 @@ import { getComponentSnippets } from "../utils/get-component-snippets";
 import {
   checkIfNextJsCustomAppOrRootLayoutExists,
   checkIsInNextJsProject,
-  generateNextJsCustomAppOrRootLayoutFile,
+  generateNextJsDemoFiles,
 } from "../utils/nextjs-helpers";
 import { printError, printSuccess } from "../utils/print";
 
@@ -94,12 +94,14 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     exportIndexContent,
   );
 
-  const hasNextJsCustomApp = await checkIfNextJsCustomAppOrRootLayoutExists();
+  const hasNextJsCustomAppOrRootLayout =
+    await checkIfNextJsCustomAppOrRootLayoutExists();
 
-  // Generates a custom app.tsx or layout.tsx file if they do not exist yet.
-  if (isNextJs && !hasNextJsCustomApp) {
-    await generateNextJsCustomAppOrRootLayoutFile(reactComponentPath);
-  }
+  await generateNextJsDemoFiles({
+    hasNextJsCustomAppOrRootLayout,
+    reactComponentPath,
+    componentExtension,
+  });
 
   printSuccess(getGeneratedComponentFilesMessage(reactComponentPath));
 
@@ -108,7 +110,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     {
       ...state,
       reactComponentPath,
-      hasNextJsCustomAppOrRootLayout: hasNextJsCustomApp,
+      hasNextJsCustomAppOrRootLayout: hasNextJsCustomAppOrRootLayout,
     },
   ];
 };

@@ -1,8 +1,9 @@
-import fs from "fs";
+import fs from "fs/promises";
 
 import path from "path";
 
 import { getNextJsCustomAppOrRootLayoutSnippet } from "../snippets/nextjs-app-snippets";
+import { getNextJsAnalyticsPageSnippet } from "../snippets/nextjs-page-snippet";
 
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
 import { getProjectDependenciesFromPackageJson } from "./get-package-version";
@@ -86,10 +87,42 @@ export async function generateNextJsCustomAppOrRootLayoutFile(
   const snippet = await getNextJsCustomAppOrRootLayoutSnippet(componentPath);
 
   if (router === "pages") {
-    fs.writeFileSync(`./pages/_app.${extension}`, snippet);
+    await fs.writeFile(`./pages/_app.${extension}`, snippet);
   }
 
   if (router === "app") {
-    fs.writeFileSync(`./app/layout.${extension}`, snippet);
+    await fs.writeFile(`./app/layout.${extension}`, snippet);
   }
+}
+
+export async function generateNextJsDemoFiles({
+  hasNextJsCustomAppOrRootLayout,
+  reactComponentPath,
+  componentExtension,
+}: {
+  hasNextJsCustomAppOrRootLayout: boolean;
+  reactComponentPath: string;
+  componentExtension: string;
+}) {
+  const isNextJs = await checkIsInNextJsProject();
+  const router = await checkIfUsingAppOrPagesRouter();
+
+  if (!isNextJs) {
+    return;
+  }
+
+  // Generates a custom app.tsx or layout.tsx file if they do not exist yet.
+  if (!hasNextJsCustomAppOrRootLayout) {
+    await generateNextJsCustomAppOrRootLayoutFile(reactComponentPath);
+  }
+
+  const pageComponentPath =
+    router === "app"
+      ? `app/analytics-demo/page.${componentExtension}`
+      : `pages/analytics-demo.${componentExtension}`;
+
+  const pageComponentSnippet =
+    await getNextJsAnalyticsPageSnippet(reactComponentPath);
+
+  await fs.writeFile(`./${pageComponentPath}`, pageComponentSnippet);
 }
