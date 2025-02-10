@@ -460,8 +460,15 @@
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
   ;; Postgres doesn't support quarter in intervals (#20683)
-  (if (= unit :quarter)
+  (cond
+    (= unit :quarter)
     (recur driver hsql-form (* 3 amount) :month)
+
+    ;; interval addition implicitly converts to timestamp, so cast back to date
+    (h2x/is-of-type? hsql-form "date")
+    (h2x/cast "date" (h2x/+ hsql-form (interval amount unit)))
+
+    :else
     (let [hsql-form (->timestamp hsql-form)]
       (-> (h2x/+ hsql-form (interval amount unit))
           (h2x/with-type-info (h2x/type-info hsql-form))))))
@@ -510,6 +517,10 @@
 
     "timetz"
     (h2x/cast "timetz" (time-trunc unit expr))
+
+    ;; postgres returns timestamp or timestamptz from `date_trunc`, so cast back if we've got a date column
+    "date"
+    (h2x/cast "date" [:date_trunc (h2x/literal unit) (->timestamp expr)])
 
     #_else
     (let [expr' (->timestamp expr)]
