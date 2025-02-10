@@ -35,9 +35,8 @@ export function withDifferentDatabase(
   query: Query,
   databaseId: DatabaseId,
   metadata: MetadataProvider,
-  nativeExtras?: NativeExtras,
 ): Query {
-  return ML.with_different_database(query, databaseId, metadata, nativeExtras);
+  return ML.with_different_database(query, databaseId, metadata);
 }
 
 export function engine(query: Query): string | null {
