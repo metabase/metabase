@@ -1,4 +1,7 @@
+import userEvent from "@testing-library/user-event";
+
 import { createMockMetadata } from "__support__/metadata";
+import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { createMockField } from "metabase-types/api/mocks";
@@ -8,13 +11,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { parseNumberForColumn } from "./numbers";
-
-type NumberForColumnTestCase = {
-  value: string;
-  numberColumns: Lib.ColumnMetadata[];
-  stringColumns: Lib.ColumnMetadata[];
-};
+import { NumberFilterInput } from "./NumberFilterInput";
 
 const TEST_METADATA = createMockMetadata({
   databases: [
@@ -61,7 +58,22 @@ const TEST_METADATA = createMockMetadata({
   ],
 });
 
-describe("parseNumberForColumn", () => {
+type SetupOpts = {
+  value?: Lib.NumberFilterValue | "";
+  column: Lib.ColumnMetadata;
+};
+
+function setup({ value = "", column }: SetupOpts) {
+  const onChange = jest.fn();
+  renderWithProviders(
+    <NumberFilterInput value={value} column={column} onChange={onChange} />,
+  );
+
+  const input = screen.getByRole("textbox");
+  return { input, onChange };
+}
+
+describe("NumberFilterInput", () => {
   const query = createQuery({ metadata: TEST_METADATA });
   const columns = Lib.filterableColumns(query, -1);
   const findColumn = columnFinder(query, columns);
@@ -70,70 +82,31 @@ describe("parseNumberForColumn", () => {
   const bigIntegerColumn = findColumn("ORDERS", "BIGINTEGER");
   const bigDecimalColumn = findColumn("ORDERS", "DECIMAL");
 
-  it.each<NumberForColumnTestCase>([
-    {
-      value: "10",
-      numberColumns: [
-        integerColumn,
-        floatColumn,
-        bigIntegerColumn,
-        bigDecimalColumn,
-      ],
-      stringColumns: [],
-    },
-    {
-      value: Number.MAX_SAFE_INTEGER.toString(),
-      numberColumns: [
-        integerColumn,
-        floatColumn,
-        bigIntegerColumn,
-        bigDecimalColumn,
-      ],
-      stringColumns: [],
-    },
-    {
-      value: Number.MIN_SAFE_INTEGER.toString(),
-      numberColumns: [
-        integerColumn,
-        floatColumn,
-        bigIntegerColumn,
-        bigDecimalColumn,
-      ],
-      stringColumns: [],
-    },
-    {
-      value: "9007199254740993",
-      numberColumns: [integerColumn, floatColumn],
-      stringColumns: [bigIntegerColumn, bigDecimalColumn],
-    },
-    {
-      value: "10.1",
-      numberColumns: [integerColumn, floatColumn, bigIntegerColumn],
-      stringColumns: [bigDecimalColumn],
-    },
-    {
-      value: "9007199254740993.1",
-      numberColumns: [integerColumn, floatColumn, bigIntegerColumn],
-      stringColumns: [bigDecimalColumn],
-    },
-  ])(
-    "should parse value based on the column effective type",
-    ({ value, numberColumns, stringColumns }) => {
-      numberColumns.forEach(column => {
-        expect(parseNumberForColumn(value, column)).toBe(Number(value));
-      });
-      stringColumns.forEach(column => {
-        expect(parseNumberForColumn(value, column)).toBe(value);
-      });
-    },
-  );
+  it("should allow to enter a value for a integer column", async () => {
+    const { input, onChange } = setup({ column: integerColumn });
+    await userEvent.type(input, "10");
+    await userEvent.click(document.body);
+    expect(onChange).toHaveBeenCalledWith(10);
+  });
 
-  it.each(["10a", "Infinity", "-Infinity", "NaN"])(
-    "should ignore invalid input",
-    value => {
-      columns.forEach(column => {
-        expect(parseNumberForColumn(value, column)).toBeNull();
-      });
-    },
-  );
+  it("should allow to enter a value for a float column", async () => {
+    const { input, onChange } = setup({ column: floatColumn });
+    await userEvent.type(input, "10.1");
+    await userEvent.click(document.body);
+    expect(onChange).toHaveBeenCalledWith(10.1);
+  });
+
+  it("should allow to enter a value for a big integer column", async () => {
+    const { input, onChange } = setup({ column: bigIntegerColumn });
+    await userEvent.type(input, "9007199254740993");
+    await userEvent.click(document.body);
+    expect(onChange).toHaveBeenCalledWith("9007199254740993");
+  });
+
+  it("should allow to enter a value for a big decimal column", async () => {
+    const { input, onChange } = setup({ column: bigDecimalColumn });
+    await userEvent.type(input, "10.1");
+    await userEvent.click(document.body);
+    expect(onChange).toHaveBeenCalledWith("10.1");
+  });
 });
