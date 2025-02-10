@@ -14,7 +14,7 @@ import { printEmptyLines, printWithPadding } from "../utils/print";
 export const showPostSetupSteps: CliStepMethod = async state => {
   const isNextJs = await checkIsInNextJsProject();
 
-  const STEP_1 = `
+  const START_SERVER_STEP = `
   Generated an example Express.js server directory in "${state.mockServerDir}".
 
   Start the sample server.
@@ -27,7 +27,7 @@ export const showPostSetupSteps: CliStepMethod = async state => {
     componentDir: state.reactComponentDir,
   });
 
-  const STEP_2 = `
+  const REACT_COMPONENT_IMPORT_STEP = `
   Import the component in your React frontend. For example:
   ${green(`import { AnalyticsPage } from "${importPath}";`)}
 
@@ -38,7 +38,7 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   ${green(`<AnalyticsPage />`)}
 `;
 
-  const STEP_3 = getMetabaseInstanceSetupCompleteMessage(
+  const INSTANCE_READY_STEP = getMetabaseInstanceSetupCompleteMessage(
     state.instanceUrl ?? "",
     state.email ?? "",
     state.password ?? "",
@@ -47,10 +47,12 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   const POST_SETUP_STEPS = [];
 
   if (state.token) {
-    POST_SETUP_STEPS.push(STEP_1);
+    POST_SETUP_STEPS.push(START_SERVER_STEP);
   }
 
-  POST_SETUP_STEPS.push(STEP_2);
+  if (!isNextJs) {
+    POST_SETUP_STEPS.push(REACT_COMPONENT_IMPORT_STEP);
+  }
 
   // Show the Next.js setup messages if the project is using Next.js.
   if (isNextJs) {
@@ -61,7 +63,7 @@ export const showPostSetupSteps: CliStepMethod = async state => {
     POST_SETUP_STEPS.push(...messages);
   }
 
-  POST_SETUP_STEPS.push(STEP_3);
+  POST_SETUP_STEPS.push(INSTANCE_READY_STEP);
 
   for (const message of POST_SETUP_STEPS) {
     printWithPadding(message);
