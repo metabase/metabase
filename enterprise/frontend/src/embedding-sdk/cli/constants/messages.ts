@@ -101,6 +101,12 @@ export const getNextJsSetupMessage = (generatedDir: string) => `
   Please import the example CSS in your _app.js file. For example:
   ${green(`import "${path.normalize(`../${generatedDir}/analytics.css`)}"`)}
 
+  If the SDK import for /nextjs is not resolving, add the following to your tsconfig.json:
+  ${green(`{
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+  }`)}
+
   For guides on using Next.js with Embedding SDK, see
   ${green(LINK_TO_NEXT_JS_GUIDE)}
 `;
