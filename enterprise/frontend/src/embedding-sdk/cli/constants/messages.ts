@@ -6,6 +6,16 @@ import {
   SDK_NPM_LINK,
 } from "./config";
 
+export const SHOW_ON_STARTUP_MESSAGE = `
+  This will spin up a local Metabase instance via Docker and help you get
+  an embedded dashboard in your app. You cannot connect to an existing
+  Metabase instance using this tool.
+
+  Note that the default setup with API keys won’t work in production.
+  It's only intended for you to quickly try out the SDK on your local machine.
+  A production setup requires a Pro/Enterprise license and SSO with JWT.
+`;
+
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
   Please run this command from the root of your project.
