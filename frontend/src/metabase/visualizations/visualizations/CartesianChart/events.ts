@@ -222,12 +222,6 @@ const computeDiffWithPreviousPeriod = (
   const previousValue =
     chartModel.transformedDataset[dataIndex - 1]?.[seriesModel.dataKey];
 
-  // console.log({
-  //   dataIndex,
-  //   currentValue,
-  //   currentDate: currentDate.toISOString(),
-  //   previousValue,
-  // });
   if (previousValue == null || currentValue == null) {
     return null;
   }

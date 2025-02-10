@@ -158,9 +158,8 @@ export const useChartEvents = (
           }
 
           const hoveredObject = getSeriesHovered(chartModel, event);
-          const isSameDatumHovered =
-            hoveredObject?.index === hovered?.index &&
-            hoveredObject?.datumIndex === hovered?.datumIndex;
+          const isSameDatumHovered = hoveredObject?.index === hovered?.index;
+          // hoveredObject?.datumIndex === hovered?.datumIndex;
 
           if (!isSameDatumHovered) {
             onHoverChange?.(hoveredObject);
