@@ -77,9 +77,7 @@ export async function checkIfNextJsCustomAppOrRootLayoutExists() {
 export const withNextJsDirective = (source: string, isNextJs: boolean) =>
   isNextJs ? `'use client'\n${source}` : source;
 
-export async function generateNextJsCustomAppOrRootLayoutFile(
-  componentPath: string,
-) {
+async function generateNextJsCustomAppOrRootLayoutFile(componentPath: string) {
   const router = await checkIfUsingAppOrPagesRouter();
   const isInTypeScriptProject = await checkIsInTypeScriptProject();
   const extension = isInTypeScriptProject ? "tsx" : "js";
