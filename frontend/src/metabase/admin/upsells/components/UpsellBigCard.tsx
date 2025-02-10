@@ -47,10 +47,10 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
       className={C.UpsellBigCardComponent}
       {...props}
     >
-      <Flex px="md">
+      <Flex px="xl" py="md">
         <UpsellGem size={24} />
-        <Stack spacing={0} ml="0.75rem">
-          <Title order={1} lh="lg" mb="sm">
+        <Stack align="flex-start" spacing={0} ml="0.75rem" maw="18.75rem">
+          <Title order={1} lh={1} mb="sm">
             {title}
           </Title>
           <Text lh="lg" mb="lg">
@@ -63,13 +63,15 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
             className={S.UpsellCTALink}
             py="0.75rem"
             px="md"
-            style={{ fontSize: "0.875rem", alignSelf: "flex-start" }}
+            style={{ fontSize: "0.875rem" }}
           >
             {buttonText}
           </Box>
         </Stack>
       </Flex>
-      {illustrationSrc && <Image src={illustrationSrc} w="100%" />}
+      {illustrationSrc && (
+        <Image src={illustrationSrc} p="md" pl={0} width="auto" />
+      )}
     </Box>
   );
 };

@@ -25,15 +25,14 @@
 .UpsellBigCardComponent {
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
-  overflow: hidden;
-  padding: 1rem;
   display: flex;
-  flex-wrap: nowrap;
   align-items: center;
+  flex-wrap: nowrap;
+  max-width: fit-content;
+  overflow: hidden;
 
   img {
-    align-self: stretch;
-    min-height: 350px;
-    aspect-ratio: 2/1;
+    aspect-ratio: 4/3;
+    max-height: 21.875rem;
   }
 }
