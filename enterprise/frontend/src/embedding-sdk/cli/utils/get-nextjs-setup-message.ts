@@ -7,6 +7,7 @@ import {
 import { getNextJsCustomAppOrRootLayoutSnippet } from "../snippets/nextjs-app-snippets";
 
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
+import { checkIfUsingAppOrPagesRouter } from "./nextjs-helpers";
 import { getSdkPackageName } from "./snippets-helpers";
 
 export const getNextJsSetupMessages = async ({
@@ -18,6 +19,7 @@ export const getNextJsSetupMessages = async ({
 }): Promise<string[]> => {
   const packageName = getSdkPackageName({ isNextJs: true });
 
+  const router = await checkIfUsingAppOrPagesRouter();
   const isInTypeScriptProject = await checkIsInTypeScriptProject();
   const componentExtension = isInTypeScriptProject ? "tsx" : "jsx";
 
@@ -34,9 +36,13 @@ export const getNextJsSetupMessages = async ({
   }
 
   snippets.push(`
+  Created an analytics-demo route in your "${green(router)}" directory.
+
   Instead of having a separate Express.js server, you can create API routes
   for them. See the examples from ${green(LINK_TO_NEXT_JS_SAMPLE)}.
+  `);
 
+  snippets.push(`
   If the import for "${packageName}" is not resolving, add the following to your tsconfig.json:
 
   ${green(`{
