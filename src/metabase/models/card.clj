@@ -15,7 +15,6 @@
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -32,6 +31,7 @@
    [metabase.models.pulse :as models.pulse]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.permissions.core :as perms]
@@ -46,7 +46,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -78,25 +77,8 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defn dataset-query->query
-  "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
-  [metadata-provider dataset-query]
-  (let [pMBQL-query (-> dataset-query card.metadata/normalize-dataset-query lib.convert/->pMBQL)]
-    (lib/query metadata-provider pMBQL-query)))
-
-;;; TODO -- this stuff should probably be rolled into `can-write?`
-(mu/defn check-if-card-can-be-saved
-  "Check whether the a Card with `dataset-query` can be saved."
-  [{dataset-query :dataset_query, card-type :type, :as _card} :- [:map
-                                                                  [:type {:optional true} :keyword]]]
-  (when (and dataset-query (= card-type :metric))
-    (when-not (lib/can-save (dataset-query->query (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-                                                  dataset-query) card-type)
-      (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
-                      {:type        card-type
-                       :status-code 400})))))
-
-(defn check-permissions-for-query
+;;; TODO -- this should be part of `can-write?`/`can-update?` and be done automatically
+(defn check-run-permissions-for-query
   "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
   queries they wouldn't be allowed to run!"
   [query]
@@ -115,10 +97,6 @@
                        :actual-perms   @api/*current-user-permissions-set*}
                       (when (instance? Throwable required-perms)
                         required-perms))))))
-
-;; TODO -- super duper concerning that the `can-write?` method for a Card doesn't call [[check-if-card-can-be-saved]]
-;; and [[check-permissions-for-query]]. AFAIK some of the Card API endpoints call them but it seems worrisome that this
-;; is not part of this method
 
 (defmethod mi/can-write? :model/Card
   ([instance]
@@ -347,6 +325,30 @@
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
+
+;;; --------------------------------------------------- Revisions ----------------------------------------------------
+
+(def ^:private excluded-columns-for-card-revision
+  [:id :created_at :updated_at :last_used_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version
+   :initially_published_at :cache_invalidated_at :view_count])
+
+(defmethod revision/revert-to-revision! :model/Card
+  [model id user-id serialized-card]
+  ;; make sure we handle < 50 cards that had `:dataset` instead of `:type`
+  (let [serialized-card (cond-> serialized-card
+                          (contains? serialized-card :dataset) (-> (dissoc :dataset)
+                                                                   (assoc :type (if (:dataset serialized-card) :model :question))))]
+    ((get-method revision/revert-to-revision! :default) model id user-id serialized-card)))
+
+(defmethod revision/serialize-instance :model/Card
+  ([instance]
+   (revision/serialize-instance :model/Card nil instance))
+  ([_model _id instance]
+   (cond-> (apply dissoc instance excluded-columns-for-card-revision)
+     ;; datasets should preserve edits to metadata
+     ;; the type check only needed in tests because most test object does not include `type` key
+     (and (some? (:type instance)) (not (model? instance)))
+     (dissoc :result_metadata))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -830,8 +832,8 @@
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
   (t2/delete! :model/ParameterCard :card_id id)
-  (t2/delete! :model/ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (t2/delete! :model/Revision :model "Card", :model_id id))
+  (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
+  (t2/delete! 'Revision :model "Card", :model_id id))
 
 ;; NOTE: The columns required for this hashing must be kept in sync with [[ensure-clause-idents]].
 (defmethod serdes/hash-fields :model/Card

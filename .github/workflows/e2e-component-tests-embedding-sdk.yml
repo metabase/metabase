@@ -111,6 +111,7 @@ jobs:
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
+      CYPRESS_IS_EMBEDDING_SDK: true
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
@@ -154,8 +155,14 @@ jobs:
       - name: Build Embedding SDK package
         run: yarn build-embedding-sdk
 
-      - name: Run E2E tests for Embedding SDK
-        run: yarn run test-cypress-run-component-sdk --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Make app db snapshot
+        run: node e2e/runner/run_cypress_ci.js snapshot --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Run component tests for Embedding SDK
+        run: node e2e/runner/run_cypress_ci.js component --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results

@@ -17,7 +17,8 @@
    [metabase.revisions.init]
    [metabase.search.init]
    [metabase.sync.init]
-   [metabase.task.init]))
+   [metabase.task.init]
+   [metabase.user-key-value.init]))
 
 ;; load EE init code on system launch if it exists.
 (when (and (not *compile-files*)

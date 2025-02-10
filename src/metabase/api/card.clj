@@ -26,12 +26,13 @@
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
+   [metabase.models.query.permissions :as query-perms]
+   [metabase.models.revision.last-edit :as last-edit]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
-   [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
@@ -159,7 +160,7 @@
       :using_metric  (api/read-check :model/Database (db-id-via-table :metric model-id))
       :using_segment (api/read-check :model/Database (db-id-via-table :segment model-id))))
   (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
-        last-edit-info (:card (revisions/fetch-last-edited-info {:card-ids (map :id cards)}))]
+        last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
     (into []
           (map (fn [{:keys [id] :as card}]
                  (if-let [edit-info (get last-edit-info id)]
@@ -199,7 +200,7 @@
 (defn get-card
   "Get `Card` with ID."
   [id]
-  (let [with-last-edit-info #(first (revisions/with-last-edit-info [%] :card))
+  (let [with-last-edit-info #(first (last-edit/with-last-edit-info [%] :card))
         raw-card (t2/select-one :model/Card :id id)]
     (-> raw-card
         api/read-check
@@ -240,6 +241,15 @@
       (api/write-check dashboard))
     (map #(dissoc % :collection_id :description :archived) dashboards)))
 
+(defn- dataset-query->query
+  "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
+  ([dataset-query]
+   (some-> (:database dataset-query)
+           lib.metadata.jvm/application-database-metadata-provider
+           (dataset-query->query dataset-query)))
+  ([metadata-provider dataset-query]
+   (some->> dataset-query card.metadata/normalize-dataset-query (lib/query metadata-provider))))
+
 (defn- card-columns-from-names
   [card names]
   (when-let [names (set names)]
@@ -254,7 +264,7 @@
                                                          :source/breakouts :graph.dimensions
                                                          :source/aggregations :graph.metrics)])]
     (cols->kebab-case (card-columns-from-names card names))
-    (->> (card/dataset-query->query (get database-id->metadata-provider (:database_id card)) (:dataset_query card))
+    (->> (dataset-query->query (get database-id->metadata-provider (:database_id card)) (:dataset_query card))
          lib/returned-columns
          (filter (comp #{source} :lib/source)))))
 
@@ -425,11 +435,18 @@
       :last-cursor last_cursor
       :page-size   (request/limit)})))
 
-
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
 (mr/def ::card-type
   (into [:enum {:decode/json keyword}] card/card-types))
+
+(defn- check-if-card-can-be-saved
+  [dataset-query card-type]
+  (when (and dataset-query (= card-type :metric))
+    (when-not (lib/can-save (dataset-query->query dataset-query) card-type)
+      (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (clojure.core/name card-type))
+                      {:type        card-type
+                       :status-code 400})))))
 
 (api.macros/defendpoint :post "/"
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
@@ -437,7 +454,8 @@
    _query-params
    {collection-id :collection_id
     query         :dataset_query
-    :as           card} :- [:map
+    card-type     :type
+    :as           body} :- [:map
                             [:name                   ms/NonBlankString]
                             [:type                   {:optional true} [:maybe ::card-type]]
                             [:dataset_query          ms/Map]
@@ -453,14 +471,16 @@
                             [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
                             [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
                             [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]]]
-  (card/check-if-card-can-be-saved card)
+  (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
-  (card/check-permissions-for-query query)
+  (card/check-run-permissions-for-query query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection-id)
-  (-> (card/create-card! card @api/*current-user*)
-      hydrate-card-details
-      (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))
+  (let [body (cond-> body
+               (string? (:type body)) (update :type keyword))]
+    (-> (card/create-card! body @api/*current-user*)
+        hydrate-card-details
+        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 (api.macros/defendpoint :post "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
@@ -471,7 +491,7 @@
         new-card  (assoc orig-card :name new-name)]
     (-> (card/create-card! new-card @api/*current-user*)
         hydrate-card-details
-        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
+        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
@@ -480,7 +500,7 @@
   [card-before-updates card-updates]
   (let [card-updates (m/update-existing card-updates :dataset_query card.metadata/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-      (card/check-permissions-for-query (:dataset_query card-updates)))))
+      (card/check-run-permissions-for-query (:dataset_query card-updates)))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -522,7 +542,12 @@
            result_metadata
            type] :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
-  (card/check-if-card-can-be-saved card-updates)
+  (check-if-card-can-be-saved dataset_query type)
+  (when-some [query (dataset-query->query dataset_query)]
+    (try
+      (lib/check-overwrite id query)
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
   (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
                                            [:moderation_reviews :moderator_details])
         card-updates           (api/updates-with-archived-directly card-before-update card-updates)
@@ -561,7 +586,7 @@
                                                                      :actor                 @api/*current-user*
                                                                      :delete-old-dashcards? delete-old-dashcards?})
                                                  hydrate-card-details
-                                                 (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))]
+                                                 (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))]
       ;; We expose the search results for models and metrics directly in FE grids, from which items can be archived.
       ;; The grid is then refreshed synchronously with the latest search results, so we need this change to be
       ;; reflected synchronously.

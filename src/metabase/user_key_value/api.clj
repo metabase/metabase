@@ -1,4 +1,4 @@
-(ns metabase.api.user-key-value
+(ns metabase.user-key-value.api
   (:require
    [malli.core :as mc]
    [malli.experimental.time.transform :as mett]
@@ -6,8 +6,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.literal]
-   [metabase.models.user-key-value :as user-key-value]
-   [metabase.models.user-key-value.types :as types]
+   [metabase.user-key-value.models.user-key-value :as user-key-value]
+   [metabase.user-key-value.models.user-key-value.types :as types]
    [metabase.util.malli.schema :as ms]))
 
 (api.macros/defendpoint :put "/namespace/:namespace/key/:key"

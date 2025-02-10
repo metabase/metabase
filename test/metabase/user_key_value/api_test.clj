@@ -1,8 +1,11 @@
-(ns metabase.api.user-key-value-test
+(ns metabase.user-key-value.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.user-key-value.types :as user-kv.types]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.user-key-value.init]
+   [metabase.user-key-value.models.user-key-value.types :as user-kv.types]))
+
+(comment metabase.user-key-value.init/keep-me)
 
 (def ^:private test-types-dir
   "These schemas are only loaded in tests.
@@ -10,10 +13,7 @@
   They should ONLY be used for testing the UserKeyValue store itself."
   "test_user_key_value_types")
 
-(use-fixtures :once
-  (fn [f]
-    (user-kv.types/load-all-schemas-prod test-types-dir)
-    (f)))
+(user-kv.types/load-all-schemas-prod! test-types-dir)
 
 (deftest it-works
   (mt/with-model-cleanup [:model/UserKeyValue]
