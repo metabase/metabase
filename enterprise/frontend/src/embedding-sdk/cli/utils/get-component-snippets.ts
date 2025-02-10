@@ -56,12 +56,17 @@ export function getComponentSnippets(options: Options): SampleComponent[] {
       componentName: "ThemeSwitcher",
       content: THEME_SWITCHER_SNIPPET.trim(),
     },
-    {
+  ];
+
+  // Only generate the analytics page when not using Next.js.
+  // This is to prevent unintentionally adding multiple providers to pages.
+  if (!isNextJs) {
+    components.push({
       fileName: "analytics-page",
       componentName: "AnalyticsPage",
       content: getAnalyticsPageSnippet({ isNextJs }).trim(),
-    },
-  ];
+    });
+  }
 
   // Only generate the user switcher when multi-tenancy is enabled.
   if (userSwitcherEnabled) {
