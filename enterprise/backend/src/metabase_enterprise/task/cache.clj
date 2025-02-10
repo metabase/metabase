@@ -59,8 +59,7 @@
   [refresh-defs]
   (fn []
     (let [card-ids    (into #{} (map :card-id refresh-defs))
-          cards       (t2/select :model/Card :id [:in card-ids])
-          cards-by-id (group-by :id cards)]
+          cards-by-id (t2/select-pk->fn identity :model/Card :id [:in card-ids])]
       (doseq [{:keys [card-id dashboard-id queries]} refresh-defs]
         ;; Annotate the query with its cache strategy in the format expected by the QP
         (let [cache-strategy (strategies/cache-strategy (first (get cards-by-id card-id)) dashboard-id)]
