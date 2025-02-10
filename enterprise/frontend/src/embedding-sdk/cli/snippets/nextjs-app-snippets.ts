@@ -10,21 +10,21 @@ function getNextJsCustomAppSnippet(componentPath: string) {
     path.normalize(`../${componentPath}/${pathName}`);
 
   const snippet = `
-  import { AnalyticsProvider } from "${getImport("analytics-provider")}"
-  import { EmbeddingProvider } from "${getImport("embedding-provider")}"
+import { AnalyticsProvider } from "${getImport("analytics-provider")}"
+import { EmbeddingProvider } from "${getImport("embedding-provider")}"
 
-  import "${getImport("analytics.css")}"
+import "${getImport("analytics.css")}"
 
-  export default function CustomApp({ Component, pageProps }) {
-    return (
-      <AnalyticsProvider>
-        <EmbeddingProvider>
-          <Component {...pageProps} />
-        </EmbeddingProvider>
-      </AnalyticsProvider>
-    )
-  }
-  `;
+export default function CustomApp({ Component, pageProps }) {
+  return (
+    <AnalyticsProvider>
+      <EmbeddingProvider>
+        <Component {...pageProps} />
+      </EmbeddingProvider>
+    </AnalyticsProvider>
+  )
+}
+`;
 
   return snippet.trim();
 }
@@ -40,24 +40,24 @@ function getNextJsRootLayoutSnippet(componentPath: string) {
     path.normalize(`../${componentPath}/${pathName}`);
 
   const snippet = `
-  import { AnalyticsProvider } from "${getImport("analytics-provider")}"
-  import { EmbeddingProvider } from "${getImport("embedding-provider")}"
+import { AnalyticsProvider } from "${getImport("analytics-provider")}"
+import { EmbeddingProvider } from "${getImport("embedding-provider")}"
 
-  import "${getImport("analytics.css")}"
+import "${getImport("analytics.css")}"
 
-  export default function RootLayout({children}) {
-    return (
-      <html>
-        <body>
-          <AnalyticsProvider>
-            <EmbeddingProvider>
-              {children}
-            </EmbeddingProvider>
-          </AnalyticsProvider>
-        </body>
-      </html>
-    )
-  }
+export default function RootLayout({children}) {
+  return (
+    <html>
+      <body>
+        <AnalyticsProvider>
+          <EmbeddingProvider>
+            {children}
+          </EmbeddingProvider>
+        </AnalyticsProvider>
+      </body>
+    </html>
+  )
+}
   `;
 
   return snippet.trim();
