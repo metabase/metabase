@@ -1204,6 +1204,13 @@
     "@lezer/lr" "^1.0.0"
     style-mod "^4.0.0"
 
+"@codemirror/legacy-modes@^6.4.2":
+  version "6.4.2"
+  resolved "https://registry.yarnpkg.com/@codemirror/legacy-modes/-/legacy-modes-6.4.2.tgz#723a55aae21304d4c112575943d3467c9040d217"
+  integrity sha512-HsvWu08gOIIk303eZQCal4H4t65O/qp1V4ul4zVa3MHK5FJ0gz3qz3O55FIkm+aQUcshUOjBx38t2hPiJwW5/g==
+  dependencies:
+    "@codemirror/language" "^6.0.0"
+
 "@codemirror/lint@^6.0.0":
   version "6.8.2"
   resolved "https://registry.yarnpkg.com/@codemirror/lint/-/lint-6.8.2.tgz#7864b03583e9efd18554cff1dd4504da10338ab1"
