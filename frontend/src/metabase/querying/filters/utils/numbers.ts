@@ -1,7 +1,7 @@
 import * as Lib from "metabase-lib";
 
 const INTEGER_REGEX = /^[+-]?\d+$/;
-const DECIMAL_REGEX = /^[+-]?\d+(\.\d+)?$/;
+const DECIMAL_REGEX = /^[+-]?\d+\.?\d*$/;
 
 export function parseNumberForColumn(
   value: string,
