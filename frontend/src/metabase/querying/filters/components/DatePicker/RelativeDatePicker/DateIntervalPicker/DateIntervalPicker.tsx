@@ -100,7 +100,7 @@ export function DateIntervalPicker({
         <IncludeCurrentSwitch value={value} onChange={onChange} />
       </Flex>
       <Divider />
-      <Group px="md" py="sm" justify="apart">
+      <Group px="md" py="sm" justify="space-between">
         <Group c="var(--mb-color-text-secondary)" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
