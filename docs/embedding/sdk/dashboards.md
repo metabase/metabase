@@ -38,7 +38,7 @@ You can embed a dashboard using the one of the dashboard components:
 
 _\* Not available for `StaticDashboard`._
 
-_\*\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk and is against our terms](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParaters` to declutter the user interface is fine._
+_\*\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParaters` to declutter the user interface is fine._
 
 By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
 

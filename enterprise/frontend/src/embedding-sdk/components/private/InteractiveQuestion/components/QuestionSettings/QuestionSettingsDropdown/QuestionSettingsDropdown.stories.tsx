@@ -2,13 +2,13 @@ import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Stack } from "metabase/ui";
 
-import { QuestionSettings } from "./QuestionSettings";
+import { QuestionSettingsDropdown } from "./QuestionSettingsDropdown";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 11;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/QuestionSettings",
-  component: QuestionSettings,
+  title: "EmbeddingSDK/InteractiveQuestion/QuestionSettingsDropdown",
+  component: QuestionSettingsDropdown,
   parameters: {
     layout: "fullscreen",
   },
@@ -21,7 +21,9 @@ export const Default = {
       <Box p="lg">
         <InteractiveQuestion questionId={QUESTION_ID}>
           <Stack>
-            <InteractiveQuestion.QuestionSettings />
+            <Box>
+              <InteractiveQuestion.QuestionSettingsDropdown />
+            </Box>
             <InteractiveQuestion.QuestionVisualization />
           </Stack>
         </InteractiveQuestion>
