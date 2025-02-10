@@ -29,7 +29,6 @@
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
@@ -38,6 +37,7 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
    [metabase.models.revision.last-edit :as last-edit]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -1015,7 +1015,7 @@
                     [:id ms/PositiveInt]]
    {dashboard-load-id :dashboard_load_id}]
   (with-dashboard-load-id dashboard-load-id
-    (data-perms/with-relevant-permissions-for-user api/*current-user-id*
+    (perms/with-relevant-permissions-for-user api/*current-user-id*
       (let [dashboard (get-dashboard id)]
         (api.query-metadata/batch-fetch-dashboard-metadata [dashboard])))))
 
@@ -1088,10 +1088,11 @@
   [_route-params
    _query-params
    dashboard]
-  (let [parent-collection-id (if api/*is-superuser?*
-                               (:id (xrays/get-or-create-root-container-collection))
-                               (t2/select-one-fn :id 'Collection
-                                                 :personal_owner_id api/*current-user-id*))
+  (let [parent-collection-id (:id (xrays/get-or-create-container-collection
+                                   (if api/*is-superuser?*
+                                     "/"
+                                     (collection/children-location
+                                      (t2/select-one :model/Collection :personal_owner_id api/*current-user-id*)))))
         dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))

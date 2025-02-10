@@ -120,7 +120,7 @@ describe("scenarios > browse > metrics", () => {
     });
   });
 
-  describe("multiple metrics", () => {
+  describe("multiple metrics", { tags: "@flaky" }, () => {
     it("can browse metrics", () => {
       createMetrics(ALL_METRICS);
       cy.visit("/browse/metrics");
@@ -231,7 +231,7 @@ describe("scenarios > browse > metrics", () => {
     });
   });
 
-  describe("dot menu", () => {
+  describe("dot menu", { tags: "@flaky" }, () => {
     it("should be possible to bookmark a metrics from the dot menu", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
 
@@ -285,8 +285,12 @@ describe("scenarios > browse > metrics", () => {
         .should("be.visible");
 
       H.navigationSidebar().findByText("Trash").should("be.visible").click();
+      cy.intercept("/api/bookmark").as("bookmark"); // anti-flake guard
       cy.button("Actions").click();
       H.popover().findByText("Restore").should("be.visible").click();
+
+      H.main().findByText("Nothing here").should("be.visible");
+      cy.wait("@bookmark");
 
       H.navigationSidebar().findByText("Metrics").should("be.visible").click();
       metricsTable().findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
@@ -342,8 +346,8 @@ describe("scenarios > browse > metrics", () => {
     });
   });
 
-  describe("verified metrics", () => {
-    H.describeEE("on enterprise", () => {
+  describe("verified metrics", { tags: "@flaky" }, () => {
+    describe("on enterprise", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
         H.setTokenFeatures("all");

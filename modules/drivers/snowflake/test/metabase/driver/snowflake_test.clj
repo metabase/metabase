@@ -780,6 +780,16 @@
         (is (= {:account "my-instance.us-west-1"}
                (:details db)))))))
 
+(deftest ^:parallel normalize-use-password-test
+  (mt/test-driver :snowflake
+    (testing "details should be normalized coming out of the DB"
+      (mt/with-temp [:model/Database db {:name    "Legacy Snowflake DB"
+                                         :engine  :snowflake,
+                                         :details {:password (mt/random-name)}}]
+        (is (=? {:password string?
+                 :use-password true}
+                (:details db)))))))
+
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a USE ROLE command, with the role quoted if it contains special characters"
     ;; No special characters

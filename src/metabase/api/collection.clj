@@ -23,10 +23,9 @@
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.pulse :as models.pulse]
    [metabase.models.revision.last-edit :as last-edit]
-   [metabase.models.timeline :as timeline]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.upload :as upload]
@@ -983,27 +982,6 @@
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
   (collection-detail (api/read-check (collection/trash-collection))))
-
-(api.macros/defendpoint :get "/root/timelines"
-  "Fetch the root Collection's timelines."
-  [_route-params
-   {:keys [include archived]} :- [:map
-                                  [:include  {:optional true} [:maybe [:= "events"]]]
-                                  [:archived {:default false} [:maybe :boolean]]]]
-  (api/read-check collection/root-collection)
-  (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
-                                          :timeline/archived? archived}))
-
-(api.macros/defendpoint :get "/:id/timelines"
-  "Fetch a specific Collection's timelines."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [include archived]} :- [:map
-                                  [:include  {:optional true} [:maybe [:= "events"]]]
-                                  [:archived {:default false} [:maybe :boolean]]]]
-  (api/read-check (t2/select-one :model/Collection :id id))
-  (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
-                                         :timeline/archived? archived}))
 
 (api.macros/defendpoint :get "/:id/items"
   "Fetch a specific Collection's items with the following options:

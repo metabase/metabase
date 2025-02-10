@@ -3,21 +3,18 @@
    [clojure.string :as str]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.permissions.util :as perms.u]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.search.config
-    :as search.config
-    :refer [SearchableModel SearchContext]]
+   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -64,16 +61,16 @@
         user-id     (:current-user-id search-ctx)
         db-id       (database/table-id->database-id instance-id)]
     (and
-     (data-perms/user-has-permission-for-table? user-id :perms/view-data :unrestricted db-id instance-id)
-     (data-perms/user-has-permission-for-table? user-id :perms/create-queries :query-builder db-id instance-id))))
+     (perms/user-has-permission-for-table? user-id :perms/view-data :unrestricted db-id instance-id)
+     (perms/user-has-permission-for-table? user-id :perms/create-queries :query-builder db-id instance-id))))
 
 (defmethod check-permissions-for-model :indexed-entity
   [search-ctx instance]
   (let [user-id (:current-user-id search-ctx)
         db-id   (:database_id instance)]
     (and
-     (= :query-builder-and-native (data-perms/full-db-permission-for-user user-id :perms/create-queries db-id))
-     (= :unrestricted (data-perms/full-db-permission-for-user user-id :perms/view-data db-id)))))
+     (= :query-builder-and-native (perms/full-db-permission-for-user user-id :perms/create-queries db-id))
+     (= :unrestricted (perms/full-db-permission-for-user user-id :perms/view-data db-id)))))
 
 (defmethod check-permissions-for-model :metric
   [search-ctx instance]
@@ -251,7 +248,7 @@
    [:is-impersonated-user?               {:optional true} :boolean]
    [:is-sandboxed-user?                  {:optional true} :boolean]
    [:is-superuser?                                        :boolean]
-   [:current-user-perms                                   [:set perms.u/PathSchema]]
+   [:current-user-perms                                   [:set perms/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]

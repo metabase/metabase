@@ -104,6 +104,20 @@
       (is (not (me/humanize (mr/explain mbql.s/Query query))))
       (is (= query (mbql.s/validate-query query))))))
 
+(deftest ^:parallel year-of-era-test
+  (testing "year-of-era aggregations should be recognized"
+    (let [query {:database 1,
+                 :type :query,
+                 :query
+                 {:source-table 5,
+                  :aggregation [[:count]],
+                  :breakout [[:field 49 {:base-type :type/Date, :temporal-unit :year-of-era, :source-field 43}]],
+                  :aggregation-idents {0 "sAl2I4RGqYvmLw1lfJinY"},
+                  :breakout-idents {0 "N7YYtmSRsForQqViDhkrg"}},
+                 :parameters []}]
+      (is (not (me/humanize (mr/explain mbql.s/Query query))))
+      (is (= query (mbql.s/validate-query query))))))
+
 (deftest ^:parallel aggregation-reference-test
   (are [schema] (nil? (me/humanize (mr/explain schema [:aggregation 0])))
     mbql.s/aggregation

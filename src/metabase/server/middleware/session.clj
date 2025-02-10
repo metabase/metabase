@@ -207,14 +207,14 @@
 ;;; |                                               bind-current-user                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; this is actually used by [[metabase.models.permissions/clear-current-user-cached-permissions!]]
+;;; this is actually used by [[metabase.permissions.models.permissions/clear-current-user-cached-permissions!]]
 ;;;
 ;;; TODO -- then why doesn't it live there??? Not one single thing this touches is part of this namespace.
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn clear-current-user-cached-permissions-set!
   "If [[metabase.api.common/*current-user-permissions-set*]] is bound, reset it so it gets recalculated on next use.
-  Called by [[metabase.models.permissions/delete-related-permissions!]]
-  and [[metabase.models.permissions/grant-permissions!]], mostly as a convenience for tests that bind a current user
+  Called by [[metabase.permissions.models.permissions/delete-related-permissions!]]
+  and [[metabase.permissions.models.permissions/grant-permissions!]], mostly as a convenience for tests that bind a current user
   and then grant or revoke permissions for that user without rebinding it."
   []
   (when-let [current-user-id api/*current-user-id*]

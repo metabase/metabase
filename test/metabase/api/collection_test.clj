@@ -12,16 +12,16 @@
    [metabase.models.collection-test :as collection-test]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.graph-test :as graph.test]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (java.time ZoneId ZonedDateTime)))
+   (java.time ZonedDateTime ZoneId)))
 
 (set! *warn-on-reflection* true)
 
@@ -2495,96 +2495,6 @@
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)})))))))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                          GET /api/collection/root|:id/timelines                                                |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- timelines-request
-  [collection include-events?]
-  (if include-events?
-    (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/timelines") :include "events")
-    (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/timelines"))))
-
-(defn- timeline-names [timelines]
-  (->> timelines (map :name) set))
-
-(defn- event-names [timelines]
-  (->> timelines (mapcat :events) (map :name) set))
-
-(deftest timelines-test
-  (testing "GET /api/collection/root|id/timelines"
-    (mt/with-temp [:model/Collection coll-a {:name "Collection A"}
-                   :model/Collection coll-b {:name "Collection B"}
-                   :model/Collection coll-c {:name "Collection C"}
-                   :model/Timeline tl-a      {:name          "Timeline A"
-                                              :collection_id (u/the-id coll-a)}
-                   :model/Timeline tl-b      {:name          "Timeline B"
-                                              :collection_id (u/the-id coll-b)}
-                   :model/Timeline _tl-b-old {:name          "Timeline B-old"
-                                              :collection_id (u/the-id coll-b)
-                                              :archived      true}
-                   :model/Timeline _tl-c     {:name          "Timeline C"
-                                              :collection_id (u/the-id coll-c)}
-                   :model/TimelineEvent _event-aa {:name        "event-aa"
-                                                   :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _event-ab {:name        "event-ab"
-                                                   :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _event-ba {:name        "event-ba"
-                                                   :timeline_id (u/the-id tl-b)}
-                   :model/TimelineEvent _event-bb {:name        "event-bb"
-                                                   :timeline_id (u/the-id tl-b)
-                                                   :archived    true}]
-      (testing "Timelines in the collection of the card are returned"
-        (is (= #{"Timeline A"}
-               (timeline-names (timelines-request coll-a false)))))
-      (testing "Timelines in the collection have a hydrated `:collection` key"
-        (is (= #{(u/the-id coll-a)}
-               (->> (timelines-request coll-a false)
-                    (map #(get-in % [:collection :id]))
-                    set))))
-      (testing "check that `:can_write` key is hydrated"
-        (is (every?
-             #(contains? % :can_write)
-             (map :collection (timelines-request coll-a false)))))
-      (testing "Only un-archived timelines in the collection of the card are returned"
-        (is (= #{"Timeline B"}
-               (timeline-names (timelines-request coll-b false)))))
-      (testing "Timelines have events when `include=events` is passed"
-        (is (= #{"event-aa" "event-ab"}
-               (event-names (timelines-request coll-a true)))))
-      (testing "Timelines have only un-archived events when `include=events` is passed"
-        (is (= #{"event-ba"}
-               (event-names (timelines-request coll-b true)))))
-      (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
-        (is (= '()
-               (->> (timelines-request coll-c true) first :events)))))))
-
-(deftest timelines-permissions-test
-  (testing "GET /api/collection/id/timelines"
-    (mt/with-temp [:model/Collection coll-a {:name "Collection A"}
-                   :model/Timeline tl-a      {:name          "Timeline A"
-                                              :collection_id (u/the-id coll-a)}
-                   :model/TimelineEvent _event-aa {:name        "event-aa"
-                                                   :timeline_id (u/the-id tl-a)}]
-      (testing "You can't query a collection's timelines if you don't have perms on it."
-        (perms/revoke-collection-permissions! (perms-group/all-users) coll-a)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id coll-a) "/timelines") :include "events"))))
-      (testing "If we grant perms, then we can read the timelines"
-        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-a)
-        (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id coll-a) "/timelines") :include "events"))))
-  (testing "GET /api/collection/root/timelines"
-    (mt/with-temp [:model/Timeline tl-a      {:name          "Timeline A"
-                                              :collection_id nil}
-                   :model/TimelineEvent _event-aa {:name        "event-aa"
-                                                   :timeline_id (u/the-id tl-a)}]
-      (testing "You can't query a collection's timelines if you don't have perms on it."
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "collection/root/timelines" :include "events")))))
-      (testing "If we grant perms, then we can read the timelines"
-        (mt/user-http-request :rasta :get 200 "collection/root/timelines" :include "events")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |

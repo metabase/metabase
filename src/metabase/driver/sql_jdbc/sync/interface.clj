@@ -54,7 +54,10 @@
 (defmulti database-type->base-type
   "Given a native DB column type (as a keyword), return the corresponding `Field` `base-type`, which should derive from
   `:type/*`. You can use `pattern-based-database-type->base-type` in this namespace to implement this using regex
-  patterns."
+  patterns.
+
+  If you need to get mapping for dynamic (eg. user defined), that could require database call, check out
+  the `driver/dynamic-database-types-lookup`."
   {:added "0.37.1" :arglists '([driver database-type])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
