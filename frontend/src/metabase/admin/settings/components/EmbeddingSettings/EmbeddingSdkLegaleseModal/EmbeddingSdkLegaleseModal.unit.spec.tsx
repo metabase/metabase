@@ -52,9 +52,10 @@ describe("EmbeddingSdkLegaleseModal", () => {
       { key: "enable-embedding-sdk" },
       true,
     );
-    expect(onClose).toHaveBeenCalled();
 
-    jest.useRealTimers();
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled();
+    });
   });
 
   it("should not update settings when the user clicks Decline", async () => {

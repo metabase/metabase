@@ -23,7 +23,7 @@ export const RightViewFooterButtonGroup = () => {
   const isObjectDetail = useSelector(getIsObjectDetail);
 
   return (
-    <Group wrap="nowrap" position="right" className={S.Root}>
+    <Group wrap="nowrap" justify="right" className={S.Root}>
       {QuestionRowCount.shouldRender({
         result,
         isObjectDetail,
