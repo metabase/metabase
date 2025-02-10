@@ -9,35 +9,90 @@ const {
 const folder = args["--folder"];
 const isFolder = !!folder;
 
-const isOpenMode = args["--open"];
+const DEFAULT_PORT = 4000;
+const getHost = () =>
+  `http://localhost:${process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
 
 const getSourceFolder = folder => {
   return `./e2e/test/scenarios/${folder}/**/*.cy.spec.{js,ts}`;
 };
 
-const runCypress = async (baseUrl, exitFunction = console.log) => {
+// This is a map of all possible Cypress configurations we can run.
+const configs = {
+  e2e: async () => {
+    const defaultConfig = {
+      browser: "chrome",
+      configFile: "e2e/support/cypress.config.js",
+      config: {
+        baseUrl: getHost(),
+      },
+      testingType: "e2e",
+      spec: isFolder && getSourceFolder(folder),
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
+    };
+
+    const userArgs = await parseArguments(args);
+    const finalConfig = Object.assign({}, defaultConfig, userArgs);
+    return finalConfig;
+  },
+  snapshot: async () => {
+    // We only ever care about a browser out of all possible user arguments,
+    // when it comes to the snapshot generation.
+    // Anything else could result either in a failure or in a wrong database snapshot!
+    const { browser } = await parseArguments(args);
+
+    const snapshotConfig = {
+      browser: browser ?? "chrome",
+      configFile: "e2e/support/cypress-snapshots.config.js",
+      config: {
+        baseUrl: getHost(),
+      },
+      testingType: "e2e",
+      openMode: false,
+    };
+
+    return snapshotConfig;
+  },
+  component: async () => {
+    const { browser } = await parseArguments(args);
+
+    const sdkComponentConfig = {
+      browser: browser ?? "chrome",
+      configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
+      config: {
+        baseUrl: getHost(),
+      },
+      testingType: "component",
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
+    };
+
+    return sdkComponentConfig;
+  },
+};
+
+/**
+ * This simply runs cypress through the javascript API rather than the CLI, and
+ * lets us conditionally load a config file and some other options along with it.
+ */
+const runCypress = async (suite = "e2e", exitFunction) => {
+  if (!configs[suite]) {
+    console.error(
+      `Invalid suite: ${suite}, try one of: ${Object.keys(configs)}`,
+    );
+    await exitFunction(1);
+  }
+
   await executeYarnCommand({
     command: "yarn run clean-cypress-artifacts",
     message: "Removing the existing Cypress artifacts\n",
   });
 
-  const defaultConfig = {
-    browser: "chrome",
-    configFile: "e2e/support/cypress.config.js",
-    config: {
-      baseUrl,
-    },
-    spec: isFolder && getSourceFolder(folder),
-  };
-
-  const userArgs = await parseArguments(args);
-
-  const finalConfig = Object.assign({}, defaultConfig, userArgs);
+  const config = await configs[suite]();
 
   try {
-    const { status, message, totalFailed, failures } = isOpenMode
-      ? await cypress.open(finalConfig)
-      : await cypress.run(finalConfig);
+    const { status, message, totalFailed, failures } = config.openMode
+      ? await cypress.open(config)
+      : await cypress.run(config);
 
     // At least one test failed, so let's generate HTML report that helps us determine what went wrong
     if (totalFailed > 0) {

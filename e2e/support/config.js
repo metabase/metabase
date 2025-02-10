@@ -29,8 +29,6 @@ const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
 const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
-const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
-
 const isEmbeddingSdk = process.env.CYPRESS_IS_EMBEDDING_SDK === "true";
 
 // docs say that tsconfig paths should handle aliases, but they don't
@@ -160,13 +158,6 @@ const defaultConfig = {
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
     config.env.TARGET_VERSION = targetVersion;
-    // Set on local, development-mode runs only
-    config.env.feHealthcheck = {
-      enabled: feHealthcheckEnabled,
-      url: feHealthcheckEnabled
-        ? "http://localhost:8080/webpack-dev-server/"
-        : undefined,
-    };
 
     require("@cypress/grep/src/plugin")(config);
 
