@@ -24,7 +24,7 @@ export const getNextJsSetupMessages = async ({
 
   const layoutFile = `${router === "app" ? "app/layout" : "pages/_app"}.${componentExtension}`;
 
-  let componentSnippet = `Added an analytics-demo route to your "${green(router)}" directory.\n`;
+  let componentSnippet = `Added an ${green("/analytics-demo")} route to your "${green(router)}" directory.\n`;
 
   if (hasNextJsCustomAppOrRootLayout) {
     const layoutSnippet =
