@@ -78,6 +78,7 @@ export function NotebookDataPicker({
         stageIndex={stageIndex}
         table={table}
         placeholder={placeholder}
+        canChangeDatabase={canChangeDatabase}
         hasMetrics={hasMetrics}
         isDisabled={isDisabled}
         onChange={handleChange}
@@ -194,6 +195,7 @@ type LegacyDataPickerProps = {
   stageIndex: number;
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder: string;
+  canChangeDatabase: boolean;
   hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
@@ -204,6 +206,7 @@ function EmbeddingDataPicker({
   stageIndex,
   table,
   placeholder,
+  canChangeDatabase,
   hasMetrics,
   isDisabled,
   onChange,
@@ -242,8 +245,7 @@ function EmbeddingDataPicker({
     return (
       <SimpleDataPicker
         key={pickerInfo?.tableId}
-        // XXX: Add join across DB tests
-        selectedDatabaseId={databaseId}
+        filterByDatabaseId={canChangeDatabase ? null : databaseId}
         selectedEntity={pickerInfo?.tableId}
         isInitiallyOpen={!table}
         triggerElement={

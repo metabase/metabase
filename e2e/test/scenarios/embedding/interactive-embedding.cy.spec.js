@@ -403,8 +403,29 @@ describe("scenarios > embedding > full app", () => {
           cy.signInAsAdmin();
           startNewEmbeddingQuestion();
           selectFirstDataSource("Orders");
+
+          cy.log(
+            "assert that even after selecting a data source from one database, the data picker still shows the other data sources database",
+          );
+          cy.findByTestId("data-step-cell").click();
+          H.popover().findAllByRole("button").should("have.length", 13);
+
+          cy.log("close the data picker popover");
+          cy.findByTestId("data-step-cell").click();
+
+          cy.log(
+            "assert that the data sources should be filtered by the selected database from the starting data source.",
+          );
+          H.getNotebookStep("data").button("Join data").click();
+          H.popover().findAllByRole("button").should("have.length", 8);
+          selectDataSource("Accounts");
+
           verifyTableSelected({
             tableName: "Orders",
+            databaseName: "QA Postgres12",
+          });
+          verifyTableSelected({
+            tableName: "Accounts",
             databaseName: "QA Postgres12",
           });
         },
