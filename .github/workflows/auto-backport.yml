@@ -71,7 +71,7 @@ jobs:
         uses: ./.github/actions/create-backport
         with:
           target-version: ${{ fromJson(steps.get-latest-release-version.outputs.result).latest }}
-          backport-commit: ${{ steps.find_commit.outputs.commit-sha }}
+          backport-commit: ${{ steps.find_commit.outputs.commit }}
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           github-token-2: ${{ secrets.GITHUB_TOKEN }}
 
@@ -80,7 +80,7 @@ jobs:
         uses: ./.github/actions/create-backport
         with:
           target-version: ${{ fromJson(steps.get-latest-release-version.outputs.result).secondLatest }}
-          backport-commit: ${{ steps.find_commit.outputs.commit-sha }}
+          backport-commit: ${{ steps.find_commit.outputs.commit }}
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           github-token-2: ${{ secrets.GITHUB_TOKEN }}
 
@@ -89,6 +89,6 @@ jobs:
         uses: ./.github/actions/create-backport
         with:
           target-version: ${{ fromJson(steps.get-latest-release-version.outputs.result).thirdLatest }}
-          backport-commit: ${{ steps.find_commit.outputs.commit-sha }}
+          backport-commit: ${{ steps.find_commit.outputs.commit }}
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           github-token-2: ${{ secrets.GITHUB_TOKEN }}
