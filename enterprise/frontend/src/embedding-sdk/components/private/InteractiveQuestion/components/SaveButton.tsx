@@ -1,3 +1,4 @@
+import type { ButtonProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -20,11 +21,7 @@ export const shouldShowSaveButton = ({
   return Boolean(isQuestionChanged && canSave);
 };
 
-export const SaveButton = ({
-  onClick,
-}: {
-  onClick?: () => void;
-} = {}) => {
+export const SaveButton = (buttonProps: ButtonProps = {}) => {
   const { question, originalQuestion } = useInteractiveQuestionContext();
 
   const isSaveButtonEnabled = shouldShowSaveButton({
@@ -36,7 +33,7 @@ export const SaveButton = ({
     <ToolbarButton
       label="Save"
       disabled={!isSaveButtonEnabled}
-      onClick={onClick}
+      {...buttonProps}
     />
   );
 };

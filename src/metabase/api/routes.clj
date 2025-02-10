@@ -37,7 +37,6 @@
    [metabase.api.pulse.unsubscribe]
    [metabase.api.revision]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.search]
    [metabase.api.segment]
    [metabase.api.session]
    [metabase.api.setting]
@@ -46,8 +45,6 @@
    [metabase.api.task]
    [metabase.api.testing]
    [metabase.api.tiles]
-   [metabase.api.timeline]
-   [metabase.api.timeline-event]
    [metabase.api.user]
    [metabase.api.user-key-value]
    [metabase.api.util]
@@ -55,8 +52,10 @@
    [metabase.channel.api]
    [metabase.config :as config]
    [metabase.permissions.api]
+   [metabase.search.api]
    [metabase.setup.api]
    [metabase.sync.api]
+   [metabase.timeline.api]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase.api.action/keep-me
@@ -93,8 +92,6 @@
          metabase.api.task/keep-me
          metabase.api.testing/keep-me
          metabase.api.tiles/keep-me
-         metabase.api.timeline/keep-me
-         metabase.api.timeline-event/keep-me
          metabase.api.user/keep-me
          metabase.api.user-key-value/keep-me
          metabase.api.util/keep-me
@@ -172,7 +169,7 @@
    "/public"               (+public-exceptions 'metabase.api.public)
    "/pulse"                pulse-routes
    "/revision"             (+auth 'metabase.api.revision)
-   "/search"               (+auth metabase.api.search/routes)
+   "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.api.segment)
    "/session"              metabase.api.session/routes
    "/setting"              (+auth 'metabase.api.setting)
@@ -182,8 +179,8 @@
    "/task"                 (+auth 'metabase.api.task)
    "/testing"              (if enable-testing-routes? 'metabase.api.testing pass-thru-handler)
    "/tiles"                (+auth 'metabase.api.tiles)
-   "/timeline"             (+auth 'metabase.api.timeline)
-   "/timeline-event"       (+auth 'metabase.api.timeline-event)
+   "/timeline"             (+auth metabase.timeline.api/timeline-routes)
+   "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
    "/user"                 (+auth 'metabase.api.user)
    "/user-key-value"       (+auth 'metabase.api.user-key-value)
    "/util"                 'metabase.api.util})

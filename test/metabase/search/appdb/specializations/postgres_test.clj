@@ -51,6 +51,9 @@
     (is (= "'you' & '<-' & 'pointing':*"
            (search-expr "you <- pointing"))))
 
+  (testing "backslash"
+    (is (= "'test\\\\':*" (search-expr "test\\"))))
+
   (testing "single quotes"
     (is (= "'you''re':*"
            (search-expr "you're")))))

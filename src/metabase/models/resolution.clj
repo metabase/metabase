@@ -71,7 +71,7 @@
     :model/QueryTable                        metabase.models.query-table
     :model/RecentViews                       metabase.models.recent-views
     :model/Revision                          metabase.models.revision
-    :model/SearchIndexMetadata               metabase.models.search-index-metadata
+    :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.models.secret
     :model/Segment                           metabase.models.segment
     :model/Session                           metabase.models.session
@@ -79,8 +79,8 @@
     :model/Table                             metabase.models.table
     :model/TablePrivileges                   metabase.models.table-privileges
     :model/TaskHistory                       metabase.models.task-history
-    :model/Timeline                          metabase.models.timeline
-    :model/TimelineEvent                     metabase.models.timeline-event
+    :model/Timeline                          metabase.timeline.models.timeline
+    :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/User                              metabase.models.user
     :model/UserKeyValue                      metabase.models.user-key-value
     :model/UserParameterValue                metabase.models.user-parameter-value

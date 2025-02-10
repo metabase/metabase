@@ -71,7 +71,7 @@ describe("Onboarding checklist page", () => {
   });
 });
 
-H.describeEE("Inaccessible Onboarding checklist", () => {
+describe("Inaccessible Onboarding checklist", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
