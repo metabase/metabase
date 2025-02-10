@@ -1,12 +1,12 @@
-import { Badge, type BadgeProps } from "@mantine/core";
 import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Icon } from "metabase/ui";
+import { ActionIcon, Badge, Icon } from "metabase/ui";
 
 import S from "./BadgeListItem.module.css";
 
-type BadgeListItemRootProps = BadgeProps & HTMLAttributes<HTMLDivElement>;
+type BadgeListItemRootProps = React.ComponentProps<typeof Badge> &
+  HTMLAttributes<HTMLDivElement>;
 
 interface BadgeListItemProps extends BadgeListItemRootProps {
   onRemoveItem?: () => void;

@@ -1,10 +1,10 @@
-import { Badge, type BadgeProps } from "@mantine/core";
 import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Icon } from "metabase/ui";
+import { ActionIcon, Badge, Icon } from "metabase/ui";
 
-type BadgeListItemRootProps = BadgeProps & HTMLAttributes<HTMLDivElement>;
+type BadgeListItemRootProps = React.ComponentProps<typeof Badge> &
+  HTMLAttributes<HTMLDivElement>;
 
 interface AddBadgeListItemProps extends BadgeListItemRootProps {
   name: string;

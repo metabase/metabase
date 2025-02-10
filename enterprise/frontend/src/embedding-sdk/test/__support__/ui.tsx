@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import type { MantineThemeOverride } from "@mantine/core";
 import type { Store } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
