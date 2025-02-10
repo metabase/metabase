@@ -2983,11 +2983,11 @@
                           (chain-filter-test/take-n-values 3)))))))))))
 
 (deftest chain-filter-can-fetch-remapped-values-from-model
-  (testing ""
+  (testing "Remapping works with aggregated queries on models #53059"
     (mt/with-temp
       [:model/Card {saved-query-id :id} {:database_id   (mt/id)
                                          :table_id      (mt/id :orders)
-                                         :dataset_query (mt/mbql-query :orders)}
+                                         :dataset_query (mt/mbql-query orders)}
        :model/Card {card-id :id}        {:database_id   (mt/id)
                                          :table_id      (str "card__" saved-query-id)
                                          :dataset_query {:database (mt/id)
