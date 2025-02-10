@@ -93,13 +93,9 @@
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.permissions.api/keep-me
-<<<<<<< HEAD
          metabase.revisions.api/keep-me
-         metabase.setup.api/keep-me)
-=======
          metabase.setup.api/keep-me
          metabase.user-key-value.api/keep-me)
->>>>>>> master
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
   "Always 'falls thru' to the next handler."

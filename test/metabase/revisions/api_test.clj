@@ -638,7 +638,7 @@
   (mt/user-http-request :rasta :get 200 (str "revision/dashboard/" dash-id)))
 
 (defn- revert-dashboard-api! [dash-id rev-id]
-  (mt/user-http-request :rasta :post 200 (str "revision/revert")
+  (mt/user-http-request :rasta :post 200 "revision/revert"
                         {:id dash-id, :entity :dashboard, :revision_id rev-id}))
 
 (defn- update-dashcards! [dash-id card-ids]
