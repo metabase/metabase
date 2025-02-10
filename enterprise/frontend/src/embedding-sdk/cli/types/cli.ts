@@ -42,6 +42,9 @@ export type CliState = Partial<{
 
   /** Directory where the React components are saved to */
   reactComponentDir: string;
+
+  /** Whether the project has a custom _app.tsx file */
+  hasNextJsCustomApp: boolean;
 }>;
 
 export type CliError = {
