@@ -183,8 +183,7 @@
     native-extras :- [:maybe ::native-extras]]
    (assert-native-query! (lib.util/query-stage query 0))
    ;; Changing the database should also clean up template tags, see #31926
-   (-> (lib.query/query-with-stages metadata-provider (:stages query))
-       (with-native-extras native-extras))))
+   (lib.query/query-with-stages metadata-provider (:stages query))))
 
 (mu/defn native-extras :- [:maybe ::native-extras]
   "Returns the extra keys for native queries associated with this query."
