@@ -152,9 +152,11 @@
 
     (mt/with-temp [:model/User {user-id :id} {}
                    :model/Session old-session {:id         "a"
+                                               :key_hashed "a1"
                                                :user_id    user-id
                                                :created_at (t/minus (t/local-date-time) (t/days 2))}
                    :model/Session new-session {:id         "b"
+                                               :key_hashed "b1"
                                                :user_id    user-id
                                                :created_at (t/minus (t/local-date-time) (t/hours 5))}]
       (testing "session-cleanup deletes old sessions and keeps new enough ones"
