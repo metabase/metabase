@@ -82,6 +82,16 @@ describe("parseNumberForColumn", () => {
       stringColumns: [],
     },
     {
+      value: "-10",
+      numberColumns: [
+        integerColumn,
+        floatColumn,
+        bigIntegerColumn,
+        bigDecimalColumn,
+      ],
+      stringColumns: [],
+    },
+    {
       value: Number.MAX_SAFE_INTEGER.toString(),
       numberColumns: [
         integerColumn,
@@ -108,6 +118,11 @@ describe("parseNumberForColumn", () => {
     },
     {
       value: "10.1",
+      numberColumns: [integerColumn, floatColumn, bigIntegerColumn],
+      stringColumns: [bigDecimalColumn],
+    },
+    {
+      value: "-10.1",
       numberColumns: [integerColumn, floatColumn, bigIntegerColumn],
       stringColumns: [bigDecimalColumn],
     },
