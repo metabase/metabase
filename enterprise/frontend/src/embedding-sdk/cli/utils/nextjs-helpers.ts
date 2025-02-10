@@ -74,8 +74,10 @@ export async function checkIfNextJsCustomAppOrRootLayoutExists() {
 /**
  * Adds the 'use client' directive to the source code if the project is a Next.js project.
  */
-export const withNextJsDirective = (source: string, isNextJs: boolean) =>
-  isNextJs ? `'use client'\n${source}` : source;
+export const withNextJsUseClientDirective = (
+  source: string,
+  isNextJs: boolean,
+) => (isNextJs ? `'use client'\n${source}` : source);
 
 async function generateNextJsCustomAppOrRootLayoutFile(componentPath: string) {
   const router = await checkIfUsingAppOrPagesRouter();
