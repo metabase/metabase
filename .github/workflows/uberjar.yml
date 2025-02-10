@@ -134,7 +134,7 @@ jobs:
       uses: docker/build-push-action@v3
       with:
         context: bin/docker/.
-        platforms: linux/amd64
+        platforms: linux/amd64,linux/arm64
         network: host
         tags: localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}
         build-args: |
