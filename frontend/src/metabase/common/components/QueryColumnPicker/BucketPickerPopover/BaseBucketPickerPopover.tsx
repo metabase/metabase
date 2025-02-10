@@ -132,6 +132,7 @@ function _BaseBucketPickerPopover({
           px="sm"
           miw="35%"
           maw="50%"
+          h="auto"
           py={0}
           variant="subtle"
           color="white"

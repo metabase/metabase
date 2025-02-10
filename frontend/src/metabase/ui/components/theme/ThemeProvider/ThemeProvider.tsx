@@ -1,5 +1,9 @@
 import { ThemeProvider as _CompatibilityEmotionThemeProvider } from "@emotion/react";
-import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
+import type {
+  MantineProviderProps,
+  MantineTheme,
+  MantineThemeOverride,
+} from "@mantine/core";
 import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
 import { type ReactNode, useMemo } from "react";
@@ -19,6 +23,7 @@ interface ThemeProviderProps {
    * to allow SDK users to customize the theme.
    */
   theme?: MantineThemeOverride;
+  mantineProviderProps?: MantineProviderProps;
 }
 
 export const ThemeProvider = (props: ThemeProviderProps) => {
@@ -69,8 +74,8 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     <MantineProvider
       theme={theme}
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
-      cssVariablesSelector=".mb-wrapper"
       classNamesPrefix="mb-mantine"
+      {...props.mantineProviderProps}
     >
       <_CompatibilityEmotionThemeProvider theme={theme}>
         <DatesProvider>{props.children}</DatesProvider>

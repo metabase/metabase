@@ -32,7 +32,12 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   }, [appColors, theme, font]);
 
   return (
-    <ThemeProvider theme={themeOverride}>
+    <ThemeProvider
+      theme={themeOverride}
+      mantineProviderProps={{
+        cssVariablesSelector: ".mb-wrapper",
+      }}
+    >
       <GlobalSdkCssVariables />
       {children}
     </ThemeProvider>
