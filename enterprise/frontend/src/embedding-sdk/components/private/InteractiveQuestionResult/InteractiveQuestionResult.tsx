@@ -90,7 +90,7 @@ export const InteractiveQuestionResult = ({
       style={style}
     >
       <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-        <Group justify="apart" align="flex-end">
+        <Group justify="space-between" align="flex-end">
           <Group gap="xs">
             <Box mr="sm">
               <InteractiveQuestion.BackButton />
@@ -102,7 +102,7 @@ export const InteractiveQuestionResult = ({
           )}
         </Group>
         <Group
-          justify="apart"
+          justify="space-between"
           p="sm"
           bg="var(--mb-color-bg-sdk-question-toolbar)"
           style={{ borderRadius: "0.5rem" }}
