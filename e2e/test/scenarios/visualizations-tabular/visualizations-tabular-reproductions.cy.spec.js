@@ -1240,3 +1240,105 @@ describe("issue 50686", () => {
     });
   });
 });
+
+describe("issue 52339", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow mapping pivot table dashcard fields to click behavior targets (metabase#52339)", () => {
+    const questionDetails = {
+      name: "Orders, Distinct values of ID, Grouped by Product → Title and Created At (month) and User → ID",
+
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["distinct", ["field", ORDERS.ID, null]]],
+        breakout: [
+          ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
+          ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
+        ],
+      },
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: ["TITLE", "SOURCE"],
+          columns: [],
+          values: ["distinct"],
+        },
+      },
+    };
+
+    const sourceParam = {
+      name: "Source",
+      slug: "filter-text",
+      id: "1b9cd9f1",
+      type: "string/=",
+      sectionId: "string",
+    };
+
+    H.createQuestionAndDashboard({
+      dashboardDetails: {
+        parameters: [sourceParam],
+      },
+      questionDetails,
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { id, card_id, dashboard_id }, questionId }) => {
+      cy.wrap(questionId).as("questionId");
+
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
+          {
+            id,
+            card_id,
+            row: 0,
+            col: 0,
+            size_x: 16,
+            size_y: 8,
+            series: [],
+            visualization_settings: {},
+            parameter_mappings: [
+              {
+                parameter_id: sourceParam.id,
+                card_id,
+                target: [
+                  "dimension",
+                  [
+                    "field",
+                    PEOPLE.SOURCE,
+                    {
+                      "source-field": ORDERS.USER_ID,
+                    },
+                  ],
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.editDashboard();
+    H.findDashCardAction(H.getDashboardCard(0), "Click behavior").click();
+
+    H.sidebar().within(() => {
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("Dashboard").click();
+    });
+
+    H.modal().findByText("Test Dashboard").click();
+
+    cy.findByTestId("click-mappings").findByText("Source").click();
+
+    H.popover().within(() => {
+      cy.findByText("Product → Title");
+      cy.findByText("User → Source");
+      cy.findByText("Distinct values of ID");
+    });
+  });
+});
