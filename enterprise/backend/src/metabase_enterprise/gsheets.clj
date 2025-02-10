@@ -12,6 +12,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -98,9 +100,12 @@
   :export? true
   :visibility :public
   :type :json
-  :getter (fn [] (or (setting/get-value-of-type :json :gsheets)
-                     (u/prog1 not-connected
-                       (setting/set-value-of-type! :json :gsheets <>)))))
+  :getter (fn [] (or
+                  ;; This NEEDS to be up to date between instances on a cluster, so:
+                  ;; we are going around the settings cache:
+                  (some-> (t2/select-one :model/Setting :key "gsheets") :value json/decode+kw)
+                  (u/prog1 not-connected
+                    (setting/set-value-of-type! :json :gsheets <>)))))
 
 (defn- seconds-from-epoch-now [] (.getEpochSecond (t/instant)))
 
@@ -238,11 +243,19 @@
   (* 10 60))
 
 (defn- handle-get-folder [attached-dwh]
-  (let [[sstatus {conn :body}] (try (hm-get-gdrive-conn (:gdrive/conn-id (gsheets)))
+  (let [conn-id (or (:gdrive/conn-id (gsheets))
+                    (log/warn "CACHE MISS ON GSHEETS")
+                    (some-> (t2/select-one :model/Setting :key "gsheets")
+                            :value
+                            json/decode+kw
+                            :gdrive/conn-id))
+        [sstatus {conn :body}] (try (hm-get-gdrive-conn conn-id)
                                     ;; missing id:
                                     (catch Exception _
                                       (reset-gsheets-status)
-                                      (error-response-in-body (tru "Unable to find google drive connection, please try again."))))]
+                                      (error-response-in-body
+                                       (tru "Unable to find google drive connection, please try again.")
+                                       {:conn-id conn-id})))]
     (if (= :ok sstatus)
       (let [{:keys [status] last-gdrive-conn-sync :last-sync-at
              :as   gdrive-conn} (normalize-gdrive-conn conn)
