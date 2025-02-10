@@ -5,6 +5,10 @@ export const ANALYTICS_CSS_SNIPPET = `
   cursor: pointer;
 }
 
+.analytics-root {
+  font-family: sans-serif;
+}
+
 .analytics-root.theme-light {
   background: #F9FBFC;
 }
