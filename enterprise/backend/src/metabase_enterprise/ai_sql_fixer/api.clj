@@ -81,7 +81,7 @@
 
 (defn- format-field-ddl
   [{:keys [^String database_type], fname :name} ^Writer writer]
-  (format-escaped fname ^Writer writer)
+  (format-escaped fname writer)
   (.append writer " ")
   (.append writer database_type))
 
