@@ -163,7 +163,7 @@ const getEventColumnsData = (
   seriesModel: SeriesModel,
   dataIndex: number,
 ): DataPoint[] => {
-  const datum = chartModel.transformedDataset[dataIndex];
+  const datum = chartModel.dataset[dataIndex];
 
   const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
 
