@@ -26,6 +26,7 @@ export const GsheetsSyncStatus = () => {
     !isAdmin || settingStatus !== "loading",
   );
   const [syncError, setSyncError] = useState({ error: false, message: "" });
+  const [dbId, setDbId] = useState<DatabaseId | undefined>();
 
   const shouldPoll = isAdmin && settingStatus === "loading";
 
@@ -43,6 +44,11 @@ export const GsheetsSyncStatus = () => {
           message: (apiError as ErrorPayload)?.data?.message ?? "",
         });
       }
+
+      if (folderSync?.db_id) {
+        setDbId(folderSync.db_id);
+      }
+
       dispatch(reloadSettings());
     }
   }, [folderSync, dispatch, settingStatus, apiError]);
@@ -87,7 +93,7 @@ export const GsheetsSyncStatus = () => {
   return (
     <GsheetsSyncStatusView
       status={displayStatus}
-      db_id={folderSync?.db_id}
+      db_id={dbId}
       error={syncError.message ?? ""}
       onClose={() => setForceHide(true)}
     />
