@@ -310,7 +310,6 @@ describe("suggestFunctions", () => {
     it("should suggest supported functions", async () => {
       const completer = setup({
         startRule,
-        // @ts-expect-error: TODO should we add more string to the type?
         features: ["regex"],
       });
       const results = await completer("rege|");
