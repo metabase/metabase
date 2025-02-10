@@ -157,7 +157,7 @@ jobs:
 
     - name: Retag and push images if master (ee) - should be cached at this point
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
-      uses: docker/build-push-action@3
+      uses: docker/build-push-action@v3
       with:
         context: bin/docker/.
         platforms: linux/amd64,linux/arm64
