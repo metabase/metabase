@@ -4,6 +4,10 @@ export function parseNumberForColumn(
   value: string,
   column: Lib.ColumnMetadata,
 ): number | string | null {
+  if (value.trim() === "") {
+    return null;
+  }
+
   const number = Number(value);
   if (!Number.isFinite(number)) {
     return null;

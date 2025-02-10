@@ -128,7 +128,7 @@ describe("parseNumberForColumn", () => {
     },
   );
 
-  it.each(["10a", "Infinity", "-Infinity", "NaN"])(
+  it.each(["", " ", "10a", "Infinity", "-Infinity", "NaN"])(
     "should ignore invalid input",
     value => {
       columns.forEach(column => {
