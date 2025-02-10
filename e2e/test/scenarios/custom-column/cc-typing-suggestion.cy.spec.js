@@ -108,7 +108,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   it("the help text popover should collapse when there is not enough space to render it and the completions", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({ formula: "concat(", blur: false });
-    cy.viewport(1280, 600);
+    cy.viewport(1280, 700);
 
     H.CustomExpressionEditor.helpText().should("be.visible");
 
