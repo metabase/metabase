@@ -15,13 +15,15 @@ import { QuestionLastUpdated } from "../QuestionLastUpdated/QuestionLastUpdated"
 import QuestionRowCount from "../QuestionRowCount";
 import QuestionTimelineWidget from "../QuestionTimelineWidget";
 
+import S from "./RightViewFooterButtonGroup.module.css";
+
 export const RightViewFooterButtonGroup = () => {
   const isTimeseries = useSelector(getIsTimeseries);
   const result = useSelector(getFirstQueryResult);
   const isObjectDetail = useSelector(getIsObjectDetail);
 
   return (
-    <Group noWrap>
+    <Group noWrap position="right" className={S.Root}>
       {QuestionRowCount.shouldRender({
         result,
         isObjectDetail,
