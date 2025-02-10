@@ -1,6 +1,9 @@
 import { green } from "chalk";
 
-import { LINK_TO_NEXT_JS_GUIDE } from "../constants/messages";
+import {
+  LINK_TO_NEXT_JS_GUIDE,
+  LINK_TO_NEXT_JS_SAMPLE,
+} from "../constants/messages";
 import { getNextJsCustomAppOrRootLayoutSnippet } from "../snippets/nextjs-app-snippets";
 
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
@@ -31,6 +34,9 @@ export const getNextJsSetupMessages = async ({
   }
 
   snippets.push(`
+  Instead of having a separate Express.js server, you can create API routes
+  for them. See the examples from ${green(LINK_TO_NEXT_JS_SAMPLE)}.
+
   If the import for "${packageName}" is not resolving, add the following to your tsconfig.json:
 
   ${green(`{
