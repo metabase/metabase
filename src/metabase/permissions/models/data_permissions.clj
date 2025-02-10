@@ -95,9 +95,10 @@
 
 ;;; ---------------------------------------- Caching ------------------------------------------------------------------
 
-(defn- relevant-permissions-for-user-and-db
-  "Returns all relevant rows for permissions for the user, excluding permissions for deactivated tables."
-  [user-id db-id]
+(defn- relevant-db-permissions-for-user
+  "Returns all relevant rows for permissions for the user, excluding permissions for deactivated tables.
+  For performance reasons, includes all databases so we cache all db permissions for the user in one request."
+  [user-id]
   (t2/select :model/DataPermissions
              {:select [:p.* [:pgm.user_id :user_id]]
               :from [[:permissions_group_membership :pgm]]
@@ -106,10 +107,10 @@
               :left-join [[:metabase_table :mt] [:= :mt.id :p.table_id]]
               :where [:and
                       [:= :pgm.user_id user-id]
-                      [:= :p.db_id db-id]
                       [:or
                        [:= :p.table_id nil]
-                       [:= :mt.active true]]]}))
+                       [:= :mt.active true]]]
+              :order-by [:p.db_id]}))
 
 (defn- relevant-permissions-for-user-perm-and-db
   "Returns all relevant rows for a given user, permission type, and db_id, excluding permissions for deactivated
@@ -176,13 +177,13 @@
     (let [{:keys [db-ids perms]} @*permissions-for-user*]
       (if (db-ids db-id)
         (get-in perms [user-id perm-type db-id])
-        (let [fetched-perm-rows (relevant-permissions-for-user-and-db user-id db-id)
+        (let [fetched-perm-rows (relevant-db-permissions-for-user user-id)
               new-cache         (reduce (fn [m {:keys [user_id perm_type db_id] :as row}]
                                           (update-in m [user_id perm_type db_id] u/conjv row))
                                         perms
                                         fetched-perm-rows)]
           (reset! *permissions-for-user*
-                  {:db-ids (conj db-ids db-id)
+                  {:db-ids (set (map :db_id fetched-perm-rows))
                    :perms  new-cache})
           (get-in new-cache [user-id perm-type db-id]))))
     ;; If we're checking permissions for a *different* user than ourselves, fetch it straight from the DB
