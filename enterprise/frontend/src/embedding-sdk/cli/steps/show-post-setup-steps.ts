@@ -4,9 +4,9 @@ import { green } from "chalk";
 import {
   SDK_LEARN_MORE_MESSAGE,
   getMetabaseInstanceSetupCompleteMessage,
-  getNextJsSetupMessage,
 } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
+import { getNextJsSetupMessages } from "../utils/get-nextjs-setup-message";
 import { getSuggestedImportPath } from "../utils/get-suggested-import-path";
 import { checkIsInNextJsProject } from "../utils/nextjs-helpers";
 import { printEmptyLines, printWithPadding } from "../utils/print";
@@ -52,8 +52,13 @@ export const showPostSetupSteps: CliStepMethod = async state => {
 
   POST_SETUP_STEPS.push(STEP_2);
 
+  // Show the Next.js setup messages if the project is using Next.js.
   if (isNextJs) {
-    POST_SETUP_STEPS.push(getNextJsSetupMessage(state.reactComponentDir ?? ""));
+    const messages = await getNextJsSetupMessages(
+      state.reactComponentDir ?? "",
+    );
+
+    POST_SETUP_STEPS.push(...messages);
   }
 
   POST_SETUP_STEPS.push(STEP_3);

@@ -25,6 +25,19 @@ export async function checkIsInNextJsProject() {
 }
 
 /**
+ * Checks if the current Next.js project has a custom `_app.js`, `_app.jsx`, or `_app.tsx` file.
+ *
+ * @see https://nextjs.org/docs/pages/building-your-application/routing/custom-app
+ */
+export async function checkIfNextJsCustomAppExists() {
+  return (
+    hasFileInProject("pages/_app.js") ||
+    hasFileInProject("pages/_app.jsx") ||
+    hasFileInProject("pages/_app.tsx")
+  );
+}
+
+/**
  * Adds the 'use client' directive to the source code if the project is a Next.js project.
  */
 export const withNextJsDirective = (source: string, isNextJs: boolean) =>
