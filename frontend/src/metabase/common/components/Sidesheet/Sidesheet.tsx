@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { uniqueId } from "underscore";
 
 import Animation from "metabase/css/core/animation.module.css";
-import { Modal, Stack } from "metabase/ui";
+import { Drawer, type DrawerProps, Stack } from "metabase/ui";
 
 import Styles from "./sidesheet.module.css";
 
@@ -34,39 +34,40 @@ const sizes: Record<SidesheetSize, string> = {
 export function Sidesheet({
   title,
   isOpen,
-  onClose,
   size = "sm",
-  children,
   removeBodyPadding,
+  children,
   withOverlay = true,
-}: SidesheetProps) {
+  ...drawerProps
+}: SidesheetProps & Omit<DrawerProps, "opened">) {
   const titleId = useMemo(() => uniqueId("sidesheet-title"), []);
+
   return (
-    <Modal.Root
-      variant="sidesheet"
+    <Drawer.Root
+      transitionProps={{ duration: 0 }} // Transition is provided via css
+      position="right"
       opened={isOpen}
-      onClose={onClose}
       h="100dvh"
+      {...drawerProps}
     >
-      {withOverlay && <Modal.Overlay data-testid="modal-overlay" />}
-      <Modal.Content
-        transitionProps={{ duration: 0 }}
-        px="none"
-        w={sizes[size]}
+      {withOverlay && <Drawer.Overlay />}
+      <Drawer.Content
         bg="bg-light"
+        px="none"
         data-testid="sidesheet"
         className={cx(Styles.SidesheetContent, Animation.slideLeft)}
         aria-labelledby={titleId}
+        w={sizes[size]}
       >
-        <Modal.Header bg="bg-light" px="xl">
+        <Drawer.Header bg="bg-light" px="xl">
           {title && (
-            <Modal.Title py="md" pr="sm" id={titleId}>
+            <Drawer.Title fz="xl" fw="bold" py="md" pr="sm" id={titleId}>
               {title}
-            </Modal.Title>
+            </Drawer.Title>
           )}
-          <Modal.CloseButton aria-label={t`Close`} />
-        </Modal.Header>
-        <Modal.Body
+          <Drawer.CloseButton aria-label={t`Close`} />
+        </Drawer.Header>
+        <Drawer.Body
           p={0}
           style={{
             display: "flex",
@@ -85,8 +86,8 @@ export function Sidesheet({
           >
             {children}
           </Stack>
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
+        </Drawer.Body>
+      </Drawer.Content>
+    </Drawer.Root>
   );
 }

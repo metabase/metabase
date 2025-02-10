@@ -8,7 +8,6 @@ import {
 import _ from "underscore";
 
 import { EntityPickerModal } from "metabase/common/components/EntityPicker";
-import { Sidesheet } from "metabase/common/components/Sidesheet";
 import LegacyModal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -25,6 +24,7 @@ import {
   Group,
   HoverCard,
   Icon,
+  Drawer as MantineDrawer,
   Menu as MantineMenu,
   Modal as MantineModal,
   Popover as MantinePopover,
@@ -61,8 +61,8 @@ const _Launchers = ({
   setActionToastCount,
   setLegacyModalCount,
   setMantineModalCount,
+  setMantineDrawerCount,
   setMantineModalWithTitlePropCount,
-  setSidesheetCount,
   setEntityPickerCount,
   setCommandPaletteCount,
 }: {
@@ -72,7 +72,7 @@ const _Launchers = ({
   setActionToastCount: Dispatch<SetStateAction<number>>;
   setLegacyModalCount: Dispatch<SetStateAction<number>>;
   setMantineModalCount: Dispatch<SetStateAction<number>>;
-  setSidesheetCount: Dispatch<SetStateAction<number>>;
+  setMantineDrawerCount: Dispatch<SetStateAction<number>>;
   setEntityPickerCount: Dispatch<SetStateAction<number>>;
   setCommandPaletteCount: Dispatch<SetStateAction<number>>;
   setMantineModalWithTitlePropCount: Dispatch<SetStateAction<number>>;
@@ -177,10 +177,12 @@ const _Launchers = ({
             Mantine Modal variant
           </Button>
         </MantineTooltip>
+        <Button onClick={() => setMantineDrawerCount(c => c + 1)}>
+          Mantine Drawer
+        </Button>
         <Button onClick={() => setLegacyModalCount(c => c + 1)}>
           Legacy modal
         </Button>
-        <Button onClick={() => setSidesheetCount(c => c + 1)}>Sidesheet</Button>
         <Button onClick={() => setEntityPickerCount(c => c + 1)}>
           Entity Picker
         </Button>
@@ -199,11 +201,11 @@ export type OverlaysDemoProps = {
 export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
   const [legacyModalCount, setLegacyModalCount] = useState(0);
   const [mantineModalCount, setMantineModalCount] = useState(0);
+  const [mantineDrawerCount, setMantineDrawerCount] = useState(0);
   const [mantineModalWithTitlePropCount, setMantineModalWithTitlePropCount] =
     useState(0);
   const [toastCount, setToastCount] = useState(0);
   const [actionToastCount, setActionToastCount] = useState(0);
-  const [sidesheetCount, setSidesheetCount] = useState(0);
   const [entityPickerCount, setEntityPickerCount] = useState(0);
   const [commandPaletteCount, setCommandPaletteCount] = useState(0);
   const [undoCount, setUndoCount] = useState(0);
@@ -215,7 +217,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
       setUndoCount={setUndoCount}
       setLegacyModalCount={setLegacyModalCount}
       setMantineModalCount={setMantineModalCount}
-      setSidesheetCount={setSidesheetCount}
+      setMantineDrawerCount={setMantineDrawerCount}
       setEntityPickerCount={setEntityPickerCount}
       setCommandPaletteCount={setCommandPaletteCount}
       setMantineModalWithTitlePropCount={setMantineModalWithTitlePropCount}
@@ -315,16 +317,16 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           </MantineModal>
         ),
       )}
-      {Array.from({ length: sidesheetCount }).map((_, index) => (
-        <Sidesheet
-          key={`sidesheet-${index}`}
-          isOpen
-          onClose={() => setSidesheetCount(c => c - 1)}
-          title="Sidesheet content"
+      {Array.from({ length: mantineDrawerCount }).map((_, index) => (
+        <MantineDrawer
+          opened
+          key={`mantine-drawer-${index}`}
+          title="Mantine Drawer content"
+          onClose={() => setMantineDrawerCount(c => c - 1)}
         >
-          Sidesheet text content
+          <Text>Mantine Drawer text content</Text>
           {enableNesting && <Launchers />}
-        </Sidesheet>
+        </MantineDrawer>
       ))}
       {Array.from({ length: entityPickerCount }).map((_, index) => (
         <EntityPickerModal
