@@ -348,9 +348,12 @@
 
 (defn- tables [database-id]
   (t2/select :metadata/table
-             :db_id           database-id
-             :active          true
-             :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
+             {:where [:and
+                      [:= :db_id database-id]
+                      [:= :active true]
+                      [:or
+                       [:is :visibility_type nil]
+                       [:not-in :visibility_type #{"hidden" "technical" "cruft"}]]]}))
 
 (defn- metadatas-for-table [metadata-type table-id]
   (case metadata-type
@@ -407,7 +410,8 @@
         (= metadata-type :metadata/column) (attach-idents table-idents-atom (database-name database-id db-name-atom)))))
   (tables [_this]
     (let [tbls (tables database-id)]
-      (swap! table-idents-atom merge (table-idents (database-name database-id db-name-atom) tbls))))
+      (swap! table-idents-atom merge (table-idents (database-name database-id db-name-atom) tbls))
+      tbls))
   (metadatas-for-table [_this metadata-type table-id]
     (ensure-table-idents table-idents-atom (database-name database-id db-name-atom) [table-id])
     (binding [*table-idents* @table-idents-atom]
