@@ -9,6 +9,8 @@ import {
 } from "../snippets";
 import type { DashboardInfo } from "../types/dashboard";
 
+import { withNextJsDirective } from "./nextjs-helpers";
+
 interface Options {
   instanceUrl: string;
   apiKey: string;
@@ -37,7 +39,7 @@ export function getComponentSnippets(options: Options): SampleComponent[] {
     {
       fileName: "analytics-provider",
       componentName: "AnalyticsProvider",
-      content: analyticsProviderSnippet.trim(),
+      content: withNextJsDirective(analyticsProviderSnippet, isNextJs).trim(),
     },
     {
       fileName: "embedding-provider",
@@ -47,7 +49,7 @@ export function getComponentSnippets(options: Options): SampleComponent[] {
     {
       fileName: "analytics-dashboard",
       componentName: "AnalyticsDashboard",
-      content: analyticsDashboardSnippet.trim(),
+      content: withNextJsDirective(analyticsDashboardSnippet, isNextJs).trim(),
     },
     {
       fileName: "theme-switcher",

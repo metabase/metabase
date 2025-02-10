@@ -7,8 +7,8 @@ import {
   getNextJsSetupMessage,
 } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
-import { checkIsInNextJsProject } from "../utils/check-nextjs-project";
 import { getSuggestedImportPath } from "../utils/get-suggested-import-path";
+import { checkIsInNextJsProject } from "../utils/nextjs-helpers";
 import { printEmptyLines, printWithPadding } from "../utils/print";
 
 export const showPostSetupSteps: CliStepMethod = async state => {

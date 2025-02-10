@@ -6,9 +6,9 @@ import { GENERATED_COMPONENTS_DEFAULT_PATH } from "../constants/config";
 import { getGeneratedComponentFilesMessage } from "../constants/messages";
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
 import type { CliStepMethod } from "../types/cli";
-import { checkIsInNextJsProject } from "../utils/check-nextjs-project";
 import { checkIsInTypeScriptProject } from "../utils/check-typescript-project";
 import { getComponentSnippets } from "../utils/get-component-snippets";
+import { checkIsInNextJsProject } from "../utils/nextjs-helpers";
 import { printError, printSuccess } from "../utils/print";
 
 export const generateReactComponentFiles: CliStepMethod = async state => {

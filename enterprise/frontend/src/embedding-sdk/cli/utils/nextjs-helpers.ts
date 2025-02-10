@@ -2,7 +2,7 @@ import fs from "fs";
 
 import path from "path";
 
-import { getProjectDependenciesFromPackageJson } from "../utils/get-package-version";
+import { getProjectDependenciesFromPackageJson } from "./get-package-version";
 
 const hasFileInProject = (fileName: string) =>
   fs.existsSync(path.join(process.cwd(), fileName));
@@ -23,3 +23,9 @@ export async function checkIsInNextJsProject() {
 
   return hasNextJsDependency || hasNextJsConfig;
 }
+
+/**
+ * Adds the 'use client' directive to the source code if the project is a Next.js project.
+ */
+export const withNextJsDirective = (source: string, isNextJs: boolean) =>
+  isNextJs ? `'use client'\n${source}` : source;
