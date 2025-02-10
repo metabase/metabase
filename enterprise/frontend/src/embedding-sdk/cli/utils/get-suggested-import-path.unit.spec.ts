@@ -7,7 +7,7 @@ describe("CLI > getSuggestedImportPath", () => {
     ["./src/components", "./components"],
   ])("suggests a reasonable import path", (input, suggestion) => {
     expect(
-      getSuggestedImportPath({ isNextJs: false, componentDir: input }),
+      getSuggestedImportPath({ isNextJs: false, componentPath: input }),
     ).toBe(suggestion);
   });
 
@@ -17,7 +17,7 @@ describe("CLI > getSuggestedImportPath", () => {
     );
 
     expect(
-      getSuggestedImportPath({ isNextJs: true, componentDir: "foo/bar" }),
+      getSuggestedImportPath({ isNextJs: true, componentPath: "foo/bar" }),
     ).toBe("../foo/bar");
   });
 });

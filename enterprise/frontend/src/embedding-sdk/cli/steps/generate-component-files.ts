@@ -8,13 +8,12 @@ import {
 } from "../constants/config";
 import { getGeneratedComponentFilesMessage } from "../constants/messages";
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
-import { getNextJsAppSnippet } from "../snippets/nextjs-app";
 import type { CliStepMethod } from "../types/cli";
 import { checkIsInTypeScriptProject } from "../utils/check-typescript-project";
 import { getComponentSnippets } from "../utils/get-component-snippets";
 import {
-  checkIfNextJsCustomAppExists,
   checkIsInNextJsProject,
+  generateCustomNextJsAppOrRootLayoutFile,
 } from "../utils/nextjs-helpers";
 import { printError, printSuccess } from "../utils/print";
 
@@ -30,7 +29,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   const isNextJs = await checkIsInNextJsProject();
 
-  let path: string;
+  let reactComponentPath: string;
 
   // eslint-disable-next-line no-constant-condition -- ask until user provides a valid path
   while (true) {
@@ -38,14 +37,14 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
       ? GENERATED_COMPONENTS_DEFAULT_PATH_NEXTJS
       : GENERATED_COMPONENTS_DEFAULT_PATH;
 
-    path = await input({
+    reactComponentPath = await input({
       message: "Where do you want to save the example React components?",
       default: defaultComponentPath,
     });
 
     // Create a directory if it doesn't already exist.
     try {
-      await fs.mkdir(path, { recursive: true });
+      await fs.mkdir(reactComponentPath, { recursive: true });
       break;
     } catch (error) {
       printError(
@@ -71,11 +70,17 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   // Generate sample components files in the specified directory.
   for (const { fileName, content } of sampleComponents) {
-    await fs.writeFile(`${path}/${fileName}.${componentExtension}`, content);
+    await fs.writeFile(
+      `${reactComponentPath}/${fileName}.${componentExtension}`,
+      content,
+    );
   }
 
   // Generate analytics.css sample styles.
-  await fs.writeFile(`${path}/analytics.css`, ANALYTICS_CSS_SNIPPET);
+  await fs.writeFile(
+    `${reactComponentPath}/analytics.css`,
+    ANALYTICS_CSS_SNIPPET,
+  );
 
   // Generate index.js file with all the component exports.
   const exportIndexContent = sampleComponents
@@ -83,27 +88,23 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     .join("\n")
     .trim();
 
-  await fs.writeFile(`${path}/index.${fileExtension}`, exportIndexContent);
+  await fs.writeFile(
+    `${reactComponentPath}/index.${fileExtension}`,
+    exportIndexContent,
+  );
 
-  let hasNextJsCustomApp = false;
-
+  // Generate a custom app.tsx or layout.tsx file
   if (isNextJs) {
-    hasNextJsCustomApp = await checkIfNextJsCustomAppExists();
-
-    // Write a custom _app.tsx or _app.jsx file if the project is using Next.js,
-    // but does not already have a custom app file.
-    if (!hasNextJsCustomApp) {
-      await fs.writeFile(
-        `${path}/_app.${componentExtension}`,
-        getNextJsAppSnippet({ generatedDir: path }),
-      );
-    }
+    await generateCustomNextJsAppOrRootLayoutFile(reactComponentPath);
   }
 
-  printSuccess(getGeneratedComponentFilesMessage(path));
+  printSuccess(getGeneratedComponentFilesMessage(reactComponentPath));
 
   return [
     { type: "done" },
-    { ...state, reactComponentDir: path, hasNextJsCustomApp },
+    {
+      ...state,
+      reactComponentPath: reactComponentPath,
+    },
   ];
 };

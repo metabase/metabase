@@ -15,16 +15,16 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   const isNextJs = await checkIsInNextJsProject();
 
   const START_SERVER_STEP = `
-  Generated an example Express.js server directory in "${state.mockServerDir}".
+  Generated an example Express.js server directory in "${state.mockServerPath}".
 
   Start the sample server.
-  ${green(`cd ${state.mockServerDir}`)}
+  ${green(`cd ${state.mockServerPath}`)}
   ${green("npm run start")}
 `;
 
   const importPath = getSuggestedImportPath({
     isNextJs,
-    componentDir: state.reactComponentDir,
+    componentPath: state.reactComponentPath,
   });
 
   const REACT_COMPONENT_IMPORT_STEP = `
@@ -57,7 +57,7 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   // Show the Next.js setup messages if the project is using Next.js.
   if (isNextJs) {
     const messages = await getNextJsSetupMessages(
-      state.reactComponentDir ?? "",
+      state.reactComponentPath ?? "",
     );
 
     POST_SETUP_STEPS.push(...messages);

@@ -1,7 +1,7 @@
 import { green } from "chalk";
 
 import { LINK_TO_NEXT_JS_GUIDE } from "../constants/messages";
-import { getNextJsAppSnippet } from "../snippets/nextjs-app";
+import { getNextJsCustomAppSnippet } from "../snippets/nextjs-app-snippets";
 
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
 import { checkIfNextJsCustomAppExists } from "./nextjs-helpers";
@@ -24,7 +24,7 @@ export const getNextJsSetupMessages = async (
     snippets.push(`
   Add the example providers and the example CSS to your _app.${componentExtension} file. For example:
 
-  ${green(getNextJsAppSnippet({ generatedDir }))}`);
+  ${green(getNextJsCustomAppSnippet({ generatedDir }))}`);
   }
 
   snippets.push(`

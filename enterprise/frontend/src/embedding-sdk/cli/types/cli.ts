@@ -38,13 +38,10 @@ export type CliState = Partial<{
   modelCollectionId: number;
 
   /** Directory where the Express.js mock server is saved to */
-  mockServerDir: string;
+  mockServerPath: string;
 
   /** Directory where the React components are saved to */
-  reactComponentDir: string;
-
-  /** Whether the project has a custom _app.tsx file */
-  hasNextJsCustomApp: boolean;
+  reactComponentPath: string;
 }>;
 
 export type CliError = {

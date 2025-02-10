@@ -7,15 +7,15 @@ import {
 
 export const getSuggestedImportPath = ({
   isNextJs,
-  componentDir,
+  componentPath,
 }: {
   isNextJs: boolean;
-  componentDir?: string;
+  componentPath?: string;
 }): string => {
   // Assume they will be importing from ./pages/ so we need to go up one level.
   // e.g. "components/metabase" -> "../components/metabase"
   if (isNextJs) {
-    return `../${path.normalize(componentDir || GENERATED_COMPONENTS_DEFAULT_PATH_NEXTJS)}`;
+    return `../${path.normalize(componentPath || GENERATED_COMPONENTS_DEFAULT_PATH_NEXTJS)}`;
   }
 
   // We don't know where the user will import the component from.
@@ -23,7 +23,7 @@ export const getSuggestedImportPath = ({
   // so we use the last directory in the path as an example.
   // e.g. "./src/components/metabase" -> "./metabase".
   const importPath = path.basename(
-    componentDir || GENERATED_COMPONENTS_DEFAULT_PATH,
+    componentPath || GENERATED_COMPONENTS_DEFAULT_PATH,
   );
 
   return importPath.startsWith(".") ? importPath : `./${importPath}`;
