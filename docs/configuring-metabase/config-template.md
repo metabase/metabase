@@ -226,7 +226,6 @@ config:
     show-homepage-xrays: true
     show-metabase-links: true
     show-metabot: true
-    show-static-embed-terms: true
     site-locale: en
     site-name: Metabase
     site-url: null
