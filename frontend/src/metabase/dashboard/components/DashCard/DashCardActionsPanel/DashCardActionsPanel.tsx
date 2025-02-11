@@ -36,6 +36,7 @@ interface Props {
   hasError: boolean;
   isTrashedOnRemove: boolean;
   onRemove: (dashcard: DashboardCard) => void;
+  onRemoveAllDashcardForQuestion: (dashcard: DashboardCard["card_id"]) => void;
   onAddSeries: (dashcard: DashboardCard) => void;
   onReplaceCard: (dashcard: DashboardCard) => void;
   onReplaceAllDashCardVisualizationSettings: (
@@ -61,6 +62,7 @@ function DashCardActionsPanelInner({
   hasError,
   isTrashedOnRemove,
   onRemove,
+  onRemoveAllDashcardForQuestion,
   onAddSeries,
   onReplaceCard,
   onReplaceAllDashCardVisualizationSettings,
@@ -119,6 +121,10 @@ function DashCardActionsPanelInner({
     onAddSeries(dashcard);
   }, [dashcard, onAddSeries]);
 
+  const handleRemoveAllDashcardsForQuestion = useCallback(() => {
+    console.log("TODO");
+  }, []);
+
   const handleRemoveCard = useCallback(() => {
     if (!dashcard) {
       return;
@@ -130,8 +136,13 @@ function DashCardActionsPanelInner({
   if (dashcard) {
     buttons.push(
       <DashCardTabMenu
-        key="tabs"
-        dashCardId={dashcard.id}
+        key="move"
+        dashcard={dashcard}
+        onMove={(removeAllRelatedDashcards: boolean) => {
+          console.log({ removeAllRelatedDashcards });
+          removeAllRelatedDashcards &&
+            onRemoveAllDashcardForQuestion(dashcard.card_id);
+        }}
         onClose={() => setIsDashCardTabMenuOpen(false)}
         onOpen={() => setIsDashCardTabMenuOpen(true)}
       />,

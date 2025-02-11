@@ -24,6 +24,8 @@ import type Question from "metabase-lib/v1/Question";
 interface MoveQuestionModalProps {
   question: Question;
   onClose: () => void;
+  onMove?: (deleteOldDashcards: boolean) => void;
+  isOnDashboardPage?: boolean;
 }
 
 type ConfirmationTypes =
@@ -31,9 +33,12 @@ type ConfirmationTypes =
   | "dashboard-to-collection"
   | "collection-to-dashboard";
 
+// TODO: make sure that current save location is not in the recents
 export const MoveQuestionModal = ({
   question,
   onClose,
+  onMove,
+  isOnDashboardPage,
 }: MoveQuestionModalProps) => {
   const dispatch = useDispatch();
 
@@ -45,7 +50,7 @@ export const MoveQuestionModal = ({
     affectedDashboards?: any[];
     isLoading?: boolean;
   } | null>(null);
-  const [deleteOldDashcardsState, setDeleteOldDashcardsState] = useState<
+  const [deleteOldDashcardsOption, setDeleteOldDashcardsOption] = useState<
     boolean | undefined
   >();
 
@@ -113,6 +118,8 @@ export const MoveQuestionModal = ({
           dispatch(push(url));
         }
 
+        onMove?.(!!deleteOldDashcardsOption);
+
         onClose();
       })
       .catch(e => {
@@ -152,43 +159,58 @@ export const MoveQuestionModal = ({
         <ConfirmContent
           data-testid="dashboard-to-collection-move-confirmation"
           onAction={() =>
-            handleMove(confirmMoveState?.destination, deleteOldDashcardsState)
+            handleMove(
+              confirmMoveState?.destination,
+              deleteOldDashcardsOption && !isOnDashboardPage,
+            )
           }
           onCancel={onClose}
           onClose={onClose}
           title={
             <Title fz="1.25rem" lh={1.5}>
-              {c(
-                "{0} is the dashboard name the question currently has dashcards in",
-              ).jt`Do you still want this question to appear in ${(
-                <>
-                  <Icon
-                    name="dashboard"
-                    style={{ marginBottom: -2 }}
-                    size={20}
-                  />{" "}
-                  <Dashboards.Name id={question.dashboardId()} />
-                </>
-              )}?`}
+              {isOnDashboardPage
+                ? t`Do you still want this question to appear in this dashboard?`
+                : c(
+                    "{0} is the dashboard name the question currently has dashcards in",
+                  ).jt`Do you still want this question to appear in ${(
+                    <>
+                      <Icon
+                        name="dashboard"
+                        style={{ marginBottom: -2 }}
+                        size={20}
+                      />{" "}
+                      <Dashboards.Name id={question.dashboardId()} />
+                    </>
+                  )}?`}
             </Title>
           }
           message={
             <>
               <Box mt="-2rem">
-                {t`It can still appear there even though you’re moving it into a collection.`}
+                {isOnDashboardPage
+                  ? t`It can still appear here even though you’re moving it into a collection.`
+                  : t`It can still appear there even though you’re moving it into a collection.`}
               </Box>
               <Radio.Group
-                value={`${!deleteOldDashcardsState}`}
-                onChange={val => setDeleteOldDashcardsState(val !== "true")}
+                value={`${!deleteOldDashcardsOption}`}
+                onChange={val => setDeleteOldDashcardsOption(val !== "true")}
                 mt="2rem"
               >
                 <Radio
-                  label={t`Yes, it should still appear there`}
+                  label={
+                    isOnDashboardPage
+                      ? t`Yes, it should still appear here`
+                      : t`Yes, it should still appear there`
+                  }
                   value={"true"}
                 />
                 <Radio
                   mt="md"
-                  label={t`No, remove it from that dashboard`}
+                  label={
+                    isOnDashboardPage
+                      ? t`No, remove it from this dashboard`
+                      : t`No, remove it from that dashboard`
+                  }
                   value={"false"}
                 />
               </Radio.Group>
@@ -211,9 +233,21 @@ export const MoveQuestionModal = ({
           onClose={onClose}
           title={
             <Title fz="1.25rem" lh={1.5}>
-              Moving this question to another dashboard will remove it from{" "}
-              <Icon name="dashboard" style={{ marginBottom: -2 }} size={20} />{" "}
-              <Dashboards.Name id={question.dashboardId()} />
+              {isOnDashboardPage
+                ? t`Moving this question to another dashboard will remove it from this dashboard?`
+                : c(
+                    "{0} is the dashboard name the question currently has dashcards in",
+                  )
+                    .jt`Moving this question to another dashboard will remove it from ${(
+                    <>
+                      <Icon
+                        name="dashboard"
+                        style={{ marginBottom: -2 }}
+                        size={20}
+                      />{" "}
+                      <Dashboards.Name id={question.dashboardId()} />
+                    </>
+                  )}?`}
             </Title>
           }
           message={

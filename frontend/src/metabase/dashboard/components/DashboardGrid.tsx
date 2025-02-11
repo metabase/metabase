@@ -508,6 +508,27 @@ class DashboardGridInner extends Component<
     });
   };
 
+  onRemoveAllDashcardForQuestion = (cardId: DashboardCard["card_id"]) => {
+    const dashcardsToRemove = this.props.dashboard.dashcards.filter(dc => {
+      return dc.card_id === cardId;
+    });
+
+    dashcardsToRemove.forEach(dc => {
+      this.props.removeCardFromDashboard({
+        dashcardId: dc.id,
+        cardId: dc.card_id,
+      });
+    });
+
+    this.props.addUndo({
+      message:
+        dashcardsToRemove.length === 1
+          ? t`Removed card`
+          : t`Removed all related cards`,
+      undo: false,
+    });
+  };
+
   onDashCardAddSeries = (dc: BaseDashboardCard) => {
     this.setState({ addSeriesModalDashCard: dc });
   };
@@ -550,6 +571,7 @@ class DashboardGridInner extends Component<
         isXray={this.props.isXray}
         withTitle={this.props.withCardTitle}
         onRemove={this.onDashCardRemove}
+        onRemoveAllDashcardForQuestion={this.onRemoveAllDashcardForQuestion}
         onAddSeries={this.onDashCardAddSeries}
         onReplaceCard={this.onReplaceCard}
         onUpdateVisualizationSettings={
