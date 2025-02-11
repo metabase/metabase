@@ -187,6 +187,7 @@
       nil)))
 
 (def ^:private NumberFilterValue
+  "String is used when the value cannot be accurately represented as a JS number."
   [:or number? :string])
 
 (def ^:private NumberFilterParts
