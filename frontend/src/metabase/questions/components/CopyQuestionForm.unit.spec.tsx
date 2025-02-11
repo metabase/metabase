@@ -44,4 +44,17 @@ describe("CopyQuestionForm", () => {
     ).toBeInTheDocument();
     expect(saveButton).toBeDisabled();
   });
+
+  it("should show validation error on mount if name is too long", async () => {
+    setup({
+      initialValues: { name: "A".repeat(255) },
+    });
+
+    const saveButton = screen.getByRole("button", { name: "Duplicate" });
+
+    expect(
+      await screen.findByText(/must be 254 characters or less/),
+    ).toBeInTheDocument();
+    expect(saveButton).toBeDisabled();
+  });
 });
