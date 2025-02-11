@@ -876,7 +876,7 @@
     [_driver]
     {:access_key (u.random/random-name)}))
 
-(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite]]
+(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite :vertica :athena]]
   (defmethod driver/database-supports? [driver :test/arrays]
     [_driver _feature _database]
     true))

@@ -137,6 +137,17 @@
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
 
+(defmethod sql-jdbc.execute/read-column-thunk :athena
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (let [obj (.getObject rs i)
+          class-name (.getName (.getClass obj))]
+      (cond (= class-name "com.amazon.athena.jdbc.results.IteratorResultSetBase$AthenaArray")
+            (vec (.getArray obj))
+
+            :else
+            obj))))
+
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
   [driver [_ expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
