@@ -303,5 +303,5 @@
   [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
                     (notification-recipients->emails recipients notification-payload)
                     [{:type    "text/html; charset=utf-8"
-                      :content (render-body template notification-payload)}]
+                      :content (channel.template/render-template template notification-payload)}]
                     (-> template :details :recipient-type keyword))])
