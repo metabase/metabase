@@ -98,14 +98,20 @@
   [{:keys [table-id]} :- [:map [:table-id :int]]
    {:keys [jq]}
    data]
-  #p data
   (let [{table :name :keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
         driver                      (driver/the-driver (:engine (t2/select-one :model/Database db_id)))
-        data                        (cond-> data
+        row-or-rows                 (cond-> data
                                       jq (http-action/apply-json-query jq))
+        rows                        (if (vector? row-or-rows) row-or-rows [row-or-rows])
         q                           {:insert-into table
-                                     :values      (if (vector? data) data [data])}
+                                     :values      rows}
         [sql & params]              (sql/format q)]
     (qp.store/with-metadata-provider db_id
       (driver/execute-write-query! driver {:native {:query sql :params params}}))
+
+    (events/publish-event! :table.mutation/row-insert
+                           {:object  {:table-id table-id
+                                      :rows     rows}
+                            :user-id api/*current-user-id*})
+
     :done))
