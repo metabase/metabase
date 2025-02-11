@@ -24,11 +24,13 @@ export const AddRowModal = ({ question, onClose }: AddRowModalProps) => {
   // const dispatch = useDispatch();
 
   const fields = table?.fields;
+  const tableId = question.card()?.table_id ?? table?.id;
 
   const handleSubmit = async (values: unknown) => {
     // eslint-disable-next-line no-console
     console.log("AddRowModal.handleSubmit", values);
-    await POST(`/api/internal-tools/table/${table?.id}`)({
+
+    await POST(`/api/internal-tools/table/${tableId}`)({
       row: values,
     });
     // dispatch(addUndo({ message: t`The alert was successfully deleted.` }));
