@@ -25,7 +25,7 @@
   )
 
 (deftest query-execution-test
-  (when (config/config-bool :mb-test-qgen-run)
+  (when (config/config-bool :mb-gentest-run)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
       ;; TODO: 1. Limit from workflow, 2. Limit override for repl
       (gentest/with-gentest

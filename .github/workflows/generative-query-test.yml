@@ -4,14 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       seed:
-        description: 'Seed value (empty = random)'
+        description: 'Seed value (empty = random; logged)'
         type: number
       iterations:
-        description: 'Number of test iterations (empty = 100)'
+        description: 'Number of test iterations (overrides `seconds`)'
         type: number
+      seconds:
+        description: 'No furhter iteration after _this_ number of seconds since test started'
       ref:
         description: 'Ref to run generative tests on'
-        default: master
+        default: qgen-milestone-1
 
 jobs:
   generative-query-test:
@@ -20,15 +22,15 @@ jobs:
     name: Generative Query Test
     env:
       CI: 'true'
-      MB_TEST_QGEN_SEED: ${{ inputs.seed }}
-      MB_TEST_QGEN_ITERATIONS: ${{ inputs.iterations }}
-      # TODO: Will probably remove next line in favor of new cp root.
-      MB_TEST_QGEN_RUN: true
+      MB_GENTEST_SEED: ${{ inputs.seed }}
+      MB_GENTEST_LIMIT_ITERATIONS: ${{ inputs.iterations }}
+      MB_GENTEST_LIMIT_SECONDS: ${{ inputs.seconds }}
+      # TODO: Remove in favor of cp root with further tests
+      MB_GENTEST_RUN: true
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
-      # is fe needed? is that lib related?
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment

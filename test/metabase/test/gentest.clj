@@ -75,28 +75,35 @@
      (select-keys (:data toplevel) [:form :bindings])
      {:chain (process-exception-chain (ex-cause e))})))
 
-;; TODO: Add override from repl and workflow
+;; TODO: Add repl override!
 (defn limit-spec->limit-fn
   [limit-spec]
-  (or (and (map? limit-spec)
-           (condp #(get %2 %1) limit-spec
-             :gentest.default-limit/iterations
-             :>> (fn [iterations]
-                   (let [counter (atom -1)]
-                     (fn []
-                       (< (swap! counter inc) iterations))))
+  (let [env-iterations (config/config-int :mb-gentest-limit-iterations)
+        env-seconds (config/config-int :mb-gentest-limit-seconds)
+        ;; override the test provided limit-spec by environment
+        limit-spec (cond env-iterations {:gentest.default-limit/iterations env-iterations}
+                         env-seconds    {:gentest.default-limit/seconds env-seconds}
+                         :else          limit-spec)]
+    (log/infof "limit-spec->limit-fn\n```%s\n```\n" (with-out-str (clojure.pprint/pprint limit-spec)))
+    (or (and (map? limit-spec)
+             (condp #(get %2 %1) limit-spec
+               :gentest.default-limit/iterations
+               :>> (fn [iterations]
+                     (let [counter (atom -1)]
+                       (fn []
+                         (< (swap! counter inc) iterations))))
 
-             :gentest.default-limit/seconds
-             :>> (fn [seconds]
-                   (let [stop-time (t/+ (t/local-date-time) (t/seconds seconds))]
-                     (fn []
-                       (let [now (t/local-date-time)]
-                         (t/< now stop-time)))))
+               :gentest.default-limit/seconds
+               :>> (fn [seconds]
+                     (let [stop-time (t/+ (t/local-date-time) (t/seconds seconds))]
+                       (fn []
+                         (let [now (t/local-date-time)]
+                           (t/< now stop-time)))))
 
-             nil))
-      (let [counter (atom -1)]
-        (fn []
-          (< (swap! counter inc) 1)))))
+               nil))
+        (let [counter (atom -1)]
+          (fn []
+            (< (swap! counter inc) 1))))))
 
 ;; TODO: Maybe add testing context?
 (defn do-with-gentest
