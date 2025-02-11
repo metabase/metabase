@@ -6,7 +6,10 @@ import { idTag, invalidateTags, listTag, provideChannelListTags } from "./tags";
 const channelApi = Api.injectEndpoints({
   endpoints: builder => ({
     listChannels: builder.query<NotificationChannel[], void>({
-      query: () => `api/channel`,
+      query: () => ({
+        method: "GET",
+        url: "/api/channel",
+      }),
       providesTags: (channels = []) => provideChannelListTags(channels),
     }),
     testChannel: builder.mutation<
@@ -15,7 +18,7 @@ const channelApi = Api.injectEndpoints({
     >({
       query: body => ({
         method: "POST",
-        url: "api/channel/test",
+        url: "/api/channel/test",
         body: {
           ...body,
           type: "channel/http",
@@ -28,7 +31,7 @@ const channelApi = Api.injectEndpoints({
     >({
       query: body => ({
         method: "POST",
-        url: "api/channel",
+        url: "/api/channel",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -40,7 +43,7 @@ const channelApi = Api.injectEndpoints({
     >({
       query: ({ id, ...body }) => ({
         method: "PUT",
-        url: `api/channel/${id}`,
+        url: `/api/channel/${id}`,
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
@@ -49,7 +52,7 @@ const channelApi = Api.injectEndpoints({
     deleteChannel: builder.mutation<void, number>({
       query: id => ({
         method: "PUT",
-        url: `api/channel/${id}`,
+        url: `/api/channel/${id}`,
         body: {
           active: false,
         },

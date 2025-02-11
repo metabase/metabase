@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
@@ -11,7 +12,6 @@ import { AddRowHeaderButton } from "metabase/query_builder/components/view/ViewH
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { QuestionSharingMenu } from "metabase/sharing/components/SharingMenu";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

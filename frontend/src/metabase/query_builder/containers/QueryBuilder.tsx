@@ -74,7 +74,6 @@ import {
   getQueryResults,
   getQueryStartTime,
   getQuestion,
-  getQuestionAlerts,
   getRawSeries,
   getSampleDatabaseId,
   getSelectedTimelineEventIds,
@@ -178,7 +177,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isResultDirty: getIsResultDirty(state),
     isMetadataDirty: isResultsMetadataDirty(state),
 
-    questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
 
     queryStartTime: getQueryStartTime(state),

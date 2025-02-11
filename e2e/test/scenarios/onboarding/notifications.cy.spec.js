@@ -10,29 +10,6 @@ const getQuestionDetails = () => ({
   },
 });
 
-const getAlertDetails = ({ card_id, user_id, admin_id }) => ({
-  card: {
-    id: card_id,
-    include_csv: false,
-    include_xls: false,
-  },
-  channels: [
-    {
-      enabled: true,
-      channel_type: "email",
-      schedule_type: "hourly",
-      recipients: [
-        {
-          id: user_id,
-        },
-        {
-          id: admin_id,
-        },
-      ],
-    },
-  ],
-});
-
 const getPulseDetails = ({ card_id, dashboard_id }) => ({
   name: "Subscription",
   dashboard_id,
@@ -57,7 +34,7 @@ describe("scenarios > account > notifications", () => {
     H.restore();
   });
 
-  describe("alerts", () => {
+  describe("notifications", () => {
     beforeEach(() => {
       cy.signInAsAdmin().then(() => {
         H.getCurrentUser().then(({ body: { id: admin_id } }) => {
@@ -65,9 +42,27 @@ describe("scenarios > account > notifications", () => {
             H.getCurrentUser().then(({ body: { id: user_id } }) => {
               H.createQuestion(getQuestionDetails()).then(
                 ({ body: { id: card_id } }) => {
-                  H.createAlert(
-                    getAlertDetails({ card_id, user_id, admin_id }),
-                  );
+                  H.createQuestionAlert({
+                    user_id: admin_id,
+                    card_id,
+                    handlers: [
+                      {
+                        channel_type: "channel/email",
+                        recipients: [
+                          {
+                            type: "notification-recipient/user",
+                            user_id,
+                            details: null,
+                          },
+                          {
+                            type: "notification-recipient/user",
+                            user_id: admin_id,
+                            details: null,
+                          },
+                        ],
+                      },
+                    ],
+                  });
                 },
               );
             });
@@ -96,28 +91,45 @@ describe("scenarios > account > notifications", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Emailed hourly", { exact: false });
+      cy.findByText("Daily at 9:00 am", { exact: false });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created by you", { exact: false });
     });
 
-    it("should be able to unsubscribe and delete an alert when the user created it", () => {
+    it("should be able to delete an alert when the user created it and he is a single recipient", () => {
       openUserNotifications();
+
+      cy.intercept("GET", "/api/notification/*").as("getAlert");
+      cy.intercept("POST", "/api/notification/*/unsubscribe").as(
+        "alertUnsubscribe",
+      );
+      cy.intercept("PUT", "/api/notification/*").as("alertDelete");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question");
       clickUnsubscribe();
 
-      H.modal().within(() => {
+      cy.wait("@getAlert");
+
+      cy.findByTestId("alert-unsubscribe").within(() => {
         cy.findByText("Confirm you want to unsubscribe");
         cy.findByText("Unsubscribe").click();
-        cy.findByText("Unsubscribe").should("not.exist");
       });
 
-      H.modal().within(() => {
+      cy.wait("@alertUnsubscribe");
+      H.undoToastList()
+        .findByText("Successfully unsubscribed.")
+        .should("exist");
+
+      cy.findByTestId("alert-delete").within(() => {
         cy.findByText("You’re unsubscribed. Delete this alert as well?");
-        cy.findByText("Delete this alert").click();
+        cy.findByText("Delete it").click();
       });
+
+      cy.wait("@alertDelete");
+      H.notificationList()
+        .findByText("The alert was successfully deleted.")
+        .should("exist");
 
       H.modal().should("not.exist");
       cy.findByTestId("notification-list").should("not.exist");

@@ -109,8 +109,8 @@
                             :event_name :event/table-mutation-cell-update}]
            ;; (t2/select-one-pk :model/Table :name "PRODUCTS")
            ;; (t2/select-one-pk :model/Field :name "CATEGORY" :table_id 3)
-           :condition    (str '(and (= 3 (-> % :payload :event_info :object :table-id))
-                                    (= 18 (-> % :payload :event_info :object :field-id))))
+           ;:condition    (str '(and (= 3 (-> % :payload :event_info :object :table-id))
+           ;                         (= 18 (-> % :payload :event_info :object :field-id))))
            :handlers      [{:active       true
                             :channel_type :channel/slack
                             :channel_id   nil
@@ -119,7 +119,6 @@
                                            :details      {:type "email/handlebars-resource"
                                                           :subject "Table Mutation Cell Update"
                                                           :path "metabase/channel/slack/table_mutation_cell_update.hbs"}}
-
                             :recipients   [{:type    :notification-recipient/raw-value
                                             :details {:value "#leads"}}]}]}
           {:internal_id   "system-event/table-mutation-insert"

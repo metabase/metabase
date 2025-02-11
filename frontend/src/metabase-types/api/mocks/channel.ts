@@ -10,7 +10,7 @@ export const createMockChannelDetails = (
 });
 
 export const createMockChannel = (
-  opts: Partial<NotificationChannel>,
+  opts: Partial<NotificationChannel> = {},
 ): NotificationChannel => ({
   id: 1,
   name: "Awesome Hook",

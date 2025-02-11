@@ -123,6 +123,15 @@
   (validate-notification instance)
   instance)
 
+(t2/define-before-update :model/Notification
+  [instance]
+  (validate-notification instance)
+  (when-let [unallowed-key (some #{:payload_type :payload_id :creator_id} (keys (t2/changes instance)))]
+    (throw (ex-info (format "Update %s is not allowed." (name unallowed-key))
+                    {:status-code 400
+                     :changes     (t2/changes instance)})))
+  instance)
+
 (defn- update-subscription-trigger!
   [& args]
   (apply (requiring-resolve 'metabase.task.notification/update-subscription-trigger!) args))
@@ -472,6 +481,7 @@
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/card [:map
                          [:payload ::NotificationCard]]]
+    [:notification/system-event [:map]]
     [::mc/default       :any]]])
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
@@ -510,7 +520,7 @@
   Return the created notification."
   [notification subscriptions handlers+recipients]
   (t2/with-transaction [_conn]
-    (let [payload-id      (case (:payload_type notification)
+    (let [payload-id      (case (keyword (:payload_type notification))
                             (:notification/system-event :notification/testing)
                             nil
                             :notification/card
@@ -524,9 +534,12 @@
         (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id notification-id) subscriptions)))
       (doseq [handler handlers+recipients]
         (let [recipients (:recipients handler)
+              template-id (when (:template handler)
+                            (t2/insert-returning-pk! :model/ChannelTemplate (:template handler)))
               handler    (-> handler
-                             (dissoc :recipients)
-                             (assoc :notification_id notification-id))
+                             (dissoc :recipients :template)
+                             (assoc :notification_id notification-id)
+                             (assoc :template_id template-id))
               handler-id (t2/insert-returning-pk! :model/NotificationHandler handler)]
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))

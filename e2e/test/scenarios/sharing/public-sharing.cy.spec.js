@@ -1,12 +1,8 @@
-const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+const {H} = cy;
+import {SAMPLE_DB_ID} from "e2e/support/cypress_data";
+import {SAMPLE_DATABASE} from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const {ORDERS_ID} = SAMPLE_DATABASE;
 
 const DEFAULT_ACTION_DETAILS = {
   database_id: SAMPLE_DB_ID,
@@ -85,7 +81,7 @@ describe("scenarios > admin > settings > public sharing", () => {
         },
       },
     })
-      .then(({ body }) => {
+      .then(({body}) => {
         const dashboardId = body.dashboard_id;
         cy.wrap(dashboardId).as("dashboardId");
         cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
@@ -95,7 +91,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       });
 
     cy.get("@dashboardId").then(dashboardId =>
-      H.visitDashboardAndCreateTab({ dashboardId }),
+      H.visitDashboardAndCreateTab({dashboardId}),
     );
 
     cy.visit("/admin/settings/public-sharing");
@@ -108,10 +104,10 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByText(
         `${location.origin}/public/dashboard/${dashboardUuid}`,
       ).click();
-      cy.findByRole("heading", { name: expectedDashboardName }).should(
+      cy.findByRole("heading", {name: expectedDashboardName}).should(
         "be.visible",
       );
-      cy.findByRole("tab", { name: "Tab 1" }).should("be.visible");
+      cy.findByRole("tab", {name: "Tab 1"}).should("be.visible");
       cy.visit("/admin/settings/public-sharing");
     });
 
@@ -149,7 +145,7 @@ describe("scenarios > admin > settings > public sharing", () => {
         "source-table": ORDERS_ID,
       },
     })
-      .then(({ body }) => {
+      .then(({body}) => {
         const questionId = body.id;
         cy.wrap(questionId).as("questionId");
         cy.request("POST", `/api/card/${questionId}/public_link`, {});
@@ -168,7 +164,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByText(
         `${location.origin}/public/question/${questionUuid}`,
       ).click();
-      cy.findByRole("heading", { name: expectedQuestionName }).should(
+      cy.findByRole("heading", {name: expectedQuestionName}).should(
         "be.visible",
       );
       cy.visit("/admin/settings/public-sharing");
@@ -204,7 +200,7 @@ describe("scenarios > admin > settings > public sharing", () => {
         "source-table": ORDERS_ID,
       },
       type: "model",
-    }).then(({ body }) => {
+    }).then(({body}) => {
       const modelId = body.id;
       cy.wrap(modelId).as("modelId");
     });
@@ -214,7 +210,7 @@ describe("scenarios > admin > settings > public sharing", () => {
         ...DEFAULT_ACTION_DETAILS,
         name: expectedActionName,
         model_id: modelId,
-      }).then(({ body }) => {
+      }).then(({body}) => {
         const actionId = body.id;
         cy.wrap(actionId).as("actionId");
       });
@@ -224,7 +220,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       .then(actionId => {
         cy.request("POST", `/api/action/${actionId}/public_link`, {});
       })
-      .then(({ body }) => {
+      .then(({body}) => {
         cy.wrap(body.uuid).as("actionUuid");
       });
 
@@ -236,7 +232,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     cy.findByText(expectedActionName).should("be.visible");
     cy.get("@actionUuid").then(actionUuid => {
       cy.findByText(`${location.origin}/public/action/${actionUuid}`).click();
-      cy.findByRole("heading", { name: expectedActionName }).should(
+      cy.findByRole("heading", {name: expectedActionName}).should(
         "be.visible",
       );
       cy.visit("/admin/settings/public-sharing");
@@ -268,7 +264,7 @@ describe("scenarios > admin > settings > public sharing", () => {
 
 describe(
   "scenarios > sharing > approved domains (EE)",
-  { tags: "@external" },
+  {tags: "@external"},
   () => {
     const allowedDomain = "metabase.test";
     const deniedDomain = "metabase.example";
@@ -299,7 +295,7 @@ describe(
       H.modal().findByText("Set up an alert").click();
 
       H.modal()
-        .findByRole("heading", { name: "Email" })
+        .findByRole("heading", {name: "Email"})
         .closest("li")
         .within(() => {
           addEmailRecipient(deniedEmail);

@@ -1,0 +1,15 @@
+.QuestionActionsDivider {
+  border-left: 1px solid var(--mb-color-border);
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+  height: 1.25rem;
+
+  &:first-child {
+    display: none;
+  }
+}
+
+.StrengthIndicator {
+  float: none;
+  margin-left: 3.5rem;
+}

@@ -1,16 +1,18 @@
 import cx from "classnames";
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { CreateOrEditCustomModal } from "metabase/notifications/modals/CreateOrEditCustomModal";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Icon } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
@@ -21,6 +23,16 @@ interface OwnProps {
   selectedDatabaseId?: DatabaseId;
   selectedSchemaId?: SchemaId;
   selectedTableId?: TableId;
+}
+
+interface TableLoaderProps {
+  table?: {
+    fields: {
+      id: number;
+      name: string;
+      display_name: string;
+    }[];
+  };
 }
 
 interface DatabaseLoaderProps {
@@ -44,15 +56,21 @@ const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
     ),
 });
 
-type MetadataHeaderProps = OwnProps & DatabaseLoaderProps & DispatchProps;
+type MetadataHeaderProps = OwnProps &
+  DatabaseLoaderProps &
+  TableLoaderProps &
+  DispatchProps;
 
 const MetadataHeader = ({
   databases,
   selectedDatabaseId,
   selectedSchemaId,
   selectedTableId,
+  table,
   onSelectDatabase,
 }: MetadataHeaderProps) => {
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+
   useLayoutEffect(() => {
     if (databases.length > 0 && selectedDatabaseId == null) {
       onSelectDatabase(databases[0].id, { useReplace: true });
@@ -103,8 +121,26 @@ const MetadataHeader = ({
             >
               <Icon name="gear" />
             </TableSettingsLink>
+            <Button
+              variant="subtle"
+              aria-label={t`Notifications`}
+              onClick={() => setIsNotificationModalOpen(true)}
+            >
+              <Icon name="bell" className={CS.ml2} />
+            </Button>
           </span>
         </div>
+      )}
+
+      {isNotificationModalOpen && (
+        <CreateOrEditCustomModal
+          onClose={() => setIsNotificationModalOpen(false)}
+          onNotificationCreated={() => {
+            setIsNotificationModalOpen(false);
+          }}
+          tableId={selectedTableId}
+          fields={table?.fields ?? []}
+        />
       )}
     </div>
   );
@@ -114,6 +150,9 @@ const MetadataHeader = ({
 export default _.compose(
   Databases.loadList({
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  }),
+  Tables.load({
+    id: (state: any, props: OwnProps) => props.selectedTableId,
   }),
   connect(null, mapDispatchToProps),
 )(MetadataHeader);
