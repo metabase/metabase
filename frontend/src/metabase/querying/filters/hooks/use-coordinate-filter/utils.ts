@@ -7,7 +7,7 @@ import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 import type { NumberValue, OperatorOption } from "./types";
 
-function isNotEmpty(value: NumberValue): value is number {
+function isNotEmpty(value: NumberValue): value is Lib.NumberFilterValue {
   return value !== "";
 }
 
@@ -141,11 +141,14 @@ function getBetweenFilterParts(
 ): Lib.CoordinateFilterParts | undefined {
   const [startValue, endValue] = values;
   if (isNotEmpty(startValue) && isNotEmpty(endValue)) {
+    const minValue = startValue < endValue ? startValue : endValue;
+    const maxValue = startValue < endValue ? endValue : startValue;
+
     return {
       operator,
       column,
       longitudeColumn: null,
-      values: [Math.min(startValue, endValue), Math.max(startValue, endValue)],
+      values: [minValue, maxValue],
     };
   } else if (isNotEmpty(startValue)) {
     return {
@@ -187,10 +190,10 @@ function getInsideFilterParts(
     column: isLatitude ? column : secondColumn,
     longitudeColumn: isLatitude ? secondColumn : column,
     values: [
-      Math.max(upperLatitude, lowerLatitude),
-      Math.min(leftLongitude, rightLongitude),
-      Math.min(lowerLatitude, upperLatitude),
-      Math.max(leftLongitude, rightLongitude),
+      lowerLatitude < upperLatitude ? upperLatitude : lowerLatitude,
+      leftLongitude < rightLongitude ? leftLongitude : rightLongitude,
+      lowerLatitude < upperLatitude ? lowerLatitude : upperLatitude,
+      leftLongitude < rightLongitude ? rightLongitude : leftLongitude,
     ],
   };
 }

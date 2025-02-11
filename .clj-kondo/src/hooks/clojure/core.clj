@@ -50,6 +50,7 @@
      metabase-enterprise.internal-user/install-internal-user!
      metabase-enterprise.sso.integrations.saml-test/call-with-login-attributes-cleared!
      metabase.actions.actions/perform-action!
+     metabase.actions.models/insert!
      metabase.analytics.snowplow-test/fake-track-event-impl!
      metabase.analytics.snowplow/track-event-impl!
      metabase.api.public-test/add-card-to-dashboard!
@@ -67,7 +68,6 @@
      metabase.driver.postgres-test/create-enums-db!
      metabase.driver.postgres-test/drop-if-exists-and-create-db!
      metabase.driver.sql-jdbc.execute/execute-statement!
-     metabase.models.action/insert!
      metabase.models.collection.graph-test/clear-graph-revisions!
      metabase.models.collection.graph-test/do-with-n-temp-users-with-personal-collections!
      metabase.models.field-values/create-or-update-full-field-values!

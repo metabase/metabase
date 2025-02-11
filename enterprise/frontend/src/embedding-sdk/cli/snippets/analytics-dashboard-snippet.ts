@@ -42,7 +42,7 @@ export const AnalyticsDashboard = () => {
             {isDashboard && (
               <select
                 className="dashboard-select"
-                onChange={(e) => setDashboardId(e.target.value)}
+                onChange={(e) => setDashboardId(Number(e.target.value))}
               >
                 {DASHBOARDS.map((dashboard) => (
                   <option key={dashboard.id} value={dashboard.id}>

@@ -9,14 +9,14 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.models.dispatch :as models.dispatch]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.password :as u.password]))
+   [metabase.util.password :as u.password]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,7 +34,7 @@
      (mu/with-api-error-message
       [:fn
        {:error/message (format "value must be an instance of %s" (name model))}
-       #(models.dispatch/instance-of? model %)]
+       #(t2/instance-of? model %)]
       (deferred-tru "value must be an instance of {0}" (name model))))))
 
 (def ^{:arglists '([^Class klass])} InstanceOfClass
