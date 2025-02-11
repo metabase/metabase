@@ -34,9 +34,6 @@ export type FilterOperatorOption<T extends Lib.FilterOperatorName> = {
   operator: T;
 };
 
-// string is used when the value cannot be accurately represented as a JS number
-export type NumberFilterValue = number | string;
-
 export type DatePickerOperator =
   | SpecificDatePickerOperator
   | ExcludeDatePickerOperator;

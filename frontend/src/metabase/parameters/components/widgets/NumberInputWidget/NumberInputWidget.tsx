@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import NumericInput from "metabase/core/components/NumericInput";
 import CS from "metabase/css/core/index.css";
+import type { NumberValue } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
@@ -12,7 +13,6 @@ import {
   WidgetLabel,
   WidgetRoot,
 } from "metabase/parameters/components/widgets/Widget.styled";
-import type { NumberFilterValue } from "metabase/querying/filters/types";
 import { normalizeNumberParameterValue } from "metabase/querying/parameters/utils/normalize";
 import { MultiAutocomplete } from "metabase/ui";
 import type {
@@ -23,7 +23,7 @@ import type {
 
 export type NumberInputWidgetProps = {
   value: ParameterValueOrArray | undefined;
-  setValue: (value: NumberFilterValue[] | undefined) => void;
+  setValue: (value: NumberValue[] | undefined) => void;
   className?: string;
   arity?: "n" | number;
   infixText?: string;

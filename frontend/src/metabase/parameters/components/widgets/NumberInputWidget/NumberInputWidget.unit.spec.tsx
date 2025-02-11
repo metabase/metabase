@@ -7,7 +7,7 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import type { NumberFilterValue } from "metabase/querying/filters/types";
+import type { NumberValue } from "metabase/lib/number";
 import type { Parameter, ParameterValue } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -261,7 +261,7 @@ describe("NumberInputWidget", () => {
   });
 });
 
-function getValue(parent: HTMLElement, value: NumberFilterValue) {
+function getValue(parent: HTMLElement, value: NumberValue) {
   /* eslint-disable-next-line testing-library/prefer-screen-queries */
   return getByText(parent, value.toString());
 }

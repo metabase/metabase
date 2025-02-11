@@ -14,7 +14,7 @@ import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenFie
 import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
-import { parseNumberValue } from "metabase/lib/number";
+import { parseNumberExact } from "metabase/lib/number";
 import { defer } from "metabase/lib/promise";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -444,7 +444,7 @@ export const FieldValuesWidgetInner = forwardRef<
 
   const parseFreeformValue = (value: string | number) => {
     return isNumeric(fields[0], parameter)
-      ? parseNumberValue(value)
+      ? parseNumberExact(value)
       : parseStringValue(value);
   };
 
