@@ -3,7 +3,6 @@
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
