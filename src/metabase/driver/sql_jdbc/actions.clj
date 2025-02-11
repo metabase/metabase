@@ -306,6 +306,8 @@
             _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
             row    (select-created-row driver create-hsql conn result)]
         (log/tracef ":row/create returned row %s" (pr-str row))
+        (metabase.api.internal-tools/track-insert! (get-in query [:query :source-table])
+                                                   [row])
         {:created-row row}))))
 
 ;;;; Bulk actions

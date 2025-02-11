@@ -98,7 +98,7 @@
    {:keys [value]} :- [:map [:value :any]]]
   (update-cell! field-id row-pk value))
 
-(defn- track-insert! [table-id rows]
+(defn track-insert! [table-id rows]
   (let [pks (t2/select :model/Field :table_id table-id :semantic_type :type/PK)]
     ;; only track hacky audit trail if there's a single PK
     (when (= 1 (count pks))
