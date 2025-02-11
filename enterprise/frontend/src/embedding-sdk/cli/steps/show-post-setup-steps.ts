@@ -62,6 +62,9 @@ export const showPostSetupSteps: CliStepMethod = async state => {
       // Did the project initially have a custom app or root layout file?
       hasNextJsCustomAppOrRootLayout:
         state.hasNextJsCustomAppOrRootLayout ?? false,
+
+      // Did we generate an Express.js server?
+      hasExpressJsServer: !!state.token && !!state.mockServerPath,
     });
 
     POST_SETUP_STEPS.push(...messages);

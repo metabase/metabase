@@ -12,9 +12,11 @@ import { checkIfUsingAppOrPagesRouter } from "./nextjs-helpers";
 export const getNextJsSetupMessages = async ({
   componentPath,
   hasNextJsCustomAppOrRootLayout,
+  hasExpressJsServer,
 }: {
   componentPath: string;
   hasNextJsCustomAppOrRootLayout: boolean;
+  hasExpressJsServer: boolean;
 }): Promise<string[]> => {
   const router = await checkIfUsingAppOrPagesRouter();
   const isInTypeScriptProject = await checkIsInTypeScriptProject();
@@ -42,13 +44,17 @@ export const getNextJsSetupMessages = async ({
 
   snippets.push(componentSnippet);
 
-  snippets.push(`
-  Instead of having a separate Express.js server, you can create API routes
-  for them. See the examples from ${green(LINK_TO_NEXT_JS_SAMPLE)}.
+  let afterSetupMessage = "";
 
-  For guides on using Next.js with Embedding SDK, see
-  ${green(LINK_TO_NEXT_JS_GUIDE)}
-  `);
+  if (hasExpressJsServer) {
+    afterSetupMessage += `  Instead of running a separate Express.js server, you can create API routes for them.
+  See the examples from ${green(LINK_TO_NEXT_JS_SAMPLE)}.\n\n`;
+  }
+
+  afterSetupMessage += `  For guides on using Next.js with Embedding SDK, see
+  ${green(LINK_TO_NEXT_JS_GUIDE)}`;
+
+  snippets.push(afterSetupMessage);
 
   return snippets.map(snippet => snippet.trim());
 };
