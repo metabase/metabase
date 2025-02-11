@@ -4,7 +4,8 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.interface :as qp.i]
-   [metabase.query-processor.util :as qp.util]))
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]))
 
 ;;;; Pre-processing
 
@@ -44,10 +45,10 @@
           attachment-limit (if (= context :dashboard-subscription)
                              (public-settings/attachment-row-limit)
                              Integer/MAX_VALUE)]
-      (min (mbql.u/query->max-rows-limit query)
-           download-limit
-           attachment-limit
-           qp.i/absolute-max-results))))
+      (u/safe-min (mbql.u/query->max-rows-limit query)
+                  download-limit
+                  attachment-limit
+                  qp.i/absolute-max-results))))
 
 (defn add-default-limit
   "Pre-processing middleware. Add default `:limit` to MBQL queries without any aggregations."

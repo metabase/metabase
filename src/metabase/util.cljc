@@ -1207,3 +1207,16 @@
   "Like not-empty, but for strings"
   [s]
   (when-not (str/blank? s) s))
+
+(defn safe-min
+  "nil safe clojure.core/min"
+  [& args]
+  (transduce
+   (filter some?)
+   (completing
+    (fn [acc n]
+      (if acc
+        (min acc n)
+        n)))
+   nil
+   args))
