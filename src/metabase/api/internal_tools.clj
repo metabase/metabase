@@ -24,6 +24,7 @@
 (derive ::event :metabase/event)
 (derive :event/table-mutation-cell-update ::event)
 (derive :event/table-mutation-row-insert ::event)
+(derive :event/table-mutation-row-delete ::event)
 
 (defn- parse-value [base-type v]
   ;; TODO this logic is duplicated with metabase.query-processor.middleware.auto-parse-filter-values
