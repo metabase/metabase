@@ -4,10 +4,14 @@
    [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
+   [metabase.models.cell-edit]
    [metabase.events :as events]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(comment
+  metabase.models.cell-edit/keep-me)
 
 (derive ::event :metabase/event)
 (derive :table.mutation/cell-update ::event)
@@ -16,7 +20,9 @@
   (let [{column :name :keys [table_id semantic_type]} (api/check-404 (t2/select-one :model/Field field-id))
         {table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table_id))
         pks    (t2/select :model/Field :table_id table_id :semantic_type :type/PK)
-        driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))]
+        driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))
+        ;; TODO get this
+        old-value nil]
     (assert (not= :type/PK semantic_type) "Cannot modify PK")
     (assert (= 1 (count pks)) "Table must have a PK, and it cannot be compound")
 
@@ -29,12 +35,17 @@
                                         column
                                         value)
 
+    (t2/insert! :model/CellEdit
+                {:table_id  table_id
+                 :field_id  field-id
+                 :old_value old-value
+                 :new_value value})
+
     (events/publish-event! :table.mutation/cell-update
                            {:object-id field-id
                             :object    {:pk    row-pk
                                         :value-new value
-                                        ;; TODO get this
-                                        :value-old nil}
+                                        :value-old old-value}
                             :user-id   api/*current-user-id*})))
 
 (api.macros/defendpoint :put "/field/:field-id/:row-pk"

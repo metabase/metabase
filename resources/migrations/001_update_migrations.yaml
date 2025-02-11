@@ -10677,6 +10677,61 @@ databaseChangeLog:
                   type: ${timestamp_type}
                   remarks: The timestamp at which a user was deactivated
 
+  - changeSet:
+      id: v53.2025-02-29T15:06:43
+      author: crisptrutski
+      comment: Track mutations to table "cells"
+      changes:
+        - createTable:
+            tableName: table_cell_edit_history
+            remarks: Audit trail for user edits to tables
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: table_id
+                  remarks: edited table
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_cell_edit_table_id
+                    deleteCascade: true
+              - column:
+                  name: field_id
+                  remarks: edited field
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_cell_edit_field_id
+                    deleteCascade: true
+              - column:
+                  name: old_value
+                  remarks: edited field
+                  type: varchar(254)
+              - column:
+                  name: new_value
+                  remarks: edited field
+                  type: varchar(254)
+              - column:
+                  remarks: The timestamp of when the edit was made
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
