@@ -12,6 +12,7 @@
    [metabase.driver.init]
    [metabase.events.init]
    [metabase.logger.init]
+   [metabase.model-persistence.init]
    [metabase.models.init]
    [metabase.notification.init]
    [metabase.query-analysis.init]

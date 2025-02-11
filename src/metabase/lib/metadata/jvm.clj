@@ -214,8 +214,8 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/card
   [model]
-  (classloader/require 'metabase.models.card
-                       'metabase.models.persisted-info)
+  (t2.model/resolve-model :model/Card)
+  (t2.model/resolve-model :model/PersistedInfo)
   model)
 
 (methodical/defmethod t2.model/model->namespace :metadata/card

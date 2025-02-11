@@ -1,7 +1,7 @@
-(ns metabase.api.persist-test
+(ns metabase.model-persistence.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]))

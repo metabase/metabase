@@ -10,7 +10,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.persisted-info :as persisted-info]
+   [metabase.model-persistence.core :as model-persistence]
    [metabase.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
@@ -223,7 +223,7 @@
               :action-id   (:id action)}
         card (t2/select-one :model/Card :id (:model_id action))
         ;; prefilling a form with day old data would be bad
-        result (binding [persisted-info/*allow-persisted-substitution* false]
+        result (model-persistence/with-persisted-substituion-disabled
                  (qp/process-query
                   (qp/userland-query
                    (qp.card/query-for-card card prefetch-parameters nil nil)

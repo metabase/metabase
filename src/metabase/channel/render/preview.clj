@@ -13,6 +13,7 @@
    [metabase.channel.render.image-bundle :as img]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
+   [metabase.notification.payload.execute :refer [execute-dashboard]]
    [metabase.util.markdown :as markdown]
    [toucan2.core :as t2]))
 
@@ -74,8 +75,6 @@
                                     :-moz-osx-font-smoothing "grayscale"})}
          (markdown/process-markdown (:text dashboard-result) :html)])
        (cellfn nil)])))
-
-(def ^:private execute-dashboard (requiring-resolve 'metabase.notification.payload.execute/execute-dashboard))
 
 (defn- render-dashboard-to-hiccup
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."

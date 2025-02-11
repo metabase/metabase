@@ -68,13 +68,16 @@
      metabase.driver.postgres-test/create-enums-db!
      metabase.driver.postgres-test/drop-if-exists-and-create-db!
      metabase.driver.sql-jdbc.execute/execute-statement!
+     metabase.model-persistence.models.persisted-info/ready-database!
+     metabase.model-persistence.task.persist-refresh/job-init!
+     metabase.model-persistence.task.persist-refresh/refresh-tables!
+     metabase.model-persistence.task.persist-refresh/schedule-persistence-for-database!
      metabase.models.collection.graph-test/clear-graph-revisions!
      metabase.models.collection.graph-test/do-with-n-temp-users-with-personal-collections!
      metabase.models.field-values/create-or-update-full-field-values!
      metabase.models.model-index/add-values!
      metabase.models.moderation-review/create-review!
      metabase.models.on-demand-test/add-dashcard-with-parameter-mapping!
-     metabase.models.persisted-info/ready-database!
      metabase.models.setting-test/test-user-local-allowed-setting!
      metabase.models.setting-test/test-user-local-only-setting!
      metabase.models.setting.cache/restore-cache!
@@ -104,9 +107,6 @@
      metabase.sync.util-test/sync-database!
      metabase.sync.util/store-sync-summary!
      metabase.task.index-values/job-init!
-     metabase.task.persist-refresh/job-init!
-     metabase.task.persist-refresh/refresh-tables!
-     metabase.task.persist-refresh/schedule-persistence-for-database!
      metabase.task/delete-task!
      metabase.test.data.bigquery-cloud-sdk/execute!
      metabase.test.data.impl/copy-db-tables-and-fields!

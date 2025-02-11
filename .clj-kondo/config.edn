@@ -384,11 +384,16 @@
                                      metabase.legacy-mbql.util}                                     ; TODO -- consolidate these into a real API namespace.
     metabase.lib                   :any                                                             ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
     metabase.logger                #{metabase.logger metabase.logger.init}
+    metabase.model-persistence     #{metabase.model-persistence.api
+                                     metabase.model-persistence.core
+                                     metabase.model-persistence.init}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
     metabase.notification          #{metabase.notification.core
                                      metabase.notification.init
-                                     metabase.notification.payload.core}
+                                     metabase.notification.payload.core
+                                     ;; TODO -- FIXME -- used by [[metabase.channel.render.preview]]
+                                     metabase.notification.payload.execute}
     metabase.permissions           #{metabase.permissions.api
                                      metabase.permissions.core}
     metabase.plugins               #{metabase.plugins
@@ -439,8 +444,7 @@
     metabase.task                  #{metabase.task
                                      metabase.task.bootstrap
                                      metabase.task.index-values
-                                     metabase.task.init
-                                     metabase.task.persist-refresh} ; TODO -- move this stuff into appropriate modules
+                                     metabase.task.init} ; TODO -- move this stuff into appropriate modules
     metabase.timeline              #{metabase.timeline.api
                                      metabase.timeline.core}
     metabase.types                 #{metabase.types}
@@ -492,6 +496,7 @@
     metabase.lib                   :any
     metabase.logger                #{metabase.config
                                      metabase.plugins}
+    metabase.model-persistence     :any
     metabase.models                :any
     metabase.moderation            :any
     metabase.notification          :any
@@ -660,6 +665,7 @@
     metabase.legacy-mbql.util                                     mbql.u
     metabase.lib.util                                             lib.util
     metabase.lib.util.match                                       lib.util.match
+    metabase.model-persistence.core                               model-persistence
     metabase.models.dependency                                    dependency
     metabase.models.interface                                     mi
     metabase.notification.core                                    notification
@@ -871,7 +877,6 @@
    metabase.api.embed-test/with-temp-card                                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-dashcard                                                                                hooks.common/let-one-with-optional-value
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
-   metabase.api.persist-test/with-setup!                                                                                     hooks.common/with-one-top-level-binding
    metabase.api.public-test/with-required-param-card!                                                                        hooks.common/with-one-binding
    metabase.api.public-test/with-temp-public-card                                                                            hooks.common/let-one-with-optional-value
    metabase.api.public-test/with-temp-public-dashboard                                                                       hooks.common/let-one-with-optional-value
@@ -891,6 +896,7 @@
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
+   metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
    metabase.models.collection-test/with-collection-hierarchy!                                                                hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
    metabase.models.dashboard-tab-test/with-dashtab-in-personal-collection                                                    hooks.common/with-one-top-level-binding
@@ -988,6 +994,7 @@
    metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing!  macros.metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing!
    metabase.lib.common/defop                                                     macros.metabase.lib.common/defop
    metabase.lib.filter/deffilter                                                 macros.metabase.lib.filter/deffilter
+   metabase.model-persistence.test-util/with-persistence-enabled!                macros.metabase.model-persistence.test-util/with-persistence-enabled!
    metabase.models.params.chain-filter-test/chain-filter                         macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                  macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.query-analysis-test/with-test-setup                           macros.metabase.models.query-analysis-test/with-test-setup
@@ -998,7 +1005,6 @@
    metabase.test.util/with-temp-env-var-value!                                   macros.metabase.test.util/with-temp-env-var-value!
    metabase.test.util/with-temporary-raw-setting-values                          macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.test/with-group-for-user                                             macros.metabase.test.data.users/with-group-for-user
-   metabase.test/with-persistence-enabled!                                       macros.metabase.test.persistence/with-persistence-enabled!
    metabase.test/with-temp-env-var-value!                                        macros.metabase.test.util/with-temp-env-var-value!
    metabase.test/with-temporary-raw-setting-values                               macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.util.namespaces/import-fn                                            macros.metabase.util.namespaces/import-fn

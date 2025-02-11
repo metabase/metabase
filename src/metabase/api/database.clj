@@ -17,12 +17,14 @@
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.model-persistence.settings :as model-persistence.settings]
+   [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.database :as database]
    [metabase.models.field :refer [readable-fields-only]]
    [metabase.models.interface :as mi]
-   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.secret :as secret]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.core :as perms]
@@ -34,7 +36,6 @@
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
-   [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
@@ -877,11 +878,12 @@
             details
             (database/sensitive-fields-for-db database)))))
 
+;;; TODO -- this should be moved into the model-persistence module
 (api.macros/defendpoint :post "/:id/persist"
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check (public-settings/persisted-models-enabled)
+  (api/check (model-persistence.settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
   (api/let-404 [database (t2/select-one :model/Database :id id)]
@@ -896,12 +898,13 @@
           (do (t2/update! :model/Database id {:settings (assoc (:settings database) :persist-models-enabled true)})
               (task.persist-refresh/schedule-persistence-for-database!
                database
-               (public-settings/persisted-model-refresh-cron-schedule))
+               (model-persistence.settings/persisted-model-refresh-cron-schedule))
               api/generic-204-no-content)
           (throw (ex-info (ddl.i/error->message error schema)
                           {:error error
                            :database (:name database)})))))))
 
+;;; TODO -- this should be moved into the model-persistence module
 (api.macros/defendpoint :post "/:id/unpersist"
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [{:keys [id]} :- [:map

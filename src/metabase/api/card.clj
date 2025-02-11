@@ -17,6 +17,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.model-persistence.core :as model-persistence]
    [metabase.models.card :as card]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
@@ -24,7 +25,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
@@ -33,7 +33,6 @@
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
-   [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -833,6 +832,7 @@
                                   :qp           qp.pivot/run-pivot-query
                                   :ignore-cache ignore_cache))
 
+;;; TODO -- this endpoint should be moved into the `model-persistence` module, perhaps as `/api/persist/card/:card-id`
 (api.macros/defendpoint :post "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
   query in place of the model's query."
@@ -852,10 +852,11 @@
                          :database    (:name database)})))
       (when-not (card/model? card)
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
-      (when-let [persisted-info (persisted-info/turn-on-model! api/*current-user-id* card)]
-        (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
+      (when-let [persisted-info (model-persistence/turn-on-model! api/*current-user-id* card)]
+        (model-persistence/schedule-refresh-for-individual! persisted-info))
       api/generic-204-no-content)))
 
+;;; TODO -- this endpoint should be moved into the `model-persistence` module
 (api.macros/defendpoint :post "/:card-id/refresh"
   "Refresh the persisted model caching `card-id`."
   [{:keys [card-id]} :- [:map
@@ -867,9 +868,10 @@
     (when (:archived card)
       (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
     (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
-    (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
+    (model-persistence/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
+;;; TODO -- this endpoint should be moved into the `model-persistence` module
 (api.macros/defendpoint :post "/:card-id/unpersist"
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."
@@ -879,7 +881,7 @@
   (api/let-404 [_card (t2/select-one :model/Card :id card-id)]
     (api/let-404 [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
       (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
-      (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
+      (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off")
       api/generic-204-no-content)))
 
 (defn mapping->field-values

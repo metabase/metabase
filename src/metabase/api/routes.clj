@@ -25,7 +25,6 @@
    [metabase.api.model-index]
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
-   [metabase.api.persist]
    [metabase.api.premium-features]
    [metabase.api.preview-embed]
    [metabase.api.public]
@@ -47,6 +46,7 @@
    [metabase.bookmarks.api]
    [metabase.channel.api]
    [metabase.config :as config]
+   [metabase.model-persistence.api]
    [metabase.permissions.api]
    [metabase.revisions.api]
    [metabase.search.api]
@@ -77,7 +77,6 @@
          metabase.api.login-history/keep-me
          metabase.api.model-index/keep-me
          metabase.api.native-query-snippet/keep-me
-         metabase.api.persist/keep-me
          metabase.api.preview-embed/keep-me
          metabase.api.public/keep-me
          metabase.api.pulse.unsubscribe/keep-me
@@ -91,6 +90,7 @@
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
+         metabase.model-persistence.api/keep-me
          metabase.permissions.api/keep-me
          metabase.revisions.api/keep-me
          metabase.setup.api/keep-me
@@ -167,7 +167,7 @@
    "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.permissions.api)
-   "/persist"              (+auth 'metabase.api.persist)
+   "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.api.premium-features/routes)
    "/preview_embed"        (+auth 'metabase.api.preview-embed)
    "/public"               (+public-exceptions 'metabase.api.public)

@@ -18,11 +18,11 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
+   [metabase.model-persistence.core :as model-persistence]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :as table]
    [metabase.permissions.core :as perms]
    [metabase.public-settings :as public-settings]
@@ -754,7 +754,7 @@
                             (map :id)
                             seq)]
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
-    (persisted-info/invalidate! {:card_id [:in model-ids]})))
+    (model-persistence/invalidate! {:card_id [:in model-ids]})))
 
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try

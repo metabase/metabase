@@ -10,7 +10,6 @@
    [metabase.events.driver-notifications]
    [metabase.events.last-login]
    [metabase.events.notification]
-   [metabase.events.persisted-info]
    [metabase.events.schema]
    [metabase.events.slack]
    [metabase.events.view-log]))

@@ -1,4 +1,4 @@
-(ns metabase.api.persist
+(ns metabase.model-persistence.api
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
@@ -7,10 +7,11 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.model-persistence.settings :as model-persistence.settings]
+   [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.models.interface :as mi]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
-   [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -117,7 +118,7 @@
                    (str/ends-with? cron "*"))
       (throw (ex-info (tru "Must be a valid cron string not specifying a year")
                       {:status-code 400})))
-    (public-settings/persisted-model-refresh-cron-schedule! cron))
+    (model-persistence.settings/persisted-model-refresh-cron-schedule! cron))
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
@@ -126,7 +127,7 @@
   []
   (validation/check-has-application-permission :setting)
   (log/info "Enabling model persistence")
-  (public-settings/persisted-models-enabled! true)
+  (model-persistence.settings/persisted-models-enabled! true)
   (task.persist-refresh/enable-persisting!)
   api/generic-204-no-content)
 
@@ -149,11 +150,11 @@
   that option from databases which might have it enabled, and delete all cached tables."
   []
   (validation/check-has-application-permission :setting)
-  (when (public-settings/persisted-models-enabled)
-    (try (public-settings/persisted-models-enabled! false)
+  (when (model-persistence.settings/persisted-models-enabled)
+    (try (model-persistence.settings/persisted-models-enabled! false)
          (disable-persisting)
          (catch Exception e
            ;; re-enable so can continue to attempt to clean up
-           (public-settings/persisted-models-enabled! true)
+           (model-persistence.settings/persisted-models-enabled! true)
            (throw e))))
   api/generic-204-no-content)

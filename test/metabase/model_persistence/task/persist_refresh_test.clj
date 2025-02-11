@@ -1,11 +1,11 @@
-(ns metabase.task.persist-refresh-test
+(ns metabase.model-persistence.task.persist-refresh-test
   (:require
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.util :as u]
    [potemkin.types :as p]
@@ -250,8 +250,8 @@
 
     (testing "send an email if persist-refresh fails"
       (let [email-sent (atom false)]
-        (with-redefs [task.persist-refresh/send-persist-refresh-email-if-error! (fn [& _args]
-                                                                                  (reset! email-sent true))]
+        (with-redefs [task.persist-refresh/publish-refresh-error-event! (fn [& _args]
+                                                                          (reset! email-sent true))]
           (#'task.persist-refresh/save-task-history! "persist-refresh" (mt/id)
                                                      (fn []
                                                        {:error-details ["some-error"]}))
