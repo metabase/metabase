@@ -10,11 +10,3 @@ export const WidthBound = styled.div<{ width?: number }>`
 export const Dropdown = styled(HoverCard.Dropdown)`
   overflow: visible;
 `;
-
-export const HackyInvisibleTargetFiller = styled.div`
-  position: absolute;
-  width: 100%;
-  top: -10px;
-  min-height: 10px;
-  z-index: -1;
-`;
