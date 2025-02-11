@@ -42,7 +42,7 @@
           download-limit (if (clojure.string/includes? (str context) "download") ;; csv, json, xlsx
                            (public-settings/download-row-limit)
                            Integer/MAX_VALUE)
-          attachment-limit (if (= context :dashboard-subscription)
+          attachment-limit (if (#{:dashboard-subscription :pulse} context)
                              (public-settings/attachment-row-limit)
                              Integer/MAX_VALUE)]
       (u/safe-min (mbql.u/query->max-rows-limit query)
