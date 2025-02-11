@@ -4,18 +4,22 @@
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.model-persistence.init]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.util :as u]
    [potemkin.types :as p]
    [toucan2.core :as t2])
-  (:import [org.quartz CronScheduleBuilder CronTrigger]))
+  (:import
+   (org.quartz CronScheduleBuilder CronTrigger)))
 
 (set! *warn-on-reflection* true)
 
-(p/defprotocol+ GetSchedule
-  (schedule-string [_]))
+(comment metabase.model-persistence.init/keep-me)
+
+(p/defprotocol+ ^:private GetSchedule
+  (^:private schedule-string [_]))
 
 (extend-protocol GetSchedule
   CronScheduleBuilder
@@ -236,8 +240,10 @@
         (is (=? {:task         task-name
                  :task_details {:foo "bar"}
                  :status       :success}
-                (t2/select-one :model/TaskHistory :task task-name)))))
+                (t2/select-one :model/TaskHistory :task task-name)))))))
 
+(deftest save-task-history-test-2
+  (mt/with-model-cleanup [:model/TaskHistory]
     (testing "if the task fails, task history should have status is faield"
       (let [task-name (mt/random-name)]
         (#'task.persist-refresh/save-task-history! task-name (mt/id)
@@ -246,10 +252,13 @@
         (is (=? {:task         task-name
                  :task_details {:error-details ["some-error"]}
                  :status       :failed}
-                (t2/select-one :model/TaskHistory :task task-name)))))
+                (t2/select-one :model/TaskHistory :task task-name)))))))
 
+(deftest save-task-history-test-3
+  (mt/with-model-cleanup [:model/TaskHistory]
     (testing "send an email if persist-refresh fails"
       (let [email-sent (atom false)]
+        ;; TODO -- a real test that actually made sure this function worked instead of swapping it out would be nice.
         (with-redefs [task.persist-refresh/publish-refresh-error-event! (fn [& _args]
                                                                           (reset! email-sent true))]
           (#'task.persist-refresh/save-task-history! "persist-refresh" (mt/id)
