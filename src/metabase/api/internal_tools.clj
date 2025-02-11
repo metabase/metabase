@@ -14,6 +14,7 @@
    [metabase.models.cell-edit]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -69,6 +70,20 @@
    {}
    {:keys [value]} :- [:map [:value :any]]]
   (update-cell! field-id row-pk value))
+
+(defn- insert-row! [table-id row]
+  (let [{table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table-id))
+        pks    (t2/select :model/Field :table_id table-id :semantic_type :type/PK)
+        driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))]
+    (assert (= 1 (count pks)) "Table must have a PK, and it cannot be compound")
+    (driver/insert-into! driver db_id table (keys row) [(vals row)])))
+
+(api.macros/defendpoint :post "/table/:table-id"
+  [{:keys [table-id]} :- [:map
+                          [:table-id ms/PositiveInt]]
+   {}
+   {:keys [row]} :- [:map [:row :any]]]
+  (insert-row! table-id row))
 
 (comment
   (def table (t2/select-one :model/Table :name "PEOPLE"))

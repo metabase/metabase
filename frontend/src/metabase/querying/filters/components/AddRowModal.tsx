@@ -9,6 +9,7 @@ import {
 } from "metabase/forms";
 // import { useDispatch } from "metabase/lib/redux";
 // import { addUndo } from "metabase/redux/undo";
+import { POST } from "metabase/lib/api";
 import { Box, Divider, Flex, Modal, Stack, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { FieldId } from "metabase-types/api";
@@ -24,10 +25,12 @@ export const AddRowModal = ({ question, onClose }: AddRowModalProps) => {
 
   const fields = table?.fields;
 
-  const handleSubmit = (values: unknown) => {
+  const handleSubmit = async (values: unknown) => {
     // eslint-disable-next-line no-console
     console.log("AddRowModal.handleSubmit", values);
-
+    await POST(`/api/internal-tools/table/${table?.id}`)({
+      row: values,
+    });
     // dispatch(addUndo({ message: t`The alert was successfully deleted.` }));
     onClose();
   };
