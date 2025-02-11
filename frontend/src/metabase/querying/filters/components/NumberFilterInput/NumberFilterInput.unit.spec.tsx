@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import type * as Lib from "metabase-lib";
 
-import { NumberFilterInput, type NumberFilterValue } from "./NumberFilterInput";
+import { NumberFilterInput } from "./NumberFilterInput";
 
 type SetupOpts = {
-  value?: NumberFilterValue | "";
+  value?: Lib.NumberFilterValue | "";
 };
 
 function setup({ value = "" }: SetupOpts = {}) {
