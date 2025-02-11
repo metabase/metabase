@@ -4,9 +4,13 @@
    [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
+   [metabase.events :as events]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(derive ::event :metabase/event)
+(derive :table.mutation/cell-update ::event)
 
 (defn- update-cell! [field-id row-pk value]
   (let [{column :name :keys [table_id semantic_type]} (api/check-404 (t2/select-one :model/Field field-id))
@@ -23,7 +27,15 @@
                                         (:name (first pks))
                                         row-pk
                                         column
-                                        value)))
+                                        value)
+
+    (events/publish-event! :table.mutation/cell-update
+                           {:object-id field-id
+                            :object    {:pk    row-pk
+                                        :value-new value
+                                        ;; TODO get this
+                                        :value-old nil}
+                            :user-id   api/*current-user-id*})))
 
 (api.macros/defendpoint :put "/field/:field-id/:row-pk"
   "Update the given value in the underlying table."
