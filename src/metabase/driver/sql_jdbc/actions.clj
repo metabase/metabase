@@ -226,7 +226,9 @@
                           {:status-code 400})))
         ;; this is really brittle, non-trivial models will also reference other fields
         (let [pks (t2/select-fn-vec (comp keyword :name) :model/Field (first (mbql.u/referenced-field-ids (:query query))))]
-          (metabase.api.internal-tools/track-delete! (:source-table (:query query)) pks old-rows))
+          ;; ... hence we have this limitation to avoid bad things happening
+          (when (= 1 (count pks))
+            (metabase.api.internal-tools/track-delete! (:source-table (:query query)) pks old-rows)))
         {:rows-deleted [1]}))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
