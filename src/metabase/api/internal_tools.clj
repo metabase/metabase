@@ -21,8 +21,8 @@
   metabase.models.cell-edit/keep-me)
 
 (derive ::event :metabase/event)
-(derive :table.mutation/cell-update ::event)
-(derive :table.mutation/row-insert ::event)
+(derive :event/table-mutation-cell-update ::event)
+(derive :event/table-mutation-row-insert ::event)
 
 (defn- parse-value [base-type v]
   ;; TODO this logic is duplicated with metabase.query-processor.middleware.auto-parse-filter-values
@@ -128,7 +128,6 @@
                             :user-id api/*current-user-id*})
 
     :done))
-
 
 (comment
   (def table (t2/select-one :model/Table :name "PEOPLE"))
