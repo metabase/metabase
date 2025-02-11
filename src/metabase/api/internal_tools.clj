@@ -30,8 +30,6 @@
   ;; TODO this logic is duplicated with metabase.query-processor.middleware.auto-parse-filter-values
   ;; factor out or decide what to do
   ;; thought: need to parse dates and stuff but integers could maybe be passed as json numbers to the server
-  (def base-type base-type)
-  (def v v)
   (condp #(isa? %2 %1) base-type
     :type/BigInteger (bigint v)
     :type/Integer    (parse-long v)

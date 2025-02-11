@@ -179,7 +179,7 @@
                                         [:user-id [:maybe pos-int?]]
                                         [:model [:or :keyword :string]]])}))
 
-(def ^:private internal-tool-events #_{}
+(def ^:private internal-tool-events
   {:event/table-mutation-cell-update [:map
                                       [:object
                                        [:map
@@ -188,7 +188,14 @@
                                         (-> [:table-id pos-int?]
                                             (with-hydrate :table [:model/Table :name]))]]
                                       (-> [:user-id pos-int?]
-                                          (with-hydrate :user user-hydrate))]})
+                                          (with-hydrate :user user-hydrate))]
+   :event/table-mutation-row-insert [:map
+                                     [:object
+                                      [:map
+                                       (-> [:table-id pos-int?]
+                                           (with-hydrate :table [:model/Table :name]))]]
+                                     (-> [:user-id pos-int?]
+                                         (with-hydrate :user user-hydrate))]})
 
 (def topic->schema
   "Returns the schema for an event topic."

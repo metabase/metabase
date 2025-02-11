@@ -175,7 +175,16 @@
                 (:name field)
                 value-old
                 value-new
-                pk))])))
+                pk))])
+
+    :event/table-mutation-row-insert
+    (let [{:keys [table rows]} (:object event_info)
+          user (:user event_info)]
+      [(text->markdown-block
+        (format "%s has added %d rows to table `%s`"
+                (:common_name user)
+                (:name table)
+                (count rows)))])))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
   [_channel-type {:keys [payload]} _template recipients]
