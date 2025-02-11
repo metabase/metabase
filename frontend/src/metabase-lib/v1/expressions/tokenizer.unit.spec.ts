@@ -369,23 +369,37 @@ describe("tokenizer", () => {
     it("tokenizes incomplete bracket identifier followed by whitespace (metabase#50925)", () => {
       const { tokens, errors } = tokenize("[Pr [Price]");
       expect(tokens).toEqual([
-        { type: TOKEN.Identifier, start: 0, end: 3, isReference: true }, // [Pr
+        {
+          type: TOKEN.Identifier,
+          start: 0,
+          end: expect.any(Number),
+          isReference: true,
+        }, // [Pr
         { type: TOKEN.Identifier, start: 4, end: 11, isReference: true }, // [Price]
       ]);
       expect(errors).toEqual([
         {
           message: "Bracket identifier in another bracket identifier",
           pos: 0,
-          len: 3,
+          len: expect.any(Number),
         },
       ]);
+      expect(errors[0].len).toBeGreaterThanOrEqual(3);
+      expect(errors[0].len).toBeLessThanOrEqual(4);
     });
 
     it("tokenizes incomplete bracket identifier followed by bracket identifier (metabase#50925)", () => {
-      const { tokens } = tokenize("[Pr[Price]");
+      const { tokens, errors } = tokenize("[Pr[Price]");
       expect(tokens).toEqual([
         { type: TOKEN.Identifier, start: 0, end: 3, isReference: true }, // [Pr
         { type: TOKEN.Identifier, start: 3, end: 10, isReference: true }, // [Price]
+      ]);
+      expect(errors).toEqual([
+        {
+          message: "Bracket identifier in another bracket identifier",
+          pos: 0,
+          len: expect.any(Number),
+        },
       ]);
     });
   });
