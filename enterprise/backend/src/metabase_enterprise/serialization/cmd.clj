@@ -11,7 +11,7 @@
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.db :as mdb]
    [metabase.models.field :as field]
    [metabase.models.serialization :as serdes]
@@ -117,7 +117,7 @@
                    (catch Exception e
                      (reset! err e)))
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
-    (snowplow/track-event! ::snowplow/serialization
+    (analytics/track-event! :snowplow/serialization
                            {:event         :serialization
                             :direction     "import"
                             :source        "cli"
@@ -250,7 +250,7 @@
                        (v2.storage/store! path)))
                  (catch Exception e
                    (reset! err e)))]
-    (snowplow/track-event! ::snowplow/serialization
+    (analytics/track-event! :snowplow/serialization
                            {:event           :serialization
                             :direction       "export"
                             :source          "cli"

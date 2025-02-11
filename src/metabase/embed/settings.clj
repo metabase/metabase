@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [crypto.random :as crypto-random]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -23,7 +23,7 @@
           (setting/set-value-of-type! :boolean setting-key new-value)
           (when (and new-value (str/blank? (embed/embedding-secret-key)))
             (embed/embedding-secret-key! (crypto-random/hex 32)))
-          (snowplow/track-event! ::snowplow/embed_share
+          (analytics/track-event! :snowplow/embed_share
                                  {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
                                   :embedding-app-origin-set   (boolean
                                                                (or (setting/get-value-of-type :string :embedding-app-origin)

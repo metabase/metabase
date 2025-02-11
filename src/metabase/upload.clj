@@ -8,7 +8,6 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -641,14 +640,14 @@
                                            :model-id    (:id card)
                                            :stats       stats}})
 
-        (snowplow/track-event! ::snowplow/csvupload
-                               (assoc stats
-                                      :event    :csv-upload-successful
-                                      :model-id (:id card)))
+        (analytics/track-event! :snowplow/csvupload
+                                (assoc stats
+                                       :event    :csv-upload-successful
+                                       :model-id (:id card)))
         (assoc card :table-id (:id table)))
       (catch Throwable e
         (analytics/inc! :metabase-csv-upload/failed)
-        (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+        (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
                                                            :event :csv-upload-failed))
 
         (throw e)))))
@@ -830,12 +829,12 @@
                                              :table-name  (:name table)
                                              :stats       stats}})
 
-          (snowplow/track-event! ::snowplow/csvupload (assoc stats :event :csv-append-successful))
+          (analytics/track-event! :snowplow/csvupload (assoc stats :event :csv-append-successful))
 
           {:row-count row-count})))
     (catch Throwable e
       (analytics/inc! :metabase-csv-upload/failed)
-      (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+      (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
                                                          :event :csv-append-failed))
       (throw e))))
 

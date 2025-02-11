@@ -2,7 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.nonce :as nonce]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
    [metabase.db :as mdb]
@@ -96,7 +96,7 @@
       (when-not (:embedded device-info)
         (maybe-send-login-from-new-device-email history-entry))
       (when-not (:last_login user)
-        (snowplow/track-event! ::snowplow/account {:event :new-user-created} (u/the-id user)))
+        (analytics/track-event! :snowplow/account {:event :new-user-created} (u/the-id user)))
       (assoc session :id session-id))))
 
 (mu/defmethod create-session! :password :- SessionSchema
