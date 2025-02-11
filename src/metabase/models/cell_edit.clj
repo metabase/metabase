@@ -8,4 +8,9 @@
   ;; anything else?
   )
 
-(methodical/defmethod t2/table-name :model/CellEdit [_model] :table_cell_edit_history)
+(doto :model/TableEdit
+  (derive :metabase/model)
+  ;; anything else?
+  )
+
+(methodical/defmethod t2/table-name :model/TableEdit [_model] :table_edit_history)

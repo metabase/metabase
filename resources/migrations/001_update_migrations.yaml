@@ -10696,14 +10696,18 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: The condition of the notification
 
-
   - changeSet:
-      id: v53.2025-02-29T15:06:43
+      id: v53.2025-02-30T15:06:43
       author: crisptrutski
-      comment: Track mutations to table "cells"
+      comment: Track mutations to tables
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: table_edit_history
       changes:
         - createTable:
-            tableName: table_cell_edit_history
+            tableName: table_edit_history
             remarks: Audit trail for user edits to tables
             columns:
               - column:
@@ -10722,29 +10726,27 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: metabase_table
                     referencedColumnNames: id
-                    foreignKeyName: fk_cell_edit_table_id
-                    deleteCascade: true
-              - column:
-                  name: field_id
-                  remarks: edited field
-                  type: int
-                  constraints:
-                    nullable: false
-                    referencedTableName: metabase_field
-                    referencedColumnNames: id
-                    foreignKeyName: fk_cell_edit_field_id
+                    foreignKeyName: fk_table_edit_table_id
                     deleteCascade: true
               - column:
                   name: pk
                   remarks: primary key value
                   type: int
               - column:
+                  name: type
+                  remarks: the kind of edit, e.g. insert, edit
+                  type: varchar(254)
+              - column:
                   name: old_value
-                  remarks: edited field
+                  remarks: before
                   type: varchar(254)
               - column:
                   name: new_value
-                  remarks: edited field
+                  remarks: after
+                  type: varchar(254)
+              - column:
+                  name: delta
+                  remarks: what changed
                   type: varchar(254)
               - column:
                   remarks: The timestamp of when the edit was made
@@ -10753,8 +10755,6 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
-
-
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

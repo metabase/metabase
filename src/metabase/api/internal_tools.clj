@@ -46,7 +46,14 @@
     (assert (not= :type/PK semantic_type) "Cannot modify PK")
     (assert (= 1 (count pks)) "Table must have a PK and it cannot be compound")
 
-    (let [old-value (let [sql (sql/format {:select [(keyword column)]
+    (let [old-row   (let [sql (sql/format {:select [:*]
+                                           :from   [(keyword table)]
+                                           :where  [:= row-pk (keyword (:name (first pks)))]}
+                                          :quoted true
+                                          :dialect (sql.qp/quote-style driver))]
+                      (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db_id)]
+                        (first (jdbc/query conn sql))))
+          old-value (let [sql (sql/format {:select [(keyword column)]
                                            :from   [(keyword table)]
                                            :where  [:= row-pk (keyword (:name (first pks)))]}
                                           :quoted true
@@ -64,12 +71,13 @@
                                           column
                                           new-value)
 
-      (t2/insert! :model/CellEdit
+      (t2/insert! :model/TableEdit
                   {:table_id  table_id
-                   :field_id  field-id
                    :pk       row-pk
-                   :old_value old-value
-                   :new_value value})
+                   :type      "edit"
+                   :old_value (pr-str old-row)
+                   :new_value (pr-str (assoc old-row column new-value))
+                   :delta     (pr-str {column value})})
 
       (events/publish-event! :event/table-mutation-cell-update
                              {:object-id field-id
@@ -79,7 +87,7 @@
                                           :value-new value
                                           ;; TODO get this
                                           :value-old old-value}
-                              :user-id   api/*current-user-id*}))))
+                              :user-id   (or api/*current-user-id* (t2/select-one-pk :model/User :is_superuser true))}))))
 
 (api.macros/defendpoint :put "/field/:field-id/:row-pk"
   "Update the given value in the underlying table."
@@ -95,21 +103,19 @@
     ;; only track hacky audit trail if there's a single PK
     (when (= 1 (count pks))
       (let [pk-name (keyword (:name (first pks)))]
-        (doseq [r rows
-                :let [row-pk (get r pk-name)]
-                [k v] r
-                :when (not= k pk-name)]
-          (t2/insert! :model/CellEdit
+        (doseq [r rows :let [row-pk (get r pk-name)]]
+          (t2/insert! :model/TableEdit
                       {:table_id  table-id
-                       :field_id  (t2/select-one-pk :model/Field :table_id table-id :name (name k))
+                       :type      "insert"
                        :pk        row-pk
                        :old_value nil
-                       :new_value v})))))
+                       :new_value (pr-str r)
+                       :delta     (pr-str r)})))))
 
   (events/publish-event! :event/table-mutation-row-insert
                          {:object  {:table-id table-id
                                     :rows     rows}
-                          :user-id api/*current-user-id*}))
+                          :user-id (or api/*current-user-id* (t2/select-one-pk :model/User :is_superuser true))}))
 
 (defn delete-row! [table-id row-pk]
   (let [{table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table-id))
@@ -117,7 +123,7 @@
         driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))]
     (assert (= 1 (count pks)) "Table must have a PK and it cannot be compound")
 
-    (let [old-row (let [sql (sql/format {:select [*]
+    (let [old-row (let [sql (sql/format {:select [:*]
                                          :from   [(keyword table)]
                                          :where  [:= row-pk (keyword (:name (first pks)))]}
                                         :quoted true
@@ -125,18 +131,31 @@
                     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db_id)]
                       (first (jdbc/query conn sql))))]
 
-      (driver.sql-jdbc/delete-row! driver
-                                   db_id
-                                   schema
-                                   table
-                                   (:name (first pks))
-                                   row-pk)
+      (api/check-404 old-row)
 
-      (events/publish-event! :event/table-mutation-row-delete
-                             {:object    {:table-id table-id
-                                          :pk    row-pk
-                                          :row old-row}
-                              :user-id   api/*current-user-id*}))))
+      (when (driver.sql-jdbc/delete-row! driver
+                                         db_id
+                                         schema
+                                         table
+                                         (:name (first pks))
+                                         row-pk)
+
+        ;; hacky audit trail
+        (let [pk-name (keyword (:name (first pks)))
+              row-pk  (get old-row pk-name)]
+          (t2/insert! :model/TableEdit
+                      {:table_id  table-id
+                       :pk        row-pk
+                       :type      "delete"
+                       :old_value (pr-str old-row)
+                       :new_value nil
+                       :delta     nil}))
+
+        (events/publish-event! :event/table-mutation-row-delete
+                               {:object  {:table-id table-id
+                                          :pk       row-pk
+                                          :row      old-row}
+                                :user-id (or api/*current-user-id* (t2/select-one-pk :model/User :is_superuser true))})))))
 
 (api.macros/defendpoint :delete "/table/:table-id/:row-pk"
   [{:keys [table-id row-pk]} :- [:map
