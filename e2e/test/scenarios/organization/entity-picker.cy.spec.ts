@@ -780,32 +780,39 @@ describe("scenarios > organization > entity picker", () => {
       });
     });
 
-    it(
-      "should show dashboards in personal collections when apropriate, even if there are no sub collections",
-      { tags: "@flaky" },
-      () => {
-        cy.signInAsAdmin();
-        H.createDashboard({
-          collection_id: ADMIN_PERSONAL_COLLECTION_ID,
-        });
+    it("should show dashboards in personal collections when apropriate, even if there are no sub collections", () => {
+      cy.intercept("/api/database/*").as("database");
+      cy.signInAsAdmin();
+      H.createDashboard({
+        collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+      });
+      H.openTable({ table: ORDERS_ID });
+      cy.wait("@database");
+      cy.button("Save").click();
+      H.modal()
+        .findByLabelText("Where do you want to save this?")
+        .should("contain.text", "Orders in a dashboard")
+        .click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Browse").click();
+        H.entityPickerModalItem(0, "Bobby Tables's Personal Collection").should(
+          "be.visible",
+        );
+        H.entityPickerModalItem(1, "Orders in a dashboard").should(
+          "be.visible",
+        );
+        H.entityPickerModalItem(
+          0,
+          "Bobby Tables's Personal Collection",
+        ).click();
+        H.entityPickerModalItem(1, "Test Dashboard").click();
 
-        H.openTable({ table: ORDERS_ID });
-        cy.button("Save").click();
-        H.modal().findByLabelText("Where do you want to save this?").click();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
-          H.entityPickerModalItem(
-            0,
-            "Bobby Tables's Personal Collection",
-          ).click();
-          H.entityPickerModalItem(1, "Test Dashboard").should("exist").click();
-          cy.button("Select this dashboard").click();
-        });
-        H.modal()
-          .findByLabelText("Where do you want to save this?")
-          .should("contain.text", "Test Dashboard");
-      },
-    );
+        cy.button("Select this dashboard").click();
+      });
+      H.modal()
+        .findByLabelText("Where do you want to save this?")
+        .should("contain.text", "Test Dashboard");
+    });
   });
 
   describe("dashboard picker", () => {

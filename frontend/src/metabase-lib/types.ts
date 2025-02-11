@@ -384,17 +384,20 @@ export type StringFilterOptions = {
   caseSensitive?: boolean;
 };
 
+// string is used when the value cannot be accurately represented as a JS number
+export type NumberFilterValue = number | string;
+
 export type NumberFilterParts = {
   operator: NumberFilterOperator;
   column: ColumnMetadata;
-  values: number[];
+  values: NumberFilterValue[];
 };
 
 export type CoordinateFilterParts = {
   operator: CoordinateFilterOperator;
   column: ColumnMetadata;
   longitudeColumn: ColumnMetadata | null;
-  values: number[];
+  values: NumberFilterValue[];
 };
 
 export type BooleanFilterParts = {

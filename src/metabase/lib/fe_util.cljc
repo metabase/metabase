@@ -186,18 +186,22 @@
       _
       nil)))
 
+(def ^:private NumberFilterValue
+  "String is used when the value cannot be accurately represented as a JS number."
+  [:or number? :string])
+
 (def ^:private NumberFilterParts
   [:map
    [:operator ::lib.schema.filter/number-filter-operator]
    [:column   ::lib.schema.metadata/column]
-   [:values   [:sequential number?]]])
+   [:values   [:sequential NumberFilterValue]]])
 
 (mu/defn number-filter-clause :- ::lib.schema.expression/expression
   "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[number-filter-parts]]."
   [operator :- ::lib.schema.filter/number-filter-operator
    column   :- ::lib.schema.metadata/column
-   values   :- [:maybe [:sequential number?]]]
+   values   :- [:maybe [:sequential NumberFilterValue]]]
   (expression-clause-with-in operator (into [column] values) {}))
 
 (mu/defn number-filter-parts :- [:maybe NumberFilterParts]
@@ -207,26 +211,27 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        number-col? #(ref-clause-with-type? % [:type/Number])]
+        number-col? #(ref-clause-with-type? % [:type/Number])
+        number-arg? #(or (number? %) (string? %))]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?)]
       {:operator op, :column (ref->col col-ref), :values []}
 
       ;; multiple arguments, `:=`
-      [(_ :guard #{:= :in}) _ (col-ref :guard number-col?) & (args :guard #(every? number? %))]
+      [(_ :guard #{:= :in}) _ (col-ref :guard number-col?) & (args :guard #(every? number-arg? %))]
       {:operator :=, :column (ref->col col-ref), :values args}
 
       ;; multiple arguments, `:!=`
-      [(_ :guard #{:!= :not-in}) _ (col-ref :guard number-col?) & (args :guard #(every? number? %))]
+      [(_ :guard #{:!= :not-in}) _ (col-ref :guard number-col?) & (args :guard #(every? number-arg? %))]
       {:operator :!=, :column (ref->col col-ref), :values args}
 
       ;; exactly 1 argument
-      [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard number-col?) (arg :guard number?)]
+      [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard number-col?) (arg :guard number-arg?)]
       {:operator op, :column (ref->col col-ref), :values [arg]}
 
       ;; exactly 2 arguments
-      [(op :guard #{:between}) _ (col-ref :guard number-col?) (start :guard number?) (end :guard number?)]
+      [(op :guard #{:between}) _ (col-ref :guard number-col?) (start :guard number-arg?) (end :guard number-arg?)]
       {:operator op, :column (ref->col col-ref), :values [start end]}
 
       ;; do not match inner clauses
@@ -238,7 +243,7 @@
    [:operator         ::lib.schema.filter/coordinate-filter-operator]
    [:column           ::lib.schema.metadata/column]
    [:longitude-column {:optional true} [:maybe ::lib.schema.metadata/column]]
-   [:values           [:sequential number?]]])
+   [:values           [:sequential NumberFilterValue]]])
 
 (mu/defn coordinate-filter-clause :- ::lib.schema.expression/expression
   "Creates a coordinate filter clause based on FE-friendly filter parts. It should be possible to destructure each
@@ -246,7 +251,7 @@
   [operator         :- ::lib.schema.filter/coordinate-filter-operator
    column           :- ::lib.schema.metadata/column
    longitude-column :- [:maybe ::lib.schema.metadata/column]
-   values           :- [:maybe [:sequential number?]]]
+   values           :- [:maybe [:sequential NumberFilterValue]]]
   (if (= operator :inside)
     (expression-clause operator (into [column longitude-column] values) {})
     (expression-clause-with-in operator (into [column] values) {})))
@@ -260,25 +265,26 @@
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col        #(column-metadata-from-ref query stage-number %)
         coordinate-col? #(and (ref-clause-with-type? % [:type/Number])
-                              (lib.types.isa/coordinate? (ref->col %)))]
+                              (lib.types.isa/coordinate? (ref->col %)))
+        number-arg?     #(or (number? %) (string? %))]
     (lib.util.match/match-one filter-clause
       ;; multiple arguments, `:=`
-      [(_ :guard #{:= :in}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
+      [(_ :guard #{:= :in}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number-arg? %))]
       {:operator :=, :column (ref->col col-ref), :values args}
 
       ;; multiple arguments, `:!=`
-      [(_ :guard #{:!= :not-in}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number? %))]
+      [(_ :guard #{:!= :not-in}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number-arg? %))]
       {:operator :!=, :column (ref->col col-ref), :values args}
 
      ;; exactly 1 argument
-      [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard coordinate-col?) (arg :guard number?)]
+      [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard coordinate-col?) (arg :guard number-arg?)]
       {:operator op, :column (ref->col col-ref), :values [arg]}
 
       ;; exactly 2 arguments
       [(op :guard #{:between})
        _
        (col-ref :guard coordinate-col?)
-       & (args :guard #(and (every? number? %) (= (count %) 2)))]
+       & (args :guard #(and (every? number-arg? %) (= (count %) 2)))]
       {:operator op, :column (ref->col col-ref), :values args}
 
       ;; exactly 4 arguments
@@ -286,7 +292,7 @@
        _
        (lat-col-ref :guard coordinate-col?)
        (lon-col-ref :guard coordinate-col?)
-       & (args :guard #(and (every? number? %) (= (count %) 4)))]
+       & (args :guard #(and (every? number-arg? %) (= (count %) 4)))]
       {:operator op, :column (ref->col lat-col-ref), :longitude-column (ref->col lon-col-ref), :values args}
 
       ;; do not match inner clauses
