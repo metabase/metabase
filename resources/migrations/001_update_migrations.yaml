@@ -10678,6 +10678,7 @@ databaseChangeLog:
                   remarks: The timestamp at which a user was deactivated
 
   - changeSet:
+      validCheckSum: ANY
       id: v53.2025-02-29T15:06:43
       author: crisptrutski
       comment: Track mutations to table "cells"
@@ -10714,6 +10715,10 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_cell_edit_field_id
                     deleteCascade: true
+              - column:
+                  name: pk
+                  remarks: primary key value
+                  type: int
               - column:
                   name: old_value
                   remarks: edited field

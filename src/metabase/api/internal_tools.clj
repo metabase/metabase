@@ -68,6 +68,7 @@
       (t2/insert! :model/CellEdit
                   {:table_id  table_id
                    :field_id  field-id
+                   :pk        row-pk
                    :old_value old-value
                    :new_value value})
 
@@ -90,15 +91,18 @@
    {:keys [value]} :- [:map [:value :any]]]
   (update-cell! field-id row-pk value))
 
+(defn- track-insert! [table-id rows]
+  (events/publish-event! :event/table-mutation-row-insert
+                         {:object  {:table-id table-id
+                                    :rows     rows}
+                          :user-id api/*current-user-id*}))
+
 (defn- insert-row! [table-id row]
   ;; don't bother checking whether PK(s) value is/are provided iff the PK(s) is/are not auto-incrementing
   (let [{table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table-id))
         driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))]
     (driver/insert-into! driver db_id table (keys row) [(vals row)])
-    (events/publish-event! :event/table-mutation-row-insert
-                           {:object  {:table-id table-id
-                                      :rows     [row]}
-                            :user-id api/*current-user-id*})))
+    (track-insert! table-id [row])))
 
 (api.macros/defendpoint :post "/table/:table-id"
   [{:keys [table-id]} :- [:map
@@ -122,10 +126,7 @@
     (qp.store/with-metadata-provider db_id
       (driver/execute-write-query! driver {:native {:query sql :params params}}))
 
-    (events/publish-event! :event/table-mutation-row-insert
-                           {:object  {:table-id table-id
-                                      :rows     rows}
-                            :user-id api/*current-user-id*})
+    (track-insert! table-id rows)
 
     :done))
 
