@@ -4,9 +4,14 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.54.0
+
+- Added a feature `:test/arrays` and multimethod `native-array-query` to enable the testing of array types for
+  databases that support them.
+
 ## Metabase 0.53.0 
 
-- Added the multi-method `bad-connection-details` to allow mocking bad connection parameters for tests.
+- Added the multimethod `bad-connection-details` to allow mocking bad connection parameters for tests.
 
 - Added `driver/dynamic-database-types-lookup` and its `:postgres` implementation. The method generates map 
   of `database_type` to `base_type`, for dynamic types, ie. those which are not covered 
