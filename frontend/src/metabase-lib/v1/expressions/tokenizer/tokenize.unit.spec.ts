@@ -428,9 +428,6 @@ describe("tokenizer", () => {
         ",",
         "(",
         ")",
-        "not",
-        "and",
-        "or",
       ];
 
       for (const expression of cases) {
@@ -447,7 +444,7 @@ describe("tokenizer", () => {
       }
     });
 
-    it("should be case insensitive to operators", () => {
+    it("tokenizes boolean operators", () => {
       const cases: [string, string, number][] = [
         ["A or B", OPERATOR.Or, 1],
         ["A and B", OPERATOR.And, 1],
