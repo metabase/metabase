@@ -514,7 +514,7 @@ describe("scenarios > filters > filter types", () => {
               values.forEach(value => {
                 cy.findByLabelText("Filter value")
                   .focus()
-                  .type(`${value}`, { delay: 50 })
+                  .type(`${value},`, { delay: 50 })
                   .blur();
               });
               cy.button("Add filter").click();
