@@ -261,34 +261,36 @@ class TableInteractive extends Component {
       );
     }
 
-    return (
-      <Box>
-        {input}
-        {/*<Box pos="absolute" right="0" top="-0.5rem">*/}
-        {/*  <Stack style={{ zIndex: 10 }} spacing={0}>*/}
-        {/*    <UIButton*/}
-        {/*      leftIcon={<Icon name="check" />}*/}
-        {/*      compact*/}
-        {/*      disabled={inputValue === value}*/}
-        {/*      onClick={e => {*/}
-        {/*        e.stopPropagation();*/}
+    return input;
 
-        {/*        this.handleCellEditConfirm(clicked, cellProps);*/}
-        {/*      }}*/}
-        {/*    />*/}
-        {/*    <UIButton*/}
-        {/*      leftIcon={<Icon name="close" />}*/}
-        {/*      compact*/}
-        {/*      onClick={e => {*/}
-        {/*        e.stopPropagation();*/}
-
-        {/*        this.handleCellEditCancel(clicked, cellProps);*/}
-        {/*      }}*/}
-        {/*    />*/}
-        {/*  </Stack>*/}
-        {/*</Box>*/}
-      </Box>
-    );
+    // return (
+    //   <Box>
+    //     {input}
+    //     <Box pos="absolute" right="0" top="-0.5rem">
+    //       <Stack style={{ zIndex: 10 }} spacing={0}>
+    //         <UIButton
+    //           leftIcon={<Icon name="check" />}
+    //           compact
+    //           disabled={inputValue === value}
+    //           onClick={e => {
+    //             e.stopPropagation();
+    //
+    //             this.handleCellEditConfirm(clicked, cellProps);
+    //           }}
+    //         />
+    //         <UIButton
+    //           leftIcon={<Icon name="close" />}
+    //           compact
+    //           onClick={e => {
+    //             e.stopPropagation();
+    //
+    //             this.handleCellEditCancel(clicked, cellProps);
+    //           }}
+    //         />
+    //       </Stack>
+    //     </Box>
+    //   </Box>
+    // );
   }
 
   componentDidMount() {
@@ -710,7 +712,7 @@ class TableInteractive extends Component {
       detailEl;
     const canViewRowDetail = !this.props.isPivoted && !!visibleDetailButton;
 
-    if (event.key === "Enter" && canViewRowDetail) {
+    if (event.key === "Enter" && canViewRowDetail && !this.getIsEditingRow()) {
       const hoveredRowIndex = Number(detailEl.dataset.showDetailRowindex);
       this.pkClick(hoveredRowIndex)(event);
     }
@@ -785,8 +787,15 @@ class TableInteractive extends Component {
       if (!isClickable || !this.visualizationIsClickable(clicked)) {
         return;
       }
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && !this.getIsEditingRow()) {
         this.onVisualizationClick(clicked, e.currentTarget);
+      }
+
+      if (e.key === "Enter" && this.getIsEditingRow()) {
+        this.handleCellEditConfirm(clicked, cellProps);
+      }
+      if (e.key === "Escape" && this.getIsEditingRow()) {
+        this.handleCellEditCancel(clicked, cellProps);
       }
     };
 
@@ -917,6 +926,10 @@ class TableInteractive extends Component {
       return dragColNewLefts[index];
     }
     return style.left;
+  }
+
+  getIsEditingRow() {
+    return Object.values(this.state.editingCellsMap).includes(true);
   }
 
   // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)
