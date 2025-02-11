@@ -4,6 +4,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
+   [metabase.channel.template.core :as channel.template]
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
    [metabase.models.params.shared :as shared.params]
@@ -161,3 +162,15 @@
        :attachments (doall (remove nil?
                                    (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
                                              (create-slack-attachment-data (:dashboard_parts payload))])))})))
+
+(defn- markdown-block
+  [markdown]
+  {:blocks [{:type "section"
+             :text {:type "mrkdwn"
+                    :text (truncate-mrkdwn markdown block-text-length-limit)}}]})
+
+(mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
+  [_channel-type {:keys [payload]} template recipients]
+  (for [channel-id (map notification-recipient->channel-id recipients)]
+    {:channel-id  channel-id
+     :attachments [(markdown-block (channel.template/render-template template payload))]}))

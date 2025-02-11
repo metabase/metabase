@@ -16,6 +16,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
+import { PUT } from "metabase/lib/api";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
@@ -31,8 +32,12 @@ import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import {
   Box,
+  Checkbox,
+  DateInput,
   DelayGroup,
   Icon,
+  Input,
+  Stack,
   ThemeProvider,
   Button as UIButton,
 } from "metabase/ui";
@@ -110,6 +115,8 @@ class TableInteractive extends Component {
       columnWidths: [],
       contentWidths: null,
       showDetailShortcut: true,
+      editingCellsMap: {},
+      editingCellsValuesMap: {},
     };
     this.columnHasResized = {};
     this.headerRefs = [];
@@ -170,7 +177,82 @@ class TableInteractive extends Component {
     );
   }
 
-  UNSAFE_componentWillMount() {
+  renderEditingCell(clicked, cellProps) {
+    const { column, value } = clicked;
+
+    const inputValue = this.state.editingCellsValuesMap[cellProps.key] ?? value;
+
+    const handleInputValueChange = newVal => {
+      // eslint-disable-next-line no-console
+      console.log("handleInputValueChange", newVal);
+      this.setState(prevState => {
+        const editingCellsValuesMap = {
+          ...prevState.editingCellsValuesMap,
+          [cellProps.key]: newVal,
+        };
+
+        return { editingCellsValuesMap };
+      });
+    };
+
+    let input = (
+      <Input
+        value={inputValue}
+        variant="unstyled"
+        size="xs"
+        onChange={e => handleInputValueChange(e.target.value)}
+      />
+    );
+
+    if (column.database_type === "TIMESTAMP") {
+      input = (
+        <DateInput
+          value={new Date(inputValue)}
+          onChange={e => handleInputValueChange(e.toISOString())}
+        />
+      );
+    }
+
+    if (column.database_type === "BOOLEAN") {
+      input = (
+        <Checkbox
+          checked={inputValue}
+          onChange={e => handleInputValueChange(e.target.checked)}
+        />
+      );
+    }
+
+    return (
+      <Box>
+        {input}
+        <Box pos="absolute" right="0" top="-0.5rem">
+          <Stack style={{ zIndex: 10 }} spacing={0}>
+            <UIButton
+              leftIcon={<Icon name="check" />}
+              compact
+              disabled={inputValue === value}
+              onClick={e => {
+                e.stopPropagation();
+
+                this.handleCellEditConfirm(clicked, cellProps);
+              }}
+            />
+            <UIButton
+              leftIcon={<Icon name="close" />}
+              compact
+              onClick={e => {
+                e.stopPropagation();
+
+                this.handleCellEditCancel(clicked, cellProps);
+              }}
+            />
+          </Stack>
+        </Box>
+      </Box>
+    );
+  }
+
+  componentDidMount() {
     // for measuring cells:
     this._div = document.createElement("div");
     this._div.className = cx(TableS.TableInteractive, "test-TableInteractive");
@@ -459,10 +541,14 @@ class TableInteractive extends Component {
     });
   }
 
-  onVisualizationClick(clicked, element) {
-    const { onVisualizationClick } = this.props;
+  onVisualizationClick(clicked, element, cellProps) {
+    if (clicked.data) {
+      this.handleCellClickToEdit(clicked, element, cellProps);
+      return;
+    }
+
     if (this.visualizationIsClickable(clicked)) {
-      onVisualizationClick({ ...clicked, element });
+      this.props.onVisualizationClick({ ...clicked, element });
     }
   }
 
@@ -596,9 +682,10 @@ class TableInteractive extends Component {
     }
   };
 
-  cellRenderer = ({ key, style, rowIndex, columnIndex, isScrolling }) => {
+  cellRenderer = cellProps => {
+    const { key, style, rowIndex, columnIndex, isScrolling } = cellProps;
     const { data, settings, theme } = this.props;
-    const { dragColIndex, showDetailShortcut } = this.state;
+    const { dragColIndex, showDetailShortcut, editingCellsMap } = this.state;
     const { rows, cols } = data;
 
     const column = cols[columnIndex];
@@ -616,7 +703,11 @@ class TableInteractive extends Component {
         cellHeight={ROW_HEIGHT}
       />
     ) : (
-      this.getCellFormattedValue(value, columnSettings, clicked)
+      this.getCellFormattedValue(
+        this.state.editingCellsValuesMap[cellProps.key] ?? value,
+        columnSettings,
+        clicked,
+      )
       /* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */
     );
 
@@ -624,6 +715,7 @@ class TableInteractive extends Component {
     const isClickable = !isLink && !isScrolling;
 
     const isIDColumn = value != null && isID(column);
+    const isEdited = !!editingCellsMap[key];
 
     // Theme options from embedding SDK.
     const tableTheme = theme?.other?.table;
@@ -635,10 +727,10 @@ class TableInteractive extends Component {
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
 
     const handleClick = e => {
-      if (!isClickable || !this.visualizationIsClickable(clicked)) {
-        return;
-      }
-      this.onVisualizationClick(clicked, e.currentTarget);
+      // if (!isClickable || !this.visualizationIsClickable(clicked)) {
+      //   return;
+      // }
+      this.onVisualizationClick(clicked, e.currentTarget, cellProps);
     };
 
     const handleKeyUp = e => {
@@ -681,6 +773,7 @@ class TableInteractive extends Component {
             "test-Table-ID": isIDColumn,
             "test-Table-FK": value != null && isFK(column),
             link: isClickable && isID(column),
+            [TableS.TableInteractiveEditingCell]: isEdited,
           },
         )}
         onClick={handleClick}
@@ -693,7 +786,10 @@ class TableInteractive extends Component {
         }
         tabIndex="0"
       >
-        {this.renderTableCellWrapper(cellData, { isIDColumn })}
+        {this.renderTableCellWrapper(
+          !isEdited ? cellData : this.renderEditingCell(clicked, cellProps),
+          { isIDColumn, isEdited },
+        )}
 
         {isCollapsed && (
           <ExpandButton
@@ -1022,6 +1118,75 @@ class TableInteractive extends Component {
       () => this.recomputeGridSize(),
     );
 
+  handleCellClickToEdit = (clicked, element, cellProps) => {
+    // eslint-disable-next-line no-console
+    console.log("handleCellClickToEdit", clicked, element, cellProps);
+
+    this.setState(prevState => {
+      const editingCellsMap = {
+        ...prevState.editingCellsMap,
+        [cellProps.key]: true,
+      };
+
+      return { editingCellsMap };
+    });
+  };
+
+  handleCellEditConfirm = async (clicked, cellProps) => {
+    const cellKey = cellProps.key;
+    const newDataValue = this.state.editingCellsValuesMap[cellKey];
+
+    // eslint-disable-next-line no-console
+    console.log("handleCellEditConfirm", clicked, newDataValue);
+
+    const fieldId = clicked.column.id;
+    const rowId = clicked.data.find(
+      ({ col }) => col.semantic_type === "type/PK",
+    )?.value;
+
+    // eslint-disable-next-line no-console
+    console.log("handleCellEditConfirm", this.props.data);
+
+    await PUT(`/api/internal-tools/field/${fieldId}/${rowId}`)({
+      value: newDataValue,
+    });
+
+    // FIXME: mutate local state after successful api request
+    this.props.data.rows[clicked.rowIndex][clicked.columnIndex] = newDataValue;
+
+    this.setState(prevState => {
+      const editingCellsMap = {
+        ...prevState.editingCellsMap,
+        [cellKey]: false,
+      };
+
+      const editingCellsValuesMap = {
+        ...prevState.editingCellsValuesMap,
+      };
+      delete editingCellsValuesMap[cellKey];
+
+      return { editingCellsMap, editingCellsValuesMap };
+    });
+  };
+
+  handleCellEditCancel = async (clicked, cellProps) => {
+    const cellKey = cellProps.key;
+
+    this.setState(prevState => {
+      const editingCellsMap = {
+        ...prevState.editingCellsMap,
+        [cellKey]: false,
+      };
+
+      const editingCellsValuesMap = {
+        ...prevState.editingCellsValuesMap,
+      };
+      delete editingCellsValuesMap[cellKey];
+
+      return { editingCellsMap, editingCellsValuesMap };
+    });
+  };
+
   isColumnWidthTruncated = index => {
     const { columnIsExpanded } = this.state;
 
@@ -1137,7 +1302,7 @@ class TableInteractive extends Component {
     } = this.props;
 
     if (!width || !height) {
-      return <div className={className} />;
+      return <div ref={this.props.forwardedRef} className={className} />;
     }
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
@@ -1171,9 +1336,9 @@ class TableInteractive extends Component {
             } else {
               mainGridProps.scrollLeft = scrollLeft;
             }
-
             return (
               <TableInteractiveRoot
+                ref={this.props.forwardedRef}
                 bg={backgroundColor}
                 className={cx(
                   className,
@@ -1359,20 +1524,27 @@ class TableInteractive extends Component {
   }
 }
 
+const TableInteractiveMemoized = memoizeClass(
+  "_getCellClickedObjectCached",
+  "_visualizationIsClickableCached",
+  "getCellBackgroundColor",
+  "getCellFormattedValue",
+  "getHeaderClickedObject",
+)(TableInteractive);
+
+const TableInteractiveWithRef = forwardRef((props, ref) => (
+  <TableInteractiveMemoized {...props} forwardedRef={ref} />
+));
+
+TableInteractiveWithRef.displayName = "TableInteractiveInner";
+
 export default _.compose(
   withMantineTheme,
+  connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
   ExplicitSize({
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),
-  connect(mapStateToProps, mapDispatchToProps),
-  memoizeClass(
-    "_getCellClickedObjectCached",
-    "_visualizationIsClickableCached",
-    "getCellBackgroundColor",
-    "getCellFormattedValue",
-    "getHeaderClickedObject",
-  ),
-)(TableInteractive);
+)(TableInteractiveWithRef);
 
 const DetailShortcut = forwardRef((_props, ref) => (
   <div

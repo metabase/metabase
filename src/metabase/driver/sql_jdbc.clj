@@ -166,6 +166,20 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
+(defn insert-returning-pks!
+  [driver db-id table-name column-names values]
+  (let [dialect (sql.qp/quote-style driver)
+        sql     (sql/format {:insert-into (keyword table-name)
+                             :columns     (quote-columns driver column-names)
+                             :values      values}
+                            :quoted true
+                            :dialect dialect)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (let [with-keys (jdbc/execute! conn sql {:return-keys true})]
+        (if (map? with-keys)
+          [with-keys]
+          with-keys)))))
+
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
   (let [;; We need to partition the insert into multiple statements for both performance and correctness.
@@ -209,6 +223,28 @@
 (defmethod driver/alter-columns! :sql-jdbc
   [driver db-id table-name column-definitions]
   (qp.writeback/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
+
+(defn update-row-column!
+  "Update a single value in the given database row."
+  [driver db-id schema table-name pk pk-value column-name value]
+  (qp.writeback/execute-write-sql!
+   db-id
+   (with-quoting driver
+     (sql/format  {:update (keyword schema table-name)
+                   :set    {(keyword column-name) value}
+                   :where  [:= (keyword pk) pk-value]}
+                  :quoted true
+                  :dialect (sql.qp/quote-style driver)))))
+
+(defn delete-row!
+  [driver db-id schema table-name pk pk-value]
+  (pos? (:rows-affected (qp.writeback/execute-write-sql!
+                         db-id
+                         (with-quoting driver
+                           (sql/format {:delete-from (keyword schema table-name)
+                                        :where       [:= (keyword pk) pk-value]}
+                                       :quoted true
+                                       :dialect (sql.qp/quote-style driver)))))))
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]

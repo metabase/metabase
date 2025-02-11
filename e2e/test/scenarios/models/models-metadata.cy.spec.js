@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
@@ -196,12 +196,8 @@ describe("scenarios > models metadata", () => {
     H.openQuestionActions();
     H.popover().findByTextEnsureVisible("Edit query definition").click();
 
-    H.main().within(() => {
-      cy.get("textarea")
-        .focus()
-        .invoke("val", "")
-        .type("SELECT TOTAL FROM ORDERS LIMIT 5");
-    });
+    H.NativeEditor.clear();
+    H.NativeEditor.type("SELECT TOTAL FROM ORDERS LIMIT 5");
 
     cy.findByTestId("editor-tabs-metadata-name").click();
     cy.wait("@dataset");

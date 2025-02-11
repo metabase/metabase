@@ -1,6 +1,6 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
@@ -27,8 +27,8 @@ describe(
         "prefetchValues",
       );
 
-      H.resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
       H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
       asAdmin(() => {
         cy.updatePermissionsGraph({
           [ALL_USERS_GROUP]: {

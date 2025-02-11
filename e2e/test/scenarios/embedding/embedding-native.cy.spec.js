@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 

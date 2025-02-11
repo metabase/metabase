@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 function checkFavicon(url) {
@@ -15,7 +15,7 @@ function checkLogo() {
 
 const MB = 1024 * 1024;
 
-H.describeEE("formatting > whitelabel", () => {
+describe("formatting > whitelabel", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

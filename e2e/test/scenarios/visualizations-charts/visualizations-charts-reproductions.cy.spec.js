@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -739,7 +739,7 @@ describe("issue 25007", () => {
   it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
     clickLineDot({ index: 1 });
-    H.popover().findByTextEnsureVisible("May 1–7, 2022");
+    H.echartsTooltip().findByText("May 1–7, 2022");
   });
 });
 
@@ -1116,7 +1116,7 @@ describe("issue 33208", () => {
 
   it("should not auto-select chart type when saving a native question with parameters that have default values", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
-    H.focusNativeEditor().type(" ");
+    H.NativeEditor.focus().type(" ");
     H.saveSavedQuestion("top category");
     H.runNativeQuery({ wait: false });
     cy.findByTestId("scalar-value").should("be.visible");
@@ -1186,7 +1186,7 @@ describe("issue 43077", () => {
   });
 });
 
-H.describeEE("issue 49160", () => {
+describe("issue 49160", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

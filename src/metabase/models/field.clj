@@ -7,12 +7,12 @@
    [metabase.db :as mdb]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.field-values :as field-values]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -147,13 +147,13 @@
 
 (defmethod mi/can-read? :model/Field
   ([instance]
-   (and (data-perms/user-has-permission-for-table?
+   (and (perms/user-has-permission-for-table?
          api/*current-user-id*
          :perms/view-data
          :unrestricted
          (field->db-id instance)
          (:table_id instance))
-        (data-perms/user-has-permission-for-table?
+        (perms/user-has-permission-for-table?
          api/*current-user-id*
          :perms/create-queries
          :query-builder

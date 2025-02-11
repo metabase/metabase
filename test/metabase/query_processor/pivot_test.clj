@@ -9,8 +9,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -693,3 +694,27 @@
              (splice [1 2 6] {1 2, 2 5})))
       (is (= [1 2 3 5 8]
              (splice [1 2 6] {1 2, 2 5, 3 2}))))))
+
+(deftest ^:parallel pivoting-same-name-breakouts-test
+  (testing "Column names are deduplicated, therefore same `:name` cols are not missing from the results (#52769)"
+    (let [mp meta/metadata-provider
+          query (as-> (lib/query mp (meta/table-metadata :orders)) $
+                  (lib/aggregate $ (lib/count))
+                  (lib/breakout $ (meta/field-metadata :orders :id))
+                  (lib/breakout $ (some (fn [{:keys [name lib/source] :as col}]
+                                          (when (and (= name "ID") (= source :source/implicitly-joinable))
+                                            col))
+                                        (lib/breakoutable-columns $))))
+          viz-settings {:column_settings {}
+                        :pivot_table.column_split {:rows ["ID" "ID_2"], :columns [], :values ["count"]}
+                        :pivot_table.collapsed_rows {:value [], :rows ["ID" "ID_2"]}
+                        :pivot.show_row_totals true
+                        :pivot.show_column_totals true
+                        :pivot_table.column_widths {:leftHeaderWidths [80 99]
+                                                    :totalLeftHeaderWidths 179
+                                                    :valueHeaderWidths {}}
+                        :table.column_formatting []
+                        :table.columns nil}]
+      ;; Without deduplication, :pivot-rows' value would be just [0].
+      (is (= {:pivot-rows [0 1], :pivot-cols nil, :pivot-measures [2]}
+             (#'qp.pivot/column-name-pivot-options query viz-settings))))))

@@ -8,6 +8,7 @@ import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
+import { AddRowHeaderButton } from "metabase/query_builder/components/view/ViewHeader/components/AddRowHeaderButton";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -136,13 +137,16 @@ export function ViewTitleHeaderRightSide({
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
   const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
-  const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
+  const disabledSaveTooltip = isSaveDisabled
+    ? getDisabledSaveTooltip(isEditable)
+    : undefined;
 
   return (
     <Flex
       className={ViewTitleHeaderS.ViewHeaderActionPanel}
       data-testid="qb-header-action-panel"
     >
+      <AddRowHeaderButton onOpenModal={onOpenModal} />
       {FilterHeaderButton.shouldRender({
         question,
         queryBuilderMode,
@@ -222,7 +226,11 @@ export function ViewTitleHeaderRightSide({
         />
       )}
       {hasSaveButton && (
-        <Tooltip label={disabledSaveTooltip} disabled={canSave} position="left">
+        <Tooltip
+          disabled={!disabledSaveTooltip}
+          label={disabledSaveTooltip}
+          position="left"
+        >
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"

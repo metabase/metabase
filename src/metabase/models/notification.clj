@@ -8,8 +8,8 @@
    [medley.core :as m]
    [metabase.channel.models.channel :as models.channel]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.util.spec-update :as models.u.spec-update]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -132,9 +132,30 @@
                      :changes     (t2/changes instance)})))
   instance)
 
+(defn- update-subscription-trigger!
+  [& args]
+  (apply (requiring-resolve 'metabase.task.notification/update-subscription-trigger!) args))
+
 (defn- delete-trigger-for-subscription!
   [& args]
   (apply (requiring-resolve 'metabase.task.notification/delete-trigger-for-subscription!) args))
+
+(t2/define-before-update :model/Notification
+  [instance]
+  (validate-notification instance)
+  (when-let [unallowed-key (some #{:payload_type :payload_id :creator_id} (keys (t2/changes instance)))]
+    (throw (ex-info (format "Update %s is not allowed." (name unallowed-key))
+                    {:status-code 400
+                     :changes     (t2/changes instance)})))
+  (when (contains? (t2/changes instance) :active)
+    (let [subscriptions (t2/select :model/NotificationSubscription
+                                   :notification_id (:id instance)
+                                   :type :notification-subscription/cron)]
+      (doseq [subscription subscriptions]
+        (if (:active instance)
+          (update-subscription-trigger! subscription)
+          (delete-trigger-for-subscription! (:id subscription))))))
+  instance)
 
 (t2/define-before-delete :model/Notification
   [instance]
@@ -184,10 +205,6 @@
   [instance]
   (validate-subscription instance)
   instance)
-
-(defn- update-subscription-trigger!
-  [& args]
-  (apply (requiring-resolve 'metabase.task.notification/update-subscription-trigger!) args))
 
 (t2/define-after-insert :model/NotificationSubscription
   [instance]

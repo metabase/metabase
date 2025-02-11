@@ -179,6 +179,31 @@
                                         [:user-id [:maybe pos-int?]]
                                         [:model [:or :keyword :string]]])}))
 
+(def ^:private internal-tool-events
+  {:event/table-mutation-cell-update [:map
+                                      [:object
+                                       [:map
+                                        (-> [:field-id pos-int?]
+                                            (with-hydrate :field [:model/Field :name]))
+                                        (-> [:table-id pos-int?]
+                                            (with-hydrate :table [:model/Table :name]))]]
+                                      (-> [:user-id pos-int?]
+                                          (with-hydrate :user user-hydrate))]
+   :event/table-mutation-row-insert [:map
+                                     [:object
+                                      [:map
+                                       (-> [:table-id pos-int?]
+                                           (with-hydrate :table [:model/Table :name]))]]
+                                     (-> [:user-id pos-int?]
+                                         (with-hydrate :user user-hydrate))]
+   :event/table-mutation-row-delete [:map
+                                     [:object
+                                      [:map
+                                       (-> [:table-id pos-int?]
+                                           (with-hydrate :table [:model/Table :name]))]]
+                                     (-> [:user-id pos-int?]
+                                         (with-hydrate :user user-hydrate))]})
+
 (def topic->schema
   "Returns the schema for an event topic."
   (merge alert-schema
@@ -191,4 +216,5 @@
          pulse-schemas
          table-events
          user-events-schema
-         segment-related-schema))
+         segment-related-schema
+         internal-tool-events))

@@ -4,7 +4,7 @@
   If a notification is changed, it will be replaced with a new one."
   (:require
    [metabase.models.notification :as models.notification]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -12,7 +12,7 @@
 
 (def ^:private model->compare-keys
   "A mapping of model to the keys that are used to check if a row is the same."
-  {:model/Notification             [:payload_type :active]
+  {:model/Notification             [:payload_type :condition :active]
    :model/NotificationSubscription [:type :event_name :cron_schedule]
    :model/NotificationHandler      [:channel_type :active]
    :model/NotificationRecipient    [:type :user_id :permissions_group_id :details]
@@ -101,7 +101,63 @@
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{context.admin_email}}" :is_optional true}}
                                            {:type                 :notification-recipient/group
-                                            :permissions_group_id (:id (perms-group/admin))}]}]}]))
+                                            :permissions_group_id (:id (perms/admin-group))}]}]}
+          {:internal_id   "system-event/table-mutation-update"
+           :active        true
+           :payload_type  :notification/system-event
+           :subscriptions [{:type       :notification-subscription/system-event
+                            :event_name :event/table-mutation-cell-update}]
+           ;; (t2/select-one-pk :model/Table :name "PRODUCTS")
+           ;; (t2/select-one-pk :model/Field :name "CATEGORY" :table_id 3)
+           :condition    (str '(and (= 3 (-> % :payload :event_info :object :table-id))
+                                    (= 18 (-> % :payload :event_info :object :field-id))))
+           :handlers      [{:active       true
+                            :channel_type :channel/slack
+                            :channel_id   nil
+                            :template     {:name         "Table Mutation Cell Update Slack template"
+                                           :channel_type "channel/slack"
+                                           :details      {:type "email/handlebars-resource"
+                                                          :subject "Table Mutation Cell Update"
+                                                          :path "metabase/channel/slack/table_mutation_cell_update.hbs"}}
+
+                            :recipients   [{:type    :notification-recipient/raw-value
+                                            :details {:value "#leads"}}]}]}
+          {:internal_id   "system-event/table-mutation-insert"
+           :active        true
+           :payload_type  :notification/system-event
+           :subscriptions [{:type       :notification-subscription/system-event
+                            :event_name :event/table-mutation-row-insert}]
+           ;; (t2/select-one-pk :model/Table :name "PRODUCTS")
+           ;; (t2/select-one-pk :model/Field :name "CATEGORY" :table_id 3)
+           ;:condition    (str '(and (= 3 (-> % :payload :event_info :object :table-id))))
+           :handlers      [{:active       true
+                            :channel_type :channel/slack
+                            :channel_id   nil
+                            :template     {:name         "Table Mutation Row Insert Slack template"
+                                           :channel_type "channel/slack"
+                                           :details      {:type "email/handlebars-resource"
+                                                          :subject "Table Mutation Row Insert"
+                                                          :path "metabase/channel/slack/table_mutation_row_insert.hbs"}}
+                            :recipients   [{:type    :notification-recipient/raw-value
+                                            :details {:value "#leads"}}]}]}
+          {:internal_id   "system-event/table-mutation-delete"
+           :active        true
+           :payload_type  :notification/system-event
+           :subscriptions [{:type       :notification-subscription/system-event
+                            :event_name :event/table-mutation-row-delete}]
+           ;; (t2/select-one-pk :model/Table :name "PRODUCTS")
+           ;; (t2/select-one-pk :model/Field :name "CATEGORY" :table_id 3)
+           ;:condition    (str '(and (= 3 (-> % :payload :event_info :object :table-id))))
+           :handlers      [{:active       true
+                            :channel_type :channel/slack
+                            :channel_id   nil
+                            :template     {:name         "Table Mutation Row Delete Slack template"
+                                           :channel_type "channel/slack"
+                                           :details      {:type "email/handlebars-resource"
+                                                          :subject "Table Mutation Row Delete"
+                                                          :path "metabase/channel/slack/table_mutation_row_delete.hbs"}}
+                            :recipients   [{:type    :notification-recipient/raw-value
+                                            :details {:value "#leads"}}]}]}]))
 
 (defn- cleanup-notification!
   [internal-id existing-row]

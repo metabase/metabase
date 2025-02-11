@@ -1,11 +1,11 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const PG_DB_ID = 2;
 
-H.describeEE("impersonated permission", { tags: "@external" }, () => {
+describe("impersonated permission", { tags: "@external" }, () => {
   describe("admins", () => {
     beforeEach(() => {
       H.restore("postgres-12");

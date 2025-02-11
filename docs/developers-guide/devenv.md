@@ -87,14 +87,6 @@ We exclude ESLint loader in dev mode for seven times quicker initial builds by d
 $ USE_ESLINT=true yarn build-hot
 ```
 
-By default, these build processes rely on a memory cache. The build process with ESLint loader enabled uses a large amount of memory and may take a considerable amount of time to start (1 - 2 minutes or more). FE developers (or anyone else who frequently restarts FE builds) are encouraged to use webpack's filesystem cache option for much better start-up performance:
-
-```sh
-$ FS_CACHE=true yarn build-hot
-```
-
-When using `FS_CACHE=true` you may need to remove the `node_modules/.cache` directory to fix scenarios where the build may be improperly cached, and you must run `rm -rf node_modules/.cache` in order for the build to work correctly when alternating between open source and enterprise builds of the codebase.
-
 ### Frontend testing
 
 Run all unit and Cypress end-to-end tests with
@@ -104,8 +96,6 @@ yarn test
 ```
 
 Cypress tests and some unit tests are located in `frontend/test` directory. New unit test files are added next to the files they test.
-
-If you are using `FS_CACHE=true`, you can also use `FS_CACHE=true` with `yarn test`.
 
 ### Frontend debugging
 

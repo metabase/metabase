@@ -1,5 +1,5 @@
 (ns metabase.channel.template.handlebars-helper
-  (:refer-clojure :exclude [hash])
+  (:refer-clojure :exclude [count hash])
   (:require
    [java-time.api :as t]
    [metabase.util.date-2 :as u.date]
@@ -39,7 +39,7 @@
   [helper-name description argvec & body]
   (let [helper-fn-name (symbol (str helper-name \*))
         description#   description]
-    (assert (= 4 (count argvec)) "Helper function must have 4 arguments: context, params, hash, and options")
+    (assert (= 4 (clojure.core/count argvec)) "Helper function must have 4 arguments: context, params, hash, and options")
     `(do
        (defn ~helper-fn-name
          ~description#
@@ -119,9 +119,15 @@
   [id [parameters] _kparams _options]
   (urls/dashboard-url id (map #(update-keys % keyword) parameters)))
 
+(defhelper count
+  "Return the number of items in a collection."
+  [collection _params _kparams _options]
+  (clojure.core/count collection))
+
 (def default-helpers
   "A list of default helpers."
-  {"equals"        equals
+  {"count"         count
+   "equals"        equals
    "format-date"   format-date
    "now"           now
    "card-url"      card-url

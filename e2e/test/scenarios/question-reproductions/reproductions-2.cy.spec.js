@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -156,7 +156,6 @@ describe("issue 25016", () => {
 // this is only testable in OSS because EE always has models from auditv2
 describe("issue 25144", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore("setup");
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/card").as("createCard");
@@ -481,17 +480,17 @@ describe("issue 30165", () => {
 
   it("should not autorun native queries after updating a question (metabase#30165)", () => {
     H.startNewNativeQuestion();
-    cy.findByTestId("native-query-editor").type("SELECT * FROM ORDERS");
+    H.NativeEditor.type("SELECT * FROM ORDERS");
     H.saveQuestionToCollection("Q1");
 
-    H.focusNativeEditor().type(" WHERE TOTAL < 20");
+    H.NativeEditor.focus().type(" WHERE TOTAL < 20");
     H.queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
 
-    H.focusNativeEditor().type(" LIMIT 10");
+    H.NativeEditor.focus().type(" LIMIT 10");
     H.queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save").click();
@@ -651,7 +650,7 @@ describe("issue 43216", () => {
     cy.findByTestId("native-query-editor-container")
       .findByText("Open Editor")
       .click();
-    H.focusNativeEditor().should("be.visible").type(" , 4 as D");
+    H.NativeEditor.focus().type(" , 4 as D");
     H.saveSavedQuestion();
 
     cy.log("Assert updated metadata in target question");

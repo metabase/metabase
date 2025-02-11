@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -17,7 +17,7 @@ import {
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-H.describeEE("scenarios > embedding > full app", () => {
+describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -464,8 +464,8 @@ H.describeEE("scenarios > embedding > full app", () => {
         "should select a table when there are multiple schemas",
         { tags: "@external" },
         () => {
-          H.resetTestTable({ type: "postgres", table: "multi_schema" });
           H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
           cy.signInAsAdmin();
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
           startNewEmbeddingQuestion();

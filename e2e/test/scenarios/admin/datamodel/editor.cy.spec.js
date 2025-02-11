@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -441,7 +441,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
   });
 
-  H.describeEE("data model permissions", () => {
+  describe("data model permissions", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();

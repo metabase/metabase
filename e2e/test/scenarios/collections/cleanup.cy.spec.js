@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { assocIn } from "icepick";
 import { P, isMatching } from "ts-pattern";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 import {
   FIRST_COLLECTION_ID,
@@ -17,7 +17,6 @@ describe("scenarios > collections > clean up", () => {
 
   describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
-      H.onlyOnOSS();
       cy.signInAsAdmin();
     });
 
@@ -30,8 +29,8 @@ describe("scenarios > collections > clean up", () => {
     });
   });
 
-  H.describeEE("ee", () => {
-    H.describeEE("action menu", () => {
+  describe("ee", () => {
+    describe("action menu", () => {
       it("should show in proper contexts", () => {
         cy.signInAsAdmin();
         H.setTokenFeatures("all");

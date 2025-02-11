@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import { commandPaletteInput } from "../../../support/helpers/e2e-command-palette-helpers";
 
@@ -456,7 +456,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       });
     });
 
-    H.describeEE("verified filter", () => {
+    describe("verified filter", () => {
       beforeEach(() => {
         H.setTokenFeatures("all");
       });

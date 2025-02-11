@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
@@ -661,7 +661,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 });
 
-H.describeEE("scenarios > embedding > dashboard appearance", () => {
+describe("scenarios > embedding > dashboard appearance", () => {
   const originalBaseUrl = Cypress.config("baseUrl");
 
   beforeEach(() => {

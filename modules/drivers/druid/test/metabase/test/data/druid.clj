@@ -1,9 +1,10 @@
 (ns metabase.test.data.druid
-  (:require [clojure.string :as str]
-            [metabase.driver.druid.client :as druid.client]
-            [metabase.test.data.impl :as data.impl]
-            [metabase.test.data.interface :as tx]
-            [metabase.util :as u]))
+  (:require
+   [clojure.string :as str]
+   [metabase.driver.druid.client :as druid.client]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 

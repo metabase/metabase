@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -148,7 +148,7 @@ describe("scenarios > search", () => {
         .should("not.exist");
     });
 
-    it("should not overflow container if results contain descriptions with large unborken strings", () => {
+    it("should not overflow container if results contain descriptions with large unbroken strings", () => {
       H.createQuestion({
         name: "Description Test",
         query: { "source-table": ORDERS_ID },

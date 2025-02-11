@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
@@ -109,7 +109,7 @@ describe("issue 24660", () => {
   });
 });
 
-H.describeEE("issue 30235", () => {
+describe("issue 30235", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

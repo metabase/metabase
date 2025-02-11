@@ -13,9 +13,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -582,7 +582,7 @@
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                       meta/metadata-provider
-                                      {:cards [(assoc (lib.tu/mock-cards :orders)
+                                      {:cards [(assoc ((lib.tu/mock-cards) :orders)
                                                       :id 1
                                                       :dataset-query (lib.tu.macros/mbql-query orders
                                                                        {:filter      [:between $total 30 60]

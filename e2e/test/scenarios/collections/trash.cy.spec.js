@@ -1,6 +1,6 @@
 import { P, isMatching } from "ts-pattern";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   FIRST_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,

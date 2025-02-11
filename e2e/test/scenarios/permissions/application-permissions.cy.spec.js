@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -13,7 +13,7 @@ const SUBSCRIPTIONS_INDEX = 2;
 
 const NORMAL_USER_ID = 2;
 
-H.describeEE("scenarios > admin > permissions > application", () => {
+describe("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

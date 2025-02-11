@@ -236,17 +236,18 @@ function Dashboard(props: DashboardProps) {
 
   const handleSetEditing = useCallback(
     (dashboard: IDashboard | null) => {
-      onRefreshPeriodChange(null);
-      setEditingDashboard(dashboard);
+      if (!isEditing) {
+        onRefreshPeriodChange(null);
+        setEditingDashboard(dashboard);
+      }
     },
-    [onRefreshPeriodChange, setEditingDashboard],
+    [isEditing, onRefreshPeriodChange, setEditingDashboard],
   );
 
   const handleAddQuestion = useCallback(() => {
-    onRefreshPeriodChange(null);
-    setEditingDashboard(dashboard);
+    handleSetEditing(dashboard);
     toggleSidebar(SIDEBAR_NAME.addQuestion);
-  }, [onRefreshPeriodChange, setEditingDashboard, dashboard, toggleSidebar]);
+  }, [handleSetEditing, dashboard, toggleSidebar]);
 
   const handleLoadDashboard = useCallback(
     async (dashboardId: DashboardId) => {

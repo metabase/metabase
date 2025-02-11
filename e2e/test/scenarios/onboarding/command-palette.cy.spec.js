@@ -1,10 +1,9 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { describeEE } from "e2e/support/helpers";
 
 const { admin } = USERS;
 
@@ -210,7 +209,7 @@ describe("command palette", () => {
       });
     });
 
-    describeEE("with advanced permissions", () => {
+    describe("with advanced permissions", () => {
       it("should render links for non-admins that have specific privileges", () => {
         // setup
         cy.log("setup permissions");

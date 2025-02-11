@@ -4,7 +4,6 @@
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -76,13 +75,11 @@
   (let [[source-metric mp] (or metric-and-mp (mock-metric))
         query              (if query-fn
                              (query-fn mp source-metric)
-                             (lib/query mp source-metric))
-        metrics              (atom {})
-        read-metric          #(% @metrics 0)]
-    (with-redefs [prometheus/inc! #(swap! metrics update % (fnil inc 0))]
+                             (lib/query mp source-metric))]
+    (mt/with-prometheus-system! [_ system]
       (check-fn query)
-      (is (= expected-metrics-count (read-metric :metabase-query-processor/metrics-adjust)))
-      (is (= expected-metrics-errors (read-metric :metabase-query-processor/metrics-adjust-errors))))))
+      (is (== expected-metrics-count (mt/metric-value system :metabase-query-processor/metrics-adjust)))
+      (is (== expected-metrics-errors (mt/metric-value system :metabase-query-processor/metrics-adjust-errors))))))
 
 (deftest adjust-prometheus-metrics-test
   (testing "adjustment of query with no metrics does not increment either counter"
@@ -303,8 +300,9 @@
          (adjust query)))))
 
 (deftest ^:parallel adjust-mixed-multi-source-test
-  (let [[first-metric mp] (mock-metric lib.tu/metadata-provider-with-mock-cards
-                                       (-> (lib/query lib.tu/metadata-provider-with-mock-cards (:products lib.tu/mock-cards))
+  (let [mp                (lib.tu/metadata-provider-with-mock-cards)
+        [first-metric mp] (mock-metric mp
+                                       (-> (lib/query mp (:products (lib.tu/mock-cards)))
                                            (lib/aggregate (update (lib/avg (meta/field-metadata :products :rating)) 1 assoc :name (u/slugify "Mock metric")))
                                            (lib/filter (lib/> (meta/field-metadata :products :price) 1))))
         [second-metric mp] (mock-metric mp (-> (lib/query mp first-metric)
@@ -433,7 +431,7 @@
 (deftest ^:parallel metric-question-on-native-model-test
   (let [mp meta/metadata-provider
         sum-pred (comp #{"sum"} :name)
-        query lib.tu/native-query
+        query (lib.tu/native-query)
         question (model-based-metric-question mp query sum-pred)]
     (is (=? {:stages
              [{:lib/type :mbql.stage/native,

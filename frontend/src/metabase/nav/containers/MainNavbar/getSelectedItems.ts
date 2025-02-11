@@ -17,7 +17,11 @@ type Opts = {
 };
 
 export function isCollectionPath(pathname: string): boolean {
-  return pathname.startsWith("/collection");
+  return (
+    pathname.startsWith("/collection") &&
+    // `/${resource}/entity/${entity_id}` paths should only do a redirect, without triggering any other logic
+    !pathname.startsWith("/collection/entity/")
+  );
 }
 
 function isTrashPath(pathname: string): boolean {
@@ -44,7 +48,11 @@ function isUsersCollectionPath(pathname: string): boolean {
 }
 
 export function isQuestionPath(pathname: string): boolean {
-  return pathname.startsWith("/question");
+  return (
+    pathname.startsWith("/question") &&
+    // `/${resource}/entity/${entity_id}` paths should only do a redirect, without triggering any other logic
+    !pathname.startsWith("/question/entity/")
+  );
 }
 
 export function isModelPath(pathname: string): boolean {
@@ -56,7 +64,11 @@ export function isMetricPath(pathname: string): boolean {
 }
 
 function isDashboardPath(pathname: string): boolean {
-  return pathname.startsWith("/dashboard");
+  return (
+    pathname.startsWith("/dashboard") &&
+    // `/${resource}/entity/${entity_id}` paths should only do a redirect, without triggering any other logic
+    !pathname.startsWith("/dashboard/entity/")
+  );
 }
 
 function getSelectedItems({

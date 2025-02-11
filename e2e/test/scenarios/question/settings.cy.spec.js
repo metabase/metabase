@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -101,14 +101,14 @@ describe("scenarios > question > settings", () => {
         .as("title")
         .should("have.text", "Products → Title");
 
-      cy.findByTestId("chartsettings-sidebar").scrollTo("top");
-      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
+      cy.findByTestId("chartsettings-list-container").scrollTo("top");
+      cy.findByTestId("chartsettings-list-container").should(([$el]) => {
         expect($el.scrollTop).to.eql(0);
       });
 
       H.moveDnDKitElement(cy.get("@title"), { vertical: 15 });
 
-      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
+      cy.findByTestId("chartsettings-list-container").should(([$el]) => {
         expect($el.scrollTop).to.be.greaterThan(0);
       });
     });

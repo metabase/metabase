@@ -249,6 +249,8 @@ export interface OpenAiModel {
 
 export type HelpLinkSetting = "metabase" | "hidden" | "custom";
 
+export type AutocompleteMatchStyle = "off" | "prefix" | "substring";
+
 export interface UploadsSettings {
   db_id: number | null;
   schema_name: string | null;
@@ -312,6 +314,7 @@ interface AdminSettings {
   "version-info": VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
+  "show-sdk-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
@@ -370,7 +373,7 @@ interface PublicSettings {
   "ldap-group-membership-filter": string;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
-  "native-query-autocomplete-match-style": "substring" | "prefix" | "off";
+  "native-query-autocomplete-match-style": AutocompleteMatchStyle;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;

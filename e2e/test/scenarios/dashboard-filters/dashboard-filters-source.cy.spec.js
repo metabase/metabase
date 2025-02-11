@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -288,8 +288,8 @@ describe(
     const TABLE_NAME = "ip_addresses";
 
     beforeEach(() => {
-      H.resetTestTable({ type: "postgres", table: TABLE_NAME });
       H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: TABLE_NAME });
       cy.signInAsAdmin();
       H.resyncDatabase({
         dbId: WRITABLE_DB_ID,
@@ -367,7 +367,7 @@ describe(
   },
 );
 
-H.describeEE("scenarios > dashboard > filters", () => {
+describe("scenarios > dashboard > filters", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
