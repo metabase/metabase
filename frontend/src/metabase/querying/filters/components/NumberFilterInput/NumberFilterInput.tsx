@@ -3,12 +3,11 @@ import { forwardRef, useLayoutEffect, useState } from "react";
 
 import { parseNumber } from "metabase/querying/filters/utils/numbers";
 import { TextInput, type TextInputProps } from "metabase/ui";
-
-export type NumberFilterValue = number | string;
+import type * as Lib from "metabase-lib";
 
 type NumberFilterInputProps = Omit<TextInputProps, "value" | "onChange"> & {
-  value: NumberFilterValue | "";
-  onChange: (value: NumberFilterValue | "") => void;
+  value: Lib.NumberFilterValue | "";
+  onChange: (value: Lib.NumberFilterValue | "") => void;
 };
 
 export const NumberFilterInput = forwardRef(function NumberFilterInput(
@@ -59,6 +58,6 @@ function parseValue(value: string) {
   return number != null ? number : "";
 }
 
-function formatValue(value: NumberFilterValue | "") {
+function formatValue(value: Lib.NumberFilterValue | "") {
   return String(value);
 }
