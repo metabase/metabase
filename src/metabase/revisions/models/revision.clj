@@ -1,9 +1,9 @@
-(ns metabase.models.revision
+(ns metabase.revisions.models.revision
   (:require
    [clojure.data :as data]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
-   [metabase.models.revision.diff :refer [diff-strings*]]
+   [metabase.revisions.models.revision.diff :refer [diff-strings*]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]

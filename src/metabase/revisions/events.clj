@@ -1,8 +1,8 @@
-(ns metabase.events.revision
+(ns metabase.revisions.events
   (:require
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.revision :as revision]
+   [metabase.revisions.models.revision :as revision]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
