@@ -17,8 +17,7 @@
 
 .HeaderTextContainer {
   flex-grow: 1;
-  /* respect close icon */
-  max-width: calc(100% - 2rem);
+  overflow: hidden;
 
   &.clickable:hover > * {
     color: var(--mb-color-brand);
