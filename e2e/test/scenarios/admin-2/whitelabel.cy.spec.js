@@ -15,9 +15,8 @@ function checkLogo() {
 
 const MB = 1024 * 1024;
 
-describe("formatting > whitelabel", () => {
+describe("formatting > whitelabel", { tags: "@EE" }, () => {
   beforeEach(() => {
-    cy.skipOn(Cypress.env("MB_EDITION") === "oss");
     H.restore();
     cy.signInAsAdmin();
     H.setTokenFeatures("all");
