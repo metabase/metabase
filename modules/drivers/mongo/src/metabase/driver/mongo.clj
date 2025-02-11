@@ -9,7 +9,6 @@
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.execute :as mongo.execute]
-   [metabase.driver.mongo.json]
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
@@ -26,16 +25,38 @@
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)
-   (org.bson.types ObjectId)))
+   (org.bson.types Binary BSONTimstamp ObjectId)))
 
 (set! *warn-on-reflection* true)
-
-(comment metabase.driver.mongo.json/keep-me)
 
 ;; JSON Encoding (etc.)
 
 ;; Encode BSON undefined like `nil`
 (json/add-encoder org.bson.BsonUndefined json/generate-nil)
+
+(def bson-uuid-type 4)
+
+(json/add-encoder Binary
+                  (fn [obj json-generator]
+                    (cond (= (.getType obj) bson-uuid-type)
+                          (let [buffer (-> obj
+                                           .getData
+                                           ByteBuffer/wrap)
+                                most-sig-bits (.getLong buffer)
+                                least-sig-bits (.getLong buffer)
+                                uuid (UUID. most-sig-bits least-sig-bits)]
+                            (json/write-string json-generator (str uuid)))
+
+                          :else
+                          (json/write-string json-generator (str obj)))))
+
+(json/add-encoder ObjectId
+                  (fn [^ObjectId oid ^com.fasterxml.jackson.core.json.WriterBasedJsonGenerator generator]
+                    (.writeString generator (.toString oid))))
+
+(json/add-encoder BSONTimestamp
+                  (fn [^BSONTimestamp ts ^com.fasterxml.jackson.core.json.WriterBasedJsonGenerator generator]
+                    (json/generate-map {:time (.getTime ts) :inc (.getInc ts)} generator)))
 
 (nippy/extend-freeze ObjectId :mongodb/ObjectId
   [^ObjectId oid data-output]
