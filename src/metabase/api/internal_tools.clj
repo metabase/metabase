@@ -28,6 +28,8 @@
   ;; TODO this logic is duplicated with metabase.query-processor.middleware.auto-parse-filter-values
   ;; factor out or decide what to do
   ;; thought: need to parse dates and stuff but integers could maybe be passed as json numbers to the server
+  (def base-type base-type)
+  (def v v)
   (condp #(isa? %2 %1) base-type
     :type/BigInteger (bigint v)
     :type/Integer    (parse-long v)
@@ -73,8 +75,6 @@
                              {:object-id field-id
                               :object    {:field-id field-id
                                           :table-id table_id
-                                          :table    (t2/select-one [:model/Table :name] table_id)
-                                          :field    (t2/select-one [:model/Field :name] field-id)
                                           :pk    row-pk
                                           :value-new value
                                           ;; TODO get this
