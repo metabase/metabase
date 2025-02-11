@@ -1,4 +1,4 @@
-(ns metabase.api.bookmark
+(ns metabase.bookmarks.api
   "Handle creating bookmarks for the user. Bookmarks are in three tables and should be thought of as a tuple of (model,
   model-id) rather than a row in a table with an id. The DELETE takes the model and id because DELETE's do not
   necessarily support request bodies. The POST is therefore shaped in this same manner. Since there are three
@@ -7,7 +7,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.bookmark :as bookmark]
+   [metabase.bookmarks.models.bookmark :as bookmark]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 

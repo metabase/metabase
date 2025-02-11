@@ -2982,6 +2982,39 @@
                           (mt/user-http-request :rasta :get 200)
                           (chain-filter-test/take-n-values 3)))))))))))
 
+(deftest chain-filter-can-fetch-remapped-values-from-model
+  (testing "Remapping works with aggregated queries on models #53059"
+    (mt/with-temp
+      [:model/Card {saved-query-id :id} {:database_id   (mt/id)
+                                         :table_id      (mt/id :orders)
+                                         :dataset_query (mt/mbql-query orders)}
+       :model/Card {card-id :id}        {:database_id   (mt/id)
+                                         :table_id      (str "card__" saved-query-id)
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :query
+                                                         :query    {:source-table (str "card__" saved-query-id)
+                                                                    :aggregation  [[:count]]}}}
+       :model/Dashboard {dash-id :id}   {:parameters    [{:id   "__ID__"
+                                                          :name "ID"
+                                                          :type "id"
+                                                          :slug "id"}]}
+       :model/DashboardCard _           {:card_id            card-id
+                                         :dashboard_id       dash-id
+                                         :parameter_mappings [{:parameter_id "__ID__"
+                                                               :card_id      card-id
+                                                               :target       [:dimension
+                                                                              [:field
+                                                                               "PRODUCT_ID"
+                                                                               {:base-type :type/Integer}]]}]}]
+      (mt/with-column-remappings [orders.product_id products.title]
+        (is (=? {:values         [[(mt/malli=? pos-int?) "Aerodynamic Bronze Hat"]
+                                  [(mt/malli=? pos-int?) "Aerodynamic Concrete Bench"]
+                                  [(mt/malli=? pos-int?) "Aerodynamic Concrete Lamp"]]
+                 :has_more_values false}
+                (chain-filter-test/take-n-values
+                 3
+                 (mt/user-http-request :rasta :get 200 (chain-filter-values-url dash-id "__ID__")))))))))
+
 (deftest chain-filter-result-can-have-mixed-of-remapped-and-non-remapped-values-test
   (testing (str "getting values of a parameter that maps to 2 id fields: "
                 "one with remapped values, one with raw id shouldn't fail #44231")

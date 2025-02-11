@@ -1,7 +1,7 @@
-(ns metabase.models.bookmark-test
+(ns metabase.bookmarks.models.bookmark-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.bookmark :as bookmark]
+   [metabase.bookmarks.models.bookmark :as bookmark]
    [metabase.test :as mt]))
 
 (deftest ^:parallel bookmarks-for-user-test
