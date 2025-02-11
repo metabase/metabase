@@ -7,13 +7,17 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.util :as driver.u]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
+   [metabase.models.card :as card]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -158,3 +162,99 @@
            (model-persistence.settings/persisted-models-enabled! true)
            (throw e))))
   api/generic-204-no-content)
+
+;;;
+;;; Card endpoints
+;;;
+
+(api.macros/defendpoint :post "/card/:card-id/persist"
+  "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
+  query in place of the model's query."
+  [{:keys [card-id]} :- [:map
+                         [:card-id ms/PositiveInt]]]
+  (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
+  (api/let-404 [{:keys [database_id] :as card} (t2/select-one :model/Card :id card-id)]
+    (let [database (t2/select-one :model/Database :id database_id)]
+      (api/write-check database)
+      (when-not (driver.u/supports? (:engine database) :persist-models database)
+        (throw (ex-info (tru "Database does not support persisting")
+                        {:status-code 400
+                         :database    (:name database)})))
+      (when-not (driver.u/supports? (:engine database) :persist-models-enabled database)
+        (throw (ex-info (tru "Persisting models not enabled for database")
+                        {:status-code 400
+                         :database    (:name database)})))
+      (when-not (card/model? card)
+        (throw (ex-info (tru "Card is not a model") {:status-code 400})))
+      (when-let [persisted-info (persisted-info/turn-on-model! api/*current-user-id* card)]
+        (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
+      api/generic-204-no-content)))
+
+(api.macros/defendpoint :post "/card/:card-id/refresh"
+  "Refresh the persisted model caching `card-id`."
+  [{:keys [card-id]} :- [:map
+                         [:card-id ms/PositiveInt]]]
+  (api/let-404 [card           (t2/select-one :model/Card :id card-id)
+                persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
+    (when (not (card/model? card))
+      (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
+    (when (:archived card)
+      (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
+    (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
+    (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
+    api/generic-204-no-content))
+
+(api.macros/defendpoint :post "/card/:card-id/unpersist"
+  "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
+  query rather than the saved version of the query."
+  [{:keys [card-id]} :- [:map
+                         [:card-id ms/PositiveInt]]]
+  (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
+  (api/let-404 [_card (t2/select-one :model/Card :id card-id)]
+    (api/let-404 [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
+      (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
+      (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
+      api/generic-204-no-content)))
+
+;;;
+;;; Database endpoints
+;;;
+
+(api.macros/defendpoint :post "/database/:id/persist"
+  "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/check (model-persistence.settings/persisted-models-enabled)
+             400
+             (tru "Persisting models is not enabled."))
+  (api/let-404 [database (t2/select-one :model/Database :id id)]
+    (api/write-check database)
+    (if (-> database :settings :persist-models-enabled)
+      ;; todo: some other response if already persisted?
+      api/generic-204-no-content
+      (let [[success? error] (ddl.i/check-can-persist database)
+            schema           (ddl.i/schema-name database (public-settings/site-uuid))]
+        (if success?
+          ;; do secrets require special handling to not clobber them or mess up encryption?
+          (do (t2/update! :model/Database id {:settings (assoc (:settings database) :persist-models-enabled true)})
+              (task.persist-refresh/schedule-persistence-for-database!
+               database
+               (model-persistence.settings/persisted-model-refresh-cron-schedule))
+              api/generic-204-no-content)
+          (throw (ex-info (ddl.i/error->message error schema)
+                          {:error error
+                           :database (:name database)})))))))
+
+(api.macros/defendpoint :post "/database/:id/unpersist"
+  "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/let-404 [database (t2/select-one :model/Database :id id)]
+    (api/write-check database)
+    (if (-> database :settings :persist-models-enabled)
+      (do (t2/update! :model/Database id {:settings (dissoc (:settings database) :persist-models-enabled)})
+          (persisted-info/mark-for-pruning! {:database_id id})
+          (task.persist-refresh/unschedule-persistence-for-database! database)
+          api/generic-204-no-content)
+      ;; todo: a response saying this was a no-op? an error? same on the post to persist
+      api/generic-204-no-content)))
