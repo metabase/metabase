@@ -70,7 +70,7 @@
     :model/QueryField                        metabase.models.query-field
     :model/QueryTable                        metabase.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
-    :model/Revision                          metabase.models.revision
+    :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.models.secret
     :model/Segment                           metabase.segments.models.segment
@@ -85,6 +85,13 @@
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.models.user-parameter-value
     :model/ViewLog                           metabase.models.view-log})
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                 DO NOT ADD ANY MORE MODEL NAMESPACES UNDER `metabase.models.*`                 !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 (methodical/defmethod t2.model/resolve-model :before :default
   "Ensure the namespace for given model is loaded. This is a safety mechanism as we are moving to toucan2 and we don't

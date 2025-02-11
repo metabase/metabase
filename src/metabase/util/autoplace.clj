@@ -40,15 +40,15 @@
                                     width
                                     height
                                     default-grid-width)))
-  ([cards size_x size_y grid-width]
+  ([cards size-x size-y grid-width]
    (let [dashboard-tab-id (:dashboard_tab_id (first cards))]
      (first
       (for [row (range 1000)
-            col (range (inc (- grid-width size_x)))
+            col (range (inc (- grid-width size-x)))
             :let [this-card {:col col
                              :row row
-                             :size_x size_x
-                             :size_y size_y
+                             :size_x size-x
+                             :size_y size-y
                              :dashboard_tab_id dashboard-tab-id}]
             :when (not (intersects-with-any-card? cards this-card))]
         this-card)))))

@@ -189,6 +189,9 @@ test/metabase/query_processor @metabase/core-backend-querying
 src/metabase/request @metabase/devexp
 test/metabase/request @metabase/devexp
 
+src/metabase/revisions @metabase/core-backend-admin-webapp
+test/metabase/revisions @metabase/core-backend-admin-webapp
+
 src/metabase/sample_data @metabase/core-backend-admin-webapp
 test/metabase/sample_data @metabase/core-backend-admin-webapp
 
