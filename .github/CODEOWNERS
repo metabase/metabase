@@ -91,6 +91,9 @@ enterprise/backend/test/metabase_enterprise/upload_management @metabase/core-bac
 src/metabase/actions @metabase/core-backend-admin-webapp
 test/metabase/actions @metabase/core-backend-admin-webapp
 
+src/metabase/activity_feed @metabase/core-backend-admin-webapp
+test/metabase/activity_feed @metabase/core-backend-admin-webapp
+
 src/metabase/analytics @metabase/core-backend-admin-webapp
 test/metabase/analytics @metabase/core-backend-admin-webapp
 

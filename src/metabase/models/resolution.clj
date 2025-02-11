@@ -69,7 +69,7 @@
     :model/QueryExecution                    metabase.models.query-execution
     :model/QueryField                        metabase.models.query-field
     :model/QueryTable                        metabase.models.query-table
-    :model/RecentViews                       metabase.models.recent-views
+    :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/Revision                          metabase.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.models.secret
