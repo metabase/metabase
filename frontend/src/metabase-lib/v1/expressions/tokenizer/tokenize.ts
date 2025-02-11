@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { OPERATOR, TOKEN } from "../tokenizer";
 import type { ErrorWithMessage, Token } from "../types";
 
 import { parser } from "./parser";
+import { OPERATOR, TOKEN } from "./types";
 
 const escapes = {
   '"': '"',
