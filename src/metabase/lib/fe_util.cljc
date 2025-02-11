@@ -27,7 +27,6 @@
    [metabase.util.formatting.date :as fmt.date]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
 (def ^:private ExpressionParts
