@@ -90,6 +90,8 @@ export function saveDashboard({
     "saveDashboard-saveDashboardCards",
   );
   cy.intercept("GET", "/api/dashboard/*").as("saveDashboard-getDashboard");
+
+  cy.findByText(editBarText).should("be.visible");
   cy.button(buttonLabel).click();
 
   if (awaitRequest) {

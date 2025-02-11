@@ -479,7 +479,7 @@
     (when (lib.util/ref-clause? leading-arg)
       leading-arg)))
 
-(mu/defn filterable-columns :- [:sequential ColumnWithOperators]
+(mu/defn filterable-columns :- [:maybe [:sequential ColumnWithOperators]]
   "Get column metadata for all the columns that can be filtered in
   the stage number `stage-number` of the query `query`
   If `stage-number` is omitted, the last stage is used.
