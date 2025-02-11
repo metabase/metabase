@@ -1,7 +1,7 @@
 (ns metabase.util.number-test
   (:require
-    [clojure.test :refer [are deftest is testing]]
-    [metabase.util.number :as u.number]))
+   [clojure.test :refer [are deftest is testing]]
+   [metabase.util.number :as u.number]))
 
 (deftest bigint-test
   (testing "should coerce the value to a bigint"
@@ -25,3 +25,4 @@
       (u.number/bigint "9007199254740993") "9007199254740993"
       nil                                  "a"
       nil                                  "10.2")))
+
