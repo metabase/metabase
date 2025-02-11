@@ -393,3 +393,18 @@
                        first
                        (zipmap units))))]
           (qp-test.date-time-zone-functions-test/run-datetime-diff-time-zone-tests! diffs))))))
+
+(deftest aggregated-array-is-returned-correctly-test
+  (mt/test-driver :athena
+    (mt/dataset test-data
+      (let [rows (->> (mt/native-query {:query "select category_id, array_agg(name)
+                                                from test_data.venues
+                                                group by category_id
+                                                order by 1 asc
+                                                limit 2;"})
+                      mt/process-query
+                      mt/rows 
+                      (map second))]
+        (is (= [["The Gorbals" "The Misfit Restaurant + Bar" "Marlowe" "Yamashiro Hollywood" "Musso & Frank Grill" "Pacific Dining Car" "Chez Jay" "Rush Street"]
+                ["Greenblatt's Delicatessen & Fine Wine Shop" "Handy Market"]]
+               rows))))))
