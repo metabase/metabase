@@ -34,7 +34,6 @@
    [metabase.api.pulse.unsubscribe]
    [metabase.api.revision]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.segment]
    [metabase.api.session]
    [metabase.api.setting]
    [metabase.api.slack]
@@ -50,6 +49,7 @@
    [metabase.config :as config]
    [metabase.permissions.api]
    [metabase.search.api]
+   [metabase.segments.api]
    [metabase.setup.api]
    [metabase.sync.api]
    [metabase.timeline.api]
@@ -82,7 +82,6 @@
          metabase.api.public/keep-me
          metabase.api.pulse.unsubscribe/keep-me
          metabase.api.revision/keep-me
-         metabase.api.segment/keep-me
          metabase.api.setting/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
@@ -93,6 +92,7 @@
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
          metabase.permissions.api/keep-me
+         metabase.segments.api/keep-me
          metabase.setup.api/keep-me
          metabase.user-key-value.api/keep-me)
 
@@ -167,7 +167,7 @@
    "/pulse"                pulse-routes
    "/revision"             (+auth 'metabase.api.revision)
    "/search"               (+auth metabase.search.api/routes)
-   "/segment"              (+auth 'metabase.api.segment)
+   "/segment"              (+auth 'metabase.segments.api)
    "/session"              metabase.api.session/routes
    "/setting"              (+auth 'metabase.api.setting)
    "/setup"                'metabase.setup.api
