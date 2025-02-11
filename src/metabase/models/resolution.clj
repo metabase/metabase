@@ -73,7 +73,7 @@
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.models.secret
-    :model/Segment                           metabase.models.segment
+    :model/Segment                           metabase.segments.models.segment
     :model/Session                           metabase.models.session
     :model/Setting                           metabase.models.setting
     :model/Table                             metabase.models.table
