@@ -4,7 +4,7 @@ import { VisualizationWrapper } from "__support__/storybook";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import Table from "metabase/visualizations/visualizations/TableLegacy";
+import Table from "metabase/visualizations/visualizations/Table";
 
 import RAW_SERIES from "../TableSimple/stories-data/table-simple-orders-with-people.json";
 

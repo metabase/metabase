@@ -1,24 +1,35 @@
 import type { Table as ReactTable } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import {
+  type VirtualItem,
+  type Virtualizer,
+  useVirtualizer,
+} from "@tanstack/react-virtual";
 import type React from "react";
 import { useCallback, useLayoutEffect } from "react";
 import _ from "underscore";
 
-import type { RowValues } from "metabase-types/api";
-
-import { ROW_HEIGHT } from "../constants";
-
-interface UseVirtualGridProps {
+interface VirtualGridOptions<TData> {
   bodyRef: React.RefObject<HTMLDivElement>;
-  table: ReactTable<RowValues>;
+  table: ReactTable<TData>;
   measureRowHeight: (rowIndex: number) => number;
+  defaultRowHeight: number;
 }
 
-export const useVirtualGrid = ({
+export interface VirtualGrid {
+  virtualColumns: VirtualItem[];
+  virtualRows: VirtualItem[];
+  virtualPaddingLeft: number | undefined;
+  virtualPaddingRight: number | undefined;
+  rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
+  measureGrid: () => void;
+}
+
+export const useVirtualGrid = <TData,>({
   bodyRef,
   table,
   measureRowHeight,
-}: UseVirtualGridProps) => {
+  defaultRowHeight,
+}: VirtualGridOptions<TData>): VirtualGrid => {
   const { rows: tableRows } = table.getRowModel();
   const visibleColumns = table.getVisibleLeafColumns();
   const columnVirtualizer = useVirtualizer({
@@ -32,13 +43,13 @@ export const useVirtualGrid = ({
   const rowVirtualizer = useVirtualizer({
     count: tableRows.length,
     getScrollElement: () => bodyRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: () => defaultRowHeight,
     overscan: 5,
     measureElement: element => {
       const rowIndexRaw = element?.getAttribute("data-index");
       const rowIndex = rowIndexRaw != null ? parseInt(rowIndexRaw, 10) : null;
       if (rowIndex == null || !isFinite(rowIndex)) {
-        return ROW_HEIGHT;
+        return defaultRowHeight;
       }
 
       return measureRowHeight(rowIndex);

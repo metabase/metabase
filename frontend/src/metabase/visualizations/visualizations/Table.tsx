@@ -53,7 +53,7 @@ import type {
   VisualizationProps,
 } from "../types";
 
-import { Table as TableInteractive } from "./Table";
+import { TableInteractive } from "./TableInteractive";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;

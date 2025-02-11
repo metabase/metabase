@@ -2,43 +2,34 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Header } from "@tanstack/react-table";
 import type React from "react";
-import { type CSSProperties, memo, useCallback, useRef } from "react";
-
-import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
+import { type CSSProperties, useCallback, useRef } from "react";
 
 import S from "./Table.module.css";
 
-export interface SortableHeaderProps {
-  id: string;
-  canSort?: boolean;
-  column: DatasetColumn;
-  question: Question;
-  hasMetadataPopovers: boolean;
-  data: DatasetData;
+export interface SortableHeaderProps<TData, TValue> {
   children: React.ReactNode;
-  header: Header<RowValues, unknown>;
-  onClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+  header: Header<TData, TValue>;
+  renderHeaderDecorator?: (
+    columnId: string,
+    isDragging: boolean,
+    children: React.ReactNode,
+  ) => React.ReactNode;
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
 // if header is dragged fewer than than this number of pixels we consider it a click instead of a drag
-const HEADER_DRAG_THRESHOLD = 5;
+const HEADER_DRAG_THRESHOLD = 8;
 
 type DragPosition = { x: number; y: number };
 
-export const SortableHeader = memo(function SortableHeader({
-  id,
-  canSort,
-  onClick,
-  column,
-  question,
-  hasMetadataPopovers,
-  data,
+export const SortableHeader = function SortableHeader<TData, TValue>({
   header,
   children,
-}: SortableHeaderProps) {
+  renderHeaderDecorator,
+  onClick,
+}: SortableHeaderProps<TData, TValue>) {
+  const canSort = header.column.columnDef.meta?.enableReordering;
+  const id = header.column.id;
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useSortable({
       id,
@@ -88,9 +79,6 @@ export const SortableHeader = memo(function SortableHeader({
       [header],
     );
 
-  const query = question?.query();
-  const stageIndex = -1;
-
   return (
     <div
       ref={setNodeRef}
@@ -100,18 +88,9 @@ export const SortableHeader = memo(function SortableHeader({
       onMouseUp={handleDragEnd}
     >
       <div className={S.headerWrapper} {...attributes} {...listeners}>
-        <QueryColumnInfoPopover
-          position="bottom-start"
-          query={query}
-          stageIndex={-1}
-          column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
-          timezone={data.results_timezone}
-          disabled={!hasMetadataPopovers || isDragging}
-          openDelay={500}
-          showFingerprintInfo
-        >
-          {children}
-        </QueryColumnInfoPopover>
+        {!renderHeaderDecorator
+          ? children
+          : renderHeaderDecorator(id, isDragging, children)}
       </div>
       <div
         className={S.resizer}
@@ -120,4 +99,4 @@ export const SortableHeader = memo(function SortableHeader({
       />
     </div>
   );
-});
+};

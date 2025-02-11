@@ -3,10 +3,8 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { alpha, color } from "metabase/lib/colors";
-import type { TableCellFormatter } from "metabase/visualizations/types";
-import type { RowValue } from "metabase-types/api";
 
-import type { TextAlign } from "../types";
+import type { CellFormatter, TextAlign } from "../types";
 
 import { BaseCell } from "./BaseCell";
 import S from "./MiniBarCell.module.css";
@@ -17,21 +15,21 @@ const BORDER_RADIUS = 3;
 
 const LABEL_MIN_WIDTH = 30;
 
-export interface MiniBarCellProps {
-  value: RowValue;
+export interface MiniBarCellProps<TValue> {
+  value: TValue;
   extent: [number, number];
-  formatter: TableCellFormatter;
+  formatter: CellFormatter<TValue>;
   backgroundColor?: string;
   align?: TextAlign;
 }
 
-export const MiniBarCell = ({
+export const MiniBarCell = <TValue,>({
   value,
   extent: [min, max],
   formatter,
   backgroundColor,
   align,
-}: MiniBarCellProps) => {
+}: MiniBarCellProps<TValue>) => {
   if (typeof value !== "number") {
     return null;
   }

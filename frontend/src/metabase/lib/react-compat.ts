@@ -1,6 +1,6 @@
 // Support React 17 backwards compatibility for the Embedding SDK
 import type React from "react";
-import ReactDOM, { flushSync } from "react-dom";
+import ReactDOM from "react-dom";
 import { type Root, createRoot } from "react-dom/client";
 
 import { getMajorReactVersion } from "./compat/check-version";
@@ -8,30 +8,16 @@ import { getMajorReactVersion } from "./compat/check-version";
 export function renderRoot(
   content: React.JSX.Element,
   element: Element,
-  isSync = false,
 ): Root | undefined {
   const reactVersion = getMajorReactVersion();
 
   if (reactVersion <= 17) {
-    if (isSync) {
-      flushSync(() => {
-        ReactDOM.render(content, element);
-      });
-    } else {
-      ReactDOM.render(content, element);
-    }
+    ReactDOM.render(content, element);
     return;
   }
 
   const root = createRoot(element);
-
-  if (isSync) {
-    flushSync(() => {
-      root.render(content);
-    });
-  } else {
-    root.render(content);
-  }
+  root.render(content);
 
   return root;
 }

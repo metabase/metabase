@@ -2,23 +2,20 @@ import cx from "classnames";
 import {
   type HTMLAttributes,
   type MouseEventHandler,
-  memo,
   useCallback,
 } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { ExpandButton } from "metabase/visualizations/components/TableInteractive/TableInteractive.styled";
-import type { TableCellFormatter } from "metabase/visualizations/types";
-import type { RowValue } from "metabase-types/api";
 
-import type { TextAlign } from "../types";
+import type { CellFormatter, TextAlign } from "../types";
 
 import { BaseCell } from "./BaseCell";
 import S from "./BodyCell.module.css";
 
-export type BodyCellProps = {
-  value: RowValue;
-  formatter?: TableCellFormatter;
+export type BodyCellProps<TValue> = {
+  value: TValue;
+  formatter?: CellFormatter<TValue>;
   backgroundColor?: string;
   align?: TextAlign;
   variant?: "text" | "pill";
@@ -29,7 +26,7 @@ export type BodyCellProps = {
   contentAttributes?: HTMLAttributes<HTMLDivElement>;
 };
 
-export const BodyCell = memo(function BodyCell({
+export const BodyCell = function BodyCell<TValue>({
   value,
   formatter,
   backgroundColor,
@@ -40,8 +37,8 @@ export const BodyCell = memo(function BodyCell({
   contentAttributes,
   onClick,
   onExpand,
-}: BodyCellProps) {
-  const formattedValue = formatter ? formatter(value) : value;
+}: BodyCellProps<TValue>) {
+  const formattedValue = formatter ? formatter(value) : String(value);
 
   const handleExpandClick: MouseEventHandler<HTMLButtonElement> = useCallback(
     e => {
@@ -84,4 +81,4 @@ export const BodyCell = memo(function BodyCell({
       )}
     </BaseCell>
   );
-});
+};
