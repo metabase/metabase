@@ -50,17 +50,15 @@
                           :user-id (or api/*current-user-id*
                                        (t2/select-one-pk :model/User :is_superuser true))})
 
-  (let [updated-row (atom old-row)]
-    (doseq [[k v] new-row]
-      (when (not= v (get old-row k))
-        (t2/insert! :model/TableEdit
-                    {:table_id  table-id
-                     :pk        row-pk
-                     :type      "edit"
-                     :old_value (pr-str old-row)
-                     :new_value (pr-str (assoc @updated-row k v))
-                     :delta     (pr-str {k v})})
-        (swap! updated-row assoc k v)))))
+  (t2/insert! :model/TableEdit
+              {:table_id  table-id
+               :pk        row-pk
+               :type      "edit"
+               :old_value (pr-str old-row)
+               :new_value (pr-str new-row)
+               :delta     (pr-str (into {} (keep (fn [[k v]] (when (not= v (get old-row k))
+                                                               [k v]))
+                                                 new-row)))}))
 
 (defn track-cell-update! [table-id row-pk field-id column old-row new-value]
   (track-update! old-row (assoc row-pk old-row column new-value))
