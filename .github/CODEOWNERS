@@ -202,6 +202,9 @@ test/metabase/sample_data @metabase/core-backend-admin-webapp
 src/metabase/search @metabase/core-workflows
 test/metabase/search @metabase/core-workflows
 
+src/metabase/segments @metabase/core-backend-querying
+test/metabase/segments @metabase/core-backend-querying
+
 src/metabase/server @metabase/devexp
 test/metabase/server @metabase/devexp
 

@@ -414,6 +414,7 @@
                                      metabase.search.api
                                      ;; Need to expose this submodule, to break circular dependencies with models.
                                      metabase.search.spec}
+    metabase.segments              #{metabase.segments.api}
     metabase.server                #{metabase.server.core
                                      ;;
                                      ;; TODO FIXME -- this is loaded for side effects since it contains the JSON
@@ -493,7 +494,12 @@
     metabase.formatter             :any
     metabase.integrations          :any
     metabase.legacy-mbql           :any
-    metabase.lib                   :any
+    metabase.lib                   #{metabase.config
+                                     metabase.driver
+                                     metabase.legacy-mbql
+                                     metabase.models
+                                     metabase.types
+                                     metabase.util}
     metabase.logger                #{metabase.config
                                      metabase.plugins}
     metabase.model-persistence     :any
@@ -535,6 +541,7 @@
                                      metabase.util}
     metabase.sample-data           :any
     metabase.search                :any
+    metabase.segments              :any ; TODO -- way too many deps
     metabase.server                :any
     metabase.setup                 :any
     metabase.sync                  :any
