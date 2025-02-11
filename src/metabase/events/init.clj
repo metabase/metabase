@@ -11,7 +11,13 @@
    [metabase.events.last-login]
    [metabase.events.notification]
    [metabase.events.persisted-info]
-   [metabase.events.revision]
    [metabase.events.schema]
    [metabase.events.slack]
    [metabase.events.view-log]))
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!             DO NOT ADD ANY MORE EVENT HANDLER NAMESPACES UNDER `metabase.events.*`             !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

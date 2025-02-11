@@ -1,8 +1,8 @@
 (ns metabase.api.routes
   (:require
    [compojure.route :as route]
+   [metabase.actions.api]
    [metabase.activity-feed.api]
-   [metabase.api.action]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.alert]
    [metabase.api.api-key]
@@ -32,7 +32,6 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.pulse]
    [metabase.api.pulse.unsubscribe]
-   [metabase.api.revision]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.segment]
    [metabase.api.session]
@@ -49,6 +48,7 @@
    [metabase.channel.api]
    [metabase.config :as config]
    [metabase.permissions.api]
+   [metabase.revisions.api]
    [metabase.search.api]
    [metabase.setup.api]
    [metabase.sync.api]
@@ -57,7 +57,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.xrays.api]))
 
-(comment metabase.api.action/keep-me
+(comment metabase.actions.api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.api.alert/keep-me
          metabase.api.api-key/keep-me
@@ -81,7 +81,6 @@
          metabase.api.preview-embed/keep-me
          metabase.api.public/keep-me
          metabase.api.pulse.unsubscribe/keep-me
-         metabase.api.revision/keep-me
          metabase.api.segment/keep-me
          metabase.api.setting/keep-me
          metabase.api.slack/keep-me
@@ -93,6 +92,7 @@
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
          metabase.permissions.api/keep-me
+         metabase.revisions.api/keep-me
          metabase.setup.api/keep-me
          metabase.user-key-value.api/keep-me)
 
@@ -131,9 +131,16 @@
     {"/unsubscribe" 'metabase.api.pulse.unsubscribe})
    (+auth metabase.api.pulse/routes)))
 
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                  DO NOT ADD `metabase.api.*` NAMESPACES THAT CONTAIN ENDPOINTS                 !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ;;; ↓↓↓ KEEP THIS SORTED OR ELSE! ↓↓↓
 (def ^:private route-map
-  {"/action"               (+auth 'metabase.api.action)
+  {"/action"               (+auth 'metabase.actions.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/alert"                (+auth 'metabase.api.alert)
    "/api-key"              (+auth 'metabase.api.api-key)
@@ -165,7 +172,7 @@
    "/preview_embed"        (+auth 'metabase.api.preview-embed)
    "/public"               (+public-exceptions 'metabase.api.public)
    "/pulse"                pulse-routes
-   "/revision"             (+auth 'metabase.api.revision)
+   "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.api.segment)
    "/session"              metabase.api.session/routes
@@ -182,6 +189,13 @@
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
    "/util"                 'metabase.api.util})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                  DO NOT ADD `metabase.api.*` NAMESPACES THAT CONTAIN ENDPOINTS                 !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for API endpoints."
