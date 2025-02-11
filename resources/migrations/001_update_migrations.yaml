@@ -10678,7 +10678,26 @@ databaseChangeLog:
                   remarks: The timestamp at which a user was deactivated
 
   - changeSet:
-      validCheckSum: ANY
+      id: v53.2025-01-03T19:07:40
+      author: qnkhuat
+      comment: Add notification.condition
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: notification
+                columnName: condition
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: condition
+                  type: ${text.type}
+                  remarks: The condition of the notification
+
+
+  - changeSet:
       id: v53.2025-02-29T15:06:43
       author: crisptrutski
       comment: Track mutations to table "cells"

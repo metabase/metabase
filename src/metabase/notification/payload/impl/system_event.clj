@@ -35,3 +35,11 @@
   (let [payload                          (:payload notification-info)
         {:keys [event_topic event_info]} payload]
     (assoc payload :custom (custom-payload event_topic event_info))))
+
+(defmethod notification.payload/should-send-notification? :notification/system-event
+  [{:keys [condition] :as noti-payload}]
+  ;; TODO: crappy thing to do, we'll need to come up with a better convention to write
+  ;; conditinal expression
+  (if condition
+    ((eval (read-string (str "#" (:condition noti-payload)))) noti-payload)
+    true))

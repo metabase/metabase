@@ -12,7 +12,7 @@
 
 (def ^:private model->compare-keys
   "A mapping of model to the keys that are used to check if a row is the same."
-  {:model/Notification             [:payload_type :active]
+  {:model/Notification             [:payload_type :condition :active]
    :model/NotificationSubscription [:type :event_name :cron_schedule]
    :model/NotificationHandler      [:channel_type :active]
    :model/NotificationRecipient    [:type :user_id :permissions_group_id :details]
@@ -107,15 +107,14 @@
            :payload_type  :notification/system-event
            :subscriptions [{:type       :notification-subscription/system-event
                             :event_name :event/table-mutation-cell-update}]
+           ;; (t2/select-one-pk :model/Table :name "PRODUCTS")
+           ;; (t2/select-one-pk :model/Field :name "CATEGORY" :table_id 3)
+           :condition    (str '(and (= 3 (-> % :payload :event_info :object :table-id))
+                                    (= 18 (-> % :payload :event_info :object :field-id))))
            :handlers      [{:active       true
                             :channel_type :channel/slack
                             :channel_id   nil
-                            #_:template     #_{:name         "Slack Token Error Email template"
-                                               :channel_type "channel/email"
-                                               :details      {:type "email/handlebars-resource"
-                                                              :subject "Your Slack connection stopped working"
-                                                              :path "metabase/channel/email/slack_token_error.hbs"
-                                                              :recipient-type "cc"}}
+
                             :recipients   [{:type    :notification-recipient/raw-value
                                             :details {:value "#leads"}}]}]}]))
 
