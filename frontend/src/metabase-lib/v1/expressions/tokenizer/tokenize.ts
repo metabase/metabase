@@ -31,7 +31,7 @@ export function tokenize(expression: string) {
         end: node.to,
         isReference: false,
       });
-      return;
+      return false;
     }
     if (node.type.name === "Reference") {
       const value = expression.slice(node.from, node.to);
@@ -56,7 +56,7 @@ export function tokenize(expression: string) {
         end: node.to,
         isReference: true,
       });
-      return;
+      return false;
     }
     if (node.type.name === "Number") {
       const value = expression.slice(node.from, node.to).toLowerCase();
@@ -81,7 +81,7 @@ export function tokenize(expression: string) {
         start: node.from,
         end: node.to,
       });
-      return;
+      return false;
     }
     if (node.type.name === "String") {
       const openQuote = expression[node.from];
@@ -108,7 +108,7 @@ export function tokenize(expression: string) {
         end: node.to,
         value,
       });
-      return;
+      return false;
     }
     if (node.type.name === "Boolean") {
       const op = expression.slice(node.from, node.to).toLowerCase();
@@ -120,7 +120,7 @@ export function tokenize(expression: string) {
           end: node.to,
         });
       }
-      return;
+      return false;
     }
 
     const op = parseOperator(node.type.name);
@@ -131,7 +131,7 @@ export function tokenize(expression: string) {
         start: node.from,
         end: node.to,
       });
-      return;
+      return false;
     }
 
     if (node.type.name === "⚠") {
