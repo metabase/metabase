@@ -10,13 +10,12 @@
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
-   [metabase.channel.template.handlebars :as handlebars]
+   [metabase.channel.template.core :as channel.template]
    [metabase.models.notification :as models.notification]
    [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
@@ -74,22 +73,9 @@
     :tab-title
     {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))
 
-(defn- render-body
-  [{:keys [details] :as _template} payload]
-  (case (keyword (:type details))
-    :email/handlebars-resource
-    (handlebars/render (:path details) payload)
-
-    :email/handlebars-text
-    (handlebars/render-string (:body details) payload)
-
-    (do
-      (log/warnf "Unknown email template type: %s" (:type details))
-      nil)))
-
 (defn- render-message-body
   [template message-context attachments]
-  (vec (concat [{:type "text/html; charset=utf-8" :content (render-body template message-context)}] attachments)))
+  (vec (concat [{:type "text/html; charset=utf-8" :content (channel.template/render-template template message-context)}] attachments)))
 
 (defn- make-message-attachment [[content-id url]]
   {:type         :inline

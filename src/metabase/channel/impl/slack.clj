@@ -4,6 +4,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
+   [metabase.channel.template.core :as channel.template]
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
    [metabase.models.params.shared :as shared.params]
@@ -162,40 +163,14 @@
                                    (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
                                              (create-slack-attachment-data (:dashboard_parts payload))])))})))
 
-(defn- custom-template-slack
-  [{:keys [event_topic event_info] :as x}]
-  (case event_topic
-    :event/table-mutation-cell-update
-    (let [{:keys [pk table field value-new value-old]} (:object event_info)
-          user (:user event_info)]
-      [(text->markdown-block
-        (format "Table `%s` has been updated by `%s`.\n\nField `%s` has been updated from `%s` to `%s` for row with primary key `%s`."
-                (:name table)
-                (:common_name user)
-                (:name field)
-                value-old
-                value-new
-                pk))])
-
-    :event/table-mutation-row-insert
-    (let [{:keys [table rows]} (:object event_info)
-          user (:user event_info)]
-      [(text->markdown-block
-        (format "%s has added %d rows to table `%s`"
-                (:common_name user)
-                (:name table)
-                (count rows)))])
-    :event/table-mutation-row-delete
-    (let [{:keys [pk table]} (:object event_info)
-          user (:user event_info)]
-      [(text->markdown-block
-        (format "%s has deleted row with primary key `%s` from table `%s`"
-                (:common_name user)
-                pk
-                (:name table)))])))
+(defn- markdown-block
+  [markdown]
+  {:blocks [{:type "section"
+             :text {:type "mrkdwn"
+                    :text (truncate-mrkdwn markdown block-text-length-limit)}}]})
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload]} _template recipients]
+  [_channel-type {:keys [payload]} template recipients]
   (for [channel-id (map notification-recipient->channel-id recipients)]
     {:channel-id  channel-id
-     :attachments (custom-template-slack payload)}))
+     :attachments [(markdown-block (channel.template/render-template template payload))]}))
