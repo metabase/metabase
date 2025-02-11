@@ -35,6 +35,7 @@ export const ChartSettingSelect = ({
   styles,
   w,
   footer,
+  defaultDropdownOpened,
 }) => {
   const disabled =
     options.length === 0 ||
@@ -80,6 +81,7 @@ export const ChartSettingSelect = ({
       rightSection={rightSection}
       styles={styles}
       w={w}
+      defaultDropdownOpened={defaultDropdownOpened}
     />
   );
 };
