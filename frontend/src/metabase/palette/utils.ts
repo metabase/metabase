@@ -25,8 +25,8 @@ export const processResults = (
   const docs = processSection(t`Documentation`, groupedResults["docs"]);
 
   return [
-    ...recent,
     ...metabotActions,
+    ...recent,
     ...actions.slice(0, 6),
     ...admin,
     ...search,

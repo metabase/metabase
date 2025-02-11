@@ -41,12 +41,6 @@ if (hasPremiumFeature("metabot_v3")) {
               submitInput(searchText);
             }
           },
-          extra: {
-            sx: {
-              fontWeight: 400,
-              fontStyle: searchText ? "normal" : "italic",
-            },
-          },
         },
       ];
       return ret;
