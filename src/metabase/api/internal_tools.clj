@@ -95,7 +95,11 @@
         pks    (t2/select :model/Field :table_id table-id :semantic_type :type/PK)
         driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))]
     (assert (= 1 (count pks)) "Table must have a PK, and it cannot be compound")
-    (driver/insert-into! driver db_id table (keys row) [(vals row)])))
+    (driver/insert-into! driver db_id table (keys row) [(vals row)])
+    (events/publish-event! :event/table-mutation-row-insert
+                           {:object  {:table-id table-id
+                                      :rows     [row]}
+                            :user-id api/*current-user-id*})))
 
 (api.macros/defendpoint :post "/table/:table-id"
   [{:keys [table-id]} :- [:map
