@@ -345,6 +345,7 @@
                                      metabase.api.util.handlers}                                    ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
     metabase.audit                 #{metabase.audit}
     metabase.auth-provider         #{metabase.auth-provider}
+    metabase.bookmarks             #{metabase.bookmarks.api}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     ;; TODO -- this has too many API namespaces, ideally it would only expose `metabase.channel.core`,
     ;; `metabase.channel.init`, and `metabase.channel.api`.
@@ -457,6 +458,10 @@
     metabase.audit                 :any
     metabase.auth-provider         #{metabase.util
                                      metabase.premium-features}
+    metabase.bookmarks             #{metabase.api
+                                     metabase.db
+                                     metabase.models
+                                     metabase.util}
     metabase.cmd                   :any
     metabase.channel               :any
     metabase.config                #{metabase.plugins}
@@ -583,7 +588,6 @@
     metabase.api.activity                                         api.activity
     metabase.api.alert                                            api.alert
     metabase.api.automagic-dashboards                             api.magic
-    metabase.api.bookmark                                         api.bookmark
     metabase.api.card                                             api.card
     metabase.api.card-test                                        api.card-test
     metabase.api.collection                                       api.collection
@@ -668,7 +672,6 @@
     metabase.lib.util.match                                       lib.util.match
     metabase.models.activity                                      activity
     metabase.models.application-permissions-revision              a-perm-revision
-    metabase.models.bookmark                                      bookmark
     metabase.models.collection                                    collection
     metabase.models.collection.graph                              graph
     metabase.models.collection-permission-graph-revision          c-perm-revision
