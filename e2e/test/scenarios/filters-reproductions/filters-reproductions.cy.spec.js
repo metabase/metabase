@@ -1647,3 +1647,42 @@ describe("issue 44665", () => {
     });
   });
 });
+
+describe("issue 5816", () => {
+  const questionDetails = {
+    native: {
+      query: `SELECT CAST('9007199254740992' AS BIGINT) AS BIGINT
+UNION ALL
+SELECT CAST('9007199254740993' AS BIGINT) AS BIGINT
+UNION ALL
+SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to filter on a BigInteger column (metabase#5816)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.queryBuilderHeader().findByText("Explore results").click();
+    H.assertQueryBuilderRowCount(3);
+    H.openNotebook();
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText("BIGINT").click();
+      cy.findByLabelText("Filter operator").click();
+    });
+    H.popover().eq(1).findByText("Equal to").click();
+    H.popover().within(() => {
+      cy.findByLabelText("Filter value").type("9007199254740993");
+      cy.button("Add filter").click();
+    });
+    H.getNotebookStep("filter")
+      .findByText('BIGINT is equal to "9007199254740993"')
+      .should("be.visible");
+    H.visualize();
+    H.assertQueryBuilderRowCount(1);
+  });
+});
