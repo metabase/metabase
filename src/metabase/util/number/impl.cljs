@@ -10,4 +10,4 @@
 (defn bigint?
   "Checks if the passed value is a BigInt instance."
   [x]
-  (instance? js/BigInt x))
+  (= (type x) js/BigInt))
