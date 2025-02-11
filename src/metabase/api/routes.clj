@@ -164,7 +164,7 @@
    "/field"                (+auth 'metabase.api.field)
    "/geojson"              'metabase.api.geojson
    "/google"               (+auth 'metabase.api.google)
-   "/internal-tools"       (+auth 'metabase.api.internal-tools)
+   "/internal-tools"       'metabase.api.internal-tools
    "/ldap"                 (+auth 'metabase.api.ldap)
    "/login-history"        (+auth 'metabase.api.login-history)
    "/model-index"          (+auth 'metabase.api.model-index)

@@ -1,6 +1,9 @@
 (ns metabase.api.internal-tools
   (:require
+<<<<<<< Updated upstream
    [clojure.java.jdbc :as jdbc]
+=======
+>>>>>>> Stashed changes
    [honey.sql :as sql]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -12,7 +15,9 @@
    [metabase.models.cell-edit]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.actions.http-action :as http-action]))
 
 (comment
   metabase.models.cell-edit/keep-me)
@@ -75,3 +80,19 @@
   (t2/select-fn-vec (juxt :name :database_type) [:model/Field :database_type :name :table_id] :table_id (t2/select-one-pk :model/Table :name "PEOPLE"))
   (u/index-by :database_type (juxt :table_id :name) (t2/select :model/Field))
   (t2/select-one-fn :name :model/Table 219))
+
+(api.macros/defendpoint :post "/webhook/:table-id"
+  [{:keys [table-id]} :- [:map [:table-id :int]]
+   {:keys [jq]}
+   data]
+  #p data
+  (let [{table :name :keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
+        driver                      (driver/the-driver (:engine (t2/select-one :model/Database db_id)))
+        data                        (cond-> data
+                                      jq (http-action/apply-json-query jq))
+        q                           {:insert-into table
+                                     :values      (if (vector? data) data [data])}
+        [sql & params]              (sql/format q)]
+    (qp.store/with-metadata-provider db_id
+      (driver/execute-write-query! driver {:native {:query sql :params params}}))
+    :done))
