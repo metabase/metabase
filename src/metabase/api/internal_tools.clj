@@ -1,10 +1,9 @@
 (ns metabase.api.internal-tools
   (:require
-<<<<<<< Updated upstream
    [clojure.java.jdbc :as jdbc]
-=======
->>>>>>> Stashed changes
    [honey.sql :as sql]
+   #_{:clj-kondo/ignore [????]}
+   [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
@@ -13,11 +12,10 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.events :as events]
    [metabase.models.cell-edit]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.actions.http-action :as http-action]))
+   [toucan2.core :as t2]))
 
 (comment
   metabase.models.cell-edit/keep-me)
