@@ -1,12 +1,14 @@
-(ns metabase.api.action
+(ns metabase.actions.api
   "`/api/action/` endpoints."
   (:require
-   [metabase.actions.core :as actions]
+   [metabase.actions.actions :as actions]
+   [metabase.actions.execution :as actions.execution]
+   [metabase.actions.http-action :as actions.http-action]
+   [metabase.actions.models :as action]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
-   [metabase.models.action :as action]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.util :as u]
@@ -24,7 +26,7 @@
   [:and
    string?
    (mu/with-api-error-message
-    [:fn #(actions/apply-json-query {} %)]
+    [:fn #(actions.http-action/apply-json-query {} %)]
     (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
 
 (def ^:private supported-action-type
@@ -212,7 +214,7 @@
   (actions/check-actions-enabled! action-id)
   (-> (action/select-action :id action-id :archived false)
       api/read-check
-      (actions/fetch-values (json/decode parameters))))
+      (actions.execution/fetch-values (json/decode parameters))))
 
 (api.macros/defendpoint :post "/:id/execute"
   "Execute the Action.
@@ -229,4 +231,4 @@
                             :source    :model_detail
                             :type      type
                             :action_id id})
-    (actions/execute-action! action (update-keys parameters name))))
+    (actions.execution/execute-action! action (update-keys parameters name))))
