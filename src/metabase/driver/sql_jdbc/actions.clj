@@ -224,9 +224,9 @@
                             (tru "Sorry, the row you''re trying to delete doesn''t exist")
                             (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
                           {:status-code 400})))
-        (metabase.api.internal-tools/track-delete! (:source-table (:query query))
-                                                   (t2/select-fn-vec (comp keyword :name) :model/Field (first (mbql.u/referenced-field-ids (:query query))))
-                                                   old-rows)
+        ;; this is really brittle, non-trivial models will also reference other fields
+        (let [pks (t2/select-fn-vec (comp keyword :name) :model/Field (first (mbql.u/referenced-field-ids (:query query))))]
+          (metabase.api.internal-tools/track-delete! (:source-table (:query query)) pks old-rows))
         {:rows-deleted [1]}))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
