@@ -4808,7 +4808,7 @@
     (let [call-count (volatile! 0)
           orig-filterable-columns-for-query params/filterable-columns-for-query]
       ;; Mnually activate Field values since they are not created during sync (#53387)
-      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :people :name)))
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :people :state)))
       (with-redefs [params/filterable-columns-for-query
                     (fn [& args]
                       (vswap! call-count inc)
