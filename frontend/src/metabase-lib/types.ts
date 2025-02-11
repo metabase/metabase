@@ -384,9 +384,7 @@ export type StringFilterOptions = {
   caseSensitive?: boolean;
 };
 
-// BigInteger and BigDecimal values are stored as strings when they cannot be
-// stored as JS numbers
-export type NumberFilterValue = number | string;
+export type NumberFilterValue = number | bigint;
 
 export type NumberFilterParts = {
   operator: NumberFilterOperator;

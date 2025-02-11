@@ -1,12 +1,15 @@
 import * as Lib from "metabase-lib";
 
 const INTEGER_REGEX = /^[+-]?\d+$/;
-const DECIMAL_REGEX = /^[+-]?\d+\.?\d*$/;
 
-export function parseNumberForColumn(
+type ParseNumberOpts = {
+  withBigInt?: boolean;
+};
+
+export function parseNumber(
   value: string,
-  column: Lib.ColumnMetadata,
-): number | string | null {
+  opts?: ParseNumberOpts,
+): number | bigint | null {
   const number = parseFloat(value);
   if (!Number.isFinite(number)) {
     return null;
@@ -18,14 +21,16 @@ export function parseNumberForColumn(
   }
 
   // integers outside the JS number range
-  if (Lib.isBigInteger(column) && INTEGER_REGEX.test(value)) {
-    return value;
-  }
-
-  // integers outside the JS number range or fractional numbers
-  if (Lib.isDecimal(column) && DECIMAL_REGEX.test(value)) {
-    return value;
+  if (opts?.withBigInt && INTEGER_REGEX.test(value)) {
+    return BigInt(value);
   }
 
   return number;
+}
+
+export function parseNumberForColumn(
+  value: string,
+  column: Lib.ColumnMetadata,
+): Lib.NumberFilterValue | null {
+  return parseNumber(value, { withBigInt: Lib.isBigInteger(column) });
 }
