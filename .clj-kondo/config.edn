@@ -437,6 +437,8 @@
                                      metabase.timeline.core}
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}
+    metabase.user-key-value        #{metabase.user-key-value.api
+                                     metabase.user-key-value.init}
     metabase.util                  :any                                                             ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
     metabase.xrays                 #{metabase.xrays.core}}
 
@@ -511,6 +513,10 @@
     metabase.timeline              :any
     metabase.types                 #{metabase.util}
     metabase.upload                :any
+    metabase.user-key-value        #{metabase.api
+                                     metabase.config
+                                     metabase.lib    ; WHY
+                                     metabase.util}
     metabase.util                  :any ; TODO -- this should probably be #{}
     metabase.xrays                 :any}
 
