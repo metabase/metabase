@@ -60,4 +60,3 @@
   :visibility :public
   :audit      :never
   :doc        false)
-
