@@ -166,6 +166,20 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
+(defn insert-returning-pks!
+  [driver db-id table-name column-names values]
+  (let [dialect (sql.qp/quote-style driver)
+        sql     (sql/format {:insert-into (keyword table-name)
+                             :columns     (quote-columns driver column-names)
+                             :values      values}
+                            :quoted true
+                            :dialect dialect)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (let [with-keys (jdbc/execute! conn sql {:return-keys true})]
+        (if (map? with-keys)
+          [with-keys]
+          with-keys)))))
+
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
   (let [;; We need to partition the insert into multiple statements for both performance and correctness.

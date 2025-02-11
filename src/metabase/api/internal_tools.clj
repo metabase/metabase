@@ -12,7 +12,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.events :as events]
    [metabase.models.cell-edit]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
@@ -145,12 +144,16 @@
                                  [:row-pk   ms/PositiveInt]]]
   (delete-row! table-id row-pk))
 
+(defn- insert-rows!* [driver db-id table-id table rows]
+  (let [with-pks (driver.sql-jdbc/insert-returning-pks! driver db-id table (keys (first rows)) (map vals rows))]
+    (track-insert! table-id with-pks)))
+
 (defn- insert-row! [table-id row]
   ;; don't bother checking whether PK(s) value is/are provided iff the PK(s) is/are not auto-incrementing
   (let [{table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table-id))
-        driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))]
-    (driver/insert-into! driver db_id table (keys row) [(vals row)])
-    (track-insert! table-id [row])))
+        driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))
+        rows [row]]
+    (insert-rows!* driver db_id table-id table rows)))
 
 (api.macros/defendpoint :post "/table/:table-id"
   [{:keys [table-id]} :- [:map
@@ -171,15 +174,8 @@
   (let [{table :name :keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
         driver                      (driver/the-driver (:engine (t2/select-one :model/Database db_id)))
         row-or-rows                 (apply-jq data jq)
-        rows                        (if (vector? row-or-rows) row-or-rows [row-or-rows])
-        q                           {:insert-into table
-                                     :values      rows}
-        [sql & params]              (sql/format q)]
-    (qp.store/with-metadata-provider db_id
-      (driver/execute-write-query! driver {:native {:query sql :params params}}))
-
-    (track-insert! table-id rows)
-
+        rows                        (if (vector? row-or-rows) row-or-rows [row-or-rows])]
+    (insert-rows!* driver db_id table-id table rows)
     :done))
 
 (comment
