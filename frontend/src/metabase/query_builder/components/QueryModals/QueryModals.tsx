@@ -8,6 +8,7 @@ import Modal from "metabase/components/Modal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import { AddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import { AddRowModal } from "metabase/data-editing/AddRowModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -19,7 +20,6 @@ import { PreviewQueryModal } from "metabase/query_builder/components/view/Previe
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
-import { AddRowModal } from "metabase/querying/filters/components/AddRowModal";
 import { FilterModal } from "metabase/querying/filters/components/FilterModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
