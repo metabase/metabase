@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { CreateOrEditCustomModal } from "metabase/notifications/modals/CreateOrEditCustomModal";
@@ -22,6 +23,16 @@ interface OwnProps {
   selectedDatabaseId?: DatabaseId;
   selectedSchemaId?: SchemaId;
   selectedTableId?: TableId;
+}
+
+interface TableLoaderProps {
+  table?: {
+    fields: {
+      id: number;
+      name: string;
+      display_name: string;
+    }[];
+  };
 }
 
 interface DatabaseLoaderProps {
@@ -45,13 +56,17 @@ const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
     ),
 });
 
-type MetadataHeaderProps = OwnProps & DatabaseLoaderProps & DispatchProps;
+type MetadataHeaderProps = OwnProps &
+  DatabaseLoaderProps &
+  TableLoaderProps &
+  DispatchProps;
 
 const MetadataHeader = ({
   databases,
   selectedDatabaseId,
   selectedSchemaId,
   selectedTableId,
+  table,
   onSelectDatabase,
 }: MetadataHeaderProps) => {
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
@@ -122,9 +137,9 @@ const MetadataHeader = ({
           onClose={() => setIsNotificationModalOpen(false)}
           onNotificationCreated={() => {
             setIsNotificationModalOpen(false);
-            // Add any additional logic needed after creation
           }}
           tableId={selectedTableId}
+          fields={table?.fields ?? []}
         />
       )}
     </div>
@@ -135,6 +150,9 @@ const MetadataHeader = ({
 export default _.compose(
   Databases.loadList({
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  }),
+  Tables.load({
+    id: (state: any, props: OwnProps) => props.selectedTableId,
   }),
   connect(null, mapDispatchToProps),
 )(MetadataHeader);

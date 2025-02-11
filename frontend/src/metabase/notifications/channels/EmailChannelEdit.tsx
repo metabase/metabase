@@ -1,3 +1,8 @@
+import { useState } from "react";
+import { t } from "ttag";
+
+import TextArea from "metabase/core/components/TextArea";
+import CS from "metabase/css/core/index.css";
 import type { RecipientPickerValue } from "metabase/lib/pulse";
 import { isNotNull } from "metabase/lib/types";
 import type {
@@ -19,6 +24,8 @@ export const EmailChannelEdit = ({
   invalidRecipientText: (domains: string) => string;
   onChange: (newConfig: NotificationHandlerEmail) => void;
 }) => {
+  const [template, setTemplate] = useState("");
+
   const mappedUsers: RecipientPickerValue[] = channel.recipients
     .map(recipient => {
       if (recipient.type === "notification-recipient/user") {
@@ -72,12 +79,42 @@ export const EmailChannelEdit = ({
     });
   };
 
+  const handleTemplateChange = (
+    event: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    const newTemplate = event.target.value;
+    setTemplate(newTemplate);
+    onChange({
+      ...channel,
+      recipients: channel.recipients,
+      template: {
+        name: "Email Template",
+        channel_type: "channel/email",
+        details: {
+          type: "email/handlebars-text",
+          body: newTemplate,
+        },
+      },
+    });
+  };
+
   return (
-    <RecipientPicker
-      recipients={mappedUsers}
-      users={users}
-      onRecipientsChange={handleRecipientsChange}
-      invalidRecipientText={invalidRecipientText}
-    />
+    <div>
+      <RecipientPicker
+        recipients={mappedUsers}
+        users={users}
+        onRecipientsChange={handleRecipientsChange}
+        invalidRecipientText={invalidRecipientText}
+      />
+      <div className={CS.mt2}>
+        <TextArea
+          value={template}
+          onChange={handleTemplateChange}
+          placeholder={t`Your handlebars template here...`}
+          fullWidth
+          rows={4}
+        />
+      </div>
+    </div>
   );
 };

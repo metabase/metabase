@@ -19,7 +19,15 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { NotificationChannelsPicker } from "metabase/notifications/modals/components/NotificationChannelsPicker";
 import { addUndo } from "metabase/redux/undo";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { Button, Flex, Modal, Select, Stack, rem } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  Modal,
+  MultiSelect,
+  Select,
+  Stack,
+  rem,
+} from "metabase/ui";
 import type { Notification, NotificationHandler } from "metabase-types/api";
 
 import { ChannelSetupModal } from "../ChannelSetupModal";
@@ -27,6 +35,11 @@ import { AlertModalSettingsBlock } from "../CreateOrEditQuestionAlertModal/Alert
 
 type CreateOrEditCustomModalProps = {
   onClose: () => void;
+  fields: {
+    id: number;
+    name: string;
+    display_name: string;
+  }[];
 } & (
   | {
       editingNotification?: undefined;
@@ -51,12 +64,14 @@ export const CreateOrEditCustomModal = ({
   onNotificationUpdated,
   onClose,
   tableId,
+  fields,
 }: CreateOrEditCustomModalProps & { tableId?: number }) => {
   const dispatch = useDispatch();
   const user = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
 
   const [notification, setNotification] = useState<Notification | null>(null);
+  const [selectedFields, setSelectedFields] = useState<number[]>([]);
 
   const isEditMode = !!editingNotification;
 
@@ -73,28 +88,46 @@ export const CreateOrEditCustomModal = ({
   const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
 
   useEffect(() => {
-    if (channelSpec && user && hookChannels && !notification) {
-      setNotification(
-        isEditMode
-          ? { ...editingNotification }
+    if (channelSpec && user && hookChannels) {
+      const baseCondition = `(= ${tableId} (-> % :payload :event_info :object :table-id))`;
+
+      const fieldsCondition =
+        selectedFields.length > 0
+          ? `(or ${selectedFields
+              .map(
+                fieldId =>
+                  `(= ${fieldId} (-> % :payload :event_info :object :field-id))`,
+              )
+              .join(" ")})`
+          : undefined;
+
+      const fullCondition =
+        baseCondition && fieldsCondition
+          ? `(and ${baseCondition} ${fieldsCondition})`
+          : baseCondition;
+
+      setNotification(prev =>
+        prev
+          ? {
+              ...prev,
+              condition: fullCondition,
+            }
           : {
               handlers: [],
               payload_type: "notification/system-event",
               subscriptions: [{ type: "system-event", value: "update" }],
-              condition: tableId
-                ? `(and (= ${tableId} (-> % :payload :event_info :object :table-id)))`
-                : undefined,
+              condition: fullCondition,
             },
       );
     }
   }, [
-    notification,
     channelSpec,
     user,
     editingNotification,
     isEditMode,
     hookChannels,
     tableId,
+    selectedFields,
   ]);
 
   const onCreateOrEdit = async () => {
@@ -196,6 +229,19 @@ export const CreateOrEditCustomModal = ({
                 }
               />
             </AlertModalSettingsBlock>
+            {notification.subscriptions?.[0]?.event_name ===
+              "event/table-mutation-cell-update" && (
+              <MultiSelect
+                label={t`Select columns to monitor (optional)`}
+                placeholder={t`All columns will be monitored if none selected`}
+                data={fields.map(field => ({
+                  value: field.id,
+                  label: field.display_name || field.name,
+                }))}
+                value={selectedFields}
+                onChange={setSelectedFields}
+              />
+            )}
 
             <AlertModalSettingsBlock
               title={t`Where do you want to send the notification?`}
