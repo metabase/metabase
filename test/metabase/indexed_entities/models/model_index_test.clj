@@ -1,16 +1,16 @@
-(ns ^:mb/driver-tests metabase.models.model-index-test
+(ns ^:mb/driver-tests metabase.indexed-entities.models.model-index-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.scheduler :as qs]
    [malli.error :as me]
    [metabase.driver.util :as driver.u]
-   [metabase.models.model-index :as model-index]
+   [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.indexed-entities.task.index-values :as task.index-values]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task :as task]
-   [metabase.task.index-values :as task.index-values]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
