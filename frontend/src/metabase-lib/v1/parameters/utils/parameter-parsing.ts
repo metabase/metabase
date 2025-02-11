@@ -92,8 +92,7 @@ function parseParameterValueForFields(
 
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
   if (fields.every(f => f.isNumeric() && !f.isDate())) {
-    const number = parseFloat(String(value));
-    return isNaN(number) ? [] : number;
+    return normalizeNumberParameterValue(value);
   }
 
   if (fields.every(f => f.isBoolean())) {

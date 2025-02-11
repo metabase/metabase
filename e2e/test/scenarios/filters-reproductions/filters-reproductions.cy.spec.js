@@ -1649,7 +1649,8 @@ describe("issue 44665", () => {
 });
 
 describe("issue 5816", () => {
-  const questionDetails = {
+  const nativeQuestionDetails = {
+    name: "BIGINT data source",
     native: {
       query: `SELECT CAST('9007199254740992' AS BIGINT) AS BIGINT
 UNION ALL
@@ -1657,15 +1658,66 @@ SELECT CAST('9007199254740993' AS BIGINT) AS BIGINT
 UNION ALL
 SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
     },
+    display: "table",
   };
+
+  const ordersQuestionDetails = {
+    name: "Orders, Count",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+    },
+    display: "scalar",
+  };
+
+  const parameterDetails = {
+    id: "b6ed2d71",
+    type: "number/=",
+    name: "Equals",
+    slug: "equals",
+    sectionId: "number",
+  };
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+  };
+
+  const getBigIntQuestionDetails = cardId => ({
+    name: "BIGINT, Count",
+    query: {
+      "source-table": `card__${cardId}`,
+      aggregation: [["count"]],
+    },
+    display: "scalar",
+  });
+
+  const getOrdersQuestionParameterMapping = cardId => ({
+    card_id: cardId,
+    parameter_id: parameterDetails.id,
+    target: [
+      "dimension",
+      ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+    ],
+  });
+
+  const getBigIntQuestionParameterMapping = cardId => ({
+    card_id: cardId,
+    parameter_id: parameterDetails.id,
+    target: [
+      "dimension",
+      ["field", "BIGINT", { "base-type": "type/BigInteger" }],
+    ],
+  });
+
+  const filterValue = "9007199254740993";
 
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
   });
 
-  it("should be able to filter on a BigInteger column (metabase#5816)", () => {
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+  it("should be able to filter on a BigInteger column in the QB (metabase#5816)", () => {
+    H.createNativeQuestion(nativeQuestionDetails, { visitQuestion: true });
     H.queryBuilderHeader().findByText("Explore results").click();
     H.assertQueryBuilderRowCount(3);
     H.openNotebook();
@@ -1676,13 +1728,107 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
     });
     H.popover().eq(1).findByText("Equal to").click();
     H.popover().within(() => {
-      cy.findByLabelText("Filter value").type("9007199254740993");
+      cy.findByLabelText("Filter value").type(filterValue);
       cy.button("Add filter").click();
     });
     H.getNotebookStep("filter")
-      .findByText('BIGINT is equal to "9007199254740993"')
+      .findByText(`BIGINT is equal to "${filterValue}"`)
       .should("be.visible");
     H.visualize();
     H.assertQueryBuilderRowCount(1);
+  });
+
+  it("should be able to use dashboard number parameters with BigInteger columns that are table fields (metabase#5816)", () => {
+    cy.log("create a dashboard");
+    H.createQuestionAndDashboard({
+      questionDetails: ordersQuestionDetails,
+      dashboardDetails,
+    }).then(({ body: dashcard }) => {
+      H.addOrUpdateDashboardCard({
+        dashboard_id: dashcard.dashboard_id,
+        card_id: dashcard.card_id,
+        card: {
+          parameter_mappings: [
+            getOrdersQuestionParameterMapping(dashcard.card_id),
+          ],
+        },
+      });
+      cy.wrap(dashcard.dashboard_id).as("dashboardId");
+    });
+
+    cy.log("parameter widgets");
+    H.visitDashboard("@dashboardId");
+    H.getDashboardCard()
+      .findByTestId("scalar-value")
+      .should("have.text", "18,760");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type(filterValue);
+      cy.button("Add filter").click();
+    });
+    H.filterWidget().findByText(filterValue).should("be.visible");
+    H.getDashboardCard().findByTestId("scalar-value").should("have.text", "0");
+
+    cy.log("title drill-thru");
+    H.getDashboardCard().findByText("Orders, Count").click();
+    H.queryBuilderFiltersPanel().findByText(`ID is ${filterValue}`);
+    H.queryBuilderMain().findByTestId("scalar-value").should("have.text", "0");
+
+    cy.log("querystring parameter values");
+    H.visitDashboard("@dashboardId", {
+      params: {
+        [parameterDetails.slug]: filterValue,
+      },
+    });
+    H.filterWidget().findByText(filterValue).should("be.visible");
+    H.getDashboardCard().findByTestId("scalar-value").should("have.text", "0");
+  });
+
+  it("should be able to use dashboard number parameters with BigInteger columns that are not table fields (metabase#5816)", () => {
+    cy.log("create a dashboard");
+    H.createNativeQuestion(nativeQuestionDetails).then(({ body: card }) => {
+      H.createQuestionAndDashboard({
+        questionDetails: getBigIntQuestionDetails(card.id),
+        dashboardDetails,
+      }).then(({ body: dashcard }) => {
+        H.addOrUpdateDashboardCard({
+          dashboard_id: dashcard.dashboard_id,
+          card_id: dashcard.card_id,
+          card: {
+            parameter_mappings: [
+              getBigIntQuestionParameterMapping(dashcard.card_id),
+            ],
+          },
+        });
+        cy.wrap(dashcard.dashboard_id).as("dashboardId");
+      });
+    });
+
+    cy.log("parameter widgets");
+    H.visitDashboard("@dashboardId");
+    H.getDashboardCard().findByTestId("scalar-value").should("have.text", "3");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type(filterValue);
+      cy.button("Add filter").click();
+    });
+    H.filterWidget().findByText(filterValue).should("be.visible");
+    H.getDashboardCard().findByTestId("scalar-value").should("have.text", "1");
+
+    cy.log("title drill-thru");
+    H.getDashboardCard().findByText("BIGINT, Count").click();
+    H.queryBuilderFiltersPanel().findByText(
+      `BIGINT is equal to "${filterValue}"`,
+    );
+    H.queryBuilderMain().findByTestId("scalar-value").should("have.text", "1");
+
+    cy.log("querystring parameter values");
+    H.visitDashboard("@dashboardId", {
+      params: {
+        [parameterDetails.slug]: filterValue,
+      },
+    });
+    H.filterWidget().findByText(filterValue).should("be.visible");
+    H.getDashboardCard().findByTestId("scalar-value").should("have.text", "1");
   });
 });
