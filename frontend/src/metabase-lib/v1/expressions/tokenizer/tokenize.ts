@@ -25,6 +25,18 @@ export function tokenize(expression: string) {
 
   cursor.iterate(function (node) {
     if (node.type.name === "Identifier") {
+      const prev = tokens.at(-1);
+      if (prev?.end === node.from) {
+        tokens.pop();
+        tokens.push({
+          type: TOKEN.Identifier,
+          start: prev.start,
+          end: node.to,
+          isReference: false,
+        });
+        return;
+      }
+
       tokens.push({
         type: TOKEN.Identifier,
         start: node.from,
