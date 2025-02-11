@@ -1,6 +1,6 @@
 import fs from "fs";
 
-import path from "path";
+import { glob } from "glob";
 
 import { getNextJsCustomAppOrRootLayoutSnippet } from "../snippets/nextjs-app-snippets";
 import { getNextJsAnalyticsPageSnippet } from "../snippets/nextjs-page-snippet";
@@ -8,8 +8,13 @@ import { getNextJsAnalyticsPageSnippet } from "../snippets/nextjs-page-snippet";
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
 import { getProjectDependenciesFromPackageJson } from "./get-package-version";
 
-const hasPathInProject = (fileName: string) =>
-  fs.existsSync(path.join(process.cwd(), fileName));
+const hasPath = (pattern: string) => {
+  try {
+    return glob.sync(pattern).length > 0;
+  } catch (error) {
+    return false;
+  }
+};
 
 /**
  * Checks if the current project is a Next.js project.
@@ -22,8 +27,7 @@ export async function checkIsInNextJsProject() {
 
   const hasNextJsDependency = !!dependencies?.next;
 
-  const hasNextJsConfig =
-    hasPathInProject("next.config.js") || hasPathInProject("next.config.ts");
+  const hasNextJsConfig = hasPath("next.config.*");
 
   return hasNextJsDependency || hasNextJsConfig;
 }
@@ -33,11 +37,11 @@ export async function checkIsInNextJsProject() {
  * Prioritizes the app router (more modern) if both are present.
  */
 export async function checkIfUsingAppOrPagesRouter() {
-  if (hasPathInProject("app")) {
+  if (hasPath("app")) {
     return "app";
   }
 
-  if (hasPathInProject("pages")) {
+  if (hasPath("pages")) {
     return "pages";
   }
 
@@ -56,16 +60,12 @@ export async function checkIfNextJsCustomAppOrRootLayoutExists() {
 
   // App router uses the `app/layout` root layout file.
   if (router === "app") {
-    return (
-      hasPathInProject("app/layout.js") || hasPathInProject("app/layout.tsx")
-    );
+    return hasPath("app/layout.*");
   }
 
   // Pages router uses the `pages/_app` file.
   if (router === "pages") {
-    return (
-      hasPathInProject("pages/_app.js") || hasPathInProject("pages/_app.tsx")
-    );
+    return hasPath("pages/_app.*");
   }
 
   return false;
