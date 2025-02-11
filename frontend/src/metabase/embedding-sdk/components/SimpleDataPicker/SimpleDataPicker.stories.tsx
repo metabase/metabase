@@ -57,7 +57,7 @@ const SUPER_LONG_OPTIONS = createOptions([
 function createOptions(optionNames: string[]): Option[] {
   return optionNames.map((name, index) => ({
     id: index + 1,
-    name: name,
+    name,
   }));
 }
 interface Option {
