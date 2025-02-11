@@ -222,6 +222,16 @@
                   :quoted true
                   :dialect (sql.qp/quote-style driver)))))
 
+(defn delete-row!
+  [driver db-id schema table-name pk pk-value]
+  (qp.writeback/execute-write-sql!
+   db-id
+   (with-quoting driver
+     (sql/format  {:delete (keyword schema table-name)
+                   :where  [:= (keyword pk) pk-value]}
+                  :quoted true
+                  :dialect (sql.qp/quote-style driver)))))
+
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options

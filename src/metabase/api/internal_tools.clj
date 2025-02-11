@@ -113,6 +113,39 @@
                                     :rows     rows}
                           :user-id api/*current-user-id*}))
 
+(defn delete-row! [table-id row-pk]
+  (let [{table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table-id))
+        pks    (t2/select :model/Field :table_id table-id :semantic_type :type/PK)
+        driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))]
+    (assert (= 1 (count pks)) "Table must have a PK and it cannot be compound")
+
+    (let [old-row (let [sql (sql/format {:select [*]
+                                         :from   [(keyword table)]
+                                         :where  [:= row-pk (keyword (:name (first pks)))]}
+                                        :quoted true
+                                        :dialect (sql.qp/quote-style driver))]
+                    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db_id)]
+                      (first (jdbc/query conn sql))))]
+
+      (driver.sql-jdbc/delete-row! driver
+                                   db_id
+                                   schema
+                                   table
+                                   (:name (first pks))
+                                   row-pk)
+
+      (events/publish-event! :event/table-mutation-row-delete
+                             {:object    {:table-id table-id
+                                          :pk    row-pk
+                                          :row old-row}
+                              :user-id   api/*current-user-id*}))))
+
+(api.macros/defendpoint :delete "/table/:table-id/:row-pk"
+  [{:keys [table-id row-pk]} :- [:map
+                                 [:table-id ms/PositiveInt]
+                                 [:row-pk   ms/PositiveInt]]]
+  (delete-row! table-id row-pk))
+
 (defn- insert-row! [table-id row]
   ;; don't bother checking whether PK(s) value is/are provided iff the PK(s) is/are not auto-incrementing
   (let [{table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table-id))
