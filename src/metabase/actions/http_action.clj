@@ -18,7 +18,8 @@
 (defonce ^:private root-scope
   (delay
     (let [scope (Scope/newEmptyScope)]
-      (.loadFunctions (BuiltinFunctionLoader/getInstance) Versions/JQ_1_6 scope))))
+      (.loadFunctions (BuiltinFunctionLoader/getInstance) Versions/JQ_1_6 scope)
+      scope)))
 
 (defonce ^:private object-mapper
   (delay (ObjectMapper.)))

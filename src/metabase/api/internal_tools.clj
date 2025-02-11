@@ -1,8 +1,8 @@
 (ns metabase.api.internal-tools
-  ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
+   ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -14,6 +14,7 @@
    [metabase.models.cell-edit]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -126,14 +127,18 @@
    {:keys [row]} :- [:map [:row :any]]]
   (insert-row! table-id row))
 
+(defn- apply-jq [data jq]
+  (if jq
+    (json/decode+kw (http-action/apply-json-query data jq))
+    data))
+
 (api.macros/defendpoint :post "/webhook/:table-id"
   [{:keys [table-id]} :- [:map [:table-id :int]]
    {:keys [jq]}
    data]
   (let [{table :name :keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
         driver                      (driver/the-driver (:engine (t2/select-one :model/Database db_id)))
-        row-or-rows                 (cond-> data
-                                      jq (http-action/apply-json-query jq))
+        row-or-rows                 (apply-jq data jq)
         rows                        (if (vector? row-or-rows) row-or-rows [row-or-rows])
         q                           {:insert-into table
                                      :values      rows}
