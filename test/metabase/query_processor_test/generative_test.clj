@@ -27,7 +27,7 @@
 (deftest query-execution-test
   (when (config/config-bool :mb-gentest-run)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-      ;; TODO: 1. Limit from workflow, 2. Limit override for repl
+      ;; TODO: 1. Limit override for repl
       (gentest/with-gentest
         {:gentest.default-limit/seconds 5}
         [base-query (lib/query mp (tu.rng/rand-nth (lib.metadata/tables mp)))

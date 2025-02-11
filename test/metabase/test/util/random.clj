@@ -8,7 +8,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defonce ^:dynamic *generator* (java.util.Random.))
+;; TODO: this should be "macroed" for use in with-gentest
+(defonce ^:dynamic *seed* (.nextLong (java.util.Random.)))
+
+(defonce ^:dynamic *generator* (java.util.Random. *seed*))
 
 (defn rand
   "wip"

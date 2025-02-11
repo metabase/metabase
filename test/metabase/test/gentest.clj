@@ -30,6 +30,9 @@
       (println "\nERROR in" (clojure.test/testing-vars-str m))
       (when (seq clojure.test/*testing-contexts*)
         (println (clojure.test/testing-contexts-str)))
+      ;; Temporarily print seed for non exceptional failures here
+      (when tu.rng/*seed*
+        (println "Iteration seed: %d" tu.rng/*seed*))
       (clojure.pprint/pprint m))
 
     (*original-report* m)))
@@ -117,7 +120,8 @@
              iteration-seed (.nextLong seed-generator)]
         (when (limit-fn)
           (try
-            (binding [tu.rng/*generator* (Random. iteration-seed)]
+            (binding [tu.rng/*seed* iteration-seed
+                      tu.rng/*generator* (Random. iteration-seed)]
               (thunk))
             (catch Exception e
               (when-not (#{::generation ::execution} (:type (ex-data e)))
