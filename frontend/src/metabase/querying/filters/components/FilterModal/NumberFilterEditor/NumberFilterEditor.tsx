@@ -145,7 +145,6 @@ function NumberValueInput({
     return (
       <NumberFilterInput
         value={values[0]}
-        column={column}
         placeholder={t`Enter a number`}
         aria-label={t`Filter value`}
         onChange={newValue => onChange([newValue])}
@@ -160,7 +159,6 @@ function NumberValueInput({
       <Flex align="center">
         <NumberFilterInput
           value={values[0]}
-          column={column}
           placeholder={t`Min`}
           maw="8rem"
           onChange={newValue => onChange([newValue, values[1]])}
@@ -170,7 +168,6 @@ function NumberValueInput({
         <Text mx="sm">{t`and`}</Text>
         <NumberFilterInput
           value={values[1]}
-          column={column}
           placeholder={t`Max`}
           maw="8rem"
           onChange={newValue => onChange([values[0], newValue])}

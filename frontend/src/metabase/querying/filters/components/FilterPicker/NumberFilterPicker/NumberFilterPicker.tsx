@@ -136,7 +136,6 @@ function NumberValueInput({
       <Flex p="md">
         <NumberFilterInput
           value={values[0]}
-          column={column}
           placeholder={t`Enter a number`}
           autoFocus
           w="100%"
@@ -152,7 +151,6 @@ function NumberValueInput({
       <Flex align="center" justify="center" p="md">
         <NumberFilterInput
           value={values[0]}
-          column={column}
           placeholder={t`Min`}
           autoFocus
           onChange={newValue => onChange([newValue, values[1]])}
@@ -160,7 +158,6 @@ function NumberValueInput({
         <Text mx="sm">{t`and`}</Text>
         <NumberFilterInput
           value={values[1]}
-          column={column}
           placeholder={t`Max`}
           onChange={newValue => onChange([values[0], newValue])}
         />

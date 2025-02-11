@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { useGetFieldValuesQuery } from "metabase/api";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
-import { parseNumberForColumn } from "metabase/querying/filters/utils/numbers";
+import { parseNumber } from "metabase/querying/filters/utils/numbers";
 import { Center, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -142,7 +142,7 @@ export function NumberFilterValuePicker({
   ...props
 }: FilterValuePickerProps<Lib.NumberFilterValue>) {
   const shouldCreate = (value: string, values: string[]) => {
-    const number = parseNumberForColumn(value, column);
+    const number = parseNumber(value);
     return number != null && !values.includes(value);
   };
 
@@ -154,11 +154,7 @@ export function NumberFilterValuePicker({
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
       shouldCreate={shouldCreate}
       onChange={newValue =>
-        onChange(
-          newValue
-            .map(value => parseNumberForColumn(value, column))
-            .filter(isNotNull),
-        )
+        onChange(newValue.map(parseNumber).filter(isNotNull))
       }
     />
   );

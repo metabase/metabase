@@ -146,7 +146,6 @@ function NumberValueInput({
     return (
       <NumberFilterInput
         value={values[0]}
-        column={column}
         placeholder={t`Enter a number`}
         aria-label={t`Filter value`}
         onChange={newValue => onChange([newValue])}
@@ -161,7 +160,6 @@ function NumberValueInput({
       <Flex align="center">
         <NumberFilterInput
           value={values[0]}
-          column={column}
           placeholder={t`Min`}
           maw="8rem"
           onChange={newValue => onChange([newValue, values[1]])}
@@ -171,7 +169,6 @@ function NumberValueInput({
         <Text mx="sm">{t`and`}</Text>
         <NumberFilterInput
           value={values[1]}
-          column={column}
           placeholder={t`Max`}
           maw="8rem"
           onChange={newValue => onChange([values[0], newValue])}
@@ -187,7 +184,6 @@ function NumberValueInput({
       <Flex align="center" gap="md">
         <NumberFilterInput
           value={values[2]}
-          column={column}
           placeholder={t`Lower latitude`}
           onChange={newValue =>
             onChange([values[0], values[1], newValue, values[3]])
@@ -197,7 +193,6 @@ function NumberValueInput({
         />
         <NumberFilterInput
           value={values[0]}
-          column={column}
           placeholder={t`Upper latitude`}
           onChange={newValue =>
             onChange([newValue, values[1], values[2], values[3]])
@@ -207,7 +202,6 @@ function NumberValueInput({
         />
         <NumberFilterInput
           value={values[1]}
-          column={column}
           placeholder={t`Left longitude`}
           onChange={newValue =>
             onChange([values[0], newValue, values[2], values[3]])
@@ -217,7 +211,6 @@ function NumberValueInput({
         />
         <NumberFilterInput
           value={values[3]}
-          column={column}
           placeholder={t`Right longitude`}
           onChange={newValue =>
             onChange([values[0], values[1], values[2], newValue])

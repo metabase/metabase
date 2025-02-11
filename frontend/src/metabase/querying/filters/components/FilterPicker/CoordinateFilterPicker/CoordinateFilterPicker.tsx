@@ -152,7 +152,6 @@ function CoordinateValueInput({
       <Flex p="md">
         <NumberFilterInput
           value={values[0]}
-          column={column}
           placeholder={t`Enter a number`}
           autoFocus
           w="100%"
@@ -168,7 +167,6 @@ function CoordinateValueInput({
       <Flex align="center" justify="center" p="md">
         <NumberFilterInput
           value={values[0]}
-          column={column}
           placeholder={t`Min`}
           autoFocus
           onChange={newValue => onChange([newValue, values[1]])}
@@ -176,7 +174,6 @@ function CoordinateValueInput({
         <Text mx="sm">{t`and`}</Text>
         <NumberFilterInput
           value={values[1]}
-          column={column}
           placeholder={t`Max`}
           onChange={newValue => onChange([values[0], newValue])}
         />
@@ -190,7 +187,6 @@ function CoordinateValueInput({
         <NumberFilterInput
           label={t`Upper latitude`}
           value={values[0]}
-          column={column}
           placeholder="90"
           autoFocus
           onChange={newValue =>
@@ -201,7 +197,6 @@ function CoordinateValueInput({
           <NumberFilterInput
             label={t`Left longitude`}
             value={values[1]}
-            column={column}
             placeholder="-180"
             onChange={newValue =>
               onChange([values[0], newValue, values[2], values[3]])
@@ -210,7 +205,6 @@ function CoordinateValueInput({
           <NumberFilterInput
             label={t`Right longitude`}
             value={values[3]}
-            column={column}
             placeholder="180"
             onChange={newValue =>
               onChange([values[0], values[1], values[2], newValue])
@@ -220,7 +214,6 @@ function CoordinateValueInput({
         <NumberFilterInput
           label={t`Lower latitude`}
           value={values[2]}
-          column={column}
           placeholder="-90"
           onChange={newValue =>
             onChange([values[0], values[1], newValue, values[3]])
