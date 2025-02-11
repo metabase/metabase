@@ -241,17 +241,12 @@ describe("tokenizer", () => {
     });
 
     it("handles unbalanced strings", () => {
-      const cases = [
-        `"foo`,
-        `'foo`,
-        // `"foo\\"`, // TODO: this case is currently broken
-        // `'foo\\'`, // TODO: this case is currently broken
-      ];
+      const cases = [`"foo`, `'foo`, `"foo\\"`, `'foo\\'`];
 
       for (const expression of cases) {
         const { errors } = tokenize(expression);
         expect(errors).toEqual([
-          { message: "Missing closing quotes", pos: 0, len: 4 },
+          { message: "Missing closing quotes", pos: 0, len: expression.length },
         ]);
       }
     });
