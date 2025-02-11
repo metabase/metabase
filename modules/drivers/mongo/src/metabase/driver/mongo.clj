@@ -34,6 +34,8 @@
 ;; Encode BSON undefined like `nil`
 (json/add-encoder org.bson.BsonUndefined json/generate-nil)
 
+;; UUIDs are BSON subtype 4, see https://bsonspec.org/spec.html
+;; and https://www.mongodb.com/docs/manual/reference/bson-types/#binary-data
 (def bson-uuid-type 4)
 
 (json/add-encoder Binary
