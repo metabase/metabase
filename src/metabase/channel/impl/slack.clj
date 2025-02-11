@@ -161,3 +161,24 @@
        :attachments (doall (remove nil?
                                    (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
                                              (create-slack-attachment-data (:dashboard_parts payload))])))})))
+
+(defn- custom-template-slack
+  [{:keys [event_topic event_info] :as x}]
+  (case event_topic
+    :event/table-mutation-cell-update
+    (let [{:keys [pk table field value-new value-old]} (:object event_info)
+          user (:user event_info)]
+      [(text->markdown-block
+        (format "Table `%s` has been updated by `%s`.\n\nField `%s` has been updated from `%s` to `%s` for row with primary key `%s`."
+                (:name table)
+                (:common_name user)
+                (:name field)
+                value-old
+                value-new
+                pk))])))
+
+(mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
+  [_channel-type {:keys [payload]} _template recipients]
+  (for [channel-id (map notification-recipient->channel-id recipients)]
+    {:channel-id  channel-id
+     :attachments (custom-template-slack payload)}))

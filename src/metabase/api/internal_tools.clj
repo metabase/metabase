@@ -18,19 +18,13 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(comment
-  metabase.models.cell-edit/keep-me)
-
-(derive ::event :metabase/event)
-(derive :table.mutation/cell-update ::event)
-
 (defn- update-cell! [field-id row-pk value]
   (let [{column :name :keys [table_id semantic_type]} (api/check-404 (t2/select-one :model/Field field-id))
         {table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table_id))
         pks    (t2/select :model/Field :table_id table_id :semantic_type :type/PK)
         driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))]
     (assert (not= :type/PK semantic_type) "Cannot modify PK")
-    (assert (= 1 (count pks)) "Table must have a PK, and it cannot be compound")
+    (assert (= 1 (count pks)) "Table must have a PK and it cannot be compound")
 
     (let [old-value (let [sql (sql/format {:select [(keyword column)]
                                            :from   [(keyword table)]
@@ -57,8 +51,13 @@
 
       (events/publish-event! :table.mutation/cell-update
                              {:object-id field-id
-                              :object    {:pk        row-pk
+                              :object    {:field-id field-id
+                                          :table-id table_id
+                                          :table    (t2/select-one [:model/Table :name] table_id)
+                                          :field    (t2/select-one [:model/Field :name] field-id)
+                                          :pk    row-pk
                                           :value-new value
+                                          ;; TODO get this
                                           :value-old old-value}
                               :user-id   api/*current-user-id*}))))
 

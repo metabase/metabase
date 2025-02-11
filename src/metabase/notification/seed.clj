@@ -101,7 +101,23 @@
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{context.admin_email}}" :is_optional true}}
                                            {:type                 :notification-recipient/group
-                                            :permissions_group_id (:id (perms/admin-group))}]}]}]))
+                                            :permissions_group_id (:id (perms/admin-group))}]}]}
+          {:internal_id   "system-event/table-mutation-update"
+           :active        true
+           :payload_type  :notification/system-event
+           :subscriptions [{:type       :notification-subscription/system-event
+                            :event_name :event/table-mutation-cell-update}]
+           :handlers      [{:active       true
+                            :channel_type :channel/slack
+                            :channel_id   nil
+                            #_:template     #_{:name         "Slack Token Error Email template"
+                                               :channel_type "channel/email"
+                                               :details      {:type "email/handlebars-resource"
+                                                              :subject "Your Slack connection stopped working"
+                                                              :path "metabase/channel/email/slack_token_error.hbs"
+                                                              :recipient-type "cc"}}
+                            :recipients   [{:type    :notification-recipient/raw-value
+                                            :details {:value "#leads"}}]}]}]))
 
 (defn- cleanup-notification!
   [internal-id existing-row]
