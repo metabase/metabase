@@ -7,9 +7,7 @@ export type NumberValue = number | string;
 
 const INTEGER_REGEX = /^[+-]?\d+$/;
 
-export function parseNumberExact(
-  value: string | number | boolean,
-): NumberValue | null {
+export function parseNumberExact(value: unknown): NumberValue | null {
   if (typeof value === "string") {
     const number = parseFloat(value);
     if (!Number.isFinite(number)) {

@@ -32,6 +32,8 @@ describe("metabase/lib/number", () => {
 
   describe("parseNumberExact", () => {
     it.each([
+      { value: null, expectedValue: null },
+      { value: undefined, expectedValue: null },
       { value: "", expectedValue: null },
       { value: " ", expectedValue: null },
       { value: "Infinity", expectedValue: null },
@@ -54,6 +56,8 @@ describe("metabase/lib/number", () => {
       { value: Infinity, expectedValue: null },
       { value: -Infinity, expectedValue: null },
       { value: NaN, expectedValue: null },
+      { value: false, expectedValue: null },
+      { value: true, expectedValue: null },
     ])('should parse "$value"', ({ value, expectedValue }) => {
       expect(parseNumberExact(value)).toBe(expectedValue);
     });
