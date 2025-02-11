@@ -72,7 +72,7 @@ export function Popover({
       onClose={handleClose}
       middlewares={{
         shift: true,
-        flip: true,
+        flip: false,
       }}
     >
       <HoverCard.Target>{children}</HoverCard.Target>
