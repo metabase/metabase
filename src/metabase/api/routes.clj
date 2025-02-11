@@ -1,8 +1,8 @@
 (ns metabase.api.routes
   (:require
    [compojure.route :as route]
+   [metabase.activity-feed.api]
    [metabase.api.action]
-   [metabase.api.activity]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.alert]
    [metabase.api.api-key]
@@ -58,7 +58,7 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase.api.action/keep-me
-         metabase.api.activity/keep-me
+         metabase.activity-feed.api/keep-me
          metabase.api.alert/keep-me
          metabase.api.api-key/keep-me
          metabase.api.automagic-dashboards/keep-me
@@ -135,7 +135,7 @@
 ;;; ↓↓↓ KEEP THIS SORTED OR ELSE! ↓↓↓
 (def ^:private route-map
   {"/action"               (+auth 'metabase.api.action)
-   "/activity"             (+auth 'metabase.api.activity)
+   "/activity"             (+auth 'metabase.activity-feed.api)
    "/alert"                (+auth 'metabase.api.alert)
    "/api-key"              (+auth 'metabase.api.api-key)
    "/automagic-dashboards" (+auth 'metabase.api.automagic-dashboards)

@@ -1,4 +1,4 @@
-(ns metabase.api.activity-test
+(ns metabase.activity-feed.api-test
   "Tests for /api/activity endpoints."
   (:require
    [clojure.test :refer :all]
