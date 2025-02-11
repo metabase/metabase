@@ -1,6 +1,7 @@
 (ns metabase.core.bootstrap
   (:gen-class)
-  (:require [clojure.java.io :as io]))
+  (:require
+   [clojure.java.io :as io]))
 
 (set! *warn-on-reflection* true)
 

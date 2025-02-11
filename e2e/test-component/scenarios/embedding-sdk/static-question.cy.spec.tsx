@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion, describeEE } from "e2e/support/helpers";
+import { createQuestion } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountStaticQuestion,
@@ -9,7 +9,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describeEE("scenarios > embedding-sdk > static-question", () => {
+describe("scenarios > embedding-sdk > static-question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 

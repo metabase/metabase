@@ -7,8 +7,8 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -34,6 +34,7 @@
       :display_name   "ID"
       :base_type      :type/BigInteger
       :effective_type :type/BigInteger
+      :database_type  "BIGINT"
       :semantic_type  :type/PK
       :fingerprint    (name->fingerprint :id)
       :field_ref      [:field "ID" {:base-type :type/BigInteger}]}
@@ -41,6 +42,7 @@
       :display_name   "Name"
       :base_type      :type/Text
       :effective_type :type/Text
+      :database_type  "CHARACTER VARYING"
       :semantic_type  :type/Name
       :fingerprint    (name->fingerprint :name)
       :field_ref      [:field "NAME" {:base-type :type/Text}]}
@@ -48,6 +50,7 @@
       :display_name   "Price"
       :base_type      :type/Integer
       :effective_type :type/Integer
+      :database_type  "INTEGER"
       :semantic_type  nil
       :fingerprint    (name->fingerprint :price)
       :field_ref      [:field "PRICE" {:base-type :type/Integer}]}
@@ -55,6 +58,7 @@
       :display_name   "Category ID"
       :base_type      :type/Integer
       :effective_type :type/Integer
+      :database_type  "INTEGER"
       :semantic_type  nil
       :fingerprint    (name->fingerprint :category_id)
       :field_ref      [:field "CATEGORY_ID" {:base-type :type/Integer}]}
@@ -62,6 +66,7 @@
       :display_name   "Latitude"
       :base_type      :type/Float
       :effective_type :type/Float
+      :database_type  "DOUBLE PRECISION"
       :semantic_type  :type/Latitude
       :fingerprint    (name->fingerprint :latitude)
       :field_ref      [:field "LATITUDE" {:base-type :type/Float}]}
@@ -69,6 +74,7 @@
       :display_name   "Longitude"
       :base_type      :type/Float
       :effective_type :type/Float
+      :database_type  "DOUBLE PRECISION"
       :semantic_type  :type/Longitude
       :fingerprint    (name->fingerprint :longitude)
       :field_ref      [:field "LONGITUDE" {:base-type :type/Float}]}]))

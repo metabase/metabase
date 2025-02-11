@@ -16,11 +16,11 @@ import {
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
-import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
+import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 
 import S from "./QuestionDataSource.module.css";
 
-type DataSourcePart = ReactElement | DataSourceBadgePart;
+export type DataSourcePart = ReactElement | DataSourceBadgePart;
 
 type DataSourceBadgePart = {
   name?: string;

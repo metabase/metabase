@@ -3,7 +3,6 @@
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
    [clojure.set :as set]
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
@@ -14,11 +13,10 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -45,7 +43,7 @@
 (defmethod mi/can-read? :model/Segment
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
-     (data-perms/user-has-permission-for-table?
+     (perms/user-has-permission-for-table?
       api/*current-user-id*
       :perms/manage-table-metadata
       :yes
@@ -121,29 +119,6 @@
     (for [segment segments
           :let    [metadata-provider (table-id->warmed-metadata-provider (:table_id segment))]]
       (assoc segment :definition_description (definition-description metadata-provider segment)))))
-
-;;; --------------------------------------------------- Revisions ----------------------------------------------------
-
-(defmethod revision/serialize-instance :model/Segment
-  [_model _id instance]
-  (dissoc instance :created_at :updated_at))
-
-(defmethod revision/diff-map :model/Segment
-  [model segment1 segment2]
-  (if-not segment1
-    ;; this is the first version of the segment
-    (m/map-vals (fn [v] {:after v}) (select-keys segment2 [:name :description :definition]))
-    ;; do our diff logic
-    (let [base-diff ((get-method revision/diff-map :default)
-                     model
-                     (select-keys segment1 [:name :description :definition])
-                     (select-keys segment2 [:name :description :definition]))]
-      (cond-> (merge-with merge
-                          (m/map-vals (fn [v] {:after v}) (:after base-diff))
-                          (m/map-vals (fn [v] {:before v}) (:before base-diff)))
-        (or (get-in base-diff [:after :definition])
-            (get-in base-diff [:before :definition])) (assoc :definition {:before (get segment1 :definition)
-                                                                          :after  (get segment2 :definition)})))))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 

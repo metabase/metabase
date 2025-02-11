@@ -20,7 +20,7 @@ If you are having problems with a regular [filter widget][filter-widget-gloss], 
 
 1. Update the card's query to change the regular variable to a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable.
 
-See [Limitations of linking filters](../dashboards/filters.md#limitations-of-linking-filters)
+See [Limitations of linking filters](../dashboards/linked-filters.md#limitations-of-linked-filters).
 
 ## Do you understand the directionality of linked filters?
 

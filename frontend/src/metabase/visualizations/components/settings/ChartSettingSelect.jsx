@@ -17,7 +17,13 @@ export const ChartSettingSelect = ({
   id,
   searchProp,
   footer,
-  ...selectProps
+  icon,
+  iconWidth,
+  pl,
+  pr,
+  rightSection,
+  styles,
+  w,
 }) => {
   const disabled =
     options.length === 0 ||
@@ -36,7 +42,6 @@ export const ChartSettingSelect = ({
         {footer}
       </Stack>
     ));
-
   return (
     <Select
       px={0}
@@ -52,12 +57,13 @@ export const ChartSettingSelect = ({
       initiallyOpened={isInitiallyOpen}
       searchable={!!searchProp}
       rightSectionWidth="10px"
-      styles={{
-        input: {
-          fontWeight: "bold",
-        },
-      }}
-      {...selectProps}
+      icon={icon}
+      iconWidth={iconWidth}
+      pl={pl}
+      pr={pr}
+      rightSection={rightSection}
+      styles={styles}
+      w={w}
     />
   );
 };

@@ -7,8 +7,8 @@
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection.graph :as graph]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -174,7 +174,8 @@
           (is (= {:revision 1
                   :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :read}
                              (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :write}}}
-                 (replace-collection-ids collection (graph :collections [collection]))))))))
+                 (replace-collection-ids collection (graph :collections [collection]))))
+          (is (= 1 (c-perm-revision/latest-id)))))))
 
   (testing "can we give them *write* perms?"
     (mt/with-non-admin-groups-no-root-collection-perms
