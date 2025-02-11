@@ -1,6 +1,8 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
+import type { NumberFilterValue } from "metabase/querying/filters/types";
+
 import { NumberInputWidget } from "./NumberInputWidget";
 
 export default {
@@ -11,7 +13,7 @@ export default {
 const Template: StoryFn<typeof NumberInputWidget> = args => {
   const [{ value }, updateArgs] = useArgs();
 
-  const handleSetValue = (v: number[] | undefined) => {
+  const handleSetValue = (v: NumberFilterValue[] | undefined) => {
     updateArgs({ value: v });
   };
 
