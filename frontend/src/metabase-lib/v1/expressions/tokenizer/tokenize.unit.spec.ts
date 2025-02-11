@@ -251,7 +251,7 @@ describe("tokenizer", () => {
       for (const expression of cases) {
         const { errors } = tokenize(expression);
         expect(errors).toEqual([
-          { message: "Missing closing quotes", pos: 0, len: 1 },
+          { message: "Missing closing quotes", pos: 0, len: 4 },
         ]);
       }
     });

@@ -1,9 +1,10 @@
+import type { SyntaxNodeRef } from "@lezer/common";
 import { t } from "ttag";
 
 import type { ErrorWithMessage, Token } from "../types";
 
 import { parser } from "./parser";
-import { OPERATOR, TOKEN } from "./types";
+import { OPERATOR, type Optional, TOKEN } from "./types";
 
 const escapes = {
   '"': '"',
@@ -16,6 +17,9 @@ const escapes = {
   v: "\x0b",
 };
 
+/**
+ * Converts a @lezer/lr parse tree into a list of (relevant) tokens.
+ */
 export function tokenize(expression: string) {
   const tokens: Token[] = [];
   const errors: ErrorWithMessage[] = [];
@@ -23,117 +27,97 @@ export function tokenize(expression: string) {
   const tree = parser.parse(expression);
   const cursor = tree.cursor();
 
+  function token(node: SyntaxNodeRef, token: Optional<Token, "start" | "end">) {
+    tokens.push({
+      start: node.from,
+      end: node.to,
+      ...token,
+    } as Token);
+    return false;
+  }
+
+  function error(node: SyntaxNodeRef, message: string) {
+    errors.push({
+      message,
+      pos: node.from,
+      len: node.to - node.from,
+    });
+  }
+
   cursor.iterate(function (node) {
     if (node.type.name === "Identifier") {
-      tokens.push({
+      return token(node, {
         type: TOKEN.Identifier,
-        start: node.from,
-        end: node.to,
         isReference: false,
       });
-      return false;
     }
+
     if (node.type.name === "Reference") {
       const value = expression.slice(node.from, node.to);
       if (value.at(0) !== "[") {
-        errors.push({
-          message: t`Missing opening bracket`,
-          pos: node.from,
-          len: node.to - node.from,
-        });
-      }
-      if (value.at(-1) !== "]") {
-        errors.push({
-          message: t`Missing a closing bracket`,
-          pos: node.from,
-          len: node.to - node.from,
-        });
+        error(node, t`Missing opening bracket`);
+      } else if (value.at(-1) !== "]") {
+        error(node, t`Missing a closing bracket`);
       }
 
-      tokens.push({
+      return token(node, {
         type: TOKEN.Identifier,
-        start: node.from,
-        end: node.to,
         isReference: true,
       });
-      return false;
     }
+
     if (node.type.name === "Number") {
       const value = expression.slice(node.from, node.to).toLowerCase();
       const [_, exponent, ...rest] = value.split("e");
       if (typeof exponent === "string" && !exponent.match(/[0-9]$/)) {
-        errors.push({
-          message: t`Missing exponent`,
-          pos: node.from,
-          len: node.from - node.to,
-        });
-      }
-      if (rest.length > 0) {
-        errors.push({
-          message: t`Malformed exponent`,
-          pos: node.from,
-          len: node.from - node.to,
-        });
+        error(node, t`Missing exponent`);
+      } else if (rest.length > 0) {
+        error(node, t`Malformed exponent`);
       }
 
-      tokens.push({
-        type: TOKEN.Number,
-        start: node.from,
-        end: node.to,
-      });
-      return false;
+      return token(node, { type: TOKEN.Number });
     }
+
     if (node.type.name === "String") {
       const openQuote = expression[node.from];
       const closeQuote = expression[node.to - 1];
       const penultimate = expression[node.to - 2];
       if (closeQuote !== openQuote || penultimate === "\\") {
-        errors.push({
-          message: t`Missing closing quotes`,
-          pos: node.from,
-          len: 1,
-        });
+        error(node, t`Missing closing quotes`);
       }
 
-      const value = expression
-        .slice(node.from + 1, node.to - 1)
-        .replace(/\\./g, match => {
-          const ch = match[1];
-          return escapes[ch as keyof typeof escapes] ?? ch;
-        });
-
-      tokens.push({
+      return token(node, {
         type: TOKEN.String,
-        start: node.from,
-        end: node.to,
-        value,
+        value: expression
+          // remove quotes
+          .slice(node.from + 1, node.to - 1)
+          // expand escape sequences
+          .replace(/\\./g, match => {
+            const ch = match[1];
+            return escapes[ch as keyof typeof escapes] ?? ch;
+          }),
       });
-      return false;
     }
+
     if (node.type.name === "Boolean") {
       const op = expression.slice(node.from, node.to).toLowerCase();
       if (isValidBoolean(op)) {
-        tokens.push({
+        return token(node, {
           type: TOKEN.Boolean,
           op,
-          start: node.from,
-          end: node.to,
         });
       }
-      return false;
     }
 
     const op = parseOperator(node.type.name);
     if (op) {
-      tokens.push({
+      return token(node, {
         type: TOKEN.Operator,
         op,
-        start: node.from,
-        end: node.to,
       });
-      return false;
     }
 
+    // Handle parse errors
     if (node.type.name === "⚠") {
       if (node.node.toTree().positions.length === 0 && node.to !== node.from) {
         const text = expression.slice(node.from, node.to);
@@ -144,20 +128,14 @@ export function tokenize(expression: string) {
           const prev = tokens.at(-1);
           if (prev && prev.type === TOKEN.Identifier) {
             const name = expression.slice(prev.start, prev.end);
-            errors.push({
-              message: `Missing an opening bracket for ${name}`,
-              pos: node.from,
-              len: node.to - node.from,
-            });
+            error(node, `Missing an opening bracket for ${name}`);
           }
           return false;
         }
+
         if (text.length === 1) {
-          errors.push({
-            message: `Invalid character: ${text}`,
-            pos: node.from,
-            len: node.to - node.from,
-          });
+          error(node, `Invalid character: ${text}`);
+          return false;
         }
       }
     }
