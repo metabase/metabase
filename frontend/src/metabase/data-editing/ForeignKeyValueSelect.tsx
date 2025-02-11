@@ -7,9 +7,15 @@ type Props = {
   value: string | null;
   column: DatasetColumn;
   onChange: (newVal: string | null) => void;
+  onBlur: () => void;
 };
 
-export const ForeignKeyValueSelect = ({ value, column, onChange }: Props) => {
+export const ForeignKeyValueSelect = ({
+  value,
+  column,
+  onChange,
+  onBlur,
+}: Props) => {
   const fieldId = column.field_ref?.[1] as FieldId | null;
 
   const { data: fieldData, isLoading } = useGetFieldValuesQuery(
@@ -32,6 +38,12 @@ export const ForeignKeyValueSelect = ({ value, column, onChange }: Props) => {
       initiallyOpened
       autoFocus
       onChange={onChange}
+      onBlur={onBlur}
+      styles={{
+        dropdown: {
+          minWidth: 200,
+        },
+      }}
     />
   );
 };

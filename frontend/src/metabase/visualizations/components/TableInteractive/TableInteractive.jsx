@@ -38,7 +38,6 @@ import {
   DelayGroup,
   Icon,
   Input,
-  Stack,
   ThemeProvider,
   Button as UIButton,
 } from "metabase/ui";
@@ -195,6 +194,14 @@ class TableInteractive extends Component {
       });
     };
 
+    const handleFieldBlur = () => {
+      if (value !== inputValue) {
+        return this.handleCellEditConfirm(clicked, cellProps);
+      } else {
+        return this.handleCellEditCancel(clicked, cellProps);
+      }
+    };
+
     let input = (
       <Input
         value={inputValue}
@@ -202,37 +209,9 @@ class TableInteractive extends Component {
         size="xs"
         autoFocus
         onChange={e => handleInputValueChange(e.target.value)}
+        onBlur={handleFieldBlur}
       />
     );
-
-    if (column.database_type === "TIMESTAMP") {
-      input = (
-        <DateInput
-          value={new Date(inputValue)}
-          autoFocus
-          onChange={e => handleInputValueChange(e.toISOString())}
-        />
-      );
-    }
-
-    if (column.database_type === "BOOLEAN") {
-      input = (
-        <Checkbox
-          checked={inputValue}
-          onChange={e => handleInputValueChange(e.target.checked)}
-        />
-      );
-    }
-
-    if (column.semantic_type === "type/FK") {
-      input = (
-        <ForeignKeyValueSelect
-          value={inputValue}
-          column={column}
-          onChange={handleInputValueChange}
-        />
-      );
-    }
 
     if (
       ["type/Category", "type/Company", "type/State"].includes(
@@ -244,6 +223,40 @@ class TableInteractive extends Component {
           value={inputValue}
           column={column}
           onChange={handleInputValueChange}
+          onBlur={handleFieldBlur}
+        />
+      );
+    }
+
+    if (column.database_type === "TIMESTAMP") {
+      input = (
+        <DateInput
+          value={new Date(inputValue)}
+          autoFocus
+          onChange={e => handleInputValueChange(e.toISOString())}
+          onBlur={handleFieldBlur}
+        />
+      );
+    }
+
+    if (column.database_type === "BOOLEAN") {
+      input = (
+        <Checkbox
+          checked={inputValue}
+          autoFocus
+          onChange={e => handleInputValueChange(e.target.checked)}
+          onBlur={handleFieldBlur}
+        />
+      );
+    }
+
+    if (column.semantic_type === "type/FK") {
+      input = (
+        <ForeignKeyValueSelect
+          value={inputValue}
+          column={column}
+          onChange={handleInputValueChange}
+          onBlur={handleFieldBlur}
         />
       );
     }
@@ -251,29 +264,29 @@ class TableInteractive extends Component {
     return (
       <Box>
         {input}
-        <Box pos="absolute" right="0" top="-0.5rem">
-          <Stack style={{ zIndex: 10 }} spacing={0}>
-            <UIButton
-              leftIcon={<Icon name="check" />}
-              compact
-              disabled={inputValue === value}
-              onClick={e => {
-                e.stopPropagation();
+        {/*<Box pos="absolute" right="0" top="-0.5rem">*/}
+        {/*  <Stack style={{ zIndex: 10 }} spacing={0}>*/}
+        {/*    <UIButton*/}
+        {/*      leftIcon={<Icon name="check" />}*/}
+        {/*      compact*/}
+        {/*      disabled={inputValue === value}*/}
+        {/*      onClick={e => {*/}
+        {/*        e.stopPropagation();*/}
 
-                this.handleCellEditConfirm(clicked, cellProps);
-              }}
-            />
-            <UIButton
-              leftIcon={<Icon name="close" />}
-              compact
-              onClick={e => {
-                e.stopPropagation();
+        {/*        this.handleCellEditConfirm(clicked, cellProps);*/}
+        {/*      }}*/}
+        {/*    />*/}
+        {/*    <UIButton*/}
+        {/*      leftIcon={<Icon name="close" />}*/}
+        {/*      compact*/}
+        {/*      onClick={e => {*/}
+        {/*        e.stopPropagation();*/}
 
-                this.handleCellEditCancel(clicked, cellProps);
-              }}
-            />
-          </Stack>
-        </Box>
+        {/*        this.handleCellEditCancel(clicked, cellProps);*/}
+        {/*      }}*/}
+        {/*    />*/}
+        {/*  </Stack>*/}
+        {/*</Box>*/}
       </Box>
     );
   }
@@ -568,11 +581,6 @@ class TableInteractive extends Component {
   }
 
   onVisualizationClick(clicked, element, cellProps) {
-    if (clicked.data) {
-      this.handleCellClickToEdit(clicked, element, cellProps);
-      return;
-    }
-
     if (this.visualizationIsClickable(clicked)) {
       this.props.onVisualizationClick({ ...clicked, element });
     }
@@ -753,10 +761,24 @@ class TableInteractive extends Component {
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
 
     const handleClick = e => {
-      // if (!isClickable || !this.visualizationIsClickable(clicked)) {
-      //   return;
-      // }
+      if (!isClickable || !this.visualizationIsClickable(clicked)) {
+        return;
+      }
+
+      if (this.state.editingCellsMap[cellProps.key]) {
+        // don't show menu for cell in edit mode
+        return;
+      }
+
       this.onVisualizationClick(clicked, e.currentTarget, cellProps);
+    };
+
+    const handleDoubleClick = e => {
+      this.props.onVisualizationClick(null); // hide click actions menu
+
+      if (isClickable && this.visualizationIsClickable(clicked)) {
+        this.handleCellClickToEdit(clicked, e.currentTarget, cellProps);
+      }
     };
 
     const handleKeyUp = e => {
@@ -803,6 +825,7 @@ class TableInteractive extends Component {
           },
         )}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         onKeyUp={handleKeyUp}
         onMouseEnter={
           showDetailShortcut ? e => this.handleHoverRow(e, rowIndex) : undefined
@@ -1148,13 +1171,11 @@ class TableInteractive extends Component {
     // eslint-disable-next-line no-console
     console.log("handleCellClickToEdit", clicked, element, cellProps);
 
-    this.setState(prevState => {
-      const editingCellsMap = {
-        ...prevState.editingCellsMap,
+    this.setState({
+      editingCellsMap: {
         [cellProps.key]: true,
-      };
-
-      return { editingCellsMap };
+      },
+      editingCellsValuesMap: {},
     });
   };
 

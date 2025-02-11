@@ -292,10 +292,17 @@ class Visualization extends PureComponent {
     }
 
     // needs to be delayed so we don't clear it when switching from one drill through to another
-    setTimeout(() => {
-      this.setState({ clicked });
-    }, 100);
+    this.throttledHandleClickedStateChange(clicked);
   };
+
+  throttledHandleClickedStateChange = _.throttle(
+    // This is needed for editable table - to avoid showing menu during double-click. In case editing is not needed, this would create feeling UI is slow, so will need to remove it later on when we split cell editing into a separate component
+    clicked => {
+      this.setState({ clicked });
+    },
+    200,
+    { leading: false },
+  );
 
   // Add the underlying card of current series to onChangeCardAndRun if available
   handleOnChangeCardAndRun = ({ nextCard, objectId }) => {
