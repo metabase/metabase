@@ -903,3 +903,29 @@
 (defmethod native-array-query :snowflake
   [_driver]
   "select array_construct('a', 'b', 'c')")
+
+(doseq [driver [:postgres :athena]]
+  (defmethod driver/database-supports? [driver :test/array-aggregation]
+    [_driver _feature _database]
+    true))
+
+(defmulti agg-venues-by-category-id
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod agg-venues-by-category-id :postgres
+  [_driver]
+  "select category_id, array_agg(name)
+   from venues
+   group by category_id
+   order by 1 asc
+   limit 2;")
+
+(defmethod agg-venues-by-category-id :athena
+  [_driver]
+  "select category_id, array_agg(name)
+   from test_data.venues
+   group by category_id
+   order by 1 asc
+   limit 2;")

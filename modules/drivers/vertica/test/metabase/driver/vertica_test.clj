@@ -68,8 +68,7 @@
 
 (deftest array-is-returned-correctly-test
   (mt/test-driver :vertica
-      (let [rows (->> (mt/native-query {:query (tx/native-array-query :vertica)})
-                      mt/process-query
-                      mt/rows)]
-        (is (= [[["a" "b" "c"]]]
-               rows)))))
+    (is (= [[["a" "b" "c"]]]
+           (->> (mt/native-query {:query (tx/native-array-query :vertica)})
+                mt/process-query
+                mt/rows)))))

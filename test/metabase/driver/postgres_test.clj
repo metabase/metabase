@@ -1664,19 +1664,3 @@
                {:database (mt/id)
                 :type :native
                 :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))
-
-(deftest ^:parallel aggregated-array-is-returned-correctly-test
-  (testing "An aggregated array column should be returned in a readable format"
-    (mt/test-driver :postgres
-      (mt/dataset test-data
-        (let [rows (->> (mt/native-query {:query "select category_id, array_agg(name)
-                                                  from venues
-                                                  group by category_id
-                                                  order by 1 asc
-                                                  limit 2;"})
-                        mt/process-query
-                        mt/rows
-                        (map second))]
-          (is (= [["The Gorbals" "The Misfit Restaurant + Bar" "Marlowe" "Yamashiro Hollywood" "Musso & Frank Grill" "Pacific Dining Car" "Chez Jay" "Rush Street"]
-                  ["Greenblatt's Delicatessen & Fine Wine Shop" "Handy Market"]]
-                 rows)))))))
