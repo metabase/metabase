@@ -14,6 +14,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { ForeignKeyValueSelect } from "metabase/data-editing/ForeignKeyValueSelect";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { PUT } from "metabase/lib/api";
@@ -179,7 +180,6 @@ class TableInteractive extends Component {
 
   renderEditingCell(clicked, cellProps) {
     const { column, value } = clicked;
-
     const inputValue = this.state.editingCellsValuesMap[cellProps.key] ?? value;
 
     const handleInputValueChange = newVal => {
@@ -200,6 +200,7 @@ class TableInteractive extends Component {
         value={inputValue}
         variant="unstyled"
         size="xs"
+        autoFocus
         onChange={e => handleInputValueChange(e.target.value)}
       />
     );
@@ -208,6 +209,7 @@ class TableInteractive extends Component {
       input = (
         <DateInput
           value={new Date(inputValue)}
+          autoFocus
           onChange={e => handleInputValueChange(e.toISOString())}
         />
       );
@@ -218,6 +220,30 @@ class TableInteractive extends Component {
         <Checkbox
           checked={inputValue}
           onChange={e => handleInputValueChange(e.target.checked)}
+        />
+      );
+    }
+
+    if (column.semantic_type === "type/FK") {
+      input = (
+        <ForeignKeyValueSelect
+          value={inputValue}
+          column={column}
+          onChange={handleInputValueChange}
+        />
+      );
+    }
+
+    if (
+      ["type/Category", "type/Company", "type/State"].includes(
+        column.semantic_type,
+      )
+    ) {
+      input = (
+        <ForeignKeyValueSelect
+          value={inputValue}
+          column={column}
+          onChange={handleInputValueChange}
         />
       );
     }
@@ -1525,7 +1551,7 @@ class TableInteractive extends Component {
 }
 
 const TableInteractiveMemoized = memoizeClass(
-  "_getCellClickedObjectCached",
+  // "_getCellClickedObjectCached", // FIXME remove memoization to make local data mutation work. restore when we implement proper optimistic updates through redux
   "_visualizationIsClickableCached",
   "getCellBackgroundColor",
   "getCellFormattedValue",
