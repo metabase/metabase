@@ -1,6 +1,6 @@
 (ns metabase.util.number-test
   (:require
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest testing]]
    [metabase.util.number :as u.number]))
 
 (deftest bigint-test
@@ -25,4 +25,3 @@
       (u.number/bigint "9007199254740993") "9007199254740993"
       nil                                  "a"
       nil                                  "10.2")))
-
