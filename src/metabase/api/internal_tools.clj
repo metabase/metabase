@@ -30,14 +30,14 @@
   ;; thought: need to parse dates and stuff but integers could maybe be passed as json numbers to the server
   (condp #(isa? %2 %1) base-type
     :type/BigInteger (bigint v)
-    :type/Integer    Long/parseLong (str v)
+    :type/Integer    (parse-long v)
     :type/Decimal    (bigdec v)
-    :type/Float      (Double/parseDouble v)
-    :type/Boolean    (Boolean/parseBoolean v)
+    :type/Float      (parse-double v)
+    :type/Boolean    (parse-boolean v)
     v))
 
 (defn- update-cell! [field-id row-pk value]
-  (let [{column :name :keys [table_id semantic_type base_type] :as col}
+  (let [{column :name :keys [table_id semantic_type base_type]}
         (api/check-404 (t2/select-one :model/Field field-id))
         {table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table_id))
         pks    (t2/select :model/Field :table_id table_id :semantic_type :type/PK)
