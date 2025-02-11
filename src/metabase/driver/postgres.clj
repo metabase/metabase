@@ -539,7 +539,6 @@
 (defmethod sql.qp/date [:postgres :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))
 (defmethod sql.qp/date [:postgres :hour]             [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:postgres :hour-of-day]      [_ _ expr] (extract-integer :hour expr))
-(defmethod sql.qp/date [:postgres :day]              [_ _ expr] (h2x/->date expr))
 (defmethod sql.qp/date [:postgres :day-of-month]     [_ _ expr] (extract-integer :day expr))
 (defmethod sql.qp/date [:postgres :day-of-year]      [_ _ expr] (extract-integer :doy expr))
 (defmethod sql.qp/date [:postgres :month]            [_ _ expr] (date-trunc :month expr))
@@ -568,6 +567,10 @@
 (mu/defn- quoted? [database-type :- ::lib.schema.common/non-blank-string]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
+
+(defmethod sql.qp/date [:postgres :day]
+  [_ _ expr]
+  (h2x/maybe-cast (h2x/database-type expr) (h2x/->date expr)))
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
