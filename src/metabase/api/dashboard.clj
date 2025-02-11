@@ -23,7 +23,6 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.action :as action]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -1366,7 +1365,7 @@
                             [:parameters {:optional true} ms/JSONString]]]
   (api/read-check :model/Dashboard dashboard-id)
   (actions/fetch-values
-   (api/check-404 (action/dashcard->action dashcard-id))
+   (api/check-404 (actions/dashcard->action dashcard-id))
    (json/decode parameters)))
 
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/execute"

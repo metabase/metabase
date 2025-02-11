@@ -1,11 +1,11 @@
-(ns metabase.models.recent-views-test
+(ns metabase.activity-feed.models.recent-views-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.recent-views :as recent-views]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util.log :as log]

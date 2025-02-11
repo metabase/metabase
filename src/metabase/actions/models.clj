@@ -1,4 +1,4 @@
-(ns metabase.models.action
+(ns metabase.actions.models
   (:require
    [medley.core :as m]
    [metabase.models.interface :as mi]
@@ -10,7 +10,8 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 ;;; -------------------------------------------- Entity & Life Cycle ----------------------------------------------
 
@@ -322,11 +323,10 @@
            (assoc action :database_enabled_actions (get id->database-enable-actions (:id action))))
          actions)))
 
-(mi/define-batched-hydration-method dashcard-action
-  :dashcard/action
-  "Hydrates actions from DashboardCards. Adds a boolean field `:database-enabled-actions` to each action according to the
-   `database-enable-actions` setting for the action's database."
-  [dashcards]
+(methodical/defmethod t2.hydrate/batched-hydrate [:model/DashboardCard :dashcard/action]
+  "Hydrates actions from DashboardCards. Adds a boolean field `:database-enabled-actions` to each action according to
+  the\n `database-enable-actions` setting for the action's database."
+  [_model _k dashcards]
   (let [actions-by-id (when-let [action-ids (seq (keep :action_id dashcards))]
                         (->> (select-actions nil :id [:in action-ids])
                              map-assoc-database-enable-actions
