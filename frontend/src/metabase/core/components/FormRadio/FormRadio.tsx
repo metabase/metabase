@@ -21,7 +21,7 @@ export interface FormRadioProps<
 }
 
 /**
- * @deprecated: use FormRadioGroup from "metabase/ui"
+ * @deprecated: use FormRadioGroup from "metabase/forms"
  */
 const FormRadio = forwardRef(function FormRadio<
   TValue extends Key,

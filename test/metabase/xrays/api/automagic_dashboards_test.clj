@@ -1,8 +1,7 @@
-(ns metabase.api.automagic-dashboards-test
+(ns metabase.xrays.api.automagic-dashboards-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.automagic-dashboards :as api.magic]
    [metabase.models.model-index :as model-index]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -11,6 +10,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.xrays.api.automagic-dashboards :as api.magic]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.test-util.automagic-dashboards :refer [with-dashboard-cleanup!]]
    [metabase.xrays.test-util.domain-entities :as test.de]
