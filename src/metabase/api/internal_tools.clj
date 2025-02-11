@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
+   [medley.core :as m]
    ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
@@ -173,7 +174,14 @@
 
 (defn- insert-row! [table-id row]
   ;; don't bother checking whether PK(s) value is/are provided iff the PK(s) is/are not auto-incrementing
-  (let [{table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table-id))
+  (let [{table :name :keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
+        fields (t2/select :model/Field :table_id table-id)
+        name->field (u/index-by :name fields)
+        row (m/map-kv-vals (fn [k v]
+                             (if-some [{:keys [base_type]} (name->field (name k))]
+                               (parse-value base_type v)
+                               v))
+                           row)
         driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))
         rows [row]]
     (insert-rows!* driver db_id table-id table rows)))
