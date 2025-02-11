@@ -145,7 +145,24 @@ export const ChartSettingFieldsPartition = ({
             key={partitionName}
           >
             <Text c="text-medium">{title}</Text>
-            <Droppable droppableId={partitionName} type={partitionType}>
+            <Droppable
+              droppableId={partitionName}
+              type={partitionType}
+              renderClone={(provided, snapshot, rubric) => (
+                <Box
+                  ref={provided.innerRef}
+                  {...provided.draggableProps}
+                  {...provided.dragHandleProps}
+                  mb="0.5rem"
+                >
+                  <Column
+                    onEditFormatting={handleEditFormatting}
+                    column={updatedColumns[rubric.source.index]}
+                    title={getColumnTitle(updatedColumns[rubric.source.index])}
+                  />
+                </Box>
+              )}
+            >
               {(provided, snapshot) => (
                 <Box
                   {...provided.droppableProps}
