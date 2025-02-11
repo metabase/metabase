@@ -12,23 +12,23 @@
   and other important code that should be loaded for side effects (such as method implementations).
 
   Tests will check to make sure new models get included in this map."
-  '{:model/Action                            metabase.models.action
+  '{:model/Action                            metabase.actions.models
     :model/ApiKey                            metabase.models.api-key
     :model/ApplicationPermissionsRevision    metabase.models.application-permissions-revision
     :model/AuditLog                          metabase.models.audit-log
-    :model/BookmarkOrdering                  metabase.models.bookmark
+    :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.models.cache-config
     :model/Card                              metabase.models.card
-    :model/CardBookmark                      metabase.models.bookmark
+    :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
     :model/CloudMigration                    metabase.models.cloud-migration
     :model/Collection                        metabase.models.collection
-    :model/CollectionBookmark                metabase.models.bookmark
+    :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.models.collection-permission-graph-revision
     :model/ConnectionImpersonation           metabase-enterprise.advanced-permissions.models.connection-impersonation
     :model/Dashboard                         metabase.models.dashboard
-    :model/DashboardBookmark                 metabase.models.bookmark
+    :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.models.dashboard-card
     :model/DashboardCardSeries               metabase.models.dashboard-card-series
     :model/DashboardTab                      metabase.models.dashboard-tab
@@ -39,8 +39,8 @@
     :model/FieldUsage                        metabase.models.field-usage
     :model/FieldValues                       metabase.models.field-values
     :model/GroupTableAccessPolicy            metabase-enterprise.sandbox.models.group-table-access-policy
-    :model/HTTPAction                        metabase.models.action
-    :model/ImplicitAction                    metabase.models.action
+    :model/HTTPAction                        metabase.actions.models
+    :model/ImplicitAction                    metabase.actions.models
     :model/LegacyMetric                      metabase.models.legacy-metric
     :model/LegacyMetricImportantField        metabase.models.legacy-metric-important-field
     :model/LoginHistory                      metabase.models.login-history
@@ -63,14 +63,14 @@
     :model/PulseChannel                      metabase.models.pulse-channel
     :model/PulseChannelRecipient             metabase.models.pulse-channel-recipient
     :model/Query                             metabase.models.query
-    :model/QueryAction                       metabase.models.action
+    :model/QueryAction                       metabase.actions.models
     :model/QueryAnalysis                     metabase.models.query-analysis
     :model/QueryCache                        metabase.models.query-cache
     :model/QueryExecution                    metabase.models.query-execution
     :model/QueryField                        metabase.models.query-field
     :model/QueryTable                        metabase.models.query-table
-    :model/RecentViews                       metabase.models.recent-views
-    :model/Revision                          metabase.models.revision
+    :model/RecentViews                       metabase.activity-feed.models.recent-views
+    :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.models.secret
     :model/Segment                           metabase.models.segment
@@ -82,9 +82,16 @@
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/User                              metabase.models.user
-    :model/UserKeyValue                      metabase.models.user-key-value
+    :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.models.user-parameter-value
     :model/ViewLog                           metabase.models.view-log})
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                 DO NOT ADD ANY MORE MODEL NAMESPACES UNDER `metabase.models.*`                 !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 (methodical/defmethod t2.model/resolve-model :before :default
   "Ensure the namespace for given model is loaded. This is a safety mechanism as we are moving to toucan2 and we don't

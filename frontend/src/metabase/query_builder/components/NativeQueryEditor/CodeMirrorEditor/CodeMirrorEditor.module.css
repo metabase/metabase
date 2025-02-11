@@ -148,7 +148,6 @@
       color: var(--mb-color-saturated-purple);
     }
 
-    .cm-token-name,
     .cm-token-function,
     .cm-token-variable {
       color: var(--mb-color-saturated-blue);
