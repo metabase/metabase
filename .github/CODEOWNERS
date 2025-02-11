@@ -104,6 +104,12 @@ test/metabase/audit @metabase/core-backend-admin-webapp
 src/metabase/auth_provider @metabase/core-backend-admin-webapp
 test/metabase/auth_provider @metabase/core-backend-admin-webapp
 
+src/metabase/bookmarks @metabase/core-backend-admin-webapp
+test/metabase/bookmarks @metabase/core-backend-admin-webapp
+
+src/metabase/cmd @metabase/devexp
+test/metabase/cmd @metabase/devexp
+
 src/metabase/channel @metabase/core-workflows
 test/metabase/channel @metabase/core-workflows
 
@@ -203,6 +209,9 @@ test/metabase/types @metabase/core-backend-querying
 
 src/metabase/upload @metabase/core-backend-admin-webapp
 test/metabase/upload @metabase/core-backend-admin-webapp
+
+src/metabase/user_key_value @metabase/core-backend-admin-webapp
+test/metabase/user_key_value @metabase/core-backend-admin-webapp
 
 src/metabase/util @metabase/devexp
 test/metabase/util @metabase/devexp

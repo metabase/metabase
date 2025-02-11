@@ -1,3 +1,66 @@
+---
+layout: docs-api
+redirect_from:
+- /docs/latest/api-documentation
+- /docs/latest/api/action
+- /docs/latest/api/activity
+- /docs/latest/api/ee/advanced-config-logs
+- /docs/latest/api/ee/advanced-permissions-application
+- /docs/latest/api/ee/advanced-permissions-impersonation
+- /docs/latest/api/alert
+- /docs/latest/api/api-key
+- /docs/latest/api/ee/audit-app-user
+- /docs/latest/api/automagic-dashboards
+- /docs/latest/api/bookmark
+- /docs/latest/api/cache
+- /docs/latest/api/card
+- /docs/latest/api/channel
+- /docs/latest/api/cloud-migration
+- /docs/latest/api/collection
+- /docs/latest/api/ee/content-verification-review
+- /docs/latest/api/dashboard
+- /docs/latest/api/database
+- /docs/latest/api/dataset
+- /docs/latest/api/email
+- /docs/latest/api/embed
+- /docs/latest/api/field
+- /docs/latest/api/geojson
+- /docs/latest/api/google
+- /docs/latest/api/ldap
+- /docs/latest/api/llm
+- /docs/latest/api/login-history
+- /docs/latest/api/metabot
+- /docs/latest/api/model-index
+- /docs/latest/api/native-query-snippet
+- /docs/latest/api/notify
+- /docs/latest/api/permissions
+- /docs/latest/api/persist
+- /docs/latest/api/premium-features
+- /docs/latest/api/preview-embed
+- /docs/latest/api/public
+- /docs/latest/api/pulse
+- /docs/latest/api/ee/query-reference-validation
+- /docs/latest/api/revision
+- /docs/latest/api/routes
+- /docs/latest/api/ee/sandbox-gtap
+- /docs/latest/api/ee/sandbox-table
+- /docs/latest/api/ee/sandbox-user
+- /docs/latest/api/scim
+- /docs/latest/api/search
+- /docs/latest/api/segment
+- /docs/latest/api/serialization
+- /docs/latest/api/ee/sso
+- /docs/latest/api/sso-saml
+- /docs/latest/api/stale
+- /docs/latest/api/table
+- /docs/latest/api/task
+- /docs/latest/api/tiles
+- /docs/latest/api/timeline
+- /docs/latest/api/timeline-event
+- /docs/latest/api/user
+- /docs/latest/api/util
+---
+
 <!doctype html>
 <html>
   <head>
@@ -285,10 +348,6 @@
         "type" : "string",
         "enum" : [ "question", "metric", "model" ]
       },
-      "metabase.api.timeline/include" : {
-        "type" : "string",
-        "enum" : [ "events" ]
-      },
       "metabase.api.user/user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
         "type" : "object",
@@ -357,6 +416,10 @@
             "$ref" : "#/components/schemas/metabase.util.cron~1ScheduleMap"
           }
         }
+      },
+      "metabase.timeline.api.timeline/include" : {
+        "type" : "string",
+        "enum" : [ "events" ]
       },
       "metabase.util.cron/CronHour" : {
         "type" : "integer",
@@ -2685,46 +2748,6 @@
         "tags" : [ "/api/card" ]
       }
     },
-    "/api/card/{id}/timelines" : {
-      "get" : {
-        "summary" : "GET /api/card/{id}/timelines",
-        "description" : "Get the timelines for card with ID. Looks up the collection the card is in and uses that.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "include",
-          "required" : false,
-          "schema" : {
-            "const" : "events"
-          }
-        }, {
-          "in" : "query",
-          "name" : "start",
-          "required" : false,
-          "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid date string"
-        }, {
-          "in" : "query",
-          "name" : "end",
-          "required" : false,
-          "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid date string"
-        } ],
-        "tags" : [ "/api/card" ]
-      }
-    },
     "/api/cards/dashboards" : {
       "post" : {
         "summary" : "POST /api/cards/dashboards",
@@ -3228,29 +3251,6 @@
         "tags" : [ "/api/collection" ]
       }
     },
-    "/api/collection/root/timelines" : {
-      "get" : {
-        "summary" : "GET /api/collection/root/timelines",
-        "description" : "Fetch the root Collection's timelines.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "include",
-          "required" : false,
-          "schema" : {
-            "const" : "events"
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean",
-            "default" : false
-          }
-        } ],
-        "tags" : [ "/api/collection" ]
-      }
-    },
     "/api/collection/trash" : {
       "get" : {
         "summary" : "GET /api/collection/trash",
@@ -3500,38 +3500,6 @@
             }
           }
         },
-        "tags" : [ "/api/collection" ]
-      }
-    },
-    "/api/collection/{id}/timelines" : {
-      "get" : {
-        "summary" : "GET /api/collection/{id}/timelines",
-        "description" : "Fetch a specific Collection's timelines.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "include",
-          "required" : false,
-          "schema" : {
-            "const" : "events"
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean",
-            "default" : false
-          }
-        } ],
         "tags" : [ "/api/collection" ]
       }
     },
@@ -11241,7 +11209,7 @@
           "name" : "include",
           "required" : false,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.api.timeline~1include"
+            "$ref" : "#/components/schemas/metabase.timeline.api.timeline~1include"
           }
         }, {
           "in" : "query",
@@ -11250,6 +11218,61 @@
           "schema" : {
             "default" : false,
             "type" : "boolean"
+          }
+        } ],
+        "tags" : [ "/api/timeline" ]
+      }
+    },
+    "/api/timeline/collection/root" : {
+      "get" : {
+        "summary" : "GET /api/timeline/collection/root",
+        "description" : "Fetch the root Collection's timelines.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "include",
+          "required" : false,
+          "schema" : {
+            "const" : "events"
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        } ],
+        "tags" : [ "/api/timeline" ]
+      }
+    },
+    "/api/timeline/collection/{id}" : {
+      "get" : {
+        "summary" : "GET /api/timeline/collection/{id}",
+        "description" : "Fetch a specific Collection's timelines.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "include",
+          "required" : false,
+          "schema" : {
+            "const" : "events"
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "/api/timeline" ]
@@ -11273,7 +11296,7 @@
           "name" : "include",
           "required" : false,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.api.timeline~1include"
+            "$ref" : "#/components/schemas/metabase.timeline.api.timeline~1include"
           }
         }, {
           "in" : "query",

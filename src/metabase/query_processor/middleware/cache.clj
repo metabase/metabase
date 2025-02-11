@@ -10,8 +10,10 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.lib.query :as lib.query]
+   [metabase.permissions.core :as perms]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
@@ -215,9 +217,12 @@
               (fn [metadata]
                 (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
-(defn- is-cacheable? {:arglists '([query])} [{:keys [cache-strategy]}]
+(defn- is-cacheable? {:arglists '([query])} [{:keys [cache-strategy] :as query}]
   (and (public-settings/enable-query-caching)
        (some? cache-strategy)
+       ;; sometimes, e.g. on scheduled cache refresh, we don't have a user here
+       (or (nil? api/*current-user-id*)
+           (not (perms/impersonation-enforced-for-db? (:database query))))
        (not= (:type cache-strategy) :nocache)))
 
 (defn maybe-return-cached-results

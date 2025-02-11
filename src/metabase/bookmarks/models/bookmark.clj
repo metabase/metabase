@@ -1,4 +1,4 @@
-(ns metabase.models.bookmark
+(ns metabase.bookmarks.models.bookmark
   (:require
    [clojure.string :as str]
    [metabase.db :as mdb]
