@@ -14,12 +14,30 @@
    [metabase.models.cell-edit]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(comment
+  metabase.models.cell-edit/keep-me)
+
+(derive ::event :metabase/event)
+(derive :table.mutation/cell-update ::event)
+
+(defn- parse-value [base-type v]
+  ;; TODO this logic is duplicated with metabase.query-processor.middleware.auto-parse-filter-values
+  ;; factor out or decide what to do
+  ;; thought: need to parse dates and stuff but integers could maybe be passed as json numbers to the server
+  (condp #(isa? %2 %1) base-type
+    :type/BigInteger (bigint v)
+    :type/Integer    Long/parseLong (str v)
+    :type/Decimal    (bigdec v)
+    :type/Float      (Double/parseDouble v)
+    :type/Boolean    (Boolean/parseBoolean v)
+    v))
+
 (defn- update-cell! [field-id row-pk value]
-  (let [{column :name :keys [table_id semantic_type]} (api/check-404 (t2/select-one :model/Field field-id))
+  (let [{column :name :keys [table_id semantic_type base_type] :as col}
+        (api/check-404 (t2/select-one :model/Field field-id))
         {table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table_id))
         pks    (t2/select :model/Field :table_id table_id :semantic_type :type/PK)
         driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))]
@@ -32,7 +50,8 @@
                                           :quoted true
                                           :dialect (sql.qp/quote-style driver))]
                       (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db_id)]
-                        (val (ffirst (jdbc/query conn sql)))))]
+                        (val (ffirst (jdbc/query conn sql)))))
+          new-value (parse-value base_type value)]
 
       (driver.sql-jdbc/update-row-column! driver
                                           db_id
@@ -41,7 +60,7 @@
                                           (:name (first pks))
                                           row-pk
                                           column
-                                          value)
+                                          new-value)
 
       (t2/insert! :model/CellEdit
                   {:table_id  table_id
