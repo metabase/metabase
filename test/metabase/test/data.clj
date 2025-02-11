@@ -41,6 +41,7 @@
    [metabase.db.schema-migrations-test.impl
     :as schema-migrations-test.impl]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -227,6 +228,11 @@
 
   ([table-name field-name & nested-field-names]
    (apply data.impl/the-field-id (id table-name) (map format-name (cons field-name nested-field-names)))))
+
+(defn metadata-provider
+  "Get a metadata-provider for the current database."
+  []
+  (lib.metadata.jvm/application-database-metadata-provider (id)))
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the

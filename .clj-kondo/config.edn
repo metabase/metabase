@@ -326,6 +326,8 @@
    :api-namespaces
    {metabase.actions               #{metabase.actions.api
                                      metabase.actions.core}
+    metabase.activity-feed         #{metabase.activity-feed.api
+                                     metabase.activity-feed.init}
     metabase.analytics             #{metabase.analytics.prometheus
                                      metabase.analytics.snowplow
                                      metabase.analytics.stats
@@ -346,6 +348,7 @@
                                      metabase.api.util.handlers}                                    ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
     metabase.audit                 #{metabase.audit}
     metabase.auth-provider         #{metabase.auth-provider}
+    metabase.bookmarks             #{metabase.bookmarks.api}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     ;; TODO -- this has too many API namespaces, ideally it would only expose `metabase.channel.core`,
     ;; `metabase.channel.init`, and `metabase.channel.api`.
@@ -434,8 +437,12 @@
                                      metabase.task.index-values
                                      metabase.task.init
                                      metabase.task.persist-refresh} ; TODO -- move this stuff into appropriate modules
+    metabase.timeline              #{metabase.timeline.api
+                                     metabase.timeline.core}
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}
+    metabase.user-key-value        #{metabase.user-key-value.api
+                                     metabase.user-key-value.init}
     metabase.util                  :any                                                             ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
     metabase.xrays                 #{metabase.xrays.core}}
 
@@ -450,12 +457,22 @@
    ;;    other modules are allowed to be referenced; this is the default for any modules that aren't listed here.
    :allowed-modules
    {metabase.actions               :any
+    metabase.activity-feed         #{metabase.api
+                                     metabase.config
+                                     metabase.db
+                                     metabase.events
+                                     metabase.models
+                                     metabase.util}
     metabase.analytics             :any
     metabase.analyze               :any
     metabase.api                   :any
     metabase.audit                 :any
     metabase.auth-provider         #{metabase.util
                                      metabase.premium-features}
+    metabase.bookmarks             #{metabase.api
+                                     metabase.db
+                                     metabase.models
+                                     metabase.util}
     metabase.cmd                   :any
     metabase.channel               :any
     metabase.config                #{metabase.plugins}
@@ -507,8 +524,13 @@
     metabase.setup                 :any
     metabase.sync                  :any
     metabase.task                  :any
+    metabase.timeline              :any
     metabase.types                 #{metabase.util}
     metabase.upload                :any
+    metabase.user-key-value        #{metabase.api
+                                     metabase.config
+                                     metabase.lib    ; WHY
+                                     metabase.util}
     metabase.util                  :any ; TODO -- this should probably be #{}
     metabase.xrays                 :any}
 
@@ -578,10 +600,8 @@
     metabase.analyze.fingerprint.fingerprinters                   fingerprinters
     metabase.analyze.fingerprint.insights                         insights
     metabase.analyze.fingerprint.schema                           fingerprint.schema
-    metabase.api.activity                                         api.activity
     metabase.api.alert                                            api.alert
     metabase.api.automagic-dashboards                             api.magic
-    metabase.api.bookmark                                         api.bookmark
     metabase.api.card                                             api.card
     metabase.api.card-test                                        api.card-test
     metabase.api.collection                                       api.collection
@@ -613,8 +633,6 @@
     metabase.api.table                                            api.table
     metabase.api.task                                             api.task
     metabase.api.tiles                                            api.tiles
-    metabase.api.timeline                                         api.timeline
-    metabase.api.timeline-event                                   api.timeline-event
     metabase.api.user                                             api.user
     metabase.api.util                                             api.util
     metabase.channel.core                                         channel
@@ -668,7 +686,6 @@
     metabase.lib.util.match                                       lib.util.match
     metabase.models.activity                                      activity
     metabase.models.application-permissions-revision              a-perm-revision
-    metabase.models.bookmark                                      bookmark
     metabase.models.collection                                    collection
     metabase.models.collection.graph                              graph
     metabase.models.collection-permission-graph-revision          c-perm-revision
@@ -686,8 +703,6 @@
     metabase.models.pulse-channel-recipient                       pulse-channel-recipient
     metabase.models.query.permissions                             query-perms
     metabase.models.setting.cache                                 setting.cache
-    metabase.models.timeline                                      timeline
-    metabase.models.timeline-event                                timeline-event
     metabase.notification.core                                    notification
     metabase.notification.test-util                               notification.tu
     metabase.permissions.core                                     perms
@@ -750,6 +765,7 @@
     metabase.test.redefs                                          test.redefs
     metabase.test.util.js                                         test.js
     metabase.test.util.timezone                                   test.tz
+    metabase.timeline.core                                        timeline
     metabase.timeseries-query-processor-test.util                 tqpt
     metabase.util.cron                                            u.cron
     metabase.util.currency                                        currency
