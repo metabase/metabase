@@ -12,6 +12,7 @@ import {
   WidgetLabel,
   WidgetRoot,
 } from "metabase/parameters/components/widgets/Widget.styled";
+import type { NumberFilterValue } from "metabase/querying/filters/types";
 import { normalizeNumberParameterValue } from "metabase/querying/parameters/utils/normalize";
 import { MultiAutocomplete } from "metabase/ui";
 import type {
@@ -22,7 +23,7 @@ import type {
 
 export type NumberInputWidgetProps = {
   value: ParameterValueOrArray | undefined;
-  setValue: (value: number[] | undefined) => void;
+  setValue: (value: NumberFilterValue[] | undefined) => void;
   className?: string;
   arity?: "n" | number;
   infixText?: string;
@@ -48,7 +49,7 @@ export function NumberInputWidget({
     useState<(number | string | undefined)[]>(arrayValue);
 
   const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
-  const allValuesSet = unsavedArrayValue.every(_.isNumber);
+  const allValuesSet = unsavedArrayValue.every(isNotNull);
   const isValid =
     (arity === "n" || unsavedArrayValue.length <= arity) &&
     (allValuesUnset || allValuesSet);
