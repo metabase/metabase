@@ -62,7 +62,7 @@
           cards-by-id (t2/select-pk->fn identity :model/Card :id [:in card-ids])]
       (doseq [{:keys [card-id dashboard-id queries]} refresh-defs]
         ;; Annotate the query with its cache strategy in the format expected by the QP
-        (let [cache-strategy (strategies/cache-strategy (first (get cards-by-id card-id)) dashboard-id)]
+        (let [cache-strategy (strategies/cache-strategy (get cards-by-id card-id) dashboard-id)]
           (doseq [query queries]
             (try
               (qp/process-query
@@ -143,9 +143,9 @@
             parameterized-queries (t2/select :model/Query (duration-queries-to-rerun-honeysql cache-configs true))]
         (concat base-queries (select-parameterized-queries parameterized-queries))))))
 
-(defn- clear-duration-caches!
+(defn- clear-caches-for-queries!
   "Deletes any existing cache entries for queries that we are about to re-run, so that subsequent tasks don't also try
-  to re-run them before the cache has been refreshed."
+  to re-run them before the cache has been refreshed. "
   [queries]
   (t2/delete! :model/QueryCache :query_hash [:in (map :cache-hash queries)]))
 
@@ -159,7 +159,7 @@
                                     :dashboard-id dashboard-id
                                     :queries (map :query queries)})))
           task         (refresh-task refresh-defs)]
-      (clear-duration-caches! queries)
+      (clear-caches-for-queries! queries)
       (if *run-cache-refresh-async*
         (submit-refresh-task-async! task)
         (task)))))
