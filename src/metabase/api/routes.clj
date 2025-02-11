@@ -6,7 +6,6 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.alert]
    [metabase.api.api-key]
-   [metabase.api.automagic-dashboards]
    [metabase.api.cache]
    [metabase.api.card]
    [metabase.api.cards]
@@ -55,13 +54,13 @@
    [metabase.sync.api]
    [metabase.timeline.api]
    [metabase.user-key-value.api]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.xrays.api]))
 
 (comment metabase.api.action/keep-me
          metabase.activity-feed.api/keep-me
          metabase.api.alert/keep-me
          metabase.api.api-key/keep-me
-         metabase.api.automagic-dashboards/keep-me
          metabase.api.cache/keep-me
          metabase.api.card/keep-me
          metabase.api.cards/keep-me
@@ -138,7 +137,7 @@
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/alert"                (+auth 'metabase.api.alert)
    "/api-key"              (+auth 'metabase.api.api-key)
-   "/automagic-dashboards" (+auth 'metabase.api.automagic-dashboards)
+   "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
    "/cache"                (+auth 'metabase.api.cache)
    "/card"                 (+auth 'metabase.api.card)
