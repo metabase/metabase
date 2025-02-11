@@ -259,7 +259,13 @@ describe("tokenizer", () => {
 
   describe("identifiers", () => {
     it("tokenizes identifiers", () => {
-      const cases = ["foo", "foo_bar", "foo.bar"];
+      const cases = [
+        "foo",
+        "foo_bar",
+        "foo.bar",
+        "notnull", // should handle other operators as prefix
+        "trueish",
+      ];
 
       for (const expression of cases) {
         const { tokens, errors } = tokenize(expression);
