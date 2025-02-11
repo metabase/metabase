@@ -91,10 +91,9 @@
   (update-cell! field-id row-pk value))
 
 (defn- insert-row! [table-id row]
+  ;; don't bother checking whether PK(s) value is/are provided iff the PK(s) is/are not auto-incrementing
   (let [{table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table-id))
-        pks    (t2/select :model/Field :table_id table-id :semantic_type :type/PK)
         driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))]
-    (assert (= 1 (count pks)) "Table must have a PK, and it cannot be compound")
     (driver/insert-into! driver db_id table (keys row) [(vals row)])
     (events/publish-event! :event/table-mutation-row-insert
                            {:object  {:table-id table-id
