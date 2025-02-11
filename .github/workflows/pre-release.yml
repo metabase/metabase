@@ -168,10 +168,17 @@ jobs:
         run: |
           jar xf metabase.jar version.properties
           mv version.properties resources/
+
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Make app db snapshot
+        run: node e2e/runner/run_cypress_ci.js snapshot --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
       - name: Run a few important Cypress tests as sanity check
         run: |
           mkdir -p ./target/uberjar && cp metabase.jar ./target/uberjar/metabase.jar
-          yarn test-cypress-run \
+          node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="@smoke",grepOmitFiltered=true \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
