@@ -179,7 +179,7 @@
                                         [:user-id [:maybe pos-int?]]
                                         [:model [:or :keyword :string]]])}))
 
-(def ^:privat internal-tool-events
+(def ^:private internal-tool-events {}
   #_{:event/table-mutation-cell-update [:map
                                         [:object
                                          [:map
