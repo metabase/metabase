@@ -1,4 +1,4 @@
-(ns metabase.api.bookmark-test
+(ns metabase.bookmarks.api-test
   "Tests for /api/bookmark endpoints."
   (:require
    [clojure.test :refer :all]
