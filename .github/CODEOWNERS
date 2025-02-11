@@ -106,6 +106,12 @@ test/metabase/audit @metabase/core-backend-admin-webapp
 src/metabase/auth_provider @metabase/core-backend-admin-webapp
 test/metabase/auth_provider @metabase/core-backend-admin-webapp
 
+src/metabase/bookmarks @metabase/core-backend-admin-webapp
+test/metabase/bookmarks @metabase/core-backend-admin-webapp
+
+src/metabase/cmd @metabase/devexp
+test/metabase/cmd @metabase/devexp
+
 src/metabase/channel @metabase/core-workflows
 test/metabase/channel @metabase/core-workflows
 
