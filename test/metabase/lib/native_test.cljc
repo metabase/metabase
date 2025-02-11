@@ -262,7 +262,7 @@
     (testing "Checks collection requirement"
       (is (=? {:stages [(complement :collection)]}
               (-> query
-                  (lib/with-different-database meta/metadata-provider {:collection "mycollection"}))))
+                  (lib/with-different-database meta/metadata-provider))))
       (is (thrown-with-msg?
            #?(:clj Throwable :cljs :default)
            #"Missing extra, required keys for native query: .*:collection.*"
