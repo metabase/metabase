@@ -104,7 +104,7 @@
                 :when (not= k pk-name)]
           (t2/insert! :model/CellEdit
                       {:table_id  table-id
-                       :field_id  (t2/select-one-pk :model/Field :table_id table-id :name k)
+                       :field_id  (t2/select-one-pk :model/Field :table_id table-id :name (name k))
                        :pk        row-pk
                        :old_value nil
                        :new_value v})))))
