@@ -1675,7 +1675,7 @@
                                                   order by 1 asc
                                                   limit 2;"})
                         mt/process-query
-                        mt/rows 
+                        mt/rows
                         (map second))]
           (is (= [["The Gorbals" "The Misfit Restaurant + Bar" "Marlowe" "Yamashiro Hollywood" "Musso & Frank Grill" "Pacific Dining Car" "Chez Jay" "Rush Street"]
                   ["Greenblatt's Delicatessen & Fine Wine Shop" "Handy Market"]]
