@@ -3,6 +3,7 @@ import {
   MySQL,
   PLSQL,
   PostgreSQL,
+  SQLDialect,
   StandardSQL,
   sql,
 } from "@codemirror/lang-sql";
@@ -37,12 +38,19 @@ const engineToDialect = {
   mysql: MySQL,
   oracle: PLSQL,
   postgres: PostgreSQL,
+  h2: SQLDialect.define({
+    // @ts-expect-error: SQLDialect.dialect is an internal that is exposed
+    ...StandardSQL.dialect,
+    // @ts-expect-error: SQLDialect.dialect is an internal that is exposed
+    keywords: Object.keys(StandardSQL.dialect.words)
+      .join(" ")
+      .concat(" exclude"),
+  }),
   // TODO:
   // "presto-jdbc": "trino",
   // redshift: "redshift",
   // snowflake: "snowflake",
   // sparksql: "spark",
-  // h2: "h2",
 };
 
 const mongoKeywords = {
