@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import { Icon, Menu } from "metabase/ui";
+import { Icon, Menu, type MenuProps } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
@@ -12,7 +12,7 @@ import { useSensibleVisualizations } from "../../hooks/use-sensible-visualizatio
 import ToolbarButtonS from "../../styles/ToolbarButton.module.css";
 import { ToolbarButton } from "../util/ToolbarButton";
 
-export const ChartTypeDropdown = () => {
+export const ChartTypeDropdown = (menuProps: MenuProps) => {
   const { selectedVisualization, updateQuestionVisualization } =
     useQuestionVisualization();
 
@@ -57,7 +57,7 @@ export const ChartTypeDropdown = () => {
   );
 
   return (
-    <Menu position="bottom-start">
+    <Menu position="bottom-start" {...menuProps}>
       <Menu.Target>
         <ToolbarButton
           data-testid="chart-type-selector-button"
