@@ -1,8 +1,8 @@
 (ns metabase.api.internal-tools
+  ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
-   #_{:clj-kondo/ignore [????]}
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
