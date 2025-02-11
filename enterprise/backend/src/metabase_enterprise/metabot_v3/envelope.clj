@@ -95,7 +95,7 @@
   [e]
   (:context e))
 
-(defn- message->reaction
+(defn- message->reactions
   [msg]
   (let [message-reaction {:type :metabot.reaction/message
                           :repl/message-color :green
@@ -103,7 +103,7 @@
                           :message (:content msg)}
         navigate-reaction (when-let [nav-path (:navigate-to msg)]
                             {:type :metabot.reaction/redirect
-                             :url (str nav-path)})]
+                             :url nav-path})]
     (filter some? [message-reaction navigate-reaction])))
 
 (defn reactions
@@ -118,7 +118,7 @@
                                    (drop (inc last-user-msg-idx))
                                    (filter #(= (:role %) :assistant))
                                    (filter #(not-empty (:content %)))
-                                   (mapcat message->reaction)
+                                   (mapcat message->reactions)
                                    (into []))]
     (into [] (concat llm-message-reactions (:reactions e) (metabot-v3.context/create-reactions (:context e))))))
 
