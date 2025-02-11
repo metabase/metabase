@@ -708,6 +708,7 @@ describe(
   { tags: ["@OSS", "@smoke"] },
   () => {
     beforeEach(() => {
+      cy.skipOn(Cypress.env("MB_EDITION") !== "oss");
       H.restore("without-models");
       cy.signInAsAdmin();
     });
