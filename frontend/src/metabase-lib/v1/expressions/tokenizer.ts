@@ -2,34 +2,34 @@ import { t } from "ttag";
 
 import type { ErrorWithMessage, Token } from "./types";
 
-export const TOKEN = {
-  Operator: 1,
-  Number: 2,
-  String: 3,
-  Identifier: 4,
-  Boolean: 5,
-};
+export enum TOKEN {
+  Operator = 1,
+  Number = 2,
+  String = 3,
+  Identifier = 4,
+  Boolean = 5,
+}
 
-export const OPERATOR = {
-  Comma: ",",
-  OpenParenthesis: "(",
-  CloseParenthesis: ")",
-  Plus: "+",
-  Minus: "-",
-  Star: "*",
-  Slash: "/",
-  Equal: "=",
-  NotEqual: "!=",
-  LessThan: "<",
-  GreaterThan: ">",
-  LessThanEqual: "<=",
-  GreaterThanEqual: ">=",
-  Not: "not",
-  And: "and",
-  Or: "or",
-  True: "true",
-  False: "false",
-};
+export enum OPERATOR {
+  Comma = ",",
+  OpenParenthesis = "(",
+  CloseParenthesis = ")",
+  Plus = "+",
+  Minus = "-",
+  Star = "*",
+  Slash = "/",
+  Equal = "=",
+  NotEqual = "!=",
+  LessThan = "<",
+  GreaterThan = ">",
+  LessThanEqual = "<=",
+  GreaterThanEqual = ">=",
+  Not = "not",
+  And = "and",
+  Or = "or",
+  True = "true",
+  False = "false",
+}
 
 const parseOperator = (expression: string, index: number) => {
   const character = expression[index];
