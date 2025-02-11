@@ -147,7 +147,7 @@
    [:type :string]
    [:description {:optional true} :string]])
 
-(mr/def ::query-metric-result
+(mr/def ::filtering-result
   [:or
    [:map
     {:decode/api-response #(update-keys % u/->snake_case_en)
@@ -191,6 +191,19 @@
    [:email :string]
    [:schedule ::subscription-schedule]])
 
+(mr/def ::filter-records-arguments
+  [:map
+   {:encode/api-request #(update-keys % u/->kebab-case-en)
+    :encode/tool-api-request #(recursive-update-keys % safe->kebab-case-en)}
+   [:data_source [:or
+                  [:map
+                   [:query [:map
+                            [:database :int]]]
+                   [:query_id {:optional true} :string]]
+                  [:map [:report_id :int]]
+                  [:map [:table_id :string]]]]
+   [:filters [:sequential ::filter]]])
+
 (mr/def ::generate-insights-arguments
   [:map
    {:encode/api-request #(update-keys % u/->kebab-case-en)
@@ -217,13 +230,26 @@
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
+(api.macros/defendpoint :post "/filter-records" :- [:merge ::filtering-result ::tool-request]
+  "Construct a query from a metric."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::filter-records-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log body :llm.log/llm->be)
+  (let [arguments (mc/encode ::filter-records-arguments
+                             arguments (mtx/transformer {:name :api-request}))]
+    (doto (-> (mc/decode ::filtering-result
+                         (metabot-v3.tools.filters/filter-records arguments)
+                         (mtx/transformer {:name :api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
 (api.macros/defendpoint :post "/generate-insights" :- [:merge
                                                        [:map
                                                         [:output :string]
-                                                        [:reactions [:sequential
-                                                                     [:map
-                                                                      [:type [:= :metabot.reaction/redirect]]
-                                                                      [:url :string]]]]]
+                                                        [:reactions [:sequential :metabot.reaction/redirect]]]
                                                        ::tool-request]
   "Generate insights."
   [_route-params
@@ -238,7 +264,7 @@
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
-(api.macros/defendpoint :post "/query-metric" :- [:merge ::query-metric-result ::tool-request]
+(api.macros/defendpoint :post "/query-metric" :- [:merge ::filtering-result ::tool-request]
   "Construct a query from a metric."
   [_route-params
    _query-params
@@ -248,7 +274,7 @@
   (metabot-v3.context/log body :llm.log/llm->be)
   (let [arguments (mc/encode ::query-metric-arguments
                              arguments (mtx/transformer {:name :api-request}))]
-    (doto (-> (mc/decode ::query-metric-result
+    (doto (-> (mc/decode ::filtering-result
                          (metabot-v3.tools.filters/query-metric arguments)
                          (mtx/transformer {:name :api-response}))
               (assoc :conversation_id conversation_id))

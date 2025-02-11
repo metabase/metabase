@@ -65,10 +65,19 @@
 (defn resolve-column-index
   "Resolve the reference `field_id` to the index of the result columns in the entity with `field-id-prefix`."
   [field_id field-id-prefix]
-  (when-not (str/starts-with? field_id field-id-prefix)
-    (throw (ex-info (str "field " field_id " not found") {:agent-error? true
-                                                          :expected-prefix field-id-prefix})))
-  (-> field_id (subs (count field-id-prefix)) parse-long))
+  (if (string? field-id-prefix)
+    (if (str/starts-with? field_id field-id-prefix)
+      (-> field_id (subs (count field-id-prefix)) parse-long)
+      (throw (ex-info (str "field " field_id " not found") {:agent-error? true
+                                                            :expected-prefix field-id-prefix})))
+    (if-let [id-str (when (instance? java.util.regex.Pattern field-id-prefix)
+                      (-> (re-matches field-id-prefix field_id)
+                          second))]
+      (parse-long id-str)
+      (throw (ex-info (str "invalid field_id " field_id " for prefix " field-id-prefix)
+                      {:agent-error? true
+                       :expected-prefix (str field-id-prefix)
+                       :field_id field_id})))))
 
 (defn resolve-column
   "Resolve the reference `field_id` in filter `item` by finding the column in `columns` specified by `field_id`.
