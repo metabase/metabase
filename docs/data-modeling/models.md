@@ -60,7 +60,7 @@ To view a model's details, visit the model and click on the **info** button in t
 - **Overview**: Includes the description, Creator and Last Editor, and the list of fields included in the model. As well as the model's [Entity ID](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-and-reference-metabase-items).
 - **History**. Lists changes to the model, and by whom.
 - **Relationships**. Lists which questions use the model, and which tables the model is linked to.
-- **Actions**: lists actions created.
+- **Actions**: Lists actions created based on the model.
 - **Insights**: Info about the model's usage.
 
 ## Add metadata to columns in a model
