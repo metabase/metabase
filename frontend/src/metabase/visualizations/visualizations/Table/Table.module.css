@@ -88,3 +88,11 @@
 .headerWrapper:hover {
   cursor: grab;
 }
+
+.rowHoverVisible {
+  visibility: hidden;
+}
+
+.tr:hover .rowHoverVisible {
+  visibility: visible;
+}

@@ -46,7 +46,7 @@ import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 import { AddColumnButton } from "./AddColumnButton";
 import { SortableHeader } from "./SortableHeader";
 import styles from "./Table.module.css";
-import { HEADER_HEIGHT, INDEX_COLUMN_ID, ROW_HEIGHT } from "./constants";
+import { HEADER_HEIGHT, ROW_HEIGHT, ROW_ID_COLUMN_ID } from "./constants";
 import { useTableCellsMeasure } from "./hooks/use-cell-measure";
 import { useColumnResizeObserver } from "./hooks/use-column-resize-observer";
 import { useColumns } from "./hooks/use-columns";
@@ -68,7 +68,7 @@ const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
   if (!hasIndexColumn) {
     return dataColumns;
   }
-  return [INDEX_COLUMN_ID, ...dataColumns];
+  return [ROW_ID_COLUMN_ID, ...dataColumns];
 };
 
 export const _Table = ({
@@ -128,7 +128,7 @@ export const _Table = ({
     columns,
     initialState: {
       columnPinning: {
-        left: [INDEX_COLUMN_ID],
+        left: [ROW_ID_COLUMN_ID],
       },
     },
     state: {
@@ -314,7 +314,7 @@ export const _Table = ({
       rowIndex: number,
       columnName: string,
     ) => {
-      if (columnName === INDEX_COLUMN_ID) {
+      if (columnName === ROW_ID_COLUMN_ID) {
         onOpenObjectDetail(rowIndex);
         return;
       }

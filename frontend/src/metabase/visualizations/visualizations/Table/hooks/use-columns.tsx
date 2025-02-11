@@ -45,13 +45,13 @@ import {
   RowData,
   createColumnHelper,
 } from "@tanstack/react-table";
-import { INDEX_COLUMN_ID, MIN_COLUMN_WIDTH } from "../constants";
+import { ROW_ID_COLUMN_ID, MIN_COLUMN_WIDTH } from "../constants";
 
 import type Question from "metabase-lib/v1/Question";
 
-import { IndexCell } from "../cell/IndexCell";
-import { IndexHeaderCell } from "../cell/IndexHeaderCell";
+import { RowIdHeaderCell } from "../cell/RowIdHeaderCell";
 import { BodyCellVariant } from "../types";
+import { RowIdCell } from "../cell/RowIdCell";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
@@ -203,15 +203,19 @@ export const useColumns = ({
   );
 
   const columns: ColumnDef<RowValues, RowValue>[] = useMemo(() => {
-    const indexColumn = columnHelper.display({
-      id: INDEX_COLUMN_ID,
-      size: 46,
+    const showRowIndex = settings["table.row_index"];
+
+    const rowIdColumn = columnHelper.display({
+      id: ROW_ID_COLUMN_ID,
+      size: 36,
+      enablePinning: true,
       enableResizing: false,
-      cell: props => {
-        return <IndexCell rowNumber={props.row.index + 1} />;
+      cell: ({ row }) => {
+        const value = showRowIndex ? row.index + 1 : null;
+        return <RowIdCell value={value} />;
       },
       header: () => {
-        return <IndexHeaderCell />;
+        return <RowIdHeaderCell name={showRowIndex ? "#" : ""} />;
       },
     });
     const dataColumns = cols.map((col, index) => {
@@ -286,10 +290,7 @@ export const useColumns = ({
       });
     });
 
-    if (!settings["table.row_index"]) {
-      return dataColumns;
-    }
-    return [indexColumn, ...dataColumns];
+    return [rowIdColumn, ...dataColumns];
   }, [
     cols,
     expandedColumns,
