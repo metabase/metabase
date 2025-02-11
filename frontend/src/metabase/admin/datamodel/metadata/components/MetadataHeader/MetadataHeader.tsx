@@ -124,6 +124,7 @@ const MetadataHeader = ({
             setIsNotificationModalOpen(false);
             // Add any additional logic needed after creation
           }}
+          tableId={selectedTableId}
         />
       )}
     </div>

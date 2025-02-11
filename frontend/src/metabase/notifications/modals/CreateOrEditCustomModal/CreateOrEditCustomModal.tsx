@@ -50,7 +50,8 @@ export const CreateOrEditCustomModal = ({
   onNotificationCreated,
   onNotificationUpdated,
   onClose,
-}: CreateOrEditCustomModalProps) => {
+  tableId,
+}: CreateOrEditCustomModalProps & { tableId?: number }) => {
   const dispatch = useDispatch();
   const user = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
@@ -80,6 +81,9 @@ export const CreateOrEditCustomModal = ({
               handlers: [],
               payload_type: "notification/system-event",
               subscriptions: [{ type: "system-event", value: "update" }],
+              condition: tableId
+                ? `(and (= ${tableId} (-> % :payload :event_info :object :table-id)))`
+                : undefined,
             },
       );
     }
@@ -90,6 +94,7 @@ export const CreateOrEditCustomModal = ({
     editingNotification,
     isEditMode,
     hookChannels,
+    tableId,
   ]);
 
   const onCreateOrEdit = async () => {
