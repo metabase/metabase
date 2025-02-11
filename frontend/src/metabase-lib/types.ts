@@ -384,7 +384,7 @@ export type StringFilterOptions = {
   caseSensitive?: boolean;
 };
 
-export type NumberFilterValue = number | bigint;
+export type NumberFilterValue = number | string;
 
 export type NumberFilterParts = {
   operator: NumberFilterOperator;

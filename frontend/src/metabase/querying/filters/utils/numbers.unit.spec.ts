@@ -1,57 +1,20 @@
-import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import { parseNumber } from "./numbers";
 
-import { parseNumberForColumn } from "./numbers";
-
-describe("parseNumberForColumn", () => {
-  const query = createQuery();
-  const columns = Lib.filterableColumns(query, -1);
-  const findColumn = columnFinder(query, columns);
-  const integerColumn = findColumn("ORDERS", "QUANTITY");
-  const floatColumn = findColumn("ORDERS", "TOTAL");
-  const bigIntegerColumn = findColumn("ORDERS", "ID");
-
+describe("parseNumber", () => {
   it.each([
-    {
-      value: "10",
-      columns: [integerColumn, floatColumn, bigIntegerColumn],
-      expectedValue: 10,
-    },
-    {
-      value: "9007199254740993",
-      columns: [integerColumn, floatColumn],
-      expectedValue: Number("9007199254740992"),
-    },
-    {
-      value: "9007199254740993",
-      columns: [bigIntegerColumn],
-      expectedValue: 9007199254740993n,
-    },
-    {
-      value: "10.1",
-      columns: [integerColumn, floatColumn, bigIntegerColumn],
-      expectedValue: 10.1,
-    },
-    {
-      value: "9007199254740993.1",
-      columns: [integerColumn, bigIntegerColumn],
-      expectedValue: Number("9007199254740994"),
-    },
-  ])(
-    "should parse a numeric string based on the column type",
-    ({ value, columns, expectedValue }) => {
-      columns.forEach(column => {
-        expect(parseNumberForColumn(value, column)).toBe(expectedValue);
-      });
-    },
-  );
-
-  it.each(["", " ", "Infinity", "-Infinity", "NaN"])(
-    "should ignore invalid input",
-    value => {
-      columns.forEach(column => {
-        expect(parseNumberForColumn(value, column)).toBeNull();
-      });
-    },
-  );
+    { value: "", expectedValue: null },
+    { value: " ", expectedValue: null },
+    { value: "Infinity", expectedValue: null },
+    { value: "-Infinity", expectedValue: null },
+    { value: "NaN", expectedValue: null },
+    { value: "0", expectedValue: 0 },
+    { value: "10", expectedValue: 10 },
+    { value: "-10", expectedValue: -10 },
+    { value: "9007199254740993", expectedValue: "9007199254740993" },
+    { value: "-9007199254740993", expectedValue: "-9007199254740993" },
+    { value: "10.1", expectedValue: 10.1 },
+    { value: "-10.1", expectedValue: -10.1 },
+  ])('should parse "$value"', ({ value, expectedValue }) => {
+    expect(parseNumber(value)).toBe(expectedValue);
+  });
 });

@@ -1,25 +1,18 @@
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useLayoutEffect, useState } from "react";
 
-import { parseNumberForColumn } from "metabase/querying/filters/utils/numbers";
+import { parseNumber } from "metabase/querying/filters/utils/numbers";
 import { TextInput, type TextInputProps } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+
+export type NumberFilterValue = number | string;
 
 type NumberFilterInputProps = Omit<TextInputProps, "value" | "onChange"> & {
-  value: Lib.NumberFilterValue | "";
-  column: Lib.ColumnMetadata;
-  onChange: (value: Lib.NumberFilterValue | "") => void;
+  value: NumberFilterValue | "";
+  onChange: (value: NumberFilterValue | "") => void;
 };
 
 export const NumberFilterInput = forwardRef(function NumberFilterInput(
-  {
-    value,
-    column,
-    onChange,
-    onFocus,
-    onBlur,
-    ...props
-  }: NumberFilterInputProps,
+  { value, onChange, onFocus, onBlur, ...props }: NumberFilterInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
   const [inputValue, setInputValue] = useState(formatValue(value));
@@ -29,7 +22,7 @@ export const NumberFilterInput = forwardRef(function NumberFilterInput(
     const newInputValue = event.target.value;
     setInputValue(newInputValue);
 
-    const newValue = parseValue(newInputValue, column);
+    const newValue = parseValue(newInputValue);
     onChange?.(newValue);
   };
 
@@ -45,9 +38,9 @@ export const NumberFilterInput = forwardRef(function NumberFilterInput(
 
   useLayoutEffect(() => {
     if (!isFocused) {
-      setInputValue(formatValue(value ?? parseValue(inputValue, column)));
+      setInputValue(formatValue(value ?? parseValue(inputValue)));
     }
-  }, [value, column, inputValue, isFocused]);
+  }, [value, inputValue, isFocused]);
 
   return (
     <TextInput
@@ -61,11 +54,11 @@ export const NumberFilterInput = forwardRef(function NumberFilterInput(
   );
 });
 
-function parseValue(value: string, column: Lib.ColumnMetadata) {
-  const number = parseNumberForColumn(value, column);
+function parseValue(value: string) {
+  const number = parseNumber(value);
   return number != null ? number : "";
 }
 
-function formatValue(value: Lib.NumberFilterValue | "") {
+function formatValue(value: NumberFilterValue | "") {
   return String(value);
 }
