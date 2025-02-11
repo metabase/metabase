@@ -1,4 +1,4 @@
-(ns metabase.models.recent-views
+(ns metabase.activity-feed.models.recent-views
   "The Recent Views table is used to track the most recent views of objects such as Cards, Models, Tables, Dashboards,
   and Collections for each user. For an up to date list, see [[rv-models]].
 
@@ -177,8 +177,8 @@
      [:can_write :boolean]
      [:timestamp :string]]
     ;; database_id was commented out below because this schema was not actually being used correctly
-    ;; by [[metabase.api.activity/get-popular-items-model-and-id]] and when I fixed it in #47418
-    ;; [[metabase.api.activity-test/popular-items-test]] started failing because things don't actually come back with
+    ;; by [[metabase.activity-feed.api/get-popular-items-model-and-id]] and when I fixed it in #47418
+    ;; [[metabase.activity-feed.api-test/popular-items-test]] started failing because things don't actually come back with
     ;; database IDs... commented out for now until someone gets a change to look at this. -- Cam
     [:multi {:dispatch :model}
      [:card [:map
