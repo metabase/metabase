@@ -114,8 +114,7 @@
         results @vresults]
     (if (<= (count results) 1)
       (first results)
-      results #_
-      (throw (ex-info (tru "Too many results returned: {0}" (pr-str results)) {:jq-query jq-query :results results})))))
+      results #_(throw (ex-info (tru "Too many results returned: {0}" (pr-str results)) {:jq-query jq-query :results results})))))
 
 (defn execute-http-action!
   "Calls an http endpoint based on action and params"
