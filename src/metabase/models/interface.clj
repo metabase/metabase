@@ -83,7 +83,11 @@
   (let [fn-symb (symbol (str (ns-name *ns*)) (name fn-name))]
     (when-let [existing-fn-symb (get @defined-hydration-methods hydration-key)]
       (when (not= fn-symb existing-fn-symb)
-        (throw (ex-info (format "Hydration key %s already exists at %s" hydration-key existing-fn-symb)
+        (throw (ex-info (str (format "Hydration key %s already exists at %s" hydration-key existing-fn-symb)
+                             "\n\n"
+                             "You can remove it with"
+                             "\n"
+                             (pr-str (list 'swap! `defined-hydration-methods 'dissoc hydration-key)))
                         {:hydration-key       hydration-key
                          :existing-definition existing-fn-symb}))))
     (swap! defined-hydration-methods assoc hydration-key fn-symb))

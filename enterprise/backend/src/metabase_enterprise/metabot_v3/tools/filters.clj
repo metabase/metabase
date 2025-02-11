@@ -3,7 +3,6 @@
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -80,7 +79,7 @@
 
 (defn- query-metric*
   [{:keys [metric-id filters group-by] :as _arguments}]
-  (let [card (api.card/get-card metric-id)
+  (let [card (metabot-v3.tools.u/get-card metric-id)
         mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
         base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
                         lib/remove-all-breakouts)
@@ -143,7 +142,7 @@
         model-id (lib.util/legacy-string-table-id->card-id table_id)]
     (cond
       (some? model-id)
-      (if-let [model (api.card/get-card model-id)]
+      (if-let [model (metabot-v3.tools.u/get-card model-id)]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id model))]
           [(metabot-v3.tools.u/card-field-id-prefix model-id)
            (lib/query mp (lib.metadata/card mp model-id))])
@@ -161,7 +160,7 @@
                                                                           :data_source data-source}))))
 
       (some? report_id)
-      (if-let [card (api.card/get-card report_id)]
+      (if-let [card (metabot-v3.tools.u/get-card report_id)]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
           [(metabot-v3.tools.u/card-field-id-prefix report_id)
            (lib/query mp (cond-> (lib.metadata/card mp report_id)

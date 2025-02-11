@@ -95,12 +95,16 @@
   [e]
   (:context e))
 
-(defn- message->reaction
+(defn- message->reactions
   [msg]
-  {:type :metabot.reaction/message
-   :repl/message-color :green
-   :repl/message-emoji "🤖"
-   :message (:content msg)})
+  (let [message-reaction {:type :metabot.reaction/message
+                          :repl/message-color :green
+                          :repl/message-emoji "🤖"
+                          :message (:content msg)}
+        navigate-reaction (when-let [nav-path (:navigate-to msg)]
+                            {:type :metabot.reaction/redirect
+                             :url nav-path})]
+    (filter some? [message-reaction navigate-reaction])))
 
 (defn reactions
   "Gets the reactions from the envelope. Includes messages from the LLM itself if applicable."
@@ -114,7 +118,7 @@
                                    (drop (inc last-user-msg-idx))
                                    (filter #(= (:role %) :assistant))
                                    (filter #(not-empty (:content %)))
-                                   (map message->reaction)
+                                   (mapcat message->reactions)
                                    (into []))]
     (into [] (concat llm-message-reactions (:reactions e) (metabot-v3.context/create-reactions (:context e))))))
 

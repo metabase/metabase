@@ -26,13 +26,12 @@
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
-   [metabase.models.query.permissions :as query-perms]
-   [metabase.models.revision.last-edit :as last-edit]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
+   [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
@@ -160,7 +159,7 @@
       :using_metric  (api/read-check :model/Database (db-id-via-table :metric model-id))
       :using_segment (api/read-check :model/Database (db-id-via-table :segment model-id))))
   (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
-        last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
+        last-edit-info (:card (revisions/fetch-last-edited-info {:card-ids (map :id cards)}))]
     (into []
           (map (fn [{:keys [id] :as card}]
                  (if-let [edit-info (get last-edit-info id)]
@@ -168,7 +167,7 @@
                    card)))
           cards)))
 
-(defn hydrate-card-details
+(defn- hydrate-card-details
   "Adds additional information to a `Card` selected with toucan that is needed by the frontend. This should be the same information
   returned by all API endpoints where the card entity is cached (i.e. GET, PUT, POST) since the frontend replaces the Card
   it currently has with returned one -- See #4283"
@@ -197,10 +196,10 @@
                                         ;; can_manage_db determines whether we should enable model persistence settings
                                         :can_manage_db)))))
 
-(defn get-card
+(defn- get-card
   "Get `Card` with ID."
   [id]
-  (let [with-last-edit-info #(first (last-edit/with-last-edit-info [%] :card))
+  (let [with-last-edit-info #(first (revisions/with-last-edit-info [%] :card))
         raw-card (t2/select-one :model/Card :id id)]
     (-> raw-card
         api/read-check
@@ -435,28 +434,6 @@
       :last-cursor last_cursor
       :page-size   (request/limit)})))
 
-;;; -------------------------------------------------- Saving Cards --------------------------------------------------
-
-(defn check-permissions-for-query
-  "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
-  queries they wouldn't be allowed to run!"
-  [query]
-  {:pre [(map? query)]}
-  (when-not (query-perms/can-run-query? query)
-    (let [required-perms (try
-                           (query-perms/required-perms-for-query query :throw-exceptions? true)
-                           (catch Throwable e
-                             e))]
-      (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
-                      {:status-code    403
-                       :query          query
-                       :required-perms (if (instance? Throwable required-perms)
-                                         :error
-                                         required-perms)
-                       :actual-perms   @api/*current-user-permissions-set*}
-                      (when (instance? Throwable required-perms)
-                        required-perms))))))
-
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
 (mr/def ::card-type
@@ -495,14 +472,14 @@
                             [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]]]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
-  (check-permissions-for-query query)
+  (card/check-run-permissions-for-query query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection-id)
   (let [body (cond-> body
                (string? (:type body)) (update :type keyword))]
     (-> (card/create-card! body @api/*current-user*)
         hydrate-card-details
-        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
+        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
 (api.macros/defendpoint :post "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
@@ -513,7 +490,7 @@
         new-card  (assoc orig-card :name new-name)]
     (-> (card/create-card! new-card @api/*current-user*)
         hydrate-card-details
-        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
+        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
@@ -522,7 +499,7 @@
   [card-before-updates card-updates]
   (let [card-updates (m/update-existing card-updates :dataset_query card.metadata/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-      (check-permissions-for-query (:dataset_query card-updates)))))
+      (card/check-run-permissions-for-query (:dataset_query card-updates)))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -608,7 +585,7 @@
                                                                      :actor                 @api/*current-user*
                                                                      :delete-old-dashcards? delete-old-dashcards?})
                                                  hydrate-card-details
-                                                 (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))]
+                                                 (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))]
       ;; We expose the search results for models and metrics directly in FE grids, from which items can be archived.
       ;; The grid is then refreshed synchronously with the latest search results, so we need this change to be
       ;; reflected synchronously.

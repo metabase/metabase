@@ -40,6 +40,7 @@
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "7.1.0"}              ; trans dep of commons-codec
   ; Detect the charset in uploaded CSV files
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
+  com.github.blagerweij/liquibase-sessionlock {:mvn/version "1.6.9"}            ; session lock for liquibase migrations
   com.github.jknack/handlebars              ^:antq/exclude                      ; 4.4.0 requires java 17+
                                             {:mvn/version "4.3.1"}              ; templating engine
   com.github.seancorfield/honeysql          {:mvn/version "2.6.1270"}           ; Honey SQL 2. SQL generation from Clojure data maps

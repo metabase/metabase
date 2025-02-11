@@ -7,7 +7,6 @@
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
@@ -37,7 +36,7 @@
 (defn metric-details
   "Get metric details as returned by tools."
   ([id]
-   (when-let [card (api.card/get-card id)]
+   (when-let [card (metabot-v3.tools.u/get-card id)]
      (metric-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)))))
   ([card metadata-provider]
    (let [id (:id card)
@@ -104,7 +103,7 @@
 
 (defn- card-details
   [id]
-  (when-let [base (api.card/get-card id)]
+  (when-let [base (metabot-v3.tools.u/get-card id)]
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id base))
           card-metadata (lib.metadata/card mp id)
           card-query (lib/query mp (cond-> card-metadata
