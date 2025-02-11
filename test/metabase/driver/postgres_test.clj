@@ -1391,7 +1391,9 @@
                                 !month.id]
                        :limit  1})]
           (is (= {:query ["SELECT"
-                          "  DATE_TRUNC('month', \"public\".\"people\".\"birth_date\") AS \"birth_date\","
+                          "  CAST("
+                          "    DATE_TRUNC('month', \"public\".\"people\".\"birth_date\") AS date"
+                          "  ) AS \"birth_date\","
                           "  DATE_TRUNC('month', \"public\".\"people\".\"created_at\") AS \"created_at\","
                           "  DATE_TRUNC('month', CAST(\"public\".\"people\".\"id\" AS timestamp)) AS \"id\""
                           "FROM"
