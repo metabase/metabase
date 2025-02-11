@@ -1,12 +1,12 @@
-(ns metabase.api.activity
+(ns metabase.activity-feed.api
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.api.macros :as api.macros]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
-   [metabase.models.recent-views :as recent-views]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

@@ -91,6 +91,9 @@ enterprise/backend/test/metabase_enterprise/upload_management @metabase/core-bac
 src/metabase/actions @metabase/core-backend-admin-webapp
 test/metabase/actions @metabase/core-backend-admin-webapp
 
+src/metabase/activity_feed @metabase/core-backend-admin-webapp
+test/metabase/activity_feed @metabase/core-backend-admin-webapp
+
 src/metabase/analytics @metabase/core-backend-admin-webapp
 test/metabase/analytics @metabase/core-backend-admin-webapp
 
@@ -105,6 +108,12 @@ test/metabase/audit @metabase/core-backend-admin-webapp
 
 src/metabase/auth_provider @metabase/core-backend-admin-webapp
 test/metabase/auth_provider @metabase/core-backend-admin-webapp
+
+src/metabase/bookmarks @metabase/core-backend-admin-webapp
+test/metabase/bookmarks @metabase/core-backend-admin-webapp
+
+src/metabase/cmd @metabase/devexp
+test/metabase/cmd @metabase/devexp
 
 src/metabase/channel @metabase/core-workflows
 test/metabase/channel @metabase/core-workflows

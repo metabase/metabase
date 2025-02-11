@@ -11,7 +11,6 @@
    [metabase.events.last-login]
    [metabase.events.notification]
    [metabase.events.persisted-info]
-   [metabase.events.recent-views]
    [metabase.events.revision]
    [metabase.events.schema]
    [metabase.events.slack]
