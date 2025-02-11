@@ -184,7 +184,15 @@
         (format "%s has added %d rows to table `%s`"
                 (:common_name user)
                 (:name table)
-                (count rows)))])))
+                (count rows)))])
+    :event/table-mutation-row-delete
+    (let [{:keys [pk table]} (:object event_info)
+          user (:user event_info)]
+      [(text->markdown-block
+        (format "%s has deleted row with primary key `%s` from table `%s`"
+                (:common_name user)
+                pk
+                (:name table)))])))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
   [_channel-type {:keys [payload]} _template recipients]
