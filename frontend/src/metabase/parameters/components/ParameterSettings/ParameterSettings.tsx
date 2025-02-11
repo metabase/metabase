@@ -38,11 +38,6 @@ import { ParameterValueWidget } from "../ParameterValueWidget";
 import { RequiredParamToggle } from "../RequiredParamToggle";
 import { ValuesSourceSettings } from "../ValuesSourceSettings";
 
-// import {
-//   SettingLabel,
-//   SettingLabelError,
-//   SettingValueWidget,
-// } from "./ParameterSettings.styled";
 import S from "./ParameterSettings.module.css";
 import { TemporalUnitSettings } from "./TemporalUnitSettings";
 

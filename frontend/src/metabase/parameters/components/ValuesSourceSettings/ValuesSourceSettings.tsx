@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import Modal from "metabase/components/Modal";
 import Tooltip from "metabase/core/components/Tooltip";
-import { Button, Flex, Radio, Stack } from "metabase/ui";
+import { Box, Button, Flex, Radio, Stack } from "metabase/ui";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import type {
   Parameter,
@@ -13,8 +13,6 @@ import type {
 } from "metabase-types/api";
 
 import ValuesSourceModal from "../ValuesSourceModal";
-
-import { ClickAreaExpander } from "./ValuesSourceSettings.styled";
 
 interface ValuesSourceSettingsProps {
   parameter: Parameter;
@@ -120,7 +118,11 @@ function RadioContainer({
               p={0}
               size="compact-md"
             >
-              <ClickAreaExpander>{t`Edit`}</ClickAreaExpander>
+              <Box
+                component="span"
+                display="inline-block"
+                p="0 5px"
+              >{t`Edit`}</Box>
             </Button>
           </div>
         </Tooltip>
