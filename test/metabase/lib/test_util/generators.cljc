@@ -337,6 +337,7 @@
         strategy            (gen.u/weighted-choice {:left-join  80
                                                     :inner-join 10
                                                     :right-join 5
+                                                    ;; TODO: Make the following driver dependent?
                                                     :full-join  5})
         ;; TODO: Explicit joins against cards are possible, but we don't have cards yet.
         condition-space     (for [table (lib.metadata/tables query)
