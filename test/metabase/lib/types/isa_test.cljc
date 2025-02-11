@@ -153,7 +153,6 @@
              {:pred #'lib.types.isa/temporal?,           :positive :type/DateTime,          :negative :type/City}
              {:pred #'lib.types.isa/numeric?,            :positive :type/Integer,           :negative :type/FK}
              {:pred #'lib.types.isa/numeric?,            :positive :type/Price,             :negative :type/CreationDate}
-             {:pred #'lib.types.isa/big-integer?,        :positive :type/BigInteger,        :negative :type/Integer}
              {:pred #'lib.types.isa/boolean?,            :positive :type/Boolean,           :negative :type/PK}
              {:pred #'lib.types.isa/string?,             :positive :type/Text,              :negative :type/URL}
              {:pred #'lib.types.isa/string-like?,        :positive :type/TextLike,          :negative :type/Address}
