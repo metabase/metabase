@@ -244,13 +244,18 @@ function DashCardActionsPanelInner({
       <DashCardActionButton
         onClick={handleRemoveCard}
         tooltip={t`Remove and trash`}
+        key="remove"
       >
         <DashCardActionButton.Icon name="trash" />
       </DashCardActionButton>,
     );
   } else {
     buttons.push(
-      <DashCardActionButton onClick={handleRemoveCard} tooltip={t`Remove`}>
+      <DashCardActionButton
+        onClick={handleRemoveCard}
+        tooltip={t`Remove`}
+        key="remove"
+      >
         <DashCardActionButton.Icon name="close" />
       </DashCardActionButton>,
     );

@@ -90,6 +90,8 @@ export function saveDashboard({
     "saveDashboard-saveDashboardCards",
   );
   cy.intercept("GET", "/api/dashboard/*").as("saveDashboard-getDashboard");
+
+  cy.findByText(editBarText).should("be.visible");
   cy.button(buttonLabel).click();
 
   if (awaitRequest) {
@@ -232,6 +234,14 @@ export function duplicateTab(tabName: string) {
   popover().within(() => {
     cy.findByText("Duplicate").click();
   });
+}
+
+export function renameTab(tabName: string, newTabName: string) {
+  cy.findByRole("tab", { name: tabName }).findByRole("button").click();
+  popover().within(() => {
+    cy.findByText("Rename").click();
+  });
+  cy.findByRole("tab", { name: tabName }).type(newTabName + "{Enter}");
 }
 
 export function goToTab(tabName: string) {

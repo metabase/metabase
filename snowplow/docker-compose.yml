@@ -1,7 +1,5 @@
-version: '3'
-
 services:
-  micro:
+  snowplow-micro:
     image: snowplow/snowplow-micro:1.2.1
     ports:
       - "9090:9090"

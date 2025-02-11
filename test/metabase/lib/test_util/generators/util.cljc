@@ -1,4 +1,6 @@
-(ns metabase.lib.test-util.generators.util)
+(ns metabase.lib.test-util.generators.util
+  (:require
+   [metabase.lib.test-util.random :as tu.ra]))
 
 (defn choose
   "Uniformly chooses among a seq of options.
@@ -6,7 +8,7 @@
   Returns nil if the list is empty! This is handy for choose-and-do vs. do-nothing while writing the next steps."
   [xs]
   (when-not (empty? xs)
-    (rand-nth xs)))
+    (tu.ra/rand-nth xs)))
 
 (defn weighted-choice
   "Given a map of `{x weight}`, randomly choose among the choices, based on their weights.
@@ -21,7 +23,7 @@
                                          [new-cum (conj pairs [new-cum choice])]))
                                      [0 []]
                                      choices)
-        roll                 (rand-int total)
+        roll                 (tu.ra/rand-int total)
         [[_weight selected]] (drop-while (fn [[max-roll _choice]]
                                            (<= max-roll roll))
                                          ascending)]

@@ -825,14 +825,22 @@
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [breakouts (:breakout inner-query)
+  (let [breakouts (remove
+                   (comp :metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field
+                         #(nth % 2))
+                   (:breakout inner-query))
         group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         finest-temp-breakout (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakouts 2)
         partition-exprs (when (> (count breakouts) 1)
                           (if finest-temp-breakout
                             (m/remove-nth finest-temp-breakout group-bys)
                             (butlast group-bys)))
-        order-bys (over-order-bys driver (:aggregation inner-query) (:order-by inner-query))]
+        order-bys (over-order-bys driver (:aggregation inner-query)
+                                  (remove
+                                   (comp :metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field
+                                         #(nth % 2)
+                                         second)
+                                   (:order-by inner-query)))]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]

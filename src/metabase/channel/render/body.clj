@@ -9,17 +9,16 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.formatter :as formatter]
-   [metabase.models.timeline-event :as timeline-event]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as common]
+   [metabase.timeline.core :as timeline]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -366,19 +365,10 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(defn dashcard-timeline-events
-  "Look for a timeline and corresponding events associated with this dashcard."
-  [{{:keys [collection_id] :as _card} :card}]
-  (let [timelines (t2/select :model/Timeline
-                             :collection_id collection_id
-                             :archived false)]
-    (->> (t2/hydrate timelines :creator [:collection :can_write])
-         (map #(timeline-event/include-events-singular % {:events/all? true})))))
-
 (defn- add-dashcard-timeline-events
   "If there's a timeline associated with this card, add its events in."
   [card-with-data]
-  (if-some [timeline-events (seq (dashcard-timeline-events card-with-data))]
+  (if-some [timeline-events (seq (timeline/dashcard-timeline-events card-with-data))]
     (assoc card-with-data :timeline_events timeline-events)
     card-with-data))
 
