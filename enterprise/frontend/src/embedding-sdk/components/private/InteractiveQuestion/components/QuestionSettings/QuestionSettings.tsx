@@ -39,16 +39,18 @@ const QuestionSettingsContent = ({
   const { chartSettings, handleChangeSettings, transformedSeries } =
     useChartSettingsState({ series, onChange });
 
-  const widgets = useMemo(
-    () =>
+  const widgets = useMemo(() => {
+    try {
       // TODO: Create a way to just get a single widget and its dependencies
-      getSettingsWidgetsForSeries(
+      return getSettingsWidgetsForSeries(
         transformedSeries,
         handleChangeSettings,
         false,
-      ).filter(w => !!w.widget),
-    [transformedSeries, handleChangeSettings],
-  );
+      ).filter(w => !!w.widget);
+    } catch (e) {
+      return [];
+    }
+  }, [transformedSeries, handleChangeSettings]);
 
   return (
     <BaseChartSettings
