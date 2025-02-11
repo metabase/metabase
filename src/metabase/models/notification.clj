@@ -534,9 +534,12 @@
         (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id notification-id) subscriptions)))
       (doseq [handler handlers+recipients]
         (let [recipients (:recipients handler)
+              template-id (when (:template handler)
+                            (t2/insert-returning-pk! :model/ChannelTemplate (:template handler)))
               handler    (-> handler
-                             (dissoc :recipients)
-                             (assoc :notification_id notification-id))
+                             (dissoc :recipients :template)
+                             (assoc :notification_id notification-id)
+                             (assoc :template_id template-id))
               handler-id (t2/insert-returning-pk! :model/NotificationHandler handler)]
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import TextArea from "metabase/core/components/TextArea";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -27,6 +28,7 @@ export const SlackChannelFieldNew = ({
 }: SlackChannelFieldProps) => {
   const [hasPrivateChannelWarning, setHasPrivateChannelWarning] =
     useState(false);
+  const [template, setTemplate] = useState("");
 
   const channelField = channelSpec.fields?.find(
     field => field.name === CHANNEL_FIELD_NAME,
@@ -69,6 +71,32 @@ export const SlackChannelFieldNew = ({
     setHasPrivateChannelWarning(isPrivate);
   };
 
+  const handleTemplateChange = (
+    event: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    const newTemplate = event.target.value;
+    setTemplate(newTemplate);
+    onChange({
+      ...channel,
+      recipients: [
+        {
+          type: "notification-recipient/raw-value",
+          details: {
+            value: value,
+          },
+        },
+      ],
+      template: {
+        name: "Slack Template",
+        channel_type: "channel/slack",
+        details: {
+          type: "email/handlebars-text",
+          body: newTemplate,
+        },
+      },
+    });
+  };
+
   const applicationName = useSelector(getApplicationName);
 
   return (
@@ -86,6 +114,15 @@ export const SlackChannelFieldNew = ({
           className={CS.mt1}
         >{t`In order to send subscriptions and alerts to private Slack channels, you must first add the ${applicationName} bot to them.`}</div>
       )}
+      <div className={CS.mt2}>
+        <TextArea
+          value={template}
+          onChange={handleTemplateChange}
+          placeholder={t`Your handlebars template here...`}
+          fullWidth
+          rows={4}
+        />
+      </div>
     </div>
   );
 };
