@@ -162,13 +162,15 @@ export function tokenize(expression: string) {
               len: node.to - node.from,
             });
           }
-          return;
+          return false;
         }
-        errors.push({
-          message: `Invalid character: ${text}`,
-          pos: node.from,
-          len: node.to - node.from,
-        });
+        if (text.length === 1) {
+          errors.push({
+            message: `Invalid character: ${text}`,
+            pos: node.from,
+            len: node.to - node.from,
+          });
+        }
       }
     }
   });
