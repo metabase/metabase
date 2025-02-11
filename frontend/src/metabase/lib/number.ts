@@ -1,7 +1,3 @@
-export function isPositiveInteger(value: any) {
-  return /^\d+$/.test(String(value));
-}
-
 // string is used when the value cannot be accurately represented as a JS number
 export type NumberValue = number | string;
 
