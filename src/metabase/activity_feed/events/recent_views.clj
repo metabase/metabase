@@ -1,9 +1,9 @@
-(ns metabase.events.recent-views
+(ns metabase.activity-feed.events.recent-views
   "This namespace is responsible for subscribing to events which should update the recent views for a user."
   (:require
+   [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.recent-views :as recent-views]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as m]
