@@ -24,6 +24,7 @@
 
 (derive ::event :metabase/event)
 (derive :event/table-mutation-cell-update ::event)
+(derive :event/table-mutation-updates ::event)
 (derive :event/table-mutation-row-insert ::event)
 (derive :event/table-mutation-row-delete ::event)
 
@@ -38,6 +39,40 @@
     :type/Float      (parse-double v)
     :type/Boolean    (parse-boolean v)
     v))
+
+(defn track-update!
+  "A bit of a gotcha - this does not send cell update events - but we should just deprecate those."
+  [table-id row-pk old-row new-row]
+  (events/publish-event! :event/table-mutation-updates
+                         {:object  {:table-id table-id
+                                    :updates  [{:before old-row
+                                                :after  new-row}]}
+                          :user-id (or api/*current-user-id*
+                                       (t2/select-one-pk :model/User :is_superuser true))})
+
+  (let [updated-row (atom old-row)]
+    (doseq [[k v] new-row]
+      (when (not= v (get old-row k))
+        (t2/insert! :model/TableEdit
+                    {:table_id  table-id
+                     :pk        row-pk
+                     :type      "edit"
+                     :old_value (pr-str old-row)
+                     :new_value (pr-str (assoc @updated-row k v))
+                     :delta     (pr-str {k v})})
+        (swap! updated-row assoc k v)))))
+
+(defn track-cell-update! [table-id row-pk field-id column old-row new-value]
+  (track-update! old-row (assoc row-pk old-row column new-value))
+
+  (events/publish-event! :event/table-mutation-cell-update
+                         {:object-id field-id
+                          :object    {:field-id field-id
+                                      :table-id table-id
+                                      :pk    row-pk
+                                      :value-new new-value
+                                      :value-old (get old-row column)}
+                          :user-id   (or api/*current-user-id* (t2/select-one-pk :model/User :is_superuser true))}))
 
 (defn- update-cell! [field-id row-pk value]
   (let [{column :name :keys [table_id semantic_type base_type]}
@@ -55,13 +90,6 @@
                                           :dialect (sql.qp/quote-style driver))]
                       (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db_id)]
                         (first (jdbc/query conn sql))))
-          old-value (let [sql (sql/format {:select [(keyword column)]
-                                           :from   [(keyword table)]
-                                           :where  [:= row-pk (keyword (:name (first pks)))]}
-                                          :quoted true
-                                          :dialect (sql.qp/quote-style driver))]
-                      (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db_id)]
-                        (val (ffirst (jdbc/query conn sql)))))
           new-value (parse-value base_type value)]
 
       (driver.sql-jdbc/update-row-column! driver
@@ -73,23 +101,7 @@
                                           column
                                           new-value)
 
-      (t2/insert! :model/TableEdit
-                  {:table_id  table_id
-                   :pk       row-pk
-                   :type      "edit"
-                   :old_value (pr-str old-row)
-                   :new_value (pr-str (assoc old-row column new-value))
-                   :delta     (pr-str {column value})})
-
-      (events/publish-event! :event/table-mutation-cell-update
-                             {:object-id field-id
-                              :object    {:field-id field-id
-                                          :table-id table_id
-                                          :pk    row-pk
-                                          :value-new value
-                                          ;; TODO get this
-                                          :value-old old-value}
-                              :user-id   (or api/*current-user-id* (t2/select-one-pk :model/User :is_superuser true))}))))
+      (track-cell-update! table_id row-pk field-id column old-row new-value))))
 
 (api.macros/defendpoint :put "/field/:field-id/:row-pk"
   "Update the given value in the underlying table."

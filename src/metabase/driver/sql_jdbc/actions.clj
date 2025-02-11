@@ -235,21 +235,31 @@
   [driver action database {database-id :database :keys [update-row] :as query}]
   (let [raw-hsql     (mbql-query->raw-hsql driver query)
         target-table (first (:from raw-hsql))
+        table-id     (get-in query [:query :source-table])
         update-hsql  (-> raw-hsql
                          (select-keys [:where])
                          (assoc :update target-table
-                                :set (cast-values driver update-row database-id (get-in query [:query :source-table])))
+                                :set (cast-values driver update-row database-id table-id))
                          (prepare-query driver action))
         sql-args     (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn database-id]
       ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-      (let [rows-updated (with-auto-parse-sql-exception driver database action
+      (let [get-row      #(first (jdbc/query {:connection conn} #p (sql.qp/format-honeysql driver raw-hsql)))
+            old-row      #p (get-row)
+            rows-updated (with-auto-parse-sql-exception driver database action
                            (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
         (when-not (= rows-updated 1)
           (throw (ex-info (if (zero? rows-updated)
                             (tru "Sorry, the row you''re trying to update doesn''t exist")
                             (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
                           {:staus-code 400})))
+
+        ;; this is really brittle, non-trivial models will also reference other fields
+        (let [pks (t2/select-fn-vec (comp keyword :name) :model/Field (first (mbql.u/referenced-field-ids (:query query))))]
+          ;; ... hence we have this limitation to avoid bad things happening
+          (when (= 1 (count pks))
+            (metabase.api.internal-tools/track-update! (get old-row (first pks)) table-id old-row (get-row))))
+
         {:rows-updated [1]}))))
 
 (defmulti select-created-row

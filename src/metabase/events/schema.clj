@@ -189,6 +189,13 @@
                                             (with-hydrate :table [:model/Table :name]))]]
                                       (-> [:user-id pos-int?]
                                           (with-hydrate :user user-hydrate))]
+   :event/table-mutation-updates [:map
+                                  [:object
+                                   [:map
+                                    (-> [:table-id pos-int?]
+                                        (with-hydrate :table [:model/Table :name]))]]
+                                  (-> [:user-id pos-int?]
+                                      (with-hydrate :user user-hydrate))]
    :event/table-mutation-row-insert [:map
                                      [:object
                                       [:map
