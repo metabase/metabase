@@ -479,7 +479,8 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
-  [:to_timestamp expr])
+  ;; without tagging the expression, other code will want to add a type
+  (h2x/with-database-type-info [:to_timestamp expr] "timestamptz"))
 
 (defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
