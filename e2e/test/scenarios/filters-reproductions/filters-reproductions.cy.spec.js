@@ -1750,7 +1750,7 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
     H.assertQueryBuilderRowCount(1);
   });
 
-  it("should be able to use dashboard number parameters with BigInteger columns that are table fields (metabase#5816)", () => {
+  it("should be able to use dashboard id parameters with BigInteger columns that are table fields (metabase#5816)", () => {
     cy.log("create a dashboard");
     H.createQuestionAndDashboard({
       questionDetails: idQuestionDetails,
