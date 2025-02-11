@@ -3,7 +3,7 @@ import { blue, green, yellow } from "chalk";
 import {
   CONTAINER_NAME,
   SAMPLE_CREDENTIALS_FILE_NAME,
-  SDK_NPM_LINK,
+  SDK_DOCS_LINK,
 } from "./config";
 
 export const SHOW_ON_STARTUP_MESSAGE = `
@@ -98,7 +98,7 @@ export const SETUP_PRO_LICENSE_MESSAGE = `
 `;
 
 export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK here: ${green(
-  SDK_NPM_LINK,
+  SDK_DOCS_LINK,
 )}`;
 
 export const CONTINUE_SETUP_ON_WARNING_MESSAGE = `Do you want to continue setup?`;
