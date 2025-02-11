@@ -69,9 +69,7 @@ The email address users should be referred to if they encounter a problem.
 
 Maximum number of rows to return for aggregated queries via the API.
 
-Must be less than 1048575. This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
-  This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
-  See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
+Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
@@ -1618,9 +1616,7 @@ Process batches updates synchronously. If true, all `submit!` calls will be proc
 
 Maximum number of rows to return specifically on :rows type queries via the API.
 
-Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT.
-        This environment variable also affects how many rows Metabase returns in dashboard subscription attachments.
-        See also MB_AGGREGATED_QUERY_ROW_LIMIT.
+Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT. See also MB_AGGREGATED_QUERY_ROW_LIMIT.
 
 ### `MB_UPDATE_CHANNEL`
 
