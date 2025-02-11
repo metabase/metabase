@@ -49,7 +49,7 @@
                    :old_value old-value
                    :new_value value})
 
-      (events/publish-event! :table.mutation/cell-update
+      (events/publish-event! :event/table-mutation-cell-update
                              {:object-id field-id
                               :object    {:field-id field-id
                                           :table-id table_id
@@ -108,7 +108,7 @@
     (qp.store/with-metadata-provider db_id
       (driver/execute-write-query! driver {:native {:query sql :params params}}))
 
-    (events/publish-event! :table.mutation/row-insert
+    (events/publish-event! :event/table-mutation-row-insert
                            {:object  {:table-id table-id
                                       :rows     rows}
                             :user-id api/*current-user-id*})
