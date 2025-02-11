@@ -153,7 +153,7 @@ export const ChartSettingFieldsPartition = ({
                   ref={provided.innerRef}
                   {...provided.draggableProps}
                   {...provided.dragHandleProps}
-                  className={CS.mb1}
+                  mb="0.5rem"
                 >
                   <Column
                     onEditFormatting={handleEditFormatting}
