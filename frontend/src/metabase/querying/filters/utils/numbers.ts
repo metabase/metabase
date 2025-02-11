@@ -1,6 +1,20 @@
+import type { NumberFilterValue } from "../types";
+
 const INTEGER_REGEX = /^[+-]?\d+$/;
 
-export function parseNumber(value: string): number | string | null {
+export function parseNumber(
+  value: string | number | boolean,
+): NumberFilterValue | null {
+  if (typeof value === "string") {
+    return parseNumberFromString(value);
+  }
+  if (typeof value === "number") {
+    return parseNumberFromNumber(value);
+  }
+  return null;
+}
+
+function parseNumberFromString(value: string): NumberFilterValue | null {
   const number = parseFloat(value);
   if (!Number.isFinite(number)) {
     return null;
@@ -17,4 +31,11 @@ export function parseNumber(value: string): number | string | null {
   }
 
   return number;
+}
+
+function parseNumberFromNumber(value: number): number | null {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  return value;
 }

@@ -1,4 +1,8 @@
-import type { DateFilterValue } from "metabase/querying/filters/types";
+import type {
+  DateFilterValue,
+  NumberFilterValue,
+} from "metabase/querying/filters/types";
+import { parseNumber } from "metabase/querying/filters/utils/numbers";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 import { deserializeDateParameterValue } from "./dates";
@@ -24,10 +28,10 @@ export function normalizeStringParameterValue(
 
 export function normalizeNumberParameterValue(
   value: ParameterValueOrArray | null | undefined,
-): number[] {
-  return normalizeArray(value).reduce((values: number[], item) => {
-    const number = typeof item === "number" ? item : parseFloat(String(item));
-    if (isFinite(number)) {
+): NumberFilterValue[] {
+  return normalizeArray(value).reduce((values: NumberFilterValue[], item) => {
+    const number = parseNumber(item);
+    if (number != null) {
       values.push(number);
     }
     return values;

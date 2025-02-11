@@ -1,4 +1,7 @@
-import type { DateFilterValue } from "metabase/querying/filters/types";
+import type {
+  DateFilterValue,
+  NumberFilterValue,
+} from "metabase/querying/filters/types";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 import {
@@ -30,7 +33,7 @@ describe("normalizeStringParameterValue", () => {
 
 type NumberParameterCase = {
   value: ParameterValueOrArray | null | undefined;
-  expectedValue: number[];
+  expectedValue: NumberFilterValue[];
 };
 
 describe("normalizeNumberParameterValue", () => {
@@ -49,6 +52,7 @@ describe("normalizeNumberParameterValue", () => {
     { value: "1.5", expectedValue: [1.5] },
     { value: [1, 2, 3], expectedValue: [1, 2, 3] },
     { value: ["1", "2", "3"], expectedValue: [1, 2, 3] },
+    { value: "9007199254740993", expectedValue: ["9007199254740993"] },
   ])("should normalize number parameter value", ({ value, expectedValue }) => {
     expect(normalizeNumberParameterValue(value)).toEqual(expectedValue);
   });

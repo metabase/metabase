@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import NumericInput from "metabase/core/components/NumericInput";
 import CS from "metabase/css/core/index.css";
-import { parseNumberValue } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
@@ -13,11 +12,16 @@ import {
   WidgetLabel,
   WidgetRoot,
 } from "metabase/parameters/components/widgets/Widget.styled";
+import { normalizeNumberParameterValue } from "metabase/querying/parameters/utils/normalize";
 import { MultiAutocomplete } from "metabase/ui";
-import type { Parameter, ParameterValue } from "metabase-types/api";
+import type {
+  Parameter,
+  ParameterValue,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 
 export type NumberInputWidgetProps = {
-  value: number[] | undefined;
+  value: ParameterValueOrArray | undefined;
   setValue: (value: number[] | undefined) => void;
   className?: string;
   arity?: "n" | number;
@@ -39,9 +43,9 @@ export function NumberInputWidget({
   label,
   parameter,
 }: NumberInputWidgetProps) {
-  const arrayValue = normalize(value);
+  const arrayValue = normalizeNumberParameterValue(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
-    useState<(number | undefined)[]>(arrayValue);
+    useState<(number | string | undefined)[]>(arrayValue);
 
   const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
   const allValuesSet = unsavedArrayValue.every(_.isNumber);
@@ -95,12 +99,11 @@ export function NumberInputWidget({
     option => option.label !== option.value,
   );
 
-  function parseValue(value: string | number | undefined): number | null {
-    if (value === undefined) {
-      return null;
-    }
-
-    return parseNumberValue(value);
+  function parseValue(
+    value: string | number | undefined,
+  ): string | number | null {
+    const values = normalizeNumberParameterValue(value);
+    return values.length > 0 ? values[0] : null;
   }
 
   function shouldCreate(value: string | number) {
@@ -167,14 +170,6 @@ export function NumberInputWidget({
       </Footer>
     </WidgetRoot>
   );
-}
-
-function normalize(value: number[] | undefined): (number | undefined)[] {
-  if (Array.isArray(value)) {
-    return value;
-  } else {
-    return [];
-  }
 }
 
 type SelectItem = {

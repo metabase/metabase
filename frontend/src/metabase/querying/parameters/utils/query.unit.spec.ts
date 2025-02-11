@@ -159,6 +159,12 @@ describe("applyParameter", () => {
         expectedDisplayName: "Total is equal to 10.2",
       },
       {
+        type: "number/=",
+        target: getFilterColumnTarget("ORDERS", "ID"),
+        value: "9007199254740993",
+        expectedDisplayName: "ID is 9007199254740993",
+      },
+      {
         type: "string/=", // category filter
         target: getFilterColumnTarget("ORDERS", "QUANTITY"),
         value: 10,
