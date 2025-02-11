@@ -345,7 +345,7 @@
                                                 pulse.test-util/xls-attachment]})
                 (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
-#_(deftest ensure-constraints-test
+(deftest ensure-constraints-test
   (testing "Validate pulse queries are limited by `default-query-constraints`"
     (do-test!
      {:card
@@ -354,7 +354,7 @@
 
       :fixture
       (fn [_ thunk]
-        (mt/with-temporary-setting-values [public-settings/download-row-limit 30]
+        (mt/with-temporary-setting-values [public-settings/attachment-row-limit 30]
           (thunk)))
       :pulse-card {:include_csv true}
       :assert

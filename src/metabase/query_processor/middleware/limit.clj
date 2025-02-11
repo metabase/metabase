@@ -30,19 +30,24 @@
     (= context :xlsx-download)))
 
 (defn determine-query-max-rows
-  "Given a `query`, return the max rows that should be returned. This is either:
+  "Given a `query`, return the max rows that should be returned. This is the minimum of:
   1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query
-  2. the value of `pubic-settings/download-row-limit`
-     a. if it is less than [[metabase.query-processor.interface/absolute-max-results]] or
-     b. if it is greater and the export is NOT xlsx otherwise,
-  3. [[metabase.query-processor.interface/absolute-max-results]] (a constant, non-nil backstop value)"
+  2. the value of `public-settings/download-row-limit` if this is for a download
+  3. the value of `public-settings/attachment-row-limit` if this is for a dashboard subscription
+  4. [[metabase.query-processor.interface/absolute-max-results]] (a constant, non-nil backstop value)"
   [query]
   (when-not (disable-max-results? query)
-    (cond-> (or (mbql.u/query->max-rows-limit query)
-                (public-settings/download-row-limit)
-                qp.i/absolute-max-results)
-      (xlsx-export? query)
-      (min qp.i/absolute-max-results))))
+    (let [context (-> query :info :context)
+          download-limit (if (clojure.string/includes? (str context) "download") ;; csv, json, xlsx
+                           (public-settings/download-row-limit)
+                           Integer/MAX_VALUE)
+          attachment-limit (if (= context :dashboard-subscription)
+                             (public-settings/attachment-row-limit)
+                             Integer/MAX_VALUE)]
+      (min (mbql.u/query->max-rows-limit query)
+           download-limit
+           attachment-limit
+           qp.i/absolute-max-results))))
 
 (defn add-default-limit
   "Pre-processing middleware. Add default `:limit` to MBQL queries without any aggregations."
