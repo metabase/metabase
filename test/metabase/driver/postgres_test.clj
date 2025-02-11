@@ -1683,6 +1683,7 @@
         (testing (str "field " (name field) " for temporal bucket " (name bin))
           (let [field-md (lib.metadata/field mp (mt/id :people field))
                 unbinned-query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                                   (lib/with-fields [field-md])
                                    (lib/limit 1))
                 unbinned-type-query (type-query unbinned-query field)
                 binned-query (-> unbinned-query
