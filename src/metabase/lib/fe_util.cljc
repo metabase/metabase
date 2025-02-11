@@ -292,7 +292,7 @@
        (lat-col-ref :guard coordinate-col?)
        (lon-col-ref :guard coordinate-col?)
        & (args :guard #(and (every? number-arg? %) (= (count %) 4)))]
-      {:operator op :column (ref->col lat-col-ref) :longitude-column (ref->col lon-col-ref) :values args}
+      {:operator op, :column (ref->col lat-col-ref), :longitude-column (ref->col lon-col-ref), :values args}
 
       ;; do not match inner clauses
       _
