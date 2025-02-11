@@ -16,19 +16,19 @@
     :model/ApiKey                            metabase.models.api-key
     :model/ApplicationPermissionsRevision    metabase.models.application-permissions-revision
     :model/AuditLog                          metabase.models.audit-log
-    :model/BookmarkOrdering                  metabase.models.bookmark
+    :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.models.cache-config
     :model/Card                              metabase.models.card
-    :model/CardBookmark                      metabase.models.bookmark
+    :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
     :model/CloudMigration                    metabase.models.cloud-migration
     :model/Collection                        metabase.models.collection
-    :model/CollectionBookmark                metabase.models.bookmark
+    :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.models.collection-permission-graph-revision
     :model/ConnectionImpersonation           metabase-enterprise.advanced-permissions.models.connection-impersonation
     :model/Dashboard                         metabase.models.dashboard
-    :model/DashboardBookmark                 metabase.models.bookmark
+    :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.models.dashboard-card
     :model/DashboardCardSeries               metabase.models.dashboard-card-series
     :model/DashboardTab                      metabase.models.dashboard-tab
@@ -69,7 +69,7 @@
     :model/QueryExecution                    metabase.models.query-execution
     :model/QueryField                        metabase.models.query-field
     :model/QueryTable                        metabase.models.query-table
-    :model/RecentViews                       metabase.models.recent-views
+    :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/Revision                          metabase.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.models.secret
