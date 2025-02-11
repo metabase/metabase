@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.email :as email]
+   [metabase.config :as config]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]
@@ -56,19 +57,12 @@
             ;; This will block the calling thread (i.e. the test) waiting for the promise to be delivered. There is a
             ;; very high timeout (30 seconds) that we should never reach, but without it, if we do hit that scenario, it
             ;; should at least not hang forever in CI
-            promise-value (deref p 30000 ::timeout)]
+            promise-value (deref p (cond-> 30000 config/is-dev? (/ 10)) ::timeout)]
         (if (= promise-value ::timeout)
           (throw (Exception. "Timed out while waiting for messages in the inbox"))
           result))
       (finally
         (remove-watch inbox ::inbox-watcher)))))
-
-(defmacro with-expected-messages
-  "Invokes `body`, waiting until `n` messages are found in the inbox before returning. This is useful if the code you
-  are testing sends emails via a future or background thread. Using this will block the test, waiting for the messages
-  to arrive before continuing."
-  [n & body]
-  `(do-with-expected-messages ~n (fn [] ~@body)))
 
 (defn do-with-fake-inbox!
   "Impl for `with-fake-inbox` macro; prefer using that rather than calling this directly."
@@ -94,6 +88,14 @@
   [& body]
   {:style/indent 0}
   `(do-with-fake-inbox! (fn [] ~@body)))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-expected-messages
+  "Invokes `body`, waiting until `n` messages are found in the inbox before returning. This is useful if the code you
+  are testing sends emails via a future or background thread. Using this will block the test, waiting for the messages
+  to arrive before continuing."
+  [n & body]
+  `(do-with-expected-messages ~n (fn [] ~@body)))
 
 (defn- create-email-body->regex-fn
   "Returns a function expecting the email body structure. It will apply the regexes in `regex-seq` over the body and

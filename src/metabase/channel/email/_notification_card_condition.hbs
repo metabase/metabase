@@ -1,0 +1,11 @@
+{{#if (equals send_condition "has_result")}}
+  whenever this question has any results
+{{else}}
+  {{#if (equals send_condition "goal_above")}}
+    when this question meets its goal
+  {{else}}
+    {{#if (equals send_condition "goal_below")}}
+      when this question goes below its goal
+    {{/if}}
+  {{/if}}
+{{/if}} 

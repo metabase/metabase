@@ -909,7 +909,7 @@
 
 (deftest empty-dashboard-test
   (testing "A completely empty dashboard should still send an email"
-    (notification.tu/with-notification-testing-setup
+    (notification.tu/with-notification-testing-setup!
       (mt/dataset test-data
         (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Completely empty dashboard"}
                        :model/Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"

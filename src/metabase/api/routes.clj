@@ -27,6 +27,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.model-index]
    [metabase.api.native-query-snippet]
+   [metabase.api.notification]
+   [metabase.api.notification.unsubscribe]
    [metabase.api.open-api :as open-api]
    [metabase.api.persist]
    [metabase.api.premium-features]
@@ -133,6 +135,12 @@
     {"/unsubscribe" 'metabase.api.pulse.unsubscribe})
    (+auth metabase.api.pulse/routes)))
 
+(def ^:private ^{:arglists '([request respond raise])} notification-routes
+  (handlers/routes
+   (handlers/route-map-handler
+    {"/unsubscribe" 'metabase.api.notification.unsubscribe})
+   (+auth 'metabase.api.notification)))
+
 ;;; ↓↓↓ KEEP THIS SORTED OR ELSE! ↓↓↓
 (def ^:private route-map
   {"/action"               (+auth 'metabase.api.action)
@@ -161,6 +169,7 @@
    "/login-history"        (+auth 'metabase.api.login-history)
    "/model-index"          (+auth 'metabase.api.model-index)
    "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
+   "/notification"         notification-routes
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.permissions.api)
    "/persist"              (+auth 'metabase.api.persist)
