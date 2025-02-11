@@ -63,7 +63,6 @@
 
 (defn generate-report
   [iteration-index iteration-seed ^Exception e]
-  (def eee e)
   (let [toplevel (ex->map e)]
     (merge 
      {:type (-> toplevel :data :type)
@@ -76,7 +75,7 @@
      (select-keys (:data toplevel) [:form :bindings])
      {:chain (process-exception-chain (ex-cause e))})))
 
-;; TODO: Add override
+;; TODO: Add override from repl and workflow
 (defn limit-spec->limit-fn
   [limit-spec]
   (or (and (map? limit-spec)
