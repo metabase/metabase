@@ -481,6 +481,7 @@
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/card [:map
                          [:payload ::NotificationCard]]]
+    [:notification/system-event [:map]]
     [::mc/default       :any]]])
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
@@ -519,7 +520,7 @@
   Return the created notification."
   [notification subscriptions handlers+recipients]
   (t2/with-transaction [_conn]
-    (let [payload-id      (case (:payload_type notification)
+    (let [payload-id      (case (keyword (:payload_type notification))
                             (:notification/system-event :notification/testing)
                             nil
                             :notification/card
