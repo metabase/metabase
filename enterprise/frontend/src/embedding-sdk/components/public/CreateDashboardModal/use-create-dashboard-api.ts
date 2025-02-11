@@ -1,14 +1,16 @@
 import { useCallback } from "react";
 
 import { useSdkStore } from "embedding-sdk/store";
+import {
+  type SDKCollectionId,
+  getNumericCollectionId,
+} from "embedding-sdk/store/collections";
 import { useCreateDashboardMutation } from "metabase/api";
 import type { CreateDashboardProperties } from "metabase/dashboard/containers/CreateDashboardForm";
-import Collections from "metabase/entities/collections";
-import type { CollectionId } from "metabase-types/api";
 
 export interface CreateDashboardValues
   extends Omit<CreateDashboardProperties, "collection_id"> {
-  collectionId: CollectionId | null;
+  collectionId: SDKCollectionId | null;
 }
 
 export const useCreateDashboardApi = () => {
@@ -18,14 +20,15 @@ export const useCreateDashboardApi = () => {
 
   const handleCreateDashboard = useCallback(
     async (values: CreateDashboardValues) => {
-      const initialCollectionId = Collections.selectors.getInitialCollectionId(
+      const { collectionId, ...rest } = values;
+      const numericCollectionId = getNumericCollectionId(
         store.getState(),
-        values,
-      ) as CollectionId;
+        collectionId,
+      );
 
       return createDashboard({
-        ...values,
-        collection_id: values.collectionId ?? initialCollectionId,
+        ...rest,
+        collection_id: numericCollectionId,
       }).unwrap();
     },
     [createDashboard, store],
