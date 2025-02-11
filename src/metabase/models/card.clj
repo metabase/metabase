@@ -23,19 +23,17 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
-   [metabase.models.permissions :as perms]
    [metabase.models.pulse :as models.pulse]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis.core :as query-analysis]
@@ -74,9 +72,30 @@
 (doto :model/Card
   (derive :metabase/model)
   ;; You can read/write a Card if you can read/write its parent Collection
-  (derive ::perms/use-parent-collection-perms)
+  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+;;; TODO -- this should be part of `can-write?`/`can-update?` and be done automatically
+(defn check-run-permissions-for-query
+  "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
+  queries they wouldn't be allowed to run!"
+  [query]
+  {:pre [(map? query)]}
+  (when-not (query-perms/can-run-query? query)
+    (let [required-perms (try
+                           (query-perms/required-perms-for-query query :throw-exceptions? true)
+                           (catch Throwable e
+                             e))]
+      (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
+                      {:status-code    403
+                       :query          query
+                       :required-perms (if (instance? Throwable required-perms)
+                                         :error
+                                         required-perms)
+                       :actual-perms   @api/*current-user-permissions-set*}
+                      (when (instance? Throwable required-perms)
+                        required-perms))))))
 
 (defmethod mi/can-write? :model/Card
   ([instance]
@@ -244,7 +263,7 @@
    (fn [card]
      (assoc card
             :can_manage_db
-            (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes (:database_id card))))
+            (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes (:database_id card))))
    cards))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
@@ -305,30 +324,6 @@
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
-
-;;; --------------------------------------------------- Revisions ----------------------------------------------------
-
-(def ^:private excluded-columns-for-card-revision
-  [:id :created_at :updated_at :last_used_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version
-   :initially_published_at :cache_invalidated_at :view_count])
-
-(defmethod revision/revert-to-revision! :model/Card
-  [model id user-id serialized-card]
-  ;; make sure we handle < 50 cards that had `:dataset` instead of `:type`
-  (let [serialized-card (cond-> serialized-card
-                          (contains? serialized-card :dataset) (-> (dissoc :dataset)
-                                                                   (assoc :type (if (:dataset serialized-card) :model :question))))]
-    ((get-method revision/revert-to-revision! :default) model id user-id serialized-card)))
-
-(defmethod revision/serialize-instance :model/Card
-  ([instance]
-   (revision/serialize-instance :model/Card nil instance))
-  ([_model _id instance]
-   (cond-> (apply dissoc instance excluded-columns-for-card-revision)
-     ;; datasets should preserve edits to metadata
-     ;; the type check only needed in tests because most test object does not include `type` key
-     (and (some? (:type instance)) (not (model? instance)))
-     (dissoc :result_metadata))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 

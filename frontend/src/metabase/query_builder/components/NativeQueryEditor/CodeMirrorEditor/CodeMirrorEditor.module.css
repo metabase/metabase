@@ -35,7 +35,7 @@
       vertical-align: baseline;
       display: flex;
       align-items: center;
-      justify-content: end;
+      justify-content: flex-end;
 
       span[title="Fold line"] {
         position: relative;
@@ -148,7 +148,6 @@
       color: var(--mb-color-saturated-purple);
     }
 
-    .cm-token-name,
     .cm-token-function,
     .cm-token-variable {
       color: var(--mb-color-saturated-blue);
@@ -175,6 +174,7 @@
       font-style: italic;
     }
 
+    .cm-token-brace,
     .cm-token-squareBracket {
       color: var(--mb-color-brand);
     }

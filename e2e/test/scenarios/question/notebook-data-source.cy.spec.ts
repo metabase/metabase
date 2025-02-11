@@ -21,7 +21,6 @@ describe("scenarios > notebook > data source", () => {
       "should display tables from the only existing database by default",
       { tags: "@OSS" },
       () => {
-        H.onlyOnOSS();
         cy.visit("/");
         cy.findByTestId("app-bar").findByText("New").click();
         H.popover().findByTextEnsureVisible("Question").click();
@@ -336,7 +335,6 @@ describe("scenarios > notebook > data source", () => {
 
 describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore("setup");
     cy.signInAsAdmin();
   });
@@ -450,7 +448,6 @@ describe("issue 28106", () => {
 // Needs to be OSS because EE will always have models due to instance analytics
 describe("issue 32252", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore("setup");
     cy.signInAsAdmin();
 

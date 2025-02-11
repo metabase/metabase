@@ -12,20 +12,20 @@ Some common problems when setting up SAML.
 
 Verify that the application you created in your IdP supports SAML. Sometimes other options are presented during the app creation process.
 
-## Is the issuer or entity ID correct?
+## Is the issuer or Entity ID correct?
 
 After filling out the authentication form with your identity provider, you're taken back to Metabase but it throws an error. To see the error, go to **Admin settings** > **Troubleshooting** > **Logs**. You'll see an error that says something like **Incorrect response <issuer\>**.
 
-**Root cause**: Your issuer or entity ID is incorrect.
+**Root cause**: Your issuer or Entity ID is incorrect.
 
 **Steps to take**:
 
-1. You should have received an XML file of metadata from your identity provider. Open that metadata file, and look for the correct issuer or entity ID. This ID is a unique identifier for the identity provider. Depending on your provider, the issuer or entity ID usually looks something like this:
+1. You should have received an XML file of metadata from your identity provider. Open that metadata file, and look for the correct issuer or Entity ID. This ID is a unique identifier for the identity provider. Depending on your provider, the issuer or Entity ID usually looks something like this:
    ```
    http://www.example.com/141xkex604w0Q5PN724v
    ```
-2. Copy the issuer or entity ID from the XML file.
-3. Go to Metabase and select **Admin settings** > **Settings** > **Authentication** > **SAML**. Enter the issuer or entity ID into the **SAML Identity Provider Issuer** field.
+2. Copy the issuer or Entity ID from the XML file.
+3. Go to Metabase and select **Admin settings** > **Settings** > **Authentication** > **SAML**. Enter the issuer or Entity ID into the **SAML Identity Provider Issuer** field.
 
 ## Is the SAML identity provider certificate value correct?
 

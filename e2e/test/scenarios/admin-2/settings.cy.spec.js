@@ -1,4 +1,5 @@
 const { H } = cy;
+const { IS_ENTERPRISE } = Cypress.env();
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -21,7 +22,6 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     "should prompt admin to migrate to a hosted instance",
     { tags: "@OSS" },
     () => {
-      H.onlyOnOSS();
       cy.visit("/admin/settings/setup");
 
       cy.findByTestId("upsell-card").findByText(/Migrate to Metabase Cloud/);
@@ -279,9 +279,9 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
     { tags: "@OSS" },
     () => {
-      H.isEE && H.setTokenFeatures("all");
+      IS_ENTERPRISE && H.setTokenFeatures("all");
 
-      const lastItem = H.isOSS ? "Cloud" : "Appearance";
+      const lastItem = !IS_ENTERPRISE ? "Cloud" : "Appearance";
 
       cy.visit("/admin/settings/setup");
       cy.findByTestId("admin-list-settings-items").within(() => {
@@ -339,7 +339,6 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
 
 describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore();
     cy.signInAsAdmin();
   });
@@ -353,7 +352,7 @@ describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   });
 });
 
-H.describeEE("scenarios > admin > settings (EE)", () => {
+describe("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -688,7 +687,7 @@ describe("scenarios > admin > license and billing", () => {
     cy.signInAsAdmin();
   });
 
-  H.describeEE("store info", () => {
+  describe("store info", () => {
     it("should show the user a link to the store for an unlincensed enterprise instance", () => {
       cy.visit("/admin/settings/license");
       cy.findByTestId("license-and-billing-content")

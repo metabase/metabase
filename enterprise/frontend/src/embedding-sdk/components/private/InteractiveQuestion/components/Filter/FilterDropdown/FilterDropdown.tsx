@@ -11,7 +11,6 @@ import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import type { FilterColumnPickerProps } from "metabase/querying/filters/components/FilterPicker/FilterColumnPicker";
 import type { PopoverProps } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../../../context";
 import { ToolbarButton } from "../../util/ToolbarButton";
@@ -24,7 +23,7 @@ const FilterDropdownInner = ({
   query,
   withColumnItemIcon,
   ...popoverProps
-}: UpdateQueryHookProps &
+}: Pick<UpdateQueryHookProps, "query"> &
   FilterProps &
   Omit<PopoverProps, "children" | "onClose" | "opened">) => {
   const filters = useMemo(() => getFilterItems(query), [query]);
@@ -92,21 +91,15 @@ const FilterDropdownInner = ({
 };
 
 export const FilterDropdown = ({ withColumnItemIcon }: FilterProps) => {
-  const { question, updateQuestion } = useInteractiveQuestionContext();
+  const { question } = useInteractiveQuestionContext();
 
   if (!question) {
     return null;
   }
 
-  const onQueryChange = (query: Lib.Query) => {
-    updateQuestion(question.setQuery(query), { run: true });
-  };
-
   return (
     <FilterDropdownInner
       query={question.query()}
-      stageIndex={-1}
-      onQueryChange={onQueryChange}
       withColumnItemIcon={withColumnItemIcon}
     />
   );

@@ -134,6 +134,8 @@ Question, dashboard and database performance. Cards include:
 - Dashboards with more questions in the same tab
 - Users consuming the most resources
 
+> If you're using MySQL or MariaDB as your application database, the Performance overview dashboard won't display results for the cards displaying the 50th and 90th percentile query running times, because MySQL and MariaDB don't support the [Percentile aggregation](../questions/query-builder/expressions-list.md#percentile). We recommend using PostgreSQL as your application database.
+
 ### Content with cobwebs dashboard
 
 Dashboards and questions that you could consider archiving. Cards include:
