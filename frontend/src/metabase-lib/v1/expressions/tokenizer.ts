@@ -31,7 +31,10 @@ export enum OPERATOR {
   False = "false",
 }
 
-const parseOperator = (expression: string, index: number) => {
+const parseOperator = (
+  expression: string,
+  index: number,
+): OPERATOR | undefined => {
   const character = expression[index];
 
   switch (character) {
@@ -43,27 +46,30 @@ const parseOperator = (expression: string, index: number) => {
     case OPERATOR.Star:
     case OPERATOR.Slash:
     case OPERATOR.Equal:
-      return expression.substring(index, index + 1);
+      return expression.substring(index, index + 1) as OPERATOR;
 
     case OPERATOR.LessThan:
     case OPERATOR.GreaterThan:
       if (expression[index + 1] === OPERATOR.Equal) {
         // OPERATOR.LessThanEqual (<=) or
         // OPERATOR.GreaterThanEqual (>=)
-        return expression.substring(index, index + 2);
+        return expression.substring(index, index + 2) as OPERATOR;
       }
 
-      return expression.substring(index, index + 1);
+      return expression.substring(index, index + 1) as OPERATOR;
 
     case "!":
       if (expression[index + 1] === OPERATOR.Equal) {
         // OPERATOR.NotEqual (!=)
-        return expression.substring(index, index + 2);
+        return expression.substring(index, index + 2) as OPERATOR;
       }
   }
 
   return undefined;
 };
+
+type TokenWithError = Token & { error: string | null };
+type Scanner = () => TokenWithError | null;
 
 export function tokenize(expression: string): {
   tokens: Token[];
@@ -116,7 +122,7 @@ export function tokenize(expression: string): {
     }
   };
 
-  const scanOperator = () => {
+  const scanOperator: Scanner = () => {
     const start = index;
     const op = parseOperator(source, start);
 
@@ -187,7 +193,7 @@ export function tokenize(expression: string): {
     return { type, start, end, error };
   };
 
-  const scanStringLiteral = () => {
+  const scanStringLiteral: Scanner = () => {
     const start = index;
     const quote = source[start];
     if (quote !== "'" && quote !== '"') {
@@ -247,7 +253,7 @@ export function tokenize(expression: string): {
     return { type, value, start, end: index, error };
   };
 
-  const scanBracketIdentifier = () => {
+  const scanBracketIdentifier: Scanner = () => {
     const start = index;
     const bracket = source[start];
     if (bracket !== "[") {
@@ -321,7 +327,7 @@ export function tokenize(expression: string): {
     cp === 0x2e || // dot
     cp === 0x5f; // underscore
 
-  const scanIdentifier = () => {
+  const scanIdentifier: Scanner = () => {
     const start = index;
     const initial = source.charCodeAt(start);
     if (!isIdentifierStart(initial)) {
@@ -367,14 +373,15 @@ export function tokenize(expression: string): {
   };
 
   const main = () => {
-    const tokens = [],
-      errors = [];
+    const tokens: Token[] = [];
+    const errors: ErrorWithMessage[] = [];
+
     while (index < length) {
       skipWhitespaces();
       const token = scanToken();
       if (token) {
         const { error, ...t } = token;
-        tokens.push(t);
+        tokens.push(t as Token);
         if (error) {
           const message = error;
           const pos = t.start;

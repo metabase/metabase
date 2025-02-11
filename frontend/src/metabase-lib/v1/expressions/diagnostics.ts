@@ -32,8 +32,10 @@ import {
 
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
 export function countMatchingParentheses(tokens: Token[]) {
-  const isOpen = (t: Token) => t.op === OPERATOR.OpenParenthesis;
-  const isClose = (t: Token) => t.op === OPERATOR.CloseParenthesis;
+  const isOpen = (t: Token) =>
+    t.type === TOKEN.Operator && t.op === OPERATOR.OpenParenthesis;
+  const isClose = (t: Token) =>
+    t.type === TOKEN.Operator && t.op === OPERATOR.CloseParenthesis;
   const count = (c: number, token: Token) =>
     isOpen(token) ? c + 1 : isClose(token) ? c - 1 : c;
   return tokens.reduce(count, 0);
@@ -73,7 +75,10 @@ export function diagnose({
       const clause = fn ? MBQL_CLAUSES[fn] : null;
       if (clause && clause.args.length > 0) {
         const next = tokens[i + 1];
-        if (next.op !== OPERATOR.OpenParenthesis) {
+        if (
+          next.type !== TOKEN.Operator ||
+          next.op !== OPERATOR.OpenParenthesis
+        ) {
           return {
             message: t`Expecting an opening parenthesis after function ${functionName}`,
           };
