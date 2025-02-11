@@ -117,6 +117,25 @@
                                     :rows     rows}
                           :user-id (or api/*current-user-id* (t2/select-one-pk :model/User :is_superuser true))}))
 
+(defn track-delete! [table-id pks pk+old-rows]
+  (let [pk-name (keyword (:name (first pks)))]
+    (doseq [old-row #p pk+old-rows
+            :let [row-pk (get old-row pk-name)]]
+
+      (t2/insert! :model/TableEdit
+                  {:table_id  table-id
+                   :pk        row-pk
+                   :type      "delete"
+                   :old_value (pr-str old-row)
+                   :new_value nil
+                   :delta     nil})
+
+      (events/publish-event! :event/table-mutation-row-delete
+                             {:object  {:table-id table-id
+                                        :pk       row-pk
+                                        :row      old-row}
+                              :user-id (or api/*current-user-id* (t2/select-one-pk :model/User :is_superuser true))}))))
+
 (defn delete-row! [table-id row-pk]
   (let [{table :name :keys [db_id schema]} (api/check-404 (t2/select-one :model/Table table-id))
         pks    (t2/select :model/Field :table_id table-id :semantic_type :type/PK)
@@ -140,22 +159,7 @@
                                          (:name (first pks))
                                          row-pk)
 
-        ;; hacky audit trail
-        (let [pk-name (keyword (:name (first pks)))
-              row-pk  (get old-row pk-name)]
-          (t2/insert! :model/TableEdit
-                      {:table_id  table-id
-                       :pk        row-pk
-                       :type      "delete"
-                       :old_value (pr-str old-row)
-                       :new_value nil
-                       :delta     nil}))
-
-        (events/publish-event! :event/table-mutation-row-delete
-                               {:object  {:table-id table-id
-                                          :pk       row-pk
-                                          :row      old-row}
-                                :user-id (or api/*current-user-id* (t2/select-one-pk :model/User :is_superuser true))})))))
+        (track-delete! table-id pks [old-row])))))
 
 (api.macros/defendpoint :delete "/table/:table-id/:row-pk"
   [{:keys [table-id row-pk]} :- [:map

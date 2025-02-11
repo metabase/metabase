@@ -11,10 +11,12 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -22,7 +24,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection SQLException)))
 
@@ -213,13 +216,17 @@
         sql-args    (sql.qp/format-honeysql driver delete-hsql)]
     (with-jdbc-transaction [conn database-id]
       ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-      (let [rows-deleted (with-auto-parse-sql-exception driver database action
+      (let [old-rows     (jdbc/query {:connection conn} (sql.qp/format-honeysql driver raw-hsql))
+            rows-deleted (with-auto-parse-sql-exception driver database action
                            (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
         (when-not (= rows-deleted 1)
           (throw (ex-info (if (zero? rows-deleted)
                             (tru "Sorry, the row you''re trying to delete doesn''t exist")
                             (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
-                          {:staus-code 400})))
+                          {:status-code 400})))
+        (metabase.api.internal-tools/track-delete! (:source-table (:query query))
+                                                   (t2/select-fn-vec (comp keyword :name) :model/Field (first (mbql.u/referenced-field-ids (:query query))))
+                                                   old-rows)
         {:rows-deleted [1]}))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
