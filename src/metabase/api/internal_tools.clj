@@ -68,7 +68,7 @@
       (t2/insert! :model/CellEdit
                   {:table_id  table_id
                    :field_id  field-id
-                   :pk        row-pk
+                   :pk       row-pk
                    :old_value old-value
                    :new_value value})
 
@@ -92,6 +92,21 @@
   (update-cell! field-id row-pk value))
 
 (defn- track-insert! [table-id rows]
+  (let [pks (t2/select :model/Field :table_id table-id :semantic_type :type/PK)]
+    ;; only track hacky audit trail if there's a single PK
+    (when (= 1 (count pks))
+      (let [pk-name (keyword (:name (first pks)))]
+        (doseq [r rows
+                :let [row-pk (get r pk-name)]
+                [k v] r
+                :when (not= k pk-name)]
+          (t2/insert! :model/CellEdit
+                      {:table_id  table-id
+                       :field_id  (t2/select-one-pk :model/Field :table_id table-id :name k)
+                       :pk        row-pk
+                       :old_value nil
+                       :new_value v})))))
+
   (events/publish-event! :event/table-mutation-row-insert
                          {:object  {:table-id table-id
                                     :rows     rows}
