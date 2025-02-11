@@ -1649,7 +1649,9 @@ describe("issue 44665", () => {
 });
 
 describe("issue 5816", () => {
-  const nativeQuestionDetails = {
+  const filterValue = "9007199254740993";
+
+  const sourceQuestionDetails = {
     name: "BIGINT data source",
     native: {
       query: `SELECT CAST('9007199254740992' AS BIGINT) AS BIGINT
@@ -1661,28 +1663,7 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
     display: "table",
   };
 
-  const ordersQuestionDetails = {
-    name: "Orders, Count",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-    },
-    display: "scalar",
-  };
-
-  const parameterDetails = {
-    id: "b6ed2d71",
-    type: "number/=",
-    name: "Equals",
-    slug: "equals",
-    sectionId: "number",
-  };
-
-  const dashboardDetails = {
-    parameters: [parameterDetails],
-  };
-
-  const getBigIntQuestionDetails = cardId => ({
+  const getNumberQuestionDetails = cardId => ({
     name: "BIGINT, Count",
     query: {
       "source-table": `card__${cardId}`,
@@ -1691,25 +1672,56 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
     display: "scalar",
   });
 
-  const getOrdersQuestionParameterMapping = cardId => ({
-    card_id: cardId,
-    parameter_id: parameterDetails.id,
-    target: [
-      "dimension",
-      ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-    ],
-  });
+  const numberParameterDetails = {
+    id: "b6ed2d71",
+    type: "number/=",
+    name: "Equals",
+    slug: "equals",
+    sectionId: "number",
+  };
 
-  const getBigIntQuestionParameterMapping = cardId => ({
+  const numberDashboardDetails = {
+    parameters: [numberParameterDetails],
+  };
+
+  const getNUmberQuestionParameterMapping = cardId => ({
     card_id: cardId,
-    parameter_id: parameterDetails.id,
+    parameter_id: numberParameterDetails.id,
     target: [
       "dimension",
       ["field", "BIGINT", { "base-type": "type/BigInteger" }],
     ],
   });
 
-  const filterValue = "9007199254740993";
+  const idQuestionDetails = {
+    name: "Orders, Count",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+    },
+    display: "scalar",
+  };
+
+  const idParameterDetails = {
+    id: "b6ed2d72",
+    type: "id",
+    name: "ID",
+    slug: "id",
+    sectionId: "id",
+  };
+
+  const idDashboardDetails = {
+    parameters: [idParameterDetails],
+  };
+
+  const getIdQuestionParameterMapping = cardId => ({
+    card_id: cardId,
+    parameter_id: idParameterDetails.id,
+    target: [
+      "dimension",
+      ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+    ],
+  });
 
   beforeEach(() => {
     H.restore();
@@ -1717,7 +1729,7 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
   });
 
   it("should be able to filter on a BigInteger column in the QB (metabase#5816)", () => {
-    H.createNativeQuestion(nativeQuestionDetails, { visitQuestion: true });
+    H.createNativeQuestion(sourceQuestionDetails, { visitQuestion: true });
     H.queryBuilderHeader().findByText("Explore results").click();
     H.assertQueryBuilderRowCount(3);
     H.openNotebook();
@@ -1741,16 +1753,14 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
   it("should be able to use dashboard number parameters with BigInteger columns that are table fields (metabase#5816)", () => {
     cy.log("create a dashboard");
     H.createQuestionAndDashboard({
-      questionDetails: ordersQuestionDetails,
-      dashboardDetails,
+      questionDetails: idQuestionDetails,
+      dashboardDetails: idDashboardDetails,
     }).then(({ body: dashcard }) => {
       H.addOrUpdateDashboardCard({
         dashboard_id: dashcard.dashboard_id,
         card_id: dashcard.card_id,
         card: {
-          parameter_mappings: [
-            getOrdersQuestionParameterMapping(dashcard.card_id),
-          ],
+          parameter_mappings: [getIdQuestionParameterMapping(dashcard.card_id)],
         },
       });
       cy.wrap(dashcard.dashboard_id).as("dashboardId");
@@ -1763,7 +1773,7 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
       .should("have.text", "18,760");
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByPlaceholderText("Enter a number").type(filterValue);
+      cy.findByPlaceholderText("Enter an ID").type(filterValue);
       cy.button("Add filter").click();
     });
     H.filterWidget().findByText(filterValue).should("be.visible");
@@ -1777,7 +1787,7 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
     cy.log("querystring parameter values");
     H.visitDashboard("@dashboardId", {
       params: {
-        [parameterDetails.slug]: filterValue,
+        [idParameterDetails.slug]: filterValue,
       },
     });
     H.filterWidget().findByText(filterValue).should("be.visible");
@@ -1786,17 +1796,17 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
 
   it("should be able to use dashboard number parameters with BigInteger columns that are not table fields (metabase#5816)", () => {
     cy.log("create a dashboard");
-    H.createNativeQuestion(nativeQuestionDetails).then(({ body: card }) => {
+    H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
       H.createQuestionAndDashboard({
-        questionDetails: getBigIntQuestionDetails(card.id),
-        dashboardDetails,
+        questionDetails: getNumberQuestionDetails(card.id),
+        dashboardDetails: numberDashboardDetails,
       }).then(({ body: dashcard }) => {
         H.addOrUpdateDashboardCard({
           dashboard_id: dashcard.dashboard_id,
           card_id: dashcard.card_id,
           card: {
             parameter_mappings: [
-              getBigIntQuestionParameterMapping(dashcard.card_id),
+              getNUmberQuestionParameterMapping(dashcard.card_id),
             ],
           },
         });
@@ -1825,7 +1835,7 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
     cy.log("querystring parameter values");
     H.visitDashboard("@dashboardId", {
       params: {
-        [parameterDetails.slug]: filterValue,
+        [numberParameterDetails.slug]: filterValue,
       },
     });
     H.filterWidget().findByText(filterValue).should("be.visible");
