@@ -85,7 +85,11 @@ async function generateNextJsCustomAppOrRootLayoutFile(componentPath: string) {
   const isInTypeScriptProject = await checkIsInTypeScriptProject();
   const extension = isInTypeScriptProject ? "tsx" : "js";
 
-  const snippet = await getNextJsCustomAppOrRootLayoutSnippet(componentPath);
+  const snippet = getNextJsCustomAppOrRootLayoutSnippet({
+    router,
+    resolveImport: pathName =>
+      path.normalize(`../${componentPath}/${pathName}`),
+  });
 
   if (router === "pages") {
     fs.writeFileSync(`./pages/_app.${extension}`, snippet);

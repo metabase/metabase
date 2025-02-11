@@ -1,19 +1,16 @@
-import path from "path";
-
-import { checkIfUsingAppOrPagesRouter } from "../utils/nextjs-helpers";
-
 /**
  * Custom app snippets for the Pages Router.
  */
-function getNextJsCustomAppSnippet(componentPath: string) {
-  const getImport = (pathName: string) =>
-    path.normalize(`../${componentPath}/${pathName}`);
-
+function getNextJsCustomAppSnippet({
+  resolveImport,
+}: {
+  resolveImport: (pathName: string) => string;
+}) {
   const snippet = `
-import { AnalyticsProvider } from "${getImport("analytics-provider")}"
-import { EmbeddingProvider } from "${getImport("embedding-provider")}"
+import { AnalyticsProvider } from "${resolveImport("analytics-provider")}"
+import { EmbeddingProvider } from "${resolveImport("embedding-provider")}"
 
-import "${getImport("analytics.css")}"
+import "${resolveImport("analytics.css")}"
 
 export default function CustomApp({ Component, pageProps }) {
   return (
@@ -35,15 +32,16 @@ export default function CustomApp({ Component, pageProps }) {
  *
  * @see https://nextjs.org/docs/app/api-reference/file-conventions/layout#root-layouts
  */
-function getNextJsRootLayoutSnippet(componentPath: string) {
-  const getImport = (pathName: string) =>
-    path.normalize(`../${componentPath}/${pathName}`);
-
+function getNextJsRootLayoutSnippet({
+  resolveImport,
+}: {
+  resolveImport: (path: string) => string;
+}) {
   const snippet = `
-import { AnalyticsProvider } from "${getImport("analytics-provider")}"
-import { EmbeddingProvider } from "${getImport("embedding-provider")}"
+import { AnalyticsProvider } from "${resolveImport("analytics-provider")}"
+import { EmbeddingProvider } from "${resolveImport("embedding-provider")}"
 
-import "${getImport("analytics.css")}"
+import "${resolveImport("analytics.css")}"
 
 export default function RootLayout({children}) {
   return (
@@ -63,17 +61,19 @@ export default function RootLayout({children}) {
   return snippet.trim();
 }
 
-export async function getNextJsCustomAppOrRootLayoutSnippet(
-  componentPath: string,
-): Promise<string> {
-  const router = await checkIfUsingAppOrPagesRouter();
-
+export function getNextJsCustomAppOrRootLayoutSnippet({
+  router,
+  resolveImport,
+}: {
+  router: "app" | "pages" | null;
+  resolveImport: (path: string) => string;
+}): string {
   if (router === "app") {
-    return getNextJsRootLayoutSnippet(componentPath);
+    return getNextJsRootLayoutSnippet({ resolveImport });
   }
 
   if (router === "pages") {
-    return getNextJsCustomAppSnippet(componentPath);
+    return getNextJsCustomAppSnippet({ resolveImport });
   }
 
   return "";

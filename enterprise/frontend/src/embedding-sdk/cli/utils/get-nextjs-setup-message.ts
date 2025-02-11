@@ -1,4 +1,5 @@
 import { green } from "chalk";
+import path from "path";
 
 import {
   LINK_TO_NEXT_JS_GUIDE,
@@ -29,8 +30,11 @@ export const getNextJsSetupMessages = async ({
   let componentSnippet = `Added an ${green("/analytics-demo")} route to your "${green(router)}" directory.\n`;
 
   if (hasNextJsCustomAppOrRootLayout) {
-    const layoutSnippet =
-      await getNextJsCustomAppOrRootLayoutSnippet(componentPath);
+    const layoutSnippet = getNextJsCustomAppOrRootLayoutSnippet({
+      router,
+      resolveImport: pathName =>
+        path.normalize(`../${componentPath}/${pathName}`),
+    });
 
     // If the user already has an _app.tsx or layout.tsx, we need to show them the snippet,
     // so they can add the example providers and the example CSS to their file.
