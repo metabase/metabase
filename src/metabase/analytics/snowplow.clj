@@ -40,25 +40,25 @@
 (def ^:private schema->version
   "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
   to SnowcatCloud, at the same time that the data sent to the collector is updated."
-  {::account        "1-0-1"
-   ::browse_data    "1-0-0"
-   ::invite         "1-0-1"
-   ::instance_stats "2-0-0"
-   ::csvupload      "1-0-3"
-   ::dashboard      "1-1-4"
-   ::database       "1-0-1"
-   ::instance       "1-1-2"
-   ::metabot        "1-0-1"
-   ::search         "1-0-1"
-   ::model          "1-0-0"
-   ::timeline       "1-0-0"
-   ::task           "1-0-0"
-   ::upsell         "1-0-0"
-   ::action         "1-0-0"
-   ::embed_share    "1-0-0"
-   ::llm_usage      "1-0-0"
-   ::serialization  "1-0-1"
-   ::cleanup        "1-0-0"})
+  {:snowplow/account        "1-0-1"
+   :snowplow/browse_data    "1-0-0"
+   :snowplow/invite         "1-0-1"
+   :snowplow/instance_stats "2-0-0"
+   :snowplow/csvupload      "1-0-3"
+   :snowplow/dashboard      "1-1-4"
+   :snowplow/database       "1-0-1"
+   :snowplow/instance       "1-1-2"
+   :snowplow/metabot        "1-0-1"
+   :snowplow/search         "1-0-1"
+   :snowplow/model          "1-0-0"
+   :snowplow/timeline       "1-0-0"
+   :snowplow/task           "1-0-0"
+   :snowplow/upsell         "1-0-0"
+   :snowplow/action         "1-0-0"
+   :snowplow/embed_share    "1-0-0"
+   :snowplow/llm_usage      "1-0-0"
+   :snowplow/serialization  "1-0-1"
+   :snowplow/cleanup        "1-0-0"})
 
 (def ^:private SnowplowSchema
   "Malli enum for valid Snowplow schemas"
@@ -86,7 +86,7 @@
                   ;; is first read.
                   (let [value (or (first-user-creation) (t/offset-date-time))]
                     (setting/set-value-of-type! :timestamp :instance-creation value)
-                    (track-event! ::account {:event :new_instance_created} nil)))
+                    (track-event! :snowplow/account {:event :new_instance_created} nil)))
                 (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
   :doc false)
 
@@ -145,7 +145,7 @@
   "Common context included in every analytics event"
   []
   (new SelfDescribingJson
-       (str "iglu:com.metabase/instance/jsonschema/" (schema->version ::instance))
+       (str "iglu:com.metabase/instance/jsonschema/" (schema->version :snowplow/instance))
        {"id"                           (analytics.settings/analytics-uuid)
         "version"                      {"tag" (:tag (public-settings/version))}
         "token_features"               (m/map-keys name (public-settings/token-features))
