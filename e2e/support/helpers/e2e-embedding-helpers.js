@@ -306,7 +306,7 @@ export function createPublicDashboardLink(dashboardId) {
 /**
  * @param {Object} options
  * @param {string} options.url
- * @param {Object} options.qs
+ * @param {import("metabase-types/store").InteractiveEmbeddingOptions} options.qs
  * @param {Function} [options.onBeforeLoad]
  */
 export const visitFullAppEmbeddingUrl = ({ url, qs, onBeforeLoad }) => {

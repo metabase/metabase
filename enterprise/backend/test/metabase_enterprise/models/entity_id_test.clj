@@ -9,12 +9,9 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.models.revision-test]
    [metabase.models.serialization :as serdes]))
 
 (set! *warn-on-reflection* true)
-
-(comment metabase.models.revision-test/keep-me)
 
 (def ^:private entities-external-name
   "Entities with external names, so they don't need a generated entity_id."

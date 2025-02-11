@@ -167,7 +167,6 @@ export class NativeQueryEditor extends Component<
 
   componentDidMount() {
     document.addEventListener("keydown", this.handleKeyDown);
-    this.focus();
   }
 
   onChange = (queryText: string) => {

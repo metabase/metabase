@@ -75,7 +75,7 @@ describe("scenarios > question > saved", () => {
         .click()
         .type("{selectall}{backspace}", { delay: 50 })
         .blur();
-      cy.findByLabelText("Name: required").should("be.empty");
+      cy.findByLabelText("Name").should("be.empty");
       cy.findByLabelText("Description").should("be.empty");
       cy.findByTestId("save-question-button").should("be.disabled");
 
@@ -266,6 +266,25 @@ describe("scenarios > question > saved", () => {
 
     cy.get("header").findByText(NEW_DASHBOARD);
     cy.url().should("include", "/dashboard/");
+  });
+
+  it("should not add scrollbar to duplicate modal if question name is long (metabase#53364)", () => {
+    H.createQuestion(
+      {
+        name: "A".repeat(240),
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+    H.openQuestionActions();
+    H.popover().findByText("Duplicate").click();
+
+    H.modal().should($el => {
+      const $modal = $el[0];
+      expect($modal.clientWidth).to.be.equal($modal.scrollWidth);
+    });
   });
 
   it("should revert a saved question to a previous version", () => {
