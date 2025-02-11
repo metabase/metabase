@@ -14,5 +14,5 @@
 (defn parse-bigint
   "Parses a string as a BigInt. If the string cannot be parsed, returns `nil`."
   [s]
-  (when (re-matches #"[+-]?\d+" s)
+  (when (re-matches #"^[+-]?\d+$" s)
     (internal/bigint s)))
