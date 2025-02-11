@@ -7,6 +7,7 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
+import type { NumberFilterValue } from "metabase/querying/filters/types";
 import type { Parameter, ParameterValue } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -173,6 +174,22 @@ describe("NumberInputWidget", () => {
       expect(setValue).toHaveBeenCalledWith([123, 456]);
     });
 
+    it("should correctly parse big integers", async () => {
+      const { setValue } = setup({ value: undefined, arity: "n" });
+
+      const combobox = screen.getByRole("combobox");
+      const input = getInput(combobox);
+      await userEvent.type(input, "9007199254740993,", {
+        pointerEventsCheck: 0,
+      });
+
+      expect(getValue(combobox, "9007199254740993")).toBeInTheDocument();
+
+      const button = screen.getByRole("button", { name: "Add filter" });
+      await userEvent.click(button);
+      expect(setValue).toHaveBeenCalledWith(["9007199254740993"]);
+    });
+
     it("should be unsettable", async () => {
       const { setValue } = setup({ value: [1, 2], arity: "n" });
 
@@ -244,7 +261,7 @@ describe("NumberInputWidget", () => {
   });
 });
 
-function getValue(parent: HTMLElement, value: number) {
+function getValue(parent: HTMLElement, value: NumberFilterValue) {
   /* eslint-disable-next-line testing-library/prefer-screen-queries */
   return getByText(parent, value.toString());
 }
