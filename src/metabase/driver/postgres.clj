@@ -464,7 +464,7 @@
     (= unit :quarter)
     (recur driver hsql-form (* 3 amount) :month)
 
-    ;; interval addition implicitly converts to timestamp, so cast back to date
+    ;; date + interval -> timestamp, so cast the expression back to date
     (h2x/is-of-type? hsql-form "date")
     (h2x/cast "date" (h2x/+ hsql-form (interval amount unit)))
 
