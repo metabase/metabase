@@ -27,7 +27,14 @@ export const ChartSettingSelect = ({
   placeholderNoOptions,
   id,
   searchProp,
-  ...selectProps
+  icon,
+  iconWidth,
+  pl,
+  pr,
+  rightSection,
+  styles,
+  w,
+  footer,
 }) => {
   const disabled =
     options.length === 0 ||
@@ -66,12 +73,13 @@ export const ChartSettingSelect = ({
         withinPortal: false,
         floatingStrategy: "fixed",
       }}
-      styles={{
-        input: {
-          fontWeight: "bold",
-        },
-      }}
-      {...selectProps}
+      icon={icon}
+      iconWidth={iconWidth}
+      pl={pl}
+      pr={pr}
+      rightSection={rightSection}
+      styles={styles}
+      w={w}
     />
   );
 };
