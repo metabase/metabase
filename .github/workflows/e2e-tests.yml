@@ -15,7 +15,7 @@ jobs:
   e2e-matrix-builder:
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
-      chunks: 50
+      chunks: 60
 
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
