@@ -1,11 +1,11 @@
-(ns ^:mb/driver-tests metabase.models.action-test
+(ns ^:mb/driver-tests metabase.actions.models-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.actions.models :as action]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
-   [metabase.models.action :as action]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
