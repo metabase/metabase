@@ -5,6 +5,7 @@
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.models.field-values :as field-values]
    [metabase.models.params.chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -39,6 +40,11 @@
                                                                                       :parameter_id "bax"
                                                                                       :target       [:dimension
                                                                                                      [:field (mt/id :users :name) nil]]}]}]
+          ;; Mnually activate Field values since they are not created during sync (#53387)
+          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
+          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
+          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :users :name)))
+
           (is (= {(mt/id :venues :name) {:values   ["Garaje"
                                                     "Gordo Taqueria"
                                                     "La Tortilla"]
