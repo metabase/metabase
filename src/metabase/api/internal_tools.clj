@@ -22,6 +22,7 @@
 
 (derive ::event :metabase/event)
 (derive :table.mutation/cell-update ::event)
+(derive :table.mutation/row-insert ::event)
 
 (defn- parse-value [base-type v]
   ;; TODO this logic is duplicated with metabase.query-processor.middleware.auto-parse-filter-values
@@ -103,15 +104,6 @@
    {:keys [row]} :- [:map [:row :any]]]
   (insert-row! table-id row))
 
-(comment
-  (def table (t2/select-one :model/Table :name "PEOPLE"))
-  (def field-id (t2/select-one-fn :id [:model/Field :id] :table_id (:id table) :name "NAME"))
-  (update-cell! field-id 1 "Dr Celery Celsius")
-
-  (t2/select-fn-vec (juxt :name :database_type) [:model/Field :database_type :name :table_id] :table_id (t2/select-one-pk :model/Table :name "PEOPLE"))
-  (u/index-by :database_type (juxt :table_id :name) (t2/select :model/Field))
-  (t2/select-one-fn :name :model/Table 219))
-
 (api.macros/defendpoint :post "/webhook/:table-id"
   [{:keys [table-id]} :- [:map [:table-id :int]]
    {:keys [jq]}
@@ -133,3 +125,13 @@
                             :user-id api/*current-user-id*})
 
     :done))
+
+
+(comment
+  (def table (t2/select-one :model/Table :name "PEOPLE"))
+  (def field-id (t2/select-one-fn :id [:model/Field :id] :table_id (:id table) :name "NAME"))
+  (update-cell! field-id 1 "Dr Celery Celsius")
+
+  (t2/select-fn-vec (juxt :name :database_type) [:model/Field :database_type :name :table_id] :table_id (t2/select-one-pk :model/Table :name "PEOPLE"))
+  (u/index-by :database_type (juxt :table_id :name) (t2/select :model/Field))
+  (t2/select-one-fn :name :model/Table 219))
