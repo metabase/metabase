@@ -1,6 +1,7 @@
 import fs from "fs";
 
 import { glob } from "glob";
+import path from "path";
 
 import { getNextJsCustomAppOrRootLayoutSnippet } from "../snippets/nextjs-app-snippets";
 import { getNextJsAnalyticsPageSnippet } from "../snippets/nextjs-page-snippet";
@@ -116,7 +117,19 @@ export async function generateNextJsDemoFiles({
     await generateNextJsCustomAppOrRootLayoutFile(reactComponentPath);
   }
 
-  const snippet = await getNextJsAnalyticsPageSnippet(reactComponentPath);
+  const snippet = getNextJsAnalyticsPageSnippet({
+    resolveImport(pathName: string) {
+      const basePath = `${reactComponentPath}/${pathName}`;
+
+      // Import path is two levels up from the app router's page directory.
+      if (router === "app") {
+        return path.normalize(`../../${basePath}`);
+      }
+
+      // Import path is one level up from the pages router's page file.
+      return path.normalize(`../${reactComponentPath}/${pathName}`);
+    },
+  });
 
   if (router === "app") {
     fs.mkdirSync("./app/analytics-demo", { recursive: true });
