@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { Box, Flex } from "metabase/ui";
+import { Flex, Title } from "metabase/ui";
 
 import {
   ActionsWrapper,
@@ -39,7 +39,6 @@ export const ModalHeader = ({
     >
       <Flex
         align="center"
-        w="100%"
         className={cx(S.HeaderTextContainer, {
           [S.clickable]: !!onBack,
         })}
@@ -47,15 +46,15 @@ export const ModalHeader = ({
       >
         {onBack && <ModalHeaderBackIcon name="chevronleft" />}
 
-        <Box
-          component="h2"
+        <Title
+          order={2}
           w="100%"
           className={cx(S.HeaderText, {
             [S.HeaderTextCentered]: fullPageModal || centeredTitle,
           })}
         >
           <span className={S.HeaderTextContent}>{children}</span>
-        </Box>
+        </Title>
       </Flex>
 
       {hasActions && (
