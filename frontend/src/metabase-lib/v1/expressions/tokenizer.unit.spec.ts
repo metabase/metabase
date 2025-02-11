@@ -6,13 +6,13 @@ describe("tokenizer", () => {
 
     expect(errors).toEqual([]);
     expect(tokens).toEqual([
-      { type: TOKEN.Identifier, start: 0, end: 4 }, // case
+      { type: TOKEN.Identifier, start: 0, end: 4, isReference: false }, // case
       { type: TOKEN.Operator, op: "(", start: 4, end: 5 }, // (
-      { type: TOKEN.Identifier, start: 5, end: 12 }, // [Total]
+      { type: TOKEN.Identifier, start: 5, end: 12, isReference: true }, // [Total]
       { type: TOKEN.Operator, op: ">", start: 13, end: 14 }, // >
       { type: TOKEN.Number, start: 15, end: 18 }, // 200
       { type: TOKEN.Operator, op: ",", start: 18, end: 19 }, // ,
-      { type: TOKEN.Identifier, start: 20, end: 23 }, // [T]
+      { type: TOKEN.Identifier, start: 20, end: 23, isReference: true }, // [T]
       { type: TOKEN.Operator, op: ",", start: 23, end: 24 }, // ,
       { type: TOKEN.String, start: 25, end: 34, value: "Nothing" }, // "Nothing"
       { type: TOKEN.Operator, op: ")", start: 34, end: 35 }, // )
@@ -166,8 +166,8 @@ describe("tokenizer", () => {
         const { tokens, errors } = tokenize(`a${ws}b`);
         expect(errors).toHaveLength(0);
         expect(tokens).toEqual([
-          { type: TOKEN.Identifier, start: 0, end: 1 },
-          { type: TOKEN.Identifier, start: 2, end: 3 },
+          { type: TOKEN.Identifier, start: 0, end: 1, isReference: false },
+          { type: TOKEN.Identifier, start: 2, end: 3, isReference: false },
         ]);
       }
     });
@@ -267,6 +267,7 @@ describe("tokenizer", () => {
             type: TOKEN.Identifier,
             start: 0,
             end: expression.length,
+            isReference: false,
           },
         ]);
       }
@@ -295,6 +296,7 @@ describe("tokenizer", () => {
             type: TOKEN.Identifier,
             start: 0,
             end: expression.length,
+            isReference: true,
           },
         ]);
       }
@@ -307,6 +309,7 @@ describe("tokenizer", () => {
           type: TOKEN.Identifier,
           start: 0,
           end: 4,
+          isReference: true,
         },
       ]);
       expect(errors).toEqual([
@@ -325,6 +328,7 @@ describe("tokenizer", () => {
           type: TOKEN.Identifier,
           start: 0,
           end: 3,
+          isReference: false,
         },
       ]);
       expect(errors).toEqual([
@@ -342,13 +346,13 @@ describe("tokenizer", () => {
       );
 
       expect(tokens).toEqual([
-        { type: TOKEN.Identifier, start: 0, end: 4 }, // case
+        { type: TOKEN.Identifier, start: 0, end: 4, isReference: false }, // case
         { type: TOKEN.Operator, op: "(", start: 4, end: 5 }, // (
-        { type: TOKEN.Identifier, start: 5, end: 12 }, // [Total]
+        { type: TOKEN.Identifier, start: 5, end: 12, isReference: true }, // [Total]
         { type: TOKEN.Operator, op: ">", start: 13, end: 14 }, // >
         { type: TOKEN.Number, start: 15, end: 18 }, // 200
         { type: TOKEN.Operator, op: ",", start: 18, end: 19 }, // ,
-        { type: TOKEN.Identifier, start: 20, end: 23 }, // [To <-- that's the incomplete token
+        { type: TOKEN.Identifier, start: 20, end: 23, isReference: true }, // [To <-- that's the incomplete token
         { type: TOKEN.Operator, op: ",", start: 23, end: 24 }, // ,
         { type: TOKEN.String, start: 25, end: 34, value: "Nothing" }, // "Nothing"
         { type: TOKEN.Operator, op: ")", start: 34, end: 35 }, // )
@@ -365,8 +369,8 @@ describe("tokenizer", () => {
     it("tokenizes incomplete bracket identifier followed by whitespace (metabase#50925)", () => {
       const { tokens, errors } = tokenize("[Pr [Price]");
       expect(tokens).toEqual([
-        { type: TOKEN.Identifier, start: 0, end: 3 }, // [Pr
-        { type: TOKEN.Identifier, start: 4, end: 11 }, // [Price]
+        { type: TOKEN.Identifier, start: 0, end: 3, isReference: true }, // [Pr
+        { type: TOKEN.Identifier, start: 4, end: 11, isReference: true }, // [Price]
       ]);
       expect(errors).toEqual([
         {
@@ -380,8 +384,8 @@ describe("tokenizer", () => {
     it("tokenizes incomplete bracket identifier followed by bracket identifier (metabase#50925)", () => {
       const { tokens } = tokenize("[Pr[Price]");
       expect(tokens).toEqual([
-        { type: TOKEN.Identifier, start: 0, end: 3 }, // [Pr
-        { type: TOKEN.Identifier, start: 3, end: 10 }, // [Price]
+        { type: TOKEN.Identifier, start: 0, end: 3, isReference: true }, // [Pr
+        { type: TOKEN.Identifier, start: 3, end: 10, isReference: true }, // [Price]
       ]);
     });
   });

@@ -77,6 +77,7 @@ export type Token =
       type: TOKEN.Identifier;
       start: number;
       end: number;
+      isReference: boolean;
     }
   | {
       type: TOKEN.Boolean;

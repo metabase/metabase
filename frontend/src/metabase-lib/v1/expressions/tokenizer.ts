@@ -278,7 +278,7 @@ export function tokenize(expression: string): {
         const type = TOKEN.Identifier;
         const end = lastNonWhitespaceIndex + 1;
         const error = t`Bracket identifier in another bracket identifier`;
-        return { type, start, end, error };
+        return { type, start, end, isReference: true, error };
       } else if (ch === "\\") {
         // ignore the next char, even if it's [ or ]
         index++;
@@ -292,7 +292,7 @@ export function tokenize(expression: string): {
           const end = index;
           const error = t`Missing a closing bracket`;
 
-          return { type, start, end, error };
+          return { type, start, end, isReference: true, error };
         }
       }
     }
@@ -300,7 +300,7 @@ export function tokenize(expression: string): {
     const end = index;
     const terminated = source[end - 1] === "]";
     const error = terminated ? null : t`Missing a closing bracket`;
-    return { type, start, end, error };
+    return { type, start, end, isReference: true, error };
   };
 
   const isInsideBracketIdentifier = () => {
@@ -359,7 +359,7 @@ export function tokenize(expression: string): {
     }
     const type = TOKEN.Identifier;
     const error = null;
-    return { type, start, end, error };
+    return { type, start, end, isReference: false, error };
   };
 
   const scanToken = () => {
