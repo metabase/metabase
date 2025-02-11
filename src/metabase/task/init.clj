@@ -16,6 +16,14 @@
    [metabase.task.refresh-slack-channel-user-cache]
    [metabase.task.send-anonymous-stats]
    [metabase.task.send-pulses]
+   [metabase.task.session-cleanup]
    [metabase.task.task-history-cleanup]
    [metabase.task.truncate-audit-tables]
    [metabase.task.upgrade-checks]))
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                       DO NOT ADD ANY MORE TASKS UNDER `metabase.task.*`                        !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
