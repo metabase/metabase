@@ -391,7 +391,7 @@ describe("tokenizer", () => {
   });
 
   describe("operators", () => {
-    it("tokenizes oparators", () => {
+    it("tokenizes operators", () => {
       const cases = [
         "+",
         "-",
