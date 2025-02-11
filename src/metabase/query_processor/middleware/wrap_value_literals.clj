@@ -51,10 +51,14 @@
                              (some #(when (= join-alias (:alias %))
                                       (:source-metadata %))
                                    (:joins inner-query))
-                             (:source-metadata inner-query))]
-      (some #(when (= (:name %) field-name)
-               (select-keys % [:base_type :effective_type :database_type]))
-            source-metadatas))))
+                             (:source-metadata inner-query))
+          [{field-ref :field_ref :as field-metadata}] (filter #(= (:name %) field-name)
+                                                           source-metadatas)]
+      (merge
+       (if field-ref
+         (type-info field-ref)
+         {})
+       (select-keys field-metadata [:base_type :effective_type :database_type])))))
 
 (defmethod type-info :field [[_ id-or-name opts :as field]]
   (merge
