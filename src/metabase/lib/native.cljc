@@ -175,16 +175,11 @@
 (mu/defn with-different-database :- ::lib.schema/query
   "Changes the database for this query. The first stage must be a native type.
    Native extras must be provided if the new database requires it."
-  ([query :- ::lib.schema/query
-    metadata-provider :- ::lib.schema.metadata/metadata-providerable]
-   (with-different-database query metadata-provider nil))
-  ([query :- ::lib.schema/query
-    metadata-provider :- ::lib.schema.metadata/metadata-providerable
-    native-extras :- [:maybe ::native-extras]]
-   (assert-native-query! (lib.util/query-stage query 0))
+  [query :- ::lib.schema/query
+   metadata-provider :- ::lib.schema.metadata/metadata-providerable]
+  (assert-native-query! (lib.util/query-stage query 0))
    ;; Changing the database should also clean up template tags, see #31926
-   (-> (lib.query/query-with-stages metadata-provider (:stages query))
-       (with-native-extras native-extras))))
+  (lib.query/query-with-stages metadata-provider (:stages query)))
 
 (mu/defn native-extras :- [:maybe ::native-extras]
   "Returns the extra keys for native queries associated with this query."
