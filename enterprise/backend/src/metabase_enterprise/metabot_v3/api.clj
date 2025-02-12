@@ -194,12 +194,15 @@
 
 (mr/def ::find-metric-result
   [:or
-   [:map [:structured_output [:map
-                              [:id :int]
-                              [:name :string]
-                              [:description [:maybe :string]]
-                              [:default_time_dimension_field_id [:maybe ::result-column]]
-                              [:queryable_dimensions [:sequential ::result-column]]]]]
+   [:map
+    {:encode/api-request #(update-keys % u/->kebab-case-en)
+     :encode/tool-api-request #(recursive-update-keys % safe->kebab-case-en)}
+    [:structured_output [:map
+                         [:id :int]
+                         [:name :string]
+                         [:description [:maybe :string]]
+                         [:default_time_dimension_field_id [:maybe ::result-column]]
+                         [:queryable_dimensions [:sequential ::result-column]]]]]
    [:map [:output :string]]])
 
 (mr/def ::generate-insights-arguments
