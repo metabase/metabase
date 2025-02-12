@@ -240,3 +240,17 @@ describe("issue 53194", () => {
     });
   });
 });
+
+describe("issue 53299", { tags: ["@mongo"] }, () => {
+  beforeEach(() => {
+    H.restore("mongo-5");
+    cy.signInAsAdmin();
+  });
+
+  it("should be possible to switch to mongodb when editing a sql question (metabase#53299)", () => {
+    H.startNewNativeQuestion();
+
+    H.selectNativeEditorDataSource("QA Mongo");
+    H.nativeEditorDataSource().should("contain", "QA Mongo");
+  });
+});
