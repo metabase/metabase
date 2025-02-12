@@ -121,7 +121,7 @@
 
 (defn track-delete! [table-id pks pk+old-rows]
   (let [pk-name (keyword (:name (first pks)))]
-    (doseq [old-row #p pk+old-rows
+    (doseq [old-row pk+old-rows
             :let [row-pk (get old-row pk-name)]]
 
       (t2/insert! :model/TableEdit
