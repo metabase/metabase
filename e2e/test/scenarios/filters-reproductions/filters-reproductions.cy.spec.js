@@ -1649,16 +1649,17 @@ describe("issue 44665", () => {
 });
 
 describe("issue 5816", () => {
-  const bigIntValue = "9007199254740993";
+  const longValue = "9223372036854775807";
+  const decimalValue = "9223372036854775808";
 
-  const bigIntQuestionDetails = {
+  const decimalQuestionDetails = {
     name: "BIGINT values",
     native: {
-      query: `SELECT CAST('9007199254740992' AS BIGINT) AS BIGINT
+      query: `SELECT CAST('9223372036854775807' AS DECIMAL) AS DECIMAL
 UNION ALL
-SELECT CAST('9007199254740993' AS BIGINT) AS BIGINT
+SELECT CAST('9223372036854775808' AS DECIMAL) AS DECIMAL
 UNION ALL
-SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
+SELECT CAST('9223372036854775809' AS DECIMAL) AS DECIMAL`,
     },
     display: "table",
   };
@@ -1669,29 +1670,29 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
   });
 
   describe("mbql queries", () => {
-    it("should be able to use filters with BigInteger columns in the query builder (metabase#5816)", () => {
-      H.createNativeQuestion(bigIntQuestionDetails, { visitQuestion: true });
+    it("should be able to use filters with DECIMAL columns in the query builder (metabase#5816)", () => {
+      H.createNativeQuestion(decimalQuestionDetails, { visitQuestion: true });
       H.queryBuilderHeader().findByText("Explore results").click();
       H.assertQueryBuilderRowCount(3);
       H.openNotebook();
       H.filter({ mode: "notebook" });
       H.popover().within(() => {
-        cy.findByText("BIGINT").click();
+        cy.findByText("DECIMAL").click();
         cy.findByLabelText("Filter operator").click();
       });
       H.popover().eq(1).findByText("Equal to").click();
       H.popover().within(() => {
-        cy.findByLabelText("Filter value").type(bigIntValue);
+        cy.findByLabelText("Filter value").type(decimalValue);
         cy.button("Add filter").click();
       });
       H.getNotebookStep("filter")
-        .findByText(`BIGINT is equal to "${bigIntValue}"`)
+        .findByText(`DECIMAL is equal to "${decimalValue}"`)
         .should("be.visible");
       H.visualize();
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should be able to use id parameters with BigInteger columns in dashboards (metabase#5816)", () => {
+    it("should be able to use id parameters with BIGINT columns in dashboards (metabase#5816)", () => {
       const questionDetails = {
         name: "Orders, Count",
         query: {
@@ -1741,17 +1742,17 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
         .should("have.text", "18,760");
       H.filterWidget().click();
       H.popover().within(() => {
-        cy.findByPlaceholderText("Enter an ID").type(bigIntValue);
+        cy.findByPlaceholderText("Enter an ID").type(longValue);
         cy.button("Add filter").click();
       });
-      H.filterWidget().findByText(bigIntValue).should("be.visible");
+      H.filterWidget().findByText(longValue).should("be.visible");
       H.getDashboardCard()
         .findByTestId("scalar-value")
         .should("have.text", "0");
 
       cy.log("title drill-thru");
       H.getDashboardCard().findByText("Orders, Count").click();
-      H.queryBuilderFiltersPanel().findByText(`ID is ${bigIntValue}`);
+      H.queryBuilderFiltersPanel().findByText(`ID is ${longValue}`);
       H.queryBuilderMain()
         .findByTestId("scalar-value")
         .should("have.text", "0");
@@ -1759,16 +1760,16 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
       cy.log("querystring parameter values");
       H.visitDashboard("@dashboardId", {
         params: {
-          [parameterDetails.slug]: bigIntValue,
+          [parameterDetails.slug]: longValue,
         },
       });
-      H.filterWidget().findByText(bigIntValue).should("be.visible");
+      H.filterWidget().findByText(longValue).should("be.visible");
       H.getDashboardCard()
         .findByTestId("scalar-value")
         .should("have.text", "0");
     });
 
-    it("should be able to use number parameters with BigInteger columns in dashboards (metabase#5816)", () => {
+    it("should be able to use number parameters with DECIMAL columns in dashboards (metabase#5816)", () => {
       const parameterDetails = {
         id: "b6ed2d71",
         type: "number/=",
@@ -1792,12 +1793,12 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
         parameter_id: parameterDetails.id,
         target: [
           "dimension",
-          ["field", "BIGINT", { "base-type": "type/BigInteger" }],
+          ["field", "DECIMAL", { "base-type": "type/Decimal" }],
         ],
       });
 
       cy.log("create a dashboard");
-      H.createNativeQuestion(bigIntQuestionDetails).then(({ body: card }) => {
+      H.createNativeQuestion(decimalQuestionDetails).then(({ body: card }) => {
         H.createQuestionAndDashboard({
           questionDetails: getQuestionDetails(card.id),
           dashboardDetails,
@@ -1820,10 +1821,10 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
         .should("have.text", "3");
       H.filterWidget().click();
       H.popover().within(() => {
-        cy.findByPlaceholderText("Enter a number").type(bigIntValue);
+        cy.findByPlaceholderText("Enter a number").type(decimalValue);
         cy.button("Add filter").click();
       });
-      H.filterWidget().findByText(bigIntValue).should("be.visible");
+      H.filterWidget().findByText(decimalValue).should("be.visible");
       H.getDashboardCard()
         .findByTestId("scalar-value")
         .should("have.text", "1");
@@ -1831,7 +1832,7 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
       cy.log("title drill-thru");
       H.getDashboardCard().findByText("GUI").click();
       H.queryBuilderFiltersPanel().findByText(
-        `BIGINT is equal to "${bigIntValue}"`,
+        `DECIMAL is equal to "${decimalValue}"`,
       );
       H.queryBuilderMain()
         .findByTestId("scalar-value")
@@ -1840,10 +1841,10 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
       cy.log("querystring parameter values");
       H.visitDashboard("@dashboardId", {
         params: {
-          [parameterDetails.slug]: bigIntValue,
+          [parameterDetails.slug]: decimalValue,
         },
       });
-      H.filterWidget().findByText(bigIntValue).should("be.visible");
+      H.filterWidget().findByText(decimalValue).should("be.visible");
       H.getDashboardCard()
         .findByTestId("scalar-value")
         .should("have.text", "1");
