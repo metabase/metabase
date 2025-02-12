@@ -926,7 +926,6 @@ class TableInteractive extends Component {
               columnIndex === cols.length - 1,
           },
         )}
-        onClick={handleClick}
         onMouseEnter={
           showDetailShortcut ? e => this.handleHoverRow(e, rowIndex) : undefined
         }
@@ -1239,7 +1238,7 @@ class TableInteractive extends Component {
     }
 
     if (displayIndex === this.props.data.cols.length + 1) {
-      return SIDEBAR_WIDTH + 50;
+      return SIDEBAR_WIDTH + 150;
     }
 
     // if the detail shortcut is visible, we've added a column of empty cells and need to shift
@@ -1741,7 +1740,7 @@ function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
 
   const isOverflowing = totalWidth > pageWidth;
   const width =
-    HEADER_HEIGHT + (isOverflowing ? COLUMN_SHORTCUT_PADDING : 0) + 50;
+    HEADER_HEIGHT + (isOverflowing ? COLUMN_SHORTCUT_PADDING : 0) + 150;
 
   return (
     <div
