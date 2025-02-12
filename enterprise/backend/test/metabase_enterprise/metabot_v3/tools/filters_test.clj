@@ -293,7 +293,7 @@
       (is  (=? {:structured-output
                 {:type :query
                  :query_id string?
-                 :query {:database (mt/id), :type :query, :query {:source-table table-id}}}}
+                 :query {:database (mt/id), :type :query, :query {:source-query {:source-table table-id}}}}}
                (metabot-v3.tools.interface/*invoke-tool*
                 :metabot.tool/filter-records
                 {:data-source {:query_id query-id}}
@@ -303,10 +303,10 @@
                                    :query_id string?
                                    :query {:database (mt/id)
                                            :type :query
-                                           :query {:source-table table-id
+                                           :query {:source-query {:source-table table-id}
                                                    :filter [:>
                                                             [:field
-                                                             (mt/id :orders :discount)
+                                                             "DISCOUNT"
                                                              {:base-type :type/Float}]
                                                             3]}}}}
               (metabot-v3.tools.interface/*invoke-tool*
