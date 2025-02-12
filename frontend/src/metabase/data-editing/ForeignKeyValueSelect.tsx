@@ -6,6 +6,7 @@ import type { DatasetColumn, FieldId } from "metabase-types/api";
 type Props = {
   value: string | null;
   column: DatasetColumn;
+  createable?: boolean;
   onChange: (newVal: string | null) => void;
   onBlur: () => void;
 };
@@ -13,6 +14,7 @@ type Props = {
 export const ForeignKeyValueSelect = ({
   value,
   column,
+  createable,
   onChange,
   onBlur,
 }: Props) => {
@@ -35,6 +37,7 @@ export const ForeignKeyValueSelect = ({
       value={selectedValue}
       data={preparedData ?? []}
       searchable
+      creatable={createable}
       initiallyOpened
       autoFocus
       onChange={onChange}
@@ -44,6 +47,10 @@ export const ForeignKeyValueSelect = ({
         dropdown: {
           minWidth: 200,
         },
+      }}
+      getCreateLabel={query => `+ Create "${query}"`}
+      onCreate={query => {
+        onChange(query);
       }}
     />
   );

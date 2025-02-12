@@ -222,6 +222,7 @@ class TableInteractive extends Component {
         <ForeignKeyValueSelect
           value={inputValue}
           column={column}
+          createable
           onChange={handleInputValueChange}
           onBlur={handleFieldBlur}
         />
