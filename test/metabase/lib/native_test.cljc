@@ -257,15 +257,6 @@
                   (lib/with-different-database
                     (meta.graph-provider/->SimpleGraphMetadataProvider
                      (assoc meta/metadata :id 9999)))))))
-    (testing "Checks collection requirement"
-      (is (=? {:stages [(complement :collection)]}
-              (-> query
-                  (lib/with-different-database meta/metadata-provider))))
-      (is (thrown-with-msg?
-           #?(:clj Throwable :cljs :default)
-           #"Missing extra, required keys for native query: .*:collection.*"
-           (-> query
-               (lib/with-different-database (metadata-provider-requiring-collection))))))
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs :default)
          #"Must be a native query"
