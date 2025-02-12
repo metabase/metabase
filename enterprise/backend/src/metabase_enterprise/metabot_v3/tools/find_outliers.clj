@@ -27,23 +27,23 @@
                metabot-v3.tools.u/any-prefix-pattern)
              query])]
     (cond
-     metric_id (if (int? metric_id)
-                 [(metabot-v3.tools.u/card-field-id-prefix metric_id)
-                  (checked-card-dataset-query metric_id)]
-                 (throw (ex-info "Invalid metric_id as data_source" {:agent-error? true
-                                                                     :data_source data-source})))
-     report_id (if (int? report_id)
-                 [(metabot-v3.tools.u/card-field-id-prefix report_id)
-                  (checked-card-dataset-query report_id)]
-                 (throw (ex-info "Invalid report_id as data_source" {:agent-error? true
-                                                                     :data_source data-source})))
-     query     (handle-query query query_id)
-     query_id  (if-let [query (metabot-v3.envelope/find-query env query_id)]
-                 (handle-query query query_id)
-                 (throw (ex-info (str "No query found with query_id " query_id) {:agent-error? true
-                                                                                 :data_source data-source})))
-     :else     (throw (ex-info "Invalid data_source" {:agent-error? true
-                                                      :data_source data-source})))))
+      metric_id (if (int? metric_id)
+                  [(metabot-v3.tools.u/card-field-id-prefix metric_id)
+                   (checked-card-dataset-query metric_id)]
+                  (throw (ex-info "Invalid metric_id as data_source" {:agent-error? true
+                                                                      :data_source data-source})))
+      report_id (if (int? report_id)
+                  [(metabot-v3.tools.u/card-field-id-prefix report_id)
+                   (checked-card-dataset-query report_id)]
+                  (throw (ex-info "Invalid report_id as data_source" {:agent-error? true
+                                                                      :data_source data-source})))
+      query     (handle-query query query_id)
+      query_id  (if-let [query (metabot-v3.envelope/find-query env query_id)]
+                  (handle-query query query_id)
+                  (throw (ex-info (str "No query found with query_id " query_id) {:agent-error? true
+                                                                                  :data_source data-source})))
+      :else     (throw (ex-info "Invalid data_source" {:agent-error? true
+                                                       :data_source data-source})))))
 
 (defn find-outliers
   "Find outliers in the values provided by `data-source` for a given column."
