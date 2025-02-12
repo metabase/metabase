@@ -90,10 +90,6 @@ function parseParameterValueForFields(
   value: ParameterValueOrArray,
   fields: Field[],
 ): ParameterValueOrArray {
-  if (Array.isArray(value)) {
-    return value.flatMap(v => parseParameterValueForFields(v, fields));
-  }
-
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
   if (fields.every(f => f.isNumeric() && !f.isDate())) {
     return deserializeNumberParameterValue(value);
