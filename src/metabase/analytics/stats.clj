@@ -20,7 +20,6 @@
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
-   [metabase.models.setting :as settings]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
@@ -784,7 +783,7 @@
   []
   [{:name      :email
     :available true
-    :enabled   (settings/get :email-configured?)}
+    :enabled   (setting/get :email-configured?)}
    {:name      :slack
     :available true
     :enabled   (slack/slack-configured?)}
