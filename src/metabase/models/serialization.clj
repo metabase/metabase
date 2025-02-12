@@ -168,7 +168,9 @@
 
 (defn raw-hash
   "Hashes a Clojure value into an 8-character hex string, which is used as the identity hash.
-  Don't call this outside a test, use [[identity-hash]] instead."
+
+  Don't call this outside a test, use [[identity-hash]] instead. Exception: [[metabase-enterprise.audit-app.audit]]
+  uses this because it needs reproducible `:entity_id`s that differ from the usual [[hash-fields]] ones."
   [target]
   (when (sequential? target)
     (assert (seq target) "target cannot be an empty sequence"))
