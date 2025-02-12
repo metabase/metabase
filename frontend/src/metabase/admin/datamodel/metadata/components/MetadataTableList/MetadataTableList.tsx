@@ -135,7 +135,7 @@ const CreateTableModal = ({
           name: col.name,
           type: col.type,
           primary_key: col.isPrimaryKey,
-          unnable: col.isNullable,
+          nullable: col.isNullable,
           auto_increment: col.isAutoIncrement,
           default_value: col.defaultValue,
         })),
