@@ -211,7 +211,7 @@
        [:table_name :string]
        [:columns [:seqable [:map
                             [:name :string]
-                            [:type [:enum "Integer" "BigInteger" "Text" "DateTime"]]
+                            [:type [:enum "Boolean" "Integer" "BigInteger" "Text" "DateTime"]]
                             [:primary_key {:optional true} [:maybe :boolean]]
                             [:nullable {:optional true} [:maybe :boolean]]
                             [:auto_increment {:optional true} [:maybe :boolean]]]]]]]
