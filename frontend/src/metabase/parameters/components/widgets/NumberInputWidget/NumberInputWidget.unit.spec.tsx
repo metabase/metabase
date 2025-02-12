@@ -171,13 +171,12 @@ describe("NumberInputWidget", () => {
     it("should correctly parse big integers", async () => {
       const { setValue } = setup({ value: undefined, arity: "n" });
 
-      const combobox = screen.getByRole("combobox");
-      const input = getInput(combobox);
+      const input = screen.getByRole("combobox");
+      const valueList = screen.getByRole("list");
       await userEvent.type(input, "9007199254740993,", {
         pointerEventsCheck: 0,
       });
-
-      expect(getValue(combobox, "9007199254740993")).toBeInTheDocument();
+      expect(getValue(valueList, "9007199254740993")).toBeInTheDocument();
 
       const button = screen.getByRole("button", { name: "Add filter" });
       await userEvent.click(button);

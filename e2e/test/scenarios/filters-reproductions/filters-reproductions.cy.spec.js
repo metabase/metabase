@@ -1818,7 +1818,7 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
     H.getDashboardCard().findByTestId("scalar-value").should("have.text", "1");
 
     cy.log("title drill-thru");
-    H.getDashboardCard().findByText("BIGINT, Count").click();
+    H.getDashboardCard().findByText("GUI").click();
     H.queryBuilderFiltersPanel().findByText(
       `BIGINT is equal to "${bigIntValue}"`,
     );
