@@ -85,4 +85,4 @@ export const BodyCell = memo(function BodyCell<TValue>({
       )}
     </BaseCell>
   );
-});
+}) as <TValue>(props: BodyCellProps<TValue>) => React.ReactElement;

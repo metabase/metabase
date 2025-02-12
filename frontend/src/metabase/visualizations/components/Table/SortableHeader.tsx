@@ -114,4 +114,6 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       />
     </div>
   );
-});
+}) as <TData, TValue>(
+  props: SortableHeaderProps<TData, TValue>,
+) => React.ReactElement;

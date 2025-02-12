@@ -66,7 +66,7 @@ export const useCellMeasure = (
 
 export const useTableCellsMeasure = () => {
   const bodyCellToMeasure = useMemo(
-    () => <BodyCell wrap={true} value="" />,
+    () => <BodyCell columnId="measure" wrap={true} value="" />,
     [],
   );
   const {
