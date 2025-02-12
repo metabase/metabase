@@ -82,21 +82,23 @@ export function tokenize(expression: string) {
       const openQuote = expression[node.from];
       const closeQuote = expression[node.to - 1];
       const penultimate = expression[node.to - 2];
-      if (closeQuote !== openQuote || penultimate === "\\") {
-        error(node, t`Missing closing quotes`);
-      }
+      if (openQuote === "'" || openQuote === '"') {
+        if (closeQuote !== openQuote || penultimate === "\\") {
+          error(node, t`Missing closing quotes`);
+        }
 
-      return token(node, {
-        type: TOKEN.String,
-        value: expression
-          // remove quotes
-          .slice(node.from + 1, node.to - 1)
-          // expand escape sequences
-          .replace(/\\./g, match => {
-            const ch = match[1];
-            return escapes[ch as keyof typeof escapes] ?? ch;
-          }),
-      });
+        return token(node, {
+          type: TOKEN.String,
+          value: expression
+            // remove quotes
+            .slice(node.from + 1, node.to - 1)
+            // expand escape sequences
+            .replace(/\\./g, match => {
+              const ch = match[1];
+              return escapes[ch as keyof typeof escapes] ?? ch;
+            }),
+        });
+      }
     }
 
     if (node.type.name === "Boolean") {
