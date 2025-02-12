@@ -10,16 +10,12 @@ import {
 } from "./parsing";
 
 type StringParameterCase = {
-  value: ParameterValueOrArray | null | undefined;
+  value: ParameterValueOrArray;
   expectedValue: string[];
 };
 
 describe("string parameters", () => {
   it.each<StringParameterCase>([
-    { value: null, expectedValue: [] },
-    { value: undefined, expectedValue: [] },
-    { value: "", expectedValue: [] },
-    { value: [""], expectedValue: [] },
     { value: ["abc"], expectedValue: ["abc"] },
     { value: ["a", "b", "", "c"], expectedValue: ["a", "b", "c"] },
     { value: [1, 2, 3], expectedValue: ["1", "2", "3"] },
@@ -27,23 +23,22 @@ describe("string parameters", () => {
   ])("should normalize string parameter value", ({ value, expectedValue }) => {
     expect(deserializeStringParameterValue(value)).toEqual(expectedValue);
   });
+
+  it.each([null, undefined, "", [""]])(
+    "should ignore invalid input %s",
+    value => {
+      expect(deserializeStringParameterValue(value)).toEqual([]);
+    },
+  );
 });
 
 type NumberParameterCase = {
-  value: ParameterValueOrArray | null | undefined;
+  value: ParameterValueOrArray;
   expectedValue: number[];
 };
 
 describe("number parameters", () => {
   it.each<NumberParameterCase>([
-    { value: null, expectedValue: [] },
-    { value: undefined, expectedValue: [] },
-    { value: "", expectedValue: [] },
-    { value: [""], expectedValue: [] },
-    { value: ["abc"], expectedValue: [] },
-    { value: NaN, expectedValue: [] },
-    { value: [NaN], expectedValue: [] },
-    { value: [true, false], expectedValue: [] },
     { value: 1, expectedValue: [1] },
     { value: "1", expectedValue: [1] },
     { value: 1.5, expectedValue: [1.5] },
@@ -53,36 +48,42 @@ describe("number parameters", () => {
   ])("should normalize number parameter value", ({ value, expectedValue }) => {
     expect(deserializeNumberParameterValue(value)).toEqual(expectedValue);
   });
+
+  it.each([null, undefined, "", [""], ["abc"], NaN, [NaN], [true, false]])(
+    "should ignore invalid input %s",
+    value => {
+      expect(deserializeNumberParameterValue(value)).toEqual([]);
+    },
+  );
 });
 
 type BooleanParameterCase = {
-  value: ParameterValueOrArray | null | undefined;
+  value: ParameterValueOrArray;
   expectedValue: boolean[];
 };
 
 describe("boolean parameters", () => {
   it.each<BooleanParameterCase>([
-    { value: null, expectedValue: [] },
-    { value: undefined, expectedValue: [] },
-    { value: "", expectedValue: [] },
-    { value: [""], expectedValue: [] },
-    { value: ["abc"], expectedValue: [] },
-    { value: 1, expectedValue: [] },
-    { value: NaN, expectedValue: [] },
-    { value: [NaN], expectedValue: [] },
     { value: true, expectedValue: [true] },
     { value: false, expectedValue: [false] },
     { value: [true, false], expectedValue: [true, false] },
     { value: "true", expectedValue: [true] },
     { value: "false", expectedValue: [false] },
     { value: ["true", "false"], expectedValue: [true, false] },
-  ])("should normalize boolean parameter value", ({ value, expectedValue }) => {
+  ])("should deserialize $value", ({ value, expectedValue }) => {
     expect(deserializeBooleanParameterValue(value)).toEqual(expectedValue);
   });
+
+  it.each([null, undefined, "", [""], ["abc"], 1, NaN, [NaN]])(
+    "should ignore invalid input %s",
+    value => {
+      expect(deserializeBooleanParameterValue(value)).toEqual([]);
+    },
+  );
 });
 
 type DateParameterCase = {
-  value: ParameterValueOrArray | null | undefined;
+  value: ParameterValueOrArray;
   expectedValue: DateFilterValue;
 };
 
@@ -359,12 +360,14 @@ describe("date parameters", () => {
         quarter: 4,
       },
     },
-  ])("should serialize and deserialize $text", ({ value, expectedValue }) => {
+  ])("should serialize and deserialize $value", ({ value, expectedValue }) => {
     expect(serializeDateParameterValue(expectedValue)).toEqual(value);
     expect(deserializeDateParameterValue(value)).toEqual(expectedValue);
   });
 
-  it.each<string>([
+  it.each([
+    null,
+    undefined,
     "",
     "aaa",
     "2020-12-aa",
