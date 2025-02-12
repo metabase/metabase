@@ -132,10 +132,13 @@
                    :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])
               original-render @#'channel/render-notification]
           (with-redefs [channel/render-notification (fn [& args]
-                                                      (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/concurrent-tasks {:payload-type "notification/testing"})))
+                                                      (testing "during execution of render-notification, concurrent-tasks metric is updated"
+                                                        (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/concurrent-tasks {:payload-type "notification/testing"}))))
                                                       (apply original-render args))]
             (notification.tu/with-captured-channel-send!
               (notification.send/send-notification-sync! n)))
+          (testing "once the execution is done, concurrent tasks is decreased"
+            (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-notification/concurrent-tasks {:payload-type "notification/testing"}))))
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/send-ok {:payload-type "notification/testing"})))
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/channel-send-ok {:payload-type "notification/testing"
                                                                                                          :channel-type "channel/metabase-test"})))
