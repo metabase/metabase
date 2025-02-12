@@ -1667,7 +1667,6 @@
                 :type :native
                 :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))
 
-
 (defn- type-query [query field]
   (mt/native-query {:query (str "SELECT pg_typeof(" (name field) ") "
                                 "FROM ( "
