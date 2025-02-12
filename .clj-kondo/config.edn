@@ -327,7 +327,8 @@
    {metabase.actions               #{metabase.actions.core
                                      metabase.actions.api}
     metabase.activity-feed         #{metabase.activity-feed.core
-                                     metabase.activity-feed.api}
+                                     metabase.activity-feed.api
+                                     metabase.activity-feed.init}
     metabase.analytics             #{metabase.analytics.core}
     metabase.analyze               #{metabase.analyze.core}
     metabase.api                   #{metabase.api.common

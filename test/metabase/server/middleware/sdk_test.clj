@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.sdk :as sdk]
    [metabase.test :as mt]
    [metabase.util :as u]
