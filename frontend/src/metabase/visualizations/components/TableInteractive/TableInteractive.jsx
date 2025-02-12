@@ -15,9 +15,10 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { ForeignKeyValueSelect } from "metabase/data-editing/ForeignKeyValueSelect";
+import { getTableIdFromQuestion } from "metabase/data-editing/utils";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
-import { PUT } from "metabase/lib/api";
+import { POST, PUT } from "metabase/lib/api";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
@@ -38,6 +39,7 @@ import {
   DelayGroup,
   Icon,
   Input,
+  Stack,
   ThemeProvider,
   Button as UIButton,
 } from "metabase/ui";
@@ -865,6 +867,91 @@ class TableInteractive extends Component {
     );
   };
 
+  renderActionCell = cellProps => {
+    const { key, style, rowIndex, columnIndex } = cellProps;
+    const { data, theme, series, question } = this.props;
+    const { dragColIndex, showDetailShortcut } = this.state;
+    const { rows, cols } = data;
+
+    const row = rows[rowIndex];
+
+    const rowActions = series[0].json_query.row_actions;
+
+    // const clicked = this.getCellClickedObject(rowIndex, columnIndex);
+
+    // Theme options from embedding SDK.
+    const tableTheme = theme?.other?.table;
+
+    const backgroundColor = tableTheme?.cell?.backgroundColor;
+
+    const handleClick = actionId => {
+      const tableId = getTableIdFromQuestion(question);
+
+      const pkColIndex = cols.findIndex(col => col.semantic_type === "type/PK");
+      const value = row[pkColIndex];
+
+      if (pkColIndex != null) {
+        POST(`/api/internal-tools/row-action/${actionId}`, {
+          pk: value,
+          "table-id": tableId,
+        });
+      }
+    };
+
+    return (
+      <Box
+        bg={backgroundColor}
+        key={key}
+        role="gridcell"
+        style={{
+          ...style,
+          // use computed left if dragging
+          left: this.getColumnLeft(style, columnIndex),
+          // add a transition while dragging column
+          transition: dragColIndex != null ? "left 200ms" : null,
+          width: 86,
+        }}
+        className={cx(
+          TableS.TableInteractiveCellWrapper,
+          "test-TableInteractive-cellWrapper",
+          CS.textDark,
+          CS.hoverParent,
+          CS.hoverVisibility,
+          {
+            [TableS.TableInteractiveCellWrapperFirstColumn]: columnIndex === 0,
+            "test-TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+            [TableS.padLeft]: columnIndex === 0 && !showDetailShortcut,
+            "test-TableInteractive-cellWrapper--lastColumn":
+              columnIndex === cols.length - 1,
+          },
+        )}
+        onClick={handleClick}
+        onMouseEnter={
+          showDetailShortcut ? e => this.handleHoverRow(e, rowIndex) : undefined
+        }
+        onMouseLeave={
+          showDetailShortcut ? e => this.handleLeaveRow() : undefined
+        }
+        tabIndex="0"
+      >
+        {this.renderTableCellWrapper(
+          <Stack gap="0.5rem">
+            {rowActions?.map(({ id, name }) => (
+              <UIButton
+                key={id}
+                variant="subtle"
+                onClick={() => handleClick(id)}
+              >
+                {name}
+              </UIButton>
+            ))}
+          </Stack>,
+          { isIDColumn: false },
+        )}
+      </Box>
+    );
+  };
+
   handleExpandButtonClick = (e, columnIndex) => {
     e.stopPropagation();
     this.handleExpandColumn(columnIndex);
@@ -1148,6 +1235,10 @@ class TableInteractive extends Component {
   getDisplayColumnWidth = ({ index: displayIndex }) => {
     if (this.state.showDetailShortcut && displayIndex === 0) {
       return SIDEBAR_WIDTH;
+    }
+
+    if (displayIndex === this.props.data.cols.length + 1) {
+      return SIDEBAR_WIDTH + 50;
     }
 
     // if the detail shortcut is visible, we've added a column of empty cells and need to shift
@@ -1530,7 +1621,10 @@ class TableInteractive extends Component {
 
                     if (props.columnIndex === cols.length + gutterColumn) {
                       // we need a phantom cell to properly offset the shortcut column
-                      return null;
+                      return this.renderActionCell({
+                        ...props,
+                        columnIndex: props.columnIndex - gutterColumn,
+                      });
                     }
 
                     return this.cellRenderer({
@@ -1645,7 +1739,8 @@ function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
   }
 
   const isOverflowing = totalWidth > pageWidth;
-  const width = HEADER_HEIGHT + (isOverflowing ? COLUMN_SHORTCUT_PADDING : 0);
+  const width =
+    HEADER_HEIGHT + (isOverflowing ? COLUMN_SHORTCUT_PADDING : 0) + 50;
 
   return (
     <div
