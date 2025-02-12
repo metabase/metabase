@@ -1,4 +1,4 @@
-(ns metabase.models.model-index
+(ns metabase.indexed-entities.models.model-index
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -35,7 +35,7 @@
 
 (t2/define-before-delete :model/ModelIndex
   [model-index]
-  (let [remove-refresh-job (requiring-resolve 'metabase.task.index-values/remove-indexing-job)]
+  (let [remove-refresh-job (requiring-resolve 'metabase.indexed-entities.task.index-values/remove-indexing-job)]
     (remove-refresh-job model-index)))
 
 (def max-indexed-values

@@ -7,7 +7,9 @@ import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 import type { NumberValue, OperatorOption } from "./types";
 
-function isNotEmpty(value: NumberValue): value is number {
+export function isNotEmptyValue(
+  value: NumberValue,
+): value is Lib.NumberFilterValue {
   return value !== "";
 }
 
@@ -50,7 +52,7 @@ export function getDefaultValues(
 ): NumberValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   if (hasMultipleValues) {
-    return values.filter(isNotEmpty);
+    return values.filter(isNotEmptyValue);
   }
 
   return Array(valueCount)
@@ -94,7 +96,7 @@ function getSimpleFilterParts(
   values: NumberValue[],
 ): Lib.NumberFilterParts | undefined {
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
-  if (!values.every(isNotEmpty)) {
+  if (!values.every(isNotEmptyValue)) {
     return undefined;
   }
   if (hasMultipleValues ? values.length === 0 : values.length !== valueCount) {
@@ -104,7 +106,7 @@ function getSimpleFilterParts(
   return {
     operator,
     column,
-    values: values.filter(isNotEmpty),
+    values: values.filter(isNotEmptyValue),
   };
 }
 
@@ -114,19 +116,22 @@ function getBetweenFilterParts(
   values: NumberValue[],
 ): Lib.NumberFilterParts | undefined {
   const [startValue, endValue] = values;
-  if (isNotEmpty(startValue) && isNotEmpty(endValue)) {
+  if (isNotEmptyValue(startValue) && isNotEmptyValue(endValue)) {
+    const minValue = startValue < endValue ? startValue : endValue;
+    const maxValue = startValue < endValue ? endValue : startValue;
+
     return {
       operator,
       column,
-      values: [Math.min(startValue, endValue), Math.max(startValue, endValue)],
+      values: [minValue, maxValue],
     };
-  } else if (isNotEmpty(startValue)) {
+  } else if (isNotEmptyValue(startValue)) {
     return {
       operator: ">=",
       column,
       values: [startValue],
     };
-  } else if (isNotEmpty(endValue)) {
+  } else if (isNotEmptyValue(endValue)) {
     return {
       operator: "<=",
       column,

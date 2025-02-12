@@ -1,5 +1,6 @@
-(ns hooks.metabase.api.automagic-dashboards-test
-  (:require [clj-kondo.hooks-api :as hooks]))
+(ns hooks.metabase.xrays.api.automagic-dashboards-test
+  (:require
+   [clj-kondo.hooks-api :as hooks]))
 
 (comment
 
@@ -10,7 +11,7 @@
 
   (println (hooks/sexpr input))
 
-  (let [f (load-file ".clj-kondo/hooks/metabase/api/automagic_dashboards_test.clj")]
+  (let [f (load-file ".clj-kondo/hooks/metabase/xrays/api/automagic_dashboards_test.clj")]
     (f {:node input})))
 
 (defn with-indexed-model!
