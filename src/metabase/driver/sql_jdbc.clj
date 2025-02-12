@@ -246,6 +246,29 @@
                                        :quoted true
                                        :dialect (sql.qp/quote-style driver)))))))
 
+(defn create-table!
+  [driver db-id schema table-name columns]
+  (qp.writeback/execute-write-sql!
+   db-id
+   (with-quoting driver
+     (sql/format {:create-table (keyword schema table-name)
+                  :with-columns (for [{:keys [auto-increment
+                                              primary-key
+                                              nullable
+                                              column-name
+                                              column-type]} columns]
+                                  (filterv
+                                   some?
+                                   [(keyword column-name)
+                                    (case column-type
+                                      :type/Boolean :boolean
+                                      :type/Integer (if auto-increment :serial :int)
+                                      :type/BigInteger (if auto-increment :bigserial :bigint)
+                                      :type/Text :text
+                                      :type/DateTime :datetime)
+                                    (if nullable :null [:not nil])
+                                    (when primary-key :primary-key)]))}))))
+
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options

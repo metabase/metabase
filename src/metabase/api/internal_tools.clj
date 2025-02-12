@@ -13,6 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.events :as events]
    [metabase.models.cell-edit]
+   [metabase.sync.sync :as sync]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
@@ -192,6 +193,36 @@
    {}
    {:keys [row]} :- [:map [:row :any]]]
   (insert-row! table-id row))
+
+(defn- create-table! [db-id schema table-name columns]
+  (let [driver (driver/the-driver (:engine (t2/select-one :model/Database db-id)))]
+    (driver.sql-jdbc/create-table! driver db-id schema table-name columns)))
+
+(api.macros/defendpoint :post "/table"
+  [{}
+   {}
+   {:keys [db_id
+           schema
+           table_name
+           columns]}
+   :- [:map
+       [:db_id ms/PositiveInt]
+       [:schema {:optional true} :string]
+       [:table_name :string]
+       [:columns [:seqable [:map
+                            [:name :string]
+                            [:type [:enum "Integer" "BigInteger" "Text" "DateTime"]]
+                            [:primary_key {:optional true} [:maybe :boolean]]
+                            [:nullable {:optional true} [:maybe :boolean]]
+                            [:auto_increment {:optional true} [:maybe :boolean]]]]]]]
+  (let [columns' (for [{:keys [name type primary_key nullable auto_increment]} columns]
+                   {:column-name name
+                    :column-type (keyword "type" type)
+                    :primary-key primary_key
+                    :nullable nullable
+                    :auto-increment auto_increment})]
+    (create-table! db_id schema table_name columns')
+    (sync/sync-database! (t2/select-one :model/Database db_id))))
 
 (defn- apply-jq [data jq]
   (if jq
