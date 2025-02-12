@@ -6,10 +6,12 @@
 
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
+   [metabase.activity-feed.init]
    [metabase.channel.init]
    [metabase.config :as config]
    [metabase.driver.init]
    [metabase.events.init]
+   [metabase.indexed-entities.init]
    [metabase.logger.init]
    [metabase.models.init]
    [metabase.notification.init]
