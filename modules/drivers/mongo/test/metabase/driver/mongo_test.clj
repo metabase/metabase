@@ -875,3 +875,30 @@
                     ["3" "a string" "{\"b_e\":{}}" ""]
                     ["4" "a string" "null" ""]]
                    results))))))))
+
+(deftest ^:parallel uuid-column-is-readable-test
+  (mt/test-driver :mongo
+    (let [uuid (str (random-uuid))]
+      (is (= uuid
+             (->> (mt/user-http-request :crowberto :post "dataset"
+                                        {:database (mt/id)
+                                         :type :native
+                                         :native {:query (format "[
+                                                                    {
+                                                                      \"$project\": {
+                                                                        \"uuidfield\": {
+                                                                          \"$function\": {
+                                                                            \"body\": \"function() { return UUID('%s') }\",
+                                                                            \"args\": [],
+                                                                            \"lang\": \"js\"
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    },
+                                                                    { \"$limit\": 1 }
+                                                                  ]" uuid)
+                                                  :collection "venues"}})
+                  :data
+                  :rows
+                  (map second)
+                  first))))))

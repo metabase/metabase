@@ -25,7 +25,9 @@
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)
-   (org.bson.types Binary BSONTimstamp ObjectId)))
+   (java.nio ByteBuffer)
+   (java.util UUID)
+   (org.bson.types Binary BSONTimestamp ObjectId)))
 
 (set! *warn-on-reflection* true)
 
