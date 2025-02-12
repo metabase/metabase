@@ -17,16 +17,15 @@ const userOptions = {
   BACKEND_PORT: 4000,
   OPEN_UI: true,
   SHOW_BACKEND_LOGS: false,
+  GENERATE_SNAPSHOTS: true,
   QUIET: false,
   ...booleanify(process.env),
 };
 
 const derivedOptions = {
-  MB_PREMIUM_EMBEDDING_TOKEN: userOptions.ENTERPRISE_TOKEN,
   CYPRESS_ALL_FEATURES_TOKEN: userOptions.ENTERPRISE_TOKEN,
   QA_DB_ENABLED: userOptions.START_CONTAINERS,
   BUILD_JAR: userOptions.BACKEND_PORT === 4000,
-  GENERATE_SNAPSHOTS: userOptions.BACKEND_PORT === 4000,
   CYPRESS_IS_EMBEDDING_SDK: userOptions.TEST_SUITE === "component",
   MB_SNOWPLOW_AVAILABLE: userOptions.START_CONTAINERS,
   MB_SNOWPLOW_URL: "http://localhost:9090",
@@ -85,7 +84,10 @@ const init = async () => {
     await CypressBackend.start();
   } else {
     printBold(
-      `Not building a jar, expecting metabase to be running on port ${options.BACKEND_PORT}`,
+      `Not building a jar, expecting metabase to be running on port ${options.BACKEND_PORT}. Make sure your metabase instance is running with an h2 app db and the following environment variables:
+  - MB_ENABLE_TEST_ENDPOINTS=true
+  - MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE=true
+    `,
     );
   }
 
