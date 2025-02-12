@@ -5,7 +5,14 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { flexRender } from "@tanstack/react-table";
-import { type RefObject, useCallback, useMemo } from "react";
+import cx from "classnames";
+import {
+  type Ref,
+  type RefObject,
+  forwardRef,
+  useCallback,
+  useMemo,
+} from "react";
 
 import { AddColumnButton } from "metabase/visualizations/components/Table/AddColumnButton";
 
@@ -21,21 +28,26 @@ export interface TableRefs {
 export type TableProps<TData> = TableInstance<TData> & {
   width: number;
   height: number;
+  className?: string;
 };
 
-export const Table = <TData,>({
-  table,
-  refs,
-  virtualGrid,
-  measureRoot,
-  columnsReordering,
-  width,
-  height,
-  renderHeaderDecorator,
-  onBodyCellClick,
-  onHeaderCellClick,
-  onAddColumnClick,
-}: TableProps<TData>) => {
+export const Table = forwardRef(function Table<TData>(
+  {
+    table,
+    refs,
+    virtualGrid,
+    measureRoot,
+    columnsReordering,
+    width,
+    height,
+    className,
+    renderHeaderDecorator,
+    onBodyCellClick,
+    onHeaderCellClick,
+    onAddColumnClick,
+  }: TableProps<TData>,
+  ref: Ref<HTMLDivElement>,
+) {
   const {
     virtualColumns,
     virtualRows,
@@ -78,7 +90,12 @@ export const Table = <TData,>({
       onDragOver={columnsReordering.onDragOver}
       onDragEnd={columnsReordering.onDragEnd}
     >
-      <div style={{ height, width }} className={S.table} tabIndex={-1}>
+      <div
+        ref={ref}
+        style={{ height, width }}
+        className={cx(S.table, className)}
+        tabIndex={-1}
+      >
         <div
           ref={refs.bodyRef}
           style={{
@@ -208,4 +225,4 @@ export const Table = <TData,>({
       {measureRoot}
     </DndContext>
   );
-};
+});

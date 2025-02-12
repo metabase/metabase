@@ -1,20 +1,28 @@
 import type { ColumnSizingState } from "@tanstack/react-table";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  type Ref,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import _ from "underscore";
 
+import ExplicitSize from "metabase/components/ExplicitSize";
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
+import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { formatValue } from "metabase/lib/formatting";
-import { connect } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import {
   getIsShowingRawTable,
   getQueryBuilderMode,
-  getUiControls,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import {
   type ColumnOptions,
-  Table as TableView,
+  Table,
   useTableInstance,
 } from "metabase/visualizations/components/Table";
 import { ROW_ID_COLUMN_ID } from "metabase/visualizations/components/Table/constants";
@@ -29,7 +37,10 @@ import {
   getTableHeaderClickedObject,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  QueryClickActionsMode,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type { OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
@@ -72,6 +83,7 @@ interface TableProps extends VisualizationProps {
   isPivoted?: boolean;
   hasMetadataPopovers?: boolean;
   question: Question;
+  mode: QueryClickActionsMode;
 }
 
 const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
@@ -95,25 +107,30 @@ const getColumnSizing = (
   }, {});
 };
 
-export const _TableInteractive = ({
-  data,
-  series,
-  height,
-  settings,
-  width,
-  onVisualizationClick,
-  onUpdateVisualizationSettings,
-  isPivoted = false,
-  getColumnSortDirection,
-  question,
-  clicked,
-  queryBuilderMode,
-  getColumnTitle,
-  isEmbeddingSdk,
-  hasMetadataPopovers = true,
-  mode,
-  isRawTable,
-}: TableProps) => {
+export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
+  {
+    data,
+    series,
+    height,
+    settings,
+    width,
+    onVisualizationClick,
+    onUpdateVisualizationSettings,
+    isPivoted = false,
+    getColumnSortDirection,
+    question,
+    clicked,
+    getColumnTitle,
+    hasMetadataPopovers = true,
+    mode,
+    className,
+  }: TableProps,
+  ref: Ref<HTMLDivElement>,
+) {
+  const queryBuilderMode = useSelector(getQueryBuilderMode);
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  const isRawTable = useSelector(getIsShowingRawTable);
+
   const { rows, cols } = data;
   const prevColNamesRef = useRef<Set<string>>(
     new Set(cols.map(col => col.name)),
@@ -412,13 +429,15 @@ export const _TableInteractive = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cols, tableProps.measureColumnWidths]);
 
-  if (width == null || height == null) {
-    return null;
+  if (!width || !height) {
+    return <div ref={ref} className={className} />;
   }
 
   return (
-    <TableView
+    <Table
+      ref={ref}
       {...tableProps}
+      className={className}
       width={width}
       height={height}
       renderHeaderDecorator={renderHeaderDecorator}
@@ -427,23 +446,11 @@ export const _TableInteractive = ({
       onAddColumnClick={handleAddColumnButtonClick}
     />
   );
-};
-
-interface StateProps {
-  queryBuilderMode: string;
-  isEmbeddingSdk: boolean;
-  scrollToLastColumn: boolean;
-  isRawTable: boolean;
-}
-
-const mapStateToProps = (state: any): StateProps => ({
-  queryBuilderMode: getQueryBuilderMode(state),
-  isEmbeddingSdk: getIsEmbeddingSdk(state),
-  scrollToLastColumn: getUiControls(state).scrollToLastColumn,
-  isRawTable: getIsShowingRawTable(state),
 });
 
-export const TableInteractive = connect(
-  mapStateToProps,
-  null,
-)(_TableInteractive);
+export const TableInteractive = _.compose(
+  withMantineTheme,
+  ExplicitSize({
+    refreshMode: "throttle",
+  }),
+)(TableInteractiveInner);
