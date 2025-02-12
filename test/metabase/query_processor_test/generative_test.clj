@@ -1,7 +1,5 @@
 (ns metabase.query-processor-test.generative-test
-  "Query processor generative tests.
-
-  WIPWIPWIP"
+  "Query processor generative tests."
   (:require
    [clojure.pprint :as pprint]
    [clojure.test :refer [deftest is testing]]
@@ -21,7 +19,7 @@
 
 (comment
   (alter-var-root #_:clj-kondo/ignore #'environ.core/env assoc
-                  :mb-test-qgen-run "true")
+                  :mb-gentest-run "true")
   )
 
 (deftest query-execution-test
