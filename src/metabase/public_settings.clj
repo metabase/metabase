@@ -1063,17 +1063,19 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru "Row limit in file attachments excluding the header.")
   :visibility :internal
   :export?    true
-  :type       :integer)
+  :type       :positive-integer)
 
 (defsetting download-row-limit
-  (deferred-tru "Row limit in exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.")
+  (deferred-tru "Row limit in file exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.")
   :visibility :internal
   :export?    true
-  :type       :integer
-  :default    1048575
+  :type       :positive-integer
   :getter     (fn []
-                (let [limit (setting/get-value-of-type :integer :download-row-limit)]
-                  (max limit 1048575))))
+                (let [limit (setting/get-value-of-type :positive-integer :download-row-limit)]
+                  (if (nil? limit)
+                    limit
+                    (max limit 1048575)))))
+
 
 ;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
 ;;; should live in this namespace.

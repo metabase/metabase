@@ -74,10 +74,7 @@
 
 (deftest download-row-limit-test
   (testing "Apply custom download row limits when"
-    (doseq [[limit expected context] [[1000 1000 :csv-download]
-                                      [1000 1000 :json-download]
-                                      [1000 1000 :xlsx-download]
-                                      [1100000 1100000 :csv-download]
+    (doseq [[limit expected context] [[1100000 1100000 :csv-download]
                                       [1100000 1100000 :json-download]
                                       [1100000 qp.i/absolute-max-results :xlsx-download]
                                       [nil qp.i/absolute-max-results :csv-download]
