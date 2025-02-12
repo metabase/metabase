@@ -125,6 +125,22 @@ describe("NumberInputWidget", () => {
       expect(setValue).toHaveBeenCalledWith([1, 2]);
     });
 
+    it("should correctly parse big integers", async () => {
+      const { setValue } = setup({ value: undefined, arity: 2 });
+
+      const [textbox1, textbox2] = screen.getAllByRole("textbox");
+      await userEvent.type(textbox1, "9007199254740993");
+      await userEvent.type(textbox2, "9007199254740994");
+
+      const button = screen.getByRole("button", { name: "Add filter" });
+      await userEvent.click(button);
+
+      expect(setValue).toHaveBeenCalledWith([
+        "9007199254740993",
+        "9007199254740994",
+      ]);
+    });
+
     it("should be clearable by emptying all inputs", async () => {
       const { setValue } = setup({ value: [123, 456], arity: 2 });
 
