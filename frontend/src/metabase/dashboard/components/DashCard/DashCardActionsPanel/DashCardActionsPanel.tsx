@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
-import { Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type {
   DashCardId,
@@ -19,10 +19,8 @@ import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSett
 import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
-import {
-  DashCardActionButtonsContainer,
-  DashCardActionsPanelContainer,
-} from "./DashCardActionsPanel.styled";
+import S from "./DashCardActionsPanel.module.css";
+import { DashCardActionsPanelContainer } from "./DashCardActionsPanel.styled";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
 import { useDuplicateDashCard } from "./use-duplicate-dashcard";
@@ -269,9 +267,9 @@ function DashCardActionsPanelInner({
         isDashCardTabMenuOpen={isDashCardTabMenuOpen}
         onLeftEdge={onLeftEdge}
       >
-        <DashCardActionButtonsContainer>
+        <Box className={S.DashCardActionButtonsContainer} component="span">
           {buttons}
-        </DashCardActionButtonsContainer>
+        </Box>
       </DashCardActionsPanelContainer>
     </>
   );

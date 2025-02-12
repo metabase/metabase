@@ -57,11 +57,3 @@ export const DashCardActionsPanelContainer = styled("div", {
     display: none;
   }
 `;
-
-export const DashCardActionButtonsContainer = styled.span`
-  display: flex;
-  align-items: center;
-  color: var(--mb-color-text-medium);
-  line-height: 1px;
-  gap: 0.5rem;
-`;
