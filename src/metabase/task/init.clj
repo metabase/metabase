@@ -10,7 +10,6 @@
    [metabase.task.creator-sentiment-emails]
    [metabase.task.email-remove-legacy-pulse]
    [metabase.task.follow-up-emails]
-   [metabase.task.index-values]
    [metabase.task.notification]
    [metabase.task.refresh-slack-channel-user-cache]
    [metabase.task.send-anonymous-stats]

@@ -68,6 +68,8 @@
      metabase.driver.postgres-test/create-enums-db!
      metabase.driver.postgres-test/drop-if-exists-and-create-db!
      metabase.driver.sql-jdbc.execute/execute-statement!
+     metabase.indexed-entities.models.model-index/add-values!
+     metabase.indexed-entities.task.index-values/job-init!
      metabase.model-persistence.models.persisted-info/ready-database!
      metabase.model-persistence.task.persist-refresh/job-init!
      metabase.model-persistence.task.persist-refresh/refresh-tables!
@@ -75,7 +77,6 @@
      metabase.models.collection.graph-test/clear-graph-revisions!
      metabase.models.collection.graph-test/do-with-n-temp-users-with-personal-collections!
      metabase.models.field-values/create-or-update-full-field-values!
-     metabase.models.model-index/add-values!
      metabase.models.moderation-review/create-review!
      metabase.models.on-demand-test/add-dashcard-with-parameter-mapping!
      metabase.models.setting-test/test-user-local-allowed-setting!
@@ -106,7 +107,6 @@
      metabase.sync.sync-metadata/sync-db-metadata!
      metabase.sync.util-test/sync-database!
      metabase.sync.util/store-sync-summary!
-     metabase.task.index-values/job-init!
      metabase.task/delete-task!
      metabase.test.data.bigquery-cloud-sdk/execute!
      metabase.test.data.impl/copy-db-tables-and-fields!

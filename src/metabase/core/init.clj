@@ -11,6 +11,7 @@
    [metabase.config :as config]
    [metabase.driver.init]
    [metabase.events.init]
+   [metabase.indexed-entities.init]
    [metabase.logger.init]
    [metabase.model-persistence.init]
    [metabase.models.init]

@@ -22,7 +22,6 @@
    [metabase.api.ldap]
    [metabase.api.login-history]
    [metabase.api.macros :as api.macros]
-   [metabase.api.model-index]
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
    [metabase.api.premium-features]
@@ -45,6 +44,7 @@
    [metabase.bookmarks.api]
    [metabase.channel.api]
    [metabase.config :as config]
+   [metabase.indexed-entities.api]
    [metabase.model-persistence.api]
    [metabase.permissions.api]
    [metabase.revisions.api]
@@ -75,12 +75,10 @@
          metabase.api.google/keep-me
          metabase.api.ldap/keep-me
          metabase.api.login-history/keep-me
-         metabase.api.model-index/keep-me
          metabase.api.native-query-snippet/keep-me
          metabase.api.preview-embed/keep-me
          metabase.api.public/keep-me
          metabase.api.pulse.unsubscribe/keep-me
-         metabase.segments.api/keep-me
          metabase.api.setting/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
@@ -90,9 +88,11 @@
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
+         metabase.indexed-entities.api/keep-me
          metabase.model-persistence.api/keep-me
          metabase.permissions.api/keep-me
          metabase.revisions.api/keep-me
+         metabase.segments.api/keep-me
          metabase.setup.api/keep-me
          metabase.user-key-value.api/keep-me)
 
@@ -163,7 +163,7 @@
    "/google"               (+auth 'metabase.api.google)
    "/ldap"                 (+auth 'metabase.api.ldap)
    "/login-history"        (+auth 'metabase.api.login-history)
-   "/model-index"          (+auth 'metabase.api.model-index)
+   "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.permissions.api)

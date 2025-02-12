@@ -373,6 +373,8 @@
     metabase.embed                 #{metabase.embed.settings}
     metabase.events                #{metabase.events metabase.events.init}
     metabase.formatter             #{metabase.formatter}
+    metabase.indexed-entities      #{metabase.indexed-entities.api
+                                     metabase.indexed-entities.init}
     metabase.integrations          #{metabase.integrations.common
                                      metabase.integrations.google
                                      metabase.integrations.ldap
@@ -444,8 +446,7 @@
                                      metabase.sync.util}
     metabase.task                  #{metabase.task
                                      metabase.task.bootstrap
-                                     metabase.task.index-values
-                                     metabase.task.init} ; TODO -- move this stuff into appropriate modules
+                                     metabase.task.init}
     metabase.timeline              #{metabase.timeline.api
                                      metabase.timeline.core}
     metabase.types                 #{metabase.types}
@@ -492,6 +493,7 @@
     metabase.embed                 :any
     metabase.events                :any
     metabase.formatter             :any
+    metabase.indexed-entities      :any ; TODO -- way too much stuff
     metabase.integrations          :any
     metabase.legacy-mbql           :any
     metabase.lib                   #{metabase.config
