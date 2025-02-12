@@ -4,6 +4,7 @@
    [honey.sql :as sql]
    [medley.core :as m]
    ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
+   [metabase.actions.core :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -12,6 +13,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.events :as events]
+   [metabase.models.action :as action]
    [metabase.models.cell-edit]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
@@ -61,7 +63,7 @@
                                                  new-row)))}))
 
 (defn track-cell-update! [table-id row-pk field-id column old-row new-value]
-  (track-update! old-row (assoc row-pk old-row column new-value))
+  (track-update! table-id row-pk old-row (assoc old-row column new-value))
 
   (events/publish-event! :event/table-mutation-cell-update
                          {:object-id field-id
@@ -258,6 +260,28 @@
     (insert-rows!* driver db_id table-id table rows)
     :done))
 
+(api.macros/defendpoint :post "/row-action/:action-id"
+  [{:keys [action-id]} :- [:map [:action-id :int]]
+   _
+   {:keys [table-id pk]} :- [:map
+                             [:table-id :int]
+                             [:pk :int]]]
+  (let [_  [table-id pk]
+        pks   (api/check-404 (t2/select :model/Field :table_id table-id :semantic_type :type/PK))
+        _     (assert (= 1 (count pks)))
+        db_id (api/check-404 (t2/select-one-fn :db_id :model/Table table-id))
+        action (api/check-404 (action/select-action :id action-id))
+        driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))
+        row   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db_id)]
+                (first (jdbc/query conn (sql/format {:select [:*]
+                                                   :from   [(keyword (t2/select-one-fn :name :model/Table table-id))]
+                                                   :where  [:= pk (keyword (:name (first pks)))]}
+                                                  :quoted true
+                                                  :dialect (sql.qp/quote-style driver)))))
+        col->param-id (into {} (map (juxt :slug :id) (:parameters action)))]
+    (dev/with-permissions #{"/"}
+                          (actions/execute-action! action (into {} (map (fn [[col val]] (when-let [k (col->param-id (name col))] [k val])) row))))))
+
 (comment
   (def table (t2/select-one :model/Table :name "PEOPLE"))
   (def field-id (t2/select-one-fn :id [:model/Field :id] :table_id (:id table) :name "NAME"))
@@ -266,3 +290,5 @@
   (t2/select-fn-vec (juxt :name :database_type) [:model/Field :database_type :name :table_id] :table_id (t2/select-one-pk :model/Table :name "PEOPLE"))
   (u/index-by :database_type (juxt :table_id :name) (t2/select :model/Field))
   (t2/select-one-fn :name :model/Table 219))
+
+(t2/select-one-fn :id :model/Table :name "test_user")

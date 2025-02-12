@@ -90,11 +90,12 @@
         {:keys [source-table]} (when (map? mbql-query) mbql-query)
         [_ model-id] (when (string? source-table) (re-find #"card\_\_(\d+)" source-table))
         model-id (some-> model-id parse-long)
-        actions (t2/select :model/Action :model_id model-id :is_row_action true)]
+        actions (t2/select-fn-vec #(select-keys % [:id :name]) :model/Action :model_id model-id :is_row_action true)]
     (run-streaming-query
      (-> query
          (update-in [:middleware :js-int-to-string?] (fnil identity true))
-         qp/userland-query-with-default-constraints))))
+         qp/userland-query-with-default-constraints
+         (assoc :row-actions actions)))))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
