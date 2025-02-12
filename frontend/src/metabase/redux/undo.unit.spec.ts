@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
-import { act } from "@testing-library/react";
 
+import { act } from "__support__/ui";
 import type { Dispatch } from "metabase-types/store";
 
 import {
