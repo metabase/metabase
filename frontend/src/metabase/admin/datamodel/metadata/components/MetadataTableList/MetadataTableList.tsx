@@ -90,7 +90,6 @@ interface ColumnDefinition {
   isNullable: boolean;
   isAutoIncrement: boolean;
   defaultValue: string;
-  monitorValue: string;
 }
 
 interface CreateTableModalProps {
@@ -120,7 +119,6 @@ const CreateTableModal = ({
         isNullable: true,
         isAutoIncrement: false,
         defaultValue: "",
-        monitorValue: "",
       },
     ]);
   };
@@ -256,16 +254,6 @@ const CreateTableModal = ({
                   onChange={e => {
                     const newColumns = [...columns];
                     newColumns[index].defaultValue = e.target.value;
-                    setColumns(newColumns);
-                  }}
-                />
-                <TextInput
-                  label={t`Monitor Value`}
-                  placeholder={t`Enter value to monitor`}
-                  value={column.monitorValue}
-                  onChange={e => {
-                    const newColumns = [...columns];
-                    newColumns[index].monitorValue = e.target.value;
                     setColumns(newColumns);
                   }}
                 />
