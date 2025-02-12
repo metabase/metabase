@@ -1,13 +1,11 @@
 (ns metabase.api.routes
   (:require
    [compojure.route :as route]
-   [metabase.api.action]
-   [metabase.api.activity]
+   [metabase.actions.api]
+   [metabase.activity-feed.api]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.alert]
    [metabase.api.api-key]
-   [metabase.api.automagic-dashboards]
-   [metabase.api.bookmark]
    [metabase.api.cache]
    [metabase.api.card]
    [metabase.api.cards]
@@ -24,7 +22,6 @@
    [metabase.api.ldap]
    [metabase.api.login-history]
    [metabase.api.macros :as api.macros]
-   [metabase.api.model-index]
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
    [metabase.api.persist]
@@ -34,9 +31,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.pulse]
    [metabase.api.pulse.unsubscribe]
-   [metabase.api.revision]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.segment]
    [metabase.api.session]
    [metabase.api.setting]
    [metabase.api.slack]
@@ -45,24 +40,27 @@
    [metabase.api.testing]
    [metabase.api.tiles]
    [metabase.api.user]
-   [metabase.api.user-key-value]
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
+   [metabase.bookmarks.api]
    [metabase.channel.api]
    [metabase.config :as config]
+   [metabase.indexed-entities.api]
    [metabase.permissions.api]
+   [metabase.revisions.api]
    [metabase.search.api]
+   [metabase.segments.api]
    [metabase.setup.api]
    [metabase.sync.api]
    [metabase.timeline.api]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.user-key-value.api]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.xrays.api]))
 
-(comment metabase.api.action/keep-me
-         metabase.api.activity/keep-me
+(comment metabase.actions.api/keep-me
+         metabase.activity-feed.api/keep-me
          metabase.api.alert/keep-me
          metabase.api.api-key/keep-me
-         metabase.api.automagic-dashboards/keep-me
-         metabase.api.bookmark/keep-me
          metabase.api.cache/keep-me
          metabase.api.card/keep-me
          metabase.api.cards/keep-me
@@ -77,14 +75,12 @@
          metabase.api.google/keep-me
          metabase.api.ldap/keep-me
          metabase.api.login-history/keep-me
-         metabase.api.model-index/keep-me
          metabase.api.native-query-snippet/keep-me
          metabase.api.persist/keep-me
          metabase.api.preview-embed/keep-me
          metabase.api.public/keep-me
          metabase.api.pulse.unsubscribe/keep-me
-         metabase.api.revision/keep-me
-         metabase.api.segment/keep-me
+         metabase.segments.api/keep-me
          metabase.api.setting/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
@@ -92,10 +88,13 @@
          metabase.api.testing/keep-me
          metabase.api.tiles/keep-me
          metabase.api.user/keep-me
-         metabase.api.user-key-value/keep-me
          metabase.api.util/keep-me
+         metabase.bookmarks.api/keep-me
+         metabase.indexed-entities.api/keep-me
          metabase.permissions.api/keep-me
-         metabase.setup.api/keep-me)
+         metabase.revisions.api/keep-me
+         metabase.setup.api/keep-me
+         metabase.user-key-value.api/keep-me)
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
   "Always 'falls thru' to the next handler."
@@ -132,14 +131,21 @@
     {"/unsubscribe" 'metabase.api.pulse.unsubscribe})
    (+auth metabase.api.pulse/routes)))
 
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                  DO NOT ADD `metabase.api.*` NAMESPACES THAT CONTAIN ENDPOINTS                 !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ;;; ↓↓↓ KEEP THIS SORTED OR ELSE! ↓↓↓
 (def ^:private route-map
-  {"/action"               (+auth 'metabase.api.action)
-   "/activity"             (+auth 'metabase.api.activity)
+  {"/action"               (+auth 'metabase.actions.api)
+   "/activity"             (+auth 'metabase.activity-feed.api)
    "/alert"                (+auth 'metabase.api.alert)
    "/api-key"              (+auth 'metabase.api.api-key)
-   "/automagic-dashboards" (+auth 'metabase.api.automagic-dashboards)
-   "/bookmark"             (+auth 'metabase.api.bookmark)
+   "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
+   "/bookmark"             (+auth 'metabase.bookmarks.api)
    "/cache"                (+auth 'metabase.api.cache)
    "/card"                 (+auth 'metabase.api.card)
    "/cards"                (+auth 'metabase.api.cards)
@@ -157,7 +163,7 @@
    "/google"               (+auth 'metabase.api.google)
    "/ldap"                 (+auth 'metabase.api.ldap)
    "/login-history"        (+auth 'metabase.api.login-history)
-   "/model-index"          (+auth 'metabase.api.model-index)
+   "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.permissions.api)
@@ -166,9 +172,9 @@
    "/preview_embed"        (+auth 'metabase.api.preview-embed)
    "/public"               (+public-exceptions 'metabase.api.public)
    "/pulse"                pulse-routes
-   "/revision"             (+auth 'metabase.api.revision)
+   "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
-   "/segment"              (+auth 'metabase.api.segment)
+   "/segment"              (+auth 'metabase.segments.api)
    "/session"              metabase.api.session/routes
    "/setting"              (+auth 'metabase.api.setting)
    "/setup"                'metabase.setup.api
@@ -180,9 +186,16 @@
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
    "/user"                 (+auth 'metabase.api.user)
-   "/user-key-value"       (+auth 'metabase.api.user-key-value)
+   "/user-key-value"       (+auth 'metabase.user-key-value.api)
    "/util"                 'metabase.api.util})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                  DO NOT ADD `metabase.api.*` NAMESPACES THAT CONTAIN ENDPOINTS                 !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for API endpoints."

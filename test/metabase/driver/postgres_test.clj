@@ -8,6 +8,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.actions.error :as actions.error]
+   [metabase.actions.models :as action]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
@@ -28,7 +29,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.models.action :as action]
    [metabase.models.secret :as secret]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -1071,7 +1071,7 @@
                      (is (=? {:data {:rows [["Rasta" "good bird" "sad bird" "toucan"]]}}
                              (qp/process-query query))))))))))))))
 
-;; API tests are in [[metabase.api.action-test]]
+;; API tests are in [[metabase.actions.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
   (testing "violate not null constraint"
     (is (= {:type :metabase.actions.error/violate-not-null-constraint,
@@ -1667,6 +1667,7 @@
                 :type :native
                 :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))
 
+
 (defn- type-query [query field]
   (mt/native-query {:query (str "SELECT pg_typeof(" (name field) ") "
                                 "FROM ( "
@@ -1691,3 +1692,19 @@
                 binned-type-query (type-query binned-query field)]
             (is (= (-> unbinned-type-query qp/process-query mt/rows)
                    (-> binned-type-query   qp/process-query mt/rows)))))))))
+
+(deftest ^:parallel aggregated-array-is-returned-correctly-test
+  (testing "An aggregated array column should be returned in a readable format"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (is (= [["The Gorbals" "The Misfit Restaurant + Bar" "Marlowe" "Yamashiro Hollywood" "Musso & Frank Grill" "Pacific Dining Car" "Chez Jay" "Rush Street"]
+                ["Greenblatt's Delicatessen & Fine Wine Shop" "Handy Market"]]
+               (->> (mt/native-query {:query "select category_id, array_agg(name)
+                                              from venues
+                                              group by category_id
+                                              order by 1 asc
+                                              limit 2;"})
+                    mt/process-query
+                    mt/rows
+                    (map second))))))))
+
