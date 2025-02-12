@@ -17,6 +17,7 @@ const userOptions = {
   BACKEND_PORT: 4000,
   OPEN_UI: true,
   SHOW_BACKEND_LOGS: false,
+  GENERATE_SNAPSHOTS: true,
   QUIET: false,
   ...booleanify(process.env),
 };
@@ -26,7 +27,6 @@ const derivedOptions = {
   CYPRESS_ALL_FEATURES_TOKEN: userOptions.ENTERPRISE_TOKEN,
   QA_DB_ENABLED: userOptions.START_CONTAINERS,
   BUILD_JAR: userOptions.BACKEND_PORT === 4000,
-  GENERATE_SNAPSHOTS: userOptions.BACKEND_PORT === 4000,
   CYPRESS_IS_EMBEDDING_SDK: userOptions.TEST_SUITE === "component",
   MB_SNOWPLOW_AVAILABLE: userOptions.START_CONTAINERS,
   MB_SNOWPLOW_URL: "http://localhost:9090",

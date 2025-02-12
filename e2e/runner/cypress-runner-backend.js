@@ -44,6 +44,8 @@ const CypressBackend = {
         MB_ENABLE_TEST_ENDPOINTS: "true",
         MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE: "true",
         MB_LAST_ANALYTICS_CHECKSUM: "-1",
+        MB_DB_CONNECTION_URI: "", // ignore connection URI in favor of the db file
+        MB_CONFIG_FILE_PATH: "", // ignore config.yml
       };
 
       /**
