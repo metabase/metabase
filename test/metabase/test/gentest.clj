@@ -71,7 +71,7 @@
 (defn generate-report
   [iteration-index iteration-seed ^Exception e]
   (let [toplevel (ex->map e)]
-    (merge 
+    (merge
      {:type (-> toplevel :data :type)
       ::iteration-index iteration-index
       ::iteration-seed iteration-seed

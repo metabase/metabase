@@ -37,7 +37,7 @@
              {:dataset_query (lib.convert/->legacy-MBQL query)}]
             (let [result (qp/process-query (lib/query mp (lib.metadata/card mp id)))]
               (testing "Successful query execution"
-                ;; TODO: Adjust kondo for pprint with with-out-str, create is that does not eval message 
+                ;; TODO: Adjust kondo for pprint with with-out-str, create is that does not eval message
                 ;; or alternative reporting.
                 (or (is (= :completed
                            (:status result)))
