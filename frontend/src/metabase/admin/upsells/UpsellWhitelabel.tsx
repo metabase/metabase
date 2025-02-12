@@ -29,7 +29,7 @@ export const UpsellWhitelabel = ({ source }: { source: string }) => {
     >
       {t`Customize your internal or customer-facing analytics with your brand name, logo, colors, font and more, and hide giveaway Metabase elements.`}
       <ExternalLink className={S.SecondaryCTALink} href={url}>
-        Learn more
+        {t`Learn more`}
       </ExternalLink>
     </UpsellBigCard>
   );
