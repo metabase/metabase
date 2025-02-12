@@ -26,6 +26,7 @@ import {
   MultiSelect,
   Select,
   Stack,
+  TextInput,
   rem,
 } from "metabase/ui";
 import type { Notification, NotificationHandler } from "metabase-types/api";
@@ -72,6 +73,8 @@ export const CreateOrEditCustomModal = ({
 
   const [notification, setNotification] = useState<Notification | null>(null);
   const [selectedFields, setSelectedFields] = useState<number[]>([]);
+  const [selectedField, setSelectedField] = useState<number | null>(null);
+  const [filterValue, setFilterValue] = useState<string>("");
 
   const isEditMode = !!editingNotification;
 
@@ -91,20 +94,20 @@ export const CreateOrEditCustomModal = ({
     if (channelSpec && user && hookChannels) {
       const baseCondition = `(= ${tableId} (-> % :payload :event_info :object :table-id))`;
 
-      const fieldsCondition =
-        selectedFields.length > 0
-          ? `(or ${selectedFields
-              .map(
-                fieldId =>
-                  `(= ${fieldId} (-> % :payload :event_info :object :field-id))`,
-              )
-              .join(" ")})`
-          : undefined;
+      const fieldCondition = selectedField
+        ? `(= ${selectedField} (-> % :payload :event_info :object :field-id))`
+        : undefined;
 
-      const fullCondition =
-        baseCondition && fieldsCondition
-          ? `(and ${baseCondition} ${fieldsCondition})`
-          : baseCondition;
+      const valueCondition = filterValue 
+        ? `(= "${filterValue}" (-> % :payload :event_info :object :value-new))`
+        : undefined;
+
+      const conditions = [baseCondition, fieldCondition, valueCondition]
+        .filter(Boolean);
+
+      const fullCondition = conditions.length > 1
+        ? `(and ${conditions.join(" ")})`
+        : conditions[0];
 
       setNotification(prev =>
         prev
@@ -127,7 +130,8 @@ export const CreateOrEditCustomModal = ({
     isEditMode,
     hookChannels,
     tableId,
-    selectedFields,
+    selectedField,
+    filterValue,
   ]);
 
   const onCreateOrEdit = async () => {
@@ -231,16 +235,27 @@ export const CreateOrEditCustomModal = ({
             </AlertModalSettingsBlock>
             {notification.subscriptions?.[0]?.event_name ===
               "event/table-mutation-cell-update" && (
-              <MultiSelect
-                label={t`Select columns to monitor (optional)`}
-                placeholder={t`All columns will be monitored if none selected`}
-                data={fields.map(field => ({
-                  value: field.id,
-                  label: field.display_name || field.name,
-                }))}
-                value={selectedFields}
-                onChange={setSelectedFields}
-              />
+              <>
+                <Select
+                  label={t`Select column to monitor (optional)`}
+                  placeholder={t`All columns will be monitored if none selected`}
+                  data={fields.map(field => ({
+                    value: field.id,
+                    label: field.display_name || field.name,
+                  }))}
+                  value={selectedField}
+                  onChange={(value: number) => setSelectedField(value)}
+                  clearable
+                />
+                <Stack spacing="0.5rem">
+                  <label>{t`Filter by value (optional)`}</label>
+                  <TextInput
+                    value={filterValue}
+                    onChange={e => setFilterValue(e.target.value)} 
+                    placeholder={t`Enter value to filter notifications`}
+                  />
+                </Stack>
+              </>
             )}
 
             <AlertModalSettingsBlock
