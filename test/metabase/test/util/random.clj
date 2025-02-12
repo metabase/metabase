@@ -5,10 +5,7 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO: this should be "macroed" for use in with-gentest
-(defonce ^:dynamic *seed* (.nextLong (Random.)))
-
-(defonce ^:dynamic *generator* (Random. *seed*))
+(defonce ^:dynamic *generator* (Random.))
 
 (defn rand
   "wip"

@@ -14,6 +14,8 @@
                                             (.nextLong ^Random (Random.)))
                                     (as-> $ (log/infof "Initial seed: %d" $))))
 
+(defonce ^:dynamic *iteration-seed* nil)
+
 (comment
   (alter-var-root #'*initial-seed* (fn [& _] (.nextLong ^Random (Random.))))
   )
@@ -30,9 +32,9 @@
       (println "\nERROR in" (clojure.test/testing-vars-str m))
       (when (seq clojure.test/*testing-contexts*)
         (println (clojure.test/testing-contexts-str)))
-      ;; Temporarily print seed for non exceptional failures here
-      (when tu.rng/*seed*
-        (println "Iteration seed: %d" tu.rng/*seed*))
+      ;; Temporarily print seed for non exceptional failures here, this will be cleaned up
+      (when-not (::iteration-seed m)
+        (println "Iteration seed: %d" *iteration-seed*))
       (clojure.pprint/pprint m))
 
     (*original-report* m)))
@@ -112,23 +114,24 @@
 (defn do-with-gentest
   [limit-spec thunk]
   (let [limit-fn (limit-spec->limit-fn limit-spec)
-        seed-generator (Random. *initial-seed*)]
+        seed (atom *initial-seed*)]
     ;; TODO: Double check binding works as expected. "exprs executed first and _bound_ in parallel"
     (binding [*original-report* clojure.test/report
               clojure.test/report report]
-      (loop [iteration-index 0
-             iteration-seed (.nextLong seed-generator)]
+      (loop [iteration-index 0]
         (when (limit-fn)
-          (try
-            (binding [tu.rng/*seed* iteration-seed
-                      tu.rng/*generator* (Random. iteration-seed)]
-              (thunk))
-            (catch Exception e
-              (when-not (#{::generation ::execution} (:type (ex-data e)))
-                ;; TODO: Should wrap in unhandled exception?
-                (throw e))
-              (report (generate-report iteration-index iteration-seed e))))
-          (recur (inc iteration-index) (.nextLong seed-generator)))))))
+          (binding [*iteration-seed* @seed
+                    tu.rng/*generator* (Random. @seed)]
+            (try
+              (thunk)
+              (catch Exception e
+                (when-not (#{::generation ::execution} (:type (ex-data e)))
+                  ;; TODO: Should wrap in unhandled exception
+                  (throw e))
+                (report (generate-report iteration-index *iteration-seed* e)))
+              (finally
+                (reset! seed (.nextLong ^Random tu.rng/*generator*)))))
+          (recur (inc iteration-index)))))))
 
 (defmacro with-gentest
   [limit-spec bindings & body]
