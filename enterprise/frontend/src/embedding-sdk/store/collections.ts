@@ -15,11 +15,15 @@ export type SDKCollectionId = RegularCollectionId | "personal";
 export const getNumericCollectionId = createSelector(
   [
     getUserPersonalCollectionId,
-    (_, collectionId: SDKCollectionId | null) => collectionId,
+    (_, collectionId: SDKCollectionId | "root" | null) => collectionId,
   ],
   (personalCollectionId, collectionId) => {
     if (collectionId === "personal") {
       return personalCollectionId as RegularCollectionId;
+    }
+
+    if (collectionId === "root") {
+      return "root" as const;
     }
 
     if (collectionId === null) {
