@@ -8,8 +8,8 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
@@ -127,7 +127,7 @@
    :email_configured                     (setting/get :email-configured?)
    :slack_configured                     (slack/slack-configured?)
    :sso_configured                       (google/google-auth-enabled)
-   :instance_started                     (snowplow/instance-creation)
+   :instance_started                     (analytics/instance-creation)
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
    :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (setting/get :enable-embedding)
    :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
@@ -927,5 +927,5 @@
               (str "Missing required keys in snowplow-data. got:" (sort (keys snowplow-data))))
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
-      (snowplow/track-event! ::snowplow/instance_stats snowplow-data)
+      (analytics/track-event! :snowplow/instance_stats snowplow-data)
       (stats-post-cleanup))))
