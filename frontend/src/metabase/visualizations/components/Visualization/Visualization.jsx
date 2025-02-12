@@ -544,7 +544,7 @@ class Visualization extends PureComponent {
                 clicked={clicked}
                 headerIcon={hasHeader ? null : headerIcon}
                 onHoverChange={this.handleHoverChange}
-                onVisualizationClick={this.handleVisualizationClick}
+                // onVisualizationClick={this.handleVisualizationClick}
                 visualizationIsClickable={this.visualizationIsClickable}
                 onRenderError={this.onRenderError}
                 onRender={this.onRender}

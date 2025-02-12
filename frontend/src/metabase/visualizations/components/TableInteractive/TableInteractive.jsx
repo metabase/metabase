@@ -640,12 +640,12 @@ class TableInteractive extends Component {
 
   visualizationIsClickable(clicked) {
     try {
-      const { onVisualizationClick, visualizationIsClickable } = this.props;
+      const { /*onVisualizationClick,*/ visualizationIsClickable } = this.props;
       const { dragColIndex } = this.state;
       if (
         // don't bother calling if we're dragging, but do it for headers to show isSortable
         (dragColIndex == null || (clicked && clicked.value === undefined)) &&
-        onVisualizationClick &&
+        // onVisualizationClick &&
         visualizationIsClickable &&
         clicked
       ) {
@@ -776,7 +776,7 @@ class TableInteractive extends Component {
     };
 
     const handleDoubleClick = e => {
-      this.props.onVisualizationClick(null); // hide click actions menu
+      this.props.onVisualizationClick?.(null); // hide click actions menu
 
       if (isClickable && this.visualizationIsClickable(clicked)) {
         this.handleCellClickToEdit(clicked, e.currentTarget, cellProps);
