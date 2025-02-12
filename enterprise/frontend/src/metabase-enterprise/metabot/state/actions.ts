@@ -57,7 +57,12 @@ export const setVisible =
 export const submitInput = createAsyncThunk(
   "metabase-enterprise/metabot/submitInput",
   async (
-    data: { message: string; context: MetabotChatContext; history: any[] },
+    data: {
+      message: string;
+      context: MetabotChatContext;
+      history: any[];
+      state: Record<string, any>;
+    },
     { dispatch, getState },
   ) => {
     const isProcessing = getIsProcessing(getState() as any);
@@ -81,7 +86,12 @@ export const submitInput = createAsyncThunk(
 export const sendMessageRequest = createAsyncThunk(
   "metabase-enterprise/metabot/sendMessageRequest",
   async (
-    data: { message: string; context: MetabotChatContext; history: any[] },
+    data: {
+      message: string;
+      context: MetabotChatContext;
+      history: any[];
+      state: Record<string, any>;
+    },
     { dispatch, getState },
   ) => {
     // TODO: make enterprise store
@@ -147,6 +157,7 @@ export const sendWritebackMessageRequest = createAsyncThunk(
   async (message: string, { dispatch, getState }) => {
     const lastSentContext = getLastSentContext(getState() as any);
     const lastHistory = getLastHistoryValue(getState() as any);
+    const lastState = (getState() as any).metabot?.lastResponse?.state || {};
 
     if (!lastSentContext) {
       console.warn(
@@ -158,6 +169,7 @@ export const sendWritebackMessageRequest = createAsyncThunk(
       sendMessageRequest({
         message,
         history: lastHistory,
+        state: lastState,
         context: lastSentContext ?? ({} as any),
       }),
     );

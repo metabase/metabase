@@ -18,13 +18,14 @@
 
 (defn create
   "Create a fresh envelope from a context and history. This envelope should be used for the lifetime of the request."
-  [context history session-id]
-  {:session-id session-id
-   :history history
-   :context context
-   :max-round-trips max-round-trips
-   :round-trips-remaining max-round-trips
-   :dummy-history []})
+  [context history state session-id]
+  {:context    context
+    :history    history
+    :state      state
+    :session-id session-id
+    :max-round-trips max-round-trips
+    :round-trips-remaining max-round-trips
+    :dummy-history []})
 
 (defn full-history
   "History including the dummy tool invocations"
@@ -94,6 +95,22 @@
   "Gets the context from the envelope."
   [e]
   (:context e))
+
+(defn state
+  "Gets the state from the envelope."
+  [e]
+  (:state e))
+
+(defn update-state
+  "Given a new state, update it in the envelope."
+  [e new-state]
+  (cond-> e
+    (some? new-state) (assoc :state new-state)))
+
+(defn merge-state
+  "Merges new state with existing state in the envelope"
+  [e new-state]
+  (update e :state #(merge (or % {}) new-state)))
 
 (defn- message->reactions
   [msg]
@@ -225,3 +242,19 @@
                  (filter is-assistant-message?)
                  last
                  :content)})
+
+(defn get-state-for-response
+  "Gets the state that should be sent back to the frontend"
+  [e]
+  (let [state (:state e)]
+    ;; Ensure queries from structured outputs are included in state
+    (->> e
+         history
+         (filter #(and (= (:role %) :tool)
+                      (:structured-content %)))
+         (reduce (fn [acc msg]
+                  (if-let [query-id (get-in msg [:structured-content :query_id])]
+                    (assoc-in acc [:queries query-id]
+                             (get-in msg [:structured-content :query]))
+                    acc))
+                state))))

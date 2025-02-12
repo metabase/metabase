@@ -22,15 +22,18 @@
 
 (defn- request-llm-response [e]
   (let [context (envelope/context e)
-        new-response-message (:message (metabot-v3.client/*request*
-                                        (select-keys context [:current_user_time])
-                                        (envelope/llm-history e)
-                                        (envelope/session-id e)
-                                        (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*)
-                                                                           context)))]
+        state (envelope/state e)
+        response (metabot-v3.client/*request*
+                  (select-keys context [:current_user_time])
+                  (envelope/llm-history e)
+                  (envelope/session-id e)
+                  (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*)
+                                                     context)
+                  state)]
     (-> e
         envelope/decrement-round-trips
-        (envelope/add-message new-response-message))))
+        (envelope/add-message (:message response))
+        (envelope/merge-state (:state response)))))
 
 (defn handle-envelope
   "Three possible states here:
