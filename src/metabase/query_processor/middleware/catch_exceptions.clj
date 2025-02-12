@@ -36,11 +36,13 @@
   [e]
   ;; `:is-curated` is a flag that signals whether the error message in `e` was approved by product
   ;; to be shown to the user. It is used by FE.
-  (let [{error-type :type, is-curated :is-curated, :as data} (ex-data e)]
+  (let [{error-type :type, is-curated :is-curated, {error-position :position} :extra-ex-info, :as data} (ex-data e)]
     (merge
      ((get-method format-exception Throwable) e)
      (when (qp.error-type/known-error-type? error-type)
        {:error_type error-type})
+     (when error-position
+       {:error_position error-position})
      (when is-curated
        {:error_is_curated is-curated})
      ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
@@ -50,6 +52,17 @@
   [^SQLException e]
   (assoc ((get-method format-exception Throwable) e)
          :state (.getSQLState e)))
+
+;; Rather than add new methods to the driver interface, we could do something like this instead, but it feels wrong to
+;; have driver-specific classes here. It also becomes gross/impossible if you want to extend support to other drivers,
+;; esp 3rd party. You also still have the problem of needing to adjust the error position to account for the possible
+;; snippets, params, "remarks", etc, and [[sql-jdbc.execute/inject-remark]] is driver-specific.
+#_(defmethod format-exception PSQLException
+    [^PSQLException e]
+    (merge ((get-method format-exception SQLException) e)
+           (when-let [^ServerErrorMessage sem (.getServerErrorMessage e)]
+             {:error_position (.getPosition sem)})))
+
 
 ;; TODO -- some of this logic duplicates the functionality of `clojure.core/Throwable->map`, we should consider
 ;; whether we can use that more extensively and remove some of this logic
@@ -75,9 +88,11 @@
     (merge
      m
      (best-top-level-error maps)
-     ;; merge in the first error_type we see
+     ;; merge in the first error_type and/or error_position we see
      (when-let [error-type (some :error_type maps)]
        {:error_type error-type})
+     (when-let [error-position (some :error_position maps)]
+       {:error_position error-position})
      (when (seq more)
        {:via (vec more)}))))
 

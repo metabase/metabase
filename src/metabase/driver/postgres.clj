@@ -51,7 +51,9 @@
     Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.postgresql.copy CopyManager)
-   (org.postgresql.jdbc PgConnection)))
+   (org.postgresql.jdbc PgConnection)
+   (org.postgresql.util PSQLException)
+   (org.postgresql.util ServerErrorMessage)))
 
 (set! *warn-on-reflection* true)
 
@@ -1116,3 +1118,63 @@
 (defmethod driver.sql/default-database-role :postgres
   [_ _]
   "NONE")
+
+;; TODO: dispatch extra-ex-info on a [driver (class ex)] tuple rather than just the driver and remove this method.
+(defmulti extra-ex-info-from class)
+
+(defmethod extra-ex-info-from :default
+  [_e]
+  nil)
+
+(defmethod extra-ex-info-from PSQLException
+  [^PSQLException e]
+  ;; This looks like a bunch of info, but apparently it depends on the Postgres server's configured log level what you
+  ;; get.
+  ;;
+  ;; https://jdbc.postgresql.org/documentation/publicapi/org/postgresql/util/ServerErrorMessage.html
+  ;; https://github.com/pgjdbc/pgjdbc/blob/2989c62c1986d0c94e3712f436ea307485c4162d/pgjdbc/src/main/java/org/postgresql/util/ServerErrorMessage.java#L174C5-L177C20
+  ;;
+  ;; As far as I can tell testing out different bad queries with the default Postgres docker image, only :position is
+  ;; consistently present and useful. :hint is sometimes useful (and of course :message), but it's not clear they are
+  ;; useful for anything other than displaying the text to the user, which we already do. :hint sometimes contains,
+  ;; e.g. the corrected table/column name if you type in the wrong name, but it's still embedded in a (presumably
+  ;; localized) string like: "Perhaps you meant to reference the column \"people.birth_date\"."
+  ;;
+  ;; TODO: Sometimes :position is 0, like when you pass a bad first arg to the `extract` function, :position will be
+  ;; zero. Is :position relative to the start of function's arg list, or is it simply unreliable in this case?
+  (when-let [^ServerErrorMessage sem (.getServerErrorMessage e)]
+    {:column            (.getColumn sem)
+     :constraint        (.getConstraint sem)
+     :data-type         (.getDatatype sem)
+     :detail            (.getDetail sem)
+     :file              (.getFile sem)
+     :hint              (.getHint sem)
+     :internal-position (.getInternalPosition sem)
+     :internal-query    (.getInternalQuery sem)
+     :line              (.getLine sem)
+     :message           (.getMessage sem)
+     :position          (.getPosition sem)
+     :routine           (.getRoutine sem)
+     :schema            (.getSchema sem)
+     :severity          (.getSeverity sem)
+     :sql-state         (.getSQLState sem)
+     :table             (.getTable sem)
+     :where             (.getWhere sem)}))
+
+(defn- adjust-error-position [pos sql _params]
+  ;; Subtract the length of the first line, which is the remark added by the default implementation
+  ;; of [[sql-jdbc.execute/inject-remark]]. Ideally, this would also handle adjustments for expanded params, snippets,
+  ;; card references etc. The params passed in here are just the values though, and the sql has already been expanded
+  ;; by this point, so there's not currently enough info to fully adjust the position.
+  (assert (and (str/starts-with? sql "--")
+               (pos-int? (str/index-of sql "\n"))))
+  ;; TODO: pos is sometimes zero... why?
+  (if (pos-int? pos)
+    (- pos (inc (str/index-of sql "\n")))
+    pos))
+
+(defmethod sql-jdbc.execute/extra-ex-info :postgres
+  [_driver sql params e]
+  ;; Return the full map for demo purposes. Possibly we would want to pair this down to just the useful info.
+  (when-let [extra-info (extra-ex-info-from e)]
+    (update extra-info :position adjust-error-position sql params)))

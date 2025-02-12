@@ -715,6 +715,17 @@
   [_ sql remark]
   (str "-- " remark "\n" sql))
 
+;; TODO: move into [[metabase.driver]]?
+;; TODO: dispatch on [driver (class e)] instead?
+(defmulti extra-ex-info
+  "Get extra driver-specific exception info."
+  {:added "0.53.0", :arglists '([driver sql params e])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod extra-ex-info :default [_driver _sql _params _e]
+  {})
+
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond] [driver sql params max-rows context respond])}
@@ -742,7 +753,8 @@
                                                     {:driver driver
                                                      :sql    (str/split-lines (driver/prettify-native-form driver sql))
                                                      :params params
-                                                     :type   qp.error-type/invalid-query}
+                                                     :type   qp.error-type/invalid-query
+                                                     :extra-ex-info (extra-ex-info driver sql params e)}
                                                     e))))]
         (let [rsmeta           (.getMetaData rs)
               results-metadata {:cols (column-metadata driver rsmeta)}]
