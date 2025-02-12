@@ -958,7 +958,6 @@
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
-
 (defn- card-is-verified?
   "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent
   is the first. This is the case from the hydration function for moderation_reviews."

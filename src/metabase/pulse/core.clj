@@ -14,10 +14,10 @@
   metabase.pulse.update-alerts/keep-me)
 
 (p/import-vars
-  [metabase.pulse.dashboard-subscription
-   update-dashboard-subscription-pulses!]
-  [metabase.pulse.models.pulse
-   retrieve-alerts-for-cards
-   update-pulse!]
-  [metabase.pulse.update-alerts
-   delete-alerts-if-needed!])
+ [metabase.pulse.dashboard-subscription
+  update-dashboard-subscription-pulses!]
+ [metabase.pulse.models.pulse
+  retrieve-alerts-for-cards
+  update-pulse!]
+ [metabase.pulse.update-alerts
+  delete-alerts-if-needed!])
