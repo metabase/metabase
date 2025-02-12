@@ -124,6 +124,9 @@ describe("metabase-lib/v1/expressions/tokenizer", () => {
   it("should allow escaping brackets within bracket identifiers", () => {
     expect(types("[T\\[]")).toEqual([T.Identifier]);
     expect(errors("[T\\[]")).toEqual([]);
+
+    expect(types("[T\\]]")).toEqual([T.Identifier]);
+    expect(errors("[T\\]]")).toEqual([]);
   });
 
   it("should ignore whitespace", () => {
