@@ -70,7 +70,6 @@
   [_route-params _query-params _body {cookies :cookies, :as _request}]
   (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
         metabase-session-key-hashed (session/hash-session-key metabase-session-key)]
-    (api/validate-session-key metabase-session-key)
     (let [{:keys [email sso_source]}
           (t2/query-one {:select [:u.email :u.sso_source]
                          :from   [[:core_user :u]]

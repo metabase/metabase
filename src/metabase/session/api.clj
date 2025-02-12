@@ -146,7 +146,6 @@
   "Logout."
   ;; `metabase-session-key` gets added automatically by the [[metabase.server.middleware.session]] middleware
   [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
-  (api/validate-session-key metabase-session-key)
   (let [session-key-hashed (session/hash-session-key metabase-session-key)]
     (let [rows-deleted (t2/delete! :model/Session {:where [:or [:= :key_hashed session-key-hashed] [:= :id metabase-session-key]]})]
       (api/check-404 (> rows-deleted 0))
