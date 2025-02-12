@@ -86,10 +86,15 @@
    _query-params
    query :- [:map
              [:database {:optional true} [:maybe :int]]]]
-  (run-streaming-query
-   (-> query
-       (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints)))
+  (let [{mbql-query :query} query
+        {:keys [source-table]} mbql-query
+        [_ model-id] (re-find #"card\_\_(\d+)" source-table)
+        model-id (some-> model-id parse-long)
+        actions (t2/select :model/Action :model_id model-id :is_row_action true)]
+    (run-streaming-query
+     (-> query
+         (update-in [:middleware :js-int-to-string?] (fnil identity true))
+         qp/userland-query-with-default-constraints))))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
