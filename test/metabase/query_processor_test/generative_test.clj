@@ -29,8 +29,8 @@
       (gentest/with-gentest
         {:gentest.default-limit/seconds 5}
         [base-query (lib/query mp (tu.rng/rand-nth (lib.metadata/tables mp)))
-         iterations (inc (tu.rng/rand-int 20))]
-        (doseq [query (lib.tu.gen/random-queries-from base-query iterations)]
+         limit (inc (tu.rng/rand-int 20))]
+        (doseq [query (lib.tu.gen/random-queries-from base-query limit)]
           (mt/with-temp
             [:model/Card
              {id :id}

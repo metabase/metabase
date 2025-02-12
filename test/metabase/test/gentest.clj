@@ -18,6 +18,7 @@
 
 (comment
   (alter-var-root #'*initial-seed* (fn [& _] (.nextLong ^Random (Random.))))
+  (alter-var-root #'*initial-seed* (fn [& _] 1784144538647289715))
   )
 
 (def ^:dynamic *original-report* nil)
@@ -25,6 +26,10 @@
 #_:clj-kondo/ignore ;; because of println as done in clojure.test, subject to change
 (defn- report
   [m]
+  ;; temporary hack for printing non-exceptional results.
+  (when (and (not (::iteration-seed m)) (#{:fail :error} (:type m)))
+    (clojure.test/with-test-out
+      (println "Iteration seed: %d" *iteration-seed*)))
   (case (:type m)
     (::generation ::execution)
     (clojure.test/with-test-out
@@ -32,9 +37,6 @@
       (println "\nERROR in" (clojure.test/testing-vars-str m))
       (when (seq clojure.test/*testing-contexts*)
         (println (clojure.test/testing-contexts-str)))
-      ;; Temporarily print seed for non exceptional failures here, this will be cleaned up
-      (when-not (::iteration-seed m)
-        (println "Iteration seed: %d" *iteration-seed*))
       (clojure.pprint/pprint m))
 
     (*original-report* m)))
@@ -89,7 +91,7 @@
         limit-spec (cond env-iterations {:gentest.default-limit/iterations env-iterations}
                          env-seconds    {:gentest.default-limit/seconds env-seconds}
                          :else          limit-spec)]
-    (log/infof "limit-spec->limit-fn\n```%s\n```\n" (with-out-str (clojure.pprint/pprint limit-spec)))
+    (log/infof "limit-spec->limit-fn\n```%s\n```\n" (with-out-str #_:clj-kondo/ignore (clojure.pprint/pprint limit-spec)))
     (or (and (map? limit-spec)
              (condp #(get %2 %1) limit-spec
                :gentest.default-limit/iterations
