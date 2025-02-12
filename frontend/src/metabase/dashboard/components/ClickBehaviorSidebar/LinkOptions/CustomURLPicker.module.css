@@ -1,0 +1,16 @@
+.FormDescription {
+  margin-bottom: 1rem;
+}
+
+.DoneButton {
+  margin-left: auto;
+  margin-top: 2rem;
+}
+
+.PickerIcon {
+  border-color: transparent;
+}
+
+.PickerItemName {
+  padding-right: 1rem;
+}
