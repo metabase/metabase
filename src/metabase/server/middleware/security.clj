@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config :as config]
-   [metabase.embed.settings :as embed.settings]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
@@ -174,8 +173,8 @@
   (update (content-security-policy-header nonce)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*"
-                                                  (if-let [eao (and (embed.settings/enable-embedding-interactive)
-                                                                    (embed.settings/embedding-app-origins-interactive))]
+                                                  (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
+                                                                    (setting/get-value-of-type :string :embedding-app-origins-interactive))]
                                                     eao
                                                     "'none'")))))
 
@@ -242,12 +241,12 @@
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
    (access-control-headers origin
-                           (embed.settings/enable-embedding-sdk)
-                           (embed.settings/embedding-app-origins-sdk))
+                           (setting/get-value-of-type :boolean :enable-embedding-sdk)
+                           (setting/get-value-of-type :string :embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
-     {"X-Frame-Options"                 (if-let [eao (and (embed.settings/enable-embedding-interactive)
-                                                          (embed.settings/embedding-app-origins-interactive))]
+     {"X-Frame-Options"                 (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
+                                                          (setting/get-value-of-type :string :embedding-app-origins-interactive))]
                                           (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
                                           "DENY")})
    {;; Tell browser to block suspected XSS attacks
