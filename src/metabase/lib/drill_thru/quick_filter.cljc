@@ -126,8 +126,9 @@
     ;; [[lib.drill-thru.column-filter/prepare-query-for-drill-addition]] handles this. (#34346)
     (when-let [drill-details (lib.drill-thru.column-filter/prepare-query-for-drill-addition
                               query stage-number column column-ref :filter)]
-      (let [[_ ref-opts] column-ref
-            column (merge (:column drill-details) (select-keys ref-opts [:temporal-unit]))]
+      (let [temporal-unit (lib.temporal-bucket/temporal-bucket column-ref)
+            column (cond-> (:column drill-details)
+                     temporal-unit (assoc :temporal-unit temporal-unit))]
         (merge drill-details
                {:lib/type   :metabase.lib.drill-thru/drill-thru
                 :type       :drill-thru/quick-filter
