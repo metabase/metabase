@@ -180,7 +180,7 @@ describe("NumberFilterPicker", () => {
         expect(getNextFilterParts()).toMatchObject({
           operator: ">",
           column: expect.anything(),
-          values: ["9007199254740993"],
+          values: [9007199254740993n],
         });
         expect(getNextFilterColumnName()).toBe("ID");
       });
