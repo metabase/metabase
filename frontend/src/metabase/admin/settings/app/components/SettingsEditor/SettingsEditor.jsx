@@ -244,7 +244,7 @@ class SettingsEditor extends Component {
               to={"/admin/settings/" + slug}
               className={classes}
             >
-              <Group spacing="xs">
+              <Group gap="xs">
                 <span>{section.name}</span>
                 {section?.isUpsell && <UpsellGem />}
               </Group>
