@@ -1,9 +1,9 @@
-(ns metabase.api.cloud-migration-test
+(ns metabase.cloud-migration.api-test
   "Tests for /api/cloud-migration."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.cloud-migration :as cloud-migration]
-   [metabase.models.cloud-migration-test :as cloud-migration-test]
+   [metabase.cloud-migration.models.cloud-migration-test :as cloud-migration-test]
+   [metabase.cloud-migration.settings :as cloud-migration.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -44,10 +44,10 @@
          {:external_id 5 :upload_url "" :state :done}
          {:external_id 4 :upload_url "" :state :setup}])
   (try
-    (cloud-migration/read-only-mode! true)
+    (cloud-migration.settings/read-only-mode! true)
 
     (is (= "setup" (:state (mt/user-http-request :crowberto :get 200 "cloud-migration"))))
     (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
     (mt/user-http-request :crowberto :get 200 "cloud-migration")
     (finally
-      (is (not (cloud-migration/read-only-mode))))))
+      (is (not (cloud-migration.settings/read-only-mode))))))

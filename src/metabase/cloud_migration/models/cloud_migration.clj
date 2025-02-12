@@ -1,26 +1,26 @@
-(ns metabase.models.cloud-migration
+(ns metabase.cloud-migration.models.cloud-migration
   "A model representing a migration to cloud."
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [metabase.cloud-migration.settings :as cloud-migration.settings]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline])
   (:import
-   [java.io File InputStream]
-   [org.apache.commons.io.input BoundedInputStream]))
+   (java.io File InputStream)
+   (org.apache.commons.io.input BoundedInputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -32,60 +32,6 @@
 
 (t2/deftransforms :model/CloudMigration
   {:state mi/transform-keyword})
-
-(defsetting store-use-staging
-  (deferred-tru "If staging store should be used instead of prod. True on dev.")
-  :type       :boolean
-  :visibility :internal
-  :default    config/is-dev?
-  :doc        false
-  :export?    false)
-
-(defsetting store-url
-  (deferred-tru "Store URL.")
-  :encryption :no
-  :visibility :admin ;; should be :internal, but FE doesn't get internal settings
-  :default    (str "https://store" (when (store-use-staging) ".staging") ".metabase.com")
-  :doc        false
-  :export?    false)
-
-(defsetting store-api-url
-  (deferred-tru "Store API URL.")
-  :encryption :no
-  :visibility :internal
-  :default    (str "https://store-api" (when (store-use-staging) ".staging") ".metabase.com")
-  :doc        false
-  :export?    false)
-
-(defsetting migration-dump-file
-  (deferred-tru "Dump file for migrations.")
-  :encryption :no
-  :visibility :internal
-  :default    nil
-  :doc        false
-  :export?    false)
-
-(defsetting migration-dump-version
-  (deferred-tru "Custom dump version for migrations.")
-  :encryption :no
-  :visibility :internal
-  ;; Use a known version on staging when there's no real version.
-  ;; This will cause the restore to fail on cloud unless you also set `migration-dump-file` to
-  ;; a dump from that version, but it lets you test everything else up to that point works.
-  :default    (when (= (config/mb-version-info :tag) "vLOCAL_DEV") "v0.50.0-RC1")
-  :doc        false
-  :export?    false)
-
-(defsetting read-only-mode
-  (deferred-tru
-   (str "Boolean indicating whether a Metabase's is in read-only mode with regards to its app db. "
-        "Will take up to 1m to propagate to other Metabase instances in a cluster."
-        "Audit tables are excluded from read-only-mode mode."))
-  :type       :boolean
-  :visibility :admin
-  :default    false
-  :doc        false
-  :export?    false)
 
 (def ^:private read-only-mode-inclusions
   (->> copy/entities (map t2/table-name) (into #{})))
@@ -108,7 +54,7 @@
                                                  #_resolved-query :default]
   [_query-type model _parsed-args resolved-query]
   (let [table-name (t2/table-name model)]
-    (when (and (read-only-mode)
+    (when (and (cloud-migration.settings/read-only-mode)
                (read-only-mode-inclusions table-name)
                (not (read-only-mode-exceptions table-name)))
       (throw (ex-info (tru "Metabase is in read-only-mode mode!")
@@ -120,7 +66,7 @@
 (defn migration-url
   "Store API URL for migrations."
   ([]
-   (str (store-api-url) "/api/v2/migration"))
+   (str (cloud-migration.settings/store-api-url) "/api/v2/migration"))
   ([external-id path]
    (str (migration-url) "/" external-id path)))
 
@@ -205,8 +151,8 @@
         on-progress       #(set-progress-memo id :upload (abs-progress % 51 99))
         ;; the migration-dump-file setting is used for testing older dumps in the rich comment
         ;; at the end of this file
-        file              (if (migration-dump-file)
-                            (io/file (migration-dump-file))
+        file              (if (cloud-migration.settings/migration-dump-file)
+                            (io/file (cloud-migration.settings/migration-dump-file))
                             dump-file)
         file-length       (.length file)]
     (if-not (> file-length part-size)
@@ -252,7 +198,7 @@
 
       (log/info "Setting read-only mode")
       (set-progress id :setup 1)
-      (read-only-mode! true)
+      (cloud-migration.settings/read-only-mode! true)
       (when (cluster?)
         (log/info "Cluster detected, waiting for read-only mode to propagate")
         (Thread/sleep (int (* 1.5 setting.cache/cache-update-check-interval-ms))))
@@ -260,10 +206,10 @@
       (log/info "Dumping h2 backup to" (.getAbsolutePath dump-file))
       (set-progress id :dump 20)
       (dump-to-h2/dump-to-h2! (.getAbsolutePath dump-file) {:dump-plaintext? true})
-      (when-not (read-only-mode)
+      (when-not (cloud-migration.settings/read-only-mode)
         (throw (ex-info "Read-only mode disabled before h2 dump was completed, contents might not be self-consistent!"
                         {:id id})))
-      (read-only-mode! false)
+      (cloud-migration.settings/read-only-mode! false)
 
       (log/info "Uploading dump to store")
       (set-progress id :upload 50)
@@ -283,14 +229,14 @@
             (log/info "Migration failed")
             (throw (ex-info "Error performing migration" {:error e})))))
       (finally
-        (read-only-mode! false)
+        (cloud-migration.settings/read-only-mode! false)
         (io/delete-file dump-file :silently)))))
 
 (defn get-store-migration
   "Calls Store and returns {:external_id ,,, :upload_url ,,,}."
   []
   (-> (migration-url)
-      (http/post {:form-params  {:local_mb_version (or (migration-dump-version)
+      (http/post {:form-params  {:local_mb_version (or (cloud-migration.settings/migration-dump-version)
                                                        (config/mb-version-info :tag))}
                   :content-type :json})
       :body

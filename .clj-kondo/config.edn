@@ -360,6 +360,9 @@
                                      metabase.channel.init
                                      metabase.channel.render.core
                                      metabase.channel.template.core}
+    metabase.cloud-migration       #{metabase.cloud-migration.api
+                                     metabase.cloud-migration.core
+                                     metabase.cloud-migration.init}
     metabase.config                #{metabase.config}
     ;; this is not even a real module, it's an external library but its starts with a `metabase.` namespace.
     metabase.connection-pool       #{metabase.connection-pool}
@@ -482,6 +485,13 @@
                                      metabase.util}
     metabase.cmd                   :any
     metabase.channel               :any
+    metabase.cloud-migration       #{metabase.api
+                                     metabase.cmd    ; for copy (why?)
+                                     metabase.config
+                                     metabase.db     ; for DB type
+                                     metabase.models ; for settings
+                                     metabase.premium-features
+                                     metabase.util}
     metabase.config                #{metabase.plugins}
     metabase.core                  :any
     metabase.db                    :any
@@ -622,6 +632,7 @@
     metabase.api.common                                           api
     metabase.channel.core                                         channel
     metabase.channel.render.core                                  channel.render
+    metabase.cloud-migration.core                                 cloud-migration
     metabase.cmd.copy.h2                                          copy.h2
     metabase.config                                               config
     metabase.config.file                                          config.file
