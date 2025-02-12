@@ -7,8 +7,10 @@ import {
   DateRangePicker,
   type DateRangePickerValue,
 } from "metabase/querying/filters/components/DatePicker/SpecificDatePicker/DateRangePicker";
-import { serializeDateParameterValue } from "metabase/querying/parameters/utils/dates";
-import { normalizeDateParameterValue } from "metabase/querying/parameters/utils/normalize";
+import {
+  deserializeDateParameterValue,
+  serializeDateParameterValue,
+} from "metabase/querying/parameters/utils/parsing";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateRangeWidgetProps = {
@@ -44,7 +46,7 @@ export function DateRangeWidget({
 function getPickerValue(
   value: ParameterValueOrArray | null | undefined,
 ): DateRangePickerValue | undefined {
-  return match(normalizeDateParameterValue(value))
+  return match(deserializeDateParameterValue(value))
     .returnType<DateRangePickerValue | undefined>()
     .with({ type: "specific", operator: "between" }, ({ values, hasTime }) => ({
       dateRange: [values[0], values[1]],

@@ -1,6 +1,6 @@
 import type { Query } from "history";
 
-import { normalizeNumberParameterValue } from "metabase/querying/parameters/utils/normalize";
+import { deserializeNumberParameterValue } from "metabase/querying/parameters/utils/parsing";
 import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
@@ -79,7 +79,7 @@ function parseParameterValueForNumber(value: ParameterValueOrArray) {
     }
   }
 
-  return normalizeNumberParameterValue(value);
+  return deserializeNumberParameterValue(value);
 }
 
 function parseParameterValueForFields(
