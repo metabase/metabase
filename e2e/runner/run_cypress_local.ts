@@ -23,7 +23,6 @@ const userOptions = {
 };
 
 const derivedOptions = {
-  MB_PREMIUM_EMBEDDING_TOKEN: userOptions.ENTERPRISE_TOKEN,
   CYPRESS_ALL_FEATURES_TOKEN: userOptions.ENTERPRISE_TOKEN,
   QA_DB_ENABLED: userOptions.START_CONTAINERS,
   BUILD_JAR: userOptions.BACKEND_PORT === 4000,
