@@ -191,11 +191,11 @@
                 :ids                                 (set ids)
                 :calculate-available-models?         calculate-available-models
                 :include-dashboard-questions?        include-dashboard-questions}))
-      (prometheus/inc! :metabase-search/response-ok))
+      (analytics/inc! :metabase-search/response-ok))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]
         (when (or (not status-code) (= 5 (quot status-code 100)))
-          (prometheus/inc! :metabase-search/response-error)))
+          (analytics/inc! :metabase-search/response-error)))
       (throw e))))
 
 (def ^{:arglists '([request respond raise])} routes
