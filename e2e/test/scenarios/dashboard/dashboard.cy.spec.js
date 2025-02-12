@@ -371,7 +371,7 @@ describe("scenarios > dashboard", () => {
         H.modal().findByRole("button", { name: "Save changes" }).click();
 
         cy.log("create a dashboard question");
-        H.NativeEditor.focus().type("SELECT 1");
+        H.focusNativeEditor().type("SELECT 1");
         H.saveQuestion("Foo question");
 
         cy.log(
