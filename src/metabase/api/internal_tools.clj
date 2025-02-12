@@ -101,6 +101,12 @@
                                           column
                                           new-value)
 
+      (when (= :type/Category semantic_type)
+        ;; if the field-values haven't been created yet, e.g. because there are no values, it doesn't exist already, you're SOH
+        (when-let [field-values #p (t2/select-one-fn :values :model/FieldValues :field_id field-id)]
+          (when (not #p (some #{value} field-values))
+            #p (t2/update! :model/FieldValues {:field_id field-id} {:values (conj field-values value)}))))
+
       (track-cell-update! table_id row-pk field-id column old-row new-value))))
 
 (api.macros/defendpoint :put "/field/:field-id/:row-pk"

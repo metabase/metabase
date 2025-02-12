@@ -95,7 +95,7 @@
      (-> query
          (update-in [:middleware :js-int-to-string?] (fnil identity true))
          qp/userland-query-with-default-constraints
-         (assoc :row-actions actions)))))
+         (assoc :row-actions (vec actions))))))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
