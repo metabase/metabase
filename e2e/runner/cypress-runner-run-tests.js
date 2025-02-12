@@ -1,7 +1,7 @@
 const cypress = require("cypress");
 
 const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
-const { parseArguments } = require("./cypress-runner-utils");
+const { parseArguments, args } = require("./cypress-runner-utils");
 
 const DEFAULT_PORT = 4000;
 const getHost = () =>
@@ -10,9 +10,6 @@ const getHost = () =>
 // This is a map of all possible Cypress configurations we can run.
 const configs = {
   e2e: async () => {
-    const { rawArguments, parsedArguments } = await parseArguments();
-    const isOpenMode = rawArguments["--open"];
-
     const defaultConfig = {
       browser: "chrome",
       configFile: "e2e/support/cypress.config.js",
@@ -20,16 +17,14 @@ const configs = {
         baseUrl: getHost(),
       },
       testingType: "e2e",
-      openMode: isOpenMode || process.env.OPEN_UI === "true",
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
     };
 
-    const finalConfig = Object.assign({}, defaultConfig, parsedArguments);
+    const userArgs = await parseArguments(args);
+    const finalConfig = Object.assign({}, defaultConfig, userArgs);
     return finalConfig;
   },
   "sample-apps-embedding-sdk-e2e": async () => {
-    const { rawArguments, parsedArguments } = await parseArguments();
-    const isOpenMode = rawArguments["--open"];
-
     const defaultConfig = {
       browser: "chrome",
       configFile: "e2e/support/cypress-sample-apps-embedding-sdk-e2e.config.js",
@@ -37,18 +32,18 @@ const configs = {
         baseUrl: getHost(),
       },
       testingType: "e2e",
-      openMode: isOpenMode || process.env.OPEN_UI === "true",
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
     };
 
-    return Object.assign({}, defaultConfig, parsedArguments);
+    const userArgs = await parseArguments(args);
+    const finalConfig = Object.assign({}, defaultConfig, userArgs);
+    return finalConfig;
   },
   snapshot: async () => {
     // We only ever care about a browser out of all possible user arguments,
     // when it comes to the snapshot generation.
     // Anything else could result either in a failure or in a wrong database snapshot!
-    const {
-      parsedArguments: { browser },
-    } = await parseArguments();
+    const { browser } = await parseArguments(args);
 
     const snapshotConfig = {
       browser: browser ?? "chrome",
@@ -63,11 +58,7 @@ const configs = {
     return snapshotConfig;
   },
   component: async () => {
-    const {
-      rawArguments,
-      parsedArguments: { browser },
-    } = await parseArguments();
-    const isOpenMode = rawArguments["--open"];
+    const { browser } = await parseArguments(args);
 
     const sdkComponentConfig = {
       browser: browser ?? "chrome",
@@ -76,7 +67,7 @@ const configs = {
         baseUrl: getHost(),
       },
       testingType: "component",
-      openMode: isOpenMode || process.env.OPEN_UI === "true",
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
     };
 
     return sdkComponentConfig;
