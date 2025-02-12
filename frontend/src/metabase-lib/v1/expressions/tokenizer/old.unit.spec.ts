@@ -2,10 +2,12 @@ import { tokenize } from "./tokenize";
 import { OPERATOR as OP, TOKEN as T } from "./types";
 
 describe("metabase-lib/v1/expressions/tokenizer", () => {
-  const types = expr => tokenize(expr).tokens.map(t => t.type);
-  const ops = expr => tokenize(expr).tokens.map(t => t.op);
-  const values = expr => tokenize(expr).tokens.map(t => t.value);
-  const errors = expr => tokenize(expr).errors;
+  const types = (expr: string) => tokenize(expr).tokens.map(t => t.type);
+  const ops = (expr: string) =>
+    tokenize(expr).tokens.map(t => (t.type === T.Operator ? t.op : null));
+  const values = (expr: string) =>
+    tokenize(expr).tokens.map(t => (t.type === T.String ? t.value : null));
+  const errors = (expr: string) => tokenize(expr).errors;
 
   it("should tokenize operators", () => {
     expect(ops("(")).toEqual([OP.OpenParenthesis]);
@@ -61,10 +63,10 @@ describe("metabase-lib/v1/expressions/tokenizer", () => {
   });
 
   it("should handle escaped sequences", () => {
-    expect(values('"\\n"')[0].length).toEqual(1);
-    expect(values('"\\r\\n"')[0].length).toEqual(2);
-    expect(values('"say \\"Hi\\""')[0].length).toEqual(8);
-    expect(values("'foo\\tbar'")[0].length).toEqual(7);
+    expect(values('"\\n"')[0]?.length).toEqual(1);
+    expect(values('"\\r\\n"')[0]?.length).toEqual(2);
+    expect(values('"say \\"Hi\\""')[0]?.length).toEqual(8);
+    expect(values("'foo\\tbar'")[0]?.length).toEqual(7);
   });
 
   it("should catch unterminated string literals", () => {
