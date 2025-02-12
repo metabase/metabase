@@ -184,8 +184,7 @@
       (t2/insert! :model/Session {:id         test-session-id
                                   :key_hashed test-session-key-hashed
                                   :user_id    (mt/user->id :lucky)})
-      (is (thrown? ExceptionInfo
-                   (#'mw.session/current-user-info-for-session test-session-id nil)))
+      (is (= nil (#'mw.session/current-user-info-for-session test-session-id nil)))
       (finally
         (t2/delete! :model/Session :id test-session-id)))))
 

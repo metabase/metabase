@@ -29,6 +29,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
+   [metabase.util.string :as string]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
 
@@ -145,11 +146,18 @@
                                                  [:= :pgm.user_id :user.id]
                                                  [:is :pgm.is_group_manager true]]))))))))
 
+(defn- valid-session-key?
+  "Validates that the given session-key looks like it could be a session id. Returns a 403 if it does not.
+
+  SECURITY NOTE: Because functions will directly compare the session-key against the core_session.id table for backwards-compatibility reasons,
+  if this is NOT called before those queries against core_session.id, attackers with access to the database can impersonate users by passing the core_session.id as their session cookie"
+  [session-key]
+  (or (not session-key) (string/valid-uuid? session-key)))
+
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired."
   [session-key anti-csrf-token]
-  (when (and session-key (init-status/complete?))
-    (api/validate-session-key session-key)
+  (when (and session-key (valid-session-key? session-key) (init-status/complete?))
     (let [sql    (session-with-id-query (mdb/db-type)
                                         (config/config-int :max-session-age)
                                         (if (seq anti-csrf-token) :full-app-embed :normal)

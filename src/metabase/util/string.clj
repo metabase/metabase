@@ -64,6 +64,8 @@
     s))
 
 (defn random-string
-  "Returns a string of `n` random alphanumeric characters."
+  "Returns a string of `n` random alphanumeric characters.
+
+  NOTE: this is not a cryptographically secure random string."
   [n]
   (apply str (take n (repeatedly #(rand-nth "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))))
