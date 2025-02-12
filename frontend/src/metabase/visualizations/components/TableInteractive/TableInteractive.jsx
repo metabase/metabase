@@ -37,9 +37,9 @@ import {
   Checkbox,
   DateInput,
   DelayGroup,
+  Group,
   Icon,
   Input,
-  Stack,
   ThemeProvider,
   Button as UIButton,
 } from "metabase/ui";
@@ -157,7 +157,7 @@ class TableInteractive extends Component {
     },
   };
 
-  renderTableCellWrapper(children, { isIDColumn } = {}) {
+  renderTableCellWrapper(children, { isIDColumn, style } = {}) {
     const { theme } = this.props;
 
     const hasChildren = children != null && children !== "";
@@ -171,7 +171,7 @@ class TableInteractive extends Component {
         data-testid={hasChildren ? "cell-data" : undefined}
         c={cellTheme.color}
         bg={cellTheme.background}
-        style={{ border: cellTheme.border }}
+        style={{ border: cellTheme.border, ...style }}
         fz={cellTheme.fontSize}
       >
         {children}
@@ -910,7 +910,7 @@ class TableInteractive extends Component {
           left: this.getColumnLeft(style, columnIndex),
           // add a transition while dragging column
           transition: dragColIndex != null ? "left 200ms" : null,
-          width: 86,
+          padding: 4,
         }}
         className={cx(
           TableS.TableInteractiveCellWrapper,
@@ -935,18 +935,19 @@ class TableInteractive extends Component {
         tabIndex="0"
       >
         {this.renderTableCellWrapper(
-          <Stack gap="0.5rem">
+          <Group spacing="0.25rem">
             {rowActions?.map(({ id, name }) => (
               <UIButton
                 key={id}
                 variant="subtle"
+                compact
                 onClick={() => handleClick(id)}
               >
                 {name}
               </UIButton>
             ))}
-          </Stack>,
-          { isIDColumn: false },
+          </Group>,
+          { isIDColumn: false, style: { margin: 0 } },
         )}
       </Box>
     );
