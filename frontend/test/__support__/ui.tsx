@@ -18,7 +18,7 @@ import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { mainReducers } from "metabase/reducers-main";
+import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
 import type { State } from "metabase-types/store";
@@ -88,7 +88,7 @@ export function renderWithProviders(
   if (mode === "public") {
     reducers = publicReducers;
   } else {
-    reducers = mainReducers;
+    reducers = makeMainReducers();
   }
 
   if (withRouter) {
