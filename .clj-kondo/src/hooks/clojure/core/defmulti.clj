@@ -40,7 +40,7 @@
         attr-map                 (when (hooks/map-node? (first args))
                                    (first args))
         arglists                 (some-> attr-map hooks/sexpr :arglists seq)]
-    (if (not (seq? arglists))
+    (if-not (seq? arglists) ; should be a list or at least list-like
       (hooks/reg-finding!
        (assoc (meta node)
               :message "All defmultis should have an attribute map with :arglists metadata. [:metabase/check-defmulti-arglists]"

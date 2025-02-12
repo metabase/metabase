@@ -1,25 +1,23 @@
 (ns hooks.clojure.core.ns-test
   (:require
    [clj-kondo.hooks-api :as hooks]
+   [clj-kondo.impl.utils]
    [clojure.test :refer :all]
    [hooks.clojure.core.ns]))
 
-(defn- do-with-findings [thunk]
-  (let [findings (atom [])]
-    (with-redefs [hooks/reg-finding! (fn [finding]
-                                       (swap! findings conj finding))]
-      (thunk))
-    @findings))
-
 (defn- lint-ns [form config]
-  (do-with-findings
-   #(hooks.clojure.core.ns/lint-ns
-     {:node   (hooks/parse-string (binding [*print-meta* true] (pr-str form)))
-      :config config})))
+  (binding [clj-kondo.impl.utils/*ctx* {:config     config
+                                        :ignores    (atom nil)
+                                        :findings   (atom [])
+                                        :namespaces (atom {})}]
+    (hooks.clojure.core.ns/lint-ns {:node   (hooks/parse-string
+                                             (binding [*print-meta* true]
+                                               (pr-str form)))
+                                    :config config})
+    @(:findings clj-kondo.impl.utils/*ctx*)))
 
 (defn- lint-modules [form config]
-  (->> (lint-ns form config)
-       (filter #(= (:type %) :metabase/modules))))
+  (lint-ns form (assoc-in config [:linters :metabase/modules :level] :warning)))
 
 (deftest ^:parallel module-checker-allowed-modules-test
   (is (=? [{:message "Module task should not be used in the api module. [:metabase/modules api :uses]"
@@ -63,15 +61,14 @@
            '{:metabase/modules {search {:api #{metabase.search.core}}}}))))
 
 (deftest ^:parallel require-newlines-test
-  (let [findings (atom [])]
-    (with-redefs [hooks/reg-finding! (fn [finding]
-                                       (when (= (:type finding) :metabase/require-shape-checker)
-                                         (swap! findings conj finding)))]
-      (hooks.clojure.core.ns/lint-ns
-       {:node     (hooks/parse-string "
+  (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/require-shape-checker {:level :warnings}}}
+                                        :ignores    (atom nil)
+                                        :findings   (atom [])
+                                        :namespaces (atom {})}]
+    (hooks.clojure.core.ns/lint-ns {:node (hooks/parse-string "
 (ns metabase.task.cache
   (:require [metabase.task.bunny]
             [metabase.task.rabbit]))")})
-      (is (=? [{:message "Put your requires on a newline from the :require keyword [:metabase/require-shape-checker]",
-                :type    :metabase/require-shape-checker}]
-              @findings)))))
+    (is (=? [{:message "Put your requires on a newline from the :require keyword [:metabase/require-shape-checker]",
+              :type    :metabase/require-shape-checker}]
+            @(:findings clj-kondo.impl.utils/*ctx*)))))
