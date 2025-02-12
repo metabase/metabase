@@ -23,7 +23,7 @@ describe("formatting > whitelabel", () => {
   });
 
   it("smoke UI test", { tags: "@smoke" }, () => {
-    cy.log("Should all whitelabel options with the feature enabled");
+    cy.log("Should show all whitelabel options with the feature enabled");
     cy.visit("/admin/settings/whitelabel");
 
     cy.log("Upsell icon should not be present in the sidebar link");
