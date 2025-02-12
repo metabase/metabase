@@ -46,33 +46,39 @@
 
 (defn request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [message context history session-id]
+  [message context history state session-id]
   (let [env (-> (metabot-v3.envelope/create
                  (metabot-v3.context/create-context context)
                  history
+                 state
                  session-id)
                 (metabot-v3.envelope/add-user-message message)
                 (metabot-v3.dummy-tools/invoke-dummy-tools)
                 (metabot-v3.handle-envelope/handle-envelope))]
     {:reactions (encode-reactions (metabot-v3.envelope/reactions env))
-     :history (metabot-v3.envelope/history env)}))
+     :history   (metabot-v3.envelope/history env)
+     :state     (metabot-v3.envelope/get-state-for-response env)
+     :session_id session-id}))
 
 (api.macros/defendpoint :post "/agent"
   "Send a chat message to the LLM via the AI Proxy."
   [_route-params
    _query-params
-   {:keys [message context history session_id] :as body} :- [:map
-                                                             [:message ms/NonBlankString]
-                                                             [:context [:map-of :keyword :any]]
-                                                             [:history [:maybe [:sequential :map]]]
-                                                             [:session_id ms/UUIDString]]]
+   {:keys [message context history state session_id] :as body} :- [:map
+                                                                   [:message ms/NonBlankString]
+                                                                   [:context [:map-of :keyword :any]]
+                                                                   [:history [:maybe [:sequential :map]]]
+                                                                   [:session_id ms/UUIDString]
+                                                                   [:state {:optional true} any?]]
+   ]
   (metabot-v3.context/log body :llm.log/fe->be)
   (let [context (mc/decode ::metabot-v3.context/context
                            context (mtx/transformer {:name :api-request}))
         history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
-                           history (mtx/transformer {:name :api-request}))]
+                           history (mtx/transformer {:name :api-request}))
+        state   (or state {})]
     (doto (assoc
-           (request message context history session_id)
+           (request message context history state session_id)
            :session_id session_id)
       (metabot-v3.context/log :llm.log/be->fe))))
 

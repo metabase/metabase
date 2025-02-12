@@ -48,7 +48,8 @@ export const useMetabotAgent = () => {
     submitInput: async (message: string) => {
       const context = getChatContext();
       const history = sendMessageReq.data?.history || [];
-      await dispatch(submitInput({ message, context, history }));
+      const state = sendMessageReq.data?.state || {};
+      await dispatch(submitInput({ message, context, history, state }));
     },
     isDoingScience: sendMessageReq.isLoading || isProcessing,
   };

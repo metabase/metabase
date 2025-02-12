@@ -65,4 +65,5 @@
 (mr/def ::ai-proxy.response
   "Shape of the response we get back from the AI Proxy."
   [:map
-   [:message ::message]])
+   [:message ::message]
+   [:state {:optional true} [:map-of :string :any]]])

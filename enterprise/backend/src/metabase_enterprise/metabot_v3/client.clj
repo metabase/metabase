@@ -44,12 +44,14 @@
   [context :- [:maybe :map]
    messages :- [:maybe ::metabot-v3.client.schema/messages]
    session-id :- :string
-   tools :- [:sequential :any]]
+   tools :- [:sequential :any]
+   state :- [:maybe :map]]
   (encode-request-body
    {:messages      messages
     :context       context
     :tools         tools
     :session-id    session-id
+    :state         state
     :user-id       api/*current-user-id*}))
 
 (defn- ->json-bytes ^bytes [x]
@@ -115,14 +117,15 @@
   [context :- [:maybe :map]
    messages :- [:maybe ::metabot-v3.client.schema/messages]
    session-id :- :string
-   tools :- [:sequential :any]]
+   tools :- [:sequential :any]
+   state :- [:maybe :map]]
   ;; TODO -- when `:metabot-v3` code goes live remove this check and check for the `:metabot-v3` feature specifically.
   (assert (premium-features/has-any-features?) (i18n/tru "You must have a valid enterprise token to use MetaBot."))
   #_(premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
     (let [url      (agent-endpoint-url)
-          body     (doto (build-request-body context messages session-id tools)
-                     (metabot-v3.context/log :llm.log/be->llm))
+          body     (doto (build-request-body context messages session-id tools state)
+                    (metabot-v3.context/log :llm.log/be->llm))
           _        (log/debugf "Request to AI Proxy:\n%s" (u/pprint-to-str body))
           options  (build-request-options body)
           response (post! url options)]
@@ -203,19 +206,21 @@
     (comment {:message {:content "Sorry I don't understand that. Could you please clarify what you would like to include in the email to Cam?"
                         :role :assistant
                         :tool-calls []}
+              :history []  ; Optional history from AI service
               :metadata {:model "gpt-4o-mini", :usage {:total 439, :prompt 416, :completion 23}}})
     (let [history   [(str->message message-1)
-                     (:message response-1)
+                     (:message response-1)  ; Main message still accessed via :message
                      (str->message "Cam's email is cam@metabase.com")]
           response-2 (*request* {} history session-id [])]
       ;; response 2 looks like:
       (comment {:message
                 {:content "",
                  :role :assistant,
-                 :tool-calls [{:id "call_DUTV9UW4s47fycBIjQ0Id0XM", :name :invite-user, :arguments {:email "cam@metabase.com"}}]},
+                 :tool-calls [{:id "call_DUTV9UW4s47fycBIjQ0Id0XM", :name :invite-user, :arguments {:email "cam@metabase.com"}}]}
+                :history []  ; Optional history from AI service
                 :metadata {:model "gpt-4o-mini", :usage {:total 497, :prompt 478, :completion 19}}})
       (let [history (conj (vec history)
-                          (:message response-2)
+                          (:message response-2)  ; Using main message
                           (str->message "Thank you!"))]
         (*request* {} history session-id [])))))
 
