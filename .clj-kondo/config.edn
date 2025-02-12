@@ -831,7 +831,6 @@
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
-   metabase.analytics.prometheus-test/with-prometheus-system!                                                                hooks.common/with-two-bindings
    metabase.api.alert-test/with-alert-in-collection!                                                                         hooks.common/with-four-bindings
    metabase.api.automagic-dashboards-test/with-indexed-model!                                                                hooks.metabase.api.automagic-dashboards-test/with-indexed-model!
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
@@ -901,6 +900,7 @@
    metabase.test.util/discard-setting-changes                                                                                hooks.common/with-ignored-first-arg
    metabase.test.util/with-column-remappings                                                                                 hooks.common/with-ignored-first-arg
    metabase.test.util/with-non-admin-groups-no-root-collection-perms                                                         hooks.common/do*
+   metabase.test.util/with-prometheus-system!                                                                                hooks.common/with-two-bindings
    metabase.test.util/with-temp-file                                                                                         hooks.metabase.test.util/with-temp-file
    metabase.test.util/with-temporary-setting-values                                                                          hooks.metabase.test.util/with-temporary-setting-values
    metabase.test/$ids                                                                                                        hooks.metabase.test.data/$ids
@@ -918,6 +918,7 @@
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
+   metabase.test/with-prometheus-system!                                                                                     hooks.common/with-two-bindings
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
    metabase.util.log.capture/with-log-messages-for-level                                                                     hooks.metabase.util.log.capture/with-log-messages-for-level
    metabase.util.log/debug                                                                                                   hooks.metabase.util.log/info

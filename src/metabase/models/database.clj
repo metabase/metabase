@@ -1,7 +1,9 @@
 (ns metabase.models.database
+  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.core.match :refer [match]]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.db :as mdb]
@@ -22,6 +24,7 @@
     :refer [defenterprise]]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
+   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -147,10 +150,24 @@
     (catch Throwable e
       (log/error e "Error scheduling tasks for DB"))))
 
-(defn check-and-schedule-tasks!
+(defn health-check-database!
+  "Checks database health off-thread, currently just checks connectivity."
+  [{:keys [engine details] :as database}]
+  (when-not (or (:is_audit database) (:is_sample database))
+    (sync.concurrent/submit-task
+     (fn []
+       (try
+         (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
+           (prometheus/inc! :metabase-database/healthy {:driver engine} 1)
+           (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1))
+         (catch Throwable _
+           (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))))))
+
+(defn check-health-and-schedule-tasks!
   "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
   []
   (doseq [database (t2/select :model/Database)]
+    (health-check-database! database)
     (check-and-schedule-tasks-for-db! database)))
 
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
