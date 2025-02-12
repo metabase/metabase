@@ -192,6 +192,7 @@ const CreateTableModal = ({
                 />
                 <Select
                   label={t`Type`}
+                  searchable
                   value={column.type}
                   data={[
                     { value: "Text", label: "Text" },
