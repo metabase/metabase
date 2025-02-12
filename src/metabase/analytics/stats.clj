@@ -10,7 +10,6 @@
    [medley.core :as m]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.channel.email :as email]
    [metabase.config :as config]
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
@@ -21,6 +20,7 @@
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
+   [metabase.models.setting :as settings]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
@@ -125,7 +125,7 @@
    :report_timezone                      (driver/report-timezone)
    ;; We deprecated advanced humanization but have this here anyways
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")
-   :email_configured                     (email/email-configured?)
+   :email_configured                     (setting/get :email-configured?)
    :slack_configured                     (slack/slack-configured?)
    :sso_configured                       (google/google-auth-enabled)
    :instance_started                     (snowplow/instance-creation)
@@ -784,7 +784,7 @@
   []
   [{:name      :email
     :available true
-    :enabled   (email/email-configured?)}
+    :enabled   (settings/get :email-configured?)}
    {:name      :slack
     :available true
     :enabled   (slack/slack-configured?)}

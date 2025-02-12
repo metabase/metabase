@@ -4,7 +4,7 @@
    [clojure.tools.trace :as trace]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.config :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.analytics.core :as analytics]
+   [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
@@ -99,7 +100,7 @@
     (with-fake-snowplow-collector
       (analytics/track-event! :snowplow/account {:event :new-instance-created})
       (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-2",
-              :data {:id                           (analytics/analytics-uuid)
+              :data {:id                           (analytics.settings/analytics-uuid)
                      :version                      {:tag (:tag (public-settings/version))},
                      :token_features               (public-settings/token-features)
                      :created_at                   (analytics/instance-creation)

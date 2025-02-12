@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]

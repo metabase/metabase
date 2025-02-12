@@ -3,7 +3,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.search.core :as search]
    [metabase.task :as task]
    [metabase.util :as u]

@@ -3,7 +3,7 @@
   (:require
    [clojure.core.match :refer [match]]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.db :as mdb]
@@ -148,10 +148,10 @@
      (fn []
        (try
          (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
-           (prometheus/inc! :metabase-database/healthy {:driver engine} 1)
-           (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1))
+           (analytics/inc! :metabase-database/healthy {:driver engine} 1)
+           (analytics/inc! :metabase-database/unhealthy {:driver engine} 1))
          (catch Throwable _
-           (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))))))
+           (analytics/inc! :metabase-database/unhealthy {:driver engine} 1)))))))
 
 (defn check-health-and-schedule-tasks!
   "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
