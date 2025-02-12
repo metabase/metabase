@@ -14,6 +14,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { ForeignKeyValueSelect } from "metabase/data-editing/ForeignKeyValueSelect";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { PUT } from "metabase/lib/api";
@@ -37,7 +38,6 @@ import {
   DelayGroup,
   Icon,
   Input,
-  Stack,
   ThemeProvider,
   Button as UIButton,
 } from "metabase/ui";
@@ -179,7 +179,6 @@ class TableInteractive extends Component {
 
   renderEditingCell(clicked, cellProps) {
     const { column, value } = clicked;
-
     const inputValue = this.state.editingCellsValuesMap[cellProps.key] ?? value;
 
     const handleInputValueChange = newVal => {
@@ -195,20 +194,47 @@ class TableInteractive extends Component {
       });
     };
 
+    const handleFieldBlur = () => {
+      if (value !== inputValue) {
+        return this.handleCellEditConfirm(clicked, cellProps);
+      } else {
+        return this.handleCellEditCancel(clicked, cellProps);
+      }
+    };
+
     let input = (
       <Input
         value={inputValue}
         variant="unstyled"
         size="xs"
+        autoFocus
         onChange={e => handleInputValueChange(e.target.value)}
+        onBlur={handleFieldBlur}
       />
     );
+
+    if (
+      ["type/Category", "type/Company", "type/State"].includes(
+        column.semantic_type,
+      )
+    ) {
+      input = (
+        <ForeignKeyValueSelect
+          value={inputValue}
+          column={column}
+          onChange={handleInputValueChange}
+          onBlur={handleFieldBlur}
+        />
+      );
+    }
 
     if (column.database_type === "TIMESTAMP") {
       input = (
         <DateInput
           value={new Date(inputValue)}
+          autoFocus
           onChange={e => handleInputValueChange(e.toISOString())}
+          onBlur={handleFieldBlur}
         />
       );
     }
@@ -217,39 +243,54 @@ class TableInteractive extends Component {
       input = (
         <Checkbox
           checked={inputValue}
+          autoFocus
           onChange={e => handleInputValueChange(e.target.checked)}
+          onBlur={handleFieldBlur}
         />
       );
     }
 
-    return (
-      <Box>
-        {input}
-        <Box pos="absolute" right="0" top="-0.5rem">
-          <Stack style={{ zIndex: 10 }} spacing={0}>
-            <UIButton
-              leftIcon={<Icon name="check" />}
-              compact
-              disabled={inputValue === value}
-              onClick={e => {
-                e.stopPropagation();
+    if (column.semantic_type === "type/FK") {
+      input = (
+        <ForeignKeyValueSelect
+          value={inputValue}
+          column={column}
+          onChange={handleInputValueChange}
+          onBlur={handleFieldBlur}
+        />
+      );
+    }
 
-                this.handleCellEditConfirm(clicked, cellProps);
-              }}
-            />
-            <UIButton
-              leftIcon={<Icon name="close" />}
-              compact
-              onClick={e => {
-                e.stopPropagation();
+    return input;
 
-                this.handleCellEditCancel(clicked, cellProps);
-              }}
-            />
-          </Stack>
-        </Box>
-      </Box>
-    );
+    // return (
+    //   <Box>
+    //     {input}
+    //     <Box pos="absolute" right="0" top="-0.5rem">
+    //       <Stack style={{ zIndex: 10 }} spacing={0}>
+    //         <UIButton
+    //           leftIcon={<Icon name="check" />}
+    //           compact
+    //           disabled={inputValue === value}
+    //           onClick={e => {
+    //             e.stopPropagation();
+    //
+    //             this.handleCellEditConfirm(clicked, cellProps);
+    //           }}
+    //         />
+    //         <UIButton
+    //           leftIcon={<Icon name="close" />}
+    //           compact
+    //           onClick={e => {
+    //             e.stopPropagation();
+    //
+    //             this.handleCellEditCancel(clicked, cellProps);
+    //           }}
+    //         />
+    //       </Stack>
+    //     </Box>
+    //   </Box>
+    // );
   }
 
   componentDidMount() {
@@ -542,13 +583,8 @@ class TableInteractive extends Component {
   }
 
   onVisualizationClick(clicked, element, cellProps) {
-    if (clicked.data) {
-      this.handleCellClickToEdit(clicked, element, cellProps);
-      return;
-    }
-
     if (this.visualizationIsClickable(clicked)) {
-      this.props.onVisualizationClick({ ...clicked, element });
+      this.props.onVisualizationClick?.({ ...clicked, element });
     }
   }
 
@@ -604,12 +640,12 @@ class TableInteractive extends Component {
 
   visualizationIsClickable(clicked) {
     try {
-      const { onVisualizationClick, visualizationIsClickable } = this.props;
+      const { /*onVisualizationClick,*/ visualizationIsClickable } = this.props;
       const { dragColIndex } = this.state;
       if (
         // don't bother calling if we're dragging, but do it for headers to show isSortable
         (dragColIndex == null || (clicked && clicked.value === undefined)) &&
-        onVisualizationClick &&
+        // onVisualizationClick &&
         visualizationIsClickable &&
         clicked
       ) {
@@ -676,7 +712,7 @@ class TableInteractive extends Component {
       detailEl;
     const canViewRowDetail = !this.props.isPivoted && !!visibleDetailButton;
 
-    if (event.key === "Enter" && canViewRowDetail) {
+    if (event.key === "Enter" && canViewRowDetail && !this.getIsEditingRow()) {
       const hoveredRowIndex = Number(detailEl.dataset.showDetailRowindex);
       this.pkClick(hoveredRowIndex)(event);
     }
@@ -727,18 +763,39 @@ class TableInteractive extends Component {
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
 
     const handleClick = e => {
-      // if (!isClickable || !this.visualizationIsClickable(clicked)) {
-      //   return;
-      // }
+      if (!isClickable || !this.visualizationIsClickable(clicked)) {
+        return;
+      }
+
+      if (this.state.editingCellsMap[cellProps.key]) {
+        // don't show menu for cell in edit mode
+        return;
+      }
+
       this.onVisualizationClick(clicked, e.currentTarget, cellProps);
+    };
+
+    const handleDoubleClick = e => {
+      this.props.onVisualizationClick?.(null); // hide click actions menu
+
+      if (isClickable && this.visualizationIsClickable(clicked)) {
+        this.handleCellClickToEdit(clicked, e.currentTarget, cellProps);
+      }
     };
 
     const handleKeyUp = e => {
       if (!isClickable || !this.visualizationIsClickable(clicked)) {
         return;
       }
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && !this.getIsEditingRow()) {
         this.onVisualizationClick(clicked, e.currentTarget);
+      }
+
+      if (e.key === "Enter" && this.getIsEditingRow()) {
+        this.handleCellEditConfirm(clicked, cellProps);
+      }
+      if (e.key === "Escape" && this.getIsEditingRow()) {
+        this.handleCellEditCancel(clicked, cellProps);
       }
     };
 
@@ -777,6 +834,7 @@ class TableInteractive extends Component {
           },
         )}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         onKeyUp={handleKeyUp}
         onMouseEnter={
           showDetailShortcut ? e => this.handleHoverRow(e, rowIndex) : undefined
@@ -868,6 +926,10 @@ class TableInteractive extends Component {
       return dragColNewLefts[index];
     }
     return style.left;
+  }
+
+  getIsEditingRow() {
+    return Object.values(this.state.editingCellsMap).includes(true);
   }
 
   // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)
@@ -1122,13 +1184,11 @@ class TableInteractive extends Component {
     // eslint-disable-next-line no-console
     console.log("handleCellClickToEdit", clicked, element, cellProps);
 
-    this.setState(prevState => {
-      const editingCellsMap = {
-        ...prevState.editingCellsMap,
+    this.setState({
+      editingCellsMap: {
         [cellProps.key]: true,
-      };
-
-      return { editingCellsMap };
+      },
+      editingCellsValuesMap: {},
     });
   };
 
@@ -1525,7 +1585,7 @@ class TableInteractive extends Component {
 }
 
 const TableInteractiveMemoized = memoizeClass(
-  "_getCellClickedObjectCached",
+  // "_getCellClickedObjectCached", // FIXME remove memoization to make local data mutation work. restore when we implement proper optimistic updates through redux
   "_visualizationIsClickableCached",
   "getCellBackgroundColor",
   "getCellFormattedValue",
