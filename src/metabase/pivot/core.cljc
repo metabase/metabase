@@ -217,19 +217,19 @@
                                 :rawValue (:rawValue row-item)
                                 :span 1
                                 :isSubtotal true
-                                :children []
-                                }]
+                                :children []}]
+
                               [])]
     (if (:isCollapsed row-item)
       subtotal
       (let [node (merge row-item
                         {:hasSubtotal has-subtotal
                          :children (mapcat (fn [child] (if (not-empty (:children child))
-                                                      (add-subtotal child
-                                                                    rest-subs-by-col
-                                                                    (or (> (count (:children child)) 1)
-                                                                        (:isCollapsed child)))
-                                                      [child]))
+                                                        (add-subtotal child
+                                                                      rest-subs-by-col
+                                                                      (or (> (count (:children child)) 1)
+                                                                          (:isCollapsed child)))
+                                                        [child]))
                                         (:children row-item))})]
         (if (not-empty subtotal)
           [node (first subtotal)]
@@ -273,4 +273,3 @@
     (if (<= (count val-cols) 1)
       col-tree)
     (map #(update-node % leaf-nodes) col-tree)))
-
