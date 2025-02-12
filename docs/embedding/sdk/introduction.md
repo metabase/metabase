@@ -14,9 +14,11 @@ The Embedded analytics SDK is currently in beta, but you should check it out and
 
 ## Example apps built with the embedded analytics SDK
 
-To give you and idea of what's possible with the SDK, we've put together example sites at [metaba.se/sdk-demo](https://metaba.se/sdk-demo). Navigate between three different shop websites: The Stitch, Luminara Beauty, and Pug & Play. Check them out and poke around their products and analytics sections, as well as the New Question and New Dashboard options.
+To give you and idea of what's possible with the SDK, we've put together example sites at [metaba.se/sdk-demo](https://metaba.se/sdk-demo). Navigate between the different shop websites: Proficiency Labs, The Stitch, Luminara Beauty, and Pug & Play. Check them out and poke around their products and [analytics sections](https://embedded-analytics-sdk-demo.metabase.com/admin/analytics/17), as well as the New Question and New Dashboard options.
 
 ![Pug and play example app built with embedding SDK](../images/pug-and-play.png)
+
+To see how we made the demo, check out the [SDK demo's source code](https://github.com/metabase/shoppy).
 
 ## Embedded analytics SDK prerequisites
 
@@ -37,7 +39,7 @@ If you have Node and Docker installed, you can change into your React applicatio
 npx @metabase/embedding-sdk-react@latest start
 ```
 
-Only works locally, and you don't need a license key (but you can use one to demo more features).
+This CLI quickstart only works locally, and you don't need a license key (but you can use one to demo more features).
 
 See more about the [CLI quickstart](./quickstart-cli.md).
 
@@ -49,20 +51,25 @@ You'll need to enable the SDK in your Metabase, and install the SDK as a depende
 
 ### In Metabase
 
-Enable the Embedded analytics SDK by going to **Admin settings > Settings > Embedding**. Toggle on the SDK, and hit **Configure**. Enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
+Enable the Embedded analytics SDK:
+
+1. Go to **Admin settings > Settings > Embedding**.
+2. Toggle on the SDK.
+3. Hit **Configure**.
+4. Enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
 
 ### In your React application
 
 You can install the Embedded analytics SDK for React via npm:
 
 ```bash
-npm install @metabase/embedding-sdk-react@51-stable
+npm install @metabase/embedding-sdk-react@53-stable
 ```
 
 or with yarn:
 
 ```bash
-yarn add @metabase/embedding-sdk-react@51-stable
+yarn add @metabase/embedding-sdk-react@53-stable
 ```
 
 ## Developing with the embedded analytics SDK
@@ -96,7 +103,7 @@ The SDK doesn't support:
 - Subscriptions
 - Alerts
 - Server-side rendering (SSR).
-- Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
+- Multiple _interactive_ dashboards on the _same_ application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
 
 ## Feedback
 
