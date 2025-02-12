@@ -1668,7 +1668,7 @@ SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
     cy.signInAsNormalUser();
   });
 
-  it("should be able to filter on a BigInteger column in the QB (metabase#5816)", () => {
+  it("should be able to use filters with BigInteger MBQL query columns in the QB (metabase#5816)", () => {
     H.createNativeQuestion(bigIntQuestionDetails, { visitQuestion: true });
     H.queryBuilderHeader().findByText("Explore results").click();
     H.assertQueryBuilderRowCount(3);
