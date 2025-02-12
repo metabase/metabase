@@ -5,8 +5,8 @@ import { type NumberValue, parseNumber } from "metabase/lib/number";
 import { TextInput, type TextInputProps } from "metabase/ui";
 
 type NumberFilterInputProps = Omit<TextInputProps, "value" | "onChange"> & {
-  value: NumberValue | "";
-  onChange: (value: NumberValue | "") => void;
+  value: NumberValue | null;
+  onChange: (value: NumberValue | null) => void;
 };
 
 export const NumberFilterInput = forwardRef(function NumberFilterInput(
@@ -54,9 +54,9 @@ export const NumberFilterInput = forwardRef(function NumberFilterInput(
 
 function parseValue(value: string) {
   const number = parseNumber(value);
-  return number != null ? number : "";
+  return number != null ? number : null;
 }
 
-function formatValue(value: NumberValue | "") {
-  return String(value);
+function formatValue(value: NumberValue | null) {
+  return value != null ? String(value) : "";
 }

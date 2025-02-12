@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { isNotNull } from "metabase/lib/types";
 import {
   type NumberOrEmptyValue,
-  isNotEmptyValue,
   useNumberFilter,
 } from "metabase/querying/filters/hooks/use-number-filter";
 import { Flex, Grid, Text } from "metabase/ui";
@@ -132,7 +132,7 @@ function NumberValueInput({
         query={query}
         stageIndex={stageIndex}
         column={column}
-        values={values.filter(isNotEmptyValue)}
+        values={values.filter(isNotNull)}
         compact
         onChange={onChange}
         onFocus={onFocus}

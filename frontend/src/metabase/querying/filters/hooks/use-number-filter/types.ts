@@ -7,4 +7,4 @@ export interface OperatorOption
   hasMultipleValues?: boolean;
 }
 
-export type NumberOrEmptyValue = Lib.NumberFilterValue | "";
+export type NumberOrEmptyValue = Lib.NumberFilterValue | null;

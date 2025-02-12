@@ -2,9 +2,9 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { isNotNull } from "metabase/lib/types";
 import {
   type NumberOrEmptyValue,
-  isNotEmptyValue,
   useNumberFilter,
 } from "metabase/querying/filters/hooks/use-number-filter";
 import { Box, Flex, Text } from "metabase/ui";
@@ -123,7 +123,7 @@ function NumberValueInput({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          values={values.filter(isNotEmptyValue)}
+          values={values.filter(isNotNull)}
           autoFocus
           onChange={onChange}
         />

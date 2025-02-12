@@ -1,3 +1,4 @@
+import { isNotNull } from "metabase/lib/types";
 import {
   getAvailableOperatorOptions,
   getDefaultAvailableOperator,
@@ -6,10 +7,6 @@ import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
 import type { NumberOrEmptyValue, OperatorOption } from "./types";
-
-function isNotEmpty(value: NumberOrEmptyValue): value is Lib.NumberFilterValue {
-  return value !== "";
-}
 
 export function getAvailableOptions(
   query: Lib.Query,
@@ -68,7 +65,7 @@ export function getDefaultValues(
 ): NumberOrEmptyValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   if (hasMultipleValues) {
-    return values.filter(isNotEmpty);
+    return values.filter(isNotNull);
   }
 
   return Array(valueCount)
@@ -119,7 +116,7 @@ function getSimpleFilterParts(
   values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
-  if (!values.every(isNotEmpty)) {
+  if (!values.every(isNotNull)) {
     return undefined;
   }
   if (hasMultipleValues ? values.length === 0 : values.length !== valueCount) {
@@ -130,7 +127,7 @@ function getSimpleFilterParts(
     operator,
     column,
     longitudeColumn: null,
-    values: values.filter(isNotEmpty),
+    values: values.filter(isNotNull),
   };
 }
 
@@ -140,7 +137,7 @@ function getBetweenFilterParts(
   values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
   const [startValue, endValue] = values;
-  if (isNotEmpty(startValue) && isNotEmpty(endValue)) {
+  if (isNotNull(startValue) && isNotNull(endValue)) {
     const minValue = startValue < endValue ? startValue : endValue;
     const maxValue = startValue < endValue ? endValue : startValue;
 
@@ -150,14 +147,14 @@ function getBetweenFilterParts(
       longitudeColumn: null,
       values: [minValue, maxValue],
     };
-  } else if (isNotEmpty(startValue)) {
+  } else if (isNotNull(startValue)) {
     return {
       operator: ">=",
       column,
       longitudeColumn: null,
       values: [startValue],
     };
-  } else if (isNotEmpty(endValue)) {
+  } else if (isNotNull(endValue)) {
     return {
       operator: "<=",
       column,
@@ -175,7 +172,7 @@ function getInsideFilterParts(
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
-  if (!values.every(isNotEmpty)) {
+  if (!values.every(isNotNull)) {
     return undefined;
   }
   if (secondColumn == null) {

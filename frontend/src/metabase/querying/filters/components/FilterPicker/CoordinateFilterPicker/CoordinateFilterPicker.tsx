@@ -2,7 +2,7 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { isNumber } from "metabase/lib/types";
+import { isNotNull } from "metabase/lib/types";
 import {
   type NumberOrEmptyValue,
   useCoordinateFilter,
@@ -139,7 +139,7 @@ function CoordinateValueInput({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          values={values.filter(isNumber)}
+          values={values.filter(isNotNull)}
           autoFocus
           onChange={onChange}
         />

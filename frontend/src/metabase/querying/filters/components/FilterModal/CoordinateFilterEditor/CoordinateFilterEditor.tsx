@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { isNumber } from "metabase/lib/types";
+import { isNotNull } from "metabase/lib/types";
 import {
   type NumberOrEmptyValue,
   useCoordinateFilter,
@@ -133,7 +133,7 @@ function NumberValueInput({
         query={query}
         stageIndex={stageIndex}
         column={column}
-        values={values.filter(isNumber)}
+        values={values.filter(isNotNull)}
         compact
         onChange={onChange}
         onFocus={onFocus}

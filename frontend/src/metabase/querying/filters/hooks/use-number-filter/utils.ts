@@ -1,3 +1,4 @@
+import { isNotNull } from "metabase/lib/types";
 import {
   getAvailableOperatorOptions,
   getDefaultAvailableOperator,
@@ -6,12 +7,6 @@ import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
 import type { NumberOrEmptyValue, OperatorOption } from "./types";
-
-export function isNotEmptyValue(
-  value: NumberOrEmptyValue,
-): value is Lib.NumberFilterValue {
-  return value !== "";
-}
 
 export function getAvailableOptions(
   query: Lib.Query,
@@ -52,7 +47,7 @@ export function getDefaultValues(
 ): NumberOrEmptyValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   if (hasMultipleValues) {
-    return values.filter(isNotEmptyValue);
+    return values.filter(isNotNull);
   }
 
   return Array(valueCount)
@@ -96,7 +91,7 @@ function getSimpleFilterParts(
   values: NumberOrEmptyValue[],
 ): Lib.NumberFilterParts | undefined {
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
-  if (!values.every(isNotEmptyValue)) {
+  if (!values.every(isNotNull)) {
     return undefined;
   }
   if (hasMultipleValues ? values.length === 0 : values.length !== valueCount) {
@@ -106,7 +101,7 @@ function getSimpleFilterParts(
   return {
     operator,
     column,
-    values: values.filter(isNotEmptyValue),
+    values: values.filter(isNotNull),
   };
 }
 
@@ -116,7 +111,7 @@ function getBetweenFilterParts(
   values: NumberOrEmptyValue[],
 ): Lib.NumberFilterParts | undefined {
   const [startValue, endValue] = values;
-  if (isNotEmptyValue(startValue) && isNotEmptyValue(endValue)) {
+  if (isNotNull(startValue) && isNotNull(endValue)) {
     const minValue = startValue < endValue ? startValue : endValue;
     const maxValue = startValue < endValue ? endValue : startValue;
 
@@ -125,13 +120,13 @@ function getBetweenFilterParts(
       column,
       values: [minValue, maxValue],
     };
-  } else if (isNotEmptyValue(startValue)) {
+  } else if (isNotNull(startValue)) {
     return {
       operator: ">=",
       column,
       values: [startValue],
     };
-  } else if (isNotEmptyValue(endValue)) {
+  } else if (isNotNull(endValue)) {
     return {
       operator: "<=",
       column,
