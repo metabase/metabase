@@ -60,6 +60,18 @@ export const Table = forwardRef(function Table<TData>(
     table.getState().columnSizingInfo.isResizingColumn,
   );
 
+  const dndContextProps = useMemo(
+    () => ({
+      sensors: columnsReordering.sensors,
+      collisionDetection: pointerWithin,
+      modifiers: [restrictToHorizontalAxis],
+      onDragStart: columnsReordering.onDragStart,
+      onDragOver: columnsReordering.onDragOver,
+      onDragEnd: columnsReordering.onDragEnd,
+    }),
+    [columnsReordering],
+  );
+
   const rowMeasureRef = useCallback(
     (element: HTMLElement | null) => {
       rowVirtualizer.measureElement(element);
@@ -82,14 +94,7 @@ export const Table = forwardRef(function Table<TData>(
   );
 
   return (
-    <DndContext
-      sensors={columnsReordering.sensors}
-      collisionDetection={pointerWithin}
-      modifiers={[restrictToHorizontalAxis]}
-      onDragStart={columnsReordering.onDragStart}
-      onDragOver={columnsReordering.onDragOver}
-      onDragEnd={columnsReordering.onDragEnd}
-    >
+    <DndContext {...dndContextProps}>
       <div
         ref={ref}
         style={{ height, width }}

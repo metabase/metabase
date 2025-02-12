@@ -2,7 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Header } from "@tanstack/react-table";
 import type React from "react";
-import { type CSSProperties, memo, useCallback, useRef } from "react";
+import { type CSSProperties, memo, useCallback, useMemo, useRef } from "react";
 
 import S from "./SortableHeader.module.css";
 
@@ -40,16 +40,19 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
 
   const dragStartPosition = useRef<DragPosition | null>(null);
 
-  const style: CSSProperties = {
-    opacity: isDragging ? 0.8 : 1,
-    position: "relative",
-    transform: isDragging ? CSS.Translate.toString(transform) : undefined,
-    transition: "width transform 0.2s ease-in-out",
-    whiteSpace: "nowrap",
-    zIndex: isDragging ? 2 : 0,
-    cursor: canSort ? "grab" : "default",
-    outline: "none",
-  };
+  const style = useMemo<CSSProperties>(
+    () => ({
+      opacity: isDragging ? 0.8 : 1,
+      position: "relative",
+      transform: isDragging ? CSS.Translate.toString(transform) : undefined,
+      transition: "width transform 0.2s ease-in-out",
+      whiteSpace: "nowrap",
+      zIndex: isDragging ? 2 : 0,
+      cursor: canSort ? "grab" : "default",
+      outline: "none",
+    }),
+    [isDragging, transform, canSort],
+  );
 
   const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     dragStartPosition.current = { x: e.clientX, y: e.clientY };
@@ -73,13 +76,24 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
     [id, onClick],
   );
 
-  const resizeHandler: (e: React.MouseEvent | React.TouchEvent) => void =
-    useCallback(
-      e => {
-        header.getResizeHandler()(e);
-      },
-      [header],
-    );
+  const resizeHandler = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      header.getResizeHandler()(e);
+    },
+    [header],
+  );
+
+  const headerContent = useMemo(
+    () =>
+      !renderHeaderDecorator
+        ? children
+        : renderHeaderDecorator(
+            id,
+            Boolean(isDragging || isResizing),
+            children,
+          ),
+    [renderHeaderDecorator, id, isDragging, isResizing, children],
+  );
 
   return (
     <div
@@ -90,13 +104,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       onMouseUp={handleDragEnd}
     >
       <div className={S.headerContent} {...attributes} {...listeners}>
-        {!renderHeaderDecorator
-          ? children
-          : renderHeaderDecorator(
-              id,
-              Boolean(isDragging || isResizing),
-              children,
-            )}
+        {headerContent}
       </div>
       <div
         className={S.resizeHandle}
