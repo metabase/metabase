@@ -37,9 +37,9 @@
                              (merge usage)
                              (select-keys [:id :object :created :model :prompt_tokens :completion_tokens :total_tokens :system_fingerprint]))]
        (analytics/track-event! :snowplow/llm_usage
-                              (assoc
-                               usage-summary
-                               :event :llm-usage))
+                               (assoc
+                                usage-summary
+                                :event :llm-usage))
        ;; TODO -- Remove before final PR/merge
        ;(tap> usage-summary)
        response))

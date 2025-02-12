@@ -208,21 +208,21 @@
                 error-message
                 callback]} (serialize&pack opts)]
     (analytics/track-event! :snowplow/serialization
-                           {:event           :serialization
-                            :direction       "export"
-                            :source          "api"
-                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                            :count           (count (:seen report))
-                            :error_count     (count (:errors report))
-                            :collection      (str/join "," (map str collection))
-                            :all_collections (and (empty? collection)
-                                                  (not (:no-collections opts)))
-                            :data_model      (not (:no-data-model opts))
-                            :settings        (not (:no-settings opts))
-                            :field_values    (:include-field-values opts)
-                            :secrets         (:include-database-secrets opts)
-                            :success         (boolean archive)
-                            :error_message   error-message})
+                            {:event           :serialization
+                             :direction       "export"
+                             :source          "api"
+                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+                             :count           (count (:seen report))
+                             :error_count     (count (:errors report))
+                             :collection      (str/join "," (map str collection))
+                             :all_collections (and (empty? collection)
+                                                   (not (:no-collections opts)))
+                             :data_model      (not (:no-data-model opts))
+                             :settings        (not (:no-settings opts))
+                             :field_values    (:include-field-values opts)
+                             :secrets         (:include-database-secrets opts)
+                             :success         (boolean archive)
+                             :error_message   error-message})
     (if archive
       {:status  200
        :headers {"Content-Type"        "application/gzip"
@@ -265,17 +265,17 @@
                                              :full-stacktrace   full-stacktrace?})
           imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
       (analytics/track-event! :snowplow/serialization
-                             {:event         :serialization
-                              :direction     "import"
-                              :source        "api"
-                              :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
-                              :models        (str/join "," imported)
-                              :count         (if (contains? imported "Setting")
-                                               (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
-                                               (count (:seen report)))
-                              :error_count   (count (:errors report))
-                              :success       (not error-message)
-                              :error_message error-message})
+                              {:event         :serialization
+                               :direction     "import"
+                               :source        "api"
+                               :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
+                               :models        (str/join "," imported)
+                               :count         (if (contains? imported "Setting")
+                                                (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
+                                                (count (:seen report)))
+                               :error_count   (count (:errors report))
+                               :success       (not error-message)
+                               :error_message error-message})
       (if error-message
         {:status  (or status 500)
          :headers {"Content-Type" "text/plain"}

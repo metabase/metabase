@@ -118,18 +118,18 @@
                      (reset! err e)))
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
     (analytics/track-event! :snowplow/serialization
-                           {:event         :serialization
-                            :direction     "import"
-                            :source        "cli"
-                            :duration_ms   (int (u/since-ms timer))
-                            :models        (str/join "," imported)
-                            :count         (if (contains? imported "Setting")
-                                             (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
-                                             (count (:seen report)))
-                            :error_count   (count (:errors report))
-                            :success       (nil? @err)
-                            :error_message (when @err
-                                             (u/strip-error @err nil))})
+                            {:event         :serialization
+                             :direction     "import"
+                             :source        "cli"
+                             :duration_ms   (int (u/since-ms timer))
+                             :models        (str/join "," imported)
+                             :count         (if (contains? imported "Setting")
+                                              (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
+                                              (count (:seen report)))
+                             :error_count   (count (:errors report))
+                             :success       (nil? @err)
+                             :error_message (when @err
+                                              (u/strip-error @err nil))})
     (when @err
       (if (:full-stacktrace opts)
         (log/error @err "Error during deserialization")
@@ -251,22 +251,22 @@
                  (catch Exception e
                    (reset! err e)))]
     (analytics/track-event! :snowplow/serialization
-                           {:event           :serialization
-                            :direction       "export"
-                            :source          "cli"
-                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                            :count           (count (:seen report))
-                            :error_count     (count (:errors report))
-                            :collection      (str/join "," collection-ids)
-                            :all_collections (and (empty? collection-ids)
-                                                  (not (:no-collections opts)))
-                            :data_model      (not (:no-data-model opts))
-                            :settings        (not (:no-settings opts))
-                            :field_values    (boolean (:include-field-values opts))
-                            :secrets         (boolean (:include-database-secrets opts))
-                            :success         (nil? @err)
-                            :error_message   (when @err
-                                               (u/strip-error @err nil))})
+                            {:event           :serialization
+                             :direction       "export"
+                             :source          "cli"
+                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+                             :count           (count (:seen report))
+                             :error_count     (count (:errors report))
+                             :collection      (str/join "," collection-ids)
+                             :all_collections (and (empty? collection-ids)
+                                                   (not (:no-collections opts)))
+                             :data_model      (not (:no-data-model opts))
+                             :settings        (not (:no-settings opts))
+                             :field_values    (boolean (:include-field-values opts))
+                             :secrets         (boolean (:include-database-secrets opts))
+                             :success         (nil? @err)
+                             :error_message   (when @err
+                                                (u/strip-error @err nil))})
     (when @err
       (if (:full-stacktrace opts)
         (log/error @err "Error during serialization")
