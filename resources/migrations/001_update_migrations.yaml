@@ -10774,6 +10774,24 @@ databaseChangeLog:
                   name: is_row_action
                   type: ${boolean.type}
                   remarks: Whether or not the action is a row action
+  - changeSet:
+      id: v53.2025-02-12T09:20:00
+      author: wotbrew
+      comment: Add row action flag (implicit)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: implicit_action
+                columnName: is_row_action
+      changes:
+        - addColumn:
+            tableName: implicit_action
+            columns:
+              - column:
+                  name: is_row_action
+                  type: ${boolean.type}
+                  remarks: Whether or not the action is a row action
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
