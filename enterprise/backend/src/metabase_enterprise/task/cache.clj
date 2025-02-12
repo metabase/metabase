@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.cache.strategies :as strategies]
+   [metabase.models.dashboard :as dashboard]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task :as task]
@@ -45,6 +46,16 @@
   [refresh-task-fn]
   (.submit ^ExecutorService @pool ^Callable refresh-task-fn))
 
+(defn discarding-rff
+  "Returns a reducing function that discards result rows"
+  [_metadata]
+  (fn discarding-rf
+    ([] {:rows []})
+    ([result]
+     (def result result)
+     result)
+    ([result _row] result)))
+
 (defn- refresh-task
   "Returns a function that serially reruns queries based on `refresh-defs`, and discards the results. Each refresh
   definition contains a card-id, an optional dashboard-id, and a list of queries to rerun."
@@ -65,7 +76,8 @@
                 {:executed-by  nil
                  :context      :cache-refresh
                  :card-id      card-id
-                 :dashboard-id dashboard-id}))
+                 :dashboard-id dashboard-id})
+               discarding-rff)
               (catch Exception e
                 (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e))))))))))
 
@@ -257,9 +269,10 @@
     (-> (.getFireTimeAfter cron (t/java-date now))
         (t/offset-date-time (t/zone-offset)))))
 
-(defn- refresh-cache-configs!
+(defenterprise refresh-cache-configs!
   "Update `invalidated_at` for every cache config with `:schedule` strategy, and maybe rerun cached queries
   for both `:schedule` and `:duration` caches if preemptive caching is enabled."
+  :feature :none
   []
   (let [now (t/offset-date-time)
         invalidated-count
