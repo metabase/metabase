@@ -10,7 +10,6 @@
    [metabase.task.creator-sentiment-emails]
    [metabase.task.email-remove-legacy-pulse]
    [metabase.task.follow-up-emails]
-   [metabase.task.index-values]
    [metabase.task.notification]
    [metabase.task.persist-refresh]
    [metabase.task.refresh-slack-channel-user-cache]
@@ -20,3 +19,10 @@
    [metabase.task.task-history-cleanup]
    [metabase.task.truncate-audit-tables]
    [metabase.task.upgrade-checks]))
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                       DO NOT ADD ANY MORE TASKS UNDER `metabase.task.*`                        !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
