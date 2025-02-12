@@ -50,6 +50,7 @@
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.util.malli :as mu]))
@@ -60,8 +61,9 @@
 (mu/defn- operators-for :- [:sequential ::lib.schema.drill-thru/drill-thru.quick-filter.operator]
   [column :- ::lib.schema.metadata/column
    value]
-  (let [field-ref (-> (lib.ref/ref column)
-                      (update 1 merge (select-keys column [:temporal-unit])))]
+  (let [field-ref (cond-> (lib.ref/ref column)
+                    (:temporal-unit column)
+                    (lib.temporal-bucket/with-temporal-bucket (:temporal-unit column)))]
     (cond
       (lib.types.isa/structured? column)
       []

@@ -488,7 +488,7 @@
           (test-drill-applications query context))))))
 
 (deftest ^:parallel preserve-temporal-bucket-test-quick-filter
-  (testing "preserve the temporal bucket on a breakout column in the previous stage (#13504 #36582)"
+  (testing "preserve the temporal bucket on a breakout column (#50722)"
     (let [base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                              (lib/aggregate (lib/count))
                              (lib/breakout (-> (meta/field-metadata :orders :created-at)
