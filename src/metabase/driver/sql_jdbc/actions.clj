@@ -228,7 +228,7 @@
         (let [pks (t2/select-fn-vec (comp keyword :name) :model/Field (first (mbql.u/referenced-field-ids (:query query))))]
           ;; ... hence we have this limitation to avoid bad things happening
           (when (= 1 (count pks))
-            (metabase.api.internal-tools/track-delete! (:source-table (:query query)) pks old-rows)))
+            ((requiring-resolve 'metabase.api.internal-tools/track-delete!) (:source-table (:query query)) pks old-rows)))
         {:rows-deleted [1]}))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
@@ -306,8 +306,8 @@
             _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
             row    (select-created-row driver create-hsql conn result)]
         (log/tracef ":row/create returned row %s" (pr-str row))
-        (metabase.api.internal-tools/track-insert! (get-in query [:query :source-table])
-                                                   [row])
+        ((requiring-resolve 'metabase.api.internal-tools/track-insert!) (get-in query [:query :source-table])
+                                                                        [row])
         {:created-row row}))))
 
 ;;;; Bulk actions
