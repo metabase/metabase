@@ -88,7 +88,7 @@
              [:database {:optional true} [:maybe :int]]]]
   (let [{mbql-query :query} query
         {:keys [source-table]} (when (map? mbql-query) mbql-query)
-        [_ model-id] (re-find #"card\_\_(\d+)" source-table)
+        [_ model-id] (when (string? source-table) (re-find #"card\_\_(\d+)" source-table))
         model-id (some-> model-id parse-long)
         actions (t2/select :model/Action :model_id model-id :is_row_action true)]
     (run-streaming-query
