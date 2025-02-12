@@ -138,7 +138,7 @@
 
 (defn- base-query
   [data-source e]
-  (let [{:keys [table_id query_id report_id]} data-source
+  (let [{:keys [table_id query query_id report_id]} data-source
         model-id (lib.util/legacy-string-table-id->card-id table_id)]
     (cond
       (some? model-id)
@@ -169,11 +169,18 @@
         (throw (ex-info (str "No report found with report_id " report_id) {:agent-error? true
                                                                            :data_source data-source})))
 
+      (some? query)
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database query))]
+        [(if query_id
+           (metabot-v3.tools.u/query-field-id-prefix query_id)
+           #"^.*/(\d+)")
+         (-> (lib/query mp query) lib/append-stage)])
+
       (some? query_id)
       (if-let [query (metabot-v3.envelope/find-query e query_id)]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database query))]
           [(metabot-v3.tools.u/query-field-id-prefix query_id)
-           (lib/query mp query)])
+           (-> (lib/query mp query) lib/append-stage)])
         (throw (ex-info (str "No query found with query_id " query_id) {:agent-error? true
                                                                         :data_source data-source})))
 
@@ -181,19 +188,26 @@
       (throw (ex-info "Invalid data_source" {:agent-error? true
                                              :data_source data-source})))))
 
-(defn- filter-records
-  [{:keys [data-source filters] :as _arguments} e]
-  (let [[filter-field-id-prefix base] (base-query data-source e)
-        returned-cols (lib/returned-columns base)
-        query (reduce add-filter base (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix returned-cols) filters))
-        query-id (u/generate-nano-id)
-        query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
-    {:type :query
-     :query_id query-id
-     :query (lib.convert/->legacy-MBQL query)
-     :result_columns (into []
-                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
-                           (lib/returned-columns query))}))
+(defn filter-records
+  "Add `filters` to the query referenced by `data-source`"
+  ([arguments]
+   (filter-records arguments nil))
+  ([{:keys [data-source filters] :as _arguments} e]
+   (try
+     (let [[filter-field-id-prefix base] (base-query data-source e)
+           returned-cols (lib/returned-columns base)
+           query (reduce add-filter base (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix returned-cols) filters))
+           query-id (u/generate-nano-id)
+           query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
+       {:structured-output
+        {:type :query
+         :query_id query-id
+         :query (lib.convert/->legacy-MBQL query)
+         :result_columns (into []
+                               (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                               (lib/returned-columns query))}})
+     (catch Exception ex
+       (metabot-v3.tools.u/handle-agent-error ex)))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -202,16 +216,12 @@
     (filter-records {:data-source {:table_id 27}
                      :filters [{:operation "number-greater-than"
                                 :field_id "field_[27]_[:field {:base-type :type/Float, :effective-type :type/Float} 257]"
-                                :value 50}]}
-                    nil))
+                                :value 50}]}))
   -)
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/filter-records
   [_tool-name arguments e]
-  (try
-    {:structured-output (filter-records arguments e)}
-    (catch Exception e
-      (metabot-v3.tools.u/handle-agent-error e))))
+  (filter-records arguments e))
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/filter-records
   [_tool-name _context]
