@@ -41,7 +41,7 @@
                            (re-matches #"(?:card__)?\d+" id))))
         (throw (ex-info "Invalid table_id" {:agent-error? true
                                             :table_id id})))
-      {:output (str (public-settings/site-url) results-url)
+      {:output results-url
        :reactions [{:type :metabot.reaction/redirect :url results-url}]})
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))
