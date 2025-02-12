@@ -13,7 +13,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -63,7 +62,7 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/database
   [model]
-  (classloader/require 'metabase.models.database)
+  (t2/resolve-model :model/Database) ; for side-effects
   model)
 
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
@@ -90,7 +89,7 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/table
   [model]
-  (classloader/require 'metabase.models.table)
+  (t2/resolve-model :model/Table)
   model)
 
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
@@ -114,10 +113,10 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/column
   [model]
-  (classloader/require 'metabase.models.dimension
-                       'metabase.models.field
-                       'metabase.models.field-values
-                       'metabase.models.table)
+  (t2/resolve-model :model/Dimension) ; for side-effects
+  (t2/resolve-model :model/Field)
+  (t2/resolve-model :model/FieldValues)
+  (t2/resolve-model :model/Table)
   model)
 
 (methodical/defmethod t2.model/model->namespace :metadata/column
@@ -214,8 +213,8 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/card
   [model]
-  (classloader/require 'metabase.models.card
-                       'metabase.models.persisted-info)
+  (t2/resolve-model :model/Card)
+  (t2/resolve-model :model/PersistedInfo)
   model)
 
 (methodical/defmethod t2.model/model->namespace :metadata/card
@@ -291,8 +290,8 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/segment
   [model]
-  (classloader/require 'metabase.models.segment
-                       'metabase.models.table)
+  (t2.model/resolve-model :model/Segment)
+  (t2.model/resolve-model :model/Table)
   model)
 
 (methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/segment

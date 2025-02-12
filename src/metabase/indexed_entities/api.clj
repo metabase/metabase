@@ -1,11 +1,11 @@
-(ns metabase.api.model-index
+(ns metabase.indexed-entities.api
   (:require
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.indexed-entities.task.index-values :as task.index-values]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.model-index :as model-index]
-   [metabase.task.index-values :as task.index-values]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
