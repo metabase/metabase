@@ -146,8 +146,7 @@
 
 (defn- update-send-pulse-trigger-if-needed!
   [& args]
-  (classloader/require 'metabase.task.send-pulses)
-  (apply (resolve 'metabase.task.send-pulses/update-send-pulse-trigger-if-needed!) args))
+  (apply (requiring-resolve 'metabase.pulse.task.send-pulses/update-send-pulse-trigger-if-needed!) args))
 
 (def ^:dynamic *archive-parent-pulse-when-last-channel-is-deleted*
   "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled

@@ -24,10 +24,9 @@
    [metabase.premium-features.core :as premium-features]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.api.alert :as api.alert]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.core :as pulse]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
+   [metabase.pulse.send :as pulse.send]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
@@ -372,7 +371,7 @@
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
   (binding [notification/*default-options* {:notification/sync? true}]
-    (pulse/send-pulse! (assoc body :creator_id api/*current-user-id*)))
+    (pulse.send/send-pulse! (assoc body :creator_id api/*current-user-id*)))
   {:ok true})
 
 (api.macros/defendpoint :delete "/:id/subscription"
