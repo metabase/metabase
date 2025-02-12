@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.regex :as u.regex]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -99,7 +100,7 @@
 
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
-  (into [:enum] export-formats))
+  (into [:enum {:api/regex (u.regex/re-or export-formats)}] export-formats))
 
 (mu/defn export-format->context :- ::lib.schema.info/context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results

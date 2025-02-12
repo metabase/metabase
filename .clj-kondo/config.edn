@@ -324,7 +324,10 @@
    ;;
    ;; PRO TIP: Check out the `dev.deps-graph` namespace for helpful tools to see where a module is used externally.
    :api-namespaces
-   {metabase.actions               #{metabase.actions.core}
+   {metabase.actions               #{metabase.actions.api
+                                     metabase.actions.core}
+    metabase.activity-feed         #{metabase.activity-feed.api
+                                     metabase.activity-feed.init}
     metabase.analytics             #{metabase.analytics.prometheus
                                      metabase.analytics.snowplow
                                      metabase.analytics.stats
@@ -342,10 +345,12 @@
                                      metabase.api.dataset
                                      metabase.api.macros
                                      metabase.api.open-api
+                                     metabase.api.query-metadata
                                      metabase.api.routes
                                      metabase.api.util.handlers}                                    ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
     metabase.audit                 #{metabase.audit}
     metabase.auth-provider         #{metabase.auth-provider}
+    metabase.bookmarks             #{metabase.bookmarks.api}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     ;; TODO -- this has too many API namespaces, ideally it would only expose `metabase.channel.core`,
     ;; `metabase.channel.init`, and `metabase.channel.api`.
@@ -369,6 +374,8 @@
     metabase.embed                 #{metabase.embed.settings}
     metabase.events                #{metabase.events metabase.events.init}
     metabase.formatter             #{metabase.formatter}
+    metabase.indexed-entities      #{metabase.indexed-entities.api
+                                     metabase.indexed-entities.init}
     metabase.integrations          #{metabase.integrations.common
                                      metabase.integrations.google
                                      metabase.integrations.ldap
@@ -396,12 +403,16 @@
     metabase.query-analysis        #{metabase.query-analysis.core
                                      metabase.query-analysis.init}
     metabase.request               #{metabase.request.core}
+    metabase.revisions             #{metabase.revisions.api
+                                     metabase.revisions.core
+                                     metabase.revisions.init}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search.core
                                      metabase.search.init
                                      metabase.search.api
                                      ;; Need to expose this submodule, to break circular dependencies with models.
                                      metabase.search.spec}
+    metabase.segments              #{metabase.segments.api}
     metabase.server                #{metabase.server.core
                                      ;;
                                      ;; TODO FIXME -- this is loaded for side effects since it contains the JSON
@@ -431,13 +442,17 @@
                                      metabase.sync.util}
     metabase.task                  #{metabase.task
                                      metabase.task.bootstrap
-                                     metabase.task.index-values
                                      metabase.task.init
                                      metabase.task.persist-refresh} ; TODO -- move this stuff into appropriate modules
+    metabase.timeline              #{metabase.timeline.api
+                                     metabase.timeline.core}
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}
+    metabase.user-key-value        #{metabase.user-key-value.api
+                                     metabase.user-key-value.init}
     metabase.util                  :any                                                             ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
-    metabase.xrays                 #{metabase.xrays.core}}
+    metabase.xrays                 #{metabase.xrays.api
+                                     metabase.xrays.core}}
 
    ;; Map of module => other modules you're allowed to use there. You have two options here:
    ;;
@@ -450,12 +465,22 @@
    ;;    other modules are allowed to be referenced; this is the default for any modules that aren't listed here.
    :allowed-modules
    {metabase.actions               :any
+    metabase.activity-feed         #{metabase.api
+                                     metabase.config
+                                     metabase.db
+                                     metabase.events
+                                     metabase.models
+                                     metabase.util}
     metabase.analytics             :any
     metabase.analyze               :any
     metabase.api                   :any
     metabase.audit                 :any
     metabase.auth-provider         #{metabase.util
                                      metabase.premium-features}
+    metabase.bookmarks             #{metabase.api
+                                     metabase.db
+                                     metabase.models
+                                     metabase.util}
     metabase.cmd                   :any
     metabase.channel               :any
     metabase.config                #{metabase.plugins}
@@ -465,9 +490,15 @@
     metabase.embed                 :any
     metabase.events                :any
     metabase.formatter             :any
+    metabase.indexed-entities      :any ; TODO -- way too much stuff
     metabase.integrations          :any
     metabase.legacy-mbql           :any
-    metabase.lib                   :any
+    metabase.lib                   #{metabase.config
+                                     metabase.driver
+                                     metabase.legacy-mbql
+                                     metabase.models
+                                     metabase.types
+                                     metabase.util}
     metabase.logger                #{metabase.config
                                      metabase.plugins}
     metabase.models                :any
@@ -501,14 +532,25 @@
                                      metabase.permissions
                                      metabase.public-settings
                                      metabase.util}
+    metabase.revisions             #{metabase.api
+                                     metabase.config
+                                     metabase.events
+                                     metabase.models
+                                     metabase.util}
     metabase.sample-data           :any
     metabase.search                :any
+    metabase.segments              :any ; TODO -- way too many deps
     metabase.server                :any
     metabase.setup                 :any
     metabase.sync                  :any
     metabase.task                  :any
+    metabase.timeline              :any
     metabase.types                 #{metabase.util}
     metabase.upload                :any
+    metabase.user-key-value        #{metabase.api
+                                     metabase.config
+                                     metabase.lib    ; WHY
+                                     metabase.util}
     metabase.util                  :any ; TODO -- this should probably be #{}
     metabase.xrays                 :any}
 
@@ -578,45 +620,7 @@
     metabase.analyze.fingerprint.fingerprinters                   fingerprinters
     metabase.analyze.fingerprint.insights                         insights
     metabase.analyze.fingerprint.schema                           fingerprint.schema
-    metabase.api.activity                                         api.activity
-    metabase.api.alert                                            api.alert
-    metabase.api.automagic-dashboards                             api.magic
-    metabase.api.bookmark                                         api.bookmark
-    metabase.api.card                                             api.card
-    metabase.api.card-test                                        api.card-test
-    metabase.api.collection                                       api.collection
     metabase.api.common                                           api
-    metabase.api.dashboard                                        api.dashboard
-    metabase.api.dashboard-test                                   api.dashboard-test
-    metabase.api.database                                         api.database
-    metabase.api.dataset                                          api.dataset
-    metabase.api.email                                            api.email
-    metabase.api.embed                                            api.embed
-    metabase.api.field                                            api.field
-    metabase.api.geojson                                          api.geojson
-    metabase.api.ldap                                             api.ldap
-    metabase.api.logic-history                                    api.login-history
-    metabase.api.macros                                           api.macros
-    metabase.api.metric                                           api.metric
-    metabase.api.native-query-snippet                             api.native-query-snippet
-    metabase.api.pivots                                           api.pivots
-    metabase.api.premium-features                                 api.premium-features
-    metabase.api.preview-embed                                    api.preview-embed
-    metabase.api.public                                           api.public
-    metabase.api.pulse                                            api.pulse
-    metabase.api.revision                                         api.revision
-    metabase.api.segment                                          api.segment
-    metabase.api.session                                          api.session
-    metabase.api.setting                                          api.setting
-    metabase.api.setup                                            api.setup
-    metabase.api.slack                                            api.slack
-    metabase.api.table                                            api.table
-    metabase.api.task                                             api.task
-    metabase.api.tiles                                            api.tiles
-    metabase.api.timeline                                         api.timeline
-    metabase.api.timeline-event                                   api.timeline-event
-    metabase.api.user                                             api.user
-    metabase.api.util                                             api.util
     metabase.channel.core                                         channel
     metabase.channel.render.core                                  channel.render
     metabase.cmd.copy.h2                                          copy.h2
@@ -666,28 +670,8 @@
     metabase.legacy-mbql.util                                     mbql.u
     metabase.lib.util                                             lib.util
     metabase.lib.util.match                                       lib.util.match
-    metabase.models.activity                                      activity
-    metabase.models.application-permissions-revision              a-perm-revision
-    metabase.models.bookmark                                      bookmark
-    metabase.models.collection                                    collection
-    metabase.models.collection.graph                              graph
-    metabase.models.collection-permission-graph-revision          c-perm-revision
-    metabase.models.dashboard-card                                dashboard-card
-    metabase.models.database                                      database
     metabase.models.dependency                                    dependency
-    metabase.models.field-values                                  field-values
     metabase.models.interface                                     mi
-    metabase.models.moderation-review                             moderation-review
-    metabase.models.native-query-snippet                          native-query-snippet
-    metabase.models.notification                                  models.notification
-    metabase.models.params                                        params
-    metabase.models.pulse                                         models.pulse
-    metabase.models.pulse-channel                                 pulse-channel
-    metabase.models.pulse-channel-recipient                       pulse-channel-recipient
-    metabase.models.query.permissions                             query-perms
-    metabase.models.setting.cache                                 setting.cache
-    metabase.models.timeline                                      timeline
-    metabase.models.timeline-event                                timeline-event
     metabase.notification.core                                    notification
     metabase.notification.test-util                               notification.tu
     metabase.permissions.core                                     perms
@@ -725,6 +709,7 @@
     metabase.query-processor.timezone                             qp.timezone
     metabase.query-processor.util                                 qp.util
     metabase.request.core                                         request
+    metabase.revisions.core                                       revisions
     metabase.search.config                                        search.config
     metabase.search.filter                                        search.filter
     metabase.search.in-place.filter                               search.in-place.filter
@@ -751,6 +736,7 @@
     metabase.test.redefs                                          test.redefs
     metabase.test.util.js                                         test.js
     metabase.test.util.timezone                                   test.tz
+    metabase.timeline.core                                        timeline
     metabase.timeseries-query-processor-test.util                 tqpt
     metabase.util.cron                                            u.cron
     metabase.util.currency                                        currency
@@ -798,12 +784,10 @@
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
-  metabase.api.common/defroutes                                                         clojure.core/def
   metabase.api.common/let-404                                                           clojure.core/let
-  metabase.search.api-test/do-test-users                                                clojure.core/let
-  metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
   metabase.channel.impl.http-test/with-captured-http-requests                           clojure.core/fn
   metabase.channel.impl.http-test/with-server                                           clojure.core/let
+  metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
   metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
   metabase.db.data-migrations/defmigration                                              clojure.core/def
@@ -821,8 +805,8 @@
   metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
   metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
-  metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
   metabase.premium-features.core/define-premium-feature                                 clojure.core/def
+  metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
   metabase.pulse.send-test/with-pulse-for-card                                          clojure.core/let
   metabase.query-processor-test.pipeline-queries-test/pmbql-query                       clojure.core/->
   metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                   clojure.core/->
@@ -830,6 +814,7 @@
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
+  metabase.search.api-test/do-test-users                                                clojure.core/let
   metabase.sync.util/sum-for                                                            clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                            clojure.core/let
   metabase.test.data.interface/defdataset                                               clojure.core/def
@@ -884,7 +869,6 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase.api.alert-test/with-alert-in-collection!                                                                         hooks.common/with-four-bindings
-   metabase.api.automagic-dashboards-test/with-indexed-model!                                                                hooks.metabase.api.automagic-dashboards-test/with-indexed-model!
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.card-test/with-persistence-setup!                                                                            hooks.common/with-one-top-level-binding
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
@@ -991,7 +975,8 @@
    metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
-   metabase.util/format-color                                                                                                hooks.metabase.util/format-color}
+   metabase.util/format-color                                                                                                hooks.metabase.util/format-color
+   metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                             macros.quartz/build-job

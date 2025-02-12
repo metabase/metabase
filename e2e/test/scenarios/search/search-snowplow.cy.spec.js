@@ -456,7 +456,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       });
     });
 
-    H.describeEE("verified filter", () => {
+    describe("verified filter", () => {
       beforeEach(() => {
         H.setTokenFeatures("all");
       });

@@ -11,11 +11,9 @@ import { EntityPickerModal } from "metabase/common/components/EntityPicker";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import LegacyModal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Toaster from "metabase/components/Toaster";
 import { UndoListOverlay, UndoToast } from "metabase/containers/UndoListing";
 import LegacySelect, { Option } from "metabase/core/components/Select";
-import TippyTooltip from "metabase/core/components/Tooltip";
 import { PaletteCard } from "metabase/palette/components/Palette";
 import {
   Box,
@@ -138,20 +136,6 @@ const _Launchers = ({
           ]}
           defaultValue={"1"}
         />
-        <TippyTooltip tooltip="Legacy tooltip content">
-          <Button>Legacy tooltip</Button>
-        </TippyTooltip>
-        <TippyPopover
-          placement="bottom"
-          content={
-            <Paper p="md" aria-label="Legacy popover content">
-              Legacy popover text content
-              {nestedLaunchers}
-            </Paper>
-          }
-        >
-          <Button>Legacy popover</Button>
-        </TippyPopover>
         <LegacySelect defaultValue="1" data-testid="LegacySelect">
           <Option value="1">Legacy Select option 1</Option>
           <Option value="2">Legacy Select option 2</Option>

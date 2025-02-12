@@ -91,6 +91,9 @@ enterprise/backend/test/metabase_enterprise/upload_management @metabase/core-bac
 src/metabase/actions @metabase/core-backend-admin-webapp
 test/metabase/actions @metabase/core-backend-admin-webapp
 
+src/metabase/activity_feed @metabase/core-backend-admin-webapp
+test/metabase/activity_feed @metabase/core-backend-admin-webapp
+
 src/metabase/analytics @metabase/core-backend-admin-webapp
 test/metabase/analytics @metabase/core-backend-admin-webapp
 
@@ -105,6 +108,12 @@ test/metabase/audit @metabase/core-backend-admin-webapp
 
 src/metabase/auth_provider @metabase/core-backend-admin-webapp
 test/metabase/auth_provider @metabase/core-backend-admin-webapp
+
+src/metabase/bookmarks @metabase/core-backend-admin-webapp
+test/metabase/bookmarks @metabase/core-backend-admin-webapp
+
+src/metabase/cmd @metabase/devexp
+test/metabase/cmd @metabase/devexp
 
 src/metabase/channel @metabase/core-workflows
 test/metabase/channel @metabase/core-workflows
@@ -135,6 +144,9 @@ test/metabase/events @metabase/devexp
 
 src/metabase/formatter @metabase/core-backend-querying
 test/metabase/formatter @metabase/core-backend-querying
+
+src/metabase/indexed_entities @metabase/core-backend-querying
+test/metabase/indexed_entities @metabase/core-backend-querying
 
 src/metabase/integrations @metabase/core-workflows
 test/metabase/integrations @metabase/core-workflows
@@ -181,11 +193,17 @@ test/metabase/query_processor @metabase/core-backend-querying
 src/metabase/request @metabase/devexp
 test/metabase/request @metabase/devexp
 
+src/metabase/revisions @metabase/core-backend-admin-webapp
+test/metabase/revisions @metabase/core-backend-admin-webapp
+
 src/metabase/sample_data @metabase/core-backend-admin-webapp
 test/metabase/sample_data @metabase/core-backend-admin-webapp
 
 src/metabase/search @metabase/core-workflows
 test/metabase/search @metabase/core-workflows
+
+src/metabase/segments @metabase/core-backend-querying
+test/metabase/segments @metabase/core-backend-querying
 
 src/metabase/server @metabase/devexp
 test/metabase/server @metabase/devexp
@@ -199,11 +217,17 @@ test/metabase/sync @metabase/drivers
 src/metabase/task @metabase/devexp
 test/metabase/task @metabase/devexp
 
+src/metabase/timeline @metabase/core-backend-dashviz
+test/metabase/timeline @metabase/core-backend-dashviz
+
 src/metabase/types @metabase/core-backend-querying
 test/metabase/types @metabase/core-backend-querying
 
 src/metabase/upload @metabase/core-backend-admin-webapp
 test/metabase/upload @metabase/core-backend-admin-webapp
+
+src/metabase/user_key_value @metabase/core-backend-admin-webapp
+test/metabase/user_key_value @metabase/core-backend-admin-webapp
 
 src/metabase/util @metabase/devexp
 test/metabase/util @metabase/devexp
