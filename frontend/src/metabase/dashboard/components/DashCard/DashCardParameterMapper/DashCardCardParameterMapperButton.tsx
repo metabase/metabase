@@ -1,22 +1,19 @@
+import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import DeprecatedTooltip from "metabase/core/components/Tooltip";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, ParameterTarget } from "metabase-types/api";
 
-import {
-  ChevrondownIcon,
-  CloseIconButton,
-  KeyIcon,
-  TargetButton,
-  TargetButtonText,
-} from "./DashCardCardParameterMapper.styled";
+import S from "./DashCardParameterMapper.module.css";
 
 interface DashCardCardParameterMapperButtonProps {
   isDisabled: boolean;
@@ -67,7 +64,7 @@ export const DashCardCardParameterMapperButton = ({
           buttonVariant: "unauthed",
           buttonTooltip: t`You don’t have permission to see this question’s columns.`,
           buttonText: null,
-          buttonIcon: <KeyIcon name="key" />,
+          buttonIcon: <Icon size={18} className={S.KeyIcon} name="key" />,
         };
       }
 
@@ -76,7 +73,10 @@ export const DashCardCardParameterMapperButton = ({
           buttonVariant: "invalid",
           buttonText: t`Unknown Field`,
           buttonIcon: (
-            <CloseIconButton
+            <Button
+              icon="close"
+              iconSize={12}
+              className={S.CloseIconButton}
               aria-label={t`Disconnect`}
               onClick={e => {
                 handleChangeTarget(null);
@@ -102,7 +102,10 @@ export const DashCardCardParameterMapperButton = ({
           buttonTooltip: null,
           buttonText: formatSelected(selectedMappingOption),
           buttonIcon: (
-            <CloseIconButton
+            <Button
+              iconSize={12}
+              icon="close"
+              className={S.CloseIconButton}
               role="button"
               aria-label={t`Disconnect`}
               onClick={e => {
@@ -118,7 +121,7 @@ export const DashCardCardParameterMapperButton = ({
         buttonVariant: "default",
         buttonTooltip: null,
         buttonText: t`Select…`,
-        buttonIcon: <ChevrondownIcon name="chevrondown" />,
+        buttonIcon: <Icon size={12} mt="2px" name="chevrondown" />,
       };
     }, [
       hasPermissionsToMap,
@@ -147,12 +150,25 @@ export const DashCardCardParameterMapperButton = ({
           />
         }
       >
-        <TargetButton
-          variant={buttonVariant}
+        <Flex
+          className={cx(S.TargetButton, {
+            [S.disabled]: buttonVariant === "disabled",
+            [S.mapped]: buttonVariant === "mapped",
+            [S.unauthed]: buttonVariant === "unauthed",
+            [S.invalid]: buttonVariant === "invalid",
+          })}
+          align="center"
+          maw="100%"
+          justify="space-between"
+          mx="xs"
+          px="sm"
+          py="xs"
           aria-label={buttonTooltip ?? undefined}
           aria-haspopup="listbox"
           aria-expanded={isDropdownVisible}
           aria-disabled={isDisabled || !hasPermissionsToMap}
+          tabIndex={0}
+          role="button"
           onClick={() => {
             setIsDropdownVisible(true);
           }}
@@ -163,12 +179,17 @@ export const DashCardCardParameterMapperButton = ({
           }}
         >
           {buttonText && (
-            <TargetButtonText>
+            <Box
+              className={S.TargetButtonText}
+              mr="sm"
+              ta="center"
+              component="span"
+            >
               <Ellipsified>{buttonText}</Ellipsified>
-            </TargetButtonText>
+            </Box>
           )}
           {buttonIcon}
-        </TargetButton>
+        </Flex>
       </TippyPopover>
     </DeprecatedTooltip>
   );
