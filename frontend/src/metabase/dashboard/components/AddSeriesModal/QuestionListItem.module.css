@@ -1,6 +1,4 @@
-import styled from "@emotion/styled";
-
-export const QuestionListItemRoot = styled.li`
+.QuestionListItemRoot {
   align-items: center;
   display: flex;
   margin: 0;
@@ -14,11 +12,11 @@ export const QuestionListItemRoot = styled.li`
   &:last-child {
     padding-bottom: 0.5rem;
   }
-`;
+}
 
-export const CheckboxContainer = styled.div`
+.CheckboxContainer {
   display: inline-block;
   padding: 0 0.5rem 0 0;
   max-width: 100%;
   width: 100%;
-`;
+}
