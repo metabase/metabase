@@ -57,7 +57,10 @@ export const AddRowModal = ({ question, onClose }: AddRowModalProps) => {
               .map(field => (
                 <Box key={field.id as any}>
                   {getFormInput(field)}
-                  <Text size="xs">database_type: {field.database_type}</Text>
+                  <Text size="xs">
+                    database_type: {field.database_type}, semantic_type:{" "}
+                    {field.semantic_type}
+                  </Text>
                 </Box>
               ))}
           </Stack>
