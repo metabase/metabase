@@ -19,8 +19,7 @@
 
 (comment
   (alter-var-root #_:clj-kondo/ignore #'environ.core/env assoc
-                  :mb-gentest-run "true")
-  )
+                  :mb-gentest-run "true"))
 
 (deftest query-execution-test
   (when (config/config-bool :mb-gentest-run)

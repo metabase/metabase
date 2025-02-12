@@ -4,8 +4,8 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.test-util.generators.util :as gen.u]
-   [metabase.test.util.random :as tu.rng]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.test.util.random :as tu.rng]
    [metabase.util.time :as u.time]))
 
 ;; Filter values =================================================================================

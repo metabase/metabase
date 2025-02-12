@@ -18,8 +18,7 @@
 
 (comment
   (alter-var-root #'*initial-seed* (fn [& _] (.nextLong ^Random (Random.))))
-  (alter-var-root #'*initial-seed* (fn [& _] 1784144538647289715))
-  )
+  (alter-var-root #'*initial-seed* (fn [& _] 1784144538647289715)))
 
 (def ^:dynamic *original-report* nil)
 
