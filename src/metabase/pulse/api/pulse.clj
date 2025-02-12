@@ -1,4 +1,4 @@
-(ns ^:deprecated metabase.api.pulse
+(ns ^:deprecated metabase.pulse.api.pulse
   "`/api/pulse` endpoints. These are all authenticated. For unauthenticated `/api/pulse/unsubscribe` endpoints,
   see [[metabase.api.pulse.unsubscribe]].
 

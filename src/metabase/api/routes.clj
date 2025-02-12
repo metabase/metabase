@@ -3,7 +3,6 @@
    [compojure.route :as route]
    [metabase.actions.api]
    [metabase.activity-feed.api]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.alert]
    [metabase.api.api-key]
    [metabase.api.cache]
@@ -28,9 +27,6 @@
    [metabase.api.premium-features]
    [metabase.api.preview-embed]
    [metabase.api.public]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.api.pulse]
-   [metabase.api.pulse.unsubscribe]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.session]
    [metabase.api.setting]
@@ -47,6 +43,7 @@
    [metabase.config :as config]
    [metabase.indexed-entities.api]
    [metabase.permissions.api]
+   [metabase.pulse.api]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
@@ -79,8 +76,6 @@
          metabase.api.persist/keep-me
          metabase.api.preview-embed/keep-me
          metabase.api.public/keep-me
-         metabase.api.pulse.unsubscribe/keep-me
-         metabase.segments.api/keep-me
          metabase.api.setting/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
@@ -93,6 +88,7 @@
          metabase.indexed-entities.api/keep-me
          metabase.permissions.api/keep-me
          metabase.revisions.api/keep-me
+         metabase.segments.api/keep-me
          metabase.setup.api/keep-me
          metabase.user-key-value.api/keep-me)
 
@@ -124,12 +120,6 @@
 (defn- +auth                    [handler] (routes.common/+auth                    (->handler handler)))
 (defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (->handler handler)))
 (defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (->handler handler)))
-
-(def ^:private ^{:arglists '([request respond raise])} pulse-routes
-  (handlers/routes
-   (handlers/route-map-handler
-    {"/unsubscribe" 'metabase.api.pulse.unsubscribe})
-   (+auth metabase.api.pulse/routes)))
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!
@@ -171,7 +161,7 @@
    "/premium-features"     (+auth metabase.api.premium-features/routes)
    "/preview_embed"        (+auth 'metabase.api.preview-embed)
    "/public"               (+public-exceptions 'metabase.api.public)
-   "/pulse"                pulse-routes
+   "/pulse"                metabase.pulse.api/routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)

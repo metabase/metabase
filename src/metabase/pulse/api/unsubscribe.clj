@@ -1,4 +1,4 @@
-(ns metabase.api.pulse.unsubscribe
+(ns metabase.pulse.api.unsubscribe
   "Unauthenticated `/api/pulse/unsubscribe` endpoints to allow non-logged-in people to unsubscribe from
   Alerts/DashboardNotifications."
   (:require
