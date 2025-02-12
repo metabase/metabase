@@ -876,7 +876,7 @@ class TableInteractive extends Component {
 
     const row = rows[rowIndex];
 
-    const rowActions = series[0].json_query.row_actions;
+    const rowActions = series[0].json_query["row-actions"];
 
     // const clicked = this.getCellClickedObject(rowIndex, columnIndex);
 
@@ -892,7 +892,7 @@ class TableInteractive extends Component {
       const value = row[pkColIndex];
 
       if (pkColIndex != null) {
-        POST(`/api/internal-tools/row-action/${actionId}`, {
+        POST(`/api/internal-tools/row-action/${actionId}`)({
           pk: value,
           "table-id": tableId,
         });
