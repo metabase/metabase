@@ -1,6 +1,6 @@
 (ns ^:deprecated metabase.pulse.api.pulse
   "`/api/pulse` endpoints. These are all authenticated. For unauthenticated `/api/pulse/unsubscribe` endpoints,
-  see [[metabase.api.pulse.unsubscribe]].
+  see [[metabase.pulse.api.unsubscribe]].
 
   Deprecated: will soon be migrated to notification APIs."
   (:require
