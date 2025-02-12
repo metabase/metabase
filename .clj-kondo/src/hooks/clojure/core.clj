@@ -4,143 +4,13 @@
    [clojure.string :as str]
    [hooks.common]))
 
-;;; TODO -- seems silly to maintain different blacklists and whitelists here than we use for the deftest `^:parallel`
-;;; checker... those lists live in the Clj Kondo config file
-(def ^:private symbols-allowed-in-fns-not-ending-in-an-exclamation-point
-  '#{;; these toucan methods might actually set global values if it's used outside of a transaction,
-     ;; but since mt/with-temp runs in a transaction, so we'll ignore them in this case.
-     toucan2.core/delete!
-     toucan2.core/update!
-     toucan2.core/insert!
-     toucan2.core/insert-returning-instance!
-     toucan2.core/insert-returning-instances!
-     toucan2.core/insert-returning-pk!
-     toucan2.core/insert-returning-pks!
-     clojure.core.async/<!!
-     clojure.core.async/>!!
-     clojure.core.async/alts!!
-     clojure.core.async/close!
-     clojure.core.async/poll!
-     clojure.core.memoize/memo-clear!
-     clojure.core/conj!
-     clojure.core/persistent!
-     clojure.core/reset!
-     clojure.core/swap!
-     clojure.core/volatile!
-     clojure.core/vreset!
-     clojure.core/vswap!
-     clojure.java.jdbc/execute!
-     methodical.core/add-aux-method-with-unique-key!
-     methodical.core/remove-aux-method-with-unique-key!
-     next.jdbc/execute!
-
-     ;; Definitely thread safe
-     metabase.test.util.dynamic-redefs/patch-vars!
-
-     ;; TODO: most of these symbols shouldn't be here, we should go through them and
-     ;; find the functions/macros that use them and make sure their names end with !
-     ;; best way to do this is try remove each of these and rely on kondo output to find places where it's used
-     clojure.test/grant-collection-perms!
-     clojure.test/grant-collection-perms-fn!
-     clojure.test/grant-perms-fn!
-     clojure.test/purge-old-entries!
-     clojure.test/revoke-collection-perms!
-     clojure.test/save-results!
-     metabase-enterprise.advanced-permissions.models.permissions/update-db-download-permissions!
-     metabase-enterprise.internal-user/install-internal-user!
-     metabase-enterprise.sso.integrations.saml-test/call-with-login-attributes-cleared!
-     metabase.actions.actions/perform-action!
-     metabase.actions.models/insert!
-     metabase.analytics.snowplow-test/fake-track-event-impl!
-     metabase.analytics.snowplow/track-event-impl!
-     metabase.api.public-test/add-card-to-dashboard!
-     metabase.channel.email-test/reset-inbox!
-     metabase.channel.email/send-email!
-     metabase.cmd.dump-to-h2/dump-to-h2!
-     metabase.cmd.load-from-h2/load-from-h2!
-     metabase.core.core/ensure-audit-db-installed!
-     metabase.db.schema-migrations-test.impl/run-migrations-in-range!
-     metabase.db.setup/migrate!
-     metabase.db.setup/setup-db!
-     metabase.db/migrate!
-     metabase.db/setup-db!
-     metabase.driver.mongo-test/create-database-from-row-maps!
-     metabase.driver.postgres-test/create-enums-db!
-     metabase.driver.postgres-test/drop-if-exists-and-create-db!
-     metabase.driver.sql-jdbc.execute/execute-statement!
-     metabase.indexed-entities.models.model-index/add-values!
-     metabase.indexed-entities.task.index-values/job-init!
-     metabase.models.collection.graph-test/clear-graph-revisions!
-     metabase.models.collection.graph-test/do-with-n-temp-users-with-personal-collections!
-     metabase.models.field-values/create-or-update-full-field-values!
-     metabase.models.moderation-review/create-review!
-     metabase.models.on-demand-test/add-dashcard-with-parameter-mapping!
-     metabase.models.persisted-info/ready-database!
-     metabase.models.setting-test/test-user-local-allowed-setting!
-     metabase.models.setting-test/test-user-local-only-setting!
-     metabase.models.setting.cache/restore-cache!
-     metabase.models.setting/set!
-     metabase.models.setting/validate-settings-formatting!
-     metabase.permissions.models.permissions/grant-application-permissions!
-     metabase.permissions.models.permissions/grant-collection-read-permissions!
-     metabase.permissions.models.permissions/grant-collection-readwrite-permissions!
-     metabase.permissions.models.permissions/grant-full-data-permissions!
-     metabase.permissions.models.permissions/grant-native-readwrite-permissions!
-     metabase.permissions.models.permissions/grant-permissions!
-     metabase.permissions.models.permissions/revoke-application-permissions!
-     metabase.permissions.models.permissions/revoke-data-perms!
-     metabase.permissions.models.permissions/update-data-perms-graph!
-     metabase.permissions.models.permissions/update-group-permissions!
-     metabase.permissions.test-util/with-restored-perms!
-     metabase.pulse.send/send-notifications!
-     metabase.pulse.send/send-pulse!
-     metabase.query-processor.streaming.interface/begin!
-     metabase.query-processor.streaming.interface/finish!
-     metabase.query-processor.streaming.interface/write-row!
-     metabase.sample-data/try-to-extract-sample-database!
-     metabase.setup.core/create-token!
-     metabase.sync.core/sync-database!
-     metabase.sync.sync-metadata.fields.sync-metadata/update-field-metadata-if-needed!
-     metabase.sync.sync-metadata/sync-db-metadata!
-     metabase.sync.util-test/sync-database!
-     metabase.sync.util/store-sync-summary!
-     metabase.task.persist-refresh/job-init!
-     metabase.task.persist-refresh/refresh-tables!
-     metabase.task.persist-refresh/schedule-persistence-for-database!
-     metabase.task/delete-task!
-     metabase.test.data.bigquery-cloud-sdk/execute!
-     metabase.test.data.impl/copy-db-tables-and-fields!
-     metabase.test.data.impl/get-or-create-database!
-     metabase.test.data.impl/get-or-create-default-dataset!
-     metabase.test.data.impl.get-or-create/set-test-db-permissions!
-     metabase.test.data.interface/create-db!
-     metabase.test.data.interface/destroy-db!
-     metabase.test.data.oracle/create-user!
-     metabase.test.data.oracle/drop-user!
-     metabase.test.data.sql-jdbc.load-data/make-insert!
-     metabase.test.data.users/clear-cached-session-tokens!
-     metabase.test.initialize/do-initialization!
-     metabase.test.initialize/initialize-if-needed!
-     metabase.test.integrations.ldap/start-ldap-server!
-     metabase.test.util.log/ensure-unique-logger!
-     metabase.test.util.log/set-ns-log-level!
-     metabase.test.util/do-with-temp-env-var-value!
-     metabase.test.util/restore-raw-setting!
-     metabase.test.util/upsert-raw-setting!
-     metabase.test/initialize-if-needed!
-     metabase.test/test-helpers-set-global-values!
-     metabase.test/with-temp-env-var-value!
-     metabase.upload-test/set-local-infile!
-     metabase.util.files/create-dir-if-not-exists!
-     metabase.util.ssh-test/start-mock-servers!
-     metabase.util.ssh-test/stop-mock-servers!})
-
 (defn- end-with-exclamation?
   [s]
   (str/ends-with? s "!"))
 
-(defn- explicitly-safe? [qualified-symbol]
-  (contains? symbols-allowed-in-fns-not-ending-in-an-exclamation-point qualified-symbol))
+(defn- explicitly-safe? [config qualified-symbol]
+  (contains? (get-in config [:linters :metabase/test-helpers-use-non-thread-safe-functions :explicitly-safe])
+             qualified-symbol))
 
 (defn- explicitly-unsafe? [config qualified-symbol]
   (contains? (get-in config [:linters :metabase/validate-deftest :parallel/unsafe]) qualified-symbol))
@@ -148,7 +18,7 @@
 (defn- unsafe? [config qualified-symbol]
   (and (or (end-with-exclamation? qualified-symbol)
            (explicitly-unsafe? config qualified-symbol))
-       (not (explicitly-safe? qualified-symbol))))
+       (not (explicitly-safe? config qualified-symbol))))
 
 (defn- non-thread-safe-form-should-end-with-exclamation*
   [{[defn-or-defmacro form-name] :children, :as node} config]
@@ -271,9 +141,15 @@
 (defn- module
   "E.g.
 
-    (module 'metabase.qp.middleware.wow) => 'metabase.qp"
+    (module 'metabase.qp.middleware.wow) => 'qp
+    (module 'metabase-enterprise.whatever.core) => enterprise/whatever"
   [ns-symb]
-  (some-> (re-find #"^metabase\.[^.]+" (str ns-symb)) symbol))
+  (or (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
+               second
+               (symbol "enterprise"))
+      (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
+              second
+              symbol)))
 
 (defn- ignored-namespace? [ns-symb config]
   (some
@@ -285,7 +161,7 @@
   "Set API namespaces for a given module. `:any` means you can use anything, there are no API namespaces for this
   module (yet). If unspecified, the default is just the `<module>.core` namespace."
   [module config]
-  (let [module-config (get-in config [:api-namespaces module])]
+  (let [module-config (get-in config [:metabase/modules module :api])]
     (cond
       (= module-config :any)
       nil
@@ -294,18 +170,23 @@
       module-config
 
       :else
-      #{(symbol (str module ".core"))})))
+      (let [ns-prefix (if (= (namespace module) "enterprise")
+                        (str "metabase-enterprise." (name module))
+                        (name module))]
+        #{(symbol (str ns-prefix ".api"))
+          (symbol (str ns-prefix ".core"))
+          (symbol (str ns-prefix ".init"))}))))
 
 (defn- lint-modules [ns-form-node config]
   (let [ns-symb (ns-form-node->ns-symb ns-form-node)]
     (when-not (ignored-namespace? ns-symb config)
       (when-let [current-module (module ns-symb)]
-        (let [allowed-modules               (get-in config [:allowed-modules current-module])
+        (let [allowed-modules               (get-in config [:metabase/modules current-module :uses])
               required-namespace-symb-nodes (-> ns-form-node
                                                 ns-form-node->require-node
                                                 require-node->namespace-symb-nodes)]
           (doseq [node  required-namespace-symb-nodes
-                  :when (not (contains? (hooks.common/ignored-linters node) :metabase/ns-module-checker))
+                  :when (not (contains? (hooks.common/ignored-linters node) :metabase/modules))
                   :let  [required-namespace (hooks/sexpr node)
                          required-module    (module required-namespace)]
                   ;; ignore stuff not in a module i.e. non-Metabase stuff.
@@ -319,25 +200,26 @@
                                                        (contains? module-api-namespaces required-namespace))]]
             (when-let [error (cond
                                (not allowed-module?)
-                               (format "Module %s should not be used in the %s module. [:metabase/ns-module-checker :allowed-modules %s]"
+                               (format "Module %s should not be used in the %s module. [:metabase/modules %s :uses]"
                                        required-module
                                        current-module
                                        current-module)
 
                                (not allowed-module-namespace?)
-                               (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/ns-module-checker :api-namespaces %s]"
+                               (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/modules %s :api]"
                                        required-namespace
                                        required-module
                                        required-module))]
               (hooks/reg-finding! (assoc (meta node)
                                          :message error
-                                         :type    :metabase/ns-module-checker)))))))))
+                                         :type    :metabase/modules)))))))))
 
 (defn lint-ns [x]
   (doto (:node x)
     lint-require-shapes
     lint-requires-on-new-lines
-    (lint-modules (get-in x [:config :linters :metabase/ns-module-checker])))
+    (lint-modules (merge (get-in x [:config :linters :metabase/ns-module-checker])
+                         (select-keys (:config x) [:metabase/modules]))))
   x)
 
 (defn- check-arglists [report-node arglists]

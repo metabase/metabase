@@ -4,54 +4,69 @@
    [clojure.test :refer :all]
    [hooks.clojure.core]))
 
-(deftest module-checker-allowed-modules-test
-  (let [findings (atom [])]
-    (with-redefs [hooks/reg-finding! (fn [node]
-                                       (swap! findings conj node))]
-      (hooks.clojure.core/lint-ns
-       {:node     (hooks/parse-string "
-(ns metabase.api.search
-  (:require
-   [metabase.request.core :as request]
-   [metabase.task :as task]))")
-        :config '{:linters {:metabase/ns-module-checker {:allowed-modules {metabase.api #{metabase.request}}
-                                                         :api-namespaces  {metabase.request #{metabase.request.core}}}}}})
-      (is (=? [{:message (str "Module metabase.task should not be used in the metabase.api module."
-                              " [:metabase/ns-module-checker :allowed-modules metabase.api]")
-                :type :metabase/ns-module-checker}]
-              @findings)))))
+(deftest ^:parallel module-test
+  (are [symb expected] (= expected
+                          (#'hooks.clojure.core/module symb))
+    'metabase.qp.middleware.wow        'qp
+    'metabase-enterprise.whatever.core 'enterprise/whatever))
 
-(deftest module-checker-api-namespaces-test
+(defn- do-with-findings [thunk]
   (let [findings (atom [])]
     (with-redefs [hooks/reg-finding! (fn [node]
                                        (swap! findings conj node))]
-      (hooks.clojure.core/lint-ns
-       {:node     (hooks/parse-string "
-(ns metabase.api.search
-  (:require
-   [metabase.search.config :as search.config]
-   [metabase.search.core :as search]))")
-        :config '{:linters {:metabase/ns-module-checker {:allowed-modules {metabase.api #{metabase.search}}
-                                                         :api-namespaces  {metabase.search #{metabase.search.core}}}}}})
-      (is (=? [{:message (str "Namespace metabase.search.config is not an allowed external API namespace for the"
-                              " metabase.search module. [:metabase/ns-module-checker :api-namespaces metabase.search]")
-                :type :metabase/ns-module-checker}]
-              @findings)))))
+      (thunk))
+    @findings))
 
-(deftest module-checker-api-namespaces-ignore-test
-  (let [findings (atom [])]
-    (with-redefs [hooks/reg-finding! (fn [node]
-                                       (swap! findings conj node))]
-      (hooks.clojure.core/lint-ns
-       {:node     (hooks/parse-string "
-(ns metabase.api.search
-  (:require
-   ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
-   [metabase.search.config :as search.config]
-   [metabase.search.core :as search]))")
-        :config '{:linters {:metabase/ns-module-checker {:allowed-modules {metabase.api #{metabase.search}}
-                                                         :api-namespaces  {metabase.search #{metabase.search.core}}}}}})
-      (is (empty? @findings)))))
+(defn- lint-ns [form config]
+  (do-with-findings
+   #(hooks.clojure.core/lint-ns
+     {:node   (hooks/parse-string (binding [*print-meta* true] (pr-str form)))
+      :config config})))
+
+(defn- lint-modules [form config]
+  (->> (lint-ns form config)
+       (filter #(= (:type %) :metabase/modules))))
+
+(deftest ^:parallel module-checker-allowed-modules-test
+  (is (=? [{:message "Module task should not be used in the api module. [:metabase/modules api :uses]"
+            :type :metabase/modules}]
+          (lint-modules
+           '(ns metabase.api.search
+              (:require
+               [metabase.request.core :as request]
+               [metabase.task :as task]))
+           '{:metabase/modules {api     {:uses #{request}}
+                                request {:api #{metabase.request.core}}}}))))
+
+(deftest ^:parallel module-checker-api-namespaces-test
+  (is (=? [{:message "Namespace metabase.search.config is not an allowed external API namespace for the search module. [:metabase/modules search :api]"
+            :type :metabase/modules}]
+          (lint-modules
+           '(ns metabase.api.search
+              (:require
+               [metabase.search.config :as search.config]
+               [metabase.search.core :as search]))
+           '{:metabase/modules {api    {:uses #{search}}
+                                search {:api  #{metabase.search.core}}}}))))
+
+(deftest ^:parallel module-checker-api-namespaces-ignore-test
+  (is (empty? (lint-modules
+               '(ns metabase.api.search
+                  (:require
+                   ^{:clj-kondo/ignore [:metabase/modules]}
+                   [metabase.search.config :as search.config]
+                   [metabase.search.core :as search]))
+               '{:metabase/modules {api    {:uses #{search}}
+                                    search {:api #{metabase.search.core}}}}))))
+
+(deftest ^:parallel module-checker-enterprise-test
+  (is (=? [{:message "Module search should not be used in the enterprise/search module. [:metabase/modules enterprise/search :uses]"
+            :type :metabase/modules}]
+          (lint-modules
+           '(ns metabase-enterprise.search.core
+              (:require
+               [metabase.search.core :as search]))
+           '{:metabase/modules {search {:api #{metabase.search.core}}}}))))
 
 (defn- lint-defmulti! [form]
   (let [findings (atom [])
@@ -61,14 +76,14 @@
       (hooks.clojure.core/lint-defmulti {:node node})
       @findings)))
 
-(deftest defmulti-missing-arglists-test
+(deftest ^:parallel defmulti-missing-arglists-test
   (testing "missing arglists"
     (is (=? [{:message "All defmultis should have an attribute map with :arglists metadata. [:metabase/check-defmulti-arglists]"}]
             (lint-defmulti! '(defmulti expand-visualization
                                (fn [card _ _]
                                  (-> card :visualization first))))))))
 
-(deftest defmulti-invalid-arglists-test
+(deftest ^:parallel defmulti-invalid-arglists-test
   (testing "invalid arglists"
     (are [form] (=? [{:message ":arglists should be a quoted list of vectors [:metabase/check-defmulti-arglists]"}]
                     (lint-defmulti! form))
@@ -89,7 +104,7 @@
          (fn [card _ _]
            (-> card :visualization first))))))
 
-(deftest defmulti-arglists-with-underscore-args-test
+(deftest ^:parallel defmulti-arglists-with-underscore-args-test
   (testing "arglists, but some symbols are _"
     (are [form] (=? [{:message ":arglists should contain actual arg names, not underscore (unused) symbols [:metabase/check-defmulti-arglists]"}]
                     (lint-defmulti! form))
@@ -102,7 +117,7 @@
          (fn [card _ _]
            (-> card :visualization first))))))
 
-(deftest defmulti-arglists-ok-test
+(deftest ^:parallel defmulti-arglists-ok-test
   (testing "good"
     (is (= []
            (lint-defmulti! '(defmulti expand-visualization
@@ -110,7 +125,7 @@
                               (fn [card _ _]
                                 (-> card :visualization first))))))))
 
-(deftest require-newlines-test
+(deftest ^:parallel require-newlines-test
   (let [findings (atom [])]
     (with-redefs [hooks/reg-finding! (fn [node]
                                        (swap! findings conj node))]
