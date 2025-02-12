@@ -79,7 +79,7 @@ Arg {
 
 @skip {} {
   Reference {
-    "[" referenceContent* "]"
+    "[" referenceContent* referenceEnd
   }
 }
 
@@ -185,6 +185,7 @@ False {
 @tokens {
   space { @whitespace+ }
   hex { $[0-9a-fA-F] }
+  eol { "\n" }
 
   Number {
     (@digit ("_" | @digit)* ("." ("_" | @digit)*)?
@@ -197,7 +198,17 @@ False {
   stringContentSingle { ![\\\n']+ }
   stringContentDouble { ![\\\n"]+ }
 
-  referenceContent { ![\\\[\]\n,] | "\[" }
+  referenceContent {
+      ![\[\]\n\\]    // normal content
+    | "\["           // allows escaping `[` with `\[` when inside []
+    | "\]"           // allows escaping `]` with `\]` when inside []
+  }
+  referenceEnd {
+      (![\\] "]")    // `]` but not `\]`
+    | eol            // end of the line
+    | @eof           // end of file
+  }
+
 
   Identifier {
     $[a-zA-Z_]$[a-zA-Z0-9_.]*
