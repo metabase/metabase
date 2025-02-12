@@ -12,13 +12,21 @@ import { useUpsellLink } from "./use-upsell-link";
 export type UpsellBigCardProps = {
   title: string;
   buttonText: string;
-  buttonLink: string;
   campaign: string;
   source: string;
   illustrationSrc?: string;
   children: React.ReactNode;
   style?: React.CSSProperties;
-};
+} & (
+  | {
+      buttonLink: string;
+      onOpenModal?: never;
+    }
+  | {
+      buttonLink?: never;
+      onOpenModal: () => void;
+    }
+);
 
 export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   title,
@@ -26,12 +34,13 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   buttonLink,
   campaign,
   illustrationSrc,
+  onOpenModal,
   source,
   children,
   ...props
 }: UpsellBigCardProps) => {
   const url = useUpsellLink({
-    url: buttonLink,
+    url: buttonLink ?? "https://www.metabase.com/upgrade",
     campaign,
     source,
   });
@@ -55,13 +64,23 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
           <Text lh="lg" mb="lg">
             {children}
           </Text>
-          <ExternalLink
-            className={S.UpsellCTALink}
-            href={url}
-            onClickCapture={() => trackUpsellClicked({ source, campaign })}
-          >
-            {buttonText}
-          </ExternalLink>
+          {buttonLink ? (
+            <ExternalLink
+              className={S.UpsellCTALink}
+              href={url}
+              onClickCapture={() => trackUpsellClicked({ source, campaign })}
+            >
+              {buttonText}
+            </ExternalLink>
+          ) : (
+            <Box
+              className={S.UpsellCTALink}
+              onClickCapture={() => trackUpsellClicked({ source, campaign })}
+              onClick={onOpenModal}
+            >
+              {buttonText}
+            </Box>
+          )}
         </Stack>
       </Flex>
       {illustrationSrc && (
