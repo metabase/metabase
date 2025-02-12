@@ -22,7 +22,7 @@ export interface NumberInputProps
   > {
   value: NumberValue;
   defaultValue?: NumberValue;
-  onChange?: (value: NumberValue) => void;
+  onChange?: (value: number | "") => void;
   vars?: TextInputProps["vars"];
   classNames?: TextInputProps["classNames"];
   styles?: TextInputProps["styles"];
