@@ -7,7 +7,6 @@ import {
   deserializeNumberParameterValue,
   deserializeStringParameterValue,
   serializeDateParameterValue,
-  serializeNumberParameterValue,
 } from "./parsing";
 
 describe("string parameters", () => {
@@ -32,16 +31,6 @@ describe("string parameters", () => {
 });
 
 describe("number parameters", () => {
-  it.each([
-    { value: [], expectedValue: [] },
-    { value: [10], expectedValue: [10] },
-  ])(
-    "should serialize number parameter value $value",
-    ({ value, expectedValue }) => {
-      expect(serializeNumberParameterValue(value)).toEqual(expectedValue);
-    },
-  );
-
   it.each([
     { value: 1, expectedValue: [1] },
     { value: "1", expectedValue: [1] },
