@@ -54,11 +54,11 @@
                              (:source-metadata inner-query))
           [{[_ field-name :as field-ref] :field_ref :as field-metadata}] (filter #(= (:name %) field-name)
                                                                                  source-metadatas)]
-      (merge
-       (if (and field-ref (integer? field-name))
-         (type-info field-ref)
-         {})
-       (select-keys field-metadata [:base_type :effective_type :database_type])))))
+      (-> (if (and field-ref (integer? field-name))
+            (type-info field-ref)
+            {})
+          (merge field-metadata)
+          (select-keys [:base_type :effective_type :database_type])))))
 
 (defmethod type-info :field [[_ id-or-name opts :as field]]
   (merge

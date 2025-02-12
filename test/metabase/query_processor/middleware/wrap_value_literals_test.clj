@@ -343,10 +343,7 @@
                [:field "CATEGORY" {:base-type :type/Text}]
                [:value "Doohickey" {:base_type :type/Text,
                                     :effective_type :type/Text,
-                                    :coercion_strategy nil,
-                                    :semantic_type :type/Category,
-                                    :database_type "CHARACTER VARYING",
-                                    :name "CATEGORY"}]]}}
+                                    :database_type "CHARACTER VARYING",}]]}}
             (wrap-value-literals
              (qp.preprocess/preprocess
               (mt/mbql-query products
