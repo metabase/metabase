@@ -1,4 +1,4 @@
-(ns metabase.api.alert-test
+(ns metabase.pulse.api.alert-test
   "Tests for `/api/alert` endpoints."
   (:require
    [clojure.test :refer :all]

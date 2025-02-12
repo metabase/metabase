@@ -3,7 +3,6 @@
    [compojure.route :as route]
    [metabase.actions.api]
    [metabase.activity-feed.api]
-   [metabase.api.alert]
    [metabase.api.api-key]
    [metabase.api.cache]
    [metabase.api.card]
@@ -56,7 +55,6 @@
 
 (comment metabase.actions.api/keep-me
          metabase.activity-feed.api/keep-me
-         metabase.api.alert/keep-me
          metabase.api.api-key/keep-me
          metabase.api.cache/keep-me
          metabase.api.card/keep-me
@@ -132,7 +130,7 @@
 (def ^:private route-map
   {"/action"               (+auth 'metabase.actions.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
-   "/alert"                (+auth 'metabase.api.alert)
+   "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/api-key"              (+auth 'metabase.api.api-key)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
@@ -161,7 +159,7 @@
    "/premium-features"     (+auth metabase.api.premium-features/routes)
    "/preview_embed"        (+auth 'metabase.api.preview-embed)
    "/public"               (+public-exceptions 'metabase.api.public)
-   "/pulse"                metabase.pulse.api/routes
+   "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)

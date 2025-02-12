@@ -7,8 +7,6 @@
    [clojure.set :refer [difference]]
    [hiccup.core :refer [html]]
    [hiccup.page :refer [html5]]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.api.alert :as api.alert]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
@@ -24,6 +22,8 @@
    [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.pulse.api.alert :as api.alert]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.pulse.models.pulse :as models.pulse]

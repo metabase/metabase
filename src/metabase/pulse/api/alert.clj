@@ -1,4 +1,4 @@
-(ns ^:deprecated metabase.api.alert
+(ns ^:deprecated metabase.pulse.api.alert
   "/api/alert endpoints.
 
   Deprecated: will soon be migrated to notification APIs."
