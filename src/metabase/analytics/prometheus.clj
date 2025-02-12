@@ -353,7 +353,7 @@
   Should be used with histograms and summaries."
   ([metric] (observe! metric nil 1))
   ([metric labels-or-amount]
-   (if (int? labels-or-amount)
+   (if (number? labels-or-amount)
      (observe! metric nil labels-or-amount)
      (observe! metric labels-or-amount 1)))
   ([metric labels amount]
@@ -366,7 +366,7 @@
    Inits registry if it's not been initialized yet."
   ([metric] (inc! metric nil 1))
   ([metric labels-or-amount]
-   (if (int? labels-or-amount)
+   (if (number? labels-or-amount)
      (inc! metric nil labels-or-amount)
      (inc! metric labels-or-amount 1)))
   ([metric labels amount]
@@ -381,7 +381,7 @@
   Should be used for gauge metrics."
   ([metric] (dec! metric nil 1))
   ([metric labels-or-amount]
-   (if (int? labels-or-amount)
+   (if (number? labels-or-amount)
      (dec! metric nil labels-or-amount)
      (dec! metric labels-or-amount 1)))
   ([metric labels amount]
