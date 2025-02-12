@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
+   [metabase.models.cloud-migration :as cloud-migration]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.core :as pulse]
    [metabase.pulse.send-test :as pulse.send-test]
@@ -108,4 +109,16 @@
         (is (= now
                (-> (t2/select-one-fn :last_used_at :model/Card card-id-2)
                    t/offset-date-time
-                   (.withNano 0))))))))
+                   (.withNano 0))))))
+    (testing "if metabase is in read only mode still set the last_used_at timestamp"
+      (mt/with-temp
+        [:model/Card {card-id-1 :id} {:last_used_at one-hour-ago}]
+        (try
+          (cloud-migration/read-only-mode! true)
+          (#'qp.update-used-cards/update-used-cards!* [{:id card-id-1 :timestamp now}])
+          (cloud-migration/read-only-mode! false)
+          (is (= now
+                 (-> (t2/select-one-fn :last_used_at :model/Card card-id-1)
+                     t/offset-date-time
+                     (.withNano 0))))
+          (finally (cloud-migration/read-only-mode! false)))))))
