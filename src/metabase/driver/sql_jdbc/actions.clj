@@ -258,7 +258,7 @@
         (let [pks (t2/select-fn-vec (comp keyword :name) :model/Field (first (mbql.u/referenced-field-ids (:query query))))]
           ;; ... hence we have this limitation to avoid bad things happening
           (when (= 1 (count pks))
-            (metabase.api.internal-tools/track-update! (get old-row (first pks)) table-id old-row (get-row))))
+            ((requiring-resolve 'metabase.api.internal-tools/track-update!) (get old-row (first pks)) table-id old-row (get-row))))
 
         {:rows-updated [1]}))))
 
