@@ -3,40 +3,166 @@ import { OPERATOR, TOKEN } from "../tokenizer";
 import { tokenize } from "./tokenize";
 
 describe("tokenizer", () => {
-  it("tokenizes valid expression", () => {
-    const { tokens, errors } = tokenize('case([Total] > 200, [T], "Nothing")');
+  describe("expressions", () => {
+    it("tokenizes valid expression", () => {
+      const { tokens, errors } = tokenize(
+        'case([Total] > 200, [T], "Nothing")',
+      );
 
-    expect(errors).toEqual([]);
-    expect(tokens).toEqual([
-      { type: TOKEN.Identifier, start: 0, end: 4, isReference: false }, // case
-      { type: TOKEN.Operator, op: "(", start: 4, end: 5 }, // (
-      { type: TOKEN.Identifier, start: 5, end: 12, isReference: true }, // [Total]
-      { type: TOKEN.Operator, op: ">", start: 13, end: 14 }, // >
-      { type: TOKEN.Number, start: 15, end: 18 }, // 200
-      { type: TOKEN.Operator, op: ",", start: 18, end: 19 }, // ,
-      { type: TOKEN.Identifier, start: 20, end: 23, isReference: true }, // [T]
-      { type: TOKEN.Operator, op: ",", start: 23, end: 24 }, // ,
-      { type: TOKEN.String, start: 25, end: 34, value: "Nothing" }, // "Nothing"
-      { type: TOKEN.Operator, op: ")", start: 34, end: 35 }, // )
-    ]);
+      expect(errors).toHaveLength(0);
+      expect(tokens).toEqual([
+        { type: TOKEN.Identifier, start: 0, end: 4, isReference: false }, // case
+        { type: TOKEN.Operator, op: "(", start: 4, end: 5 }, // (
+        { type: TOKEN.Identifier, start: 5, end: 12, isReference: true }, // [Total]
+        { type: TOKEN.Operator, op: ">", start: 13, end: 14 }, // >
+        { type: TOKEN.Number, start: 15, end: 18 }, // 200
+        { type: TOKEN.Operator, op: ",", start: 18, end: 19 }, // ,
+        { type: TOKEN.Identifier, start: 20, end: 23, isReference: true }, // [T]
+        { type: TOKEN.Operator, op: ",", start: 23, end: 24 }, // ,
+        { type: TOKEN.String, start: 25, end: 34, value: "Nothing" }, // "Nothing"
+        { type: TOKEN.Operator, op: ")", start: 34, end: 35 }, // )
+      ]);
+    });
+
+    it("should tokenize simple comparisons", () => {
+      {
+        const expression = "[Total] < 0";
+        const { tokens, errors } = tokenize(expression);
+        expect(errors).toHaveLength(0);
+        expect(tokens).toEqual([
+          { type: TOKEN.Identifier, isReference: true, start: 0, end: 7 },
+          { type: TOKEN.Operator, op: "<", start: 8, end: 9 },
+          { type: TOKEN.Number, start: 10, end: 11 },
+        ]);
+      }
+
+      {
+        const expression = "[Rate] >= 0";
+        const { tokens, errors } = tokenize(expression);
+        expect(errors).toHaveLength(0);
+        expect(tokens).toEqual([
+          { type: TOKEN.Identifier, isReference: true, start: 0, end: 6 },
+          { type: TOKEN.Operator, op: ">=", start: 7, end: 9 },
+          { type: TOKEN.Number, start: 10, end: 11 },
+        ]);
+      }
+
+      {
+        const expression = "NOT [Deal]";
+        const { tokens, errors } = tokenize(expression);
+        expect(errors).toHaveLength(0);
+        expect(tokens).toEqual([
+          { type: TOKEN.Operator, op: "not", start: 0, end: 3 },
+          { type: TOKEN.Identifier, isReference: true, start: 4, end: 10 },
+        ]);
+      }
+
+      {
+        const expression = "- Min(5, 10)";
+        const { tokens, errors } = tokenize(expression);
+        expect(errors).toHaveLength(0);
+        expect(tokens).toEqual([
+          { type: TOKEN.Operator, op: "-", start: 0, end: 1 },
+          { type: TOKEN.Identifier, isReference: false, start: 2, end: 5 },
+          { type: TOKEN.Operator, op: "(", start: 5, end: 6 },
+          { type: TOKEN.Number, start: 6, end: 7 },
+          { type: TOKEN.Operator, op: ",", start: 7, end: 8 },
+          { type: TOKEN.Number, start: 9, end: 11 },
+          { type: TOKEN.Operator, op: ")", start: 11, end: 12 },
+        ]);
+      }
+
+      {
+        const expression = "[X]+[Y]";
+        const { tokens, errors } = tokenize(expression);
+        expect(errors).toHaveLength(0);
+        expect(tokens).toEqual([
+          { type: TOKEN.Identifier, isReference: true, start: 0, end: 3 },
+          { type: TOKEN.Operator, op: "+", start: 3, end: 4 },
+          { type: TOKEN.Identifier, isReference: true, start: 4, end: 7 },
+        ]);
+      }
+
+      {
+        const expression = "[P]/[Q]";
+        const { tokens, errors } = tokenize(expression);
+        expect(errors).toHaveLength(0);
+        expect(tokens).toEqual([
+          { type: TOKEN.Identifier, isReference: true, start: 0, end: 3 },
+          { type: TOKEN.Operator, op: "/", start: 3, end: 4 },
+          { type: TOKEN.Identifier, isReference: true, start: 4, end: 7 },
+        ]);
+      }
+
+      {
+        const expression = "TODAY()";
+        const { tokens, errors } = tokenize(expression);
+        expect(errors).toHaveLength(0);
+        expect(tokens).toEqual([
+          { type: TOKEN.Identifier, isReference: false, start: 0, end: 5 },
+          { type: TOKEN.Operator, op: "(", start: 5, end: 6 },
+          { type: TOKEN.Operator, op: ")", start: 6, end: 7 },
+        ]);
+      }
+
+      {
+        const expression = "AVG([Tax])";
+        const { tokens, errors } = tokenize(expression);
+        expect(errors).toHaveLength(0);
+        expect(tokens).toEqual([
+          { type: TOKEN.Identifier, isReference: false, start: 0, end: 3 },
+          { type: TOKEN.Operator, op: "(", start: 3, end: 4 },
+          { type: TOKEN.Identifier, isReference: true, start: 4, end: 9 },
+          { type: TOKEN.Operator, op: ")", start: 9, end: 10 },
+        ]);
+      }
+
+      {
+        const expression = "COUNTIF([Discount] < 5)";
+        const { tokens, errors } = tokenize(expression);
+        expect(errors).toHaveLength(0);
+        expect(tokens).toEqual([
+          { type: TOKEN.Identifier, isReference: false, start: 0, end: 7 },
+          { type: TOKEN.Operator, op: "(", start: 7, end: 8 },
+          { type: TOKEN.Identifier, isReference: true, start: 8, end: 18 },
+          { type: TOKEN.Operator, op: "<", start: 19, end: 20 },
+          { type: TOKEN.Number, start: 21, end: 22 },
+          { type: TOKEN.Operator, op: ")", start: 22, end: 23 },
+        ]);
+      }
+    });
   });
 
-  it("handles invalid characters", () => {
-    const { tokens, errors } = tokenize("10°");
-    expect(tokens).toEqual([
-      {
-        type: TOKEN.Number,
-        start: 0,
-        end: 2,
-      },
-    ]);
-    expect(errors).toEqual([
-      {
-        message: "Invalid character: °",
-        len: 1,
-        pos: 2,
-      },
-    ]);
+  describe("invalid characters", () => {
+    it("handles invalid characters", () => {
+      const { tokens, errors } = tokenize("10°");
+      expect(tokens).toEqual([
+        {
+          type: TOKEN.Number,
+          start: 0,
+          end: 2,
+        },
+      ]);
+      expect(errors).toEqual([
+        {
+          message: "Invalid character: °",
+          len: 1,
+          pos: 2,
+        },
+      ]);
+    });
+
+    it("should catch a lone decimal point", () => {
+      const { tokens, errors } = tokenize(".");
+      expect(tokens).toHaveLength(0);
+      expect(errors).toEqual([
+        {
+          message: "Invalid character: .",
+          pos: 0,
+          len: 1,
+        },
+      ]);
+    });
   });
 
   describe("numbers", () => {
@@ -74,6 +200,18 @@ describe("tokenizer", () => {
         "1E-99999",
         ".1e-99999",
         ".1E-99999",
+        ".0",
+        ".5",
+        "9.",
+        "42",
+        "0",
+        "123456789",
+        "3.14",
+        "2.7182818284590452353602874",
+        "6.022E+23",
+        "6.626e-34",
+        "299.792458e6",
+        "9.e0",
       ];
 
       for (const expression of cases) {
@@ -111,6 +249,10 @@ describe("tokenizer", () => {
         ".1E-",
         ".1e-",
         ".1E-",
+        "2e",
+        "3e+",
+        "4E-",
+        "4E-",
       ];
 
       for (const expression of cases) {
@@ -204,6 +346,10 @@ describe("tokenizer", () => {
         [`'foo\\vbar'`, "foo\x0bbar"],
         [`"foo\\"bar"`, 'foo"bar'],
         [`'foo\\'bar'`, "foo'bar"],
+        ['"\\n"', "\n"],
+        ['"\\r\\n"', "\r\n"],
+        ['"say \\"Hi\\""', 'say "Hi"'],
+        ["'foo\\tbar'", "foo\tbar"],
       ];
 
       for (const [expression, value] of cases) {
@@ -241,7 +387,7 @@ describe("tokenizer", () => {
     });
 
     it("handles unbalanced strings", () => {
-      const cases = [`"foo`, `'foo`, `"foo\\"`, `'foo\\'`];
+      const cases = [`"single`, `'double`, `"foo\\"`, `'foo\\'`];
 
       for (const expression of cases) {
         const { errors } = tokenize(expression);
@@ -249,6 +395,43 @@ describe("tokenizer", () => {
           { message: "Missing closing quotes", pos: 0, len: expression.length },
         ]);
       }
+    });
+
+    it("should continue to tokenize when encountering an unterminated string literal", () => {
+      const { tokens, errors } = tokenize(`CONCAT(universe') = [answer]`);
+      expect(errors).toEqual([
+        {
+          len: 13,
+          message: "Missing closing quotes",
+          pos: 15,
+        },
+      ]);
+      expect(tokens).toEqual([
+        {
+          type: TOKEN.Identifier,
+          isReference: false,
+          start: 0,
+          end: 6,
+        },
+        {
+          type: TOKEN.Operator,
+          op: "(",
+          start: 6,
+          end: 7,
+        },
+        {
+          type: TOKEN.Identifier,
+          isReference: false,
+          start: 7,
+          end: 15,
+        },
+        {
+          type: TOKEN.String,
+          value: ") = [answer",
+          start: 15,
+          end: 28,
+        },
+      ]);
     });
   });
 
@@ -260,6 +443,13 @@ describe("tokenizer", () => {
         "foo.bar",
         "notnull", // should handle other operators as prefix
         "trueish",
+        "notable",
+        "ANDRA",
+        "Oracle",
+        "Price",
+        "Special_Deal",
+        "Product.Rating",
+        "_Category",
       ];
 
       for (const expression of cases) {
@@ -288,6 +478,9 @@ describe("tokenizer", () => {
         "[foo ` bar]",
         "[foo ° bar]",
         "[foo , bar]",
+        "[Deal]",
+        "[Review → Rating]",
+        "[Product.Vendor]",
       ];
 
       for (const expression of cases) {
@@ -319,6 +512,57 @@ describe("tokenizer", () => {
           message: "Missing a closing bracket",
           pos: 0,
           len: 4,
+        },
+      ]);
+    });
+
+    it("handles brackets that aren't properly closed (multiple open brackets)", () => {
+      const { tokens, errors } = tokenize("[T[");
+      expect(tokens).toEqual([
+        {
+          type: TOKEN.Identifier,
+          start: 0,
+          end: 2,
+          isReference: true,
+        },
+      ]);
+      expect(errors).toEqual([
+        {
+          message: "Missing a closing bracket",
+          pos: 0,
+          len: 2,
+        },
+        {
+          message: "Invalid character: [",
+          len: 1,
+          pos: 2,
+        },
+      ]);
+    });
+
+    it("should allow escaping brackets within bracket identifiers", () => {
+      const cases = ["[T\\[]", "[T\\]]", "[T\\[A\\]]"];
+      for (const expression of cases) {
+        const { tokens, errors } = tokenize(expression);
+        expect(errors).toHaveLength(0);
+        expect(tokens).toEqual([
+          {
+            type: TOKEN.Identifier,
+            isReference: true,
+            start: 0,
+            end: expression.length,
+          },
+        ]);
+      }
+    });
+
+    it("should catch a dangling closing bracket", () => {
+      const { errors } = tokenize("floor(Total]*1.25)");
+      expect(errors).toEqual([
+        {
+          message: "Missing an opening bracket for Total",
+          pos: 11,
+          len: 1,
         },
       ]);
     });
@@ -534,6 +778,21 @@ describe("tokenizer", () => {
           },
         ]);
       }
+    });
+  });
+
+  describe("garbage", () => {
+    const types = (expr: string) => tokenize(expr).tokens.map(t => t.type);
+    const errors = (expr: string) => tokenize(expr).errors;
+
+    // This is hard to manage with the lezer parser
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should ignore garbage", () => {
+      expect(types("!@^ [Deal]")).toEqual([TOKEN.Identifier]);
+      expect(errors("!")[0].message).toEqual("Invalid character: !");
+      expect(errors(" % @")[1].message).toEqual("Invalid character: @");
+      expect(errors("    #")[0].pos).toEqual(4);
+      expect(errors("    #")[0].len).toEqual(1);
     });
   });
 });
