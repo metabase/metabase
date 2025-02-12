@@ -4,7 +4,7 @@ import type { Header } from "@tanstack/react-table";
 import type React from "react";
 import { type CSSProperties, memo, useCallback, useRef } from "react";
 
-import S from "./Table.module.css";
+import S from "./SortableHeader.module.css";
 
 export interface SortableHeaderProps<TData, TValue> {
   children: React.ReactNode;
@@ -84,12 +84,12 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   return (
     <div
       ref={setNodeRef}
-      className={S.th}
+      className={S.headerCell}
       style={style}
       onMouseDown={handleDragStart}
       onMouseUp={handleDragEnd}
     >
-      <div className={S.headerWrapper} {...attributes} {...listeners}>
+      <div className={S.headerContent} {...attributes} {...listeners}>
         {!renderHeaderDecorator
           ? children
           : renderHeaderDecorator(
@@ -99,7 +99,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
             )}
       </div>
       <div
-        className={S.resizer}
+        className={S.resizeHandle}
         onMouseDown={resizeHandler}
         onTouchStart={resizeHandler}
       />

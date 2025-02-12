@@ -8,7 +8,7 @@
   width: 100%;
 }
 
-.thead {
+.headerContainer {
   display: grid;
   position: sticky;
   top: 0;
@@ -17,34 +17,32 @@
   border-bottom: 1px solid var(--mb-color-border);
 }
 
-.tbody {
+.bodyContainer {
   display: grid;
   position: relative;
 }
 
-.tr {
+.row {
   display: flex;
   width: 100%;
 }
 
-.th {
-  display: flex;
-  align-items: center;
-  height: 36px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  background-color: var(--mb-color-bg-white);
-  border-right: 1px solid var(--mb-color-border-alpha-30);
-  position: relative;
-  user-select: none;
-  outline: none;
-}
-
-.td {
+.bodyCell {
   position: relative;
   background-color: var(--mb-color-bg-white);
   cursor: pointer;
+}
+
+.bodyCell:hover {
+  background-color: color-mix(in srgb, var(--mb-color-brand), #fff 90%);
+}
+
+.rowHoverContent {
+  visibility: hidden;
+}
+
+.row:hover .rowHoverContent {
+  visibility: visible;
 }
 
 .resizer {
@@ -71,15 +69,6 @@
   background: var(--mb-color-brand);
 }
 
-.th:last-child,
-.td:last-child {
-  border-right: none;
-}
-
-.td:hover {
-  background-color: color-mix(in srgb, var(--mb-color-brand), #fff 90%);
-}
-
 .headerWrapper {
   width: 100%;
   height: 100%;
@@ -93,6 +82,6 @@
   visibility: hidden;
 }
 
-.tr:hover .rowHoverVisible {
+.row:hover .rowHoverVisible {
   visibility: visible;
 }

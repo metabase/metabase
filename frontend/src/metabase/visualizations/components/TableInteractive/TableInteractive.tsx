@@ -111,6 +111,8 @@ export const _TableInteractive = ({
   getColumnTitle,
   isEmbeddingSdk,
   hasMetadataPopovers = true,
+  mode,
+  isRawTable,
 }: TableProps) => {
   const { rows, cols } = data;
   const prevColNamesRef = useRef<Set<string>>(
@@ -225,17 +227,30 @@ export const _TableInteractive = ({
   );
 
   const handleAddColumnButtonClick = useMemo(() => {
-    if (!onVisualizationClick) {
+    if (!question || !mode?.clickActions || !onVisualizationClick) {
       return undefined;
     }
 
-    return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-      onVisualizationClick({
-        columnShortcuts: true,
-        element: e.currentTarget,
+    for (const action of mode.clickActions) {
+      const res = action({
+        question,
+        clicked: {
+          columnShortcuts: true,
+          extraData: {
+            isRawTable,
+          },
+        },
       });
-    };
-  }, [onVisualizationClick]);
+      if (res?.length > 0) {
+        return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+          onVisualizationClick({
+            columnShortcuts: true,
+            element: e.currentTarget,
+          });
+        };
+      }
+    }
+  }, [isRawTable, mode, onVisualizationClick, question]);
 
   const columnFormatters = useMemo(() => {
     return cols.map(col => {

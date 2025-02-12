@@ -1,0 +1,46 @@
+.headerCell {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background-color: var(--mb-color-bg-white);
+  position: relative;
+  user-select: none;
+  outline: none;
+}
+
+.headerContent {
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+.headerContent:hover {
+  cursor: grab;
+}
+
+.resizeHandle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 5px;
+  background: transparent;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.resizeHandle:hover,
+.resizeHandle:active {
+  opacity: 1;
+  background: var(--mb-color-brand);
+}
+
+.headerCell:last-child {
+  border-right: none;
+}

@@ -89,12 +89,12 @@ export const Table = <TData,>({
           }}
         >
           <div className={S.tableGrid}>
-            <div className={S.thead}>
+            <div className={S.headerContainer}>
               {table.getHeaderGroups().map(headerGroup => (
-                <div key={headerGroup.id} className={S.tr}>
+                <div key={headerGroup.id} className={S.row}>
                   {virtualPaddingLeft ? (
                     <div
-                      className={S.th}
+                      className={S.bodyCell}
                       style={{ width: virtualPaddingLeft }}
                     />
                   ) : null}
@@ -133,7 +133,7 @@ export const Table = <TData,>({
                   {!isAddColumnButtonSticky ? addColumnButton : null}
                   {virtualPaddingRight ? (
                     <div
-                      className={S.th}
+                      className={S.bodyCell}
                       style={{ width: virtualPaddingRight }}
                     />
                   ) : null}
@@ -141,7 +141,7 @@ export const Table = <TData,>({
               ))}
             </div>
             <div
-              className={S.tbody}
+              className={S.bodyContainer}
               style={{
                 display: "grid",
                 position: "relative",
@@ -155,7 +155,7 @@ export const Table = <TData,>({
                     key={row.id}
                     ref={rowMeasureRef}
                     data-index={virtualRow.index}
-                    className={S.tr}
+                    className={S.row}
                     style={{
                       position: "absolute",
                       width: "100%",
@@ -165,7 +165,7 @@ export const Table = <TData,>({
                   >
                     {virtualPaddingLeft ? (
                       <div
-                        className={S.td}
+                        className={S.bodyCell}
                         style={{ width: virtualPaddingLeft }}
                       />
                     ) : null}
@@ -175,7 +175,7 @@ export const Table = <TData,>({
                       return (
                         <div
                           key={cell.id}
-                          className={S.td}
+                          className={S.bodyCell}
                           onClick={e =>
                             onBodyCellClick?.(e, cell.row.index, cell.column.id)
                           }
@@ -193,7 +193,7 @@ export const Table = <TData,>({
                     })}
                     {virtualPaddingRight ? (
                       <div
-                        className={S.td}
+                        className={S.bodyCell}
                         style={{ width: virtualPaddingRight }}
                       />
                     ) : null}

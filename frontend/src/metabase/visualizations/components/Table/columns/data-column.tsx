@@ -66,15 +66,13 @@ export const getDataColumn = <TRow, TValue>(
 
       return (
         <BodyCell
+          columnId={id}
           value={value}
           align={align}
           canExpand={!wrap && isTruncated}
           formatter={formatter}
           backgroundColor={backgroundColor}
-          onExpand={() => {
-            const formattedValue = formatter(value);
-            onExpand(id, formattedValue);
-          }}
+          onExpand={onExpand}
           variant={cellVariant}
           wrap={wrap}
         />

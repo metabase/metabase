@@ -46,14 +46,13 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { TableInteractive } from "../components/TableInteractive";
 import { TableSimple } from "../components/TableSimple";
 import type {
   ColumnSettingDefinition,
   ComputedVisualizationSettings,
   VisualizationProps,
 } from "../types";
-
-import { TableInteractive } from "./TableInteractive";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;

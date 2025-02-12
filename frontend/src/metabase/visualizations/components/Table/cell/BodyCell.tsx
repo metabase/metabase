@@ -1,19 +1,22 @@
 import cx from "classnames";
+import type React from "react";
 import {
   type HTMLAttributes,
   type MouseEventHandler,
+  memo,
   useCallback,
 } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { ExpandButton } from "metabase/visualizations/components/TableInteractive/TableInteractive.styled";
 
+import { ExpandButton } from "../Table.styled";
 import type { CellFormatter, TextAlign } from "../types";
 
 import { BaseCell } from "./BaseCell";
 import S from "./BodyCell.module.css";
 
 export type BodyCellProps<TValue> = {
+  columnId: string;
   value: TValue;
   formatter?: CellFormatter<TValue>;
   backgroundColor?: string;
@@ -22,11 +25,11 @@ export type BodyCellProps<TValue> = {
   wrap?: boolean;
   canExpand?: boolean;
   onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
-  onExpand?: () => void;
+  onExpand?: (id: string, formattedValue: React.ReactNode) => void;
   contentAttributes?: HTMLAttributes<HTMLDivElement>;
 };
 
-export const BodyCell = function BodyCell<TValue>({
+export const BodyCell = memo(function BodyCell<TValue>({
   value,
   formatter,
   backgroundColor,
@@ -35,6 +38,7 @@ export const BodyCell = function BodyCell<TValue>({
   wrap = false,
   canExpand = false,
   contentAttributes,
+  columnId,
   onClick,
   onExpand,
 }: BodyCellProps<TValue>) {
@@ -43,9 +47,9 @@ export const BodyCell = function BodyCell<TValue>({
   const handleExpandClick: MouseEventHandler<HTMLButtonElement> = useCallback(
     e => {
       e.stopPropagation();
-      onExpand?.();
+      onExpand?.(columnId, formattedValue);
     },
-    [onExpand],
+    [columnId, formattedValue, onExpand],
   );
 
   return (
@@ -81,4 +85,4 @@ export const BodyCell = function BodyCell<TValue>({
       )}
     </BaseCell>
   );
-};
+});
