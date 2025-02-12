@@ -892,7 +892,7 @@
                        :model/Database _ {:engine ::test-driver}]
           (t2/with-call-count [call-count]
             (mt/user-http-request :rasta :get 200 "database")
-            (is (> 10 (call-count))))))))
+            (is (< (call-count) 10)))))))
 
 (deftest ^:parallel databases-list-test-2
   (testing "GET /api/database"
