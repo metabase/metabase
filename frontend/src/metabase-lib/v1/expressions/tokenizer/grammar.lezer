@@ -27,6 +27,7 @@ expression {
 | ParenExpression
 | CallExpression
 | UnaryExpression
+| SignedExpression
 }
 
 BinaryExpression {
@@ -48,6 +49,9 @@ UnaryExpression {
   !not Not expression
 }
 
+SignedExpression {
+  "+" | "-" expression
+}
 
 ParenExpression {
   "(" expression ")"

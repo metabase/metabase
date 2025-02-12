@@ -16,4 +16,5 @@ export const Expression = 1,
   ArgList = 27,
   Arg = 28,
   UnaryExpression = 30,
-  Not = 31;
+  Not = 31,
+  SignedExpression = 32;
