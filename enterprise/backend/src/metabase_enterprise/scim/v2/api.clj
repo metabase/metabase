@@ -110,10 +110,10 @@
   [thunk]
   (try
     (let [response (thunk)]
-      (prometheus/inc! :metabase-scim/response-ok)
+      (analytics/inc! :metabase-scim/response-ok)
       response)
     (catch Throwable e
-      (prometheus/inc! :metabase-scim/response-error)
+      (analytics/inc! :metabase-scim/response-error)
       (throw e))))
 
 (defmacro with-prometheus-counters
