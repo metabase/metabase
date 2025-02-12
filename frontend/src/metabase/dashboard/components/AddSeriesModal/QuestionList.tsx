@@ -9,7 +9,7 @@ import CS from "metabase/css/core/index.css";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { CardApi } from "metabase/services";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Icon, TextInput } from "metabase/ui";
 import type {
   Card,
   CardId,
@@ -18,7 +18,6 @@ import type {
 } from "metabase-types/api";
 
 import S from "./QuestionList.module.css";
-import { SearchInput } from "./QuestionList.styled";
 import { QuestionListItem } from "./QuestionListItem";
 
 const PAGE_SIZE = 50;
@@ -99,11 +98,11 @@ export const QuestionList = memo(function QuestionList({
   return (
     <>
       <Flex align="center" className={S.SearchContainer}>
-        {/* TODO: replace with TextInput */}
-        <SearchInput
-          fullWidth
+        <TextInput
+          w="100%"
           value={searchText}
-          leftIcon="search"
+          radius={0}
+          icon={<Icon className={S.SearchInputIcon} name="search" />}
           placeholder={t`Search for a question`}
           onChange={e => setSearchText(e.target.value)}
         />

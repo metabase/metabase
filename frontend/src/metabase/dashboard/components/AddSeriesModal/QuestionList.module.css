@@ -30,3 +30,7 @@
   font-weight: 700;
   padding: 0.25rem 1.5rem;
 }
+
+.SearchInputIcon {
+  color: var(--mb-color-text-light);
+}
