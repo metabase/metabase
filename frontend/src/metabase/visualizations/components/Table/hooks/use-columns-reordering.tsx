@@ -14,6 +14,8 @@ import { arrayMove } from "@dnd-kit/sortable";
 import type { Table as ReactTable } from "@tanstack/react-table";
 import { type RefObject, useCallback, useMemo } from "react";
 
+import { ROW_ID_COLUMN_ID } from "../constants";
+
 export type ColumnsReordering = {
   sensors: SensorDescriptor<SensorOptions>[];
   onDragStart: (_event: DragStartEvent) => void;
@@ -24,6 +26,7 @@ export type ColumnsReordering = {
 export const useColumnsReordering = <TData,>(
   bodyRef: RefObject<HTMLDivElement>,
   table: ReactTable<TData>,
+  onColumnReorder?: (columnNames: string[]) => void,
 ): ColumnsReordering => {
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
@@ -60,9 +63,13 @@ export const useColumnsReordering = <TData,>(
         bodyRef.current.style.overflow = "auto";
       }
 
-      console.log(">>>column order", table.getState().columnOrder);
+      const columns = table
+        .getState()
+        .columnOrder.filter(columnName => columnName !== ROW_ID_COLUMN_ID);
+
+      onColumnReorder?.(columns);
     },
-    [bodyRef, table],
+    [bodyRef, onColumnReorder, table],
   );
 
   const columnsReordering = useMemo(

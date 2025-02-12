@@ -1,6 +1,6 @@
 import type { ColumnSizingState } from "@tanstack/react-table";
 import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import _ from "underscore";
 
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
@@ -68,6 +68,7 @@ interface TableProps extends VisualizationProps {
   rowIndexToPkMap?: Record<number, string>;
   getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  getColumnTitle: any;
   isPivoted?: boolean;
   hasMetadataPopovers?: boolean;
   question: Question;
@@ -107,10 +108,14 @@ export const _TableInteractive = ({
   question,
   clicked,
   queryBuilderMode,
+  getColumnTitle,
   isEmbeddingSdk,
   hasMetadataPopovers = true,
 }: TableProps) => {
   const { rows, cols } = data;
+  const prevColNamesRef = useRef<Set<string>>(
+    new Set(cols.map(col => col.name)),
+  );
 
   const columnOrder = useMemo(() => {
     return getColumnOrder(cols, settings["table.row_index"]);
@@ -188,6 +193,37 @@ export const _TableInteractive = ({
     [data, isPivoted, onVisualizationClick],
   );
 
+  const handleColumnReordering = useCallback(
+    (columnsOrder: string[]) => {
+      const result = settings["table.columns"]?.slice() ?? [];
+
+      const enabledIndices = result
+        .map((col, index) => (col.enabled ? index : -1))
+        .filter(index => index !== -1);
+
+      columnsOrder.forEach((columnName, orderIndex) => {
+        const sourceIndex = result.findIndex(col => col.name === columnName);
+        if (sourceIndex !== -1) {
+          const targetIndex = enabledIndices[orderIndex];
+
+          const [column] = result.splice(sourceIndex, 1);
+          result.splice(targetIndex, 0, column);
+
+          if (sourceIndex > targetIndex) {
+            for (let i = orderIndex + 1; i < enabledIndices.length; i++) {
+              enabledIndices[i]++;
+            }
+          }
+        }
+      });
+
+      onUpdateVisualizationSettings({
+        "table.columns": result,
+      });
+    },
+    [onUpdateVisualizationSettings, settings],
+  );
+
   const handleAddColumnButtonClick = useMemo(() => {
     if (!onVisualizationClick) {
       return undefined;
@@ -228,17 +264,15 @@ export const _TableInteractive = ({
       const formatter = columnFormatters[columnIndex];
       const calculateColumnExtent = () =>
         getColumnExtent(cols, rows, columnIndex);
+      const columnName = getColumnTitle(columnIndex);
 
-      let columnName;
       let align;
       let id;
       let sortDirection;
       if (isPivoted) {
-        columnName = col.display_name;
         align = columnIndex === 0 ? "right" : columnSettings["text_align"];
         id = `${col.name}:${columnIndex}`;
       } else {
-        columnName = columnSettings["column_title"] ?? col.name;
         align = columnSettings["text_align"];
         id = col.name;
         sortDirection = getColumnSortDirection(columnIndex);
@@ -262,6 +296,7 @@ export const _TableInteractive = ({
     cols,
     columnFormatters,
     getColumnSortDirection,
+    getColumnTitle,
     isPivoted,
     rows,
     settings,
@@ -344,7 +379,23 @@ export const _TableInteractive = ({
     columnSizing,
     columnsOptions,
     onColumnResize: handleColumnResize,
+    onColumnReorder: handleColumnReordering,
   });
+
+  useEffect(() => {
+    const currentColNames = new Set(cols.map(col => col.name));
+    const prevColNames = prevColNamesRef.current;
+
+    const isSame =
+      prevColNames.size === currentColNames.size &&
+      [...prevColNames].every(name => currentColNames.has(name));
+
+    if (!isSame) {
+      prevColNamesRef.current = currentColNames;
+      tableProps.measureColumnWidths();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cols, tableProps.measureColumnWidths]);
 
   if (width == null || height == null) {
     return null;

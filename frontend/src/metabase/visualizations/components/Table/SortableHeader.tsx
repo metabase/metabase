@@ -2,7 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Header } from "@tanstack/react-table";
 import type React from "react";
-import { type CSSProperties, useCallback, useRef } from "react";
+import { type CSSProperties, memo, useCallback, useRef } from "react";
 
 import S from "./Table.module.css";
 
@@ -14,7 +14,8 @@ export interface SortableHeaderProps<TData, TValue> {
     isDragging: boolean,
     children: React.ReactNode,
   ) => React.ReactNode;
-  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onClick?: (e: React.MouseEvent<HTMLDivElement>, columnId: string) => void;
+  isResizing?: boolean;
 }
 
 // if header is dragged fewer than than this number of pixels we consider it a click instead of a drag
@@ -22,11 +23,12 @@ const HEADER_DRAG_THRESHOLD = 8;
 
 type DragPosition = { x: number; y: number };
 
-export const SortableHeader = function SortableHeader<TData, TValue>({
+export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   header,
   children,
   renderHeaderDecorator,
   onClick,
+  isResizing,
 }: SortableHeaderProps<TData, TValue>) {
   const canSort = header.column.columnDef.meta?.enableReordering;
   const id = header.column.id;
@@ -62,13 +64,13 @@ export const SortableHeader = function SortableHeader<TData, TValue>({
         const isClicked = dx + dy < HEADER_DRAG_THRESHOLD;
 
         if (isClicked && onClick) {
-          onClick(e);
+          onClick(e, id);
         }
 
         dragStartPosition.current = null;
       }
     },
-    [onClick],
+    [id, onClick],
   );
 
   const resizeHandler: (e: React.MouseEvent | React.TouchEvent) => void =
@@ -90,7 +92,11 @@ export const SortableHeader = function SortableHeader<TData, TValue>({
       <div className={S.headerWrapper} {...attributes} {...listeners}>
         {!renderHeaderDecorator
           ? children
-          : renderHeaderDecorator(id, isDragging, children)}
+          : renderHeaderDecorator(
+              id,
+              Boolean(isDragging || isResizing),
+              children,
+            )}
       </div>
       <div
         className={S.resizer}
@@ -99,4 +105,4 @@ export const SortableHeader = function SortableHeader<TData, TValue>({
       />
     </div>
   );
-};
+});

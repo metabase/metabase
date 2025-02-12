@@ -1,7 +1,8 @@
 import cx from "classnames";
 import type React from "react";
+import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 
 import TableS from "../Table.module.css";
 
@@ -15,16 +16,19 @@ export const RowIdCell = ({ value }: RowIdCellProps) => {
   const hasValue = value != null;
 
   return (
-    <div className={cx(S.root)}>
-      {hasValue ? <span className={S.rowNumber}>{value}</span> : null}
-      <Icon
-        className={cx({
-          [TableS.rowHoverVisible]: !hasValue,
-          [S.expandIcon]: hasValue,
-        })}
-        name="expand"
-        size={14}
-      />
-    </div>
+    <Tooltip label={t`View details`}>
+      <div className={cx(S.root)}>
+        {hasValue ? <span className={S.rowNumber}>{value}</span> : null}
+
+        <Icon
+          className={cx({
+            [TableS.rowHoverVisible]: !hasValue,
+            [S.expandIcon]: hasValue,
+          })}
+          name="expand"
+          size={14}
+        />
+      </div>
+    </Tooltip>
   );
 };

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { HTMLAttributes } from "react";
+import { type HTMLAttributes, memo } from "react";
 import { t } from "ttag";
 
 import { Button, Icon } from "metabase/ui";
@@ -11,11 +11,11 @@ interface AddColumnButtonProps extends HTMLAttributes<HTMLButtonElement> {
   isOverflowing?: boolean;
 }
 
-export const AddColumnButton = ({
+export const AddColumnButton = memo(function AddColumnButton({
   headerHeight,
   isOverflowing,
   onClick,
-}: AddColumnButtonProps) => {
+}: AddColumnButtonProps) {
   return (
     <div
       className={cx(S.root, { [S.sticky]: isOverflowing })}
@@ -34,4 +34,4 @@ export const AddColumnButton = ({
       />
     </div>
   );
-};
+});

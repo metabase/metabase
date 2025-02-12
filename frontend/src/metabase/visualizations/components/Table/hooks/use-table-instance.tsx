@@ -1,16 +1,24 @@
 import {
   type ColumnDef,
   type ColumnSizingState,
+  type Table,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import type React from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  type MouseEventHandler,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useUpdateEffect } from "react-use";
+import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 
-import type { TableProps } from "../Table";
+import type { TableProps, TableRefs } from "../Table";
 import { getDataColumn } from "../columns/data-column";
 import { getRowIdColumn } from "../columns/row-id-column";
 import {
@@ -28,9 +36,12 @@ import type {
 
 import { useTableCellsMeasure } from "./use-cell-measure";
 import { useColumnResizeObserver } from "./use-column-resize-observer";
-import { useColumnsReordering } from "./use-columns-reordering";
+import {
+  type ColumnsReordering,
+  useColumnsReordering,
+} from "./use-columns-reordering";
 import { useMeasureColumnWidths } from "./use-measure-column-widths";
-import { useVirtualGrid } from "./use-virtual-grid";
+import { type VirtualGrid, useVirtualGrid } from "./use-virtual-grid";
 
 export interface ColumnOptions<TRow, TValue> {
   id: string;
@@ -56,10 +67,37 @@ export interface TableOptions<TData, TValue> {
   truncateLongCellWidth?: number;
   columnsOptions: ColumnOptions<TData, TValue>[];
   onColumnResize?: (columnSizing: ColumnSizingState) => void;
+  onColumnReorder?: (columnNames: string[]) => void;
+}
+
+export interface TableInstance<TData> {
+  table: Table<TData>;
+  refs: TableRefs;
+  virtualGrid: VirtualGrid;
+  measureRoot: React.ReactNode;
+  columnsReordering: ColumnsReordering;
+  measureColumnWidths: (updateCurrent?: boolean, truncate?: boolean) => void;
+  renderHeaderDecorator?: (
+    columnId: string,
+    isDragging: boolean,
+    children: React.ReactNode,
+  ) => React.ReactNode;
+  onBodyCellClick?: (
+    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
+    rowIndex: number,
+    columnId: string,
+  ) => void;
+  onHeaderCellClick?: (
+    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
+    columnId: string,
+  ) => void;
+  onAddColumnClick?: MouseEventHandler<HTMLButtonElement>;
 }
 
 const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
-  hasRowIdColumn ? [ROW_ID_COLUMN_ID, ...dataColumnsOrder] : dataColumnsOrder;
+  _.uniq(
+    hasRowIdColumn ? [ROW_ID_COLUMN_ID, ...dataColumnsOrder] : dataColumnsOrder,
+  );
 
 export const useTableInstance = <TData, TValue>({
   data,
@@ -70,6 +108,7 @@ export const useTableInstance = <TData, TValue>({
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
   columnsOptions,
   onColumnResize,
+  onColumnReorder,
 }: TableOptions<TData, TValue>): Omit<
   TableProps<TData>,
   "width" | "height"
@@ -178,7 +217,7 @@ export const useTableInstance = <TData, TValue>({
     onColumnSizingChange: setColumnSizing,
   });
 
-  useMeasureColumnWidths(
+  const measureColumnWidths = useMeasureColumnWidths(
     table,
     data,
     columnsOptions,
@@ -251,7 +290,18 @@ export const useTableInstance = <TData, TValue>({
 
   useColumnResizeObserver(table.getState(), handleColumnResize);
 
-  const columnsReordering = useColumnsReordering(bodyRef, table);
+  const columnsReordering = useColumnsReordering(
+    bodyRef,
+    table,
+    onColumnReorder,
+  );
 
-  return { table, refs, virtualGrid, measureRoot, columnsReordering };
+  return {
+    table,
+    refs,
+    virtualGrid,
+    measureRoot,
+    columnsReordering,
+    measureColumnWidths,
+  };
 };

@@ -40,7 +40,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
   const measureRootTree = useRef<Root>();
 
   const measureColumnWidths = useCallback(
-    (updaterFn: (columnSizing: ColumnSizingState) => void) => {
+    (updateCurrent: boolean = true, truncate: boolean = true) => {
       const onMeasureHeaderRender = (div: HTMLDivElement) => {
         if (div === null) {
           return;
@@ -60,7 +60,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
           })
           .filter(isNotNull);
 
-        const columnWidths: ColumnSizingState = contentWidths.reduce<
+        const columnSizing: ColumnSizingState = contentWidths.reduce<
           Record<string, number>
         >(
           (acc, { columnId, width }) => ({
@@ -70,8 +70,15 @@ export const useMeasureColumnWidths = <TData, TValue>(
           {},
         );
 
-        updaterFn(columnWidths);
-        setMeasuredColumnSizing(columnWidths);
+        setMeasuredColumnSizing(columnSizing);
+
+        if (updateCurrent) {
+          table.setColumnSizing(
+            truncate
+              ? getTruncatedColumnSizing(columnSizing, truncateLongCellWidth)
+              : columnSizing,
+          );
+        }
       };
 
       const content = (
@@ -107,7 +114,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
                         const cell = table
                           .getRowModel()
                           .rows[rowIndex].getVisibleCells()
-                          .find(cell => cell.column.id === columnOptions.id); // TODO: maybe optimize
+                          .find(cell => cell.column.id === columnOptions.id);
 
                         if (!cell) {
                           return null;
@@ -129,7 +136,13 @@ export const useMeasureColumnWidths = <TData, TValue>(
 
       measureRootTree.current = renderRoot(content, measureRootRef.current!);
     },
-    [columnsOptions, data, setMeasuredColumnSizing, table],
+    [
+      columnsOptions,
+      data,
+      setMeasuredColumnSizing,
+      table,
+      truncateLongCellWidth,
+    ],
   );
 
   useEffect(() => {
@@ -150,15 +163,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
     const shouldUpdateCurrentWidths =
       !columnSizing || Object.values(columnSizing).length === 0;
 
-    measureColumnWidths(columnSizing => {
-      const truncatedWidths = getTruncatedColumnSizing(
-        columnSizing,
-        truncateLongCellWidth,
-      );
-      if (shouldUpdateCurrentWidths) {
-        table.setColumnSizing(truncatedWidths);
-      }
-    });
+    measureColumnWidths(shouldUpdateCurrentWidths);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

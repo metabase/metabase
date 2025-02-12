@@ -4,50 +4,24 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { type Table as TanStackTable, flexRender } from "@tanstack/react-table";
-import {
-  type MouseEventHandler,
-  type RefObject,
-  useCallback,
-  useMemo,
-} from "react";
+import { flexRender } from "@tanstack/react-table";
+import { type RefObject, useCallback, useMemo } from "react";
 
 import { AddColumnButton } from "metabase/visualizations/components/Table/AddColumnButton";
 
 import { SortableHeader } from "./SortableHeader";
 import S from "./Table.module.css";
 import { HEADER_HEIGHT } from "./constants";
-import type { ColumnsReordering } from "./hooks/use-columns-reordering";
-import type { VirtualGrid } from "./hooks/use-virtual-grid";
+import type { TableInstance } from "./hooks/use-table-instance";
 
 export interface TableRefs {
   bodyRef: RefObject<HTMLDivElement>;
 }
 
-export interface TableProps<TData> {
-  table: TanStackTable<TData>;
-  refs: TableRefs;
-  virtualGrid: VirtualGrid;
-  measureRoot: React.ReactNode;
-  columnsReordering: ColumnsReordering;
+export type TableProps<TData> = TableInstance<TData> & {
   width: number;
   height: number;
-  renderHeaderDecorator?: (
-    columnId: string,
-    isDragging: boolean,
-    children: React.ReactNode,
-  ) => React.ReactNode;
-  onBodyCellClick?: (
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-    rowIndex: number,
-    columnId: string,
-  ) => void;
-  onHeaderCellClick?: (
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-    columnId: string,
-  ) => void;
-  onAddColumnClick?: MouseEventHandler<HTMLButtonElement>;
-}
+};
 
 export const Table = <TData,>({
   table,
@@ -69,6 +43,10 @@ export const Table = <TData,>({
     virtualPaddingRight,
     rowVirtualizer,
   } = virtualGrid;
+
+  const isResizing = Boolean(
+    table.getState().columnSizingInfo.isResizingColumn,
+  );
 
   const rowMeasureRef = useCallback(
     (element: HTMLElement | null) => {
@@ -143,9 +121,8 @@ export const Table = <TData,>({
                           <SortableHeader
                             header={header}
                             renderHeaderDecorator={renderHeaderDecorator}
-                            onClick={event =>
-                              onHeaderCellClick?.(event, header.column.id)
-                            }
+                            onClick={onHeaderCellClick}
+                            isResizing={isResizing}
                           >
                             {headerCell}
                           </SortableHeader>
