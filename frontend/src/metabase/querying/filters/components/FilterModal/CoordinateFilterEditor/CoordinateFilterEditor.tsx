@@ -7,10 +7,11 @@ import {
   type NumberValue,
   useCoordinateFilter,
 } from "metabase/querying/filters/hooks/use-coordinate-filter";
-import { Flex, Grid, NumberInput, Text } from "metabase/ui";
+import { Flex, Grid, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
+import { NumberFilterInput } from "../../NumberFilterInput";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import { useFilterModalContext } from "../context";
@@ -143,7 +144,7 @@ function NumberValueInput({
 
   if (valueCount === 1) {
     return (
-      <NumberInput
+      <NumberFilterInput
         value={values[0]}
         placeholder={t`Enter a number`}
         aria-label={t`Filter value`}
@@ -157,20 +158,20 @@ function NumberValueInput({
   if (valueCount === 2) {
     return (
       <Flex align="center">
-        <NumberInput
+        <NumberFilterInput
           value={values[0]}
           placeholder={t`Min`}
           maw="8rem"
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
+          onChange={newValue => onChange([newValue, values[1]])}
           onFocus={onFocus}
           onBlur={onBlur}
         />
         <Text mx="sm">{t`and`}</Text>
-        <NumberInput
+        <NumberFilterInput
           value={values[1]}
           placeholder={t`Max`}
           maw="8rem"
-          onChange={(newValue: number) => onChange([values[0], newValue])}
+          onChange={newValue => onChange([values[0], newValue])}
           onFocus={onFocus}
           onBlur={onBlur}
         />
@@ -181,37 +182,37 @@ function NumberValueInput({
   if (valueCount === 4) {
     return (
       <Flex align="center" gap="md">
-        <NumberInput
+        <NumberFilterInput
           value={values[2]}
           placeholder={t`Lower latitude`}
-          onChange={(newValue: number) =>
+          onChange={newValue =>
             onChange([values[0], values[1], newValue, values[3]])
           }
           onFocus={onFocus}
           onBlur={onBlur}
         />
-        <NumberInput
+        <NumberFilterInput
           value={values[0]}
           placeholder={t`Upper latitude`}
-          onChange={(newValue: number) =>
+          onChange={newValue =>
             onChange([newValue, values[1], values[2], values[3]])
           }
           onFocus={onFocus}
           onBlur={onBlur}
         />
-        <NumberInput
+        <NumberFilterInput
           value={values[1]}
           placeholder={t`Left longitude`}
-          onChange={(newValue: number) =>
+          onChange={newValue =>
             onChange([values[0], newValue, values[2], values[3]])
           }
           onFocus={onFocus}
           onBlur={onBlur}
         />
-        <NumberInput
+        <NumberFilterInput
           value={values[3]}
           placeholder={t`Right longitude`}
-          onChange={(newValue: number) =>
+          onChange={newValue =>
             onChange([values[0], values[1], values[2], newValue])
           }
           onFocus={onFocus}

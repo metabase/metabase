@@ -1,4 +1,6 @@
 .Root {
+  flex-basis: 20%;
+
   .FooterButtonGroup {
     display: inline-flex;
     align-items: stretch;
