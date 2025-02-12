@@ -59,6 +59,7 @@ export interface WritebackActionBase {
   name: string;
   description: string | null;
   parameters?: WritebackParameter[];
+  is_row_action?: boolean;
   visualization_settings?: ActionFormSettings;
   archived: boolean;
   creator_id: UserId;
@@ -190,6 +191,7 @@ export interface ActionFormSettings {
   name?: string;
   type?: ActionDisplayType;
   description?: string;
+  isRowAction?: boolean;
   fields?: FieldSettingsMap;
   submitButtonLabel?: string;
   submitButtonColor?: string;

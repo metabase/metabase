@@ -11,6 +11,7 @@ import _ from "underscore";
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import { Form, FormProvider } from "metabase/forms";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { Checkbox } from "metabase/ui";
 import type {
   ActionFormSettings,
   FieldSettings,
@@ -172,6 +173,17 @@ export function FormCreator({
           onSubmit={ON_SUBMIT_NOOP}
         >
           <Form role="form" data-testid="action-form-editor">
+            <Checkbox
+              label="Row action?"
+              size="xs"
+              checked={formSettings.isRowAction}
+              onChange={e => {
+                setFormSettings({
+                  ...formSettings,
+                  isRowAction: e.target.checked,
+                });
+              }}
+            />
             <DragDropContext onDragEnd={handleDragEnd}>
               <Droppable droppableId="action-form-droppable">
                 {(provided: DroppableProvided) => (

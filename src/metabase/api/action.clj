@@ -165,8 +165,9 @@
               [:type                   {:optional true} [:maybe supported-action-type]]
               [:visualization_settings {:optional true} [:maybe :map]]]]
   (actions/check-actions-enabled! id)
-  (let [existing-action (api/write-check :model/Action id)]
-    (action/update! (assoc action :id id) existing-action))
+  (let [existing-action (api/write-check :model/Action id)
+        is-row-action (get-in action [:visualization_settings :isRowAction] false)]
+    (action/update! (assoc action :id id :is_row_action is-row-action) existing-action))
   (let [{:keys [parameters type] :as action} (action/select-action :id id)]
     (snowplow/track-event! ::snowplow/action
                            {:event          :action-updated
