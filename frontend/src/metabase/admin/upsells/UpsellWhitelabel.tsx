@@ -2,17 +2,22 @@ import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { useSelector } from "metabase/lib/redux";
+import { getDocsUrl } from "metabase/selectors/settings";
 
 import { UpsellBigCard } from "./components";
 import S from "./components/Upsells.module.css";
 import { useUpsellLink } from "./components/use-upsell-link";
-
 export const UpsellWhitelabel = ({ source }: { source: string }) => {
   const isWhitelabeled = useHasTokenFeature("whitelabel");
-  const docsLink =
-    "https://www.metabase.com/docs/latest/configuring-metabase/appearance";
 
-  const url = useUpsellLink({ url: docsLink, campaign: "whitelabel", source });
+  const docsUrl = useSelector(state =>
+    getDocsUrl(state, {
+      page: "configuring-metabase/appearance",
+    }),
+  );
+
+  const url = useUpsellLink({ url: docsUrl, campaign: "whitelabel", source });
 
   if (isWhitelabeled) {
     return null;
