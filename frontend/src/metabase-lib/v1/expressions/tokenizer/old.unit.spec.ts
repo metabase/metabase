@@ -1,8 +1,5 @@
-import {
-  OPERATOR as OP,
-  TOKEN as T,
-  tokenize,
-} from "metabase-lib/v1/expressions/tokenizer";
+import { tokenize } from "./tokenize";
+import { OPERATOR as OP, TOKEN as T } from "./types";
 
 describe("metabase-lib/v1/expressions/tokenizer", () => {
   const types = expr => tokenize(expr).tokens.map(t => t.type);
