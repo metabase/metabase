@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { MouseEvent } from "react";
 import { memo, useCallback, useState } from "react";
 import { t } from "ttag";
@@ -20,7 +21,6 @@ import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
 import S from "./DashCardActionsPanel.module.css";
-import { DashCardActionsPanelContainer } from "./DashCardActionsPanel.styled";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
 import { useDuplicateDashCard } from "./use-duplicate-dashcard";
@@ -48,6 +48,7 @@ interface Props {
   onPreviewToggle: () => void;
   onLeftEdge: boolean;
   onMouseDown: (event: MouseEvent) => void;
+  className?: string;
 }
 
 function DashCardActionsPanelInner({
@@ -67,6 +68,7 @@ function DashCardActionsPanelInner({
   onPreviewToggle,
   onLeftEdge,
   onMouseDown,
+  className,
 }: Props) {
   const {
     disableSettingsConfig,
@@ -260,18 +262,26 @@ function DashCardActionsPanelInner({
   }
 
   return (
-    <>
-      <DashCardActionsPanelContainer
-        data-testid="dashboardcard-actions-panel"
-        onMouseDown={onMouseDown}
-        isDashCardTabMenuOpen={isDashCardTabMenuOpen}
-        onLeftEdge={onLeftEdge}
-      >
-        <Box className={S.DashCardActionButtonsContainer} component="span">
-          {buttons}
-        </Box>
-      </DashCardActionsPanelContainer>
-    </>
+    <Box
+      className={cx(
+        S.DashCardActionsPanelContainer,
+        {
+          [S.isDashCardTabMenuOpen]: isDashCardTabMenuOpen,
+          [S.onLeftEdge]: onLeftEdge,
+        },
+        className,
+      )}
+      pos="absolute"
+      top={0}
+      right="20px"
+      opacity={isDashCardTabMenuOpen ? 1 : 0}
+      data-testid="dashboardcard-actions-panel"
+      onMouseDown={onMouseDown}
+    >
+      <Box className={S.DashCardActionButtonsContainer} component="span">
+        {buttons}
+      </Box>
+    </Box>
   );
 }
 
