@@ -28,11 +28,12 @@ import MoveEventModal from "metabase/timelines/questions/containers/MoveEventMod
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { Card, DashboardTabId } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
 import { MoveQuestionModal } from "../MoveQuestionModal";
 
+type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 interface QueryModalsProps {
   modal: QueryModalType;
   modalContext: number;
@@ -41,7 +42,10 @@ interface QueryModalsProps {
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
   originalQuestion: Question;
   card: Card;
-  onCreate: (question: Question) => Promise<Question>;
+  onCreate: (
+    question: Question,
+    options?: OnCreateOptions,
+  ) => Promise<Question>;
   onSave: (
     question: Question,
     config?: { rerunQuery: boolean },
@@ -88,8 +92,8 @@ export function QueryModals({
   );
 
   const handleCreateAndClose = useCallback(
-    async (question: Question) => {
-      const newQuestion = await onCreate(question);
+    async (question: Question, options?: OnCreateOptions) => {
+      const newQuestion = await onCreate(question, options);
       onCloseModal();
       return newQuestion;
     },
@@ -97,7 +101,7 @@ export function QueryModals({
   );
 
   const navigateToDashboardQuestionDashboard = useCallback(
-    async (question: Question) => {
+    async (question: Question, tabId?: DashboardTabId | undefined) => {
       const cardId = question.id();
       const dashboardId = question.dashboardId();
       if (!dashboardId) {
@@ -119,7 +123,7 @@ export function QueryModals({
 
       const url = Urls.dashboard(
         { id: dashboardId, name: "", ...question.dashboard(), ...dashboard },
-        { editMode: true, scrollToDashcard: dashcard?.id },
+        { editMode: true, scrollToDashcard: dashcard?.id, tabId },
       );
       dispatch(push(url));
     },
@@ -127,8 +131,8 @@ export function QueryModals({
   );
 
   const handleSaveModalCreate = useCallback(
-    async (question: Question) => {
-      const newQuestion = await onCreate(question);
+    async (question: Question, options?: OnCreateOptions) => {
+      const newQuestion = await onCreate(question, options);
       const type = question.type();
       const isDashboardQuestion = _.isNumber(question.dashboardId());
 
@@ -136,7 +140,10 @@ export function QueryModals({
         onCloseModal();
         setQueryBuilderMode("view");
       } else if (isDashboardQuestion) {
-        navigateToDashboardQuestionDashboard(newQuestion);
+        navigateToDashboardQuestionDashboard(
+          newQuestion,
+          options?.dashboardTabId,
+        );
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
@@ -153,11 +160,19 @@ export function QueryModals({
   );
 
   const handleCopySaved = useCallback(
-    (newQuestion: Question) => {
+    (
+      newQuestion: Question,
+      options?: {
+        dashboardTabId?: DashboardTabId | undefined;
+      },
+    ) => {
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
 
       if (isDashboardQuestion) {
-        navigateToDashboardQuestionDashboard(newQuestion);
+        navigateToDashboardQuestionDashboard(
+          newQuestion,
+          options?.dashboardTabId,
+        );
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
@@ -199,8 +214,8 @@ export function QueryModals({
             await onSave(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
-          onCreate={async question => {
-            const newQuestion = await onCreate(question);
+          onCreate={async (question, options) => {
+            const newQuestion = await onCreate(question, options);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
             return newQuestion;
           }}
@@ -275,6 +290,7 @@ export function QueryModals({
                   .setCollectionId(formValues.collection_id)
                   .setDashboardId(formValues.dashboard_id)
                   .setDescription(formValues.description || null),
+                { dashboardTabId: formValues?.dashboardTabId },
               );
 
               return object;

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { isNullOrUndefined } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
-import type { CardType } from "metabase-types/api";
+import type { CardType, DashboardTabId } from "metabase-types/api";
 
 import type {
   CreateQuestionOptions,
@@ -43,6 +43,9 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
       : saveToCollection,
   );
   const dashboardId = details.dashboard_id;
+  const dashboardTabId = details.dashboard_tab_id
+    ? parseInt(details.dashboard_tab_id, 10)
+    : undefined;
 
   const displayName = details.name.trim();
   const description = details.description ? details.description.trim() : null;
@@ -53,7 +56,7 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
     .setCollectionId(collectionId)
     .setDashboardId(dashboardId);
 
-  return onCreate(newQuestion, { dashboardTabId: details.tab_id || undefined });
+  return onCreate(newQuestion, { dashboardTabId });
 };
 
 export async function submitQuestion(options: SubmitQuestionOptions) {
@@ -87,7 +90,7 @@ export const getInitialValues = (
   question: Question,
   initialCollectionId: FormValues["collection_id"],
   initialDashboardId: FormValues["dashboard_id"],
-  initialDashboardTabId: FormValues["tab_id"],
+  initialDashboardTabId: DashboardTabId | null | undefined,
 ): FormValues => {
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
@@ -117,7 +120,9 @@ export const getInitialValues = (
       originalQuestion?.description() || question.description() || "",
     collection_id: collectionId,
     dashboard_id: dashboardId,
-    tab_id: initialDashboardTabId,
+    dashboard_tab_id: initialDashboardTabId
+      ? `${initialDashboardTabId}`
+      : undefined,
     saveType:
       originalQuestion &&
       originalQuestion.type() === "question" &&

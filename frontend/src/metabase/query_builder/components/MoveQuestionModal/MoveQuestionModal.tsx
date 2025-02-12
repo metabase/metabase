@@ -106,6 +106,7 @@ export const MoveQuestionModal = ({
             );
           }
 
+          // TODO: copy and move modals should have this option too
           const url = Urls.dashboard(
             { id: destination.id, name: "", ...dashboard },
             { editMode: true, scrollToDashcard: dashcard?.id },

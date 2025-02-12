@@ -36,8 +36,8 @@ export const SaveQuestionModal = ({
     <SaveQuestionProvider
       question={question}
       originalQuestion={originalQuestion}
-      onCreate={async question => {
-        const newQuestion = await onCreate(question);
+      onCreate={async (question, options) => {
+        const newQuestion = await onCreate(question, options);
 
         if (closeOnSuccess) {
           modalProps.onClose();
