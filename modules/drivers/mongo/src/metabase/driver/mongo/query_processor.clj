@@ -422,6 +422,13 @@
         java.util.UUID/fromString
         uuid->bsonbinary)
 
+    (isa? base-type :type/*)
+    (try (-> (str value)
+             java.util.UUID/fromString
+             uuid->bsonbinary)
+         (catch Exception _
+           value))
+
     :else value))
 
 (defn- $date-from-string [s]

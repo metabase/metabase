@@ -19,11 +19,19 @@
   (:require
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
-   [metabase.query-processor.timezone :as qp.timezone]))
+   [metabase.query-processor.timezone :as qp.timezone])
+  (:import
+   (java.nio ByteBuffer)
+   (java.util UUID)
+   (org.bson.types Binary)))
 
 (set! *warn-on-reflection* true)
 
 ;;;; Protocols defined originally in monger, adjusted for `Document` follow.
+
+;; UUIDs are BSON subtype 4, see https://bsonspec.org/spec.html
+;; and https://www.mongodb.com/docs/manual/reference/bson-types/#binary-data
+(def bson-uuid-type 4)
 
 (defprotocol ConvertFromDocument
   (from-document [input opts] "Converts given DBObject instance to a piece of Clojure data"))
@@ -31,6 +39,19 @@
 (extend-protocol ConvertFromDocument
   nil
   (from-document [input _opts] input)
+
+  Binary
+  (from-document [input _opts]
+    (cond (= (.getType input) bson-uuid-type)
+          (let [buffer (-> input
+                           .getData
+                           ByteBuffer/wrap)
+                most-sig-bits (.getLong buffer)
+                least-sig-bits (.getLong buffer)]
+            (UUID. most-sig-bits least-sig-bits))
+
+          :else
+          input))
 
   Object
   (from-document [input _opts] input)

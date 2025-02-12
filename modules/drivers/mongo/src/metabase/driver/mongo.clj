@@ -25,9 +25,7 @@
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)
-   (java.nio ByteBuffer)
-   (java.util UUID)
-   (org.bson.types Binary BSONTimestamp ObjectId)))
+   (org.bson.types BSONTimestamp ObjectId)))
 
 (set! *warn-on-reflection* true)
 
@@ -35,24 +33,6 @@
 
 ;; Encode BSON undefined like `nil`
 (json/add-encoder org.bson.BsonUndefined json/generate-nil)
-
-;; UUIDs are BSON subtype 4, see https://bsonspec.org/spec.html
-;; and https://www.mongodb.com/docs/manual/reference/bson-types/#binary-data
-(def bson-uuid-type 4)
-
-(json/add-encoder Binary
-                  (fn [obj json-generator]
-                    (cond (= (.getType obj) bson-uuid-type)
-                          (let [buffer (-> obj
-                                           .getData
-                                           ByteBuffer/wrap)
-                                most-sig-bits (.getLong buffer)
-                                least-sig-bits (.getLong buffer)
-                                uuid (UUID. most-sig-bits least-sig-bits)]
-                            (json/write-string json-generator (str uuid)))
-
-                          :else
-                          (json/write-string json-generator (str obj)))))
 
 (json/add-encoder ObjectId
                   (fn [^ObjectId oid ^com.fasterxml.jackson.core.json.WriterBasedJsonGenerator generator]
