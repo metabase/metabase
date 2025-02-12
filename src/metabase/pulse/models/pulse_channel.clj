@@ -1,4 +1,4 @@
-(ns metabase.models.pulse-channel
+(ns metabase.pulse.models.pulse-channel
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -156,8 +156,8 @@
 
 (t2/define-before-delete :model/PulseChannel
   [{pulse-id :pulse_id, pulse-channel-id :id :as pulse-channel}]
-  ;; This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
-  ;; deleted. Archives `Pulse` if the channel being deleted is its last channel."
+  ;; This function is called by [[metabase.pulse.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to
+  ;; be deleted. Archives `Pulse` if the channel being deleted is its last channel."
   (when *archive-parent-pulse-when-last-channel-is-deleted*
     (let [other-channels-count (t2/count :model/PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
       (when (zero? other-channels-count)

@@ -1,10 +1,9 @@
-(ns metabase.task.send-pulses
+(ns metabase.pulse.task.send-pulses
   "Tasks related to running `Pulses`.
 
   `SendPulse` job will send a pulse to all channels that are scheduled to run at the same time.
   For example if you have an Alert that has scheduled to send to both slack and emails at 6am, this job will be triggered
   and send the pulse to both channels. "
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -13,9 +12,10 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models.pulse :as models.pulse]
    [metabase.models.task-history :as task-history]
    [metabase.pulse.core :as pulse]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util.cron :as u.cron]

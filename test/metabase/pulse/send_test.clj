@@ -11,7 +11,6 @@
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
    [metabase.integrations.slack :as slack]
-   [metabase.models.pulse :as models.pulse]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
@@ -19,6 +18,7 @@
    [metabase.public-settings :as public-settings]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]

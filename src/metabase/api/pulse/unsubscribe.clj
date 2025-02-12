@@ -7,7 +7,7 @@
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
    [metabase.events :as events]
-   [metabase.models.pulse :as models.pulse]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
