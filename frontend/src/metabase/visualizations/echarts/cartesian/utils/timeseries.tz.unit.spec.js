@@ -1,10 +1,7 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import testAcrossTimezones from "__support__/timezones";
-import {
-  computeTimeseriesDataInverval,
-  tryGetDate,
-} from "metabase/visualizations/echarts/cartesian/utils/timeseries";
+import { computeTimeseriesDataInverval } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 
 testAcrossTimezones(reportTz => {
   computeTimeseriesDataInverval;
@@ -27,14 +24,6 @@ testAcrossTimezones(reportTz => {
         expect(unit).toBe(expectedUnit);
         expect(count).toBe(expectedCount);
       });
-    });
-  });
-
-  describe("tryGetDate", () => {
-    it("should work", () => {
-      expect(tryGetDate("2022-04-01T00:00:00+02:00").format()).toEqual(
-        "2022-04-01T00:00:00+02:00",
-      );
     });
   });
 });
