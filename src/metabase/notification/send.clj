@@ -100,10 +100,10 @@
           (log/debugf "[Notification %d] Sent to channel %s with %d retries"
                       notification-id (handler->channel-name handler) (count @retry-errors))))
       (prometheus/inc! :metabase-notification/channel-send-ok {:payload-type payload-type
-                                                               :channel-type channel-type} 1)
+                                                               :channel-type channel-type})
       (catch Throwable e
         (prometheus/inc! :metabase-notification/channel-send-error {:payload-type payload-type
-                                                                    :channel-type channel-type} 1)
+                                                                    :channel-type channel-type})
         (log/errorf e "[Notification %d] Error sending notification!" notification-id)))))
 
 (defn- noti-handlers
@@ -136,19 +136,19 @@
 
 (mu/defn send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
-  [notification-info :- notification.payload/Notification]
+  [{:keys [id payload-type] :as notification-info} :- notification.payload/Notification]
   (u/with-timer-ms [duration-ms-fn]
     (try
-      (log/infof "[Notification %d] Sending" (:id notification-info))
-      (prometheus/inc! :metabase-notification/concurrent-tasks 1)
+      (log/infof "[Notification %d] Sending" id)
+      (prometheus/inc! :metabase-notification/concurrent-tasks)
       (let [handlers (noti-handlers notification-info)]
         (task-history/with-task-history {:task          "notification-send"
-                                         :task_details {:notification_id       (:id notification-info)
+                                         :task_details {:notification_id       id 
                                                         :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
           (let [notification-payload (notification.payload/notification-payload notification-info)]
             (if (notification.payload/should-send-notification? notification-payload)
               (do
-                (log/debugf "[Notification %d] Found %d handlers" (:id notification-info) (count handlers))
+                (log/debugf "[Notification %d] Found %d handlers" id (count handlers))
                 (doseq [handler handlers]
                   (let [channel-type (:channel_type handler)
                         messages     (channel/render-notification
@@ -157,24 +157,24 @@
                                       (:template handler)
                                       (:recipients handler))]
                     (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
-                                (:id notification-info) (count messages)
+                                id (count messages)
                                 (handler->channel-name handler)
                                 (-> handler :template :id))
                     (doseq [message messages]
                       (log/infof "[Notification %d] Sending message to channel %s"
-                                 (:id notification-info) (:channel_type handler))
-                      (channel-send-retrying! (:id notification-info) (:payload_type notification-info) handler message))))
+                                 id (:channel_type handler))
+                      (channel-send-retrying! id payload-type handler message))))
                 (do-after-notification-sent notification-info notification-payload)
-                (log/infof "[Notification %d] Sent successfully" (:id notification-info)))
-              (log/infof "[Notification %d] Skipping" (:id notification-info)))
-            (prometheus/inc! :metabase-notification/send-ok {:payload-type (:payload_type notification-info)} 1))))
+                (log/infof "[Notification %d] Sent successfully" id))
+              (log/infof "[Notification %d] Skipping" id))
+            (prometheus/inc! :metabase-notification/send-ok {:payload-type payload-type}))))
       (catch Exception e
-        (prometheus/inc! :metabase-notification/send-error {:payload-type (:payload_type notification-info)} 1)
-        (log/errorf e "[Notification %d] Failed to send" (:id notification-info))
+        (prometheus/inc! :metabase-notification/send-error {:payload-type payload-type})
+        (log/errorf e "[Notification %d] Failed to send" id)
         (throw e))
       (finally
-        (prometheus/dec! :metabase-notification/concurrent-tasks 1)))
-    (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type (:payload_type notification-info)} (duration-ms-fn))
+        (prometheus/dec! :metabase-notification/concurrent-tasks)))
+    (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type payload-type} (duration-ms-fn))
     nil))
 
 (mu/defn send-notification-async!

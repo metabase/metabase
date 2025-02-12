@@ -1220,8 +1220,8 @@
    (defmacro with-timer-ms
      "Execute the body with a function that returns the duration in milliseconds.
 
-     (with-timer-ms [duration-ms-fn]
+     (with-timer-ms [elapsed-ms-fn]
        (do-something)
-       (duration-ms-fn))"
+       (elapsed-ms-fn))"
      [[duration-ms-fn] & body]
      `(do-with-timer-ms (fn [~duration-ms-fn] ~@body))))

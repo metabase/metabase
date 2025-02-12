@@ -109,7 +109,7 @@
                                 (if (= @retry-count 1)
                                   (throw (Exception. "test-exception"))
                                   (reset! send-args args)))]
-              (with-redefs [channel/send! send!]
+              (mt/with-dynamic-fn-redefs [channel/send! send!]
                 (notification.send/send-notification-sync! n))
               (is (some? @send-args))
               (is (=? {:task "channel-send"
@@ -123,12 +123,12 @@
 (deftest send-notification-record-prometheus-metrics-test
   (mt/with-prometheus-system! [_ system]
     (notification.tu/with-notification-testing-setup
-      (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+      (mt/with-temp [:model/Channel ch notification.tu/default-can-connect-channel]
         (let [n (models.notification/create-notification!
                  {:payload_type :notification/testing}
                  nil
                  [{:channel_type notification.tu/test-channel-type
-                   :channel_id   (:id chn)
+                   :channel_id   (:id ch)
                    :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])
               original-render @#'channel/render-notification]
           (with-redefs [channel/render-notification (fn [& args]

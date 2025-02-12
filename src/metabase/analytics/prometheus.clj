@@ -348,7 +348,9 @@
 
 (defn observe!
   "Call iapetos.core/observe on the metric in the global registry.
-   Inits registry if it's not been initialized yet."
+   Inits registry if it's not been initialized yet.
+
+  Should be used with histograms and summaries."
   ([metric] (observe! metric nil 1))
   ([metric labels-or-amount]
    (if (seq? labels-or-amount)
@@ -374,7 +376,9 @@
 
 (defn dec!
   "Call iapetos.core/dec on the metric in the global registry.
-   Inits registry if it's not been initialized yet."
+   Inits registry if it's not been initialized yet.
+
+  Should be used for gauge metrics."
   ([metric] (dec! metric nil 1))
   ([metric labels-or-amount]
    (if (seq? labels-or-amount)
