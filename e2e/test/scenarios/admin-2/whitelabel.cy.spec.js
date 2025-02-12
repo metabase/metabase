@@ -22,6 +22,53 @@ describe("formatting > whitelabel", () => {
     H.setTokenFeatures("all");
   });
 
+  it("smoke UI test", { tags: "@smoke" }, () => {
+    cy.log("Should all whitelabel options with the feature enabled");
+    cy.visit("/admin/settings/whitelabel");
+
+    cy.log("Upsell icon should not be present in the sidebar link");
+    cy.findAllByTestId("settings-sidebar-link")
+      .filter(":contains(Appearance)")
+      .should("have.text", "Appearance")
+      .and("not.have.descendants", ".Icon-gem");
+
+    cy.log("By default redirects to the branding tab");
+    cy.location("pathname").should("eq", "/admin/settings/whitelabel/branding");
+    cy.findByRole("tab", { name: "Branding" }).should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
+    cy.findByRole("tab", { name: "Conceal Metabase" })
+      .should("be.visible")
+      .and("have.attr", "aria-selected", "false");
+
+    cy.log("Should show the upsell if the feature is missing");
+    H.deleteToken();
+    cy.visit("/admin/settings/whitelabel");
+    cy.location("pathname").should("eq", "/admin/settings/whitelabel");
+    cy.findByRole("heading", { name: "Make Metabase look like you" }).should(
+      "be.visible",
+    );
+    cy.findByRole("link", { name: "Learn more" })
+      .should("have.attr", "href")
+      .and(
+        "include",
+        "https://www.metabase.com/docs/latest/configuring-metabase/appearance",
+      )
+      .and("include", "utm_");
+    cy.findByRole("link", { name: "Try for free" })
+      .should("have.attr", "href")
+      .and("include", "https://www.metabase.com/upgrade")
+      .and("include", "utm_");
+
+    cy.log("Upsell icon should now be visible in the sidebar link");
+    cy.findAllByTestId("settings-sidebar-link")
+      .filter(":contains(Appearance)")
+      .should("have.text", "Appearance")
+      .and("have.descendants", ".Icon-gem");
+  });
+
   describe("company name", () => {
     const COMPANY_NAME = "Test Co";
 
