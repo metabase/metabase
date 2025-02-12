@@ -51,7 +51,7 @@ export function getDefaultValues(
   }
 
   return Array(valueCount)
-    .fill("")
+    .fill(null)
     .map((value, index) => values[index] ?? value);
 }
 
