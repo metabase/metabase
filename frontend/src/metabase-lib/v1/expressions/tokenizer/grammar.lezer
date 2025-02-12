@@ -73,6 +73,12 @@ Arg {
   }
 }
 
+@skip {} {
+  Reference {
+    "[" referenceContent* "]"
+  }
+}
+
 Not {
   @specialize<Identifier,
     "not"
@@ -187,10 +193,7 @@ False {
   stringContentSingle { ![\\\n']+ }
   stringContentDouble { ![\\\n"]+ }
 
-  Reference {
-      "[" ![\[]* "]"
-    | "[" ![\[\],]* ("]" | "\n")?
-  }
+  referenceContent { ![\\\[\]\n,] | "\[" }
 
   Identifier {
     $[a-zA-Z_]$[a-zA-Z0-9_.]*
