@@ -24,14 +24,14 @@
           (when (and new-value (str/blank? (embed/embedding-secret-key)))
             (embed/embedding-secret-key! (crypto-random/hex 32)))
           (analytics/track-event! :snowplow/embed_share
-                                 {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
-                                  :embedding-app-origin-set   (boolean
-                                                               (or (setting/get-value-of-type :string :embedding-app-origin)
-                                                                   (setting/get-value-of-type :string :embedding-app-origins-interactive)
-                                                                   (let [sdk-origins (setting/get-value-of-type :string :embedding-app-origins-sdk)]
-                                                                     (and sdk-origins (not= "localhost:*" sdk-origins)))))
-                                  :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
-                                  :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
+                                  {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
+                                   :embedding-app-origin-set   (boolean
+                                                                (or (setting/get-value-of-type :string :embedding-app-origin)
+                                                                    (setting/get-value-of-type :string :embedding-app-origins-interactive)
+                                                                    (let [sdk-origins (setting/get-value-of-type :string :embedding-app-origins-sdk)]
+                                                                      (and sdk-origins (not= "localhost:*" sdk-origins)))))
+                                   :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
+                                   :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Embed Settings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

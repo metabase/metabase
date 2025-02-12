@@ -81,9 +81,9 @@
                                        :sso_source    (:sso_source <>))
                                 :details {:invitor (select-keys invitor [:email :first_name])}})
         (analytics/track-event! :snowplow/invite
-                               {:event           :invite-sent
-                                :invited-user-id (u/the-id <>)
-                                :source          "setup"})))))
+                                {:event           :invite-sent
+                                 :invited-user-id (u/the-id <>)
+                                 :source          "setup"})))))
 
 (defn- setup-set-settings! [{:keys [email site-name site-locale]}]
   ;; set a couple preferences

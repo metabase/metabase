@@ -7,7 +7,6 @@
    [metabase.analytics.stats :as stats]
    [potemkin :as p]))
 
-
 (comment
   analytics.settings/keep-me
   prometheus/keep-me
