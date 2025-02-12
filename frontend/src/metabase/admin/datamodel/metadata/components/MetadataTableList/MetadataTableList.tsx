@@ -14,7 +14,17 @@ import { connect } from "metabase/lib/redux";
 import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Icon, Button, Modal, Stack, TextInput, Select, Switch, Flex, rem } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  Icon,
+  Modal,
+  Select,
+  Stack,
+  Switch,
+  TextInput,
+  rem,
+} from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type {
@@ -77,36 +87,83 @@ interface ColumnDefinition {
   name: string;
   type: string;
   isPrimaryKey: boolean;
+  isNullable: boolean;
+  isAutoIncrement: boolean;
   defaultValue: string;
 }
 
-const CreateTableModal = ({ opened, onClose }: { opened: boolean; onClose: () => void }) => {
+interface CreateTableModalProps {
+  opened: boolean;
+  onClose: () => void;
+  selectedDatabaseId: DatabaseId;
+  selectedSchemaId: SchemaId;
+}
+
+const CreateTableModal = ({
+  opened,
+  onClose,
+  selectedDatabaseId,
+  selectedSchemaId,
+}: CreateTableModalProps) => {
   const [columns, setColumns] = useState<ColumnDefinition[]>([]);
   const [tableName, setTableName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddColumn = () => {
     setColumns([
       ...columns,
-      { name: "", type: "text", isPrimaryKey: false, defaultValue: "" },
+      {
+        name: "",
+        type: "text",
+        isPrimaryKey: false,
+        isNullable: true,
+        isAutoIncrement: false,
+        defaultValue: "",
+      },
     ]);
   };
 
-  const handleSubmit = () => {
-    const payload = {
-      name: tableName,
-      columns: columns.map(col => ({
-        name: col.name,
-        type: col.type,
-        isPrimaryKey: col.isPrimaryKey,
-        defaultValue: col.defaultValue,
-      })),
-    };
-    console.log("Create table payload:", payload);
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      const schemaName = selectedSchemaId.split(":")[1];
+      const payload = {
+        table_name: tableName,
+        db_id: selectedDatabaseId,
+        schema: schemaName,
+        columns: columns.map(col => ({
+          name: col.name,
+          type: col.type,
+          primary_key: col.isPrimaryKey,
+          unnable: col.isNullable,
+          auto_increment: col.isAutoIncrement,
+          //defaultValue: col.defaultValue,
+        })),
+      };
+
+      const response = await fetch("/api/internal-tools/table", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create table: ${response.statusText}`);
+      }
+
+      onClose();
+    } catch (error) {
+      console.error("Error creating table:", error);
+      // You might want to add proper error handling/display here
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <Modal.Root opened={opened} size={rem(680)} onClose={onClose}>
+    <Modal.Root opened={opened} size={rem(800)} onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Header p="2.5rem" pb="2rem">
@@ -119,15 +176,15 @@ const CreateTableModal = ({ opened, onClose }: { opened: boolean; onClose: () =>
               label={t`Table Name`}
               placeholder={t`Enter table name`}
               value={tableName}
-              onChange={(e) => setTableName(e.target.value)}
+              onChange={e => setTableName(e.target.value)}
             />
-            
+
             {columns.map((column, index) => (
-              <Stack key={index} spacing="1rem">
+              <Flex key={index} gap="1rem" align="center">
                 <TextInput
                   label={t`Column Name`}
                   value={column.name}
-                  onChange={(e) => {
+                  onChange={e => {
                     const newColumns = [...columns];
                     newColumns[index].name = e.target.value;
                     setColumns(newColumns);
@@ -137,27 +194,59 @@ const CreateTableModal = ({ opened, onClose }: { opened: boolean; onClose: () =>
                   label={t`Type`}
                   value={column.type}
                   data={[
-                    { value: "text", label: "Text" },
-                    { value: "number", label: "Number" },
-                    { value: "boolean", label: "Boolean" },
-                    { value: "date", label: "Date" },
+                    { value: "Text", label: "Text" },
+                    { value: "Integer", label: "Integer" },
+                    { value: "BigInteger", label: "Big Integer" },
+                    { value: "DateTime", label: "Date Time" },
                   ]}
-                  onChange={(value) => {
+                  onChange={value => {
                     const newColumns = [...columns];
                     newColumns[index].type = value;
                     setColumns(newColumns);
                   }}
                 />
-                <Switch
-                  label={t`Primary Key`}
-                  checked={column.isPrimaryKey}
-                  onChange={(e) => {
-                    const newColumns = [...columns];
-                    newColumns[index].isPrimaryKey = e.target.checked;
-                    setColumns(newColumns);
-                  }}
-                />
-                <TextInput
+                <Flex gap="1rem" align="flex-end">
+                  <Stack align="center">
+                    <div>
+                      <b>{t`Primary Key`}</b>
+                    </div>
+                    <Switch
+                      checked={column.isPrimaryKey}
+                      onChange={e => {
+                        const newColumns = [...columns];
+                        newColumns[index].isPrimaryKey = e.target.checked;
+                        setColumns(newColumns);
+                      }}
+                    />
+                  </Stack>
+                  <Stack align="center">
+                    <div>
+                      <b>{t`Nullable`}</b>
+                    </div>
+                    <Switch
+                      checked={column.isNullable}
+                      onChange={e => {
+                        const newColumns = [...columns];
+                        newColumns[index].isNullable = e.target.checked;
+                        setColumns(newColumns);
+                      }}
+                    />
+                  </Stack>
+                  <Stack align="center">
+                    <div>
+                      <b>{t`Auto Increment`}</b>
+                    </div>
+                    <Switch
+                      checked={column.isAutoIncrement}
+                      onChange={e => {
+                        const newColumns = [...columns];
+                        newColumns[index].isAutoIncrement = e.target.checked;
+                        setColumns(newColumns);
+                      }}
+                    />
+                  </Stack>
+                </Flex>
+                {/* <TextInput
                   label={t`Default Value`}
                   value={column.defaultValue}
                   onChange={(e) => {
@@ -165,10 +254,10 @@ const CreateTableModal = ({ opened, onClose }: { opened: boolean; onClose: () =>
                     newColumns[index].defaultValue = e.target.value;
                     setColumns(newColumns);
                   }}
-                />
-              </Stack>
+                /> */}
+              </Flex>
             ))}
-            
+
             <Button onClick={handleAddColumn}>{t`Add Column`}</Button>
           </Stack>
         </Modal.Body>
@@ -179,7 +268,11 @@ const CreateTableModal = ({ opened, onClose }: { opened: boolean; onClose: () =>
           className={CS.borderTop}
         >
           <Button variant="outline" onClick={onClose}>{t`Cancel`}</Button>
-          <Button onClick={handleSubmit}>{t`Create Table`}</Button>
+          <Button
+            onClick={handleSubmit}
+            loading={isSubmitting}
+            disabled={isSubmitting}
+          >{t`Create Table`}</Button>
         </Flex>
       </Modal.Content>
     </Modal.Root>
@@ -230,10 +323,12 @@ const MetadataTableList = ({
         className={CS.mx2}
         onClick={() => setIsCreateModalOpen(true)}
       >{t`Add a new table`}</Button>
-      
-      <CreateTableModal 
+
+      <CreateTableModal
         opened={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        selectedDatabaseId={selectedDatabaseId}
+        selectedSchemaId={selectedSchemaId}
       />
 
       {canGoBack && (
