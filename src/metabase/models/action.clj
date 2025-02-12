@@ -100,7 +100,7 @@
 (def action-columns
   "The columns that are common to all Action types."
   [:archived :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name :parameter_mappings
-   :parameters :public_uuid :type :updated_at :visualization_settings])
+   :parameters :public_uuid :type :updated_at :visualization_settings :is_row_action])
 
 (defn type->model
   "Returns the model from an action type.

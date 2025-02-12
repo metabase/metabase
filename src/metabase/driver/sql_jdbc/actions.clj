@@ -244,8 +244,8 @@
         sql-args     (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn database-id]
       ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-      (let [get-row      #(first (jdbc/query {:connection conn} #p (sql.qp/format-honeysql driver raw-hsql)))
-            old-row      #p (get-row)
+      (let [get-row      #(first (jdbc/query {:connection conn} (sql.qp/format-honeysql driver raw-hsql)))
+            old-row      (get-row)
             rows-updated (with-auto-parse-sql-exception driver database action
                            (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
         (when-not (= rows-updated 1)
