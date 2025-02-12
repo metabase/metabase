@@ -53,7 +53,9 @@
    (let [{:keys [metric_id result_field_id]} data-source]
      (try
        (let [[field-id-prefix dataset-query] (find-dataset-query data-source env)
-             {:keys [data]} (u/prog1 (qp/process-query (qp/userland-query-with-default-constraints dataset-query))
+             {:keys [data]} (u/prog1 (-> dataset-query
+                                         (qp/userland-query-with-default-constraints {:context :ad-hoc})
+                                         qp/process-query)
                               (when-not (= :completed (:status <>))
                                 (throw (ex-info "Unexpected error running query" {:agent-error? true
                                                                                   :status (:status <>)}))))
