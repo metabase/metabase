@@ -1,22 +1,19 @@
 (ns metabase.test.util.random
   (:refer-clojure :exclude [rand rand-int rand-nth])
-  (:require
-   [clojure.test :as t :refer [is]]
-   [metabase.config :as config])
   (:import
    [java.util Random]))
 
 (set! *warn-on-reflection* true)
 
 ;; TODO: this should be "macroed" for use in with-gentest
-(defonce ^:dynamic *seed* (.nextLong (java.util.Random.)))
+(defonce ^:dynamic *seed* (.nextLong (Random.)))
 
-(defonce ^:dynamic *generator* (java.util.Random. *seed*))
+(defonce ^:dynamic *generator* (Random. *seed*))
 
 (defn rand
   "wip"
   ([]
-   (.nextDouble ^java.util.Random *generator*))
+   (.nextDouble ^Random *generator*))
   ([n]
    (* n (rand))))
 
