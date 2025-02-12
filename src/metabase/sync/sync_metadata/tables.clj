@@ -98,11 +98,20 @@
               {:details
                (assoc (:details database) :version (:version db-metadata))}))
 
-(defn- cruft-dependent-tables [table-name database]
+(mu/defn- cruft-dependent-cols [{table-name :name :as table}
+                                database
+                                sync-stage :- [:enum ::reactivate ::create ::update]]
   ;; if this is a crufty table, mark initial sync as complete since we'll be skipping the subsequent sync steps
-  (let [is-crufty? (crufty/name? table-name {:patterns crufty-table-patterns
+  (let [is-crufty? (crufty/name? table-name {:patterns        crufty-table-patterns
                                              :pattern-strings (some-> database :settings :auto-cruft-tables)})]
-    {:initial_sync_status (if is-crufty? "complete" "incomplete")
+    {:initial_sync_status (cond
+                            ;; if a table exists, we don't want to overwrite the initial sync status
+                            ;; while updating its table metadata, so that it is "complete" during the sync.
+                            ;; See: [[metabase.sync.util-test/initial-sync-status-table-only-test]]
+                            (= sync-stage ::update) (:initial_sync_status table)
+                            ;; if a table is crufty, we mark it as complete to skip the subsequent sync steps
+                            is-crufty?              "complete"
+                            :else                   "incomplete")
      :visibility_type     (when is-crufty? :cruft)}))
 
 (defn create-table!
@@ -111,7 +120,7 @@
   [database table]
   (t2/insert-returning-instance!
    :model/Table
-   (merge (cruft-dependent-tables (:name table) database)
+   (merge (cruft-dependent-cols table database ::create)
           {:active                  true
            :db_id                   (:id database)
            :schema                  (:schema table)
@@ -123,13 +132,16 @@
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
   [database {schema :schema table-name :name :as table}]
-  (if-let [existing-id (t2/select-one-pk :model/Table
-                                         :db_id (u/the-id database)
-                                         :schema schema
-                                         :name table-name
-                                         :active false)]
-    ;; if the table already exists but is marked *inactive*, mark it as *active*
-    (t2/update! :model/Table existing-id (assoc (cruft-dependent-tables (:name table) database) :active true))
+  (if-let [existing-id #p (t2/select-one-pk :model/Table
+                                            :db_id (u/the-id database)
+                                            :schema schema
+                                            :name table-name
+                                            :active false)]
+    (do   #p (t2/select-one :model/Table existing-id)
+          ;; if the table already exists but is marked *inactive*, mark it as *active*
+          (t2/update! :model/Table existing-id (assoc
+                                                (cruft-dependent-cols table database ::reactivate)
+                                                :active true)))
     ;; otherwise create a new Table
     (create-table! database table)))
 
@@ -138,12 +150,12 @@
 (mu/defn- create-or-reactivate-tables!
   "Create `new-tables` for database, or if they already exist, mark them as active."
   [database :- i/DatabaseInstance
-   new-tables :- [:set i/DatabaseMetadataTable]]
-  (doseq [table new-tables]
+   new-table-metadatas :- [:set i/DatabaseMetadataTable]]
+  (doseq [table-metadata new-table-metadatas]
     (log/info "Found new table:"
-              (sync-util/name-for-logging (mi/instance :model/Table table))))
-  (doseq [table new-tables]
-    (create-or-reactivate-table! database table)))
+              (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
+  (doseq [table-metadata new-table-metadatas]
+    (create-or-reactivate-table! database table-metadata)))
 
 (mu/defn- retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
@@ -173,7 +185,8 @@
   (let [old-table               (select-keys metabase-table keys-to-update)
         new-table               (-> (zipmap keys-to-update (repeat nil))
                                     (merge table-metadata
-                                           (cruft-dependent-tables (:name table-metadata) metabase-database))
+                                           (cruft-dependent-cols metabase-table metabase-database
+                                                                 ::update))
                                     (select-keys keys-to-update))
         [_ changes _]           (data/diff old-table new-table)
         changes                 (cond-> changes
@@ -229,34 +242,35 @@
 
   ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
-   (let [db-tables               (table-set db-metadata)
-         name+schema             #(select-keys % [:name :schema])
-         name+schema->db-table   (m/index-by name+schema db-tables)
-         our-metadata            (db->our-metadata database)
-         keep-name+schema-set    (fn [metadata]
-                                   (set (map name+schema metadata)))
-         [new-tables old-tables] (data/diff
-                                  (keep-name+schema-set (set (map name+schema db-tables)))
-                                  (keep-name+schema-set (set (map name+schema our-metadata))))]
+   (let [db-table-metadatas    (table-set db-metadata)
+         name+schema           #(select-keys % [:name :schema])
+         name+schema->db-table (m/index-by name+schema db-table-metadatas)
+         our-metadata          (db->our-metadata database)
+         keep-name+schema-set  (fn [metadata]
+                                 (set (map name+schema metadata)))
+         [new-table-metadatas
+          old-table-metadatas] (data/diff
+                                (keep-name+schema-set (set (map name+schema db-table-metadatas)))
+                                (keep-name+schema-set (set (map name+schema our-metadata))))]
      ;; update database metadata from database
      (when (some? (:version db-metadata))
        (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
                                               (sync-util/name-for-logging database))
          (update-database-metadata! database db-metadata)))
      ;; create new tables as needed or mark them as active again
-     (when (seq new-tables)
-       (let [new-tables-info (set (map #(get name+schema->db-table (name+schema %)) new-tables))]
+     (when (seq new-table-metadatas)
+       (let [new-tables-info (set (map #(get name+schema->db-table (name+schema %)) new-table-metadatas))]
          (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
                                                 (sync-util/name-for-logging database))
            (create-or-reactivate-tables! database new-tables-info))))
      ;; mark old tables as inactive
-     (when (seq old-tables)
+     (when (seq old-table-metadatas)
        (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
-         (retire-tables! database old-tables)))
+         (retire-tables! database old-table-metadatas)))
 
      (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
        ;; we need to fetch the tables again because we might have retired tables in the previous steps
-       (update-tables-metadata-if-needed! db-tables (db->our-metadata database) database))
+       (update-tables-metadata-if-needed! db-table-metadatas (db->our-metadata database) database))
 
-     {:updated-tables (+ (count new-tables) (count old-tables))
+     {:updated-tables (+ (count new-table-metadatas) (count old-table-metadatas))
       :total-tables   (count our-metadata)})))
