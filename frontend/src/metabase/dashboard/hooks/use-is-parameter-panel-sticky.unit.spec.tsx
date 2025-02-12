@@ -112,7 +112,10 @@ describe("useIsParameterPanelSticky", () => {
 
     await invokeIntersection(0.7);
 
-    expect(result.current.isStickyStateChanging).toBe(true);
+    await waitFor(() => {
+      expect(result.current.isStickyStateChanging).toBe(true);
+    });
+
     expect(result.current.isSticky).toBe(true);
 
     await waitFor(() => {
