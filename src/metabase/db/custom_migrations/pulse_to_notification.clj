@@ -56,7 +56,7 @@
                                  :hours hour))))
 
 (defn- create-notification!
-  "Create a new notification with `subsciptions`.
+  "Create a new notification with `subscriptions`.
   Return the created notification."
   [notification subscriptions handlers+recipients]
   (let [notification-card-id (t2/insert-returning-pk! :notification_card (:payload notification))

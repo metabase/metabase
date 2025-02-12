@@ -2566,29 +2566,29 @@
                       mdb.connection/*application-db* mdb.connection/*application-db*]
           (let [user-id     (:id (new-instance-with-default :core_user))
                 database-id (:id (new-instance-with-default :metabase_database))
-                card-id    (:id (new-instance-with-default :report_card
-                                                           {:creator_id  user-id
-                                                            :database_id database-id}))
-                pulse-id   (:id (new-instance-with-default :pulse
-                                                           {:name             "My Alert"
-                                                            :creator_id       user-id
-                                                            :alert_condition  "rows"
-                                                            :alert_first_only false
-                                                            :archived        false}))
-                _pc-id    (:id (new-instance-with-default :pulse_card
-                                                          {:pulse_id pulse-id
-                                                           :card_id  card-id
-                                                           :position 0}))
-                schedule  {:schedule_type "daily"
-                           :schedule_hour  18
-                           :schedule_day   nil
-                           :schedule_frame nil}
-                _pc-ch-id (:id (new-instance-with-default :pulse_channel
-                                                          (merge schedule
-                                                                 {:pulse_id     pulse-id
-                                                                  :channel_type "email"
-                                                                  :details      (json/encode {:emails ["test@test.com"]})
-                                                                  :enabled      true})))]
+                card-id     (:id (new-instance-with-default :report_card
+                                                            {:creator_id  user-id
+                                                             :database_id database-id}))
+                pulse-id    (:id (new-instance-with-default :pulse
+                                                            {:name             "My Alert"
+                                                             :creator_id       user-id
+                                                             :alert_condition  "rows"
+                                                             :alert_first_only false
+                                                             :archived        false}))
+                _pc-id     (:id (new-instance-with-default :pulse_card
+                                                           {:pulse_id pulse-id
+                                                            :card_id  card-id
+                                                            :position 0}))
+                schedule   {:schedule_type "daily"
+                            :schedule_hour  18
+                            :schedule_day   nil
+                            :schedule_frame nil}
+                _pc-ch-id  (:id (new-instance-with-default :pulse_channel
+                                                           (merge schedule
+                                                                  {:pulse_id     pulse-id
+                                                                   :channel_type "email"
+                                                                   :details      (json/encode {:emails ["test@test.com"]})
+                                                                   :enabled      true})))]
 
             (testing "before migration there should be a trigger for the send pulse task"
               (task/init! ::task.send-pulses/SendPulses)
@@ -2634,6 +2634,7 @@
                   (testing "init send notification creates new triggers"
                     ;; simulate start up
                     (task/init! ::task.notification/SendNotifications)
+                    (is (empty? (send-notification-triggers)))
                     (is (=? [{:key (format "metabase.task.notification.trigger.subscription.%d" (:id subscription))}]
                             (u/poll {:thunk       send-notification-triggers
                                      :done?       seq

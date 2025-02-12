@@ -119,7 +119,7 @@
                                                      :enabled      false
                                                      :recipients   [{:user_id (mt/user->id :crowberto)}]}])
                 notification (first (migrate-alert! (#'task/scheduler) alert-id))]
-            (testing "are correctly mkgrated, the disabled channel is not migrated"
+            (testing "are correctly migrated, the disabled channel is not migrated"
               (is (=? {:payload_type :notification/card
                        :active       true
                        :creator_id   (mt/user->id :crowberto)
