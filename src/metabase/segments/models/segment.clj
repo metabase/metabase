@@ -1,4 +1,4 @@
-(ns metabase.models.segment
+(ns metabase.segments.models.segment
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require

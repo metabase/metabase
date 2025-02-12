@@ -1,4 +1,4 @@
-(ns metabase.api.segment
+(ns metabase.segments.api
   "/api/segment endpoints."
   (:require
    [metabase.api.common :as api]

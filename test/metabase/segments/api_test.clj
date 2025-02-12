@@ -1,4 +1,4 @@
-(ns metabase.api.segment-test
+(ns metabase.segments.api-test
   "Tests for /api/segment endpoints."
   (:require
    [clojure.test :refer :all]
