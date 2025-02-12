@@ -288,7 +288,6 @@ describe("tokenizer", () => {
         "[foo ` bar]",
         "[foo ° bar]",
         "[foo , bar]",
-        "[foo \n bar]",
       ];
 
       for (const expression of cases) {
@@ -369,16 +368,55 @@ describe("tokenizer", () => {
       ]);
     });
 
-    it("tokenizes incomplete bracket identifier followed by whitespace (metabase#50925)", () => {
-      const { tokens, errors } = tokenize("[Pr [Price]");
+    it("tokenizes empty identifier brackets", () => {
+      const { tokens, errors } = tokenize("[]");
+      expect(errors).toHaveLength(0);
       expect(tokens).toEqual([
         {
           type: TOKEN.Identifier,
           start: 0,
-          end: expect.any(Number),
+          end: 2,
           isReference: true,
-        }, // [Pr
-        { type: TOKEN.Identifier, start: 4, end: 11, isReference: true }, // [Price]
+        },
+      ]);
+    });
+
+    it("tokenizes consecutive bracket identifiers", () => {
+      const { tokens, errors } = tokenize("[Foo] [Bar]");
+      expect(errors).toHaveLength(0);
+      expect(tokens).toEqual([
+        {
+          type: TOKEN.Identifier,
+          start: 0,
+          end: 5,
+          isReference: true,
+        },
+        {
+          type: TOKEN.Identifier,
+          start: 6,
+          end: 11,
+          isReference: true,
+        },
+      ]);
+    });
+
+    it("tokenizes incomplete bracket identifier followed by whitespace (metabase#50925)", () => {
+      const { tokens, errors } = tokenize("[Pr [Price]");
+      expect(tokens).toEqual([
+        {
+          // [Pr
+          type: TOKEN.Identifier,
+          start: 0,
+          end: 4,
+          isReference: true,
+        },
+        {
+          // [Price]
+          type: TOKEN.Identifier,
+          start: 4,
+          end: 11,
+          isReference: true,
+        },
       ]);
       expect(errors).toEqual([
         {
@@ -394,8 +432,20 @@ describe("tokenizer", () => {
     it("tokenizes incomplete bracket identifier followed by bracket identifier (metabase#50925)", () => {
       const { tokens, errors } = tokenize("[Pr[Price]");
       expect(tokens).toEqual([
-        { type: TOKEN.Identifier, start: 0, end: 3, isReference: true }, // [Pr
-        { type: TOKEN.Identifier, start: 3, end: 10, isReference: true }, // [Price]
+        {
+          // [Pr
+          type: TOKEN.Identifier,
+          start: 0,
+          end: 3,
+          isReference: true,
+        },
+        {
+          // [Price]
+          type: TOKEN.Identifier,
+          start: 3,
+          end: 10,
+          isReference: true,
+        },
       ]);
       expect(errors).toEqual([
         {

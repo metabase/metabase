@@ -36,11 +36,16 @@ export function tokenize(expression: string) {
     return false;
   }
 
-  function error(node: SyntaxNodeRef, message: string) {
+  function error(
+    node: SyntaxNodeRef,
+    message: string,
+    error: Partial<ErrorWithMessage> = {},
+  ) {
     errors.push({
       message,
       pos: node.from,
       len: node.to - node.from,
+      ...error,
     });
   }
 
