@@ -139,9 +139,15 @@
 (defn- base-query
   [data-source e]
   (let [{:keys [table_id query query_id report_id]} data-source
-        model-id (lib.util/legacy-string-table-id->card-id table_id)]
+        model-id (lib.util/legacy-string-table-id->card-id table_id)
+        handle-query (fn [query query_id]
+                       (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database query))]
+                         [(if query_id
+                            (metabot-v3.tools.u/query-field-id-prefix query_id)
+                            metabot-v3.tools.u/any-prefix-pattern)
+                          (-> (lib/query mp query) lib/append-stage)]))]
     (cond
-      (some? model-id)
+      model-id
       (if-let [model (metabot-v3.tools.u/get-card model-id)]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id model))]
           [(metabot-v3.tools.u/card-field-id-prefix model-id)
@@ -149,7 +155,7 @@
         (throw (ex-info (str "No table found with table_id " table_id) {:agent-error? true
                                                                         :data_source data-source})))
 
-      (some? table_id)
+      table_id
       (let [table_id (cond-> table_id
                        (string? table_id) parse-long)]
         (if-let [table (metabot-v3.tools.u/get-table table_id :db_id)]
@@ -159,7 +165,7 @@
           (throw (ex-info (str "No table found with table_id " table_id) {:agent-error? true
                                                                           :data_source data-source}))))
 
-      (some? report_id)
+      report_id
       (if-let [card (metabot-v3.tools.u/get-card report_id)]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
           [(metabot-v3.tools.u/card-field-id-prefix report_id)
@@ -169,18 +175,12 @@
         (throw (ex-info (str "No report found with report_id " report_id) {:agent-error? true
                                                                            :data_source data-source})))
 
-      (some? query)
-      (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database query))]
-        [(if query_id
-           (metabot-v3.tools.u/query-field-id-prefix query_id)
-           #"^.*/(\d+)")
-         (-> (lib/query mp query) lib/append-stage)])
+      query
+      (handle-query query query_id)
 
-      (some? query_id)
+      query_id
       (if-let [query (metabot-v3.envelope/find-query e query_id)]
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database query))]
-          [(metabot-v3.tools.u/query-field-id-prefix query_id)
-           (-> (lib/query mp query) lib/append-stage)])
+        (handle-query query query_id)
         (throw (ex-info (str "No query found with query_id " query_id) {:agent-error? true
                                                                         :data_source data-source})))
 

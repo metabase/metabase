@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
-   [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -91,13 +91,23 @@
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
         result-field-id (->field-id "Average of Subtotal")]
-    (execute-test! #(metabot-v3.tools.interface/*invoke-tool*
-                     :metabot.tool/find-outliers
-                     {:data-source {:query_id query-id
-                                    :result_field_id result-field-id}}
-                     {:history [{:role :tool
-                                 :tool-call-id "some tool call ID"
-                                 :structured-content query-details}]}))))
+    (testing "classical tool call"
+      (execute-test! #(metabot-v3.tools.interface/*invoke-tool*
+                       :metabot.tool/find-outliers
+                       {:data-source {:query_id query-id
+                                      :result_field_id result-field-id}}
+                       {:history [{:role :tool
+                                   :tool-call-id "some tool call ID"
+                                   :structured-content query-details}]})))
+    (testing "new style tool call with query and query_id"
+      (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
+                       {:data-source {:query (:query query-details)
+                                      :query_id query-id
+                                      :result_field_id result-field-id}})))
+    (testing "new style tool call with just query"
+      (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
+                       {:data-source {:query (:query query-details)
+                                      :result_field_id result-field-id}})))))
 
 (deftest ^:parallel metric-find-outliers-no-temporal-dimension-test
   (mt/with-temp [:model/Card {metric-id :id} (-> (test-card)
