@@ -1,4 +1,4 @@
-(ns metabase.api.pulse-test
+(ns ^:mb/driver-tests metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require
    [clojure.string :as str]
@@ -10,6 +10,7 @@
    [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
+   [metabase.driver :as driver]
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
    [metabase.models.pulse-channel :as pulse-channel]
@@ -20,6 +21,7 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -1106,6 +1108,31 @@
                   :subject "Daily Sad Toucans"
                   :recipient-type nil}
                  (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans"))))))))
+
+(deftest array-query-can-be-emailed-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/arrays)
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query (tx/native-array-query driver/*driver*)})}
+                   :model/Dashboard {dashboard-id :id} {:name "Venues by Category"}
+                   :model/DashboardCard _ {:card_id      card-id
+                                           :dashboard_id dashboard-id}]
+      (mt/with-fake-inbox
+        (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                                 (is (= {:ok true}
+                                        (mt/user-http-request :rasta :post 200 "pulse/test"
+                                                              {:name          (mt/random-name)
+                                                               :dashboard_id  dashboard-id
+                                                               :cards         [{:id                card-id
+                                                                                :include_csv       false
+                                                                                :include_xls       false}]
+                                                               :channels      [{:channel_type  "email"
+                                                                                :recipients    [(mt/fetch-user :rasta)]}]}))))]
+          (is (= {:message [{"Venues by Category" true}
+                            pulse.test-util/png-attachment]
+                  :message-type :attachments,
+                  :recipients #{"rasta@metabase.com"}
+                  :subject "Venues by Category"
+                  :recipient-type nil}
+                 (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Venues by Category"))))))))
 
 (deftest ^:parallel pulse-card-query-results-test
   (testing "viz-settings saved in the DB for a Card should be loaded"

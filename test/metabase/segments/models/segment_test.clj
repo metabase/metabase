@@ -1,4 +1,4 @@
-(ns metabase.models.segment-test
+(ns metabase.segments.models.segment-test
   (:require
    [clojure.test :refer :all]
    [metabase.models.serialization :as serdes]
