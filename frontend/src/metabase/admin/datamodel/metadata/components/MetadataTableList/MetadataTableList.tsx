@@ -200,6 +200,7 @@ const CreateTableModal = ({
                     { value: "Integer", label: "Integer" },
                     { value: "BigInteger", label: "Big Integer" },
                     { value: "DateTime", label: "Date Time" },
+                    { value: "Boolean", label: "Boolean" },
                   ]}
                   onChange={value => {
                     const newColumns = [...columns];
