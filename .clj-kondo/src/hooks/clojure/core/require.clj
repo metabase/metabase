@@ -25,8 +25,9 @@
     ;; some.namespace of some.namespace/some-var
     :token
     (let [sexpr (hooks/sexpr node)]
-      (when (symbol? sexpr)
-        (symbol (name sexpr))))
+      (if (qualified-symbol? sexpr)
+        (symbol (namespace sexpr))
+        sexpr))
 
     ;; (quote some.namespace)
     :list
@@ -43,6 +44,12 @@
     :vector
     (recur (first (:children node)))))
 
+(comment
+  (unwrap-require (-> "(requiring-resolve 'metabase.notification.payload.execute/execute-dashboard)"
+                      hooks/parse-string
+                      :children
+                      second)))
+
 (defn- lint-require* [node current-ns config]
   (let [[_require & args]   (:children node)
         required-namespaces (keep unwrap-require args)]
@@ -51,6 +58,7 @@
 (defn- lint-requiring-resolve* [node current-ns config]
   (let [[_requiring-resolve symb-node] (:children node)
         required-namespace             (unwrap-require symb-node)]
+    (println "required-namespace:" required-namespace) ; NOCOMMIT
     (lint* node current-ns config [required-namespace])))
 
 (defn lint-require [x]

@@ -29,7 +29,8 @@
 ;;
 ;; ## Tips
 ;;
-;; PRO TIP: Check out the [[dev.deps-graph]] namespace for helpful tools to see where a module is used externally.
+;; PRO TIP: Check out the [[dev.deps-graph]] namespace for helpful tools to see where a module is used externally, and
+;; for tools for calculating this config.
 {:metabase/modules
  {actions
   {:api  #{metabase.actions.api metabase.actions.core}
@@ -67,6 +68,7 @@
           metabase.api.common
           metabase.api.common.validation
           metabase.api.dataset
+          metabase.api.ldap
           metabase.api.macros
           metabase.api.open-api
           metabase.api.query-metadata
@@ -74,9 +76,7 @@
           metabase.api.routes.common
           metabase.api.table
           metabase.api.user
-          metabase.api.util.handlers
-          ;; dynamic
-          metabase.api.ldap}
+          metabase.api.util.handlers}
    :uses :any}
 
   audit {:api  #{metabase.audit}
@@ -108,6 +108,7 @@
            integrations
            lib
            models
+           notification
            permissions
            premium-features
            public-settings
@@ -116,12 +117,13 @@
            types
            util}}
   cmd
-  {:api  #{metabase.cmd.copy
-           metabase.cmd.dump-to-h2
-           ;; dynamic
-           metabase.cmd}
+  {:api  #{metabase.cmd
+           metabase.cmd.copy
+           metabase.cmd.dump-to-h2}
    :uses #{api config db legacy-mbql models plugins query-processor search util}}
 
+  ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
+  ;; if EE/test code is available; however we can ignore them since they're not real usages.
   config
   {:api  #{metabase.config}
    :uses #{}}
@@ -137,7 +139,7 @@
 
   db
   {:api  #{metabase.db metabase.db.metadata-queries metabase.db.query metabase.db.setup}
-   :uses #{config connection-pool driver legacy-mbql lib plugins query-processor task util}}
+   :uses #{auth-provider config connection-pool driver legacy-mbql lib plugins query-processor task util}}
 
   driver
   {:api #{metabase.driver
@@ -177,10 +179,9 @@
            public-settings
            query-processor
            sync
+           task
            upload
-           util
-           ;; dynamic
-           task}}
+           util}}
 
   eid-translation
   {:api  #{metabase.eid-translation}
@@ -209,9 +210,7 @@
           metabase.integrations.ldap
           metabase.integrations.ldap.default-implementation
           metabase.integrations.slack}
-   :uses #{api config events models permissions plugins premium-features util
-           ;; dynamic
-           enterprise/enhancements}}
+   :uses #{api config events models permissions plugins premium-features util enterprise/enhancements}}
 
   legacy-mbql
   {:api #{metabase.legacy-mbql.normalize
@@ -343,10 +342,9 @@
            server
            setup
            sync
+           task
            types
            util
-           ;; dynamic
-           task
            enterprise/advanced-config
            enterprise/advanced-permissions}}
 
@@ -355,7 +353,10 @@
    :uses #{models util}}
 
   notification
-  {:api  #{metabase.notification.core metabase.notification.init metabase.notification.payload.core}
+  {:api  #{metabase.notification.core
+           metabase.notification.init
+           metabase.notification.payload.core
+           metabase.notification.payload.execute}
    :uses #{api channel events models permissions premium-features public-settings query-processor request util}}
 
   permissions
@@ -365,9 +366,7 @@
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
            metabase.permissions.util}
-   :uses #{api audit config db models plugins premium-features request util
-           ;; dynamic
-           integrations}}
+   :uses #{api audit config db integrations models plugins premium-features request server util}}
 
   plugins
   {:api  #{metabase.plugins metabase.plugins.classloader}
@@ -375,19 +374,16 @@
 
   premium-features
   {:api  #{metabase.premium-features.core
-           ;; dynamic
            metabase.premium-features.token-check}
-   :uses #{config models plugins util}}
+   :uses #{config db models plugins util}}
 
   public-settings
   {:api  #{metabase.public-settings}
-   :uses #{api config models plugins premium-features util
-           ;; dynamic
-           enterprise/sso}}
+   :uses #{api config models plugins premium-features util enterprise/sso}}
 
   pulse
   {:api  #{metabase.pulse.core}
-   :uses #{models util}}
+   :uses #{models notification util}}
 
   query-analysis
   {:api  #{metabase.query-analysis.core metabase.query-analysis.init}
@@ -480,7 +476,8 @@
           metabase.server.middleware.json
           metabase.server.middleware.session
           metabase.server.streaming-response}
-   :uses #{analytics api config core db driver embed models premium-features public-settings request util}}
+   :uses #{analytics api config core db driver embed models premium-features public-settings request util
+           enterprise/sso}}
 
   setup
   {:api  #{metabase.setup.api metabase.setup.core}
@@ -504,13 +501,17 @@
           metabase.sync.core
           metabase.sync.init
           metabase.sync.schedules
+          metabase.sync.task.sync-databases
           metabase.sync.util}
    :uses #{analyze api audit config db driver events lib models plugins query-processor task util}}
 
   task
-  {:api #{metabase.task metabase.task.bootstrap metabase.task.init metabase.task.persist-refresh
-          ;; dynamic
-           metabase.task.send-pulses}
+  {:api #{metabase.task
+          metabase.task.bootstrap
+          metabase.task.init
+          metabase.task.notification
+          metabase.task.persist-refresh
+          metabase.task.send-pulses}
    :uses #{analytics
            channel
            config
@@ -525,7 +526,6 @@
            pulse
            query-processor
            util
-           ;; dynamic
            enterprise/task}}
 
   timeline
@@ -555,15 +555,14 @@
   enterprise/advanced-config
   {:api  #{metabase-enterprise.advanced-config.api.logs
            metabase-enterprise.advanced-config.models.pulse-channel
-           ;; dynamic
            metabase-enterprise.advanced-config.file}
-   :uses #{api db driver models premium-features setup util}}
+   :uses #{api db driver models premium-features setup sync util}}
 
   enterprise/advanced-permissions
   {:api  #{metabase-enterprise.advanced-permissions.api.routes
            metabase-enterprise.advanced-permissions.api.util
-           ;; dynamic
-           metabase-enterprise.advanced-permissions.common}
+           metabase-enterprise.advanced-permissions.common
+           metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api audit driver lib models permissions premium-features query-processor util}}
 
   enterprise/airgap
@@ -571,7 +570,8 @@
    :uses #{premium-features util}}
 
   enterprise/api
-  {:api  #{metabase-enterprise.api.routes.common}
+  {:api  #{metabase-enterprise.api.routes
+           metabase-enterprise.api.routes.common}
    :uses :any}
 
   enterprise/audit-app
@@ -607,7 +607,7 @@
    :uses #{api models moderation util enterprise/api}}
 
   enterprise/core
-  {:api  #{}
+  {:api  #{metabase-enterprise.core metabase-enterprise.core.init}
    :uses #{enterprise/enhancements}}
 
   enterprise/dashboard-subscription-filters
@@ -616,7 +616,6 @@
 
   enterprise/enhancements
   {:api  #{metabase-enterprise.enhancements.init
-           ;; dynamic
            metabase-enterprise.enhancements.integrations.google
            metabase-enterprise.enhancements.integrations.ldap}
    :uses #{integrations models premium-features util enterprise/sso}}
@@ -631,7 +630,6 @@
 
   enterprise/sandbox
   {:api #{metabase-enterprise.sandbox.api.routes
-          ;; dynamic
           metabase-enterprise.sandbox.api.util}
    :uses #{api
            audit
@@ -667,7 +665,9 @@
    :uses #{models permissions premium-features util}}
 
   enterprise/sso
-  {:api #{metabase-enterprise.sso.integrations.sso-settings metabase-enterprise.sso.integrations.sso-utils}
+  {:api #{metabase-enterprise.sso.api.routes
+          metabase-enterprise.sso.integrations.sso-settings
+          metabase-enterprise.sso.integrations.sso-utils}
    :uses #{api channel embed events integrations models premium-features public-settings request util enterprise/scim}}
 
   enterprise/stale
@@ -679,7 +679,7 @@
    :uses #{driver premium-features enterprise/advanced-config enterprise/scim enterprise/sso}}
 
   enterprise/task
-  {:api  #{}
+  {:api  #{metabase-enterprise.task.truncate-audit-tables}
    :uses #{premium-features query-processor task util enterprise/cache}}
 
   enterprise/upload-management
