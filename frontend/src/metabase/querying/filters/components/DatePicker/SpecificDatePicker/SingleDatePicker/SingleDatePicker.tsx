@@ -46,7 +46,7 @@ export function SingleDatePicker({
         />
       </Box>
       <Divider />
-      <Group p="sm" position={hasTimeToggle ? "apart" : "right"}>
+      <Group p="sm" justify={hasTimeToggle ? "space-between" : "flex-end"}>
         {hasTimeToggle && (
           <TimeToggle hasTime={hasTime} onClick={handleTimeToggle} />
         )}
