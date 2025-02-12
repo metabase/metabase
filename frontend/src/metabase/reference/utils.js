@@ -84,7 +84,7 @@ export const getQuestion = ({
     question = question.setDisplay(visualization);
   }
 
-  return question.card();
+  return question; /*.card();*/
 };
 
 function breakoutWithDefaultTemporalBucket(query, metadata, fieldId) {

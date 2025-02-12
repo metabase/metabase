@@ -40,7 +40,7 @@ export const getDatabase = createSelector(
 
 export const getTableId = (state, props) =>
   Number.parseInt(props.params.tableId);
-// export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
+
 export const getTablesByDatabase = createSelector(
   [getTables, getDatabase],
   (tables, database) =>

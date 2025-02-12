@@ -30,6 +30,7 @@ import { DashboardMoveModalConnected } from "metabase/dashboard/components/Dashb
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { TableDataContainer } from "metabase/data-editing/TableDataContainer";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
@@ -334,6 +335,10 @@ export const getRoutes = store => {
             <Route
               path="databases/:databaseId/tables/:tableId/questions"
               component={TableQuestionsContainer}
+            />
+            <Route
+              path="databases/:databaseId/tables/:tableId/data"
+              component={TableDataContainer}
             />
           </Route>
 

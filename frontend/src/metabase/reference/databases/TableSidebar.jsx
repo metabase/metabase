@@ -51,6 +51,12 @@ const TableSidebar = ({ database, table, style, className }) => (
           name={t`X-ray this table`}
         />
       )}
+      <SidebarItem
+        key={`/reference/databases/${database.id}/tables/${table.id}/data`}
+        href={`/reference/databases/${database.id}/tables/${table.id}/data`}
+        icon="pencil"
+        name={t`Edit raw data`}
+      />
     </ol>
   </div>
 );
