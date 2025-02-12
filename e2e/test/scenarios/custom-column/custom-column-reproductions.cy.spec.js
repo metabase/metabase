@@ -1269,7 +1269,7 @@ describe("issue 50925", () => {
       .first()
       .should(
         "have.value",
-        "case([ID] = 1, [Price] * 1.21, [Price]  [Price])\n\n",
+        "case([ID] = 1, [Price] * 1.21, [Price] [Price])\n\n",
       );
 
     cy.log("incomplete bracket identifier is followed by bracket identifier");
