@@ -99,7 +99,7 @@ export const Table = forwardRef(function Table<TData>(
         ref={ref}
         style={{ height, width }}
         className={cx(S.table, className)}
-        tabIndex={-1}
+        data-testid="TableInteractive-root"
       >
         <div
           ref={refs.bodyRef}

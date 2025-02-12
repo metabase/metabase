@@ -10,12 +10,12 @@ export const getSankeyFormatters = (
   columns: SankeyChartColumns,
   settings: ComputedVisualizationSettings,
 ): SankeyFormatters => {
-  const source = cachedFormatter((value: RowValue) => {
+  const source = cachedFormatter<RowValue, string>(value => {
     return String(
       formatValue(value, settings.column?.(columns.source.column) ?? {}),
     );
   });
-  const target = cachedFormatter((value: RowValue) => {
+  const target = cachedFormatter<RowValue, string>(value => {
     return String(
       formatValue(value, settings.column?.(columns.target.column) ?? {}),
     );
@@ -28,20 +28,18 @@ export const getSankeyFormatters = (
     node,
     source,
     target,
-    value: cachedFormatter((value: RowValue) => {
+    value: cachedFormatter<RowValue, string>(value => {
       if (typeof value !== "number") {
         return "";
       }
-
       return String(
         formatValue(value, settings.column?.(columns.value.column) ?? {}),
       );
     }),
-    valueCompact: cachedFormatter((value: RowValue) => {
+    valueCompact: cachedFormatter<RowValue, string>(value => {
       if (typeof value !== "number") {
         return "";
       }
-
       return String(
         formatValue(value, {
           ...(settings.column?.(columns.value.column) ?? {}),

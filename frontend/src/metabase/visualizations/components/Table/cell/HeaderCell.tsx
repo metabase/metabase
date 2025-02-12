@@ -21,8 +21,17 @@ export const HeaderCell = memo(function HeaderCell({
   sort,
 }: HeaderCellProps) {
   return (
-    <BaseCell className={S.root} align={align}>
-      <div data-grid-header-cell-content className={S.content}>
+    <BaseCell
+      className={S.root}
+      align={align}
+      role="columnheader"
+      data-testid="header-cell"
+    >
+      <div
+        data-grid-header-cell-content
+        className={S.content}
+        data-testid="cell-data"
+      >
         {sort != null ? (
           <Icon
             mr="0.25rem"

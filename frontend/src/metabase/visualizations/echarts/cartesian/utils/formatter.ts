@@ -1,14 +1,14 @@
 import type { RowValue } from "metabase-types/api";
 
-type BaseFormatter = (value: unknown) => unknown;
+export type BaseFormatter<T = unknown, R = unknown> = (value: T) => R;
 
-export const cachedFormatter = <TFormatter extends BaseFormatter>(
-  formatter: TFormatter,
+export const cachedFormatter = <T extends RowValue, R>(
+  formatter: BaseFormatter<T, R>,
 ) => {
-  const cache = new Map();
-  return (value: RowValue) => {
+  const cache = new Map<T, R>();
+  return (value: T): R => {
     if (cache.has(value)) {
-      return cache.get(value);
+      return cache.get(value)!;
     }
 
     const result = formatter(value);

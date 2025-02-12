@@ -1,5 +1,4 @@
 import {
-  type ColumnDef,
   type ColumnSizingState,
   type Table,
   getCoreRowModel,
@@ -178,30 +177,30 @@ export const useTableInstance = <TData, TValue>({
     ],
   );
 
-  const columns: ColumnDef<TData, TValue>[] = useMemo(() => {
+  const columns = useMemo(() => {
     const rowIdColumnDefinition =
-      rowIdColumn != null ? getRowIdColumn(rowIdColumn) : null;
+      rowIdColumn != null ? getRowIdColumn<TData, TValue>(rowIdColumn) : null;
 
-    const dataColumns = columnsOptions.map(options => {
-      return getDataColumn(
+    const dataColumns = columnsOptions.map(options =>
+      getDataColumn<TData, TValue>(
         options,
         columnSizing,
         measuredColumnSizing,
         expandedColumns,
         truncateLongCellWidth,
         handleExpandButtonClick,
-      );
-    });
+      ),
+    );
 
     return [rowIdColumnDefinition, ...dataColumns].filter(isNotNull);
   }, [
-    columnSizing,
-    columnsOptions,
-    expandedColumns,
-    handleExpandButtonClick,
-    measuredColumnSizing,
     rowIdColumn,
+    columnsOptions,
+    columnSizing,
+    measuredColumnSizing,
+    expandedColumns,
     truncateLongCellWidth,
+    handleExpandButtonClick,
   ]);
 
   const table = useReactTable({

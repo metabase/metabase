@@ -11,13 +11,14 @@ export type BaseCellProps = {
   children?: React.ReactNode;
   className?: string;
   backgroundColor?: string;
-};
+} & React.HTMLProps<HTMLDivElement>;
 
 export const BaseCell = memo(function BaseCell({
   align = "left",
   backgroundColor,
   className,
   children,
+  ...rest
 }: BaseCellProps) {
   const style = backgroundColor != null ? { backgroundColor } : undefined;
 
@@ -33,6 +34,7 @@ export const BaseCell = memo(function BaseCell({
         className,
       )}
       style={style}
+      {...rest}
     >
       {children}
     </div>

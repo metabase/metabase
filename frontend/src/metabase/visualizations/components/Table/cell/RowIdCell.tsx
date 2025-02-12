@@ -21,6 +21,7 @@ export const RowIdCell = ({ value }: RowIdCellProps) => {
         {hasValue ? <span className={S.rowNumber}>{value}</span> : null}
 
         <Icon
+          data-testid="detail-shortcut"
           className={cx({
             [TableS.rowHoverVisible]: !hasValue,
             [S.expandIcon]: hasValue,

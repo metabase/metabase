@@ -60,6 +60,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
         [S.pill]: variant === "pill",
       })}
       backgroundColor={backgroundColor}
+      role="gridcell"
     >
       <div
         data-grid-cell-content
@@ -67,6 +68,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
           [S.noWrap]: !wrap,
         })}
         {...contentAttributes}
+        data-testid="cell-data"
       >
         {formattedValue}
       </div>

@@ -634,7 +634,7 @@ const createSeriesLabelsFormatter = (
   formattingOptions: OptionsType,
   settings: ComputedVisualizationSettings,
 ) =>
-  cachedFormatter((value: RowValue) => {
+  cachedFormatter<RowValue, string>(value => {
     if (typeof value !== "number") {
       return "";
     }
