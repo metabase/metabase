@@ -1,4 +1,4 @@
-(ns metabase.api.automagic-dashboards
+(ns metabase.xrays.api.automagic-dashboards
   (:require
    [buddy.core.codecs :as codecs]
    [metabase.api.common :as api]
@@ -6,11 +6,16 @@
    [metabase.api.query-metadata :as api.query-metadata]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.xrays.core :as xrays]
+   [metabase.util.regex :as u.regex]
+   [metabase.xrays.automagic-dashboards.comparison :as automagic-dashboards.comparison]
+   [metabase.xrays.automagic-dashboards.core :as automagic-dashboards.core]
+   [metabase.xrays.automagic-dashboards.dashboard-templates :as automagic-dashboards.dashboard-templates]
+   [metabase.xrays.transforms.dashboard :as transforms.dashboard]
+   [metabase.xrays.transforms.materialize :as transforms.materialize]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
@@ -22,20 +27,22 @@
    (deferred-tru "invalid show value")))
 
 (def ^:private Prefix
-  (mu/with-api-error-message
-   [:fn (fn [prefix]
-          (some #(not-empty (xrays/get-dashboard-templates [% prefix])) ["table" "metric" "field"]))]
-   (deferred-tru "invalid value for prefix")))
+  [:fn
+   {:error/fn  (fn [_ _]
+                 (i18n/tru "invalid value for prefix"))
+    :api/regex #"[A-Za-z]+"}
+   (fn [prefix]
+     (some #(not-empty (automagic-dashboards.dashboard-templates/get-dashboard-templates [% prefix])) ["table" "metric" "field"]))])
 
 (def ^:private DashboardTemplate
   (mu/with-api-error-message
    [:fn (fn [dashboard-template]
           (some (fn [toplevel]
-                  (some (comp xrays/get-dashboard-template
+                  (some (comp automagic-dashboards.dashboard-templates/get-dashboard-template
                               (fn [prefix]
                                 [toplevel prefix dashboard-template])
                               :dashboard-template-name)
-                        (xrays/get-dashboard-templates [toplevel])))
+                        (automagic-dashboards.dashboard-templates/get-dashboard-templates [toplevel])))
                 ["table" "metric" "field"]))]
    (deferred-tru "invalid value for dashboard template name")))
 
@@ -43,9 +50,11 @@
   (comp json/decode+kw codecs/bytes->str codec/base64-decode))
 
 (def ^:private Base64EncodedJSON
-  (mu/with-api-error-message
-   [:fn decode-base64-json]
-   (deferred-tru "value couldn''t be parsed as base64 encoded JSON")))
+  [:fn
+   {:description "form-encoded base-64-encoded JSON"
+    :error/fn    (fn [_ _]
+                   (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))}
+   decode-base64-json])
 
 (api.macros/defendpoint :get "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards ordered by interestingness."
@@ -53,7 +62,7 @@
                     [:id ms/PositiveInt]]]
   (-> (t2/select-one :model/Database :id id)
       api/read-check
-      xrays/candidate-tables))
+      automagic-dashboards.core/candidate-tables))
 
 ;; ----------------------------------------- API Endpoints for viewing a transient dashboard ----------------
 
@@ -115,16 +124,17 @@
 
 (defmethod ->entity :transform
   [_entity-type transform-name]
-  (api/read-check (t2/select-one :model/Collection :id (xrays/get-collection transform-name)))
+  (api/read-check (t2/select-one :model/Collection :id (transforms.materialize/get-collection transform-name)))
   transform-name)
 
 (def ^:private entities
   (map name (keys (methods ->entity))))
 
 (def ^:private Entity
-  (mu/with-api-error-message
-   (into [:enum] entities)
-   (deferred-tru "Invalid entity type")))
+  (into [:enum {:api/regex (u.regex/re-or entities)
+                :error/fn  (fn [_ _]
+                             (i18n/tru "Invalid entity type"))}]
+        entities))
 
 (def ^:private ComparisonEntity
   (mu/with-api-error-message
@@ -140,16 +150,14 @@
   "Return an automagic dashboard for entity `entity` with id `id`."
   [entity entity-id-or-query show]
   (if (= entity "transform")
-    (xrays/dashboard (->entity entity entity-id-or-query))
+    (transforms.dashboard/dashboard (->entity entity entity-id-or-query))
     (-> (->entity entity entity-id-or-query)
-        (xrays/automagic-analysis {:show (coerce-show show)}))))
+        (automagic-dashboards.core/automagic-analysis {:show (coerce-show show)}))))
 
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `id`."
   [{:keys [entity entity-id-or-query]} :- [:map
-                                           [:entity (mu/with-api-error-message
-                                                     (into [:enum] entities)
-                                                     (deferred-tru "Invalid entity type"))]]
+                                           [:entity Entity]]
    {:keys [show]} :- [:map
                       [:show {:optional true} [:maybe [:or [:= "all"] nat-int?]]]]]
   (get-automagic-dashboard entity entity-id-or-query show))
@@ -157,9 +165,7 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/query_metadata"
   "Return all metadata for an automagic dashboard for entity `entity` with id `id`."
   [{:keys [entity entity-id-or-query]} :- [:map
-                                           [:entity (mu/with-api-error-message
-                                                     (into [:enum] entities)
-                                                     (deferred-tru "Invalid entity type"))]]]
+                                           [:entity Entity]]]
   (api.query-metadata/batch-fetch-dashboard-metadata
    [(get-automagic-dashboard entity entity-id-or-query nil)]))
 
@@ -202,7 +208,7 @@
   (if (seq linked-tables)
     (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
                                   (let [table (t2/select-one :model/Table :id linked-table-id)]
-                                    (xrays/automagic-analysis
+                                    (automagic-dashboards.core/automagic-analysis
                                      table
                                      {:show         :all
                                       :query-filter [:= [:field linked-field-id nil] model_pk]})))
@@ -280,13 +286,12 @@
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
-      (xrays/automagic-analysis {:show               (coerce-show show)
-                                 :dashboard-template ["table" prefix dashboard-template]})))
+      (automagic-dashboards.core/automagic-analysis {:show               (coerce-show show)
+                                                     :dashboard-template ["table" prefix dashboard-template]})))
 
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/cell/:cell-query"
-  "Return an automagic dashboard analyzing cell in  automagic dashboard for entity `entity`
-   defined by
-   query `cell-query`."
+  "Return an automagic dashboard analyzing cell in automagic dashboard for entity `entity` defined by query
+  `cell-query`."
   [{:keys [entity entity-id-or-query cell-query]} :- [:map
                                                       [:entity             Entity]
                                                       [:entity-id-or-query ms/NonBlankString]
@@ -294,12 +299,12 @@
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
-      (xrays/automagic-analysis {:show       (coerce-show show)
-                                 :cell-query (decode-base64-json cell-query)})))
+      (automagic-dashboards.core/automagic-analysis {:show       (coerce-show show)
+                                                     :cell-query (decode-base64-json cell-query)})))
 
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template"
-  "Return an automagic dashboard analyzing cell in question  with id `id` defined by
-   query `cell-query` using dashboard-template `dashboard-template`."
+  "Return an automagic dashboard analyzing cell in question with id `id` defined by query `cell-query` using
+  dashboard-template `dashboard-template`."
   [{:keys [entity entity-id-or-query cell-query prefix dashboard-template]} :- [:map
                                                                                 [:entity             Entity]
                                                                                 [:entity-id-or-query ms/NonBlankString]
@@ -309,13 +314,13 @@
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
-      (xrays/automagic-analysis {:show               (coerce-show show)
-                                 :dashboard-template ["table" prefix dashboard-template]
-                                 :cell-query         (decode-base64-json cell-query)})))
+      (automagic-dashboards.core/automagic-analysis {:show               (coerce-show show)
+                                                     :dashboard-template ["table" prefix dashboard-template]
+                                                     :cell-query         (decode-base64-json cell-query)})))
 
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query"
-  "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity
-   `comparison-entity` with id `comparison-entity-id-or-query.`"
+  "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity `comparison-entity`
+  with id `comparison-entity-id-or-query.`"
   [{:keys [entity entity-id-or-query comparison-entity
            comparison-entity-id-or-query]} :- [:map
                                                [:entity-id-or-query ms/NonBlankString]
@@ -325,14 +330,14 @@
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
-        dashboard (xrays/automagic-analysis left {:show         (coerce-show show)
-                                                  :query-filter nil
-                                                  :comparison?  true})]
-    (xrays/comparison-dashboard dashboard left right {})))
+        dashboard (automagic-dashboards.core/automagic-analysis left {:show         (coerce-show show)
+                                                                      :query-filter nil
+                                                                      :comparison?  true})]
+    (automagic-dashboards.comparison/comparison-dashboard dashboard left right {})))
 
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
-  "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;
-   compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
+  "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template
+  `dashboard-template`; compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
   [{:keys [entity entity-id-or-query prefix dashboard-template
            comparison-entity comparison-entity-id-or-query]} :- [:map
                                                                  [:entity             Entity]
@@ -344,11 +349,11 @@
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
-        dashboard (xrays/automagic-analysis left {:show               (coerce-show show)
-                                                  :dashboard-template ["table" prefix dashboard-template]
-                                                  :query-filter       nil
-                                                  :comparison?        true})]
-    (xrays/comparison-dashboard dashboard left right {})))
+        dashboard (automagic-dashboards.core/automagic-analysis left {:show               (coerce-show show)
+                                                                      :dashboard-template ["table" prefix dashboard-template]
+                                                                      :query-filter       nil
+                                                                      :comparison?        true})]
+    (automagic-dashboards.comparison/comparison-dashboard dashboard left right {})))
 
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
@@ -364,10 +369,10 @@
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
-        dashboard (xrays/automagic-analysis left {:show         (coerce-show show)
-                                                  :query-filter nil
-                                                  :comparison?  true})]
-    (xrays/comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
+        dashboard (automagic-dashboards.core/automagic-analysis left {:show         (coerce-show show)
+                                                                      :query-filter nil
+                                                                      :comparison?  true})]
+    (automagic-dashboards.comparison/comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
 
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
@@ -385,7 +390,7 @@
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
-        dashboard (xrays/automagic-analysis left {:show               (coerce-show show)
-                                                  :dashboard-template ["table" prefix dashboard-template]
-                                                  :query-filter       nil})]
-    (xrays/comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
+        dashboard (automagic-dashboards.core/automagic-analysis left {:show               (coerce-show show)
+                                                                      :dashboard-template ["table" prefix dashboard-template]
+                                                                      :query-filter       nil})]
+    (automagic-dashboards.comparison/comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))

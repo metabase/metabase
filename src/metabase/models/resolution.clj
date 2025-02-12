@@ -44,8 +44,8 @@
     :model/LegacyMetric                      metabase.models.legacy-metric
     :model/LegacyMetricImportantField        metabase.models.legacy-metric-important-field
     :model/LoginHistory                      metabase.models.login-history
-    :model/ModelIndex                        metabase.models.model-index
-    :model/ModelIndexValue                   metabase.models.model-index
+    :model/ModelIndex                        metabase.indexed-entities.models.model-index
+    :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.models.moderation-review
     :model/NativeQuerySnippet                metabase.models.native-query-snippet
     :model/Notification                      metabase.models.notification
@@ -73,7 +73,7 @@
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.models.secret
-    :model/Segment                           metabase.models.segment
+    :model/Segment                           metabase.segments.models.segment
     :model/Session                           metabase.models.session
     :model/Setting                           metabase.models.setting
     :model/Table                             metabase.models.table

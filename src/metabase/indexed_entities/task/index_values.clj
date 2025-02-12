@@ -1,11 +1,11 @@
-(ns metabase.task.index-values
+(ns metabase.indexed-entities.task.index-values
   (:require
    [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models.model-index :as model-index]
+   [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util :as u]
