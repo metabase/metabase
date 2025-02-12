@@ -60,6 +60,7 @@ export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
       gap="sm"
       style={{
         ...style,
+        height: "100%",
         overflowX: "auto",
         overflowY: "hidden",
         borderRadius: "var(--border-radius-xl)",

@@ -73,6 +73,7 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
       wrap="nowrap"
       style={{
         ...style,
+        height: "100%",
         overflowX: "auto",
         overflowY: "hidden",
         borderRadius: "var(--border-radius-xl)",
