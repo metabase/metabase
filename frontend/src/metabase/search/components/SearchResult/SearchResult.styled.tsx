@@ -88,12 +88,12 @@ export const ResultNameSection = styled(Stack)`
 export const LoadingSection = styled(Box)<BoxProps>`
   grid-row: 1 / span 1;
   grid-column: 3;
-`;
+` as unknown as typeof Box;
 
 export const XRaySection = styled(Box)<BoxProps>`
   grid-row: 1 / span 1;
   grid-column: 4;
-`;
+` as unknown as typeof Box;
 
 export const XRayButton = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement>
@@ -104,7 +104,7 @@ export const XRayButton = styled(Button)<
 
 export const DescriptionSection = styled(Box)<PropsWithChildren>`
   margin-top: 0.5rem;
-`;
+` as unknown as typeof Box;
 
 export const DescriptionDivider = styled(Divider)`
   border-radius: ${({ theme }) => theme.radius.xs};

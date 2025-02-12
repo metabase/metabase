@@ -124,12 +124,20 @@ export function NumberInputWidget({
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
             data={customLabelOptions.concat(valueOptions)}
-            filter={(value, _selected, item) =>
-              Boolean(
-                value !== "" &&
-                  item.label?.toLowerCase().startsWith(value.toLowerCase()),
-              )
-            }
+            filter={({
+              options,
+              search,
+            }: {
+              options: any[];
+              search: string;
+            }) => {
+              return options.filter(item =>
+                Boolean(
+                  search !== "" &&
+                    item.label?.toLowerCase().startsWith(search.toLowerCase()),
+                ),
+              );
+            }}
           />
         </TokenFieldWrapper>
       ) : (
@@ -171,7 +179,7 @@ export function NumberInputWidget({
 
 type SelectItem = {
   value: string;
-  label: string | undefined;
+  label: string;
 };
 
 function getOption(entry: string | ParameterValue): SelectItem | null {
@@ -185,8 +193,8 @@ function getOption(entry: string | ParameterValue): SelectItem | null {
   return { value, label };
 }
 
-function getLabel(option: string | ParameterValue) {
-  return option[1] ?? option[0]?.toString();
+function getLabel(option: string | ParameterValue): string {
+  return option[1] ?? option[0]?.toString() ?? "";
 }
 
 function getValue(option: string | ParameterValue) {
