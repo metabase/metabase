@@ -84,9 +84,9 @@ const init = async () => {
     await CypressBackend.start();
   } else {
     printBold(
-      `Not building a jar, expecting metabase to be running on port ${options.BACKEND_PORT} make sure your metabase instance has
-      - MB_ENABLE_TEST_ENDPOINTS=true
-      - MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE=true
+      `Not building a jar, expecting metabase to be running on port ${options.BACKEND_PORT}. Make sure your metabase instance is running with an h2 app db and the following environment variables:
+  - MB_ENABLE_TEST_ENDPOINTS=true
+  - MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE=true
     `,
     );
   }
