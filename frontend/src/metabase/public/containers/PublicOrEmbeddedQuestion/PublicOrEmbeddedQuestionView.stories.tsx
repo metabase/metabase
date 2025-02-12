@@ -147,8 +147,8 @@ export const LightThemeDownload = {
   },
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const asyncCallback = createAsyncCallback();
-    await downloadQuestionAsPng(canvasElement, asyncCallback);
+    //const asyncCallback = createAsyncCallback();
+    await downloadQuestionAsPng(canvasElement);
   },
 };
 
@@ -359,7 +359,7 @@ function NarrowContainer(Story: StoryFn) {
 
 const downloadQuestionAsPng = async (
   canvasElement: HTMLElement,
-  asyncCallback: () => void,
+  //asyncCallback: () => void,
 ) => {
   const canvas = within(canvasElement);
 
@@ -369,7 +369,9 @@ const downloadQuestionAsPng = async (
   const documentElement = within(document.documentElement);
   const pngButton = await documentElement.findByText(".png");
   await userEvent.click(pngButton);
-  await userEvent.click(documentElement.getByTestId("download-results-button"));
+  await userEvent.click(
+    await documentElement.findByTestId("download-results-button"),
+  );
   await canvas.findByTestId("image-downloaded");
-  asyncCallback();
+  //asyncCallback();
 };
