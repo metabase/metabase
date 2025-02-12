@@ -399,6 +399,6 @@ describe("date parameters", () => {
     "2024-ab",
     "Q5-2020",
   ])("should ignore invalid value %s", value => {
-    expect(deserializeDateParameterValue(value)).toBeUndefined();
+    expect(deserializeDateParameterValue(value)).toBeNull();
   });
 });

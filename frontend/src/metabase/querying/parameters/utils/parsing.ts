@@ -525,9 +525,9 @@ export function serializeDateParameterValue(value: DateFilterValue): string {
 
 export function deserializeDateParameterValue(
   value: ParameterValueOrArray | null | undefined,
-): DateFilterValue | undefined {
+): DateFilterValue | null {
   if (typeof value !== "string") {
-    return undefined;
+    return null;
   }
 
   for (const serializer of DATE_FILTER_SERIALIZERS) {
@@ -539,4 +539,6 @@ export function deserializeDateParameterValue(
       }
     }
   }
+
+  return null;
 }
