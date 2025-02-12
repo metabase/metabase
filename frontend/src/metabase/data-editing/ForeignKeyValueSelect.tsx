@@ -39,6 +39,7 @@ export const ForeignKeyValueSelect = ({
       autoFocus
       onChange={onChange}
       onBlur={onBlur}
+      size="xs"
       styles={{
         dropdown: {
           minWidth: 200,
