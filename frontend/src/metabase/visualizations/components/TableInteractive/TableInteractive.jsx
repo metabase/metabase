@@ -584,7 +584,7 @@ class TableInteractive extends Component {
 
   onVisualizationClick(clicked, element, cellProps) {
     if (this.visualizationIsClickable(clicked)) {
-      this.props.onVisualizationClick({ ...clicked, element });
+      this.props.onVisualizationClick?.({ ...clicked, element });
     }
   }
 
