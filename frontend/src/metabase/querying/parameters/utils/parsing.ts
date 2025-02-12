@@ -23,6 +23,10 @@ export function deserializeStringParameterValue(
   }, []);
 }
 
+export function serializeNumberParameterValue(value: number[]): number[] {
+  return value;
+}
+
 export function deserializeNumberParameterValue(
   value: ParameterValueOrArray | null | undefined,
 ): number[] {

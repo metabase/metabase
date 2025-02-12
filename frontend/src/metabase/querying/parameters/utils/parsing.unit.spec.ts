@@ -7,63 +7,65 @@ import {
   deserializeNumberParameterValue,
   deserializeStringParameterValue,
   serializeDateParameterValue,
+  serializeNumberParameterValue,
 } from "./parsing";
 
-type StringParameterCase = {
-  value: ParameterValueOrArray;
-  expectedValue: string[];
-};
-
 describe("string parameters", () => {
-  it.each<StringParameterCase>([
+  it.each([
     { value: ["abc"], expectedValue: ["abc"] },
     { value: ["a", "b", "", "c"], expectedValue: ["a", "b", "c"] },
     { value: [1, 2, 3], expectedValue: ["1", "2", "3"] },
     { value: [true, false], expectedValue: ["true", "false"] },
-  ])("should normalize string parameter value", ({ value, expectedValue }) => {
-    expect(deserializeStringParameterValue(value)).toEqual(expectedValue);
-  });
+  ])(
+    "should deserialize string parameter value $value",
+    ({ value, expectedValue }) => {
+      expect(deserializeStringParameterValue(value)).toEqual(expectedValue);
+    },
+  );
 
   it.each([null, undefined, "", [""]])(
-    "should ignore invalid input %s",
+    "should ignore invalid value %s",
     value => {
       expect(deserializeStringParameterValue(value)).toEqual([]);
     },
   );
 });
 
-type NumberParameterCase = {
-  value: ParameterValueOrArray;
-  expectedValue: number[];
-};
-
 describe("number parameters", () => {
-  it.each<NumberParameterCase>([
+  it.each([
+    { value: [], expectedValue: [] },
+    { value: [10], expectedValue: [10] },
+  ])(
+    "should serialize number parameter value $value",
+    ({ value, expectedValue }) => {
+      expect(serializeNumberParameterValue(value)).toEqual(expectedValue);
+    },
+  );
+
+  it.each([
     { value: 1, expectedValue: [1] },
     { value: "1", expectedValue: [1] },
     { value: 1.5, expectedValue: [1.5] },
     { value: "1.5", expectedValue: [1.5] },
     { value: [1, 2, 3], expectedValue: [1, 2, 3] },
     { value: ["1", "2", "3"], expectedValue: [1, 2, 3] },
-  ])("should normalize number parameter value", ({ value, expectedValue }) => {
-    expect(deserializeNumberParameterValue(value)).toEqual(expectedValue);
-  });
+  ])(
+    "should deserialize number parameter value $value",
+    ({ value, expectedValue }) => {
+      expect(deserializeNumberParameterValue(value)).toEqual(expectedValue);
+    },
+  );
 
   it.each([null, undefined, "", [""], ["abc"], NaN, [NaN], [true, false]])(
-    "should ignore invalid input %s",
+    "should ignore invalid value %s",
     value => {
       expect(deserializeNumberParameterValue(value)).toEqual([]);
     },
   );
 });
 
-type BooleanParameterCase = {
-  value: ParameterValueOrArray;
-  expectedValue: boolean[];
-};
-
 describe("boolean parameters", () => {
-  it.each<BooleanParameterCase>([
+  it.each([
     { value: true, expectedValue: [true] },
     { value: false, expectedValue: [false] },
     { value: [true, false], expectedValue: [true, false] },
@@ -75,7 +77,7 @@ describe("boolean parameters", () => {
   });
 
   it.each([null, undefined, "", [""], ["abc"], 1, NaN, [NaN]])(
-    "should ignore invalid input %s",
+    "should ignore invalid value %s",
     value => {
       expect(deserializeBooleanParameterValue(value)).toEqual([]);
     },
@@ -388,7 +390,7 @@ describe("date parameters", () => {
     "exclude-quarters-abc",
     "2024-ab",
     "Q5-2020",
-  ])("should ignore invalid input %s", value => {
+  ])("should ignore invalid value %s", value => {
     expect(deserializeDateParameterValue(value)).toBeUndefined();
   });
 });
