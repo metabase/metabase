@@ -259,8 +259,8 @@
 
   So we hard-code a NanoID for the audit Database, and then compute reproducible NanoIDs for all existing tables and
   fields by *seeding* [[u/generate-nano-id]] with the table and field names."
-  []
-  (when-let [db (t2/select-one :model/Database :is_audit true)]
+  [db]
+  (when db
     (t2/update! :model/Database (:id db) {:entity_id audit-db-entity-id})
     (let [tables (t2/select :model/Table :db_id (:id db))
           eids   (into {} (map (juxt :id (some-fn :entity_id entity-id-for-table))) tables)]
@@ -276,7 +276,7 @@
   []
   (let [audit-db (t2/select-one :model/Database :is_audit true)]
     (when audit-db
-      (backfill-entity-ids!))
+      (backfill-entity-ids! audit-db))
     (cond
       (nil? audit-db)
       (u/prog1 ::installed
