@@ -487,7 +487,6 @@
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))))
 
-
 (deftest ^:parallel table-view-available-drill-thrus-aggregate-column-header-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/aggregate (lib/count))
