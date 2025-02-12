@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { isNumber } from "metabase/lib/types";
 import {
-  type NumberValue,
+  type NumberOrEmptyValue,
   useCoordinateFilter,
 } from "metabase/querying/filters/hooks/use-coordinate-filter";
 import { Box, Flex, Stack, Text } from "metabase/ui";
@@ -117,10 +117,10 @@ interface CoordinateValueInputProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  values: NumberValue[];
+  values: NumberOrEmptyValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
-  onChange: (values: NumberValue[]) => void;
+  onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
 function CoordinateValueInput({

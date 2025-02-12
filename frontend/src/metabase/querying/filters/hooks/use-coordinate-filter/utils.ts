@@ -5,9 +5,9 @@ import {
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
-import type { NumberValue, OperatorOption } from "./types";
+import type { NumberOrEmptyValue, OperatorOption } from "./types";
 
-function isNotEmpty(value: NumberValue): value is Lib.NumberFilterValue {
+function isNotEmpty(value: NumberOrEmptyValue): value is Lib.NumberFilterValue {
   return value !== "";
 }
 
@@ -64,8 +64,8 @@ export function canPickColumns(
 
 export function getDefaultValues(
   operator: Lib.CoordinateFilterOperator,
-  values: NumberValue[],
-): NumberValue[] {
+  values: NumberOrEmptyValue[],
+): NumberOrEmptyValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   if (hasMultipleValues) {
     return values.filter(isNotEmpty);
@@ -80,7 +80,7 @@ export function isValidFilter(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ) {
   return getFilterParts(operator, column, secondColumn, values) != null;
 }
@@ -89,7 +89,7 @@ export function getFilterClause(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ) {
   const filterParts = getFilterParts(operator, column, secondColumn, values);
   return filterParts != null
@@ -101,7 +101,7 @@ function getFilterParts(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
   switch (operator) {
     case "between":
@@ -116,7 +116,7 @@ function getFilterParts(
 function getSimpleFilterParts(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
   if (!values.every(isNotEmpty)) {
@@ -137,7 +137,7 @@ function getSimpleFilterParts(
 function getBetweenFilterParts(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
   const [startValue, endValue] = values;
   if (isNotEmpty(startValue) && isNotEmpty(endValue)) {
@@ -173,7 +173,7 @@ function getInsideFilterParts(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
   if (!values.every(isNotEmpty)) {
     return undefined;

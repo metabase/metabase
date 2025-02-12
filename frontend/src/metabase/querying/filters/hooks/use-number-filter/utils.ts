@@ -5,10 +5,10 @@ import {
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
-import type { NumberValue, OperatorOption } from "./types";
+import type { NumberOrEmptyValue, OperatorOption } from "./types";
 
 export function isNotEmptyValue(
-  value: NumberValue,
+  value: NumberOrEmptyValue,
 ): value is Lib.NumberFilterValue {
   return value !== "";
 }
@@ -48,8 +48,8 @@ export function getDefaultOperator(
 
 export function getDefaultValues(
   operator: Lib.NumberFilterOperator,
-  values: NumberValue[],
-): NumberValue[] {
+  values: NumberOrEmptyValue[],
+): NumberOrEmptyValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   if (hasMultipleValues) {
     return values.filter(isNotEmptyValue);
@@ -63,7 +63,7 @@ export function getDefaultValues(
 export function isValidFilter(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ) {
   return getFilterParts(operator, column, values) != null;
 }
@@ -71,7 +71,7 @@ export function isValidFilter(
 export function getFilterClause(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ) {
   const filterParts = getFilterParts(operator, column, values);
   return filterParts != null ? Lib.numberFilterClause(filterParts) : undefined;
@@ -80,7 +80,7 @@ export function getFilterClause(
 function getFilterParts(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.NumberFilterParts | undefined {
   switch (operator) {
     case "between":
@@ -93,7 +93,7 @@ function getFilterParts(
 function getSimpleFilterParts(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.NumberFilterParts | undefined {
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
   if (!values.every(isNotEmptyValue)) {
@@ -113,7 +113,7 @@ function getSimpleFilterParts(
 function getBetweenFilterParts(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.NumberFilterParts | undefined {
   const [startValue, endValue] = values;
   if (isNotEmptyValue(startValue) && isNotEmptyValue(endValue)) {

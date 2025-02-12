@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
-  type NumberValue,
+  type NumberOrEmptyValue,
   isNotEmptyValue,
   useNumberFilter,
 } from "metabase/querying/filters/hooks/use-number-filter";
@@ -101,10 +101,10 @@ interface NumberValueInputProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  values: NumberValue[];
+  values: NumberOrEmptyValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
-  onChange: (values: NumberValue[]) => void;
+  onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
 function NumberValueInput({

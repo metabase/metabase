@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import {
-  type NumberValue,
+  type NumberOrEmptyValue,
   isNotEmptyValue,
   useNumberFilter,
 } from "metabase/querying/filters/hooks/use-number-filter";
@@ -51,7 +51,7 @@ export function NumberFilterEditor({
     onChange(getFilterClause(newOperator, newValues));
   };
 
-  const handleInputChange = (newValues: NumberValue[]) => {
+  const handleInputChange = (newValues: NumberOrEmptyValue[]) => {
     setValues(newValues);
     if (isFocused) {
       onInput();
@@ -107,10 +107,10 @@ interface NumberValueInputProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  values: NumberValue[];
+  values: NumberOrEmptyValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
-  onChange: (values: NumberValue[]) => void;
+  onChange: (values: NumberOrEmptyValue[]) => void;
   onFocus: () => void;
   onBlur: () => void;
 }

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isNumber } from "metabase/lib/types";
 import {
-  type NumberValue,
+  type NumberOrEmptyValue,
   useCoordinateFilter,
 } from "metabase/querying/filters/hooks/use-coordinate-filter";
 import { Flex, Grid, Text } from "metabase/ui";
@@ -52,7 +52,7 @@ export function CoordinateFilterEditor({
     onChange(getFilterClause(newOperator, secondColumn, newValues));
   };
 
-  const handleInputChange = (newValues: NumberValue[]) => {
+  const handleInputChange = (newValues: NumberOrEmptyValue[]) => {
     setValues(newValues);
     if (isFocused) {
       onInput();
@@ -108,10 +108,10 @@ interface NumberValueInputProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  values: NumberValue[];
+  values: NumberOrEmptyValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
-  onChange: (values: NumberValue[]) => void;
+  onChange: (values: NumberOrEmptyValue[]) => void;
   onFocus: () => void;
   onBlur: () => void;
 }
