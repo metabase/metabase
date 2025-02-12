@@ -279,8 +279,7 @@
                                                   :quoted true
                                                   :dialect (sql.qp/quote-style driver)))))
         col->param-id (into {} (map (juxt :slug :id) (:parameters action)))]
-    (dev/with-permissions #{"/"}
-                          (actions/execute-action! action (into {} (map (fn [[col val]] (when-let [k (col->param-id (name col))] [k val])) row))))))
+    (actions/execute-action! action (into {} (map (fn [[col val]] (when-let [k (col->param-id (name col))] [k val])) row)))))
 
 (comment
   (def table (t2/select-one :model/Table :name "PEOPLE"))
