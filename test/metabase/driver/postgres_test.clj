@@ -1671,7 +1671,7 @@
   (mt/native-query {:query (str "SELECT pg_typeof(" (name field) ") "
                                 "FROM ( "
                                 (-> query qp.compile/compile :query)
-                                " ) "
+                                " ) AS subquery "
                                 "LIMIT 1")}))
 
 (deftest ^:parallel temporal-column-with-binning-keeps-type
