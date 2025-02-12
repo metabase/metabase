@@ -370,6 +370,8 @@
     metabase.embed                 #{metabase.embed.settings}
     metabase.events                #{metabase.events metabase.events.init}
     metabase.formatter             #{metabase.formatter}
+    metabase.indexed-entities      #{metabase.indexed-entities.api
+                                     metabase.indexed-entities.init}
     metabase.integrations          #{metabase.integrations.common
                                      metabase.integrations.google
                                      metabase.integrations.ldap
@@ -406,6 +408,7 @@
                                      metabase.search.api
                                      ;; Need to expose this submodule, to break circular dependencies with models.
                                      metabase.search.spec}
+    metabase.segments              #{metabase.segments.api}
     metabase.server                #{metabase.server.core
                                      ;;
                                      ;; TODO FIXME -- this is loaded for side effects since it contains the JSON
@@ -435,7 +438,6 @@
                                      metabase.sync.util}
     metabase.task                  #{metabase.task
                                      metabase.task.bootstrap
-                                     metabase.task.index-values
                                      metabase.task.init
                                      metabase.task.persist-refresh} ; TODO -- move this stuff into appropriate modules
     metabase.timeline              #{metabase.timeline.api
@@ -484,9 +486,15 @@
     metabase.embed                 :any
     metabase.events                :any
     metabase.formatter             :any
+    metabase.indexed-entities      :any ; TODO -- way too much stuff
     metabase.integrations          :any
     metabase.legacy-mbql           :any
-    metabase.lib                   :any
+    metabase.lib                   #{metabase.config
+                                     metabase.driver
+                                     metabase.legacy-mbql
+                                     metabase.models
+                                     metabase.types
+                                     metabase.util}
     metabase.logger                #{metabase.config
                                      metabase.plugins}
     metabase.models                :any
@@ -527,6 +535,7 @@
                                      metabase.util}
     metabase.sample-data           :any
     metabase.search                :any
+    metabase.segments              :any ; TODO -- way too many deps
     metabase.server                :any
     metabase.setup                 :any
     metabase.sync                  :any
