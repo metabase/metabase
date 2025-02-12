@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { isFitViewportMode } from "metabase/hoc/FitViewPort";
+import CS from "metabase/css/core/index.css";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/lib/dom";
 import { setInitialUrlOptions } from "metabase/redux/embed";
 
@@ -55,6 +55,18 @@ function sendMessage(message) {
   //      - the data we sent is not sensitive data (frame size, current URL)
   //      - we are already using frame ancestor policy to limit domains that can embed metabase
   window.parent.postMessage({ metabase: message }, "*");
+}
+
+function isFitViewportMode() {
+  const root = document.getElementById("root");
+
+  // get the first div, which may be preceded by style nodes
+  const firstChild = root?.querySelector("div");
+
+  if (firstChild) {
+    return firstChild.classList.contains(CS.spread);
+  }
+  return false;
 }
 
 function getFrameSpec() {
