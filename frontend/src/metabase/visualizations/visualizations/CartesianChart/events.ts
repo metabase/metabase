@@ -214,16 +214,11 @@ const computeDiffWithPreviousPeriod = (
     return null;
   }
 
-  const usingTransformedData = datumPack.datum == null;
-  const datum = usingTransformedData
-    ? datumPack.transformedDatum
-    : datumPack.datum!;
-  const dataIndex = usingTransformedData
-    ? datumPack.echartsDataIndex
-    : datumPack.dataIndex!;
-  const dataset = usingTransformedData
-    ? chartModel.transformedDataset
-    : chartModel.dataset;
+  const datum = datumPack.datum ?? datumPack.transformedDatum;
+  const dataIndex = datumPack.dataIndex ?? datumPack.echartsDataIndex;
+  const dataset = datumPack.datum
+    ? chartModel.dataset
+    : chartModel.transformedDataset;
 
   const currentValue = datum[seriesModel.dataKey];
   const currentDate = parseTimestamp(datum[X_AXIS_DATA_KEY]);
@@ -353,11 +348,40 @@ const getAdditionalTooltipRowsData = (
     });
 };
 
+/**
+ * Contains the data for a single datum in the chart, both the original (if any) and the transformed data.
+ * Some points may not have an original datum, for example if we're filling in missing data points.
+ */
 type DatumPack = {
   echartsDataIndex: number;
   dataIndex: number | undefined;
   datum: Datum | undefined;
   transformedDatum: Datum;
+};
+
+/**
+ * Returns the original and transformed data for the given data index.
+ * Some points may not have an original datum, for example if we're filling in missing data points.
+ *
+ * @param chartModel the chart model
+ * @param echartsDataIndex the index of the data point in the transformed dataset
+ * @returns a DatumPack object containing the original and transformed data for the given data index
+ */
+const getDatumPack = (
+  chartModel: BaseCartesianChartModel,
+  echartsDataIndex: number,
+): DatumPack => {
+  const dataIndex = getDataIndex(
+    chartModel.transformedDataset,
+    echartsDataIndex,
+  );
+
+  return {
+    echartsDataIndex,
+    dataIndex,
+    datum: dataIndex !== undefined ? chartModel.dataset[dataIndex] : undefined,
+    transformedDatum: chartModel.transformedDataset[echartsDataIndex],
+  };
 };
 
 export const getTooltipModel = (
@@ -367,24 +391,10 @@ export const getTooltipModel = (
   display: CardDisplayType,
   seriesDataKey: DataKey,
 ): EChartsTooltipModel | null => {
-  const dataIndex = getDataIndex(
-    chartModel.transformedDataset,
-    echartsDataIndex,
-  );
-
-  const transformedDatum = chartModel.transformedDataset[echartsDataIndex];
-  const datum =
-    dataIndex !== undefined ? chartModel.dataset[dataIndex] : undefined;
-
-  const pack = {
-    echartsDataIndex,
-    dataIndex,
-    datum,
-    transformedDatum,
-  };
+  const datumPack = getDatumPack(chartModel, echartsDataIndex);
 
   if (seriesDataKey === OTHER_DATA_KEY) {
-    return getOtherSeriesTooltipModel(chartModel, settings, pack);
+    return getOtherSeriesTooltipModel(chartModel, settings, datumPack);
   }
 
   const seriesIndex = findSeriesModelIndexById(chartModel, seriesDataKey);
@@ -401,7 +411,7 @@ export const getTooltipModel = (
   if (settings["graph.tooltip_type"] === "default") {
     return getSingleSeriesTooltipModel(
       chartModel,
-      pack,
+      datumPack,
       settings,
       hoveredSeries,
       display,
@@ -415,7 +425,7 @@ export const getTooltipModel = (
       settings,
       seriesStack,
       seriesDataKey,
-      pack,
+      datumPack,
       hoveredSeries,
     );
   }
@@ -423,7 +433,7 @@ export const getTooltipModel = (
   return getSeriesComparisonTooltipModel(
     chartModel,
     settings,
-    pack,
+    datumPack,
     hoveredSeries,
   );
 };
