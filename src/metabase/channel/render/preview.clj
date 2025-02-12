@@ -13,8 +13,8 @@
    [metabase.channel.render.image-bundle :as img]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
-   [metabase.util.markdown :as markdown]
    [metabase.notification.payload.execute :refer [execute-dashboard]]
+   [metabase.util.markdown :as markdown]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
