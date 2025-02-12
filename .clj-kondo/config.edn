@@ -443,6 +443,8 @@
                                      metabase.task.bootstrap
                                      metabase.task.init
                                      metabase.task.persist-refresh} ; TODO -- move this stuff into appropriate modules
+    metabase.tiles                 #{metabase.tiles.api
+                                     metabase.tiles.init}
     metabase.timeline              #{metabase.timeline.api
                                      metabase.timeline.core}
     metabase.types                 #{metabase.types}
@@ -543,6 +545,11 @@
     metabase.setup                 :any
     metabase.sync                  :any
     metabase.task                  :any
+    metabase.tiles                 #{metabase.api
+                                     metabase.legacy-mbql
+                                     metabase.models          ; for defsetting
+                                     metabase.query-processor
+                                     metabase.util}
     metabase.timeline              :any
     metabase.types                 #{metabase.util}
     metabase.upload                :any
