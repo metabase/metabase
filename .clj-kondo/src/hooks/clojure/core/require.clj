@@ -58,7 +58,6 @@
 (defn- lint-requiring-resolve* [node current-ns config]
   (let [[_requiring-resolve symb-node] (:children node)
         required-namespace             (unwrap-require symb-node)]
-    (println "required-namespace:" required-namespace) ; NOCOMMIT
     (lint* node current-ns config [required-namespace])))
 
 (defn lint-require [x]
