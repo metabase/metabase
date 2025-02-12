@@ -33,7 +33,7 @@ function EmptyStateWrapper({
       data-testid="dashboard-empty-state"
       h="100%"
       justify="center"
-      spacing="lg"
+      gap="lg"
       mih="20rem"
     >
       <img src={EmptyDashboardBot} alt={t`Empty dashboard illustration`} />
@@ -52,14 +52,14 @@ export function DashboardEmptyState({
   return (
     <EmptyStateWrapper isNightMode={isNightMode}>
       <>
-        <Stack align="center" maw="25rem" spacing="xs">
-          <Title align="center" order={2}>
+        <Stack align="center" maw="25rem" gap="xs">
+          <Title ta="center" order={2}>
             {isEditing
               ? t`Create a new question or browse your collections for an existing one.`
               : defaultTitle}
           </Title>
 
-          <Text align="center" data-testid="dashboard-empty-state-copy">
+          <Text ta="center" data-testid="dashboard-empty-state-copy">
             {isEditing
               ? jt`Add link or text cards. You can arrange cards manually, or start with some default layouts by adding ${(<InlineIcon key="section-icon" name="section" />)} ${(
                   <b key="section">{c(
@@ -87,7 +87,7 @@ export function DashboardEmptyStateWithoutAddPrompt({
   const title = getDefaultTitle(isDashboardEmpty);
   return (
     <EmptyStateWrapper isNightMode={isNightMode}>
-      <Title align="center" order={2}>
+      <Title ta="center" order={2}>
         {title}
       </Title>
     </EmptyStateWrapper>

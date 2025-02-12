@@ -1,0 +1,1 @@
+export { SpecialTagsInput } from "./SpecialTagsInput";

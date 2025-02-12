@@ -35,4 +35,4 @@ export const StyledInput = styled(Textarea)`
 
 export const InteractiveText = styled(Text)<TextProps>`
   ${interactiveDashcardElementCss}
-`;
+` as unknown as typeof Text;

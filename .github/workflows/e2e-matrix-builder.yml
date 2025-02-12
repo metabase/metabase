@@ -44,7 +44,7 @@ jobs:
             // see config.js function getSplittableSpecs for logic that excludes some tests from auto splitting
             const specialTests = [
               { name: "embedding-sdk", specs: "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*" },
-              { name: "oss-subset", edition: 'oss', tags: "@OSS", specs: allSpecs },
+              { name: "oss-subset", edition: 'oss', tags: "@OSS @smoke+-@EE", specs: allSpecs },
               { name: "mongo", tags: "@mongo", specs: allSpecs },
             ];
 
