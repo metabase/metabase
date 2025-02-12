@@ -13,7 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.events :as events]
    [metabase.models.cell-edit]
-   [metabase.sync.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
@@ -214,13 +214,21 @@
                             [:type [:enum "Boolean" "Integer" "BigInteger" "Text" "DateTime"]]
                             [:primary_key {:optional true} [:maybe :boolean]]
                             [:nullable {:optional true} [:maybe :boolean]]
-                            [:auto_increment {:optional true} [:maybe :boolean]]]]]]]
-  (let [columns' (for [{:keys [name type primary_key nullable auto_increment]} columns]
+                            [:auto_increment {:optional true} [:maybe :boolean]]
+                            [:default_value {:optional true} [:maybe :any]]]]]]]
+  (let [columns' (for [{:keys [name
+                               type
+                               primary_key
+                               nullable
+                               auto_increment
+                               default_value]} columns
+                       :let [base-type (keyword "type" type)]]
                    {:column-name name
-                    :column-type (keyword "type" type)
+                    :column-type base-type
                     :primary-key primary_key
                     :nullable nullable
-                    :auto-increment auto_increment})]
+                    :auto-increment auto_increment
+                    :default-value (some->> default_value not-empty (parse-value base-type))})]
     (create-table! db_id schema table_name columns')
     (sync/sync-database! (t2/select-one :model/Database db_id))))
 

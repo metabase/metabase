@@ -139,7 +139,7 @@ const CreateTableModal = ({
           primary_key: col.isPrimaryKey,
           unnable: col.isNullable,
           auto_increment: col.isAutoIncrement,
-          //defaultValue: col.defaultValue,
+          default_value: col.defaultValue,
         })),
       };
 
@@ -249,6 +249,16 @@ const CreateTableModal = ({
                     />
                   </Stack>
                 </Flex>
+                <TextInput
+                  label={t`Default value`}
+                  placeholder={t`Enter a default column value`}
+                  value={column.defaultValue}
+                  onChange={e => {
+                    const newColumns = [...columns];
+                    newColumns[index].defaultValue = e.target.value;
+                    setColumns(newColumns);
+                  }}
+                />
                 <TextInput
                   label={t`Monitor Value`}
                   placeholder={t`Enter value to monitor`}

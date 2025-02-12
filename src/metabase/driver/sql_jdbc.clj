@@ -34,7 +34,7 @@
   "Execute a `honeysql-form` query against `database`, `driver`, and optionally `table`."
   ([driver database honeysql-form]
    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-               (sql.qp/format-honeysql driver honeysql-form)))
+     (sql.qp/format-honeysql driver honeysql-form)))
 
   ([driver database table honeysql-form]
    (let [table-identifier (sql.qp/->honeysql driver (h2x/identifier :table (:schema table) (:name table)))]
@@ -256,7 +256,8 @@
                                               primary-key
                                               nullable
                                               column-name
-                                              column-type]} columns]
+                                              column-type
+                                              default-value]} columns]
                                   (filterv
                                    some?
                                    [(keyword column-name)
@@ -267,7 +268,8 @@
                                       :type/Text :text
                                       :type/DateTime :datetime)
                                     (if nullable :null [:not nil])
-                                    (when primary-key :primary-key)]))}))))
+                                    (when primary-key :primary-key)
+                                    (when (some? default-value) [:default default-value])]))}))))
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
