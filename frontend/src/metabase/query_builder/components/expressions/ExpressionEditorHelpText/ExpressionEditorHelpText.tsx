@@ -96,7 +96,10 @@ export const ExpressionEditorHelpText = ({
             >
               {t`Example`}
             </Box>
-            <HighlightExpression expression={helpText.example} />
+            <HighlightExpression
+              expression={helpText.example}
+              data-testid="expression-helper-popover-example"
+            />
           </>
         )}
         {showMetabaseLinks && (
