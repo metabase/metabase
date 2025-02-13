@@ -18,6 +18,7 @@ import type { SuggestArgs } from "metabase-lib/v1/expressions/suggest";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
+import { formatIdentifier } from "..";
 import {
   AGGREGATION_FUNCTIONS,
   EXPRESSION_FUNCTIONS,
@@ -25,12 +26,10 @@ import {
   POPULAR_AGGREGATIONS,
   POPULAR_FILTERS,
   POPULAR_FUNCTIONS,
-} from "./config";
-import { getHelpText } from "./helper-text-strings";
-import { TOKEN, tokenize } from "./tokenizer";
-import type { HelpText, MBQLClauseFunctionConfig, Token } from "./types";
-
-import { formatIdentifier } from ".";
+} from "../config";
+import { getHelpText } from "../helper-text-strings";
+import { TOKEN, tokenize } from "../tokenizer";
+import type { HelpText, MBQLClauseFunctionConfig, Token } from "../types";
 
 export type Completion = CodeMirrorCompletion & {
   icon: IconName;

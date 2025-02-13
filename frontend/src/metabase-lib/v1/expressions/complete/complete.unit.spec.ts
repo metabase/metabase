@@ -28,7 +28,8 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { sharedMetadata } from "./__support__/shared";
+import { sharedMetadata } from "../__support__/shared";
+
 import {
   type SuggestOptions,
   suggestAggregations,
