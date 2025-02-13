@@ -10,7 +10,7 @@ import {
 import CS from "metabase/css/core/index.css";
 
 import { ExpandButton } from "../Table.styled";
-import type { CellFormatter, TextAlign } from "../types";
+import type { CellAlign, CellFormatter } from "../types";
 
 import { BaseCell } from "./BaseCell";
 import S from "./BodyCell.module.css";
@@ -20,7 +20,7 @@ export type BodyCellProps<TValue> = {
   value: TValue;
   formatter?: CellFormatter<TValue>;
   backgroundColor?: string;
-  align?: TextAlign;
+  align?: CellAlign;
   variant?: "text" | "pill";
   wrap?: boolean;
   canExpand?: boolean;

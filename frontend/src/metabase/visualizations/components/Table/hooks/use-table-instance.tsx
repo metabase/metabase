@@ -28,10 +28,10 @@ import {
 } from "../constants";
 import type {
   BodyCellVariant,
+  CellAlign,
   CellFormatter,
   ExpandedColumnsState,
   RowIdVariant,
-  TextAlign,
 } from "../types";
 
 import { useTableCellsMeasure } from "./use-cell-measure";
@@ -48,7 +48,7 @@ export interface ColumnOptions<TRow, TValue> {
   name: string;
   accessorFn: (row: TRow) => TValue;
   cellVariant: BodyCellVariant;
-  align?: TextAlign;
+  align?: CellAlign;
   wrap?: boolean;
   sortDirection?: "asc" | "desc";
   enableResizing: boolean;

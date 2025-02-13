@@ -9,7 +9,7 @@ declare module "@tanstack/react-table" {
 }
 
 export type ExpandedColumnsState = Record<string, boolean>;
-export type TextAlign = "left" | "right" | "center";
+export type CellAlign = "left" | "right" | "middle";
 export type BodyCellVariant = "text" | "pill" | "minibar";
 export type RowIdVariant = "expandButton" | "indexOnly" | "indexExpand";
 export type CellFormatter<TValue> = (value: TValue) => React.ReactNode;

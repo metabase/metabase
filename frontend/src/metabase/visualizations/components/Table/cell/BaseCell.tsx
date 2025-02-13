@@ -2,12 +2,12 @@ import cx from "classnames";
 import type React from "react";
 import { memo } from "react";
 
-import type { TextAlign } from "../types";
+import type { CellAlign } from "../types";
 
 import styles from "./BaseCell.module.css";
 
 export type BaseCellProps = {
-  align?: TextAlign;
+  align?: CellAlign;
   children?: React.ReactNode;
   className?: string;
   backgroundColor?: string;
@@ -29,7 +29,7 @@ export const BaseCell = memo(function BaseCell({
         {
           [styles.leftAligned]: align === "left",
           [styles.rightAligned]: align === "right",
-          [styles.centerAligned]: align === "center",
+          [styles.centerAligned]: align === "middle",
         },
         className,
       )}

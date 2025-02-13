@@ -40,13 +40,3 @@
   text-overflow: ellipsis;
   text-align: center;
 }
-
-.alignLeft {
-  text-align: left;
-  justify-content: left;
-}
-
-.alignRight {
-  text-align: right;
-  justify-content: right;
-}

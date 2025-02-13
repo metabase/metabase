@@ -4,13 +4,13 @@ import { memo } from "react";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/ui";
 
-import type { TextAlign } from "../types";
+import type { CellAlign } from "../types";
 
 import { BaseCell } from "./BaseCell";
 import S from "./HeaderCell.module.css";
 
 export type HeaderCellProps = {
-  align?: TextAlign;
+  align?: CellAlign;
   name?: React.ReactNode;
   sort?: "asc" | "desc";
 };

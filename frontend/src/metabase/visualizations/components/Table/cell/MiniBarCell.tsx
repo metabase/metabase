@@ -4,7 +4,7 @@ import cx from "classnames";
 import CS from "metabase/css/core/index.css";
 import { alpha, color } from "metabase/lib/colors";
 
-import type { CellFormatter, TextAlign } from "../types";
+import type { CellAlign, CellFormatter } from "../types";
 
 import { BaseCell } from "./BaseCell";
 import S from "./MiniBarCell.module.css";
@@ -20,7 +20,7 @@ export interface MiniBarCellProps<TValue> {
   extent: [number, number];
   formatter: CellFormatter<TValue>;
   backgroundColor?: string;
-  align?: TextAlign;
+  align?: CellAlign;
 }
 
 export const MiniBarCell = <TValue,>({
