@@ -397,7 +397,7 @@
 
 (defmethod ->rvalue nil [_] nil)
 
-(defn- uuid->bsonbinary
+(defn uuid->bsonbinary
   [u]
   (let [lo (.getLeastSignificantBits ^java.util.UUID u)
         hi (.getMostSignificantBits  ^java.util.UUID u)
