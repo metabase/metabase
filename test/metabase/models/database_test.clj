@@ -75,13 +75,13 @@
 
         (testing "skip audit"
           (mt/with-prometheus-system! [_ system]
-            (database/health-check-database! (:is_audit (mt/db)))
+            (database/health-check-database! (assoc (mt/db) :is_audit true))
             (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
             (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))
 
         (testing "skip sample"
           (mt/with-prometheus-system! [_ system]
-            (database/health-check-database! (:is_sample (mt/db)))
+            (database/health-check-database! (assoc (mt/db) :is_sample true))
             (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
             (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))
 
