@@ -14,6 +14,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { isPositiveInteger } from "metabase/lib/number";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 import type { ClickObject } from "metabase-lib";
@@ -46,7 +47,7 @@ function getBoundingClientRectSafe(ref: {
 
 function formatCellValueForSorting(value: RowValue, column: DatasetColumn) {
   if (typeof value === "string") {
-    if (isID(column) && /^\d+$/.test(value)) {
+    if (isID(column) && isPositiveInteger(value)) {
       return parseInt(value, 10);
     }
     // for strings we should be case insensitive

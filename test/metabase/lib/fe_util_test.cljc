@@ -12,7 +12,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
 (deftest ^:parallel basic-filter-parts-test
@@ -189,8 +188,7 @@
 (deftest ^:parallel number-filter-parts-test
   (let [query         (lib.tu/venues-query)
         column        (meta/field-metadata :venues :price)
-        bigint-string "9007199254740993"
-        bigint-value  (u.number/parse-bigint bigint-string)]
+        bigint-string "9007199254740993"]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
                               (lib.filter/not-null column)      {:operator :not-null, :column column}
@@ -207,9 +205,9 @@
                               (lib.filter/between column 10 20) {:operator :between, :column column, :values [10 20]}
 
                               ;; bigint
-                              (lib.filter/= column bigint-string) {:operator :=, :column column, :values [bigint-value]}
-                              (lib.filter/!= column bigint-string) {:operator :!=, :column column, :values [bigint-value]}
-                              (lib.filter/> column bigint-string) {:operator :>, :column column, :values [bigint-value]}}]
+                              (lib.filter/= column bigint-string) {:operator :=, :column column, :values [bigint-string]}
+                              (lib.filter/!= column bigint-string) {:operator :!=, :column column, :values [bigint-string]}
+                              (lib.filter/> column bigint-string) {:operator :>, :column column, :values [bigint-string]}}]
         (let [{:keys [operator column values]} parts]
           (is (=? parts (lib.fe-util/number-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/number-filter-parts query -1 (lib.fe-util/number-filter-clause operator
@@ -226,8 +224,7 @@
   (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
         lat-column    (meta/field-metadata :people :latitude)
         lon-column    (meta/field-metadata :people :longitude)
-        bigint-string "9007199254740993"
-        bigint-value  (u.number/parse-bigint bigint-string)]
+        bigint-string "9007199254740993"]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= lat-column 10)
                               {:operator :=, :column lat-column, :values [10]}
@@ -271,16 +268,16 @@
                               ;; bigint
 
                               (lib.filter/= lat-column bigint-string)
-                              {:operator :=, :column lat-column, :values [bigint-value]}
+                              {:operator :=, :column lat-column, :values [bigint-string]}
 
                               (lib.filter/!= lat-column bigint-string)
-                              {:operator :!=, :column lat-column, :values [bigint-value]}
+                              {:operator :!=, :column lat-column, :values [bigint-string]}
 
                               (lib.filter/> lat-column bigint-string)
-                              {:operator :>, :column lat-column, :values [bigint-value]}
+                              {:operator :>, :column lat-column, :values [bigint-string]}
 
                               (lib.filter/between lat-column bigint-string bigint-string)
-                              {:operator :between, :column lat-column, :values [bigint-value bigint-value]}}]
+                              {:operator :between, :column lat-column, :values [bigint-string bigint-string]}}]
         (let [{:keys [operator column longitude-column values]} parts]
           (is (=? parts (lib.fe-util/coordinate-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/coordinate-filter-parts query -1 (lib.fe-util/coordinate-filter-clause operator

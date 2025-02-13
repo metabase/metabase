@@ -14,7 +14,6 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import type { NumberOrEmptyValue } from "./types";
 import { useNumberFilter } from "./use-number-filter";
 
 interface CreateFilterCase {
@@ -32,13 +31,13 @@ interface UpdateFilterCase {
 
 interface CoerceFilterCase {
   operator: Lib.NumberFilterOperator;
-  values: NumberOrEmptyValue[];
+  values: (number | "")[];
   expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
   operator: Lib.NumberFilterOperator;
-  values: NumberOrEmptyValue[];
+  values: (number | "")[];
 }
 
 interface DefaultOperatorCase {
@@ -164,12 +163,12 @@ describe("useNumberFilter", () => {
     },
     {
       operator: "between",
-      values: [10, null],
+      values: [10, ""],
       expectedDisplayName: "Total is greater than or equal to 10",
     },
     {
       operator: "between",
-      values: [null, 10],
+      values: ["", 10],
       expectedDisplayName: "Total is less than or equal to 10",
     },
   ])(
@@ -200,11 +199,11 @@ describe("useNumberFilter", () => {
     },
     {
       operator: ">",
-      values: [null],
+      values: [""],
     },
     {
       operator: "between",
-      values: [null, null],
+      values: ["", ""],
     },
   ])(
     'should validate values for "$operator" operator',

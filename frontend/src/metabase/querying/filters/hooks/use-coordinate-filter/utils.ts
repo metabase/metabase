@@ -1,4 +1,3 @@
-import { isNotNull } from "metabase/lib/types";
 import {
   getAvailableOperatorOptions,
   getDefaultAvailableOperator,
@@ -6,7 +5,11 @@ import {
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
-import type { NumberOrEmptyValue, OperatorOption } from "./types";
+import type { NumberValue, OperatorOption } from "./types";
+
+function isNotEmpty(value: NumberValue): value is Lib.NumberFilterValue {
+  return value !== "";
+}
 
 export function getAvailableOptions(
   query: Lib.Query,
@@ -61,15 +64,15 @@ export function canPickColumns(
 
 export function getDefaultValues(
   operator: Lib.CoordinateFilterOperator,
-  values: NumberOrEmptyValue[],
-): NumberOrEmptyValue[] {
+  values: NumberValue[],
+): NumberValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   if (hasMultipleValues) {
-    return values.filter(isNotNull);
+    return values.filter(isNotEmpty);
   }
 
   return Array(valueCount)
-    .fill(null)
+    .fill("")
     .map((value, index) => values[index] ?? value);
 }
 
@@ -77,7 +80,7 @@ export function isValidFilter(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
-  values: NumberOrEmptyValue[],
+  values: NumberValue[],
 ) {
   return getFilterParts(operator, column, secondColumn, values) != null;
 }
@@ -86,7 +89,7 @@ export function getFilterClause(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
-  values: NumberOrEmptyValue[],
+  values: NumberValue[],
 ) {
   const filterParts = getFilterParts(operator, column, secondColumn, values);
   return filterParts != null
@@ -98,7 +101,7 @@ function getFilterParts(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
-  values: NumberOrEmptyValue[],
+  values: NumberValue[],
 ): Lib.CoordinateFilterParts | undefined {
   switch (operator) {
     case "between":
@@ -113,10 +116,10 @@ function getFilterParts(
 function getSimpleFilterParts(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberOrEmptyValue[],
+  values: NumberValue[],
 ): Lib.CoordinateFilterParts | undefined {
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
-  if (!values.every(isNotNull)) {
+  if (!values.every(isNotEmpty)) {
     return undefined;
   }
   if (hasMultipleValues ? values.length === 0 : values.length !== valueCount) {
@@ -127,17 +130,17 @@ function getSimpleFilterParts(
     operator,
     column,
     longitudeColumn: null,
-    values: values.filter(isNotNull),
+    values: values.filter(isNotEmpty),
   };
 }
 
 function getBetweenFilterParts(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberOrEmptyValue[],
+  values: NumberValue[],
 ): Lib.CoordinateFilterParts | undefined {
   const [startValue, endValue] = values;
-  if (isNotNull(startValue) && isNotNull(endValue)) {
+  if (isNotEmpty(startValue) && isNotEmpty(endValue)) {
     const minValue = startValue < endValue ? startValue : endValue;
     const maxValue = startValue < endValue ? endValue : startValue;
 
@@ -147,14 +150,14 @@ function getBetweenFilterParts(
       longitudeColumn: null,
       values: [minValue, maxValue],
     };
-  } else if (isNotNull(startValue)) {
+  } else if (isNotEmpty(startValue)) {
     return {
       operator: ">=",
       column,
       longitudeColumn: null,
       values: [startValue],
     };
-  } else if (isNotNull(endValue)) {
+  } else if (isNotEmpty(endValue)) {
     return {
       operator: "<=",
       column,
@@ -170,9 +173,9 @@ function getInsideFilterParts(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
-  values: NumberOrEmptyValue[],
+  values: NumberValue[],
 ): Lib.CoordinateFilterParts | undefined {
-  if (!values.every(isNotNull)) {
+  if (!values.every(isNotEmpty)) {
     return undefined;
   }
   if (secondColumn == null) {

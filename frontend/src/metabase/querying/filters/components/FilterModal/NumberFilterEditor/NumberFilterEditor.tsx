@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { isNotNull } from "metabase/lib/types";
 import {
-  type NumberOrEmptyValue,
+  type NumberValue,
+  isNotEmptyValue,
   useNumberFilter,
 } from "metabase/querying/filters/hooks/use-number-filter";
 import { Flex, Grid, Text } from "metabase/ui";
@@ -51,7 +51,7 @@ export function NumberFilterEditor({
     onChange(getFilterClause(newOperator, newValues));
   };
 
-  const handleInputChange = (newValues: NumberOrEmptyValue[]) => {
+  const handleInputChange = (newValues: NumberValue[]) => {
     setValues(newValues);
     if (isFocused) {
       onInput();
@@ -107,10 +107,10 @@ interface NumberValueInputProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  values: NumberOrEmptyValue[];
+  values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
-  onChange: (values: NumberOrEmptyValue[]) => void;
+  onChange: (values: NumberValue[]) => void;
   onFocus: () => void;
   onBlur: () => void;
 }
@@ -132,7 +132,7 @@ function NumberValueInput({
         query={query}
         stageIndex={stageIndex}
         column={column}
-        values={values.filter(isNotNull)}
+        values={values.filter(isNotEmptyValue)}
         compact
         onChange={onChange}
         onFocus={onFocus}

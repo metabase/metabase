@@ -2,9 +2,9 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNumber } from "metabase/lib/types";
 import {
-  type NumberOrEmptyValue,
+  type NumberValue,
   useCoordinateFilter,
 } from "metabase/querying/filters/hooks/use-coordinate-filter";
 import { Box, Flex, Stack, Text } from "metabase/ui";
@@ -117,10 +117,10 @@ interface CoordinateValueInputProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  values: NumberOrEmptyValue[];
+  values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
-  onChange: (values: NumberOrEmptyValue[]) => void;
+  onChange: (values: NumberValue[]) => void;
 }
 
 function CoordinateValueInput({
@@ -139,7 +139,7 @@ function CoordinateValueInput({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          values={values.filter(isNotNull)}
+          values={values.filter(isNumber)}
           autoFocus
           onChange={onChange}
         />

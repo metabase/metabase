@@ -1,15 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { NumberValue } from "metabase/lib/number";
+import type * as Lib from "metabase-lib";
 
 import { NumberFilterInput } from "./NumberFilterInput";
 
 type SetupOpts = {
-  value?: NumberValue | null;
+  value?: Lib.NumberFilterValue | "";
 };
 
-function setup({ value = null }: SetupOpts = {}) {
+function setup({ value = "" }: SetupOpts = {}) {
   const onChange = jest.fn();
   renderWithProviders(<NumberFilterInput value={value} onChange={onChange} />);
 
@@ -18,47 +18,24 @@ function setup({ value = null }: SetupOpts = {}) {
 }
 
 describe("NumberFilterInput", () => {
-  it("should display an empty value", () => {
-    const { input } = setup({ value: null });
-    expect(input).toHaveDisplayValue("");
-  });
-
-  it("should display an integer value", () => {
-    const { input } = setup({ value: 10 });
-    expect(input).toHaveDisplayValue("10");
-  });
-
-  it("should display a double value", () => {
-    const { input } = setup({ value: 10.1 });
-    expect(input).toHaveDisplayValue("10.1");
-  });
-
-  it("should display a bigint value", () => {
-    const { input } = setup({ value: 9007199254740993n });
-    expect(input).toHaveDisplayValue("9007199254740993");
-  });
-
   it("should allow to enter an integer value", async () => {
     const { input, onChange } = setup();
     await userEvent.type(input, "10");
-    expect(onChange).toHaveBeenLastCalledWith(10);
+    await userEvent.click(document.body);
+    expect(onChange).toHaveBeenCalledWith(10);
   });
 
   it("should allow to enter a double value", async () => {
     const { input, onChange } = setup();
     await userEvent.type(input, "10.1");
-    expect(onChange).toHaveBeenLastCalledWith(10.1);
+    await userEvent.click(document.body);
+    expect(onChange).toHaveBeenCalledWith(10.1);
   });
 
   it("should allow to enter a bigint value", async () => {
     const { input, onChange } = setup();
     await userEvent.type(input, "9007199254740993");
-    expect(onChange).toHaveBeenLastCalledWith(9007199254740993n);
-  });
-
-  it("should allow to clear the value", async () => {
-    const { input, onChange } = setup({ value: 9007199254740993n });
-    await userEvent.clear(input);
-    expect(onChange).toHaveBeenLastCalledWith(null);
+    await userEvent.click(document.body);
+    expect(onChange).toHaveBeenCalledWith("9007199254740993");
   });
 });

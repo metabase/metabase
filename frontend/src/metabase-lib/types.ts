@@ -384,7 +384,8 @@ export type StringFilterOptions = {
   caseSensitive?: boolean;
 };
 
-export type NumberFilterValue = number | bigint;
+// string is used when the value cannot be accurately represented as a JS number
+export type NumberFilterValue = number | string;
 
 export type NumberFilterParts = {
   operator: NumberFilterOperator;
