@@ -12,7 +12,7 @@ import {
 
 export const generateCredentials: CliStepMethod = async state => {
   printEmptyLines();
-  printWithPadding("Setting up a local Metabase instance.");
+  printWithPadding("Setting up a local Metabase instance via Docker.");
 
   const email = await input({
     message: "What is the email address you want to use for the admin user?",

@@ -3,8 +3,18 @@ import { blue, green, yellow } from "chalk";
 import {
   CONTAINER_NAME,
   SAMPLE_CREDENTIALS_FILE_NAME,
-  SDK_NPM_LINK,
+  SDK_DOCS_LINK,
 } from "./config";
+
+export const SHOW_ON_STARTUP_MESSAGE = `
+  This tool will spin up a local Metabase instance via Docker and help you get
+  an embedded dashboard in your app.
+
+  - You can't use this tool to connect to an existing Metabase instance.
+  - The tool's default setup (which uses API keys) won’t work in production.
+    It's only intended for you to quickly try out the SDK on your local machine.
+    A production setup requires a Pro/Enterprise license and SSO with JWT.
+`;
 
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
@@ -87,7 +97,7 @@ export const SETUP_PRO_LICENSE_MESSAGE = `
 `;
 
 export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK here: ${green(
-  SDK_NPM_LINK,
+  SDK_DOCS_LINK,
 )}`;
 
 export const CONTINUE_SETUP_ON_WARNING_MESSAGE = `Do you want to continue setup?`;
