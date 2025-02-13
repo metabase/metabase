@@ -295,7 +295,7 @@
   (fn []
     (let [obj (.getObject rs i)]
       (cond (instance? com.vertica.jdbc.jdbc42.S42Array obj)
-            (vec (.getArray obj))
+            (vec (.getArray ^com.vertica.jdbc.jdbc42.S42Array obj))
 
             :else
             obj))))

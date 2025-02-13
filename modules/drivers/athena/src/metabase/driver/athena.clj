@@ -143,7 +143,7 @@
     (let [obj (.getObject rs i)
           class-name (some-> obj .getClass .getName)]
       (cond (= class-name "com.amazon.athena.jdbc.results.IteratorResultSetBase$AthenaArray")
-            (vec (.getArray obj))
+            (vec (.getArray ^com.amazon.athena.jdbc.results.IteratorResultSetBase$AthenaArray obj))
 
             :else
             obj))))
