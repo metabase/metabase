@@ -131,6 +131,8 @@
     {"/unsubscribe" 'metabase.api.pulse.unsubscribe})
    (+auth metabase.api.pulse/routes)))
 
+(declare routes)
+
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!
 ;;; !!                  DO NOT ADD `metabase.api.*` NAMESPACES THAT CONTAIN ENDPOINTS                 !!
@@ -155,7 +157,7 @@
    "/dashboard"            (+auth 'metabase.api.dashboard)
    "/database"             (+auth 'metabase.api.database)
    "/dataset"              'metabase.api.dataset
-   "/docs"                 metabase.api.docs/routes
+   "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions 'metabase.api.embed)
    "/field"                (+auth 'metabase.api.field)
