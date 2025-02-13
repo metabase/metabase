@@ -1419,7 +1419,7 @@ describe("issue 51925", () => {
     });
   });
 
-  it("should not get caught in an infinite loop when opening the native editor (QUE-614)", () => {
+  it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
     H.startNewNativeModel();
 
     // If the app freezes, this won't work
