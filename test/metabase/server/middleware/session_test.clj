@@ -16,8 +16,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
-   [toucan2.core :as t2])
-  (:import (clojure.lang ExceptionInfo)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
