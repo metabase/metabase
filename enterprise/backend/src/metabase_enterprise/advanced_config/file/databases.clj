@@ -31,7 +31,6 @@
 (defn- valid-regex-patterns? [patterns]
   (every? (fn [pattern]
             (try
-              #_{:clj-kondo/ignore [:unused-value]}
               (boolean (crufty/->regex pattern))
               (catch Exception e (log/error e) false)))
           patterns))
@@ -40,11 +39,14 @@
   (s/and
    map?
    (fn cruft-patterns-are-valid? [settings]
-     ;; _'s because this is validated first then normalized later
-     (->> [(:auto_cruft_tables settings)
-           (:auto_cruft_columns settings)]
+     (->> [(:auto-cruft-tables settings
+                               ;; we access auto.cruft.* with _'s here. Because we may expect to see underscores from
+                               ;; the yaml file, this is validated first then normalized later
+                               (:auto_cruft_tables settings))
+           (:auto-cruft-columns settings
+                                (:auto_cruft_columns settings))]
           (remove nil?)
-          (every? valid-regex-patterns?)
+          (every? valid-regex-patterns?)))))
 
 (s/def ::config-file-spec
   (s/keys :req-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/engine

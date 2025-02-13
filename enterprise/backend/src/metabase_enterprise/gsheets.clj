@@ -81,7 +81,7 @@
 
 (defsetting gsheets
   #_"
-  This value can have 3 states:
+  This value has 3 states:
 
   1) The Google Sheets Folder is not setup.
   {:status \"not-connected\"}
@@ -89,10 +89,11 @@
   2) We have uploaded a Folder URL to HM, but have not synced it in MB yet.
   {:status \"loading\"
    :folder_url \"https://drive.google.com/drive/abc\"
+   :gdrive/conn-id <uuid>
    ;; in seconds from epoch:
    :folder-upload-time 1738266997}
 
-  2)  Google Sheets Integration is enabled, and users can view their google sheets tables.
+  3)  Google Sheets Integration is enabled, and users can view their google sheets tables.
   {:status \"complete\"
    :folder_url \"https://drive.google.com/drive/abc\"}"
   (deferred-tru "Information about Google Sheets Integration")
@@ -170,15 +171,15 @@
             (filter is-gdrive? (or (some-> response :body) [])))
       [])))
 
-(mu/defn- hm-delete-conn :- ::hm.client/http-reply
+(mu/defn- hm-delete-conn! :- ::hm.client/http-reply
   "Delete (presumably a gdrive) connection on HM."
   [conn-id]
   (hm.client/make-request :delete (str "/api/v2/mb/connections/" conn-id)))
 
-(defn- reset-gsheets-status []
+(defn- reset-gsheets-status! []
   (gsheets! not-connected)
   (doseq [{:keys [id]} (hm-get-gdrive-conns)]
-    (hm-delete-conn id))
+    (hm-delete-conn! id))
   not-connected)
 
 (mu/defn hm-get-gdrive-conn :- ::hm.client/http-reply
@@ -188,7 +189,7 @@
     (throw (ex-info "must have an id to lookup by id" {})))
   (hm.client/make-request :get (str "/api/v2/mb/connections/" id)))
 
-(mu/defn- hm-create-gdrive-conn :- ::hm.client/http-reply
+(mu/defn- hm-create-gdrive-conn! :- ::hm.client/http-reply
   "Creating a gdrive connection on HM starts the sync w/ drive folder."
   [drive-folder-url]
   (hm.client/make-request :post "/api/v2/mb/connections" {:type "gdrive" :secret {:resources [drive-folder-url]}}))
@@ -203,7 +204,7 @@
   []
   (api/check-superuser)
   (when-not (api.auth/show-google-sheets-integration)
-    (reset-gsheets-status)
+    (reset-gsheets-status!)
     (error-response-in-body (tru "Google Sheets integration is not enabled.") {:status-code 402}))
   {:email (hm-service-account-email)})
 
@@ -211,7 +212,7 @@
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
   [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
   (api/check-superuser)
-  (let [[status response] (hm-create-gdrive-conn url)]
+  (let [[status response] (hm-create-gdrive-conn! url)]
     (if (= status :ok)
       (u/prog1 {:status "loading"
                 :folder_url url
@@ -219,7 +220,7 @@
                 :gdrive/conn-id (-> response :body :id)}
         (gsheets! <>))
       (do
-        (reset-gsheets-status)
+        (reset-gsheets-status!)
         (error-response-in-body
          (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions."))))))
 
@@ -252,7 +253,7 @@
         [sstatus {conn :body}] (try (hm-get-gdrive-conn conn-id)
                                     ;; missing id:
                                     (catch Exception _
-                                      (reset-gsheets-status)
+                                      (reset-gsheets-status!)
                                       (error-response-in-body
                                        (tru "Unable to find google drive connection, please try again.")
                                        {:conn-id conn-id})))]
@@ -269,14 +270,14 @@
 
               (when-let [upload-time (:folder-upload-time (gsheets))]
                 (> (seconds-from-epoch-now) (+ upload-time *folder-setup-timeout-seconds*)))
-              (do (reset-gsheets-status)
+              (do (reset-gsheets-status!)
                   (error-response-in-body (tru "Timeout syncing google drive folder, please try again.")
                                           {:status-code 408}))
 
               ;; Syncing failed
               (= "error" status)
               (do
-                (reset-gsheets-status)
+                (reset-gsheets-status!)
                 (error-response-in-body (tru "Problem syncing google drive folder, please try again..")))
 
               ;; Continue waiting
@@ -289,7 +290,7 @@
                                   :last-dwh-sync         last-dwh-sync
                                   :last-gdrive-conn-sync last-gdrive-conn-sync})))
       (do
-        (reset-gsheets-status)
+        (reset-gsheets-status!)
         (error-response-in-body
          (tru "Unable to find google drive connection.")
          {:status-code 404})))))
@@ -304,7 +305,7 @@
   (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
     (when-not (some? attached-dwh)
       (snowplow/track-event! ::snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
-      (reset-gsheets-status)
+      (reset-gsheets-status!)
       (error-response-in-body (tru "No attached dwh found.")))
     (handle-get-folder attached-dwh)))
 
@@ -313,7 +314,7 @@
   []
   (api/check-superuser)
   (snowplow/track-event! ::snowplow/simple_event {:event "sheets_disconnected"})
-  (reset-gsheets-status))
+  (reset-gsheets-status!))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/gsheets` routes."
@@ -336,7 +337,7 @@
 
   (gsheets)
 
-  (reset-gsheets-status)
+  (reset-gsheets-status!)
 
 
   (require '[metabase.util.json :as json])

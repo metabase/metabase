@@ -132,16 +132,16 @@
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
   [database {schema :schema table-name :name :as table}]
-  (if-let [existing-id #p (t2/select-one-pk :model/Table
-                                            :db_id (u/the-id database)
-                                            :schema schema
-                                            :name table-name
-                                            :active false)]
-    (do   #p (t2/select-one :model/Table existing-id)
-          ;; if the table already exists but is marked *inactive*, mark it as *active*
-          (t2/update! :model/Table existing-id (assoc
-                                                (cruft-dependent-cols table database ::reactivate)
-                                                :active true)))
+  (if-let [existing-id (t2/select-one-pk :model/Table
+                                         :db_id (u/the-id database)
+                                         :schema schema
+                                         :name table-name
+                                         :active false)]
+    (do (t2/select-one :model/Table existing-id)
+        ;; if the table already exists but is marked *inactive*, mark it as *active*
+        (t2/update! :model/Table existing-id (assoc
+                                              (cruft-dependent-cols table database ::reactivate)
+                                              :active true)))
     ;; otherwise create a new Table
     (create-table! database table)))
 
