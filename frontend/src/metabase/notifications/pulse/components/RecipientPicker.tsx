@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
 import TokenField from "metabase/components/TokenField";

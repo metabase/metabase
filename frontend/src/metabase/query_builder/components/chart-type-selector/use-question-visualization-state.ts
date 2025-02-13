@@ -72,7 +72,7 @@ export const getSensibleVisualizations = ({
   result,
 }: GetSensibleVisualizationsProps) => {
   const availableVizTypes = Array.from(visualizations.entries())
-    .filter(([_display, config]) => !config.hidden)
+    .filter(([_, config]) => !config.hidden)
     .map(([vizType]) => vizType)
     .filter(isCardDisplayType);
 

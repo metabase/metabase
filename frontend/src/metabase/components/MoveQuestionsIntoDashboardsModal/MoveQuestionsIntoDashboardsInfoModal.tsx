@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { Button, Flex, Icon, List, Modal } from "metabase/ui";
 

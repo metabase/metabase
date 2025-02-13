@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { alpha, color } from "metabase/lib/colors";

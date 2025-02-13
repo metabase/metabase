@@ -15,7 +15,7 @@ export const calculateFunnelSteps = (
   funnelHeight: number,
 ): FunnelStep[] => {
   return data.map((datum, index) => {
-    const [_step, firstMeasure] = data[0];
+    const [_, firstMeasure] = data[0];
     const [step, measure] = datum;
     const left = index * stepWidth;
     const height = (measure * funnelHeight) / firstMeasure;

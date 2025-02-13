@@ -26,7 +26,7 @@ export const MetricFilterControls = ({
 }: MetricFilterControlsProps) => {
   const areAnyFiltersActive = Object.values(metricFilters).some(Boolean);
 
-  const [_userSetting, setUserSetting] = useUserSetting(USER_SETTING_KEY);
+  const [_, setUserSetting] = useUserSetting(USER_SETTING_KEY);
 
   const handleVerifiedFilterChange = useCallback(
     function (evt: ChangeEvent<HTMLInputElement>) {

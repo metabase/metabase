@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import _ from "underscore";
 
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";

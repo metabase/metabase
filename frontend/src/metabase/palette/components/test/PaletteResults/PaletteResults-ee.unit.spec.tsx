@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { screen, within } from "__support__/ui";
 
 import { type CommonSetupProps, commonSetup } from "./setup";

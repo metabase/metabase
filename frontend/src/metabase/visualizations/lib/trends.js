@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 // mappings of allowed operators
 const EXPRESSION_OPERATORS = new Map([
   ["+", (...args) => args.reduce((x, y) => x + y)],

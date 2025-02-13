@@ -2,6 +2,7 @@
 import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Button from "metabase/core/components/Button";

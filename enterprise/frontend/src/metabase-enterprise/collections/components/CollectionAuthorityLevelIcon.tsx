@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
 
+import _ from "underscore";
+
 import { color } from "metabase/lib/colors";
 import type { CollectionAuthorityLevelIcon as CollectionAuthorityLevelIconComponent } from "metabase/plugins/index";
 import { Icon } from "metabase/ui";

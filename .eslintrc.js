@@ -17,7 +17,7 @@ module.exports = {
       {
         vars: "all",
         args: "none",
-        varsIgnorePattern: "^_.+$",
+        varsIgnorePattern: "^_",
         ignoreRestSiblings: true,
       },
     ],
@@ -107,7 +107,7 @@ module.exports = {
           "And",
           "When",
           "Then",
-          "describeWithSnowplow",
+          "describeWithSnowplow"
         ],
       },
     ],
@@ -219,10 +219,10 @@ module.exports = {
         "@typescript-eslint/no-unused-vars": [
           "error",
           {
-            argsIgnorePattern: "^_.+$",
-            varsIgnorePattern: "^_.+$",
+            argsIgnorePattern: "^_",
+            varsIgnorePattern: "^_",
             ignoreRestSiblings: true,
-            destructuredArrayIgnorePattern: "^_.+$",
+            destructuredArrayIgnorePattern: "^_",
           },
         ],
         // This was introduced in 6.0.0

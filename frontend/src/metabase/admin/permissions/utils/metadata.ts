@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { ConcreteTableId } from "metabase-types/api";

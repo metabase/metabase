@@ -33,7 +33,7 @@ export const getAutoChartColors = (
 
   const newValues = groups
     .map(([name], index) => [name, newColors[index]?.hex()])
-    .filter(([_name, value]) => value != null);
+    .filter(([_, value]) => value != null);
 
   return { ...values, ...Object.fromEntries(newValues) };
 };
@@ -45,7 +45,7 @@ const getAutoColors = (
   const oldColor = oldColors.find(color => color != null);
 
   const autoColors: Color[] = [];
-  oldColors.forEach((_color, index) => {
+  oldColors.forEach((_, index) => {
     if (index === 0 && !oldColor) {
       autoColors.push(fallbackColor);
     } else if (index === 0 && oldColor) {

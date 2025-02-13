@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
 import { memo, useCallback, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";

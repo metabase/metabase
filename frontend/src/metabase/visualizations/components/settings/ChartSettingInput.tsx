@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import _ from "underscore";
 
 import { TextInput } from "metabase/ui";
 

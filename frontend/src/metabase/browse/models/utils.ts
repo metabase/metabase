@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
 import { entityForObject } from "metabase/lib/schema";

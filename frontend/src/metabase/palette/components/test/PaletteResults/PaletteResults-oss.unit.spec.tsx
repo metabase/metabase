@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+import _ from "underscore";
 
 import { screen, waitFor, within } from "__support__/ui";
 import {

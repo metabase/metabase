@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -35,7 +33,7 @@ const defaultProps: Pick<
     { model: "database", model_id: 1, strategy: { type: "nocache" } },
   ],
   isFormDirty: false,
-  updateTargetId: _.noop,
+  updateTargetId: (_: number | null, __: boolean) => {},
 };
 
 const renderStrategyFormLauncher = (props: StrategyFormLauncherProps) => {

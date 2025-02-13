@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type { GroupsPermissions } from "metabase-types/api";
 
 import { DataPermission, DataPermissionValue } from "../../types";

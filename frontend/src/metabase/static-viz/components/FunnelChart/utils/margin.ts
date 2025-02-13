@@ -17,7 +17,7 @@ export const calculateMargin = (
   paddingLeft: number,
   settings: FunnelSettings,
 ) => {
-  const [_step, measure] = firstStep;
+  const [_, measure] = firstStep;
   const formattedFirstMeasure = formatNumber(
     measure,
     settings?.measure?.format,

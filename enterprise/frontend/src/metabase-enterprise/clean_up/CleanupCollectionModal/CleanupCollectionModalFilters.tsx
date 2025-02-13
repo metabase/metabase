@@ -1,4 +1,5 @@
 import { c, t } from "ttag";
+import _ from "underscore";
 
 import { Flex, Icon, Select, Switch, Text } from "metabase/ui";
 

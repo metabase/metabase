@@ -208,7 +208,7 @@ function syncColumnSettings(
     newColumns,
     oldColumns,
     getColumnName: ([key]) => getColumnNameFromKey(key),
-    setColumnName: ([_key, setting], name) => [getColumnKey({ name }), setting],
+    setColumnName: ([_, setting], name) => [getColumnKey({ name }), setting],
     createSetting: column => [getColumnKey(column), {}],
     shouldCreateSetting: () => false,
   });

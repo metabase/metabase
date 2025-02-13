@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
+import _ from "underscore";
 
 import { Button, Flex, Icon, Loader, Modal, Text } from "metabase/ui";
 import type { GetCollectionDashboardQuestionCandidatesResult } from "metabase-types/api";

@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react-hooks";
 import type { EChartsType } from "echarts/core";
 import type { MutableRefObject } from "react";
+import _ from "underscore";
 
 import {
   TOOLTIP_POINTER_MARGIN,

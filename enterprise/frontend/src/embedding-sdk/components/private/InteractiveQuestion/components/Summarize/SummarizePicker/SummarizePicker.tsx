@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import {
   AggregationPicker,
   type AggregationPickerProps,
