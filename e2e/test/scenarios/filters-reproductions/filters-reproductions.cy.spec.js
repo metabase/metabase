@@ -1700,15 +1700,21 @@ SELECT CAST('9223372036854775809' AS DECIMAL) AS DECIMAL`,
       const questionDetails = {
         name: "SQL BIGINT",
         native: {
-          query: `SELECT CAST('9223372036854775806' AS BIGINT) AS BIGINT
+          query: `SELECT CAST('${minBigIntValue}' AS BIGINT) AS BIGINT
 UNION ALL
-SELECT CAST('9223372036854775807' AS BIGINT) AS BIGINT`,
+SELECT CAST(0 AS BIGINT) AS BIGINT
+UNION ALL
+SELECT CAST('${maxBigIntValue}' AS BIGINT) AS BIGINT`,
         },
         display: "table",
       };
+
+      cy.log("create a question");
       H.createNativeQuestion(questionDetails, { visitQuestion: true });
       H.queryBuilderHeader().findByText("Explore results").click();
-      H.assertQueryBuilderRowCount(2);
+      H.assertQueryBuilderRowCount(3);
+
+      cy.log("equals filter");
       H.openNotebook();
       H.filter({ mode: "notebook" });
       H.popover().within(() => {
@@ -1725,6 +1731,24 @@ SELECT CAST('9223372036854775807' AS BIGINT) AS BIGINT`,
         .should("be.visible");
       H.visualize();
       H.assertQueryBuilderRowCount(1);
+
+      cy.log("between filter");
+      H.openNotebook();
+      H.getNotebookStep("filter")
+        .findByText(`BIGINT is equal to "${maxBigIntValue}"`)
+        .click();
+      H.popover().findByLabelText("Filter operator").click();
+      H.popover().eq(1).findByText("Between").click();
+      H.popover().within(() => {
+        cy.findByPlaceholderText("Min").clear().type("0");
+        cy.findByPlaceholderText("Max").clear().type(maxBigIntValue);
+        cy.button("Update filter").click();
+      });
+      H.getNotebookStep("filter")
+        .findByText(`BIGINT is between 0 and "${maxBigIntValue}"`)
+        .should("be.visible");
+      H.visualize();
+      H.assertQueryBuilderRowCount(2);
     });
 
     it("should be able to use id parameters with BIGINT columns in dashboards (metabase#5816)", () => {
