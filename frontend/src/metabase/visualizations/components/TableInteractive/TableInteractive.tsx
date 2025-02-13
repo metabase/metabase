@@ -1,4 +1,5 @@
 import type { ColumnSizingState } from "@tanstack/react-table";
+import cx from "classnames";
 import type React from "react";
 import {
   type Ref,
@@ -53,6 +54,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import S from "./TableInteractive.module.css";
 import { useObjectDetail } from "./hooks/use-object-detail";
 
 const getBodyCellVariant = (
@@ -434,17 +436,23 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }
 
   return (
-    <Table
+    <div
       ref={ref}
-      {...tableProps}
-      className={className}
-      width={width}
-      height={height}
-      renderHeaderDecorator={renderHeaderDecorator}
-      onBodyCellClick={handleBodyCellClick}
-      onHeaderCellClick={handleHeaderCellClick}
-      onAddColumnClick={handleAddColumnButtonClick}
-    />
+      className={cx(S.root, className)}
+      style={{
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+      }}
+    >
+      <Table
+        {...tableProps}
+        renderHeaderDecorator={renderHeaderDecorator}
+        onBodyCellClick={handleBodyCellClick}
+        onHeaderCellClick={handleHeaderCellClick}
+        onAddColumnClick={handleAddColumnButtonClick}
+      />
+    </div>
   );
 });
 

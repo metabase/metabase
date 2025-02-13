@@ -79,6 +79,7 @@ export const getDataColumn = <TRow, TValue>(
       );
     }),
     minSize: MIN_COLUMN_WIDTH,
+    enableResizing: true,
     meta: {
       wrap,
       enableReordering: true,

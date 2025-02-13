@@ -52,6 +52,8 @@ export const BodyCell = memo(function BodyCell<TValue>({
     [columnId, formattedValue, onExpand],
   );
 
+  const hasExpandButton = variant === "text" && canExpand;
+
   return (
     <BaseCell
       align={align}
@@ -62,18 +64,20 @@ export const BodyCell = memo(function BodyCell<TValue>({
       backgroundColor={backgroundColor}
       role="gridcell"
     >
-      <div
-        data-grid-cell-content
-        className={cx(S.content, {
-          [S.noWrap]: !wrap,
-        })}
-        {...contentAttributes}
-        data-testid="cell-data"
-      >
-        {formattedValue}
-      </div>
+      {formattedValue != null ? (
+        <div
+          data-grid-cell-content
+          className={cx(S.content, {
+            [S.noWrap]: !wrap,
+          })}
+          {...contentAttributes}
+          data-testid="cell-data"
+        >
+          {formattedValue}
+        </div>
+      ) : null}
 
-      {canExpand && (
+      {hasExpandButton && (
         <ExpandButton
           className={CS.hoverChild}
           data-testid="expand-column"

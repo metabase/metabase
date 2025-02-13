@@ -31,6 +31,8 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   isResizing,
 }: SortableHeaderProps<TData, TValue>) {
   const canSort = header.column.columnDef.meta?.enableReordering;
+  const canResize = header.column.columnDef.enableResizing;
+
   const id = header.column.id;
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useSortable({
@@ -40,19 +42,32 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
 
   const dragStartPosition = useRef<DragPosition | null>(null);
 
-  const style = useMemo<CSSProperties>(
-    () => ({
+  const style = useMemo<CSSProperties>(() => {
+    if (!canSort) {
+      return {};
+    }
+    return {
       opacity: isDragging ? 0.8 : 1,
       position: "relative",
       transform: isDragging ? CSS.Translate.toString(transform) : undefined,
       transition: "width transform 0.2s ease-in-out",
       whiteSpace: "nowrap",
       zIndex: isDragging ? 2 : 0,
-      cursor: canSort ? "grab" : "default",
+      cursor: "grab",
       outline: "none",
-    }),
-    [isDragging, transform, canSort],
-  );
+    };
+  }, [isDragging, transform, canSort]);
+
+  const nodeAttributes = useMemo(() => {
+    if (!canSort) {
+      return {};
+    }
+
+    return {
+      ...listeners,
+      ...attributes,
+    };
+  }, [attributes, canSort, listeners]);
 
   const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     dragStartPosition.current = { x: e.clientX, y: e.clientY };
@@ -103,15 +118,17 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       onMouseDown={handleDragStart}
       onMouseUp={handleDragEnd}
     >
-      <div className={S.headerContent} {...attributes} {...listeners}>
+      <div className={S.headerContent} {...nodeAttributes}>
         {headerContent}
       </div>
-      <div
-        className={S.resizeHandle}
-        onMouseDown={resizeHandler}
-        onTouchStart={resizeHandler}
-        onMouseOver={e => e.stopPropagation()}
-      />
+      {canResize ? (
+        <div
+          className={S.resizeHandle}
+          onMouseDown={resizeHandler}
+          onTouchStart={resizeHandler}
+          onMouseOver={e => e.stopPropagation()}
+        />
+      ) : null}
     </div>
   );
 }) as <TData, TValue>(

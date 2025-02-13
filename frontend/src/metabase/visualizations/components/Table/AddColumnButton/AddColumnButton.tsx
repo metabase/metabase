@@ -7,23 +7,15 @@ import { Button, Icon } from "metabase/ui";
 import S from "./AddColumnButton.module.css";
 
 interface AddColumnButtonProps extends HTMLAttributes<HTMLButtonElement> {
-  headerHeight: number;
   isOverflowing?: boolean;
 }
 
 export const AddColumnButton = memo(function AddColumnButton({
-  headerHeight,
   isOverflowing,
   onClick,
 }: AddColumnButtonProps) {
   return (
-    <div
-      className={cx(S.root, { [S.sticky]: isOverflowing })}
-      style={{
-        height: headerHeight,
-        width: headerHeight,
-      }}
-    >
+    <div className={cx(S.root, { [S.sticky]: isOverflowing })}>
       <Button
         variant="outline"
         compact

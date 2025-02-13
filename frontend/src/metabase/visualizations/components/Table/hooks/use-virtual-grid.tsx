@@ -9,7 +9,7 @@ import { useCallback, useLayoutEffect } from "react";
 import _ from "underscore";
 
 interface VirtualGridOptions<TData> {
-  bodyRef: React.RefObject<HTMLDivElement>;
+  gridRef: React.RefObject<HTMLDivElement>;
   table: ReactTable<TData>;
   measureRowHeight: (rowIndex: number) => number;
   defaultRowHeight: number;
@@ -25,7 +25,7 @@ export interface VirtualGrid {
 }
 
 export const useVirtualGrid = <TData,>({
-  bodyRef,
+  gridRef,
   table,
   measureRowHeight,
   defaultRowHeight,
@@ -34,17 +34,22 @@ export const useVirtualGrid = <TData,>({
   const visibleColumns = table.getVisibleLeafColumns();
   const columnVirtualizer = useVirtualizer({
     count: visibleColumns.length,
-    getScrollElement: () => bodyRef.current,
-    estimateSize: index => visibleColumns[index].getSize(),
+    getScrollElement: () => gridRef.current,
+    estimateSize: index => {
+      const column = visibleColumns[index];
+      const size = visibleColumns[index].getSize();
+      const actualSize = table.getState().columnSizing[column.id];
+      return actualSize ?? size;
+    },
     horizontal: true,
-    overscan: 5,
+    overscan: 3,
   });
 
   const rowVirtualizer = useVirtualizer({
     count: tableRows.length,
-    getScrollElement: () => bodyRef.current,
+    getScrollElement: () => gridRef.current,
     estimateSize: () => defaultRowHeight,
-    overscan: 5,
+    overscan: 3,
     measureElement: element => {
       const rowIndexRaw = element?.getAttribute("data-index");
       const rowIndex = rowIndexRaw != null ? parseInt(rowIndexRaw, 10) : null;

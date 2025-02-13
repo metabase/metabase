@@ -8,6 +8,7 @@ import type React from "react";
 import {
   type MouseEventHandler,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -112,8 +113,8 @@ export const useTableInstance = <TData, TValue>({
   TableProps<TData>,
   "width" | "height"
 > => {
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const refs = useMemo(() => ({ bodyRef }), [bodyRef]);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const refs = useMemo(() => ({ gridRef }), [gridRef]);
   const hasRowIdColumn = rowIdColumn != null;
 
   const [columnOrder, setColumnOrder] = useState<string[]>(
@@ -216,14 +217,6 @@ export const useTableInstance = <TData, TValue>({
     onColumnSizingChange: setColumnSizing,
   });
 
-  const measureColumnWidths = useMeasureColumnWidths(
-    table,
-    data,
-    columnsOptions,
-    setMeasuredColumnSizing,
-    truncateLongCellWidth,
-  );
-
   const measureRowHeight = useCallback(
     (rowIndex: number) => {
       const wrappedColumns = columnsOptions.filter(column => column.wrap);
@@ -259,11 +252,31 @@ export const useTableInstance = <TData, TValue>({
   );
 
   const virtualGrid = useVirtualGrid({
-    bodyRef,
+    gridRef,
     table,
     defaultRowHeight,
     measureRowHeight,
   });
+
+  const measureColumnWidths = useMeasureColumnWidths(
+    table,
+    data,
+    columnsOptions,
+    setMeasuredColumnSizing,
+    truncateLongCellWidth,
+  );
+
+  const prevColumnSizing = useRef<ColumnSizingState>();
+  useEffect(() => {
+    if (
+      prevColumnSizing.current != null &&
+      !_.isEqual(prevColumnSizing.current, columnSizing)
+    ) {
+      virtualGrid.measureGrid();
+    }
+
+    prevColumnSizing.current = columnSizing;
+  }, [columnSizing, virtualGrid]);
 
   const handleColumnResize = useCallback(
     (columnName: string, width: number) => {
@@ -290,7 +303,7 @@ export const useTableInstance = <TData, TValue>({
   useColumnResizeObserver(table.getState(), handleColumnResize);
 
   const columnsReordering = useColumnsReordering(
-    bodyRef,
+    gridRef,
     table,
     onColumnReorder,
   );

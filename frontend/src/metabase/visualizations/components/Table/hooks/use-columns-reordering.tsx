@@ -24,29 +24,29 @@ export type ColumnsReordering = {
 };
 
 export const useColumnsReordering = <TData,>(
-  bodyRef: RefObject<HTMLDivElement>,
+  gridRef: RefObject<HTMLDivElement>,
   table: ReactTable<TData>,
   onColumnReorder?: (columnNames: string[]) => void,
 ): ColumnsReordering => {
   const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {}),
+    useSensor(MouseSensor),
+    useSensor(TouchSensor),
+    useSensor(KeyboardSensor),
   );
 
   const onDragStart = useCallback(
     (_event: DragStartEvent) => {
-      if (bodyRef.current) {
-        bodyRef.current.style.overflow = "hidden";
+      if (gridRef.current) {
+        gridRef.current.style.overflow = "hidden";
       }
     },
-    [bodyRef],
+    [gridRef],
   );
 
   const onDragOver = useCallback(
     (event: DragOverEvent) => {
       const { active, over } = event;
-      if (active && over && active.id !== over.id) {
+      if (active && over && active.id !== over.id && !over.disabled) {
         table.setColumnOrder(columnOrder => {
           const oldIndex = columnOrder.indexOf(active.id as string);
           const newIndex = columnOrder.indexOf(over.id as string);
@@ -59,8 +59,8 @@ export const useColumnsReordering = <TData,>(
 
   const onDragEnd = useCallback(
     (_event: DragEndEvent) => {
-      if (bodyRef.current) {
-        bodyRef.current.style.overflow = "auto";
+      if (gridRef.current) {
+        gridRef.current.style.overflow = "auto";
       }
 
       const columns = table
@@ -69,7 +69,7 @@ export const useColumnsReordering = <TData,>(
 
       onColumnReorder?.(columns);
     },
-    [bodyRef, onColumnReorder, table],
+    [gridRef, onColumnReorder, table],
   );
 
   const columnsReordering = useMemo(

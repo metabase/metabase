@@ -1,11 +1,17 @@
 .table {
+  position: relative;
   color: var(--mb-color-text-dark);
   background-color: var(--mb-color-bg-white);
+  width: 100%;
+  height: 100%;
 }
 
 .tableGrid {
   display: grid;
   width: 100%;
+  height: 100%;
+  overflow: auto;
+  padding-right: 36px;
 }
 
 .headerContainer {
@@ -74,6 +80,7 @@
   height: 100%;
   outline: none;
 }
+
 .headerWrapper:hover {
   cursor: grab;
 }
