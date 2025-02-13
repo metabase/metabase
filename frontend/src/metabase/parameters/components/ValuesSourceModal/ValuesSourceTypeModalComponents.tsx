@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import {
   LoadingAndErrorWrapper,
   type LoadingAndErrorWrapperProps,
@@ -9,23 +11,27 @@ import { Box, type BoxProps } from "metabase/ui";
 
 import S from "./ValuesSourceTypeModal.module.css";
 
-export const ModalBodyWithPane = (props: BoxProps) => {
+interface BoxPropsWithChildren extends BoxProps {
+  children?: ReactNode;
+}
+
+export const ModalBodyWithPane = (props: BoxPropsWithChildren) => {
   return <Box className={S.ModalBodyWithPane} {...props} />;
 };
 
-export const ModalPane = (props: BoxProps) => {
+export const ModalPane = (props: BoxPropsWithChildren) => {
   return <Box className={S.ModalPane} {...props} />;
 };
 
-export const ModalMain = (props: BoxProps) => {
+export const ModalMain = (props: BoxPropsWithChildren) => {
   return <Box className={S.ModalMain} {...props} />;
 };
 
-export const ModalSection = (props: BoxProps) => {
+export const ModalSection = (props: BoxPropsWithChildren) => {
   return <Box mb="md" {...props} />;
 };
 
-export const ModalLabel = (props: BoxProps) => {
+export const ModalLabel = (props: BoxPropsWithChildren) => {
   return <Box component="label" className={S.ModalLabel} {...props} />;
 };
 
@@ -33,15 +39,15 @@ export const ModalTextArea = (props: TextAreaProps) => {
   return <TextArea className={S.ModalTextArea} {...props} />;
 };
 
-export const ModalHelpMessage = (props: BoxProps) => {
+export const ModalHelpMessage = (props: BoxPropsWithChildren) => {
   return <Box className={S.ModalHelpMessage} {...props} />;
 };
 
-export const ModalErrorMessage = (props: BoxProps) => {
+export const ModalErrorMessage = (props: BoxPropsWithChildren) => {
   return <Box className={S.ModalErrorMessage} {...props} />;
 };
 
-export const ModalEmptyState = (props: BoxProps) => {
+export const ModalEmptyState = (props: BoxPropsWithChildren) => {
   return <Box className={S.ModalEmptyState} {...props} />;
 };
 
