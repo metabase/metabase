@@ -7,9 +7,10 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-// import { useDispatch } from "metabase/lib/redux";
-// import { addUndo } from "metabase/redux/undo";
 import { POST } from "metabase/lib/api";
+import { useDispatch } from "metabase/lib/redux";
+// import { addUndo } from "metabase/redux/undo";
+import { runQuestionQuery } from "metabase/query_builder/actions";
 import { Box, Divider, Flex, Modal, Stack, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Field } from "metabase-types/api";
@@ -26,7 +27,7 @@ export interface AddRowModalProps {
 
 export const AddRowModal = ({ question, onClose }: AddRowModalProps) => {
   const table = question.legacyQueryTable();
-  // const dispatch = useDispatch();
+  const dispatch = useDispatch();
 
   const fields = table?.fields as FieldWithAdditionalData[] | undefined;
   const tableId = question.card()?.table_id ?? table?.id;
@@ -38,6 +39,9 @@ export const AddRowModal = ({ question, onClose }: AddRowModalProps) => {
     await POST(`/api/internal-tools/table/${tableId}`)({
       row: values,
     });
+
+    dispatch(runQuestionQuery({ ignoreCache: true }));
+
     // dispatch(addUndo({ message: t`The alert was successfully deleted.` }));
     onClose();
   };

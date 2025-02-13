@@ -23,7 +23,11 @@ import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
 import { connect } from "metabase/lib/redux";
-import { setUIControls, zoomInRow } from "metabase/query_builder/actions";
+import {
+  runQuestionQuery,
+  setUIControls,
+  zoomInRow,
+} from "metabase/query_builder/actions";
 import {
   getIsShowingRawTable,
   getQueryBuilderMode,
@@ -106,6 +110,7 @@ const mapStateToProps = state => ({
 
 const mapDispatchToProps = dispatch => ({
   onZoomRow: objectId => dispatch(zoomInRow({ objectId })),
+  onRunQuery: () => dispatch(runQuestionQuery({ ignoreCache: true })),
 });
 
 class TableInteractive extends Component {
@@ -885,17 +890,19 @@ class TableInteractive extends Component {
 
     const backgroundColor = tableTheme?.cell?.backgroundColor;
 
-    const handleClick = actionId => {
+    const handleClick = async actionId => {
       const tableId = getTableIdFromQuestion(question);
 
       const pkColIndex = cols.findIndex(col => col.semantic_type === "type/PK");
       const value = row[pkColIndex];
 
       if (pkColIndex != null) {
-        POST(`/api/internal-tools/row-action/${actionId}`)({
+        await POST(`/api/internal-tools/row-action/${actionId}`)({
           pk: value,
           "table-id": tableId,
         });
+
+        this.props.onRunQuery();
       }
     };
 
