@@ -78,11 +78,11 @@
          {:MetadataRetrievalMethod "ProxyAPI"
           :Catalog                 catalog})
        (dissoc details
-                   ;; `:metabase.driver.athena/schema` is just a gross hack for testing so we can treat multiple tests datasets as
-                   ;; different DBs -- see [[metabase.driver.athena/fast-active-tables]]. Not used outside of tests. -- Cam
+               ;; `:metabase.driver.athena/schema` is just a gross hack for testing so we can treat multiple tests datasets as
+               ;; different DBs -- see [[metabase.driver.athena/fast-active-tables]]. Not used outside of tests. -- Cam
                :db :catalog :metabase.driver.athena/schema
-                   ;; Remove 2.x jdbc driver version options from details. Those are mapped to appropriate 3.x keys few
-                   ;; on preceding lines
+               ;; Remove 2.x jdbc driver version options from details. Those are mapped to appropriate 3.x keys few
+               ;; on preceding lines
                :region :access_key :secret_key :s3_staging_dir :workgroup))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
