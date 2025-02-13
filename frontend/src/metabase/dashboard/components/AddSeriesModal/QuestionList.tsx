@@ -102,7 +102,7 @@ export const QuestionList = memo(function QuestionList({
           w="100%"
           value={searchText}
           radius={0}
-          icon={<Icon className={S.SearchInputIcon} name="search" />}
+          leftSection={<Icon className={S.SearchInputIcon} name="search" />}
           placeholder={t`Search for a question`}
           onChange={e => setSearchText(e.target.value)}
         />
