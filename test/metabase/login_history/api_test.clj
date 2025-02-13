@@ -1,4 +1,4 @@
-(ns metabase.api.login-history-test
+(ns metabase.login-history.api-test
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
