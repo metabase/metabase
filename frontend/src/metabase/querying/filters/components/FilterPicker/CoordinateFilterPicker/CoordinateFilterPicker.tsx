@@ -183,7 +183,7 @@ function CoordinateValueInput({
 
   if (valueCount === 4) {
     return (
-      <Stack align="center" justify="center" spacing="sm" p="md">
+      <Stack align="center" justify="center" gap="sm" p="md">
         <NumberFilterInput
           label={t`Upper latitude`}
           value={values[0]}

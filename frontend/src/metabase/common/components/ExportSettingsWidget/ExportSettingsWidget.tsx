@@ -33,8 +33,15 @@ export const ExportSettingsWidget = ({
   const applicationName = useSelector(getApplicationName);
   return (
     <Stack>
-      <Chip.Group value={selectedFormat} onChange={onChangeFormat}>
-        <Group spacing="xs" noWrap>
+      <Chip.Group
+        value={selectedFormat}
+        onChange={(newValue: string | string[]) => {
+          Array.isArray(newValue)
+            ? onChangeFormat(newValue[0] as ExportFormat)
+            : onChangeFormat(newValue as ExportFormat);
+        }}
+      >
+        <Group gap="xs" wrap="nowrap">
           {formats.map(format => (
             <Chip
               key={format}
@@ -45,7 +52,7 @@ export const ExportSettingsWidget = ({
         </Group>
       </Chip.Group>
       {canConfigureFormatting ? (
-        <Stack spacing="xs">
+        <Stack gap="xs">
           <Radio.Group
             value={isFormattingEnabled ? "true" : "false"}
             onChange={() => onToggleFormatting()}

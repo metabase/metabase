@@ -5,8 +5,11 @@
    [metabase-enterprise.metabot-v3.tools.interface :as tools.interface]
    [toucan2.core :as t2]))
 
-(defmethod tools.interface/*invoke-tool* :metabot.tool/find-metric
-  [_ {:keys [message]} _env]
+(defn find-metric
+  "Find a metric described by `message`.
+
+  See [[metabase-enterprise.metabot-v3.dummy-tools/metric-details]] for the output if a metric can be found."
+  [{:keys [message]}]
   (let [{:keys [id]} (client/select-metric-request
                       (t2/select [:model/Card :id :name :description]
                                  :type [:= "metric"]
@@ -16,3 +19,7 @@
                       (dummy-tools/metric-details id))]
       {:structured-output result}
       {:output "Metric not found."})))
+
+(defmethod tools.interface/*invoke-tool* :metabot.tool/find-metric
+  [_ arguments _env]
+  (find-metric arguments))

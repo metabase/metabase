@@ -38,7 +38,7 @@ export const PublicLinkCopyPanel = ({
   removeTooltipLabel?: string;
   onCopy?: () => void;
 }) => (
-  <Stack spacing={0}>
+  <Stack gap={0}>
     <TextInput
       readOnly
       data-testid="public-link-input"
@@ -48,7 +48,13 @@ export const PublicLinkCopyPanel = ({
       rightSection={url && <PublicLinkCopyButton value={url} onCopy={onCopy} />}
     />
     <Box pos="relative">
-      <Group mt="sm" pos="absolute" w="100%" position="apart" align="center">
+      <Group
+        mt="sm"
+        pos="absolute"
+        w="100%"
+        justify="space-between"
+        align="center"
+      >
         <Box>
           {onRemoveLink && (
             // The container is needed to center the tooltip on the anchor
@@ -71,7 +77,7 @@ export const PublicLinkCopyPanel = ({
             </Tooltip>
           )}
         </Box>
-        <Group spacing="sm" position="right">
+        <Group gap="sm" justify="flex-end">
           {extensions &&
             extensions.length > 0 &&
             extensions.map(extension => (

@@ -4,6 +4,7 @@ import React, {
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
+  useMemo,
 } from "react";
 import { t } from "ttag";
 import type { AnySchema } from "yup";
@@ -35,9 +36,10 @@ import type {
 import type { LinkProps } from "metabase/core/components/Link";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
+import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
-import type { GroupProps, IconName, IconProps } from "metabase/ui";
+import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -400,7 +402,7 @@ export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
   onClose: () => void;
-} & GroupProps;
+} & StackProps;
 
 export type PreemptiveCachingSwitchProps = {
   handleSwitchToggle: () => void;
@@ -604,6 +606,8 @@ export const PLUGIN_METABOT = {
         children,
       );
   },
+  useMetabotPalletteActions: (_searchText: string) =>
+    useMemo(() => [] as PaletteAction[], []),
 };
 
 export const PLUGIN_GO_MENU = {
