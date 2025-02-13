@@ -1582,7 +1582,7 @@
          (#'prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
          server#  ^Server (.web-server ~system)
          ~port   (.. server# getURI getPort)]
-     (with-redefs [rometheus/system ~system]
+     (with-redefs [prometheus/system ~system]
        (try ~@body
             (finally (prometheus/stop-web-server ~system))))))
 
