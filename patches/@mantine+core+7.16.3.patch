@@ -1,5 +1,18 @@
+diff --git a/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs b/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs
+index e928597..08a9360 100644
+--- a/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs
++++ b/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs
+@@ -11,7 +11,7 @@ import { suppressNextjsWarning } from './suppress-nextjs-warning.mjs';
+ import { useProviderColorScheme } from './use-mantine-color-scheme/use-provider-color-scheme.mjs';
+ import { useRespectReduceMotion } from './use-respect-reduce-motion/use-respect-reduce-motion.mjs';
+ 
+-suppressNextjsWarning();
++// suppressNextjsWarning();
+ function MantineProvider({
+   theme,
+   children,
 diff --git a/node_modules/@mantine/core/styles.css b/node_modules/@mantine/core/styles.css
-index 9a363c6..bd4c8aa 100644
+index d440fbf..dc78ac1 100644
 --- a/node_modules/@mantine/core/styles.css
 +++ b/node_modules/@mantine/core/styles.css
 @@ -1,34 +1,4 @@
