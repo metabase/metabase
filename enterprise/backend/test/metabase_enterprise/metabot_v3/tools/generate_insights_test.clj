@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
-   [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
@@ -13,7 +12,7 @@
 (deftest ^:parallel generate-insights-test
   (testing "Metrics"
     (let [results-url "/auto/dashboard/question/42"]
-      (is (= {:output (str (public-settings/site-url) results-url)
+      (is (= {:output results-url
               :reactions [{:type :metabot.reaction/redirect :url results-url}]}
              (metabot-v3.tools.interface/*invoke-tool*
               :metabot.tool/generate-insights
@@ -21,7 +20,7 @@
               {})))))
   (testing "Reports"
     (let [results-url "/auto/dashboard/question/42"]
-      (is (= {:output (str (public-settings/site-url) results-url)
+      (is (= {:output results-url
               :reactions [{:type :metabot.reaction/redirect :url results-url}]}
              (metabot-v3.tools.interface/*invoke-tool*
               :metabot.tool/generate-insights
@@ -29,7 +28,7 @@
               {})))))
   (testing "Tables"
     (let [results-url "/auto/dashboard/table/42"]
-      (are [id] (= {:output (str (public-settings/site-url) results-url)
+      (are [id] (= {:output results-url
                     :reactions [{:type :metabot.reaction/redirect :url results-url}]}
                    (metabot-v3.tools.interface/*invoke-tool*
                     :metabot.tool/generate-insights
@@ -38,7 +37,7 @@
         42
         "42"))
     (let [results-url "/auto/dashboard/table/card__42"]
-      (is (= {:output (str (public-settings/site-url) results-url)
+      (is (= {:output results-url
               :reactions [{:type :metabot.reaction/redirect :url results-url}]}
              (metabot-v3.tools.interface/*invoke-tool*
               :metabot.tool/generate-insights
@@ -63,7 +62,7 @@
                                   2024]}}
           entity-id (-> query json/encode .getBytes codecs/bytes->b64-str)
           results-url (str "/auto/dashboard/adhoc/" entity-id)]
-      (is (= {:output (str (public-settings/site-url) results-url)
+      (is (= {:output results-url
               :reactions [{:type :metabot.reaction/redirect :url results-url}]}
              (metabot-v3.tools.interface/*invoke-tool*
               :metabot.tool/generate-insights
