@@ -10,6 +10,9 @@ import { getNextJsAnalyticsPageSnippet } from "../snippets/nextjs-page-snippet";
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
 import { getProjectDependenciesFromPackageJson } from "./get-package-version";
 
+/** Next.js optionally supports storing all sources under the `src` directory */
+export const SRC_DIR_NAME = "src";
+
 const hasPath = (pattern: string) => {
   try {
     return glob.sync(pattern).length > 0;
@@ -56,10 +59,10 @@ export async function checkIfUsingAppOrPagesRouter() {
  * Next.js 15's CLI introduced the option to store all sources under the `src` directory.
  * This checks if the current project is using the `src` directory.
  */
-export const checkIfNextJsProjectUsesSrcDirectory = () => hasPath("src");
+export const checkIfNextJsProjectUsesSrcDirectory = () => hasPath(SRC_DIR_NAME);
 
 export const getNextJsSourceDirectoryPrefix = () =>
-  checkIfNextJsProjectUsesSrcDirectory() ? "src/" : "";
+  checkIfNextJsProjectUsesSrcDirectory() ? `${SRC_DIR_NAME}/` : "";
 
 /**
  * Checks if the current Next.js project has a custom root layout (app router)
@@ -95,7 +98,7 @@ export const withNextJsUseClientDirective = (
 
 /** Strips the `src/` prefix from import paths. */
 export const stripSrcPrefixFromPath = (path: string) =>
-  path.replace("src/", "");
+  path.replace(`${SRC_DIR_NAME}/`, "");
 
 /** Resolves the import path from root layout (or custom app) to components */
 export const getImportPathForRootLayout = (
