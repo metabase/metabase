@@ -54,8 +54,6 @@
     timezone-id
     (str (t/zone-id))))
 
-;; TODO -- we really need to decouple this stuff and use an event for this
-
 (defn- update-send-pulse-triggers-timezone!
   []
   (classloader/require 'metabase.task.send-pulses)
