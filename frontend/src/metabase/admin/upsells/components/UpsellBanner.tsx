@@ -1,12 +1,11 @@
 import { useMount } from "react-use";
 
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { Box, Flex, Text, Title } from "metabase/ui";
 
-import S from "./UpsellCard.module.css";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
-import C from "./Upsells.module.css";
-import { UpsellCTALink } from "./Upsells.styled";
+import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
@@ -41,7 +40,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
 
   return (
     <Box
-      className={C.UpsellBannerComponent}
+      className={S.UpsellBannerComponent}
       data-testid="upsell-banner"
       {...props}
     >
@@ -58,7 +57,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       </Flex>
 
       <Box
-        component={UpsellCTALink}
+        component={ExternalLink}
         onClickCapture={() => trackUpsellClicked({ source, campaign })}
         href={url}
         className={S.UpsellCTALink}
