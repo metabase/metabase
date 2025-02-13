@@ -34,7 +34,7 @@
 {:metabase/modules
  {actions
   {:api  #{metabase.actions.api metabase.actions.core}
-   :uses #{analytics api driver legacy-mbql lib models query-processor search util}}
+   :uses #{analytics api driver legacy-mbql lib model-persistence models query-processor search util}}
 
   activity-feed
   {:api  #{metabase.activity-feed.api metabase.activity-feed.init}
@@ -193,7 +193,7 @@
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
-   :uses #{api channel driver models notification premium-features public-settings util}}
+   :uses #{api channel driver models notification premium-features util}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -264,6 +264,12 @@
   {:api  #{metabase.logger metabase.logger.init}
    :uses #{config plugins}}
 
+  model-persistence
+  {:api #{metabase.model-persistence.api
+          metabase.model-persistence.core
+          metabase.model-persistence.init}
+   :uses #{api db driver events lib models premium-features public-settings query-processor request task util}}
+
   models
   {:api #{metabase.models.api-key
           metabase.models.application-permissions-revision
@@ -298,7 +304,6 @@
           metabase.models.params.custom-values
           metabase.models.params.field-values
           metabase.models.params.shared
-          metabase.models.persisted-info
           metabase.models.pulse
           metabase.models.pulse-channel
           metabase.models.query
@@ -435,6 +440,7 @@
            formatter
            legacy-mbql
            lib
+           model-persistence
            models
            permissions
            premium-features
@@ -510,7 +516,6 @@
           metabase.task.bootstrap
           metabase.task.init
           metabase.task.notification
-          metabase.task.persist-refresh
           metabase.task.send-pulses}
    :uses #{analytics
            channel
@@ -538,7 +543,7 @@
 
   upload
   {:api  #{metabase.upload}
-   :uses #{analytics api driver events legacy-mbql lib models permissions public-settings sync util}}
+   :uses #{analytics api driver events legacy-mbql lib model-persistence models permissions public-settings sync util}}
 
   user-key-value
   {:api  #{metabase.user-key-value.api metabase.user-key-value.init}
