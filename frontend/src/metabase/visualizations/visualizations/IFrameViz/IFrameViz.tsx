@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";

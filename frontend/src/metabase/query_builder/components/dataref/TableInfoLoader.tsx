@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import _ from "underscore";
 
 import Tables from "metabase/entities/tables";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";

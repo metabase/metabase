@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
 import {

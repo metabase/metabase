@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
