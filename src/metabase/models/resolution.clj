@@ -74,7 +74,7 @@
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.models.secret
     :model/Segment                           metabase.segments.models.segment
-    :model/Session                           metabase.models.session
+    :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.models.setting
     :model/Table                             metabase.models.table
     :model/TablePrivileges                   metabase.models.table-privileges
