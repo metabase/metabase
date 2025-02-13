@@ -39,11 +39,13 @@ export async function checkIsInNextJsProject() {
  * Prioritizes the app router (more modern) if both are present.
  */
 export async function checkIfUsingAppOrPagesRouter() {
-  if (hasPath("app")) {
+  const sourcePrefix = getNextJsSourceDirectoryPrefix();
+
+  if (hasPath(sourcePrefix + "app")) {
     return "app";
   }
 
-  if (hasPath("pages")) {
+  if (hasPath(sourcePrefix + "pages")) {
     return "pages";
   }
 
