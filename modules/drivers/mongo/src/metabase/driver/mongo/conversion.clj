@@ -28,11 +28,12 @@
 
 (set! *warn-on-reflection* true)
 
-;;;; Protocols defined originally in monger, adjusted for `Document` follow.
+(def bson-uuid-type
+  "UUIDs are BSON subtype 4, see https://bsonspec.org/spec.html
+  and https://www.mongodb.com/docs/manual/reference/bson-types/#binary-data"
+  4)
 
-;; UUIDs are BSON subtype 4, see https://bsonspec.org/spec.html
-;; and https://www.mongodb.com/docs/manual/reference/bson-types/#binary-data
-(def bson-uuid-type 4)
+;;;; Protocols defined originally in monger, adjusted for `Document` follow.
 
 (defprotocol ConvertFromDocument
   (from-document [input opts] "Converts given DBObject instance to a piece of Clojure data"))
@@ -111,7 +112,7 @@
   (to-document [input] (mapv to-document input))
 
   UUID
-  (to-document [input] (mongo.qp/uuid->bsonbinary input))
+  (to-document [input] (@#'mongo.qp/uuid->bsonbinary input))
 
   Object
   (to-document [input] input))
