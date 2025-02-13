@@ -1904,10 +1904,8 @@
   Returns the updated query.
 
   > **Code health:** Healthy"
-  ([a-query database-id metadata]
-   (with-different-database a-query database-id metadata nil))
-  ([a-query database-id metadata native-extras]
-   (lib.core/with-different-database a-query (metadataProvider database-id metadata) (js->clj native-extras :keywordize-keys true))))
+  [a-query database-id metadata]
+  (lib.core/with-different-database a-query (metadataProvider database-id metadata)))
 
 (defn ^:export with-native-extras
   "Updates the values of the extras required for the DB to run `a-query`. The first stage must be a native type.
