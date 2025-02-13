@@ -1,6 +1,5 @@
 import cx from "classnames";
 import type { PropsWithChildren } from "react";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import type { IconName, IconProps } from "metabase/ui";
