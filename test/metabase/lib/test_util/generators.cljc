@@ -336,9 +336,10 @@
   (let [stage-number        (choose-stage query)
         strategy            (gen.u/weighted-choice {:left-join  80
                                                     :inner-join 10
-                                                    :right-join 5
-                                                    ;; TODO: Make the following driver dependent?
-                                                    :full-join  5})
+                                                    :right-join 10
+                                                    ;; TODO: Make the following driver dependent? Temporarily suppressed
+                                                    ;;       as I test against h2
+                                                    #_#_:full-join  5})
         ;; TODO: Explicit joins against cards are possible, but we don't have cards yet.
         condition-space     (for [table (lib.metadata/tables query)
                                   :let [conditions (lib/suggested-join-conditions query stage-number table)]
