@@ -1,4 +1,4 @@
-(ns ^:deprecated metabase.api.alert
+(ns ^:deprecated metabase.pulse.api.alert
   "/api/alert endpoints.
 
   Deprecated: will soon be migrated to notification APIs."
@@ -14,9 +14,9 @@
    [metabase.config :as config]
    [metabase.events :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]

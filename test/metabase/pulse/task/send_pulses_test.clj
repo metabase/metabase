@@ -1,14 +1,14 @@
-(ns metabase.task.send-pulses-test
+(ns metabase.pulse.task.send-pulses-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.models.pulse-channel-test :as pulse-channel-test]
+   [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.send :as pulse.send]
+   [metabase.pulse.task.send-pulses :as task.send-pulses]
    [metabase.task :as task]
-   [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
    [metabase.util :as u]
