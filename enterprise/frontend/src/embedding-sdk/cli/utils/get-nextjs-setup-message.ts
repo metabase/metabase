@@ -5,7 +5,7 @@ import {
   LINK_TO_NEXT_JS_GUIDE,
   LINK_TO_NEXT_JS_SAMPLE,
 } from "../constants/messages";
-import { getNextJsPagesWrapperOrAppWrapperSnippet } from "../snippets/nextjs-app-snippets";
+import { getNextJsPagesWrapperOrAppWrapperSnippet } from "../snippets/nextjs-snippets";
 
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
 import {

@@ -4,8 +4,10 @@ import { glob } from "glob";
 import path from "path";
 
 import { NEXTJS_DEMO_ROUTE_NAME } from "../constants/config";
-import { getNextJsPagesWrapperOrAppWrapperSnippet } from "../snippets/nextjs-app-snippets";
-import { getNextJsAnalyticsPageSnippet } from "../snippets/nextjs-page-snippet";
+import {
+  getNextJsAnalyticsPageSnippet,
+  getNextJsPagesWrapperOrAppWrapperSnippet,
+} from "../snippets/nextjs-snippets";
 
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
 import { getProjectDependenciesFromPackageJson } from "./get-package-version";
