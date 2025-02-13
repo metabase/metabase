@@ -169,7 +169,10 @@ export function TestWrapper({
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <ThemeProvider theme={theme}>
+        <ThemeProvider
+          theme={theme}
+          mantineProviderProps={{ withCssVariables: false }}
+        >
           <GlobalStylesForTest />
 
           <MaybeKBar hasKBar={withKBar}>
@@ -345,9 +348,18 @@ export function createMockClipboardData(
   return clipboardData as unknown as DataTransfer;
 }
 
+const ThemeProviderWrapper = ({
+  children,
+  ...props
+}: React.PropsWithChildren) => (
+  <ThemeProvider mantineProviderProps={{ withCssVariables: false }} {...props}>
+    {children}
+  </ThemeProvider>
+);
+
 export function renderWithTheme(children: React.ReactElement) {
   return testingLibraryRender(children, {
-    wrapper: ThemeProvider,
+    wrapper: ThemeProviderWrapper,
   });
 }
 

@@ -1,4 +1,4 @@
-(ns metabase.api.alert-test
+(ns metabase.pulse.api.alert-test
   "Tests for `/api/alert` endpoints."
   (:require
    [clojure.test :refer :all]
@@ -6,10 +6,10 @@
    [metabase.channel.email-test :as et]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.http-client :as client]
-   [metabase.models.pulse :as models.pulse]
-   [metabase.models.pulse-test :as pulse-test]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.pulse.models.pulse :as models.pulse]
+   [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

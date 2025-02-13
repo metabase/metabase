@@ -1,14 +1,12 @@
-(ns ^:deprecated metabase.api.pulse
+(ns ^:deprecated metabase.pulse.api.pulse
   "`/api/pulse` endpoints. These are all authenticated. For unauthenticated `/api/pulse/unsubscribe` endpoints,
-  see [[metabase.api.pulse.unsubscribe]].
+  see [[metabase.pulse.api.unsubscribe]].
 
   Deprecated: will soon be migrated to notification APIs."
   (:require
    [clojure.set :refer [difference]]
    [hiccup.core :refer [html]]
    [hiccup.page :refer [html5]]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.api.alert :as api.alert]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
@@ -20,14 +18,15 @@
    [metabase.integrations.slack :as slack]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse]
-   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.core :as pulse]
+   [metabase.pulse.api.alert :as api.alert]
+   [metabase.pulse.models.pulse :as models.pulse]
+   [metabase.pulse.models.pulse-channel :as pulse-channel]
+   [metabase.pulse.send :as pulse.send]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
@@ -372,7 +371,7 @@
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
   (binding [notification/*default-options* {:notification/sync? true}]
-    (pulse/send-pulse! (assoc body :creator_id api/*current-user-id*)))
+    (pulse.send/send-pulse! (assoc body :creator_id api/*current-user-id*)))
   {:ok true})
 
 (api.macros/defendpoint :delete "/:id/subscription"
