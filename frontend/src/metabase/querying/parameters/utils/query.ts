@@ -158,8 +158,8 @@ function getNumberParameterFilterClause(
   return match({ operator, values })
     .with(
       { operator: P.union("=", "!=") },
-      { operator: P.union(">=", "<="), values: [P.number] },
-      { operator: "between", values: [P.number, P.number] },
+      { operator: P.union(">=", "<="), values: [P._] },
+      { operator: "between", values: [P._, P._] },
       () => Lib.numberFilterClause({ operator, column, values }),
     )
     .otherwise(() => undefined);

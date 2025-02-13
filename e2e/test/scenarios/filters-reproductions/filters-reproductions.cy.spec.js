@@ -1870,8 +1870,8 @@ SELECT ${minBigIntValue} AS ID`,
       const parameterDetails = {
         id: "b6ed2d71",
         type: "number/=",
-        name: "Equals",
-        slug: "equals",
+        name: "Number",
+        slug: "number",
         sectionId: "number",
       };
       const dashboardDetails = {
@@ -1911,7 +1911,7 @@ SELECT ${minBigIntValue} AS ID`,
         });
       });
 
-      cy.log("parameter widgets");
+      cy.log("equals filters - parameter widgets");
       H.visitDashboard("@dashboardId");
       H.getDashboardCard()
         .findByTestId("scalar-value")
@@ -1926,7 +1926,7 @@ SELECT ${minBigIntValue} AS ID`,
         .findByTestId("scalar-value")
         .should("have.text", "1");
 
-      cy.log("title drill-thru");
+      cy.log("equals filters - title drill-thru");
       H.getDashboardCard().findByText("GUI DECIMAL").click();
       H.queryBuilderFiltersPanel().findByText(
         `DECIMAL is equal to "${decimalValue}"`,
@@ -1935,7 +1935,7 @@ SELECT ${minBigIntValue} AS ID`,
         .findByTestId("scalar-value")
         .should("have.text", "1");
 
-      cy.log("querystring parameter values");
+      cy.log("equals filters - querystring parameter values");
       H.visitDashboard("@dashboardId", {
         params: {
           [parameterDetails.slug]: decimalValue,
@@ -1945,6 +1945,37 @@ SELECT ${minBigIntValue} AS ID`,
       H.getDashboardCard()
         .findByTestId("scalar-value")
         .should("have.text", "1");
+
+      cy.log("between filters - filter widgets");
+      H.editDashboard();
+      cy.findByTestId("dashboard-parameters-and-cards")
+        .findByText("Number")
+        .click();
+      H.sidebar().findByText("Filter operator").next().click();
+      H.popover().findByText("Between").click();
+      H.saveDashboard();
+      H.filterWidget().click();
+      H.popover().within(() => {
+        cy.findAllByPlaceholderText("Enter a number").eq(0).clear().type("0");
+        cy.findAllByPlaceholderText("Enter a number")
+          .eq(1)
+          .clear()
+          .type(decimalValue);
+        cy.button("Update filter").click();
+      });
+      H.filterWidget().findByText("2 selections").should("be.visible");
+      H.getDashboardCard()
+        .findByTestId("scalar-value")
+        .should("have.text", "2");
+
+      cy.log("between filters - title drill-thru");
+      H.getDashboardCard().findByText("GUI DECIMAL").click();
+      H.queryBuilderFiltersPanel().findByText(
+        `DECIMAL is between 0 and "${decimalValue}"`,
+      );
+      H.queryBuilderMain()
+        .findByTestId("scalar-value")
+        .should("have.text", "2");
     });
   });
 
