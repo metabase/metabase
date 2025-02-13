@@ -4,8 +4,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetFieldValuesQuery } from "metabase/api";
+import { parseNumber } from "metabase/lib/number";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
-import { parseNumber } from "metabase/querying/filters/utils/numbers";
 import { Center, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 

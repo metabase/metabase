@@ -243,7 +243,8 @@
   (when (contains? collection :location)
     (when-not (valid-location-path? location)
       (let [msg (tru "Invalid Collection location: path is invalid.")]
-        (throw (ex-info msg {:status-code 400, :errors {:location msg}}))))
+        (throw (ex-info msg {:status-code 400, :errors {:location msg}
+                             :collection collection}))))
     ;; if this is a Personal Collection it's only allowed to go in the Root Collection: you can't put it anywhere else!
     (when (:personal_owner_id collection)
       (when-not (= location "/")

@@ -1,0 +1,52 @@
+.root {
+  &:has(.radio:disabled) {
+    .label {
+      color: var(--mb-color-text-light);
+    }
+
+    .description {
+      color: var(--mb-color-text-light);
+    }
+
+    .icon {
+      color: var(--mb-color-text-white);
+    }
+  }
+
+  /* Need the aditional specificy to override global focus outline rule */
+  .radio:focus {
+    outline: none;
+  }
+}
+
+.radio {
+  cursor: pointer;
+  border-color: var(--mb-color-text-light);
+
+  &:checked {
+    border-color: var(--mb-color-brand);
+    background-color: var(--mb-color-brand);
+  }
+
+  &:disabled {
+    opacity: 0.3;
+  }
+
+  &:disabled:not(:checked) {
+    border-color: var(--mb-color-text-light);
+    background-color: var(--mb-color-bg-medium);
+  }
+}
+
+.label {
+  color: var(--mb-color-text-dark);
+  font-size: var(--mantine-font-size-md);
+  line-height: var(--mantine-line-height-md);
+}
+
+.description {
+  color: var(--mb-color-text-dark);
+  font-size: var(--mantine-font-size-sm);
+  line-height: var(--mantine-line-height-md);
+  margin-top: var(--mantine-spacing-xs);
+}
