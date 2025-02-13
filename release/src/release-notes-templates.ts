@@ -73,19 +73,3 @@ Issues confirmed to have been fixed in a previous release.
 {{under-the-hood}}
 
 `;
-
-export const websiteChangelogPageTemplate = `
----
-title: Metabase {{majorVersion}} changelog
-layout: new-docs
-description: "The changelog for Metabase version {{majorVersion}}, including all {{majorVersion}}'s minor releases."
----
-
-# Metabase {{majorVersion}} changelog
-
-> Before you upgrade, back up your Metabase application database!
-Check out our [upgrading instructions](https://metabase.com/docs/latest/operations-guide/upgrading-metabase).
-
-[Get the most out of Metabase](https://www.metabase.com/pricing?utm_source=github&utm_medium=release-notes&utm_campaign=plan-comparison). Learn more about advanced features, managed cloud, and first-class support.
-
-`;

@@ -3,6 +3,10 @@ import {
   generateReleaseNotes,
   getReleaseTitle,
 } from "./release-notes";
+import {
+  githubReleaseTemplate,
+  websiteChangelogTemplate,
+} from "./release-notes-templates";
 import type { Issue } from "./types";
 
 describe("Release Notes", () => {
@@ -66,12 +70,43 @@ describe("Release Notes", () => {
     it("should generate release notes", () => {
       const notes = generateReleaseNotes({
         version: "v1.2.3",
+        template: githubReleaseTemplate,
         issues,
       });
 
       expect(notes).toContain(
         "Get the most out of Metabase"
       );
+
+      expect(notes).toContain(
+        "### Enhancements\n\n**Querying**\n\n- Feature Issue (#2)",
+      );
+      expect(notes).toContain(
+        "### Bug fixes\n\n**Embedding**\n\n- Bug Issue (#1)",
+      );
+      expect(notes).toContain(
+        "### Already Fixed\n\nIssues confirmed to have been fixed in a previous release.\n\n**Embedding**\n\n- Issue Already Fixed (#3)",
+      );
+      expect(notes).toContain(
+        "### Under the Hood\n\n**Administration**\n\n- Issue That Users Don't Care About (#4)",
+      );
+
+      expect(notes).toContain("metabase/metabase-enterprise:v1.2.3.x");
+      expect(notes).toContain("metabase/metabase:v0.2.3.x");
+      expect(notes).toContain(
+        "https://downloads.metabase.com/enterprise/v1.2.3.x/metabase.jar",
+      );
+      expect(notes).toContain(
+        "https://downloads.metabase.com/v0.2.3.x/metabase.jar",
+      );
+    });
+
+    it("should generate release notes from alternative templates", () => {
+      const notes = generateReleaseNotes({
+        version: "v1.2.3",
+        template: websiteChangelogTemplate,
+        issues,
+      });
 
       expect(notes).toContain(
         "### Enhancements\n\n**Querying**\n\n- Feature Issue (#2)",
