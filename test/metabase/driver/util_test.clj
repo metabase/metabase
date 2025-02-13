@@ -292,3 +292,10 @@
               (is (false? (driver.u/supports? :test-driver feature db)))
               (is (= []
                      (log-messages))))))))))
+
+(deftest sqlite-in-available-drivers
+  (testing "includes sqlite in non-hosted environment"
+    (is (contains? (driver.u/available-drivers) :sqlite)))
+  (mt/with-premium-features #{:hosting}
+    (testing "does not include sqlite in hosted environment"
+      (is (not (contains? (driver.u/available-drivers) :sqlite))))))
