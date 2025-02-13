@@ -1421,6 +1421,11 @@ describe("issue 51925", () => {
 });
 
 describe("issue 53649", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
   it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
     H.startNewNativeModel();
 
