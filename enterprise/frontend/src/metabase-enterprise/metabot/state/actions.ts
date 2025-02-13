@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { createAsyncThunk } from "metabase/lib/redux";

@@ -565,6 +565,10 @@
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api audit driver lib models permissions premium-features query-processor util}}
 
+  enterprise/ai-sql-fixer
+  {:api #{metabase-enterprise.ai-sql-fixer.api}
+   :uses #{api driver query-analysis query-processor util}}
+
   enterprise/airgap
   {:api  #{}
    :uses #{premium-features util}}

@@ -70,7 +70,7 @@ export const changeSeriesSettings: ReactionHandler<
 
     reaction.series_settings.forEach(settings => {
       const onlyIncludedSettings = Object.fromEntries(
-        Object.entries(settings).filter(([_, value]) => value !== null),
+        Object.entries(settings).filter(([_key, value]) => value !== null),
       );
 
       newSeriesSettings[settings.key] = {
@@ -97,7 +97,7 @@ export const changeColumnSettings: ReactionHandler<
     reaction.column_settings.forEach(settings => {
       const columnKey = getColumnKey({ name: settings.key });
       const onlyIncludedSettings = Object.fromEntries(
-        Object.entries(settings).filter(([_, value]) => value !== null),
+        Object.entries(settings).filter(([_key, value]) => value !== null),
       );
 
       newColumnSettings[columnKey] = {

@@ -2,10 +2,12 @@
   "`/api/ee/ai-sql-fixer/` routes"
   (:require
    [clojure.set :as set]
+   #_{:clj-kondo/ignore [:metabase/modules]}
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.util :as driver.u]
+   #_{:clj-kondo/ignore [:metabase/modules]}
    [metabase.query-analysis.native-query-analyzer :as nqa]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
