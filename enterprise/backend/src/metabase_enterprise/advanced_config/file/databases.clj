@@ -44,8 +44,7 @@
      (->> [(:auto_cruft_tables settings)
            (:auto_cruft_columns settings)]
           (remove nil?)
-          (map valid-regex-patterns?)
-          (every? true?)))))
+          (every? valid-regex-patterns?)
 
 (s/def ::config-file-spec
   (s/keys :req-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/engine
