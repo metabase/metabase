@@ -1,7 +1,8 @@
 ;; -*- comment-column: 100; -*-
 {:config-paths ["macros" "src" "config"]
  :linters
- {;;
+ {
+  ;;
   ;; enabled optional linters (these are disabled by default)
   ;;
 
@@ -183,7 +184,7 @@
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
   ;; middleware or compilation behavior with just H2 since it's the default.
-  {:drivers #{;; core drivers
+  {:drivers #{ ;; core drivers
               #_:h2
               :postgres
               :mysql
@@ -566,7 +567,6 @@
   metabase.test/with-temp-file                                                          clojure.core/let
   metabase.test/with-user-in-groups                                                     clojure.core/let
   metabase.upload-test/with-upload-table!                                               clojure.core/let
-  metabase.util/with-timer-ms                                                           clojure.core/fn
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let
   metabase.util.malli.defn/defn                                                         schema.core/defn
   metabase.util.malli.defn/defn-                                                        schema.core/defn
