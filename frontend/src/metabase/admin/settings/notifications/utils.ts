@@ -34,7 +34,7 @@ export const channelToForm = ({ details }: NotificationChannel) => {
 
     if (encoded) {
       const decoded = atob(encoded);
-      const [_, username, password] = decoded.match(/(.*):(.*)/) || [];
+      const [_match, username, password] = decoded.match(/(.*):(.*)/) || [];
 
       if (username && password) {
         return {

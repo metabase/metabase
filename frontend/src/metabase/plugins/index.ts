@@ -301,9 +301,9 @@ export const PLUGIN_COLLECTIONS = {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
-  isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
+  isRegularCollection: (_data: Partial<Collection> | Bookmark) => true,
   getCollectionType: (
-    _: Partial<Collection>,
+    _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
