@@ -80,6 +80,9 @@
                                       rff)
             (qp/process-query (update query :info merge info) rff)))))))
 
+(defn- maybe-int [x]
+  (when (int? x) x))
+
 (api.macros/defendpoint :post "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
@@ -90,7 +93,9 @@
         {:keys [source-table]} (when (map? mbql-query) mbql-query)
         [_ model-id] (when (string? source-table) (re-find #"card\_\_(\d+)" source-table))
         model-id (some-> model-id parse-long)
-        actions (t2/select-fn-vec #(select-keys % [:id :name]) :model/Action :model_id model-id :is_row_action true)]
+        maybe-table-name (some->> (get-in query [:query :source-table]) maybe-int (t2/select-one-fn :name :model/Table))
+        actions (t2/select-fn-vec #(select-keys % [:id :name]) :model/Action :model_id model-id :is_row_action true)
+        actions (concat actions (when (= maybe-table-name "table_edit_history") [{:id 8008135 :name "↪\uFE0F"}]))]
     (run-streaming-query
      (-> query
          (update-in [:middleware :js-int-to-string?] (fnil identity true))

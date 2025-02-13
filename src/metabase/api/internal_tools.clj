@@ -36,7 +36,7 @@
   ;; thought: need to parse dates and stuff but integers could maybe be passed as json numbers to the server
   (condp #(isa? %2 %1) base-type
     :type/BigInteger (bigint v)
-    :type/Integer    (parse-long v)
+    :type/Integer (if (int? v) v (parse-long v))
     :type/Decimal    (bigdec v)
     :type/Float      (parse-double v)
     :type/Boolean    (parse-boolean v)
@@ -266,6 +266,18 @@
     (insert-rows!* driver db_id table-id table rows)
     :done))
 
+(defn- revert-to! [id]
+  (let [{t :type :keys [table_id pk old_value]} (t2/select-one :model/TableEdit id)
+        old-row (when old_value (read-string old_value))]
+    (case t
+      "insert" (delete-row! table_id pk)
+      "delete" (insert-row! table_id old-row)
+      "edit"
+      (doseq [[k v] old-row
+              :when (not= k :id)]
+        (let [field-id (t2/select-one-pk :model/Field :table_id table_id :name (name k))]
+          (update-cell! field-id pk v))))))
+
 (api.macros/defendpoint :post "/row-action/:action-id"
   [{:keys [action-id]} :- [:map [:action-id :int]]
    _
@@ -276,7 +288,8 @@
         pks   (api/check-404 (t2/select :model/Field :table_id table-id :semantic_type :type/PK))
         _     (assert (= 1 (count pks)))
         db_id (api/check-404 (t2/select-one-fn :db_id :model/Table table-id))
-        action (api/check-404 (action/select-action :id action-id))
+        action (when (not= action-id 8008135)
+                 (api/check-404 (action/select-action :id action-id)))
         driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))
         row   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db_id)]
                 (first (jdbc/query conn (sql/format {:select [:*]
@@ -285,7 +298,9 @@
                                                   :quoted true
                                                   :dialect (sql.qp/quote-style driver)))))
         col->param-id (into {} (map (juxt :slug :id) (:parameters action)))]
-    (actions/execute-action! action (into {} (map (fn [[col val]] (when-let [k (col->param-id (name col))] [k val])) row)))))
+    (if (= action-id 8008135)
+      (revert-to! pk)
+      (actions/execute-action! action (into {} (map (fn [[col val]] (when-let [k (col->param-id (name col))] [k val])) row))))))
 
 (comment
   (def table (t2/select-one :model/Table :name "PEOPLE"))
