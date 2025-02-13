@@ -83,7 +83,10 @@ module.exports = {
     "react/jsx-no-target-blank": 2,
     "react/jsx-key": 2,
     "react/forbid-component-props": [2, { forbid: ["sx"] }],
-    "react-hooks/exhaustive-deps": ["warn"],
+    "react-hooks/exhaustive-deps": [
+      "warn",
+      { additionalHooks: "(useSafeAsyncFunction)" },
+    ],
     "prefer-const": [1, { destructuring: "all" }],
     "no-restricted-globals": ["error", "close"],
     "no-useless-escape": 0,
