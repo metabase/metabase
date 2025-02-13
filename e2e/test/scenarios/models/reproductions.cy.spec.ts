@@ -1418,4 +1418,12 @@ describe("issue 51925", () => {
         .should("have.attr", "href", "https://example.com/6");
     });
   });
+
+  it("should not get caught in an infinite loop when opening the native editor (QUE-614)", () => {
+    H.startNewNativeModel();
+
+    // If the app freezes, this won't work
+    H.NativeEditor.type("select 1");
+    H.NativeEditor.get().should("contain", "select 1");
+  });
 });
