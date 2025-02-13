@@ -486,8 +486,9 @@
     (is (= (clean-result original-result)
            (clean-result cached-result)))))
 
-(def ^:private testing-queries
+(defn- testing-queries
   "Queries, parameters, and expected results that we should use to test preemptive caching e2e"
+  []
   [{:label "non-parameterized native query"
     :query (parameterized-native-query)
     :parameters []
@@ -508,7 +509,7 @@
     (testing "Do we successfully execute a refresh query for a :schedule cache config on a card?\n"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (doseq [{:keys [label query parameters result]} testing-queries]
+        (doseq [{:keys [label query parameters result]} (testing-queries)]
           (testing (format "\nTesting with %s:" label)
             (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                                       :dataset_query query}
@@ -537,7 +538,7 @@
     (testing "Do we successfully execute a refresh query for a :schedule cache config on a dashboard?\n"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (doseq [{:keys [label query parameters result]} testing-queries]
+        (doseq [{:keys [label query parameters result]} (testing-queries)]
           (testing (format "\nTesting with %s:" label)
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                            :model/Card {card-id :id} {:name "Cached card"
@@ -569,7 +570,7 @@
     (testing "Do we successfully execute a refresh query for a :duration cache config on a card?\n"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (doseq [{:keys [label query parameters result]} testing-queries]
+        (doseq [{:keys [label query parameters result]} (testing-queries)]
           (testing (format "\nTesting with %s:" label)
             (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                                       :dataset_query query}
@@ -602,7 +603,7 @@
     (testing "Do we successfully execute a refresh query for a :duration cache config on a dashboard?\n"
       (binding [qp.util/*execute-async?* false
                 task.cache/*run-cache-refresh-async* false]
-        (doseq [{:keys [label query parameters result]} testing-queries]
+        (doseq [{:keys [label query parameters result]} (testing-queries)]
           (testing (format "\nTesting with %s:" label)
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                            :model/Card {card-id :id} {:name "Cached card"
