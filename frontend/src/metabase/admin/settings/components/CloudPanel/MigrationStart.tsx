@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { UpsellCloud } from "metabase/admin/upsells/UpsellCloud";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useToggle } from "metabase/hooks/use-toggle";
-import { color } from "metabase/lib/colors";
 import { Button, Icon, Modal, Text } from "metabase/ui";
 
 interface MigrationStartProps {
@@ -35,7 +34,7 @@ export const MigrationStart = ({
           </Modal.Header>
           <Modal.Body mt="md" py="0" px="6rem" ta="center">
             {/* TODO: get filled cloud icon from design */}
-            <Icon name="cloud_filled" size="3rem" color={color("brand")} />
+            <Icon name="cloud_filled" size="3rem" color="brand" />
             <Modal.Title mt="1.5rem">{t`Get started with Metabase Cloud`}</Modal.Title>
 
             <Text mt="1.5rem">

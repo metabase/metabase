@@ -61,7 +61,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
           <Title order={1} lh={1} mb="sm">
             {title}
           </Title>
-          <Text lh="lg" mb="lg">
+          <Text lh="xl" mb="lg">
             {children}
           </Text>
           {buttonLink ? (
