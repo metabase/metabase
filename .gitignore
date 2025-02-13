@@ -98,6 +98,7 @@ modules/drivers/*/.lsp/*
 .clj-kondo/*
 !.clj-kondo/README.md
 !.clj-kondo/config.edn
+!.clj-kondo/config/
 !.clj-kondo/src/
 !.clj-kondo/test/
 !.clj-kondo/macros/

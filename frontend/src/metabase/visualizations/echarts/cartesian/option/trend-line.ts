@@ -1,5 +1,4 @@
 import type { LineSeriesOption } from "echarts/charts";
-import _ from "underscore";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
