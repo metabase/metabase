@@ -845,12 +845,20 @@
 (deftest ^:parallel normalize-use-password-test
   (mt/test-driver :snowflake
     (testing "details should be normalized coming out of the DB"
-      (mt/with-temp [:model/Database db {:name    "Legacy Snowflake DB"
+      (mt/with-temp [:model/Database db1 {:name    "Legacy Snowflake DB"
                                          :engine  :snowflake,
-                                         :details {:password (mt/random-name)}}]
-        (is (=? {:password string?
-                 :use-password true}
-                (:details db)))))))
+                                         :details {:password "abc"}}
+                     :model/Database db2 {:name    "Legacy Snowflake DB"
+                                          :engine  :snowflake,
+                                          :details {:password "abc"
+                                                    :private-key-path "def"}}
+                     :model/Database db3 {:name    "Legacy Snowflake DB"
+                                          :engine  :snowflake,
+                                          :details {:use-password false
+                                                    :password "abc"}}]
+        (is (= {:password "abc" :use-password true} (:details db1)))
+        (is (=? {:password "abc" :private-key-id int? :use-password complement} (:details db2)))
+        (is (= {:password "abc" :use-password false} (:details db3)))))))
 
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a USE ROLE command, with the role quoted if it contains special characters"

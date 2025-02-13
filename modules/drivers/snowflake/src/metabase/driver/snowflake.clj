@@ -739,7 +739,9 @@
         (m/dissoc-in [:details :regionid]))
 
     (and
+     (not (contains? (:details database) :use-password))
      (get-in database [:details :password])
+     (nil? (get-in database [:details :private-key-id]))
      (nil? (get-in database [:details :private-key-path]))
      (nil? (get-in database [:details :private-key-value])))
     (assoc-in [:details :use-password] true)))
