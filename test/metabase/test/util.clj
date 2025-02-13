@@ -1579,7 +1579,7 @@
   registry and web-server."
   [[port system] & body]
   `(let [~system ^metabase.analytics.prometheus.PrometheusSystem
-         (#'prometheusmetheus/make-prometheus-system 0 (name (gensym "test-registry")))
+         (#'prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
          server#  ^Server (.web-server ~system)
          ~port   (.. server# getURI getPort)]
      (with-redefs [rometheus/system ~system]
