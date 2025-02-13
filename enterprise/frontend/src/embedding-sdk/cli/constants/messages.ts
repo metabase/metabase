@@ -105,3 +105,8 @@ export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK h
 )}`;
 
 export const CONTINUE_SETUP_ON_WARNING_MESSAGE = `Do you want to continue setup?`;
+
+export const LINK_TO_NEXT_JS_SAMPLE = `https://github.com/metabase/metabase-nextjs-sdk-embedding-sample`;
+
+// eslint-disable-next-line no-unconditional-metabase-links-render -- this is for the cli
+export const LINK_TO_NEXT_JS_GUIDE = `https://www.metabase.com/docs/latest/embedding/sdk/next-js`;
