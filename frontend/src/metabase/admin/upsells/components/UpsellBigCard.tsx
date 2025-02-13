@@ -40,6 +40,9 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   ...props
 }: UpsellBigCardProps) => {
   const url = useUpsellLink({
+    // The fallback url only applies when the button opens a modal instead of
+    // navigating to an external url. The value is not used otherwise. It is
+    // there only because we cannot conditionally skip the hook.
     url: buttonLink ?? "https://www.metabase.com/upgrade",
     campaign,
     source,
