@@ -27,9 +27,9 @@ import cx from "classnames";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
-import { metabaseSyntaxHighlighting } from "metabase/components/Editor/highlight";
 import { isNotNull } from "metabase/lib/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
+import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 import * as Lib from "metabase-lib";
 
 import {

@@ -1,6 +1,6 @@
 import { type Highlighter, type Tag, highlightCode } from "@lezer/highlight";
 
-import { classNameForTag } from "metabase/components/Editor/highlight";
+import { classNameForTag } from "metabase/ui/syntax";
 import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
 
 const highlighter: Highlighter = {
