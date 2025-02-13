@@ -206,7 +206,7 @@ const expectButtonInHeader = async ({
     ),
   );
   const { tooltip } = DASHBOARD_EXPECTED_DATA_MAP[action];
-  expect(await screen.findByText(checkNotNull(tooltip))).toBeInTheDocument();
+  expect(screen.getByText(checkNotNull(tooltip))).toBeInTheDocument();
 };
 
 const expectButtonsToBeInHeader = async ({

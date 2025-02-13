@@ -1,6 +1,7 @@
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, within } from "__support__/ui";
 import {
   createMockDashboardState,
   createMockState,

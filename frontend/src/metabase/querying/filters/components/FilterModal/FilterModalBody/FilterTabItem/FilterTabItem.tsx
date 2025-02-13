@@ -6,9 +6,6 @@ interface FilterTabItemProps extends BoxProps {
   component?: any;
 }
 
-export const FilterTabItem = ({
-  className,
-  ...props
-}: React.PropsWithChildren<FilterTabItemProps>) => {
+export const FilterTabItem = ({ className, ...props }: FilterTabItemProps) => {
   return <Box className={`${S.FilterTabItem} ${className}`} {...props} />;
 };

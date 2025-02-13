@@ -23,7 +23,7 @@ export function QuestionNotebookButton({
   return (
     <Button
       data-testid="notebook-button"
-      leftSection={
+      leftIcon={
         isShowingNotebook ? (
           <Icon name="lineandbar" />
         ) : (

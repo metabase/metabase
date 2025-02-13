@@ -8,8 +8,13 @@
     background-color: var(--mb-color-background-hover);
   }
 
-  [aria-selected="true"] & {
-    color: var(--mb-color-text-selected) !important;
-    background-color: var(--mb-color-background-selected) !important;
+  &.selected {
+    color: var(--mb-color-text-selected);
+    background-color: var(--mb-color-background-selected);
+  }
+
+  &.disabled {
+    cursor: default;
+    color: var(--mb-color-text-tertiary);
   }
 }

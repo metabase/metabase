@@ -62,7 +62,7 @@ const VariantTemplate = (args: NumberInputProps) => (
 );
 
 const IconTemplate = (args: NumberInputProps) => (
-  <VariantTemplate {...args} leftSection={<Icon name="int" />} />
+  <VariantTemplate {...args} icon={<Icon name="int" />} />
 );
 
 export default {

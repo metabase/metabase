@@ -58,16 +58,13 @@ const DashboardActionMenuInner = ({
       </Menu.Target>
       <Menu.Dropdown>
         {canResetFilters && (
-          <Menu.Item
-            leftSection={<Icon name="revert" />}
-            onClick={onResetFilters}
-          >
+          <Menu.Item icon={<Icon name="revert" />} onClick={onResetFilters}>
             {t`Reset all filters`}
           </Menu.Item>
         )}
 
         <Menu.Item
-          leftSection={<Icon name="expand" />}
+          icon={<Icon name="expand" />}
           onClick={(e: MouseEvent) =>
             onFullscreenChange(!isFullscreen, !e.altKey)
           }
@@ -78,7 +75,7 @@ const DashboardActionMenuInner = ({
         {canEdit && (
           <>
             <Menu.Item
-              leftSection={<Icon name="gear" />}
+              icon={<Icon name="gear" />}
               onClick={openSettingsSidebar}
             >
               {t`Edit settings`}
@@ -93,7 +90,7 @@ const DashboardActionMenuInner = ({
             <Menu.Divider />
 
             <Menu.Item
-              leftSection={<Icon name="move" />}
+              icon={<Icon name="move" />}
               component={ForwardRefLink}
               to={`${location?.pathname}/move`}
             >{c("A verb, not a noun").t`Move`}</Menu.Item>
@@ -101,7 +98,7 @@ const DashboardActionMenuInner = ({
         )}
 
         <Menu.Item
-          leftSection={<Icon name="clone" />}
+          icon={<Icon name="clone" />}
           component={ForwardRefLink}
           to={`${location?.pathname}/copy`}
         >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
@@ -110,7 +107,7 @@ const DashboardActionMenuInner = ({
           <>
             <Menu.Divider />
             <Menu.Item
-              leftSection={<Icon name="trash" />}
+              icon={<Icon name="trash" />}
               component={ForwardRefLink}
               to={`${location?.pathname}/archive`}
             >{t`Move to trash`}</Menu.Item>

@@ -136,14 +136,14 @@ export const QuestionActions = ({
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Item
-                    leftSection={<Icon name="add" />}
+                    icon={<Icon name="add" />}
                     onClick={() => handleUploadClick(UploadMode.append)}
                   >
                     {t`Append data to this model`}
                   </Menu.Item>
 
                   <Menu.Item
-                    leftSection={<Icon name="refresh" />}
+                    icon={<Icon name="refresh" />}
                     onClick={() => handleUploadClick(UploadMode.replace)}
                   >
                     {t`Replace all data in this model`}

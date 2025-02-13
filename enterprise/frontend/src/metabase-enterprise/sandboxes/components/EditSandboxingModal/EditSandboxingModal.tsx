@@ -168,7 +168,7 @@ const EditSandboxingModal = ({
               data-testid="collection-picker-button"
               onClick={showModal}
               fullWidth
-              rightSection={<Icon name="ellipsis" />}
+              rightIcon={<Icon name="ellipsis" />}
               styles={{
                 inner: {
                   justifyContent: "space-between",

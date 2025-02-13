@@ -668,10 +668,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
 
       H.filterWidget().contains("Hello").click();
-      H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("{backspace}World{enter}", {
-          force: true,
-        });
+      H.popover().within(() => {
+        H.fieldValuesInput().type("{backspace}World{enter}");
         cy.button("Update filter").click();
       });
 
@@ -752,7 +750,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .contains(DASHBOARD_FILTER_TEXT.name)
         .parent()
         .click();
-      H.dashboardParametersPopover().within(() => {
+      H.popover().within(() => {
         H.fieldValuesInput().type("John Doe{enter}");
         cy.button("Add filter").click();
       });
@@ -761,7 +759,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
         .parent()
         .click();
-      H.dashboardParametersPopover().within(() => {
+      H.popover().within(() => {
         H.fieldValuesInput().type("{backspace}World{enter}");
         cy.button("Update filter").click();
       });
@@ -1070,7 +1068,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.saveDashboard({ waitMs: 250 });
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
-      H.dashboardParametersPopover().within(() => {
+      H.popover().within(() => {
         cy.findByPlaceholderText("Search by Name").type("Dell Adams");
         cy.button("Add filter").click();
       });
@@ -1553,8 +1551,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.editDashboard();
 
-      H.getDashboardCard().realHover();
-      cy.icon("click").click();
+      H.getDashboardCard().realHover().icon("click").click();
 
       (function addUpdateDashboardFilters() {
         cy.log("update dashboard filters behavior for 'Count' column");
@@ -1627,7 +1624,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.log("it handles 'Created at' column click");
 
         cy.button(DASHBOARD_FILTER_TEXT.name).click();
-        H.dashboardParametersPopover().within(() => {
+        H.popover().within(() => {
           H.removeFieldValuesValue(0);
           cy.findByPlaceholderText("Search by Name").type("Dell Adams");
           cy.button("Update filter").click();
@@ -1800,7 +1797,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
-      H.dashboardParametersPopover().within(() => {
+      H.popover().within(() => {
         cy.findByPlaceholderText("Search by Name").type("Dell Adams");
         cy.button("Add filter").click();
       });

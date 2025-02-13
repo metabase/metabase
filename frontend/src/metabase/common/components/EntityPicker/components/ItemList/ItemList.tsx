@@ -90,7 +90,6 @@ export const ItemList = <
         return (
           <div data-testid="picker-item" key={`${item.model}-${item.id}`}>
             <NavLink
-              w={"auto"}
               disabled={shouldDisableItem?.(item)}
               rightSection={
                 isFolder(item) ? <Icon name="chevronright" size={10} /> : null
@@ -107,7 +106,7 @@ export const ItemList = <
                 </Flex>
               }
               active={isSelected}
-              leftSection={<Icon {...icon} />}
+              icon={<Icon {...icon} />}
               onClick={(e: React.MouseEvent) => {
                 e.preventDefault(); // prevent form submission
                 e.stopPropagation(); // prevent parent onClick

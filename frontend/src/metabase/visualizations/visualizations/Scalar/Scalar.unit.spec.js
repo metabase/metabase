@@ -60,7 +60,7 @@ describe("Scalar", () => {
 
     await userEvent.hover(getIcon("info_filled"));
 
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(DESCRIPTION);
+    expect(screen.getByRole("tooltip")).toHaveTextContent(DESCRIPTION);
   });
 
   it("should render markdown in description", async () => {
@@ -79,7 +79,7 @@ describe("Scalar", () => {
     await userEvent.hover(getIcon("info_filled"));
 
     expect(
-      within(await screen.findByRole("tooltip")).getByRole("link"),
+      within(screen.getByRole("tooltip")).getByRole("link"),
     ).toHaveTextContent("link");
   });
 

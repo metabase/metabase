@@ -1,5 +1,5 @@
 import type { MonthYearPickerValue } from "metabase/querying/filters/types";
-import { Box, type DateValue, MonthPicker } from "metabase/ui";
+import { Box, MonthPicker } from "metabase/ui";
 
 type MonthYearPickerProps = {
   value?: MonthYearPickerValue;
@@ -9,10 +9,7 @@ type MonthYearPickerProps = {
 export function MonthYearPicker({ value, onChange }: MonthYearPickerProps) {
   const date = value ? new Date(value.year, value.month - 1) : undefined;
 
-  const handleChange = (value: DateValue) => {
-    if (!value) {
-      return;
-    }
+  const handleChange = (value: Date) => {
     onChange({
       type: "month",
       year: value.getFullYear(),

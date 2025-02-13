@@ -13,7 +13,7 @@ export const BannerButton = ({
   onClick,
 }: BannerButtonProps) => (
   <Button
-    size="compact-md"
+    compact
     variant="outline"
     color="text-white"
     miw="2rem"

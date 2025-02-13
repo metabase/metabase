@@ -16,7 +16,7 @@ describe("ExpressionWidgetInfo (OSS)", () => {
     );
     await userEvent.hover(screen.getByLabelText("info icon"));
     expect(
-      await screen.findByText(
+      screen.getByText(
         "You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.",
       ),
     ).toBeInTheDocument();
@@ -33,7 +33,7 @@ describe("ExpressionWidgetInfo (OSS)", () => {
     );
     await userEvent.hover(screen.getByLabelText("info icon"));
     expect(
-      await screen.findByText(
+      screen.getByText(
         "You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.",
       ),
     ).toBeInTheDocument();

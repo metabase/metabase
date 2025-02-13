@@ -208,7 +208,7 @@ const TestQueryBuilder = (
   props: ComponentPropsWithoutRef<typeof QueryBuilder>,
 ) => {
   return (
-    <div data-testid="test-container">
+    <div>
       <link rel="icon" />
       <QueryBuilder {...props} />
     </div>
@@ -277,27 +277,25 @@ export const setup = async ({
     container,
     history,
   } = renderWithProviders(
-    <div>
-      <Route>
-        <Route path="/" component={TestHome} />
-        <Route path="/model">
-          <Route path="new" component={NewModelOptions} />
-          <Route path="query" component={TestQueryBuilder} />
-          <Route path="metadata" component={TestQueryBuilder} />
-          <Route path="notebook" component={TestQueryBuilder} />
-          <Route path=":slug/query" component={TestQueryBuilder} />
-          <Route path=":slug/metadata" component={TestQueryBuilder} />
-          <Route path=":slug/notebook" component={TestQueryBuilder} />
-        </Route>
-        <Route path="/question">
-          <IndexRoute component={TestQueryBuilder} />
-          <Route path="notebook" component={TestQueryBuilder} />
-          <Route path=":slug" component={TestQueryBuilder} />
-          <Route path=":slug/notebook" component={TestQueryBuilder} />
-        </Route>
-        <Route path="/redirect" component={TestRedirect} />
+    <Route>
+      <Route path="/" component={TestHome} />
+      <Route path="/model">
+        <Route path="new" component={NewModelOptions} />
+        <Route path="query" component={TestQueryBuilder} />
+        <Route path="metadata" component={TestQueryBuilder} />
+        <Route path="notebook" component={TestQueryBuilder} />
+        <Route path=":slug/query" component={TestQueryBuilder} />
+        <Route path=":slug/metadata" component={TestQueryBuilder} />
+        <Route path=":slug/notebook" component={TestQueryBuilder} />
       </Route>
-    </div>,
+      <Route path="/question">
+        <IndexRoute component={TestQueryBuilder} />
+        <Route path="notebook" component={TestQueryBuilder} />
+        <Route path=":slug" component={TestQueryBuilder} />
+        <Route path=":slug/notebook" component={TestQueryBuilder} />
+      </Route>
+      <Route path="/redirect" component={TestRedirect} />
+    </Route>,
     {
       withRouter: true,
       initialRoute,

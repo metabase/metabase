@@ -38,7 +38,7 @@ export function TimeseriesBucketPicker({
     <Popover opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
         <Button
-          rightSection={<Icon name="chevrondown" />}
+          rightIcon={<Icon name="chevrondown" />}
           data-testid="timeseries-bucket-button"
           onClick={() => setIsOpened(!isOpened)}
         >

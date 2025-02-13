@@ -132,7 +132,7 @@ export const QueryValidator = () => {
         <Flex mb="2rem" justify="space-between" align="center">
           <Title>{t`Questions with invalid references`}</Title>
           <Button
-            rightSection={<Icon name="chevrondown" size={14} />}
+            rightIcon={<Icon name="chevrondown" size={14} />}
             miw="235px"
             styles={{
               inner: {

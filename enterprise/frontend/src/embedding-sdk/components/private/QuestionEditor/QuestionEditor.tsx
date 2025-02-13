@@ -41,13 +41,13 @@ const QuestionEditorInner = () => {
     <FlexibleSizeComponent>
       <Tabs
         value={activeTab}
-        onChange={setActiveTab}
+        onTabChange={setActiveTab}
         defaultValue="editor"
         h="100%"
         display="flex"
         style={{ flexDirection: "column", overflow: "hidden" }}
       >
-        <Group justify="space-between">
+        <Group position="apart">
           <Tabs.List>
             <Tabs.Tab value="editor">{t`Editor`}</Tabs.Tab>
             {queryResults && (
@@ -86,7 +86,7 @@ const QuestionEditorInner = () => {
           <Stack h="100%">
             <Box>
               <Button
-                size="compact-md"
+                compact
                 radius="xl"
                 py="sm"
                 px="md"

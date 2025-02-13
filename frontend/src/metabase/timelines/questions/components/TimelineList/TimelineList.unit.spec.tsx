@@ -1,4 +1,5 @@
-import { render, screen } from "__support__/ui";
+import { render, screen } from "@testing-library/react";
+
 import { createMockTimeline } from "metabase-types/api/mocks";
 
 import type { TimelineListProps } from "./TimelineList";

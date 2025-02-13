@@ -296,9 +296,7 @@ describe(
                     H.openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
 
-                    H.entityPickerModalTab("Dashboards").click();
-
-                    findActivePickerItem("Orders in a dashboard");
+                    findSelectedPickerItem("Orders in a dashboard");
                   });
 
                   it("should handle lost access", () => {
@@ -345,7 +343,9 @@ describe(
 
                     cy.wait("@mostRecentlyViewedDashboard");
 
-                    findInactivePickerItem("Orders in a dashboard");
+                    H.entityPickerModal()
+                      .button(/Orders in a dashboard/)
+                      .should("be.disabled");
                   });
                 });
               });
@@ -367,8 +367,9 @@ describe(
                   .findByText("First collection")
                   .should("be.visible");
 
-                findInactivePickerItem("Orders in a dashboard");
-
+                findPickerItem("Orders in a dashboard").then($button => {
+                  expect($button).to.have.attr("disabled");
+                });
                 H.entityPickerModal().within(() => {
                   cy.findByPlaceholderText(/Search/).type(
                     "Orders in a dashboard{Enter}",
@@ -475,12 +476,21 @@ function turnIntoModel() {
 }
 
 function findPickerItem(name) {
-  return cy.findByTestId("entity-picker-modal").findByText(name).parents("a");
+  return cy
+    .findByTestId("entity-picker-modal")
+    .findByText(name)
+    .closest("button");
 }
 
 function findActivePickerItem(name) {
   return findPickerItem(name).then($button => {
     expect($button).to.have.attr("data-active", "true");
+  });
+}
+
+function findSelectedPickerItem(name) {
+  return findPickerItem(name).then($button => {
+    expect($button).to.have.attr("aria-selected", "true");
   });
 }
 

@@ -1,5 +1,4 @@
 import { useHover } from "@mantine/hooks";
-import type React from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -45,7 +44,7 @@ export function AppBarToggle({
   };
 
   return (
-    <div ref={hoverRef as React.Ref<HTMLDivElement>}>
+    <div ref={hoverRef}>
       <Tooltip
         label={getSidebarTooltipLabel(isNavBarOpen)}
         disabled={isSmallAppBar || disableTooltip}

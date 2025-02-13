@@ -1,9 +1,7 @@
+import { screen } from "@testing-library/react";
+
 import { setupPopularItemsEndpoints } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import type { PopularItem } from "metabase-types/api";
 import { createMockPopularCollectionItem } from "metabase-types/api/mocks";
 

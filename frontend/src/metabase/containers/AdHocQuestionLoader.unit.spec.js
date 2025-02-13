@@ -1,4 +1,5 @@
-import { render } from "__support__/ui";
+import { render } from "@testing-library/react";
+
 import { delay } from "__support__/utils";
 import { AdHocQuestionLoader } from "metabase/containers/AdHocQuestionLoader";
 import Question from "metabase-lib/v1/Question";

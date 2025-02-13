@@ -17,7 +17,7 @@ export function QuestionSummarizeWidget({
     <Button
       color="summarize"
       variant={isShowingSummarySidebar ? "filled" : "default"}
-      leftSection={<Icon name="sum" />}
+      leftIcon={<Icon name="sum" />}
       onClick={async () => {
         if (isShowingSummarySidebar) {
           onCloseSummary();

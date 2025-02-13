@@ -25,10 +25,6 @@ export function ClausePopover({
     setIsOpen(false);
   }, []);
 
-  const handleChange = useCallback(() => {
-    setIsOpen(value => !value);
-  }, []);
-
   useLayoutEffect(() => {
     if (active) {
       setIsOpen(false);
@@ -41,12 +37,10 @@ export function ClausePopover({
       position="bottom-start"
       offset={{ mainAxis: 4 }}
       trapFocus
-      onChange={handleChange}
+      onClose={handleClose}
     >
       <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
-      <Popover.Dropdown data-testid="clause-popover">
-        {renderPopover(handleClose)}
-      </Popover.Dropdown>
+      <Popover.Dropdown>{renderPopover(handleClose)}</Popover.Dropdown>
     </Popover>
   );
 }

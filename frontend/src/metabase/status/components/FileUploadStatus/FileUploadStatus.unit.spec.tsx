@@ -1,3 +1,4 @@
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
@@ -12,14 +13,7 @@ import {
   setupNullGetUserKeyValueEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import {
-  act,
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-  waitFor,
-  within,
-} from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
 import { CollectionContent } from "metabase/collections/components/CollectionContent";
 import {
   createMockCollection,
@@ -64,10 +58,8 @@ const uploadedModel2 = createMockCollectionItem({
   name: "my second uploaded model",
   collection: secondCollection,
   model: "dataset",
-  based_on_upload: 124,
+  based_on_upload: 123,
 });
-
-mockScrollIntoView();
 
 async function setupCollectionContent(overrides = {}) {
   setupDatabasesEndpoints([createMockDatabase({ can_upload: true })]);
@@ -377,6 +369,7 @@ describe("FileUploadStatus", () => {
     expect(
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
+
     await userEvent.click(screen.getByText("Replace data in a model"));
     const submitButton = await screen.findByRole("button", {
       name: "Replace model data",

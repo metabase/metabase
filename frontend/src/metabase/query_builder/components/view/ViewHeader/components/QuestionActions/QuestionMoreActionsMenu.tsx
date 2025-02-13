@@ -108,7 +108,7 @@ export const QuestionMoreActionsMenu = ({
     (isStandaloneQuestion || isMetric) && (
       <Menu.Item
         key="add_to_dash"
-        leftSection={<Icon name="add_to_dash" />}
+        icon={<Icon name="add_to_dash" />}
         onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
         data-testid={ADD_TO_DASH_TESTID}
       >
@@ -119,7 +119,7 @@ export const QuestionMoreActionsMenu = ({
     hasCollectionPermissions && isModelOrMetric && hasDataPermissions && (
       <Menu.Item
         key="edit_definition"
-        leftSection={<Icon name="notebook" />}
+        icon={<Icon name="notebook" />}
         onClick={handleEditQuery}
       >
         {isMetric ? t`Edit metric definition` : t`Edit query definition`}
@@ -128,7 +128,7 @@ export const QuestionMoreActionsMenu = ({
     hasCollectionPermissions && isModel && (
       <Menu.Item
         key="edit-metadata"
-        leftSection={<Icon name="label" />}
+        icon={<Icon name="label" />}
         data-testid="edit-metadata"
         onClick={handleEditMetadata}
       >
@@ -144,7 +144,7 @@ export const QuestionMoreActionsMenu = ({
     hasCollectionPermissions && !isDashboardQuestion && !isModel && (
       <Menu.Item
         key="turn_into_model"
-        leftSection={<Icon name="model" />}
+        icon={<Icon name="model" />}
         data-testid={TURN_INTO_DATASET_TESTID}
         onClick={handleTurnToModel}
       >
@@ -154,7 +154,7 @@ export const QuestionMoreActionsMenu = ({
     hasCollectionPermissions && isModel && (
       <Menu.Item
         key="turn_into_question"
-        leftSection={<Icon name="insight" />}
+        icon={<Icon name="insight" />}
         onClick={onTurnModelIntoQuestion}
       >
         {t`Turn back to saved question`}
@@ -163,7 +163,7 @@ export const QuestionMoreActionsMenu = ({
     enableSettingsSidebar && (
       <Menu.Item
         key="edit-settings"
-        leftSection={<Icon name="gear" />}
+        icon={<Icon name="gear" />}
         data-testid="question-settings-button"
         onClick={onOpenSettingsSidebar}
       >
@@ -175,7 +175,7 @@ export const QuestionMoreActionsMenu = ({
         <Menu.Divider />
         <Menu.Item
           key="move"
-          leftSection={<Icon name="move" />}
+          icon={<Icon name="move" />}
           data-testid={MOVE_TESTID}
           onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
         >
@@ -186,7 +186,7 @@ export const QuestionMoreActionsMenu = ({
     hasDataPermissions && (
       <Menu.Item
         key="duplicate"
-        leftSection={<Icon name="clone" />}
+        icon={<Icon name="clone" />}
         data-testid={CLONE_TESTID}
         onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
       >
@@ -197,8 +197,7 @@ export const QuestionMoreActionsMenu = ({
       <Fragment key="trash">
         <Menu.Divider />
         <Menu.Item
-          key="trash"
-          leftSection={<Icon name="trash" />}
+          icon={<Icon name="trash" />}
           data-testid={ARCHIVE_TESTID}
           onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
         >

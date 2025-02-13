@@ -47,9 +47,7 @@ describe("PublicOrEmbeddedQuestion", () => {
 
       await userEvent.hover(getIcon("download"));
 
-      expect(
-        await screen.findByText("Download full results"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Download full results")).toBeInTheDocument();
     });
 
     it('should set the locale to "ko"', async () => {

@@ -1,11 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 
 import type { StringSetting } from "./IllustrationWidget";
@@ -37,7 +32,6 @@ function setup({
 }: SetupOpts) {
   const onChange = jest.fn();
   const onChangeSetting = jest.fn();
-  mockScrollIntoView();
   renderWithProviders(
     <IllustrationWidget
       setting={setting}
@@ -86,7 +80,7 @@ describe("IllustrationWidget", () => {
         type: defaultType,
         customIllustrationSetting,
       });
-      await userEvent.click(screen.getByRole("textbox"));
+      await userEvent.click(screen.getByRole("searchbox"));
       expect(screen.getByText(defaultIllustrationLabel)).toBeInTheDocument();
       expect(screen.getByText("No illustration")).toBeInTheDocument();
       expect(screen.getByText("Custom")).toBeInTheDocument();
@@ -104,7 +98,7 @@ describe("IllustrationWidget", () => {
         type: defaultType,
         customIllustrationSetting,
       });
-      await userEvent.click(screen.getByRole("textbox"));
+      await userEvent.click(screen.getByRole("searchbox"));
       await userEvent.click(screen.getByText(noIllustrationOption.label));
       expect(onChange).toHaveBeenCalledWith(noIllustrationOption.value);
     });
@@ -118,7 +112,7 @@ describe("IllustrationWidget", () => {
         type: defaultType,
         customIllustrationSetting,
       });
-      await userEvent.click(screen.getByRole("textbox"));
+      await userEvent.click(screen.getByRole("searchbox"));
       await userEvent.click(screen.getByText(customOption.label));
       expect(onChange).not.toHaveBeenCalled();
     });
@@ -150,7 +144,7 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      await userEvent.click(screen.getByRole("textbox"));
+      await userEvent.click(screen.getByRole("searchbox"));
       await userEvent.click(screen.getByText(noIllustrationOption.label));
 
       expect(onChange).toHaveBeenCalledWith(noIllustrationOption.value);
@@ -178,7 +172,7 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      await userEvent.click(screen.getByRole("textbox"));
+      await userEvent.click(screen.getByRole("searchbox"));
       await userEvent.click(screen.getByText(defaultOption.label));
 
       expect(onChange).toHaveBeenCalledWith(defaultOption.value);
@@ -223,7 +217,7 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      await userEvent.click(screen.getByRole("textbox"));
+      await userEvent.click(screen.getByRole("searchbox"));
       await userEvent.click(screen.getByText(defaultIllustrationLabel));
       expect(
         screen.queryByText(defaultIllustrationLabel),
@@ -245,7 +239,7 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      await userEvent.click(screen.getByRole("textbox"));
+      await userEvent.click(screen.getByRole("searchbox"));
       await userEvent.click(screen.getByText("No illustration"));
       expect(screen.queryByText("No illustration")).not.toBeInTheDocument();
 
@@ -265,7 +259,7 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      await userEvent.click(screen.getByRole("textbox"));
+      await userEvent.click(screen.getByRole("searchbox"));
       await userEvent.click(screen.getByText("Custom"));
       expect(screen.queryByText("Custom")).not.toBeInTheDocument();
 

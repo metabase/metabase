@@ -31,7 +31,7 @@ export const TestTabbedSidesheet = () => {
             <SidesheetCard>Tab 1 content</SidesheetCard>
           </Tabs.Panel>
           <Tabs.Panel value="two" h="100%">
-            <Stack gap="lg">
+            <Stack spacing="lg">
               <SidesheetCard title="Sidesheets with tabs">
                 Lots of side sheets have tabs, which can be tricky to set up to
                 handle scrolling properly. Fortunately, there are a couple
@@ -107,7 +107,7 @@ export const TestPagedSidesheet = () => {
         <SidesheetButtonWithChevron
           fullWidth
           onClick={() => setPage("sub")}
-          leftSection={<Icon name="gear" />}
+          leftIcon={<Icon name="gear" />}
         >
           More Settings in a full width button
         </SidesheetButtonWithChevron>

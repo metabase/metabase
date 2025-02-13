@@ -53,7 +53,7 @@ if (hasPremiumFeature("collection_cleanup")) {
       menuItems: [
         <Menu.Item
           key="collections-cleanup"
-          leftSection={<Icon name="archive" />}
+          icon={<Icon name="archive" />}
           component={ForwardRefLink}
           to={`${Urls.collection(collection)}/cleanup`}
           rightSection={hasStaleItems && <Badge>Recommended</Badge>}

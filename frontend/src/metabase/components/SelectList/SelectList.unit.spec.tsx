@@ -1,7 +1,8 @@
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 
-import { getIcon, render, screen } from "__support__/ui";
+import { getIcon } from "__support__/ui";
 
 import SelectList from "./index";
 

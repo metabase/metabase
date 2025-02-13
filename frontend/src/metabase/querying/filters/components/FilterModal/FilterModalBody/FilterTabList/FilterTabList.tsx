@@ -15,7 +15,7 @@ export function FilterTabList({ groupItems }: FilterTabListProps) {
           key={groupItem.key}
           value={groupItem.key}
           aria-label={groupItem.displayName}
-          leftSection={<Icon name={groupItem.icon} />}
+          icon={<Icon name={groupItem.icon} />}
         >
           {groupItem.displayName}
         </Tabs.Tab>

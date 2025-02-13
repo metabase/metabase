@@ -33,7 +33,7 @@ export const ChartSettingRadio = ({
       className={className}
       onChange={value => onChange(value === NULL_VALUE ? null : value)}
     >
-      <Stack gap="xs">
+      <Stack spacing="xs">
         {options.map(({ name, value: optionValue }) => (
           <Radio
             key={optionValue}

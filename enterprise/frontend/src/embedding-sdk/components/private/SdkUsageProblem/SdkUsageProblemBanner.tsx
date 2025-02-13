@@ -63,7 +63,6 @@ export const SdkUsageProblemBanner = ({
           onClick={() => setExpanded(!expanded)}
           className={cx(S.Indicator, isError ? S.Error : S.Warning)}
           data-testid="sdk-usage-problem-indicator"
-          i-should-be-flex="true"
         >
           <Flex bg="white" px="sm" py="xs" className={S.Logo}>
             <LogoIcon height={24} fill={unthemedBrand} />
@@ -83,7 +82,7 @@ export const SdkUsageProblemBanner = ({
               stroke={isError ? unthemedTextDark : undefined}
             />
 
-            <Text tt="capitalize" c={unthemedTextMedium} ff={fontFamily}>
+            <Text transform="capitalize" c={unthemedTextMedium} ff={fontFamily}>
               {severity}
             </Text>
           </Flex>
@@ -97,12 +96,12 @@ export const SdkUsageProblemBanner = ({
           maw="20rem"
           data-testid="sdk-usage-problem-card"
         >
-          <Stack gap="sm">
+          <Stack spacing="sm">
             <Flex w="100%" justify="space-between">
               <Text
                 fw="bold"
                 size="lg"
-                tt="capitalize"
+                transform="capitalize"
                 c={unthemedTextDark}
                 ff={fontFamily}
               >
@@ -128,7 +127,7 @@ export const SdkUsageProblemBanner = ({
                 variant="subtle"
                 onClick={hideBanner}
                 ff={fontFamily}
-                size="compact-md"
+                compact
               >
                 Hide {severity}
               </Button>
@@ -137,10 +136,10 @@ export const SdkUsageProblemBanner = ({
                 <Button
                   fz="sm"
                   variant="outline"
-                  rightSection={<Icon name="external" size={10} />}
+                  rightIcon={<Icon name="external" size={10} />}
                   ff={fontFamily}
                   className={S.DocsButton}
-                  size="compact-md"
+                  compact
                 >
                   View documentation
                 </Button>

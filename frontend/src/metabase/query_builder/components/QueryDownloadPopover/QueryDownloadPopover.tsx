@@ -69,21 +69,14 @@ export const QueryDownloadPopover = ({
         onTogglePivoting={() => setIsPivoted(prev => !prev)}
       />
       {hasTruncatedResults && (
-        <Box>
-          <Text
-            size="sm"
-            c="text-medium"
-            mb="1rem"
-          >{t`Your answer has a large number of rows so it could take a while to download.`}</Text>
-
-          <Text size="sm" c="text-medium">
-            {limitedDownloadSizeText}
-          </Text>
-        </Box>
+        <Text size="sm" color="text-medium">
+          <Box mb="1rem">{t`Your answer has a large number of rows so it could take a while to download.`}</Box>
+          <Box>{limitedDownloadSizeText}</Box>
+        </Text>
       )}
       <Button
         data-testid="download-results-button"
-        leftSection={<Icon name="download" />}
+        leftIcon={<Icon name="download" />}
         variant="filled"
         onClick={handleDownload}
       >{t`Download`}</Button>

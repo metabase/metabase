@@ -70,7 +70,7 @@ export const SaveQuestionForm = ({
             },
           }}
         >
-          <Stack gap="sm" mb="md">
+          <Stack spacing="sm" mb="md">
             <Radio
               name={overwriteOptionName}
               value="overwrite"
@@ -96,7 +96,7 @@ export const SaveQuestionForm = ({
         </FormRadioGroup>
       )}
       {values.saveType === "create" && (
-        <Stack gap="md">
+        <Stack spacing="md">
           <FormTextInput
             name="name"
             label={t`Name`}

@@ -132,15 +132,10 @@ export class ClickActionsPopover extends Component<
       <PopoverWithRef
         anchorEl={popoverAnchor}
         opened={!!popoverAnchor}
-        // TODO - come back to this
-        onChange={open => {
-          if (!open) {
-            this.close();
-          }
-        }}
+        onClose={this.close}
         position="bottom-start"
+        width={700}
         offset={8}
-        popoverContentTestId="click-actions-popover"
         {...popoverAction?.popoverProps}
       >
         {popover ? (

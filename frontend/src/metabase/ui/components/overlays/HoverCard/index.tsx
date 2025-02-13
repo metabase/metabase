@@ -4,7 +4,7 @@ import {
 } from "@mantine/core";
 
 import { PreventEagerPortal } from "metabase/ui";
-export { hoverCardOverrides } from "./HoverCard.config";
+export { getHoverCardOverrides } from "./HoverCard.styled";
 
 export type { HoverCardDropdownProps, HoverCardProps } from "@mantine/core";
 

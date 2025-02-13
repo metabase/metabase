@@ -42,7 +42,7 @@ export const EmbedModalContentStatusBar = ({
               : t`This ${resourceType} is published and ready to be embedded.`}
         </Text>
 
-        <Group gap="1rem" className={CS.flexNoShrink}>
+        <Group spacing="1rem" className={CS.flexNoShrink}>
           {isPublished &&
             (hasSettingsChanges ? (
               <Button onClick={onDiscard}>{t`Discard changes`}</Button>

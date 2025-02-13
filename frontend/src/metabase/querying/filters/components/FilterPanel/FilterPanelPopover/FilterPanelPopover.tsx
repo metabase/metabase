@@ -51,7 +51,7 @@ export function FilterPanelPopover({
           {filterInfo.longDisplayName}
         </FilterPill>
       </Popover.Target>
-      <Popover.Dropdown data-testid="filter-picker-dropdown">
+      <Popover.Dropdown>
         <FilterPicker
           query={query}
           stageIndex={stageIndex}

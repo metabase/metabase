@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "@testing-library/react";
+
 import { Tree } from "metabase/components/tree";
 
 const data = [

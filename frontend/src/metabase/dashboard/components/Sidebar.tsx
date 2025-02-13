@@ -36,12 +36,12 @@ export function Sidebar({
         <ButtonContainer spaceBetween>
           {onRemove && (
             <Button
-              leftSection={<Icon name="trash" />}
+              leftIcon={<Icon name="trash" />}
               variant="subtle"
               color="error"
               onClick={onRemove}
               style={{ paddingLeft: 0, paddingRight: 0 }}
-              size="compact-md"
+              compact
               role="button"
               aria-label={t`Remove`}
             >{t`Remove`}</Button>

@@ -3,11 +3,7 @@ import type { MantineThemeOverride } from "@mantine/core";
 import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher } from "@testing-library/react";
-import {
-  screen,
-  render as testingLibraryRender,
-  waitFor,
-} from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { KBarProvider } from "kbar";
@@ -129,7 +125,7 @@ export function renderWithProviders(
     );
   };
 
-  const utils = testingLibraryRender(ui, {
+  const utils = render(ui, {
     wrapper,
     ...options,
   });
@@ -345,14 +341,4 @@ export function createMockClipboardData(
   return clipboardData as unknown as DataTransfer;
 }
 
-export function renderWithTheme(children: React.ReactElement) {
-  return testingLibraryRender(children, {
-    wrapper: ThemeProvider,
-  });
-}
-
-// eslint-disable-next-line import/export -- we're intentionally overriding the render function
-export { renderWithTheme as render };
-
-// eslint-disable-next-line import/export -- we're intentionally overriding the render function
 export * from "@testing-library/react";

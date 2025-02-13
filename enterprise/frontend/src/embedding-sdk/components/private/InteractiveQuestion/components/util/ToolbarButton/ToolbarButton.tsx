@@ -21,7 +21,7 @@ function _ToolbarButton(
     <Button
       ref={ref}
       variant={isHighlighted ? "filled" : "subtle"}
-      leftSection={icon ? <Icon name={icon} /> : undefined}
+      leftIcon={icon ? <Icon name={icon} /> : undefined}
       py="sm"
       px="md"
       {...buttonProps}

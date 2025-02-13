@@ -1,3 +1,3 @@
 export { Card } from "@mantine/core";
 export type { CardProps } from "@mantine/core";
-export { cardOverrides } from "./Card.config";
+export { getCardOverrides } from "./Card.styled";

@@ -32,7 +32,7 @@ export const Banner = ({
       pr="md"
       {...flexProps}
     >
-      <Group gap="xs">
+      <Group spacing="xs">
         {icon && <Icon name={icon} w={36} />}
         {body}
       </Group>

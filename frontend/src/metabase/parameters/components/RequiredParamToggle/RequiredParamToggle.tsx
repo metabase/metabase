@@ -34,7 +34,7 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
                 <Icon name="info_filled" />
               </HoverCard.Target>
               <HoverCard.Dropdown w={320}>
-                <Stack p="md" gap="sm">
+                <Stack p="md" spacing="sm">
                   {disabledTooltip}
                 </Stack>
               </HoverCard.Dropdown>

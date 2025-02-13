@@ -48,7 +48,7 @@ export const RecentsListContent = ({
 
   if (results.length === 0) {
     return (
-      <Stack gap="md" px="sm" py="md">
+      <Stack spacing="md" px="sm" py="md">
         <Title order={4} px="sm">{t`Recently viewed`}</Title>
         <EmptyStateContainer>
           <EmptyState message={t`Nothing here`} icon="folder" />
@@ -59,14 +59,14 @@ export const RecentsListContent = ({
 
   return (
     <Stack
-      gap="sm"
+      spacing="sm"
       px="sm"
       pt="md"
       pb="sm"
       data-testid="recents-list-container"
     >
       <Title order={4} px="sm">{t`Recently viewed`}</Title>
-      <Stack gap={0}>
+      <Stack spacing={0}>
         {results.map((item, index) => {
           const isActive = isItemActive(item);
 
@@ -82,8 +82,8 @@ export const RecentsListContent = ({
               p="sm"
             >
               <ItemIcon active={isActive} item={item} type={item.model} />
-              <ResultNameSection justify="center" gap="xs">
-                <Group gap="xs" align="center" wrap="nowrap">
+              <ResultNameSection justify="center" spacing="xs">
+                <Group spacing="xs" align="center" noWrap>
                   <ResultTitle
                     data-testid="recently-viewed-item-title"
                     truncate

@@ -78,20 +78,20 @@ const InvalidateNowFormBody = ({
           }}
           disabled={wasFormRecentlyPending}
           label={
-            <Group gap="sm">
+            <Group spacing="sm">
               <Icon color="var(--mb-color-danger)" name="trash" />
               <Text>{buttonText}</Text>
             </Group>
           }
           activeLabel={
-            <Group gap="sm">
+            <Group spacing="sm">
               <Loader size="1rem" />
               <Text>{c("Shown when a cache is being cleared")
                 .t`Clearing cache… `}</Text>
             </Group>
           }
           successLabel={
-            <Group gap="sm">
+            <Group spacing="sm">
               <IconInButton name="check" color={color("success")} />
               <Text>{t`Cache cleared`}</Text>
             </Group>

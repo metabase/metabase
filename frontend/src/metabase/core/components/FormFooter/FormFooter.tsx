@@ -18,7 +18,7 @@ export const FormFooter = ({
       }
     : {};
   return (
-    <Group align="center" justify="right" gap="sm" {...borderProps}>
+    <Group align="center" position="right" spacing="sm" {...borderProps}>
       {children}
     </Group>
   );

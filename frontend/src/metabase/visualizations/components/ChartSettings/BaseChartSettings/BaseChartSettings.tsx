@@ -143,11 +143,9 @@ export const BaseChartSettings = ({
   }, [currentWidget, widgets]);
 
   const handleShowSection = useCallback(
-    (section: string | null) => {
-      if (section) {
-        setCurrentSection(section);
-        setCurrentWidget(null);
-      }
+    (section: string) => {
+      setCurrentSection(section);
+      setCurrentWidget(null);
     },
     [setCurrentSection],
   );

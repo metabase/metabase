@@ -31,7 +31,7 @@ describe("SkeletonCaption", () => {
 
     await userEvent.hover(screen.getByTestId("skeleton-description-icon"));
 
-    const tooltip = await screen.findByRole("tooltip");
+    const tooltip = screen.getByRole("tooltip");
     expect(tooltip).not.toHaveTextContent(MARKDOWN);
     expect(tooltip).not.toHaveTextContent(HEADING_1_MARKDOWN);
     expect(tooltip).not.toHaveTextContent(HEADING_2_MARKDOWN);

@@ -31,7 +31,7 @@ export const StaticEmbedContent = ({
       src="/app/assets/img/static-embedding-example.png"
       alt="Static embedding example"
     />
-    <Group gap="md">
+    <Group spacing="md">
       {exampleDashboardLink && (
         <Link
           to={exampleDashboardLink}

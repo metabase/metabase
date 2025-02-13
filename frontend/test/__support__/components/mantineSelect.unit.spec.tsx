@@ -1,15 +1,13 @@
-import { mockScrollIntoView, render, screen, within } from "__support__/ui";
+import { render, screen, within } from "__support__/ui";
 import { Select } from "metabase/ui";
 
 import { viewMantineSelectOptions } from "./mantineSelect";
-
-mockScrollIntoView();
 
 describe("viewMantineSelectOptions", () => {
   it("fetches options from the <Select> component", async () => {
     render(
       <Select
-        value={"option2" as string}
+        value="option2"
         data={[
           { value: "option1", label: "Option 1" },
           { value: "option2", label: "Option 2" },
@@ -32,7 +30,7 @@ describe("viewMantineSelectOptions", () => {
     render(
       <>
         <Select
-          value={"select1-option2" as string}
+          value="select1-option2"
           data={[
             { value: "select1-option1", label: "First Select, option 1" },
             { value: "select1-option2", label: "First Select, option 2" },
@@ -41,7 +39,7 @@ describe("viewMantineSelectOptions", () => {
         />
         <div data-testid="second-select-container">
           <Select
-            value={"select2-option2" as string}
+            value="select2-option2"
             data={[
               {
                 value: "select2-option1",
@@ -79,7 +77,7 @@ describe("viewMantineSelectOptions", () => {
     render(
       <>
         <Select
-          value={"select1-option2" as string}
+          value="select1-option2"
           data={[
             { value: "select1-option1", label: "First Select, option 1" },
             { value: "select1-option2", label: "First Select, option 2" },
@@ -88,18 +86,18 @@ describe("viewMantineSelectOptions", () => {
         />
         <div data-testid="second-select-container">
           <Select
-            value={"select2-option2"}
+            value="select2-option2"
             data={[
               {
-                value: "select2-option1" as string,
+                value: "select2-option1",
                 label: "Second Select, option 1",
               },
               {
-                value: "select2-option2" as string,
+                value: "select2-option2",
                 label: "Second Select, option 2",
               },
               {
-                value: "select2-option3" as string,
+                value: "select2-option3",
                 label: "Second Select, option 3",
               },
             ]}
@@ -109,7 +107,7 @@ describe("viewMantineSelectOptions", () => {
     );
     const secondSelectRoot = await within(
       await screen.findByTestId("second-select-container"),
-    ).findByRole("textbox");
+    ).findByRole("combobox");
     const { optionElements, optionTextContents, displayedOption } =
       await viewMantineSelectOptions({
         root: secondSelectRoot,
@@ -124,7 +122,7 @@ describe("viewMantineSelectOptions", () => {
 
   it("throws an error if the <Select> is not found", async () => {
     await expect(viewMantineSelectOptions()).rejects.toThrow(
-      /Unable to find.*role="textbox"/,
+      /Unable to find.*role="combobox"/,
     );
   });
 });

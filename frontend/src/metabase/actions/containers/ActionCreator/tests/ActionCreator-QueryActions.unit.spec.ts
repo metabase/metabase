@@ -60,20 +60,17 @@ describe("ActionCreator > Query Actions", () => {
         screen.getByRole("button", { name: "Action settings" }),
       );
       await userEvent.tab(); // move focus away from "Action settings" button to hide its tooltip
-      await waitFor(
-        () => {
-          expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
-        },
-        { timeout: 3000 },
-      );
+      await waitFor(() => {
+        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      });
 
-      const makePublic = screen.getByRole("switch", {
+      const makePublic = screen.getByRole("checkbox", {
         name: "Make public",
       });
       expect(makePublic).toBeDisabled();
       expect(makePublic).not.toBeChecked();
       await userEvent.hover(makePublic);
-      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      expect(screen.getByRole("tooltip")).toHaveTextContent(
         "To enable creating a shareable link you first need to save your action",
       );
     });

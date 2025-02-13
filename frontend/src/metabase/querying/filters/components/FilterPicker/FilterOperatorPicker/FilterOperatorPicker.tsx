@@ -25,7 +25,7 @@ export function FilterOperatorPicker<T extends string>({
       <Menu.Target>
         <Button
           fw="normal"
-          rightSection={<Icon name="chevrondown" />}
+          rightIcon={<Icon name="chevrondown" />}
           aria-label={t`Filter operator`}
         >
           {selectedOption?.name ?? t`Select operator`}

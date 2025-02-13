@@ -1,6 +1,5 @@
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
-
-import { fireEvent, render, screen } from "__support__/ui";
 
 import { ChartSettingInput } from "./ChartSettingInput";
 

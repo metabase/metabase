@@ -44,7 +44,7 @@ export const SharingPaneButton = ({
     >
       <Stack pb={isDisabled ? "md" : undefined}>
         <Center mb={32}>{illustration}</Center>
-        <Group align="center" gap="sm">
+        <Group align="center" spacing="sm">
           <Title size="h2">{title}</Title>
           {badge}
         </Group>
@@ -60,8 +60,8 @@ export const SharingPaneButton = ({
         >
           <Text
             c="var(--mb-color-text-secondary)"
-            fw="bold"
-            ta="center"
+            weight="bold"
+            align="center"
             py="sm"
             lh="1"
           >

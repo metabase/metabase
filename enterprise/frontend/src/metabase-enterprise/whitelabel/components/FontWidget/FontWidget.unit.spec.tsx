@@ -1,6 +1,5 @@
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
-import { mockScrollIntoView, render, screen } from "__support__/ui";
 
 import type { FontWidgetProps } from "./FontWidget";
 import FontWidget from "./FontWidget";
@@ -11,7 +10,6 @@ const FONT_FILES_KEY = "application-font-files";
 describe("FontWidget", () => {
   it("should set a built-in font from a built-in font", async () => {
     const props = getProps();
-    mockScrollIntoView();
 
     render(<FontWidget {...props} />);
     await clickSelect("Lato");
@@ -27,7 +25,6 @@ describe("FontWidget", () => {
         value: "Lora",
       }),
     });
-    mockScrollIntoView();
 
     render(<FontWidget {...props} />);
     await clickSelect("Lora");
@@ -43,7 +40,6 @@ describe("FontWidget", () => {
         "application-font-files": [],
       }),
     });
-    mockScrollIntoView();
 
     render(<FontWidget {...props} />);
     await clickSelect("Custom…");
@@ -78,7 +74,7 @@ const getSettingValues = (
 });
 
 async function clickSelect(text: string) {
-  const input = screen.getByRole("textbox");
+  const input = screen.getByRole("searchbox");
   expect(input).toHaveValue(text);
   await userEvent.click(input);
 }

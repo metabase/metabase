@@ -20,7 +20,7 @@ const SizeTemplate = () => (
     {argTypes.size.options.map(size => (
       <Fragment key={size}>
         <Grid.Col span={1}>
-          <Text fw="bold">{size}</Text>
+          <Text weight="bold">{size}</Text>
         </Grid.Col>
         <Grid.Col span={1}>
           <Loader size={size} />

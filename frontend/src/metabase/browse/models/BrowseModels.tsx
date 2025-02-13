@@ -64,8 +64,8 @@ export const BrowseModels = () => {
             justify="space-between"
             align="center"
           >
-            <Title order={1} c="text-dark" id={titleId}>
-              <Group gap="sm">
+            <Title order={1} color="text-dark" id={titleId}>
+              <Group spacing="sm">
                 <Icon
                   size={24}
                   color="var(--mb-color-icon-primary)"
@@ -85,18 +85,18 @@ export const BrowseModels = () => {
       </BrowseHeader>
       <BrowseMain>
         <BrowseSection>
-          <Stack mb="lg" gap="md" w="100%">
+          <Stack mb="lg" spacing="md" w="100%">
             {isEmpty ? (
-              <Stack gap="lg" align="center" data-testid="empty-state">
+              <Stack spacing="lg" align="center" data-testid="empty-state">
                 <Box maw="45rem" w="100%">
                   <ModelsVideo autoplay={0} />
                 </Box>
-                <Stack gap="xs" maw="28rem">
+                <Stack spacing="xs" maw="28rem">
                   <Title
                     order={2}
-                    ta="center"
+                    align="center"
                   >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
-                  <Text ta="center">{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
+                  <Text align="center">{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
                 </Stack>
                 {showMetabaseLinks && (
                   <Button variant="subtle" p={0}>

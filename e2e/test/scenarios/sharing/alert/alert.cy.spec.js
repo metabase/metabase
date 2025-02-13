@@ -159,9 +159,7 @@ describe("scenarios > alert", () => {
       cy.findByRole("checkbox", { name: /Channel Foo Hook/ }).click();
       cy.findByRole("checkbox", { name: /Channel Bar Hook/ }).click();
 
-      cy.findByTestId("delete-confirmation-modal-alert")
-        .findByRole("button", { name: "Delete this alert" })
-        .click();
+      cy.findByRole("button", { name: "Delete this alert" }).click();
     });
   });
 

@@ -16,7 +16,6 @@ import {
   Box,
   Group,
   Icon,
-  SimpleGrid,
   Stack,
   type StackProps,
   Text,
@@ -25,6 +24,7 @@ import {
 
 import {
   BrowseContainer,
+  BrowseGrid,
   BrowseMain,
   BrowseSection,
   CenteredEmptyState,
@@ -66,7 +66,7 @@ export const BrowseDatabases = () => {
       <BrowseDataHeader />
       <BrowseMain>
         <BrowseSection>
-          <SimpleGrid data-testid="database-browser" cols={3}>
+          <BrowseGrid data-testid="database-browser">
             {databases &&
               databases.length > 0 &&
               databases.map(database => (
@@ -76,7 +76,7 @@ export const BrowseDatabases = () => {
                     className={cx(CS.rounded, CS.bordered, DB.dbCard)}
                   >
                     <Icon name="database" color={color("accent2")} size={32} />
-                    <Title order={2} size="md" lh={1.2} c="inherit">
+                    <Title order={2} size="md" lh={1.2} color="inherit">
                       {database.name}
                     </Title>
                   </DatabaseCard>
@@ -88,13 +88,13 @@ export const BrowseDatabases = () => {
                 <DatabaseCard
                   className={cx(CS.rounded, CS.bordered, DB.addCard)}
                 >
-                  <Group gap="xs">
+                  <Group spacing="xs">
                     <CardImageWrapper database={"postgres"} />
                     <CardImageWrapper database={"mysql"} />
                     <CardImageWrapper database={"snowflake"} />
                   </Group>
                   <div>
-                    <Title order={2} size="md" lh={1.2} c="inherit">
+                    <Title order={2} size="md" lh={1.2} color="inherit">
                       {t`Add a database`}
                     </Title>
                     <Text
@@ -107,7 +107,7 @@ export const BrowseDatabases = () => {
                 </DatabaseCard>
               </Link>
             )}
-          </SimpleGrid>
+          </BrowseGrid>
         </BrowseSection>
       </BrowseMain>
     </BrowseContainer>

@@ -101,11 +101,11 @@ export function SelectEmbedTypePane({
     <Stack
       display={"inline-flex"}
       p="lg"
-      gap="lg"
+      spacing="lg"
       data-testid="sharing-pane-container"
       align="stretch"
     >
-      <Group gap="lg" maw="100%" align="stretch">
+      <Group spacing="lg" maw="100%" align="stretch">
         {/* STATIC EMBEDDING*/}
         <SharingPaneButton
           title={t`Static embedding`}
@@ -186,7 +186,7 @@ export function SelectEmbedTypePane({
           </SharingPaneButton>
         </MaybeLink>
       </Group>
-      <Group justify="space-between">
+      <Group position="apart">
         {/* PUBLIC EMBEDDING */}
         {isPublicSharingEnabled ? (
           <PublicEmbedCard

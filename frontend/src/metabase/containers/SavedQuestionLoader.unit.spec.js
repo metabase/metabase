@@ -1,3 +1,5 @@
+import { screen } from "@testing-library/react";
+
 import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -5,7 +7,7 @@ import {
   setupUnauthorizedCardEndpoints,
   setupUnauthorizedSchemaEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
 import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
 import Question from "metabase-lib/v1/Question";
 import {

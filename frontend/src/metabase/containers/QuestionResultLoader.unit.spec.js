@@ -1,5 +1,6 @@
+import { render } from "@testing-library/react";
+
 import { setupCardQueryEndpoints } from "__support__/server-mocks";
-import { render } from "__support__/ui";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
 import Question from "metabase-lib/v1/Question";
 import { createMockDataset } from "metabase-types/api/mocks";

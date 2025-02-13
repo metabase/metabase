@@ -1,5 +1,6 @@
+import { screen } from "@testing-library/react";
+
 import { createMockMetadata } from "__support__/metadata";
-import { screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import {

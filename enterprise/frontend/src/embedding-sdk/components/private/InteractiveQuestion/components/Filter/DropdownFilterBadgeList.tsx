@@ -42,7 +42,7 @@ export const DropdownFilterBadgeList = ({
   const filterItems = useFilterData();
 
   return (
-    <Group gap="sm">
+    <Group spacing="sm">
       {filterItems.map((item, index) => (
         <DropdownFilterBadgeListContent
           key={`${item.name}/${index}`}

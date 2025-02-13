@@ -1,2 +1,2 @@
 export { Skeleton } from "./Skeleton";
-export * from "./Skeleton.config";
+export * from "./Skeleton.styled";

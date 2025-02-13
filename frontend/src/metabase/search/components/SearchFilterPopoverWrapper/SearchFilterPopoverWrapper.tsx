@@ -41,10 +41,10 @@ export const SearchFilterPopoverWrapper = ({
 
   return (
     <FocusTrap active>
-      <SearchPopoverContainer gap={0} {...stackProps}>
+      <SearchPopoverContainer spacing={0} {...stackProps}>
         {children}
         <DropdownApplyButtonDivider />
-        <Group justify="flex-end" align="center" px="sm" pb="sm">
+        <Group position="right" align="center" px="sm" pb="sm">
           <SearchFilterApplyButton onApply={onApply} />
         </Group>
       </SearchPopoverContainer>

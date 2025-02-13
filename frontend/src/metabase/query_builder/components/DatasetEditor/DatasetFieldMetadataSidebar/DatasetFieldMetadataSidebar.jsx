@@ -302,7 +302,7 @@ function DatasetFieldMetadataSidebar({
                 )}
               </div>
 
-              <Tabs value={tab} onChange={setTab}>
+              <Tabs value={tab} onTabChange={setTab}>
                 {hasColumnFormattingOptions ? (
                   <Tabs.List px="1rem">
                     {TAB_OPTIONS.map(option => (

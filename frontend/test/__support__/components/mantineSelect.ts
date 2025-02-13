@@ -18,10 +18,15 @@ export const viewMantineSelectOptions = async ({
   root,
 }: ViewMantineSelectOptionsParams = {}) => {
   root ??= findWithinElement
-    ? await within(findWithinElement).findByRole("textbox")
-    : await screen.findByRole("textbox");
+    ? await within(findWithinElement).findByRole("combobox")
+    : await screen.findByRole("combobox");
 
-  await userEvent.click(root);
+  // The click listener is not on the combobox itself but on an <input> inside it
+  const displayedOption = (await within(root).findByRole(
+    "searchbox",
+  )) as HTMLInputElement;
+
+  await userEvent.click(displayedOption);
 
   const listbox = await screen.findByRole("listbox");
   const optionElements = await within(listbox).findAllByRole("option");
@@ -29,6 +34,6 @@ export const viewMantineSelectOptions = async ({
   return {
     optionElements,
     optionTextContents,
-    displayedOption: root as HTMLInputElement,
+    displayedOption,
   };
 };

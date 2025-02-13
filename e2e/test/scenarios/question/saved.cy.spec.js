@@ -16,7 +16,7 @@ describe("scenarios > question > saved", () => {
     cy.intercept("POST", "api/card").as("cardCreate");
   });
 
-  it.skip("should should correctly display 'Save' modal (metabase#13817)", () => {
+  it("should should correctly display 'Save' modal (metabase#13817)", () => {
     H.openOrdersTable();
     H.openNotebook();
 
@@ -622,7 +622,7 @@ describe(
       H.modal().within(() => {
         H.getAlertChannel(secondWebhookName).scrollIntoView();
         H.getAlertChannel(secondWebhookName)
-          .findByRole("switch")
+          .findByRole("checkbox")
           .should("be.checked");
       });
     });
@@ -637,7 +637,7 @@ describe(
         H.getAlertChannel(firstWebhookName).scrollIntoView();
 
         H.getAlertChannel(firstWebhookName)
-          .findByRole("switch")
+          .findByRole("checkbox")
           .click({ force: true });
 
         H.getAlertChannel(firstWebhookName).button("Send a test").click();

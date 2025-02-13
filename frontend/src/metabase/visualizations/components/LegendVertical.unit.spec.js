@@ -1,4 +1,5 @@
-import { render, screen } from "__support__/ui";
+import { render, screen } from "@testing-library/react";
+
 import LegendVertical from "metabase/visualizations/components/LegendVertical";
 
 describe("LegendVertical", () => {

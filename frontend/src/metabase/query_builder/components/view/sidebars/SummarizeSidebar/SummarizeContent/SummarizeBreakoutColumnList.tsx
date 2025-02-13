@@ -16,7 +16,7 @@ export const SummarizeBreakoutColumnList = ({
   <Stack
     data-testid="summarize-breakout-column-list"
     h="100%"
-    gap="0"
+    spacing="0"
     {...containerProps}
   >
     <Title order={5} fw={900}>{t`Group by`}</Title>

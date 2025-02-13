@@ -1,4 +1,4 @@
-import { MultiSelect } from "metabase/ui";
+import { MultiAutocomplete } from "metabase/ui";
 
 type Value = string[] | undefined;
 
@@ -16,18 +16,12 @@ export const ChartSettingMultiSelect = ({
   options = [],
   placeholder,
   placeholderNoOptions,
-}: ChartSettingMultiSelectProps) => {
-  const handleChange = (v: string[]) => {
-    onChange(v);
-  };
-  return (
-    <MultiSelect
-      value={value}
-      onChange={handleChange}
-      placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
-      data={options}
-      searchable
-      aria-label={placeholder}
-    />
-  );
-};
+}: ChartSettingMultiSelectProps) => (
+  <MultiAutocomplete
+    value={value}
+    onChange={onChange}
+    placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
+    data={options}
+    showInfoIcon={false}
+  />
+);

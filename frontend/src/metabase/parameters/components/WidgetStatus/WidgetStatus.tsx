@@ -45,8 +45,8 @@ export const WidgetStatus = ({
           <Button
             aria-label={t`Clear`}
             color={highlighted ? undefined : "text-medium"}
-            size="compact-md"
-            leftSection={<Icon name="close" />}
+            compact
+            leftIcon={<Icon name="close" />}
             m={rem(BUTTON_MARGIN)}
             radius="md"
             variant="subtle"
@@ -60,8 +60,8 @@ export const WidgetStatus = ({
           <Button
             aria-label={t`Reset filter to default state`}
             color={highlighted ? undefined : "text-medium"}
-            size="compact-md"
-            leftSection={<Icon name="revert" />}
+            compact
+            leftIcon={<Icon name="revert" />}
             m={rem(BUTTON_MARGIN)}
             radius="md"
             variant="subtle"

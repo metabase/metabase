@@ -34,7 +34,7 @@ export function FilterOperatorPicker<T extends string>({
           disabled={disabled}
           color="brand"
           td={disabled ? "none" : "underline"}
-          rightSection={<Icon name="chevrondown" size={8} />}
+          rightIcon={<Icon name="chevrondown" size={8} />}
           p="xs"
           aria-label={t`Filter operator`}
         >

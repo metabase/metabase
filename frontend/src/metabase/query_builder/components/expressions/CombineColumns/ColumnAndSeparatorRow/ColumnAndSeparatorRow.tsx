@@ -69,7 +69,7 @@ export const ColumnAndSeparatorRow = ({
             },
           }}
           aria-label={t`Remove column`}
-          leftSection={<Icon name="close" />}
+          leftIcon={<Icon name="close" />}
           variant="default"
           onClick={() => {
             onRemove(index);

@@ -15,12 +15,10 @@ import { Popover, type PopoverProps } from "./index";
 export const PopoverWithRef = ({
   anchorEl,
   children,
-  popoverContentTestId,
   ...popoverProps
 }: PropsWithChildren &
   PopoverProps & {
     anchorEl: Element | null;
-    popoverContentTestId?: string;
   }) => {
   const anchorRef = useRef(anchorEl);
   anchorRef.current = anchorEl;
@@ -45,9 +43,7 @@ export const PopoverWithRef = ({
       <Popover.Target>
         <Target />
       </Popover.Target>
-      <Popover.Dropdown data-testid={popoverContentTestId}>
-        {children}
-      </Popover.Dropdown>
+      <Popover.Dropdown>{children}</Popover.Dropdown>
     </Popover>
   );
 };

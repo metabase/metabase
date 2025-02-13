@@ -12,7 +12,6 @@ interface ScalarContainerProps {
 export const ScalarContainer = styled(Ellipsified)<ScalarContainerProps>`
   padding: 0 ${space(1)};
   max-width: 100%;
-  box-sizing: border-box;
 
   ${({ isClickable }) =>
     isClickable &&

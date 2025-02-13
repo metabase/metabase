@@ -33,14 +33,14 @@ export const SearchResultsDropdown = ({
     return metadata.total > 0 ? (
       <SearchDropdownFooter
         data-testid="search-dropdown-footer"
-        justify="space-between"
+        position="apart"
         align="center"
         px="lg"
         py={rem(10)}
         onClick={goToSearchApp}
         isSelected={isSelected}
       >
-        <Text fw={700} size="sm" c="inherit">
+        <Text weight={700} size="sm" c="inherit">
           {resultText}
         </Text>
         <Icon name="arrow_right" size={14} />

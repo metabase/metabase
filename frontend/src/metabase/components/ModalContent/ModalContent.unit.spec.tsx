@@ -1,6 +1,7 @@
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, render, screen } from "__support__/ui";
+import { getIcon, render } from "__support__/ui";
 
 import type { ModalContentProps } from "./ModalContent";
 import ModalContent from "./ModalContent";

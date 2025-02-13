@@ -68,7 +68,7 @@ export function DateIntervalPicker({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Flex p="md" align="center">
+      <Flex p="md">
         <NumberInput
           value={interval}
           aria-label={t`Interval`}
@@ -81,17 +81,13 @@ export function DateIntervalPicker({
           aria-label={t`Unit`}
           ml="md"
           onChange={handleUnitChange}
-          comboboxProps={{
-            withinPortal: false,
-            floatingStrategy: "fixed",
-          }}
         />
         <Tooltip label={t`Starting from…`} position="bottom">
           <Button
             aria-label={t`Starting from…`}
             c="var(--mb-color-text-secondary)"
             variant="subtle"
-            leftSection={<Icon name="arrow_left_to_line" />}
+            leftIcon={<Icon name="arrow_left_to_line" />}
             onClick={handleStartingFromClick}
           />
         </Tooltip>
@@ -100,8 +96,8 @@ export function DateIntervalPicker({
         <IncludeCurrentSwitch value={value} onChange={onChange} />
       </Flex>
       <Divider />
-      <Group px="md" py="sm" justify="space-between">
-        <Group c="var(--mb-color-text-secondary)" gap="sm">
+      <Group px="md" py="sm" position="apart">
+        <Group c="var(--mb-color-text-secondary)" spacing="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>

@@ -135,7 +135,7 @@ function DateFilterPopover({
         {isExpanded ? (
           <Button
             variant="outline"
-            rightSection={
+            rightIcon={
               <IconButtonWrapper aria-label={t`Clear`} onClick={handleClear}>
                 <Icon className={S.ClearIcon} name="close" size={12} />
               </IconButtonWrapper>
@@ -146,7 +146,7 @@ function DateFilterPopover({
           </Button>
         ) : (
           <Button
-            leftSection={<Icon name="ellipsis" />}
+            leftIcon={<Icon name="ellipsis" />}
             aria-label={t`More options`}
             onClick={handleOpen}
           />

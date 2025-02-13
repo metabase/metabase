@@ -76,11 +76,11 @@ export const SearchUserPicker = ({
       isLoading={isLoading}
       onApply={() => onChange(selectedUserIds)}
     >
-      <SearchUserPickerContainer p="sm" gap="xs">
-        <SearchUserSelectBox gap={0}>
+      <SearchUserPickerContainer p="sm" spacing="xs">
+        <SearchUserSelectBox spacing={0}>
           <SearchUserItemContainer
             data-testid="search-user-select-box"
-            gap="xs"
+            spacing="xs"
             p="xs"
             mah="30vh"
           >
@@ -94,17 +94,17 @@ export const SearchUserPicker = ({
                   px="md"
                   py="sm"
                   maw="100%"
-                  rightSection={<Icon name="close" />}
+                  rightIcon={<Icon name="close" />}
                   onClick={() => removeUser(user)}
                 >
-                  <Text ta="left" w="100%" truncate c="inherit">
+                  <Text align="left" w="100%" truncate c="inherit">
                     {user?.common_name}
                   </Text>
                 </SelectedUserButton>
               );
             })}
             <UserPickerInput
-              variant="subtle"
+              variant="unstyled"
               pl="sm"
               size="md"
               placeholder={t`Search for someone…`}
@@ -119,14 +119,14 @@ export const SearchUserPicker = ({
         <SearchUserPickerContent
           data-testid="search-user-list"
           h="100%"
-          gap="xs"
+          spacing="xs"
           p="xs"
         >
           {filteredUsers.length > 0 ? (
             generateUserListElements(filteredUsers)
           ) : (
             <Center py="md">
-              <Text size="md" fw={700}>{t`No results`}</Text>
+              <Text size="md" weight={700}>{t`No results`}</Text>
             </Center>
           )}
         </SearchUserPickerContent>

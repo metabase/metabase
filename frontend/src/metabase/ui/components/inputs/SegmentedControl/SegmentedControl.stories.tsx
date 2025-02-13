@@ -22,7 +22,6 @@ const args = {
     },
   ],
   fullWidth: false,
-  shouldAnimate: true,
 };
 
 export default {

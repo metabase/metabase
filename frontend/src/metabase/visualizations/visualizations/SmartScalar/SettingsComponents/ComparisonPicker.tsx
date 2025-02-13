@@ -129,7 +129,7 @@ export function ComparisonPicker({
       );
     }
     return (
-      <Stack gap="sm">
+      <Stack spacing="sm">
         {options.map(optionArgs =>
           renderMenuOption({
             editedValue,
@@ -154,8 +154,8 @@ export function ComparisonPicker({
       <Menu.Target>
         <ComparisonPickerButton
           disabled={isDisabled}
-          leftSection={isDraggable && <DragHandleIcon name="grabber" />}
-          rightSection={
+          leftIcon={isDraggable && <DragHandleIcon name="grabber" />}
+          rightIcon={
             isRemovable && (
               <IconButtonWrapper
                 aria-label={t`Remove`}

@@ -29,7 +29,7 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
       mt="xl"
       align="center"
       justify="center"
-      gap="sm"
+      spacing="sm"
       data-testid="empty-table-warning"
     >
       <Title>{t`No API keys here yet`}</Title>
@@ -113,7 +113,7 @@ const ApiKeyRow = ({
     <td>{apiKey.updated_by.common_name}</td>
     <td>{formatDateTimeWithUnit(apiKey.updated_at, "minute")}</td>
     <td>
-      <Group gap="md" py="md">
+      <Group spacing="md" py="md">
         <Icon
           name="pencil"
           className={CS.cursorPointer}
@@ -160,10 +160,10 @@ export const ManageApiKeys = () => {
         activeApiKey={activeApiKey}
       />
       <AuthTabs activeKey="api-keys" />
-      <Stack pl="md" gap="lg">
+      <Stack pl="md" spacing="lg">
         <Group
           align="start"
-          justify="space-between"
+          position="apart"
           data-testid="api-keys-settings-header"
         >
           <Stack>

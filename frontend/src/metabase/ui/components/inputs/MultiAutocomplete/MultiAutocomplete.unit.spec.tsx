@@ -2,11 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { act, fireEvent, render, screen } from "__support__/ui";
-import {
-  MultiAutocomplete,
-  type MultiAutocompleteProps,
-  type SelectOption,
-} from "metabase/ui";
+import { MultiAutocomplete, type MultiAutocompleteProps } from "metabase/ui";
 
 const EXAMPLE_DATA = [
   { label: "Foo", value: "foo" },
@@ -20,7 +16,7 @@ function setup(opts: SetupOpts) {
   const onChange = jest.fn();
   render(<TestInput {...opts} onChange={onChange} aria-label="Filter value" />);
 
-  const input = screen.getByRole("combobox");
+  const input = screen.getByRole("searchbox");
   return { onChange, input };
 }
 
@@ -290,12 +286,7 @@ describe("MultiAutocomplete", () => {
   it("should be possible to customize what values get filtered", async () => {
     const { input } = setup({
       data: EXAMPLE_DATA,
-      filter: ({ options }) => {
-        // type cast because we are dealing with ungrouped items
-        return (options as SelectOption[]).filter(
-          option => option.value === "bar",
-        );
-      },
+      filter: (_query, _selected, item) => !item.label?.endsWith(")"),
     });
 
     await userEvent.type(input, "Ba", {

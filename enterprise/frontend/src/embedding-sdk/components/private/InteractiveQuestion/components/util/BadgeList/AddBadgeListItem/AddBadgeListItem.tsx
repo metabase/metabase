@@ -17,7 +17,7 @@ const _AddBadgeListItem = (
   <Badge
     ref={ref}
     classNames={{
-      label: CS.cursorPointer,
+      inner: CS.cursorPointer,
     }}
     bg="var(--mb-color-bg-light)"
     tt="capitalize"

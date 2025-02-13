@@ -7,7 +7,7 @@ import {
 import { PreventEagerPortal } from "metabase/ui";
 
 export { type OverlayProps } from "@mantine/core";
-export { overlayOverrides } from "./Overlay.config";
+export { getOverlayOverrides } from "./Overlay.styled";
 
 /**
  * A Mantine Overlay is a translucent backdrop that covers the whole viewport.

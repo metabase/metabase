@@ -3,13 +3,10 @@
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
-export function popover(testid) {
-  const selector = `${POPOVER_ELEMENT}${testid ? `[data-testid=${testid}]` : ""}`;
-  return cy.get(selector).filter(":visible").should("be.visible");
-}
+/** The currently visible popover dropdown or menu dropdown.*/
+export const popover = () => cy.get(POPOVER_ELEMENT).should("be.visible");
 
-const HOVERCARD_ELEMENT =
-  ".mb-mantine-HoverCard-dropdown[role='dialog']:visible";
+const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
 
 export function hovercard() {
   cy.get(HOVERCARD_ELEMENT, { timeout: 6000 }).should("be.visible");
@@ -25,17 +22,17 @@ export function menu() {
 }
 
 export function modal() {
-  const MODAL_SELECTOR = ".mb-mantine-Modal-content[role='dialog']";
+  const MODAL_SELECTOR = ".emotion-Modal-content[role='dialog']";
   const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
 export function tooltip() {
-  return cy.get(".mb-mantine-Tooltip-tooltip, [role='tooltip']");
+  return cy.get(".emotion-Tooltip-tooltip, [role='tooltip']");
 }
 
 export function selectDropdown() {
-  return popover().findByRole("listbox");
+  return cy.get('[data-testid="select-dropdown"]');
 }
 
 export function entityPickerModal() {
@@ -52,7 +49,7 @@ export function entityPickerModalLevel(level) {
  * @param {string} name
  */
 export function entityPickerModalItem(level, name) {
-  return entityPickerModalLevel(level).findByText(name).parents("a");
+  return entityPickerModalLevel(level).findByText(name).parents("button");
 }
 
 export function entityPickerModalTab(name) {
@@ -328,14 +325,6 @@ export function tableHeaderClick(headerString) {
   });
 }
 
-export function clickActionsPopover() {
-  return popover("click-actions-popover");
-}
-
-export function segmentEditorPopover() {
-  return popover("segment-popover");
-}
-
 export function assertTableData({ columns, firstRows = [] }) {
   tableInteractive()
     .findAllByTestId("header-cell")
@@ -375,11 +364,13 @@ export function newButton(menuItem) {
 }
 
 export function multiSelectInput(filter = ":eq(0)") {
-  return cy.findByRole("combobox").filter(filter).get("input").first();
+  // eslint-disable-next-line no-unsafe-element-filtering
+  return cy.findByRole("combobox").filter(filter).get("input").last();
 }
 
 export function multiAutocompleteInput(filter = ":eq(0)") {
-  return cy.findAllByRole("combobox").filter(filter).get("input").first();
+  // eslint-disable-next-line no-unsafe-element-filtering
+  return cy.findAllByRole("combobox").filter(filter).get("input").last();
 }
 
 export function fieldValuesInput(filter = ":eq(0)") {
@@ -398,12 +389,10 @@ export function removeFieldValuesValue(index) {
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
-  // eslint-disable-next-line no-unsafe-element-filtering
   return cy
     .findAllByRole("combobox")
     .filter(filter)
-    .siblings("[data-with-remove]")
-    .eq(index);
+    .get(`[value][index=${index}]`);
 }
 
 export function removeMultiAutocompleteValue(index, filter) {

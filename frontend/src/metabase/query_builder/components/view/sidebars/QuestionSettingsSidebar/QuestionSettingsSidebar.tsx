@@ -60,7 +60,7 @@ export const QuestionSettingsSidebar = ({
 
         {hasCacheSection && (
           <SidesheetCard title={t`Caching`}>
-            <Stack gap="0.5rem">
+            <Stack spacing="0.5rem">
               <PLUGIN_CACHING.SidebarCacheSection
                 model="question"
                 item={question}

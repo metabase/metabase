@@ -1,7 +1,6 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { getColorShades } from "metabase/ui/utils/colors";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -24,7 +23,7 @@ describe("Themed Visualization", () => {
     ];
 
     renderWithProviders(<Visualization rawSeries={series} />, {
-      theme: { colors: { "text-dark": getColorShades(TEST_COLOR) } },
+      theme: { colors: { "text-dark": [TEST_COLOR] } },
     });
 
     await delay(0);

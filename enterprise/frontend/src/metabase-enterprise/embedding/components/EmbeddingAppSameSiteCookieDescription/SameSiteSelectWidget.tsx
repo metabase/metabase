@@ -58,7 +58,7 @@ export function SameSiteSelectWidget({
     >
       <Menu.Target>
         <Button variant={opened ? "outline" : "default"}>
-          <Group justify="space-between" miw="10rem">
+          <Group position="apart" miw="10rem">
             <span>{selectedOption?.name}</span>
             <Icon name="chevrondown" size="12" />
           </Group>

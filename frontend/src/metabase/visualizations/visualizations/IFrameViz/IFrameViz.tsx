@@ -86,14 +86,14 @@ export function IFrameViz({
   if (isEditing && !isEditingParameter && !isPreviewing) {
     return (
       <IFrameEditWrapper>
-        <Stack h="100%" gap="sm">
-          <Group align="center" wrap="nowrap">
+        <Stack h="100%" spacing="sm">
+          <Group align="center" noWrap>
             <Text fw="bold" truncate>
               {t`Paste your snippet here`}
             </Text>{" "}
             <Box ml="auto">
               <Button
-                size="compact-md"
+                compact
                 variant="filled"
                 style={{ pointerEvents: "all" }}
                 onClick={onTogglePreviewing}
@@ -105,6 +105,7 @@ export function IFrameViz({
             <StyledInput
               data-testid="iframe-card-input"
               autoFocus={isNew}
+              size="100%"
               styles={{
                 wrapper: {
                   height: "100%",
@@ -190,7 +191,7 @@ function ForbiddenDomainError({ url }: { url: string }) {
           </Text>
         )} can not be embedded in iframe cards.`}
       </Text>
-      <InteractiveText c="text-dark" px="lg" mt="md">
+      <InteractiveText color="text-dark" px="lg" mt="md">
         {renderMessage()}
       </InteractiveText>
     </Box>

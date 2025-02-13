@@ -51,7 +51,7 @@ export function DateRangePicker({
         />
       </Box>
       <Divider />
-      <Group p="sm" justify={hasTimeToggle ? "space-between" : "flex-end"}>
+      <Group p="sm" position={hasTimeToggle ? "apart" : "right"}>
         {hasTimeToggle && (
           <TimeToggle hasTime={hasTime} onClick={handleTimeToggle} />
         )}

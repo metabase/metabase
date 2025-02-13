@@ -1,6 +1,5 @@
-import { Text } from "../../typography/Text";
+import { FileInputText } from "./FileInputValue.styled";
 
-import Styles from "./FileInput.module.css";
 interface FileInputValueProps {
   value: File | File[] | null;
 }
@@ -10,9 +9,5 @@ export const FileInputValue = ({ value }: FileInputValueProps) => {
     ? value.map(file => file.name).join(", ")
     : value?.name;
 
-  return (
-    <Text className={Styles.FileInputText} color="inherit">
-      {text}
-    </Text>
-  );
+  return <FileInputText color="inherit">{text}</FileInputText>;
 };

@@ -1,11 +1,8 @@
+import { screen } from "@testing-library/react";
 import dayjs from "dayjs";
 
 import { setupRecentViewsEndpoints } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import type { User } from "metabase-types/api";
 import {
   createMockRecentTableItem,

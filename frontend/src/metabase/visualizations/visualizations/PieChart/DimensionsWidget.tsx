@@ -170,7 +170,7 @@ export function DimensionsWidget({
         >
           {dimensions.map((dimension, index) => (
             <>
-              <Text fw="bold" mb="sm">
+              <Text weight="bold" mb="sm">
                 {dimensionTitles[index]}
               </Text>
               <Sortable

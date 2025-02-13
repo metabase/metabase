@@ -43,11 +43,11 @@ const LauncherGroup = ({
   title,
   children,
   ...props
-}: React.PropsWithChildren<{ title: string } & PaperProps>) => (
+}: { title: string } & PaperProps) => (
   <Paper {...props} p="md">
-    <Stack gap="md">
+    <Stack spacing="md">
       <Title order={3}>{title}</Title>
-      <Group>{children}</Group>
+      <Group noWrap={false}>{children}</Group>
     </Stack>
   </Paper>
 );
@@ -124,21 +124,16 @@ const _Launchers = ({
           </HoverCard.Dropdown>
         </HoverCard>
         <MantineSelect
-          data={
-            [
-              {
-                label: "Mantine Select option 1",
-                value: "1",
-              },
-              {
-                label: "Mantine Select option 2",
-                value: "2",
-              },
-            ] as {
-              label: string;
-              value: string;
-            }[]
-          }
+          data={[
+            {
+              label: "Mantine Select option 1",
+              value: "1",
+            },
+            {
+              label: "Mantine Select option 2",
+              value: "2",
+            },
+          ]}
           defaultValue={"1"}
         />
         <LegacySelect defaultValue="1" data-testid="LegacySelect">
@@ -269,7 +264,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
                 <Title p="md" order={3} id={modalTitleId}>
                   Legacy modal content
                 </Title>
-                <Stack gap="md" p="md">
+                <Stack spacing="md" p="md">
                   <Box p="1rem 0">Legacy modal text content</Box>
                   {enableNesting && <Launchers />}
                 </Stack>
@@ -285,7 +280,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           title={`Mantine Modal content`}
           onClose={() => setMantineModalCount(c => c - 1)}
         >
-          <Stack gap="md">
+          <Stack spacing="md">
             <Text>Mantine Modal text content</Text>
             {enableNesting && <Launchers />}
           </Stack>

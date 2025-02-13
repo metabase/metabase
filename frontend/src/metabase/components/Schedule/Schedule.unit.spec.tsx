@@ -2,7 +2,7 @@ import { screen } from "__support__/ui";
 import { setup } from "metabase/components/Schedule/test-utils";
 
 const getInputValues = () => {
-  const inputs = screen.getAllByRole("textbox");
+  const inputs = screen.getAllByRole("searchbox");
   const values = inputs.map(input => input.getAttribute("value"));
   return values;
 };

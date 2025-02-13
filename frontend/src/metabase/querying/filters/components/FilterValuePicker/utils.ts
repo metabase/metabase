@@ -38,7 +38,7 @@ export function getFieldOptions(fieldValues: FieldValue[]): SelectOption[] {
     }));
 }
 
-function getSelectedOptions(selectedValues: string[]) {
+function getSelectedOptions(selectedValues: string[]): SelectOption[] {
   return selectedValues.map(value => ({
     value,
   }));
@@ -49,7 +49,7 @@ export function getEffectiveOptions(
   selectedValues: string[],
   elevatedValues: string[] = [],
 ): SelectOption[] {
-  const options: { label?: string; value: string }[] = [
+  const options = [
     ...getSelectedOptions(elevatedValues),
     ...getFieldOptions(fieldValues),
     ...getSelectedOptions(selectedValues),

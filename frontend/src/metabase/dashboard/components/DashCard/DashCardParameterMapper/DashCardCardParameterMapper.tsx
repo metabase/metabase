@@ -132,7 +132,7 @@ export function DashCardCardParameterMapper({
               <Text
                 component="span"
                 ml="xs"
-                fw="bold"
+                weight="bold"
                 fz="sm"
                 lh={1}
                 color="text-light"

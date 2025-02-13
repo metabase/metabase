@@ -6,7 +6,7 @@ export function Image({ position, ...mantineImageProps }: ImageProps) {
   return (
     <MantineImage
       {...mantineImageProps}
-      styles={{ root: { objectPosition: position } }}
+      styles={{ image: { objectPosition: position } }}
     />
   );
 }

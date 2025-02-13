@@ -8,38 +8,25 @@ import { Button, type ButtonProps } from "./";
 const args = {
   variant: "default",
   color: undefined,
-  size: "md",
+  compact: false,
   disabled: false,
   fullWidth: false,
   radius: "md",
   loading: false,
+  loaderPosition: "left",
 };
 
 const argTypes = {
   variant: {
-    options: ["default", "filled", "outline", "subtle", "inverse"],
+    options: ["default", "filled", "outline", "subtle"],
     control: { type: "inline-radio" },
   },
   color: {
     options: { default: undefined, success: "success", error: "error" },
     control: { type: "inline-radio" },
   },
-  size: {
-    control: {
-      type: "select",
-      options: [
-        "xs",
-        "sm",
-        "md",
-        "lg",
-        "xl",
-        "compact-xs",
-        "compact-sm",
-        "compact-md",
-        "compact-lg",
-        "compact-xl",
-      ],
-    },
+  compact: {
+    control: { type: "boolean" },
   },
   disabled: {
     control: { type: "boolean" },
@@ -73,15 +60,15 @@ const ButtonGroupTemplate = (args: ButtonProps) => (
 );
 
 const GridRow = (args: ButtonProps) => (
-  <Group wrap="nowrap">
+  <Group noWrap>
     <Button {...args}>Save</Button>
-    <Button {...args} leftSection={<Icon name="add" />}>
+    <Button {...args} leftIcon={<Icon name="add" />}>
       New
     </Button>
-    <Button {...args} rightSection={<Icon name="chevrondown" />}>
+    <Button {...args} rightIcon={<Icon name="chevrondown" />}>
       Category
     </Button>
-    <Button {...args} leftSection={<Icon name="play" />} />
+    <Button {...args} leftIcon={<Icon name="play" />} />
   </Group>
 );
 
@@ -98,15 +85,18 @@ const GridTemplate = (args: ButtonProps) => (
     <GridRowGroup {...args} variant="outline" />
     <GridRowGroup {...args} variant="default" />
     <GridRow {...args} variant="subtle" />
-    <GridRow {...args} variant="inverse" />
   </Stack>
 );
 
 const LoadingGridRow = (args: ButtonProps) => (
-  <Group wrap="nowrap">
-    <Button {...args}>Save</Button>
-    <Button {...args}>Save</Button>
-    <Button {...args} leftSection={<Icon name="play" />} />
+  <Group noWrap>
+    <Button {...args} loaderPosition="left">
+      Save
+    </Button>
+    <Button {...args} loaderPosition="right">
+      Save
+    </Button>
+    <Button {...args} leftIcon={<Icon name="play" />} />
   </Group>
 );
 
@@ -123,7 +113,6 @@ const LoadingGridTemplate = (args: ButtonProps) => (
     <LoadingGridRowGroup {...args} variant="outline" />
     <LoadingGridRowGroup {...args} variant="default" />
     <LoadingGridRow {...args} variant="subtle" />
-    <LoadingGridRow {...args} variant="inverse" />
   </Stack>
 );
 
@@ -149,7 +138,7 @@ export const DefaultSize = {
 };
 
 export const DefaultSizeCustomColor = {
-  render: GridTemplate,
+  render: ButtonGroupTemplate,
   name: "Default size, custom color",
   args: {
     color: "error",
@@ -202,7 +191,7 @@ export const CompactSize = {
   render: GridTemplate,
   name: "Compact size",
   args: {
-    size: "compact-md",
+    compact: true,
   },
 };
 
@@ -211,7 +200,7 @@ export const CompactSizeCustomColor = {
   name: "Compact size, custom color",
   args: {
     color: "error",
-    size: "compact-md",
+    compact: true,
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
@@ -228,7 +217,7 @@ export const CompactSizeDisabled = {
   render: GridTemplate,
   name: "Compact size, disabled",
   args: {
-    size: "compact-md",
+    compact: true,
     disabled: true,
   },
 };
@@ -237,7 +226,7 @@ export const CompactSizeLoading = {
   render: LoadingGridTemplate,
   name: "Compact size, loading",
   args: {
-    size: "compact-md",
+    compact: true,
     loading: true,
   },
 };
@@ -246,7 +235,7 @@ export const CompactSizeFullWidth = {
   render: GridTemplate,
   name: "Compact size, full width",
   args: {
-    size: "compact-md",
+    compact: true,
     fullWidth: true,
   },
 };
@@ -255,7 +244,7 @@ export const CompactSizeFullWidthDisabled = {
   render: GridTemplate,
   name: "Compact size, full width, disabled",
   args: {
-    size: "compact-md",
+    compact: true,
     disabled: true,
     fullWidth: true,
   },
@@ -265,7 +254,7 @@ export const CompactSizeFullWidthLoading = {
   render: LoadingGridTemplate,
   name: "Compact size, full width, loading",
   args: {
-    size: "compact-md",
+    compact: true,
     loading: true,
     fullWidth: true,
   },

@@ -154,7 +154,7 @@ describe("scenarios > dashboard > filters > management", () => {
       changeFilterType("ID");
 
       cy.log("verify ID doesn't render operator select");
-      H.sidebar().findByText("Filter operator").should("not.exist");
+      H.sidebar().findAllByRole("searchbox").should("have.length", 1);
 
       changeFilterType("Date picker");
 
@@ -377,6 +377,6 @@ function verifyOperatorValue(value) {
   H.sidebar()
     .findByText("Filter operator")
     .next()
-    .findByRole("textbox")
+    .findByRole("searchbox")
     .should("have.value", value);
 }

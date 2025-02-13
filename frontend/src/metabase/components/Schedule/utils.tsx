@@ -51,7 +51,7 @@ const layoutSchedule = (nodes: ReactNode[]) => {
       if (nodes.length === 2) {
         result[result.length - 1] = (
           <Group
-            gap="md"
+            spacing="md"
             style={{ rowGap: ".35rem" }}
             key={`items-on-one-line`}
           >
@@ -120,22 +120,9 @@ export const combineConsecutiveStrings = (arr: ReactNode[]) => {
   }, []);
 };
 
-export const getLongestSelectLabel = (
-  data: SelectProps["data"] | { value: string }[] = [],
-): string =>
-  [...data].reduce<string>((acc: string, option) => {
-    let label: string;
-    if (typeof option === "string") {
-      label = option;
-    } else if (!option) {
-      label = "";
-    } else if ("label" in option) {
-      label = option.label;
-    } else if ("group" in option) {
-      label = getLongestSelectLabel(option.items);
-    } else {
-      label = "";
-    }
+export const getLongestSelectLabel = (data: SelectProps["data"]) =>
+  data.reduce<string>((acc, option) => {
+    const label = typeof option === "string" ? option : option.label || "";
     return label.length > acc.length ? label : acc;
   }, "");
 

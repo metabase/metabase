@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "@testing-library/react";
+
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 
 describe("EntityMenuTrigger", () => {

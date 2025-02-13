@@ -724,10 +724,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       });
 
       FieldFilter.openEntryForm();
-      H.dashboardParametersPopover().within(() => {
-        H.multiAutocompleteInput().type("Tw");
-      });
-
+      H.fieldValuesInput().type("Tw");
       checkFilterValueNotInList("10");
       checkFilterValueNotInList("20");
       // eslint-disable-next-line no-unsafe-element-filtering
@@ -811,9 +808,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
       FieldFilter.openEntryForm();
 
-      H.dashboardParametersPopover().within(() => {
-        H.multiAutocompleteInput().type("Tw");
-      });
+      H.multiAutocompleteInput().type("Tw");
       // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText("Twenty").click();
 

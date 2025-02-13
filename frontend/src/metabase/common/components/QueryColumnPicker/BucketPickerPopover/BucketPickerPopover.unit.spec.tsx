@@ -131,15 +131,12 @@ describe("BucketPickerPopover", () => {
 
   it("should collapse after popover is closed", async () => {
     await setupTemporalBucketPicker({ column: dateColumn });
-    expect(screen.getByText("Month")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "More…" }));
     // Clicking outside the popover should close it
     await userEvent.click(screen.getByTestId("container"));
 
-    await waitFor(() =>
-      expect(screen.queryByText("Month")).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByText("Month")).not.toBeVisible());
 
     await userEvent.click(screen.getByLabelText("Temporal bucket"));
     await screen.findByText("Month");
@@ -153,14 +150,10 @@ describe("BucketPickerPopover", () => {
     const column = Lib.withTemporalBucket(dateColumn, lastBucket);
     await setupTemporalBucketPicker({ column });
 
-    expect(screen.getByText("Month")).toBeVisible();
-
     // Clicking outside the popover should close it
     await userEvent.click(screen.getByTestId("container"));
 
-    await waitFor(() =>
-      expect(screen.queryByText("Month")).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("Month")).not.toBeVisible());
 
     await userEvent.click(screen.getByLabelText("Temporal bucket"));
     await screen.findByText("Month");

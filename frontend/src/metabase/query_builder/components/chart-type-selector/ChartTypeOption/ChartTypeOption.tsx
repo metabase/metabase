@@ -27,7 +27,7 @@ export const ChartTypeOption = ({
     <Center pos="relative" data-testid="chart-type-option">
       <Stack
         align="center"
-        gap="xs"
+        spacing="xs"
         role="option"
         aria-selected={isSelected}
         data-testid={`${visualization.uiName}-container`}
@@ -80,7 +80,7 @@ export const ChartTypeOption = ({
 
         <Text
           lh="unset"
-          ta="center"
+          align="center"
           fw="bold"
           fz="sm"
           color={isSelected ? "brand" : "text-medium"}

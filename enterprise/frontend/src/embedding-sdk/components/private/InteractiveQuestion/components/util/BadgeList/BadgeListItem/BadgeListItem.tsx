@@ -24,7 +24,7 @@ const _BadgeListItem = (
     variant="light"
     classNames={{
       root: S.BadgeListItem,
-      label: CS.cursorPointer,
+      inner: CS.cursorPointer,
     }}
     pr={0}
     pl="sm"

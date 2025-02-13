@@ -59,7 +59,7 @@ export const QuestionEmbeddedResources = () => {
 
 export const EmbeddedResources = () => {
   return (
-    <Stack gap="md" className={CS.flexFull}>
+    <Stack spacing="md" className={CS.flexFull}>
       <DashboardEmbeddedResources />
       <QuestionEmbeddedResources />
     </Stack>

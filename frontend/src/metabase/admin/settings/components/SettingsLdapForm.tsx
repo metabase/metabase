@@ -161,7 +161,7 @@ export const SettingsLdapFormView = ({
             settings={settings}
           />
           <FormSection title={"Server Settings"}>
-            <Stack gap="md">
+            <Stack spacing="md">
               <FormTextInput {...fields["ldap-host"]} />
               <FormTextInput {...fields["ldap-port"]} />
               <FormRadioGroup {...fields["ldap-security"]}>
@@ -176,20 +176,20 @@ export const SettingsLdapFormView = ({
             </Stack>
           </FormSection>
           <FormSection title={"User Schema"}>
-            <Stack gap="md">
+            <Stack spacing="md">
               <FormTextInput {...fields["ldap-user-base"]} />
               <FormTextInput {...fields["ldap-user-filter"]} />
             </Stack>
           </FormSection>
           <FormSection title={"Attributes"} collapsible>
-            <Stack gap="md">
+            <Stack spacing="md">
               <FormTextInput {...fields["ldap-attribute-email"]} />
               <FormTextInput {...fields["ldap-attribute-firstname"]} />
               <FormTextInput {...fields["ldap-attribute-lastname"]} />
             </Stack>
           </FormSection>
           <FormSection title={"Group Schema"}>
-            <Stack gap={"md"}>
+            <Stack spacing={"md"}>
               <GroupMappingsWidget
                 isFormik
                 setting={{ key: "ldap-group-sync" }}
@@ -210,7 +210,7 @@ export const SettingsLdapFormView = ({
                 )}
             </Stack>
           </FormSection>
-          <Stack align="start" gap="1rem" mb="1rem">
+          <Stack align="start" spacing="1rem" mb="1rem">
             <FormErrorMessage />
             <FormSubmitButton
               disabled={!dirty}

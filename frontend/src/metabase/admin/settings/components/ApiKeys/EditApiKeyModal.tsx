@@ -49,32 +49,32 @@ const RegenerateKeyModal = ({
     >
       <FormProvider initialValues={{}} onSubmit={handleRegenerate}>
         <Form>
-          <Stack gap="lg">
-            <Stack gap="xs">
+          <Stack spacing="lg">
+            <Stack spacing="xs">
               <Text
                 component="label"
-                fw="bold"
+                weight="bold"
                 color="text-light"
                 size="sm"
               >{t`Key name`}</Text>
-              <Text fw="bold" size="sm">
+              <Text weight="bold" size="sm">
                 {apiKey.name}
               </Text>
             </Stack>
-            <Stack gap="xs">
+            <Stack spacing="xs">
               <Text
                 component="label"
-                fw="bold"
+                weight="bold"
                 color="text-light"
                 size="sm"
               >{t`Group`}</Text>
-              <Text fw="bold" size="sm">
+              <Text weight="bold" size="sm">
                 {apiKey.group.name}
               </Text>
             </Stack>
             <Text>{t`Metabase will replace the existing API key with a new key. You won't be able to recover the old key.`}</Text>
             <FormErrorMessage />
-            <Group justify="flex-end">
+            <Group position="right">
               <Button
                 onClick={() => setModal("edit")}
               >{t`No, don't regenerate`}</Button>
@@ -140,7 +140,7 @@ export const EditApiKeyModal = ({
         >
           {({ dirty }) => (
             <Form>
-              <Stack gap="md">
+              <Stack spacing="md">
                 <FormTextInput
                   name="name"
                   label={t`Key name`}
@@ -166,11 +166,11 @@ export const EditApiKeyModal = ({
                   disabled
                 />
                 <FormErrorMessage />
-                <Group justify="space-between" mt="lg">
+                <Group position="apart" mt="lg">
                   <Button
                     onClick={() => setModal("regenerate")}
                   >{t`Regenerate API Key`}</Button>
-                  <Group justify="flex-end">
+                  <Group position="right">
                     <Button onClick={onClose}>{t`Cancel`}</Button>
                     <FormSubmitButton
                       disabled={!dirty}

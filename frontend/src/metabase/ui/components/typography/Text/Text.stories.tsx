@@ -5,7 +5,7 @@ import { Grid, Text, type TextProps } from "metabase/ui";
 const args = {
   size: "md",
   align: "unset",
-  fw: "normal",
+  weight: "normal",
   italic: false,
   underline: false,
   strikethrough: false,
@@ -28,8 +28,7 @@ const argTypes = {
     options: ["left", "center", "right"],
     control: { type: "inline-radio" },
   },
-  fw: {
-    name: "font weight",
+  weight: {
     options: ["normal", "bold"],
     control: { type: "inline-radio" },
   },
@@ -59,7 +58,7 @@ const SizeTemplate = (args: TextProps) => (
     {argTypes.size.options.map(size => (
       <Fragment key={size}>
         <Grid.Col span={2}>
-          <Text fw="bold">{size}</Text>
+          <Text weight="bold">{size}</Text>
         </Grid.Col>
         <Grid.Col span={10}>
           <Text {...args} size={size} />

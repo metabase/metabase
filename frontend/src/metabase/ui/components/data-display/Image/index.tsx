@@ -3,7 +3,6 @@ import type { CSSProperties } from "react";
 
 export interface ImageProps extends MantineImageProps {
   position?: CSSProperties["position"];
-  alt?: string;
 }
 
 export { Image } from "./Image";

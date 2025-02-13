@@ -1,3 +1,3 @@
 export { List } from "@mantine/core";
 export type { ListProps } from "@mantine/core";
-export { listOverrides } from "./List.config";
+export { getListOverrides } from "./List.styled";

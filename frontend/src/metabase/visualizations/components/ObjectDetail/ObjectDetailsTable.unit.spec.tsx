@@ -1,7 +1,6 @@
-import { fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { testDataset } from "__support__/testDataset";
-import { render, screen } from "__support__/ui";
 import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {

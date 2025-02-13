@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { render, screen } from "@testing-library/react";
 
 import FileInput from "./FileInput";
 

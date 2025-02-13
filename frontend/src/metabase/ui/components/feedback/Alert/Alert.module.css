@@ -1,7 +1,0 @@
-.wrapper {
-  align-items: center;
-}
-
-.root {
-  background-color: color-mix(in srgb, var(--alert-color), white 90%);
-}

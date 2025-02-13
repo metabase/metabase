@@ -2,10 +2,11 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes, MutableRefObject } from "react";
 
+import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 import type { ButtonProps as BaseButtonProps } from "metabase/ui";
-import { Button } from "metabase/ui";
+import { Button, Flex } from "metabase/ui";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 export const PolicyToken = styled(Button)<
@@ -30,10 +31,13 @@ export const PolicyToken = styled(Button)<
   ${breakpointMaxSmall} {
     flex: 1;
   }
-` as unknown as typeof Button;
+`;
 PolicyToken.defaultProps = { radius: "sm" };
 
-export const StyledLauncher = styled.div<
+export const StyledLauncher = styled(
+  Flex,
+  doNotForwardProps("forRoot", "inheritsRootStrategy"),
+)<
   {
     forRoot?: boolean;
     inheritsRootStrategy?: boolean;
@@ -48,8 +52,7 @@ export const StyledLauncher = styled.div<
   padding: 1rem;
   border-width: 1px;
   border-style: solid;
-  justify-content: space-between;
-  gap: 0.5rem;
+  justify-content: center;
   width: 100%;
   ${({ variant }) => css`
     border-color: ${["filled", "outline"].includes(variant || "")
@@ -72,4 +75,4 @@ export const StyledLauncher = styled.div<
     align-items: stretch;
     gap: 0.5rem;
   }
-`; // FIXME, make this into CSS modules
+`;

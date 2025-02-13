@@ -121,7 +121,7 @@ export const CollectionPickerModal = ({
             key="dashboard-on-the-go"
             miw="9.5rem"
             onClick={openCreateDashboardDialog}
-            leftSection={<Icon name="add_to_dash" />}
+            leftIcon={<Icon name="add_to_dash" />}
             disabled={selectedItem?.can_write === false}
           >
             {t`New dashboard`}
@@ -131,7 +131,7 @@ export const CollectionPickerModal = ({
           key="collection-on-the-go"
           miw="9.5rem"
           onClick={openCreateCollectionDialog}
-          leftSection={<Icon name="collection" />}
+          leftIcon={<Icon name="collection" />}
           disabled={selectedItem?.can_write === false}
         >
           {t`New collection`}

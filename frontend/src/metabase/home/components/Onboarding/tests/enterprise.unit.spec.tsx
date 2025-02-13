@@ -1,4 +1,4 @@
-import { screen, within } from "__support__/ui";
+import { screen, within } from "@testing-library/react";
 
 import { type SetupProps, setup as baseSetup } from "./setup";
 

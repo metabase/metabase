@@ -11,6 +11,7 @@ export function parseValues(str: string): string[] {
       quote: '"',
       escape: "\\",
     }).flat();
+
     return strings;
   } catch (err) {
     return [];

@@ -114,7 +114,7 @@ function QuestionPickerInner({
             <Button
               variant="outline"
               className={S.newButton}
-              leftSection={<Icon name="insight" />}
+              leftIcon={<Icon name="insight" />}
               onClick={() => onNewQuestion("notebook")}
             >
               {t`New Question`}
@@ -124,7 +124,7 @@ function QuestionPickerInner({
             <Button
               variant="outline"
               className={S.newButton}
-              leftSection={<Icon name="sql" />}
+              leftIcon={<Icon name="sql" />}
               onClick={() => onNewQuestion("native")}
             >
               {t`New SQL query`}

@@ -6,7 +6,6 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import {
   Sidesheet,
   SidesheetCard,
-  SidesheetCardTitle,
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
 import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
@@ -20,7 +19,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { onCloseQuestionInfo } from "metabase/query_builder/actions";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
-import { Flex, Icon, Stack, Tabs } from "metabase/ui";
+import { Flex, Icon, Stack, Tabs, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionDetails } from "./QuestionDetails";
@@ -92,10 +91,12 @@ export const QuestionInfoSidebar = ({
 
         <SidesheetTabPanelContainer>
           <Tabs.Panel value="overview">
-            <Stack gap="lg">
+            <Stack spacing="lg">
               <SidesheetCard pb="md">
-                <Stack gap="sm">
-                  <SidesheetCardTitle>{t`Description`}</SidesheetCardTitle>
+                <Stack spacing="sm">
+                  <Title lh={1} size="sm" color="text-light" pb={0}>
+                    {t`Description`}
+                  </Title>
                   <SidesheetEditableDescription
                     description={description}
                     onChange={handleSave}

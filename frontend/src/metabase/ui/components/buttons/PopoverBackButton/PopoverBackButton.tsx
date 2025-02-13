@@ -19,7 +19,7 @@ export function PopoverBackButton(props: PopoverBackButtonProps) {
       lh="1.25rem"
       {...props}
       variant="subtle"
-      leftSection={<Icon name="chevronleft" />}
+      leftIcon={<Icon name="chevronleft" />}
     />
   );
 }

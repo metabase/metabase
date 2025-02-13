@@ -22,7 +22,7 @@ export const BadgeList = <T,>({
   addButtonLabel,
 }: BadgeListProps<T>) => (
   <Paper p="md" w="30rem" bg="bg-white">
-    <Group gap="sm">
+    <Group spacing="sm">
       {items.map(({ name, item }, index) => (
         <BadgeListItem
           key={`${name}/${index}`}

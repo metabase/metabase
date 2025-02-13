@@ -28,13 +28,13 @@ export const BreakoutPickerInner = ({
   });
 
   return (
-    <Stack gap={0} w="18.75rem">
+    <Stack spacing={0} w="18.75rem">
       <Button
         p="md"
         fz="lg"
         color="text-medium"
         variant="subtle"
-        leftSection={<Icon name="chevronleft" />}
+        leftIcon={<Icon name="chevronleft" />}
         onClick={() => onClose?.()}
         styles={{
           inner: { display: "flex", justifyContent: "flex-start" },

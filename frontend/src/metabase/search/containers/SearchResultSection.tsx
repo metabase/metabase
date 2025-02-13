@@ -19,7 +19,7 @@ export const SearchResultSection = ({
 
   return (
     <Paper px="sm" py="md">
-      <Stack gap="sm">
+      <Stack spacing="sm">
         <Text tt="uppercase" fw={700} ml="sm" mb="sm">
           {resultsLabel}
         </Text>

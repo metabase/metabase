@@ -151,7 +151,7 @@ describe("BaseItemsTable", () => {
       const icon = getIcon("info");
       await userEvent.hover(icon);
 
-      const tooltip = await screen.findByRole("tooltip");
+      const tooltip = screen.getByRole("tooltip");
 
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent(DESCRIPTION);
@@ -166,7 +166,7 @@ describe("BaseItemsTable", () => {
       const icon = getIcon("info");
       await userEvent.hover(icon);
 
-      const tooltip = await screen.findByRole("tooltip");
+      const tooltip = screen.getByRole("tooltip");
 
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent("important text");

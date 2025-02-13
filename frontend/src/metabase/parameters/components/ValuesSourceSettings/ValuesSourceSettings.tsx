@@ -40,13 +40,8 @@ export function ValuesSourceSettings({
 
   return (
     <>
-      <Radio.Group
-        value={queryType}
-        onChange={(newValue: string) =>
-          onChangeQueryType(newValue as ValuesQueryType)
-        }
-      >
-        <Stack gap="xs">
+      <Radio.Group value={queryType} onChange={onChangeQueryType}>
+        <Stack spacing="xs">
           <RadioContainer
             ownValue="list"
             selectedValue={queryType}
@@ -118,7 +113,7 @@ function RadioContainer({
               disabled={disableEdit}
               variant="subtle"
               p={0}
-              size="compact-md"
+              compact={true}
             >
               <ClickAreaExpander>{t`Edit`}</ClickAreaExpander>
             </Button>

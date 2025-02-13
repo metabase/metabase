@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { render, screen } from "@testing-library/react";
 
 import { SliceNameWidget } from "./SliceNameWidget";
 
@@ -27,16 +27,14 @@ describe("SliceNameWidget", () => {
   });
 
   it("should return null if a pieRow with initialKey cannot be found", () => {
-    render(
-      <div data-testid="test-container">
-        <SliceNameWidget
-          initialKey={"non-present-key"}
-          pieRows={[MOCK_PIE_ROW]}
-          updateRowName={() => null}
-        />
-      </div>,
+    const { container } = render(
+      <SliceNameWidget
+        initialKey={"non-present-key"}
+        pieRows={[MOCK_PIE_ROW]}
+        updateRowName={() => null}
+      />,
     );
 
-    expect(screen.getByTestId("test-container")).toBeEmptyDOMElement();
+    expect(container).toBeEmptyDOMElement();
   });
 });

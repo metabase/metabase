@@ -31,8 +31,8 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
     dispatch(submitUsageReason(usageReason));
   };
 
-  const handleChange = (value: string) => {
-    setUsageReason(value as UsageReason);
+  const handleChange = (value: UsageReason) => {
+    setUsageReason(value);
   };
 
   if (!isStepActive) {

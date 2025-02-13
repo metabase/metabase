@@ -1,8 +1,10 @@
-import { Stack, Title, type TitleProps } from "metabase/ui";
+import { Box, Stack, Title, type TitleProps } from "metabase/ui";
 
 const args = {
   align: "left",
   order: 1,
+  underline: false,
+  truncate: false,
 };
 
 const argTypes = {
@@ -13,6 +15,12 @@ const argTypes = {
   order: {
     options: [1, 2, 3, 4],
     control: { type: "inline-radio" },
+  },
+  underline: {
+    control: { type: "boolean" },
+  },
+  truncate: {
+    control: { type: "boolean" },
   },
 };
 
@@ -35,6 +43,31 @@ const SizeTemplate = (args: TitleProps) => (
   </Stack>
 );
 
+const TruncatedTemplate = (args: TitleProps) => (
+  <Stack>
+    <Box w="6rem">
+      <Title {...args} order={1}>
+        Header 1
+      </Title>
+    </Box>
+    <Box w="5rem">
+      <Title {...args} order={2}>
+        Header 2
+      </Title>
+    </Box>
+    <Box w="4rem">
+      <Title {...args} order={3}>
+        Header 3
+      </Title>
+    </Box>
+    <Box w="3.5rem">
+      <Title {...args} order={4}>
+        Header 4
+      </Title>
+    </Box>
+  </Stack>
+);
+
 export default {
   title: "Typography/Title",
   component: Title,
@@ -48,4 +81,27 @@ export const Default = {
 
 export const Sizes = {
   render: SizeTemplate,
+};
+
+export const Underlined = {
+  render: SizeTemplate,
+  args: {
+    underline: true,
+  },
+};
+
+export const Truncated = {
+  render: TruncatedTemplate,
+  args: {
+    truncate: true,
+  },
+};
+
+export const TruncatedAndUnderlined = {
+  render: TruncatedTemplate,
+  name: "Truncated and underlined",
+  args: {
+    truncate: true,
+    underline: true,
+  },
 };

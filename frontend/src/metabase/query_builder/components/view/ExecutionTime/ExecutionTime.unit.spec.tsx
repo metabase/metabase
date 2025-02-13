@@ -1,27 +1,17 @@
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
-import { render, screen } from "__support__/ui";
 
 import { ExecutionTime } from "./ExecutionTime";
 
 describe("ExecutionTime", () => {
   it("renders nothing when no time is provided (metabase#45730)", () => {
-    render(
-      <div data-testid="test-container">
-        <ExecutionTime />
-      </div>,
-    );
-    const container = screen.getByTestId("test-container");
+    const { container } = render(<ExecutionTime />);
+
     expect(container).toBeEmptyDOMElement();
   });
 
   it("renders nothing when time is `null`", () => {
-    render(
-      <div data-testid="test-container">
-        <ExecutionTime time={null} />
-      </div>,
-    );
-    const container = screen.getByTestId("test-container");
+    const { container } = render(<ExecutionTime time={null} />);
 
     expect(container).toBeEmptyDOMElement();
   });
@@ -42,7 +32,7 @@ describe("ExecutionTime", () => {
     render(<ExecutionTime time={100} />);
 
     await userEvent.hover(screen.getByTestId("execution-time"));
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+    expect(screen.getByRole("tooltip")).toHaveTextContent(
       "How long this query took",
     );
   });

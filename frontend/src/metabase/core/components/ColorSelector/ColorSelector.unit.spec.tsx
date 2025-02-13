@@ -1,6 +1,5 @@
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
-import { render, screen, within } from "__support__/ui";
 
 import { ColorSelector } from "./ColorSelector";
 

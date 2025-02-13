@@ -138,7 +138,7 @@ export const ErrorDiagnosticModal = ({
   if (isSubmissionComplete) {
     return (
       <Modal opened onClose={onClose} size={550}>
-        <Stack gap="sm" align="center" py="xl">
+        <Stack spacing="sm" align="center" py="xl">
           <img
             src="app/assets/img/metabot-bug-report.svg"
             alt={c(
@@ -146,10 +146,10 @@ export const ErrorDiagnosticModal = ({
             ).t`Bug report submitted`}
             style={{ width: 100, height: 100 }}
           />
-          <Text ta="center" size="lg" fw="bold">
+          <Text align="center" size="lg" weight="bold">
             {t`Thank you for your feedback!`}
           </Text>
-          <Text ta="center" color="text-medium">
+          <Text align="center" color="text-medium">
             {t`Bug report submitted successfully.`}
           </Text>
           <Button mt="xl" onClick={onClose}>{t`Close`}</Button>
@@ -192,7 +192,7 @@ export const ErrorDiagnosticModalTrigger = () => {
     <ErrorBoundary>
       <Stack justify="center" my="lg">
         <Button
-          leftSection={<Icon name="download" />}
+          leftIcon={<Icon name="download" />}
           onClick={() => setModalOpen(true)}
         >
           {t`Gather diagnostic information`}

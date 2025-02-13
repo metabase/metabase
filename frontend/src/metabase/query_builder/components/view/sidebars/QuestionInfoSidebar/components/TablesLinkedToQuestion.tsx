@@ -30,7 +30,7 @@ export const TablesLinkedToQuestion = ({
   }
 
   return (
-    <Stack gap="sm">
+    <Stack spacing="sm">
       {!filtered.length && (
         <Text lh={1} color="text-medium">
           {question.type() === "model"

@@ -1,6 +1,7 @@
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
 import { buildTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Dashboard,

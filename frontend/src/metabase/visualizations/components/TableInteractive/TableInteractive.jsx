@@ -1437,8 +1437,8 @@ function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
     >
       <UIButton
         variant="outline"
-        size="compact-md"
-        leftSection={<Icon name="add" />}
+        compact
+        leftIcon={<Icon name="add" />}
         title={t`Add column`}
         aria-label={t`Add column`}
         onClick={onClick}

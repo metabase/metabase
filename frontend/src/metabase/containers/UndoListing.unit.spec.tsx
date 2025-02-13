@@ -16,18 +16,18 @@ const AUTO_CONNECT_UNDO: Undo = {
 };
 
 describe("UndoListing", () => {
-  it("renders list of Undo toasts", async () => {
+  it("renders list of Undo toasts", () => {
     renderWithProviders(<UndoListing />, {
       storeInitialState: {
         undo: [AUTO_CONNECT_UNDO],
       },
     });
 
-    expect(await screen.findByTestId("undo-list")).toBeInTheDocument();
-    expect(await screen.findByTestId("toast-undo")).toBeInTheDocument();
+    expect(screen.getByTestId("undo-list")).toBeInTheDocument();
+    expect(screen.getByTestId("toast-undo")).toBeInTheDocument();
   });
 
-  it("should render progress bar", async () => {
+  it("should render progress bar", () => {
     renderWithProviders(<UndoListing />, {
       storeInitialState: {
         undo: [
@@ -39,6 +39,6 @@ describe("UndoListing", () => {
       },
     });
 
-    expect(await screen.findByRole("progressbar")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 });

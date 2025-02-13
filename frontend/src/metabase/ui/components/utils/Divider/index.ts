@@ -1,3 +1,3 @@
 export { Divider } from "@mantine/core";
 export type { DividerProps } from "@mantine/core";
-export { dividerOverrides } from "./Divider.config";
+export { getDividerOverrides } from "./Divider.styled";

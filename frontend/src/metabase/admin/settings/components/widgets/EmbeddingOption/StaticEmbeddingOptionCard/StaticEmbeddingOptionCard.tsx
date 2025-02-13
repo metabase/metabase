@@ -41,7 +41,7 @@ export const StaticEmbeddingOptionCard = ({
         )
       }`}
     >
-      <Group justify="space-between" align="center" w="100%">
+      <Group position="apart" align="center" w="100%">
         <LinkButton
           variant="default"
           to={"/admin/settings/embedding-in-other-applications/standalone"}

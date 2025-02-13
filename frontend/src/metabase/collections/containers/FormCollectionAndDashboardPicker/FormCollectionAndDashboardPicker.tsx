@@ -190,7 +190,7 @@ export function FormCollectionAndDashboardPicker({
           id={id}
           onClick={() => setIsPickerOpen(true)}
           fullWidth
-          rightSection={<Icon name="ellipsis" />}
+          rightIcon={<Icon name="ellipsis" />}
           styles={{
             inner: {
               justifyContent: "space-between",

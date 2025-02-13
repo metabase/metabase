@@ -109,7 +109,6 @@ export function ColumnInput({
         closeOnClickOutside
         width="target"
         returnFocus
-        withinPortal={!open} // FIXME: portal situation not good
       >
         <Popover.Target>
           <Button
@@ -122,12 +121,14 @@ export function ColumnInput({
               root: classNames(styles.root, { [styles.open]: open }),
               inner: styles.button,
             }}
-            rightSection={<Icon name="chevrondown" style={{ height: 14 }} />}
+            rightIcon={<Icon name="chevrondown" style={{ height: 14 }} />}
           >
             {text}
           </Button>
         </Popover.Target>
-        <Popover.Dropdown>{dropdown}</Popover.Dropdown>
+        <Popover.Dropdown setupSequencedCloseHandler={open}>
+          {dropdown}
+        </Popover.Dropdown>
       </Popover>
     </Input.Wrapper>
   );

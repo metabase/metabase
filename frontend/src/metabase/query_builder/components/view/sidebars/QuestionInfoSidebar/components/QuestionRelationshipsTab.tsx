@@ -15,7 +15,7 @@ export const QuestionRelationshipsTab = ({
   const isModel = question.type() === "model";
 
   return (
-    <Stack gap="lg">
+    <Stack spacing="lg">
       {isModel && (
         <SidesheetCard title={t`Used by`}>
           <ModelUsageDetails model={question} />

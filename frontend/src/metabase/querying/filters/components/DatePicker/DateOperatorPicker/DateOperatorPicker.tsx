@@ -42,11 +42,6 @@ export function DateOperatorPicker({
       style={{
         flex: 1,
       }}
-      comboboxProps={{
-        withinPortal: false,
-        floatingStrategy: "fixed",
-        position: "top",
-      }}
     />
   );
 }

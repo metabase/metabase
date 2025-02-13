@@ -47,7 +47,7 @@ export const ExportAsPdfButton = ({
     <Button
       variant="subtle"
       px="0.5rem"
-      leftSection={<Icon name="document" />}
+      leftIcon={<Icon name="document" />}
       color={color || "text-dark"}
       onClick={() => dispatch(saveAsPDF)}
     >

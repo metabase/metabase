@@ -43,7 +43,7 @@ if (hasPremiumFeature("official_collections")) {
       return [
         <Menu.Item
           key="collection-make-official"
-          leftSection={<Icon name={OFFICIAL_COLLECTION.icon} />}
+          icon={<Icon name={OFFICIAL_COLLECTION.icon} />}
           onClick={() =>
             onUpdate(collection, {
               authority_level: OFFICIAL_COLLECTION.type,
@@ -55,7 +55,7 @@ if (hasPremiumFeature("official_collections")) {
       return [
         <Menu.Item
           key="collection-remove-official"
-          leftSection={<Icon name="close" />}
+          icon={<Icon name="close" />}
           onClick={() =>
             onUpdate(collection, {
               authority_level: REGULAR_COLLECTION.type,

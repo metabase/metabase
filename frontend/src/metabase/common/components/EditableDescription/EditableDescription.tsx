@@ -5,9 +5,7 @@ import EditableText, {
 } from "metabase/core/components/EditableText";
 import { Box, type BoxProps } from "metabase/ui";
 
-export interface EditableDescriptionProps
-  extends BoxProps,
-    Omit<EditableTextProps, "style"> {
+export interface EditableDescriptionProps extends BoxProps, EditableTextProps {
   description: string | null;
   canWrite: boolean;
   onChange: (newDescription: string) => void;

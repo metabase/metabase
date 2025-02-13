@@ -56,7 +56,7 @@ const VariantTemplate = (args: FileInputProps) => (
 );
 
 const IconTemplate = (args: FileInputProps) => (
-  <VariantTemplate {...args} leftSection={<Icon name="attachment" />} />
+  <VariantTemplate {...args} icon={<Icon name="attachment" />} />
 );
 
 export default {
@@ -119,7 +119,7 @@ export const ErrorMd = {
 
 export const IconMd = {
   render: IconTemplate,
-  name: "Left Section, md",
+  name: "Icon, md",
   args: {
     label: sampleArgs.label,
     description: sampleArgs.description,
@@ -174,7 +174,7 @@ export const ErrorXs = {
 
 export const IconXs = {
   render: IconTemplate,
-  name: "Left Section, xs",
+  name: "Icon, xs",
   args: {
     ...IconMd.args,
     size: "xs",

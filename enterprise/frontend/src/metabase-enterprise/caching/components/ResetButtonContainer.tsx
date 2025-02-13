@@ -59,7 +59,7 @@ const ResetAllToDefaultButtonFormBody = () => {
             activeLabel={<Loader size="xs" />}
             successLabel={
               <Text fw="bold" lh="1" color="success">
-                <Group gap="xs">
+                <Group spacing="xs">
                   <Icon name="check" /> {t`Success`}
                 </Group>
               </Text>

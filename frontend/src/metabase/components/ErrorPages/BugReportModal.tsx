@@ -75,8 +75,8 @@ export const BugReportModal = ({
               style={{ borderRadius: "0.5rem" }}
             >
               <Flex align="flex-start" gap="md">
-                <Stack gap="xs">
-                  <Text size="lg" fw="bold">
+                <Stack spacing="xs">
+                  <Text size="lg" weight="bold">
                     {t`Include diagnostic information`}
                   </Text>
                   <Text color="text-medium" w="80%">
@@ -105,7 +105,7 @@ export const BugReportModal = ({
             </Box>
             <Button
               variant="filled"
-              leftSection={isSlackSending ? <Loader size="xs" /> : null}
+              leftIcon={isSlackSending ? <Loader size="xs" /> : null}
               onClick={() => onSlackSubmit(formik.values)}
               disabled={isSlackSending}
             >
@@ -114,7 +114,7 @@ export const BugReportModal = ({
             <Divider my="md" />
             <Flex align="flex-start" justify="space-between" gap="md">
               <Box>
-                <Text size="lg" fw="bold">{t`Download report`}</Text>
+                <Text size="lg" weight="bold">{t`Download report`}</Text>
                 <Text>{t`Diagnostic info may contain sensitive data.`}</Text>
               </Box>
               <FormSubmitButton

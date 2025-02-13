@@ -14,7 +14,7 @@ export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
   return (
     <Menu.Item
       data-testid="embed-menu-embed-modal-item"
-      leftSection={<Icon name="embed" aria-hidden />}
+      icon={<Icon name="embed" aria-hidden />}
       onClick={onClick}
     >
       {t`Embed`}

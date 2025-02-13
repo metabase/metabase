@@ -91,16 +91,14 @@ describe("scenarios > question > relative-datetime", () => {
       H.openOrdersTable();
 
       H.tableHeaderClick("Created At");
-      H.clickActionsPopover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Filter by this column").click();
         cy.findByText("Relative dates…").click();
       });
 
       addStartingFrom();
 
-      H.clickActionsPopover()
-        .findByRole("textbox", { name: "Starting from unit" })
-        .click();
+      H.popover().findByLabelText("Starting from unit").click();
 
       assertOptions([
         "days ago",
@@ -110,10 +108,8 @@ describe("scenarios > question > relative-datetime", () => {
         "years ago",
       ]);
 
-      setRelativeDatetimeUnit(/quarters/);
-      H.clickActionsPopover()
-        .findByRole("textbox", { name: "Starting from unit" })
-        .click();
+      setRelativeDatetimeUnit("quarters");
+      H.popover().findByLabelText("Starting from unit").click();
 
       assertOptions(["quarters ago", "years ago"]);
     });
@@ -173,7 +169,7 @@ describe("scenarios > question > relative-datetime", () => {
       openCreatedAt("Previous");
       addStartingFrom();
       setRelativeDatetimeUnit("months");
-      H.clickActionsPopover().within(() => {
+      H.popover().within(() => {
         cy.findByDisplayValue("days ago").should("not.exist");
         cy.findByDisplayValue("months ago").should("exist");
       });
@@ -271,12 +267,19 @@ const addStartingFrom = () => {
 };
 
 const setRelativeDatetimeUnit = unit => {
-  cy.findByRole("textbox", { name: "Unit" }).click();
-  cy.findByRole("option", { name: unit }).click();
+  cy.findByLabelText("Unit").click();
+  // eslint-disable-next-line no-unsafe-element-filtering
+  cy.findAllByText(unit).last().click();
 };
 
 const setRelativeDatetimeValue = value => {
   cy.findByLabelText("Interval").click().clear().type(value).blur();
+};
+
+const setStartingFromUnit = unit => {
+  cy.findByLabelText("Starting from unit").click();
+  // eslint-disable-next-line no-unsafe-element-filtering
+  cy.findAllByText(unit).last().click();
 };
 
 const setStartingFromValue = value => {
@@ -291,20 +294,18 @@ const withStartingFrom = (dir, [num, unit], [startNum, startUnit]) => {
   H.tableHeaderClick("testcol");
   cy.findByTextEnsureVisible("Filter by this column").click();
   cy.findByTextEnsureVisible("Relative dates…").click();
-  H.clickActionsPopover().within(() => {
+  H.popover().within(() => {
     cy.findByText(dir).click();
   });
+  addStartingFrom();
 
-  H.relativeDatePicker.setValue({ unit, value: num }, H.clickActionsPopover);
-  H.relativeDatePicker.addStartingFrom(
-    {
-      value: startNum,
-      unit: startUnit + (dir === "Previous" ? " ago" : " from now"),
-    },
-    H.clickActionsPopover,
-  );
+  setRelativeDatetimeValue(num);
+  setRelativeDatetimeUnit(unit);
+
+  setStartingFromValue(startNum);
+  setStartingFromUnit(startUnit + (dir === "Previous" ? " ago" : " from now"));
 
   cy.intercept("POST", "/api/dataset").as("dataset");
-  H.clickActionsPopover().within(() => cy.findByText("Add filter").click());
+  H.popover().within(() => cy.findByText("Add filter").click());
   cy.wait("@dataset");
 };

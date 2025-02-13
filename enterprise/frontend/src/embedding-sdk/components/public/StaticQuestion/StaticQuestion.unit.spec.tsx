@@ -1,3 +1,4 @@
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -6,7 +7,7 @@ import {
   setupCardQueryEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
-import { act, screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
+import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import type { Card } from "metabase-types/api";

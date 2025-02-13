@@ -135,7 +135,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // another column
     H.menu().findByText("Value from another column…").click();
-    H.selectDropdown().findByText("Mega Count").click();
+    H.popover().findByText("Mega Count").click();
     H.menu().button("Done").click();
 
     cy.findByTestId("scalar-previous-value").within(() => {
@@ -145,7 +145,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     });
 
     cy.findByTestId("chartsettings-sidebar").findByText("(Mega Count)").click();
-    H.menu().findByRole("textbox", { name: "Column" }).click();
+    H.menu().findByLabelText("Column").click();
     H.popover().findByText("Count").click();
     H.menu().button("Done").click();
 
@@ -291,7 +291,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     H.popover().button("Done").click();
 
     cy.findByTestId("chartsettings-field-picker")
-      .findByRole("textbox")
+      .find('input[type="search"]')
       .should("have.value", "Mega Count")
       .click();
 

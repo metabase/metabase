@@ -1,49 +1,39 @@
 import { MultiSelect, type MultiSelectProps, Stack } from "metabase/ui";
 
 const dataWithGroupsLarge = [
+  { value: "10", label: "Entity key", icon: "label", group: "Overall row" },
+  { value: "11", label: "Entity name", icon: "string", group: "Overall row" },
   {
+    value: "12",
+    label: "Foreign key",
+    icon: "connections",
     group: "Overall row",
-    items: [
-      { value: "10", label: "Entity key", icon: "label" },
-      { value: "11", label: "Entity name", icon: "string" },
-      {
-        value: "12",
-        label: "Foreign key",
-        icon: "connections",
-      },
-    ],
   },
+  { value: "13", label: "Category", icon: "string", group: "Common" },
   {
+    value: "14",
+    label: "Comment",
+    icon: "string",
     group: "Common",
-    items: [
-      { value: "13", label: "Category", icon: "string" },
-      {
-        value: "14",
-        label: "Comment",
-        icon: "string",
-        disabled: true,
-      },
-      { value: "15", label: "Description", icon: "string" },
-      { value: "16", label: "Title", icon: "string" },
-    ],
+    disabled: true,
   },
-  {
-    group: "Location",
-    items: [
-      { value: "17", label: "City", icon: "location" },
-      { value: "18", label: "Country", icon: "location" },
-      { value: "19", label: "Latitude", icon: "location" },
-      { value: "20", label: "Longitude", icon: "location" },
-      { value: "21", label: "Longitude", icon: "location" },
-      { value: "22", label: "State", icon: "location" },
-      { value: "23", label: "Zip code", icon: "location" },
-    ],
-  },
+  { value: "15", label: "Description", icon: "string", group: "Common" },
+  { value: "16", label: "Title", icon: "string", group: "Common" },
+  { value: "17", label: "City", icon: "location", group: "Location" },
+  { value: "18", label: "Country", icon: "location", group: "Location" },
+  { value: "19", label: "Latitude", icon: "location", group: "Location" },
+  { value: "20", label: "Longitude", icon: "location", group: "Location" },
+  { value: "21", label: "Longitude", icon: "location", group: "Location" },
+  { value: "22", label: "State", icon: "location", group: "Location" },
+  { value: "23", label: "Zip code", icon: "location", group: "Location" },
 ];
 
-const dataWithGroups = dataWithGroupsLarge;
+const dataWithGroups = dataWithGroupsLarge.slice(0, 6);
 
-const dataWithIcons = dataWithGroupsLarge.flatMap(group => group.items);
+const dataWithIcons = dataWithGroups.map(item => ({
+  ...item,
+  group: undefined,
+}));
 
 const dataWithLabels = dataWithIcons.map(item => ({
   ...item,

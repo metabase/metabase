@@ -32,14 +32,16 @@ export const SelectedUserButton = styled(Button)<
 >`
   ${({ theme }) => {
     const primaryColor = theme.fn.themeColor("brand");
+    const backgroundColor = theme.fn.lighten(primaryColor, 0.8);
+    const hoverBackgroundColor = theme.fn.lighten(primaryColor, 0.6);
 
     return css`
-      background-color: color-mix(in srgb, ${primaryColor}, white 88%);
+      background-color: ${backgroundColor};
       border: 0;
 
       &:hover {
-        background-color: color-mix(in srgb, ${primaryColor}, white 60%);
+        background-color: ${hoverBackgroundColor};
       }
     `;
   }}
-` as unknown as typeof Button;
+`;

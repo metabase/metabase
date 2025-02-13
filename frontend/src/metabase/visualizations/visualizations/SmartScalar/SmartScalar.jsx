@@ -188,11 +188,11 @@ const Separator = ({ inTooltip }) => {
 
   return (
     <Text
-      d="inline-block"
+      display="inline-block"
       mx="0.2rem"
       style={{ transform: "scale(0.7)" }}
       c={separatorColor}
-      component="span"
+      span
     >
       {" • "}
     </Text>
@@ -262,14 +262,14 @@ function PreviousValueComparison({
 
     if (isEmpty(comparisonDescStr)) {
       return (
-        <Text key={valueStr} c={descColor} component="span">
+        <Text key={valueStr} c={descColor} span>
           {valueStr}
         </Text>
       );
     }
 
     return jt`${comparisonDescStr}: ${(
-      <Text key="value-str" c={descColor} component="span">
+      <Text key="value-str" c={descColor} span>
         {valueStr}
       </Text>
     )}`;

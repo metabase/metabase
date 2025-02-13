@@ -87,7 +87,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("switch"));
+        await userEvent.click(screen.getByRole("checkbox"));
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Agree and continue"));
@@ -113,7 +113,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("switch"));
+        await userEvent.click(screen.getByRole("checkbox"));
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Decline and go back"));
@@ -132,7 +132,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("switch"));
+        await userEvent.click(screen.getByRole("checkbox"));
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
         expect(updateSetting).toHaveBeenCalledTimes(1);

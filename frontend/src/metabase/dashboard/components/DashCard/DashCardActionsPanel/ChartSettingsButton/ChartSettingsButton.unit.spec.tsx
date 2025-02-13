@@ -1,11 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
-import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { ChartSettingsButton } from "metabase/dashboard/components/DashCard/DashCardActionsPanel/ChartSettingsButton/ChartSettingsButton";
 import registerVisualizations from "metabase/visualizations/register";
 import {
@@ -45,8 +41,6 @@ const MOCK_SERIES = [
 const MOCK_DASHBOARD = createMockDashboard();
 const MOCK_DATABASE = createMockDatabase();
 
-mockScrollIntoView();
-
 const setup = () => {
   const onReplaceAllVisualizationSettings = jest.fn();
 
@@ -76,7 +70,6 @@ describe("ChartSettingsButton", () => {
 
     await userEvent.click(screen.getByDisplayValue("Linear Interpolated"));
 
-    //Select dropdowns render a listbox
-    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    expect(screen.getByTestId("select-dropdown")).toBeInTheDocument();
   });
 });

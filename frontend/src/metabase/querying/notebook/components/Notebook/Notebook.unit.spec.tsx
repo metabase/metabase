@@ -325,7 +325,7 @@ describe("Notebook", () => {
           const { pickerColIdx = 1, itemPickerData } =
             dataPickerValueMap[model];
 
-          await userEvent.click(await screen.findByText("Our analytics"));
+          await userEvent.click(screen.getByText("Our analytics"));
 
           assertDataInPickerColumn({
             columnIndex: pickerColIdx,

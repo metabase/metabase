@@ -43,7 +43,7 @@ export function CoordinateColumnPicker({
   };
 
   return (
-    <Stack p="md" gap="sm">
+    <Stack p="md" spacing="sm">
       <Select
         data={options}
         value={value}

@@ -50,9 +50,7 @@ describe("scenarios > dashboard", () => {
       );
       H.modal().findByTestId("collection-picker-button").click();
       H.entityPickerModal().findByText("Select a collection");
-      // cy.realPress("Escape");
-      // TODO: Fix this:
-      H.entityPickerModal().button("Cancel").click();
+      cy.realPress("Escape");
       H.modal().findByText("New dashboard").should("be.visible");
 
       cy.log("Create a new dashboard");
@@ -1186,7 +1184,7 @@ describe("scenarios > dashboard", () => {
 
     // Verify the card is hidden when the value is correct but produces empty results
     H.filterWidget().click();
-    H.dashboardParametersPopover().within(() => {
+    H.popover().within(() => {
       cy.findByPlaceholderText("Enter an ID").type("-1{enter}");
       cy.button("Add filter").click();
     });
@@ -1202,7 +1200,7 @@ describe("scenarios > dashboard", () => {
 
     // Verify the card is visible when it returned an error
     H.filterWidget().click();
-    H.dashboardParametersPopover().within(() => {
+    H.popover().within(() => {
       cy.findByPlaceholderText("Enter an ID").type("text{enter}");
       cy.button("Add filter").click();
     });

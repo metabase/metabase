@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import type { TabsValue } from "metabase/ui";
 import { Flex, Tabs } from "metabase/ui";
 
 import { PerformanceTabId } from "../types";
@@ -15,7 +16,7 @@ import P from "./PerformanceApp.module.css";
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
 const validTabIds = new Set(Object.values(PerformanceTabId).map(String));
-const isValidTabId = (tab: string | null): tab is PerformanceTabId =>
+const isValidTabId = (tab: TabsValue): tab is PerformanceTabId =>
   !!tab && validTabIds.has(tab);
 
 export const PerformanceApp = ({
@@ -50,7 +51,7 @@ export const PerformanceApp = ({
   return (
     <Tabs
       value={tabId}
-      onChange={value => {
+      onTabChange={value => {
         if (isValidTabId(value)) {
           dispatch(
             push(

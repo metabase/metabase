@@ -1,3 +1,4 @@
+import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
@@ -9,7 +10,6 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
-  fireEvent,
   mockGetBoundingClientRect,
   mockScrollBy,
   renderWithProviders,
@@ -1187,7 +1187,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.hover(
         within(screen.getByLabelText("Right table")).getByText("Products"),
       );
-      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      expect(screen.getByRole("tooltip")).toHaveTextContent(
         `${METAKEY}+click to open in new tab`,
       );
     });

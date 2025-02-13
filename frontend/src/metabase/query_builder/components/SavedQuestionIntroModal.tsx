@@ -51,7 +51,7 @@ export const SavedQuestionIntroModal = ({
           <Modal.Title>{title}</Modal.Title>
         </Modal.Header>
         <Modal.Body ta="center">
-          <Text mb="lg" ta="left">
+          <Text mb="lg" align="left">
             {message}
           </Text>
           <Button variant="filled" onClick={onClose}>{t`Okay`}</Button>

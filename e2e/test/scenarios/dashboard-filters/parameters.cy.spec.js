@@ -721,7 +721,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.filterWidget().click();
 
-      H.dashboardParametersPopover().within(() => {
+      H.popover().within(() => {
         H.fieldValuesInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
@@ -750,7 +750,7 @@ describe("scenarios > dashboard > parameters", () => {
     it("should allow resetting last used value", () => {
       H.filterWidget().click();
 
-      H.dashboardParametersPopover().within(() => {
+      H.popover().within(() => {
         H.fieldValuesInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });

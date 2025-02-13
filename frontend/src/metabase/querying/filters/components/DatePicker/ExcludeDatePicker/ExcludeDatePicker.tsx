@@ -222,7 +222,7 @@ function ExcludeValuePicker({
         </Group>
       </Stack>
       <Divider />
-      <Group p="sm" justify="flex-end">
+      <Group p="sm" position="right">
         <Button variant="filled" disabled={isNone} onClick={handleSubmit}>
           {submitButtonLabel}
         </Button>

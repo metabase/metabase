@@ -1,5 +1,7 @@
+import { render } from "@testing-library/react";
+
 import { createMockEntitiesState } from "__support__/store";
-import { render, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";

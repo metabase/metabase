@@ -1,6 +1,7 @@
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 

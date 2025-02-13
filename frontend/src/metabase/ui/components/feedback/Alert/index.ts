@@ -1,3 +1,3 @@
 export { Alert } from "@mantine/core";
 export type { AlertProps } from "@mantine/core";
-export { alertOverrides } from "./Alert.config";
+export { getAlertOverrides } from "./Alert.styled";

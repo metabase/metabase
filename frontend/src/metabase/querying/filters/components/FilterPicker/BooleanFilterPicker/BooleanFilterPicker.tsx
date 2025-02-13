@@ -66,7 +66,7 @@ export function BooleanFilterPicker({
       )}
       <div>
         <Radio.Group value={optionType} onChange={handleOptionChange}>
-          <Stack p="md" pb={isExpanded ? "md" : 0} gap="sm">
+          <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
             {visibleOptions.map(option => (
               <Radio
                 key={option.type}
@@ -83,7 +83,7 @@ export function BooleanFilterPicker({
             c="text-medium"
             variant="subtle"
             aria-label={t`More options`}
-            rightSection={<Icon name="chevrondown" />}
+            rightIcon={<Icon name="chevrondown" />}
             onClick={() => setIsExpanded(true)}
           >
             {t`More options`}

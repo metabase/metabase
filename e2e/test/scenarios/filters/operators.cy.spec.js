@@ -104,7 +104,7 @@ describe("operators in questions", () => {
         cy.findByText("Previous").click();
       });
 
-      H.clauseStepPopover().within(() => {
+      H.popover().within(() => {
         expected.relativeDates.expected.map(e =>
           cy.contains(e).should("exist"),
         );

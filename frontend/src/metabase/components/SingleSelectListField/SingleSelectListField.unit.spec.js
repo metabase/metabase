@@ -1,4 +1,5 @@
-import { render, screen } from "__support__/ui";
+import { render, screen } from "@testing-library/react";
+
 import ValueComponent from "metabase/components/Value";
 
 import SingleSelectListField from ".";

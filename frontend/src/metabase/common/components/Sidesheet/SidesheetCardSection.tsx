@@ -1,12 +1,14 @@
 import type React from "react";
 
 import CS from "metabase/css/core/index.css";
-import { Box, type MantineStyleProps, Title } from "metabase/ui";
+import { Box, type MantineStyleSystemProps } from "metabase/ui";
+
+import { SidesheetCardTitle } from "./SidesheetCard";
 
 interface SidesheetCardSectionProps {
   title?: string;
   children: React.ReactNode;
-  styleProps?: Partial<MantineStyleProps>;
+  styleProps?: Partial<MantineStyleSystemProps>;
 }
 
 export const SidesheetCardSection = ({
@@ -16,11 +18,7 @@ export const SidesheetCardSection = ({
 }: SidesheetCardSectionProps) => {
   return (
     <Box {...styleProps}>
-      {title && (
-        <Title mb="sm" c="text-light" order={4}>
-          {title}
-        </Title>
-      )}
+      {title && <SidesheetCardTitle>{title}</SidesheetCardTitle>}
       <Box className={CS.textMedium}>{children}</Box>
     </Box>
   );

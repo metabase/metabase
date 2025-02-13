@@ -75,7 +75,7 @@ export default function ParameterFieldWidget({
               };
           return (
             <FieldValuesWidget
-              key={`parameter-${parameter.id}-${index}`}
+              key={index}
               className={cx(CS.input, numFields - 1 !== index && CS.mb1)}
               value={value}
               parameter={parameter}

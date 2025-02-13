@@ -43,7 +43,7 @@ describe("ExpressionWidget", () => {
     await userEvent.hover(link);
 
     expect(
-      await screen.findByText(
+      screen.getByText(
         "You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.",
       ),
     ).toBeInTheDocument();

@@ -55,16 +55,14 @@ function setup({ table }: SetupOpts) {
   const metadata = getMetadata(state);
 
   return renderWithProviders(
-    <div data-testid="test-container">
-      <ConnectedTables table={checkNotNull(metadata.table(table.id))} />
-    </div>,
+    <ConnectedTables table={checkNotNull(metadata.table(table.id))} />,
   );
 }
 
 describe("ConnectedTables", () => {
   it("should show nothing when the table has no fks", () => {
-    setup({ table: EMPTY_TABLE });
-    const container = screen.getByTestId("test-container");
+    const { container } = setup({ table: EMPTY_TABLE });
+
     expect(container).toBeEmptyDOMElement();
   });
 

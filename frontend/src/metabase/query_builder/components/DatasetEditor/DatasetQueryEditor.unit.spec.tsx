@@ -1,3 +1,4 @@
+import { screen } from "@testing-library/react";
 import _ from "underscore";
 
 import {
@@ -6,7 +7,7 @@ import {
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card } from "metabase-types/api";

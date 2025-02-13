@@ -356,30 +356,30 @@ describe("QuestionPicker", () => {
     await setupPicker();
 
     expect(
-      await screen.findByRole("link", { name: /Our Analytics/ }),
+      await screen.findByRole("button", { name: /Our Analytics/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("link", { name: /Collection 4/ }),
+      await screen.findByRole("button", { name: /Collection 4/ }),
     ).toBeInTheDocument();
 
     expect(
-      await screen.findByRole("link", { name: /Collection 2/ }),
+      await screen.findByRole("button", { name: /Collection 2/ }),
     ).toBeInTheDocument();
   });
 
   it("should render the path to the collection provided", async () => {
     await setupPicker({ initialValue: { id: 3, model: "collection" } });
     expect(
-      await screen.findByRole("link", { name: /Our Analytics/ }),
+      await screen.findByRole("button", { name: /Our Analytics/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("link", { name: /Collection 4/ }),
+      await screen.findByRole("button", { name: /Collection 4/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("link", { name: /Collection 3/ }),
+      await screen.findByRole("button", { name: /Collection 3/ }),
     ).toHaveAttribute("data-active", "true");
   });
 
@@ -388,11 +388,13 @@ describe("QuestionPicker", () => {
       await setupPicker({ initialValue: { id: 104, model: "card" } });
 
       expect(
-        await (await level(0)).findByRole("link", { name: /Our Analytics/ }),
+        await (await level(0)).findByRole("button", { name: /Our Analytics/ }),
       ).toHaveAttribute("data-active", "true");
 
       expect(
-        await (await level(1)).findByRole("link", { name: /Question in Root/ }),
+        await (
+          await level(1)
+        ).findByRole("button", { name: /Question in Root/ }),
       ).toHaveAttribute("data-active", "true");
     });
 
@@ -400,25 +402,27 @@ describe("QuestionPicker", () => {
       await setupPicker({ initialValue: { id: 100, model: "card" } });
 
       expect(
-        await (await level(0)).findByRole("link", { name: /Our Analytics/ }),
+        await (await level(0)).findByRole("button", { name: /Our Analytics/ }),
       ).toHaveAttribute("data-active", "true");
 
       expect(
-        await (await level(1)).findByRole("link", { name: /Collection 4/ }),
+        await (await level(1)).findByRole("button", { name: /Collection 4/ }),
       ).toHaveAttribute("data-active", "true");
 
       expect(
-        await (await level(2)).findByRole("link", { name: /Collection 3/ }),
+        await (await level(2)).findByRole("button", { name: /Collection 3/ }),
       ).toHaveAttribute("data-active", "true");
 
       // question itself should start selected
       expect(
-        await (await level(3)).findByRole("link", { name: /Nested Question/ }),
+        await (
+          await level(3)
+        ).findByRole("button", { name: /Nested Question/ }),
       ).toHaveAttribute("data-active", "true");
 
       expect(
         await within(
-          await screen.findByRole("link", { name: /My Verified Question/ }),
+          await screen.findByRole("button", { name: /My Verified Question/ }),
         ).findByRole("img", { name: /verified_filled/ }),
       ).toBeInTheDocument();
     });
@@ -429,15 +433,15 @@ describe("QuestionPicker", () => {
       });
 
       expect(
-        await (await level(0)).findByRole("link", { name: /Our Analytics/ }),
+        await (await level(0)).findByRole("button", { name: /Our Analytics/ }),
       ).toHaveAttribute("data-active", "true");
 
       expect(
-        await (await level(1)).findByRole("link", { name: /Root Dashboard/ }),
+        await (await level(1)).findByRole("button", { name: /Root Dashboard/ }),
       ).toHaveAttribute("data-active", "true");
 
       expect(
-        await (await level(2)).findByRole("link", { name: /DQ in Root/ }),
+        await (await level(2)).findByRole("button", { name: /DQ in Root/ }),
       ).toHaveAttribute("data-active", "true");
     });
 
@@ -447,23 +451,25 @@ describe("QuestionPicker", () => {
       });
 
       expect(
-        await (await level(0)).findByRole("link", { name: /Our Analytics/ }),
+        await (await level(0)).findByRole("button", { name: /Our Analytics/ }),
       ).toHaveAttribute("data-active", "true");
 
       expect(
-        await (await level(1)).findByRole("link", { name: /Collection 4/ }),
+        await (await level(1)).findByRole("button", { name: /Collection 4/ }),
       ).toHaveAttribute("data-active", "true");
 
       expect(
-        await (await level(2)).findByRole("link", { name: /Collection 3/ }),
+        await (await level(2)).findByRole("button", { name: /Collection 3/ }),
       ).toHaveAttribute("data-active", "true");
 
       expect(
-        await (await level(3)).findByRole("link", { name: /Nested Dashboard/ }),
+        await (
+          await level(3)
+        ).findByRole("button", { name: /Nested Dashboard/ }),
       ).toHaveAttribute("data-active", "true");
 
       expect(
-        await (await level(4)).findByRole("link", { name: /Nested DQ/ }),
+        await (await level(4)).findByRole("button", { name: /Nested DQ/ }),
       ).toHaveAttribute("data-active", "true");
     });
   });
@@ -481,7 +487,7 @@ describe("QuestionPickerModal", () => {
       await screen.findByText(/choose a question or model/i),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole("link", { name: /Our Analytics/ }),
+      await screen.findByRole("button", { name: /Our Analytics/ }),
     ).toBeInTheDocument();
 
     expect(
@@ -498,7 +504,7 @@ describe("QuestionPickerModal", () => {
       await screen.findByText(/choose a question or model/i),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole("link", { name: /Our Analytics/ }),
+      await screen.findByRole("button", { name: /Our Analytics/ }),
     ).toBeInTheDocument();
     expect(
       await screen.findByRole("button", { name: /Select/ }),
@@ -554,7 +560,7 @@ describe("QuestionPickerModal", () => {
     );
 
     expect(
-      await screen.findByRole("link", { name: /Nested Question/ }),
+      await screen.findByRole("button", { name: /Nested Question/ }),
     ).toHaveAttribute("data-active", "true");
   });
 
@@ -572,7 +578,7 @@ describe("QuestionPickerModal", () => {
     );
 
     expect(
-      await screen.findByRole("link", { name: /My Model/ }),
+      await screen.findByRole("button", { name: /My Model/ }),
     ).toHaveAttribute("data-active", "true");
   });
 
@@ -591,7 +597,7 @@ describe("QuestionPickerModal", () => {
     );
 
     expect(
-      await screen.findByRole("link", { name: /My Metric/ }),
+      await screen.findByRole("button", { name: /My Metric/ }),
     ).toHaveAttribute("data-active", "true");
   });
 

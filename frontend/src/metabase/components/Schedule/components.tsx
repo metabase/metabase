@@ -63,10 +63,8 @@ export const SelectFrequency = ({
   return (
     <AutoWidthSelect
       display="flex"
-      value={scheduleType ?? "daily"}
-      onChange={(value: ScheduleType | null) =>
-        updateSchedule("schedule_type", value)
-      }
+      value={scheduleType}
+      onChange={(value: ScheduleType) => updateSchedule("schedule_type", value)}
       data={scheduleTypeOptions}
       aria-label={label}
     />
@@ -81,7 +79,7 @@ export const SelectFrame = ({
   const label = useMemo(() => getScheduleComponentLabel("frame"), []);
   return (
     <AutoWidthSelect
-      value={schedule.schedule_frame ?? "first"}
+      value={schedule.schedule_frame}
       onChange={(value: ScheduleFrameType) =>
         updateSchedule("schedule_frame", value)
       }
@@ -119,7 +117,7 @@ export const SelectTime = ({
   const applicationName = useSelector(getApplicationName);
   const timezoneTooltipText = t`Your ${applicationName} timezone`;
   return (
-    <Group gap={isClock12Hour ? "xs" : "sm"} style={{ rowGap: ".5rem" }}>
+    <Group spacing={isClock12Hour ? "xs" : "sm"} style={{ rowGap: ".5rem" }}>
       {/* Select the hour */}
       <AutoWidthSelect
         value={value}
@@ -134,7 +132,7 @@ export const SelectTime = ({
         aria-label={timeSelectLabel}
       />
       {/* Choose between AM and PM */}
-      <Group gap="sm">
+      <Group spacing="sm">
         {isClock12Hour && (
           <SegmentedControl
             radius="sm"
@@ -176,8 +174,8 @@ export const SelectWeekday = ({
   const { weekdays } = getScheduleStrings();
   const label = useMemo(() => getScheduleComponentLabel("weekday"), []);
   return (
-    <AutoWidthSelect<ScheduleDayType>
-      value={schedule.schedule_day ?? "sun"}
+    <AutoWidthSelect
+      value={schedule.schedule_day}
       onChange={(value: ScheduleDayType) =>
         updateSchedule("schedule_day", value)
       }
@@ -240,11 +238,10 @@ export const SelectMinute = ({
   );
 };
 
-export const AutoWidthSelect = <Value extends string>({
+export const AutoWidthSelect = ({
   style,
-  value,
   ...props
-}: { style?: Partial<FontStyle>; value: Value } & SelectProps<Value>) => {
+}: { style?: Partial<FontStyle> } & SelectProps) => {
   const fontFamily = useSelector(state =>
     getSetting(state, "application-font"),
   );
@@ -272,7 +269,6 @@ export const AutoWidthSelect = <Value extends string>({
         },
         input: { paddingInlineEnd: 0, lineHeight: "2.5rem" },
       }}
-      value={value}
       {...props}
     />
   );

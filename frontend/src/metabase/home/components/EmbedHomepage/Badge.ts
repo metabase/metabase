@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
-
-import type { MantineSize } from "metabase/ui";
+import type { MantineSize } from "@mantine/styles";
 
 type BadgeColor = "brand" | "gray";
 

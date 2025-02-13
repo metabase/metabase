@@ -126,7 +126,7 @@ describe("SelectEmbedTypePane", () => {
 
         await userEvent.hover(screen.getByText("Remove public link"));
         expect(
-          await screen.findByText(
+          screen.getByText(
             "Affects both public link and embed URL for this dashboard",
           ),
         ).toBeInTheDocument();

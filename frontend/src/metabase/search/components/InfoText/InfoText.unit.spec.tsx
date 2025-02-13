@@ -1,3 +1,4 @@
+import { waitFor } from "@testing-library/react";
 import moment from "moment"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import {
@@ -7,7 +8,7 @@ import {
   setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { WrappedResult } from "metabase/search/types";
 import type { IconName } from "metabase/ui";
 import type { SearchModel, SearchResult } from "metabase-types/api";

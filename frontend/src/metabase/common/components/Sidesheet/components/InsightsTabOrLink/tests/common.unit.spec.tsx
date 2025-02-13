@@ -1,4 +1,4 @@
-import { screen } from "__support__/ui";
+import { screen } from "@testing-library/react";
 
 import { setup } from "./setup";
 

@@ -1,6 +1,5 @@
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
-import { act, render, screen } from "__support__/ui";
 
 import ChartSettingLinkUrlInput from "./ChartSettingLinkUrlInput";
 
@@ -37,8 +36,7 @@ describe("ChartSettingLinkUrlInput", () => {
   it("Shows all options when {{ is typed", async () => {
     const { input, getOptions } = setup();
 
-    await userEvent.click(input);
-    await userEvent.paste("USE - {{");
+    await userEvent.type(input, "USE - {{{{");
 
     const options = await getOptions();
 
@@ -49,8 +47,8 @@ describe("ChartSettingLinkUrlInput", () => {
 
   it("shows filter options while typing", async () => {
     const { input, getOptions } = setup();
-    await userEvent.click(input);
-    await userEvent.paste("USE - {{p");
+
+    await userEvent.type(input, "USE - {{{{p");
 
     const options = await getOptions();
 
@@ -76,15 +74,12 @@ describe("ChartSettingLinkUrlInput", () => {
   it("appends the column on selection", async () => {
     const { input, getOptions, onChange } = setup();
 
-    await userEvent.click(input);
-    await userEvent.paste("Address - {{p");
+    await userEvent.type(input, "Address - {{{{p");
 
     const options = await getOptions();
 
     await userEvent.click(options[1]);
-    act(() => {
-      input.blur();
-    });
+    input.blur();
 
     expect(onChange).toHaveBeenCalledWith("Address - {{ZIP}}");
   });
@@ -92,19 +87,13 @@ describe("ChartSettingLinkUrlInput", () => {
   it("supports keyboard navigation to choose selection", async () => {
     const { input, getOptions, onChange } = setup();
 
-    await userEvent.click(input);
-    await userEvent.paste("Address - {{p");
+    await userEvent.type(input, "Address - {{{{p");
 
     const options = await getOptions();
     expect(options).toHaveLength(2);
 
-    await userEvent.keyboard("{arrowdown}");
-    await userEvent.keyboard("{arrowdown}");
-    await userEvent.keyboard("{enter}");
-
-    act(() => {
-      input.blur();
-    });
+    await userEvent.type(input, "{arrowdown}{arrowdown}{enter}");
+    input.blur();
 
     expect(onChange).toHaveBeenCalledWith("Address - {{ZIP}}");
   });
@@ -114,8 +103,7 @@ describe("ChartSettingLinkUrlInput", () => {
       value: "{{STATE}} - ",
     });
 
-    await userEvent.click(input);
-    await userEvent.paste("{{c");
+    await userEvent.type(input, "{{{{c");
 
     const options = await getOptions();
 
@@ -124,9 +112,7 @@ describe("ChartSettingLinkUrlInput", () => {
     expect(options[1]).toHaveTextContent("SOURCE");
 
     await userEvent.click(options[0]);
-    act(() => {
-      input.blur();
-    });
+    input.blur();
 
     expect(onChange).toHaveBeenCalledWith("{{STATE}} - {{CITY}}");
   });

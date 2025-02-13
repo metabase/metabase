@@ -98,7 +98,7 @@ function FilterPopover({
           />
         )}
       </Popover.Target>
-      <Popover.Dropdown data-testid="segment-popover">
+      <Popover.Dropdown>
         <FilterPicker
           query={query}
           stageIndex={stageIndex}
@@ -126,9 +126,9 @@ const AddFilterButton = forwardRef(function AddFilterButton(
       c="text-light"
       p={compact ? undefined : 0}
       variant={compact ? "default" : "subtle"}
-      size={compact ? "compact-md" : "md"}
+      compact={compact}
       disabled={disabled}
-      rightSection={<Icon name="add" />}
+      rightIcon={<Icon name="add" />}
       aria-label={compact ? t`Add filters` : undefined}
       onClick={onClick}
     >

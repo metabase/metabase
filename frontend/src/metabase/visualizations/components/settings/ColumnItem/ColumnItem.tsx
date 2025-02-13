@@ -66,7 +66,7 @@ export const ColumnItem = ({
     py="xs"
     my="sm"
   >
-    <Group wrap="nowrap" gap="xs" p="xs">
+    <Group noWrap spacing="xs" p="xs">
       {draggable && (
         <Icon
           className={cx(CS.flexNoShrink, ColumnItemS.ColumnItemDragHandle)}
@@ -82,13 +82,13 @@ export const ColumnItem = ({
         />
       )}
     </Group>
-    <Group className={CS.flex1} px="xs" wrap="nowrap">
+    <Group className={CS.flex1} px="xs" noWrap>
       {icon && <Icon name={icon} className={CS.flexNoShrink} />}
       <Text lh="normal" fw="bold" className={CS.textWrap}>
         {title}
       </Text>
     </Group>
-    <Group wrap="nowrap" gap="sm" p="xs">
+    <Group noWrap spacing="sm" p="xs">
       {onEdit && (
         <ChartSettingActionIcon
           icon="ellipsis"

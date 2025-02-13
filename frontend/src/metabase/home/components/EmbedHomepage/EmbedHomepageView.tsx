@@ -45,7 +45,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
       <HeaderWithDismiss onDismiss={onDismiss} />
 
       <Card px="xl" py="lg">
-        <Stack gap="xl">
+        <Stack spacing="xl">
           <Box>
             {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
             <Title order={2} mb="md">{t`Embedding Metabase`}</Title>

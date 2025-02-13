@@ -22,7 +22,7 @@ export function MetricEditorSidebar() {
           component={ExternalLink}
           href={docsUrl}
           variant="subtle"
-          rightSection={<Icon name="external" size={16} />}
+          rightIcon={<Icon name="external" size={16} />}
         >
           {t`Docs`}
         </Button>

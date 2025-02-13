@@ -1,6 +1,4 @@
-import { fireEvent } from "@testing-library/react";
-
-import { render, screen } from "__support__/ui";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { Banner } from "./Banner";
 

@@ -104,10 +104,6 @@ export function DateOffsetIntervalPicker({
           value={value.unit}
           aria-label={t`Unit`}
           onChange={handleUnitChange}
-          comboboxProps={{
-            withinPortal: false,
-            floatingStrategy: "fixed",
-          }}
         />
         <div />
         <Text>{t`Starting from`}</Text>
@@ -122,22 +118,18 @@ export function DateOffsetIntervalPicker({
           value={value.offsetUnit}
           aria-label={t`Starting from unit`}
           onChange={handleOffsetUnitChange}
-          comboboxProps={{
-            withinPortal: false,
-            floatingStrategy: "fixed",
-          }}
         />
         <Button
           c="text-medium"
           variant="subtle"
-          leftSection={<Icon name="close" />}
+          leftIcon={<Icon name="close" />}
           aria-label={t`Remove offset`}
           onClick={handleOffsetRemove}
         />
       </Box>
       <Divider />
-      <Group px="md" py="sm" gap="sm" justify="space-between">
-        <Group c="text-medium" gap="sm">
+      <Group px="md" py="sm" spacing="sm" position="apart">
+        <Group c="text-medium" spacing="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>

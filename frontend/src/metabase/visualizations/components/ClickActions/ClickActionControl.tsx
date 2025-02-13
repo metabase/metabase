@@ -112,22 +112,21 @@ export const ClickActionControl = ({
     case "horizontal":
       return (
         <Button
-          size="xs"
-          p="0.5rem"
-          mx="-0.5rem"
-          variant="inverse"
           classNames={{
             root: styles.horizontalButton,
             label: styles.label,
             inner: styles.inner,
           }}
-          leftSection={
+          leftIcon={
             action.iconText ? (
-              <ClickActionButtonTextIcon>
+              <ClickActionButtonTextIcon className={styles.nested}>
                 {action.iconText}
               </ClickActionButtonTextIcon>
             ) : action.icon ? (
-              <ClickActionButtonIcon name={action.icon} />
+              <ClickActionButtonIcon
+                name={action.icon}
+                className={styles.nested}
+              />
             ) : null
           }
           onClick={handleClick}
@@ -142,4 +141,6 @@ export const ClickActionControl = ({
     case "info":
       return <InfoControl>{action.title}</InfoControl>;
   }
+
+  return null;
 };

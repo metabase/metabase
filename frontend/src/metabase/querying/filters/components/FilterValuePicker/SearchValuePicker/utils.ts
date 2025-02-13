@@ -18,7 +18,7 @@ export function shouldSearch(
 }
 
 export function getFilteredOptions(
-  options: SelectOption<string>[],
+  options: SelectOption[],
   searchValue: string,
   selectedValues: string[],
 ) {

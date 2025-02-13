@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "@testing-library/react";
 
 import ArchiveModal from "./ArchiveModal";
 

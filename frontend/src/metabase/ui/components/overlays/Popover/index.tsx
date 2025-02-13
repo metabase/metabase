@@ -1,14 +1,14 @@
 import type { PopoverDropdownProps } from "@mantine/core";
 import { Popover as MantinePopover } from "@mantine/core";
 import cx from "classnames";
-import { type Ref, forwardRef, useEffect } from "react";
+import { useEffect } from "react";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { PreventEagerPortal } from "metabase/ui";
 
-export type { PopoverProps } from "@mantine/core";
-export { popoverOverrides } from "./Popover.config";
+export type { PopoverBaseProps, PopoverProps } from "@mantine/core";
+export { getPopoverOverrides } from "./Popover.styled";
 
 const MantinePopoverDropdown = MantinePopover.Dropdown;
 
@@ -18,9 +18,8 @@ type ExtendedPopoverDropdownProps = PopoverDropdownProps & {
   setupSequencedCloseHandler?: boolean;
 };
 
-const PopoverDropdown = forwardRef(function PopoverDropdown(
+const PopoverDropdown = function PopoverDropdown(
   props: ExtendedPopoverDropdownProps,
-  ref: Ref<HTMLDivElement>,
 ) {
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
@@ -39,18 +38,15 @@ const PopoverDropdown = forwardRef(function PopoverDropdown(
         {...props}
         className={cx(props.className, ZIndex.Overlay)}
         data-element-id="mantine-popover"
-        ref={ref}
       />
     </PreventEagerPortal>
   );
-});
-
-// @ts-expect-error -- our types are better
+};
 PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
-// @ts-expect-error -- our types are better
 MantinePopover.Dropdown = PopoverDropdown;
 
-const Popover = MantinePopover;
+const Popover: typeof MantinePopover & {
+  Dropdown: typeof PopoverDropdown;
+} = MantinePopover;
 
 export { Popover };
-export { DEFAULT_POPOVER_Z_INDEX } from "./Popover.config";
