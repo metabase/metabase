@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
@@ -7,17 +7,20 @@ import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import type Question from "metabase-lib/v1/Question";
 
-import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
+import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 
 import { getQuestionIcon } from "./utils";
 
-interface Props {
-  divider: ReactNode;
+interface SourceDatasetBreadcrumbsProps {
+  divider?: ReactElement | string;
   question: Question;
   variant: "head" | "subhead";
 }
 
-export function SourceDatasetBreadcrumbs({ question, ...props }: Props) {
+export function SourceDatasetBreadcrumbs({
+  question,
+  ...props
+}: SourceDatasetBreadcrumbsProps) {
   const collectionId = question.collectionId();
 
   const { data: collection, isFetching } = useGetCollectionQuery(

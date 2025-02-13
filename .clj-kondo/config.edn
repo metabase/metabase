@@ -810,7 +810,6 @@
   metabase.channel.impl.http-test/with-server                                           clojure.core/let
   metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
-  metabase.db.data-migrations/defmigration                                              clojure.core/def
   metabase.db.liquibase/with-liquibase                                                  clojure.core/let
   metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                        clojure.core/let
   metabase.driver.mongo.connection/with-mongo-client                                    clojure.core/let
@@ -825,6 +824,7 @@
   metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
   metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
+  metabase.notification.test-util/with-temp-notification                                clojure.core/let
   metabase.notification.test-util/with-card-notification                                clojure.core/let
   metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
   metabase.public-settings.premium-features/defenterprise-schema                        clj-kondo.lint-as/def-catch-all
@@ -892,7 +892,6 @@
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
-   metabase.analytics.prometheus-test/with-prometheus-system!                                                                hooks.common/with-two-bindings
    metabase.api.alert-test/with-alert-in-collection!                                                                         hooks.common/with-four-bindings
    metabase.api.automagic-dashboards-test/with-indexed-model!                                                                hooks.metabase.api.automagic-dashboards-test/with-indexed-model!
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
@@ -918,6 +917,7 @@
    metabase.api.user-test/with-temp-user-email!                                                                              hooks.common/with-one-binding
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
    metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
+   metabase.db.custom-migrations.util/with-temp-scheduler!                                                                   hooks.common/with-one-binding
    metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
    metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
@@ -966,6 +966,7 @@
    metabase.test.util/discard-setting-changes                                                                                hooks.common/with-ignored-first-arg
    metabase.test.util/with-column-remappings                                                                                 hooks.common/with-ignored-first-arg
    metabase.test.util/with-non-admin-groups-no-root-collection-perms                                                         hooks.common/do*
+   metabase.test.util/with-prometheus-system!                                                                                hooks.common/with-two-bindings
    metabase.test.util/with-temp-file                                                                                         hooks.metabase.test.util/with-temp-file
    metabase.test.util/with-temporary-setting-values                                                                          hooks.metabase.test.util/with-temporary-setting-values
    metabase.test/$ids                                                                                                        hooks.metabase.test.data/$ids
@@ -983,6 +984,7 @@
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
+   metabase.test/with-prometheus-system!                                                                                     hooks.common/with-two-bindings
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
    metabase.util.log.capture/with-log-messages-for-level                                                                     hooks.metabase.util.log.capture/with-log-messages-for-level
    metabase.util.log/debug                                                                                                   hooks.metabase.util.log/info

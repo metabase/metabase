@@ -3,12 +3,16 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.api.testing :as testing]
    [metabase.channel.core :as channel]
    [metabase.notification.core :as notification]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
+   [metabase.util :as u]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
 (use-fixtures
@@ -325,6 +329,18 @@
                   card-name-regex
                   #"This question has gone below its goal of 1\.1\."))))}))))
 
+(deftest send-once-archive-on-first-successful-send
+  (notification.tu/with-card-notification
+    [notification {:notification-card {:send_once true}}]
+    (testing "do not archive if the send fail for any reason"
+      (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
+        (u/ignore-exceptions (notification/send-notification! notification))
+        (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
+
+    (testing "archive if the send is successful"
+      (notification/send-notification! notification)
+      (is (false? (t2/select-one-fn :active :model/Notification (:id notification)))))))
+
 (deftest non-user-email-test
   (notification.tu/with-card-notification
     [notification {:handlers [{:channel_type :channel/email
@@ -334,18 +350,26 @@
      notification
      {:channel/email
       (fn [[email]]
-        (is (= (construct-email
-                {:recipients #{"ngoc@metabase.com"}
-                 :message [{notification.tu/default-card-name true
-                            "Manage your subscriptions"       false
-                            "Unsubscribe"                     true}
-                           notification.tu/png-attachment
-                           notification.tu/csv-attachment]})
-               (mt/summarize-multipart-single-email
-                email
-                card-name-regex
-                #"Manage your subscriptions"
-                #"Unsubscribe"))))})))
+        (testing "email is sent correctly"
+          (is (= (construct-email
+                  {:recipients #{"ngoc@metabase.com"}
+                   :message [{notification.tu/default-card-name true
+                              "Manage your subscriptions"       false
+                              "Unsubscribe"                     true}
+                             notification.tu/png-attachment
+                             notification.tu/csv-attachment]})
+                 (mt/summarize-multipart-single-email
+                  email
+                  card-name-regex
+                  #"Manage your subscriptions"
+                  #"Unsubscribe"))))
+
+        (testing "the unsubscribe url is correct"
+          (let [url    (re-find #"https://[^/]+/unsubscribe[^\"]*" (-> email :message first :content))
+                params (codec/form-decode (second (str/split url #"\?")))]
+            (is (int? (parse-long (get params "notification-handler-id"))))
+            (is (= "ngoc@metabase.com" (get params "email")))
+            (is (string? (get params "hash"))))))})))
 
 (deftest permission-test
   (mt/with-temp [:model/Collection coll {}]

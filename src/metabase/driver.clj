@@ -59,6 +59,11 @@
   (classloader/require 'metabase.task.send-pulses)
   ((resolve 'metabase.task.send-pulses/update-send-pulse-triggers-timezone!)))
 
+(defn- update-send-notification-triggers-timezone!
+  []
+  (classloader/require 'metabase.task.notification)
+  ((resolve 'metabase.task.notification/update-send-notification-triggers-timezone!)))
+
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :encryption :no
@@ -69,7 +74,8 @@
   (fn [new-value]
     (setting/set-value-of-type! :string :report-timezone new-value)
     (notify-all-databases-updated)
-    (update-send-pulse-triggers-timezone!)))
+    (update-send-pulse-triggers-timezone!)
+    (update-send-notification-triggers-timezone!)))
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
@@ -1225,3 +1231,17 @@
   {:added "0.48.0", :arglists '([driver database & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti dynamic-database-types-lookup
+  "Generate mapping of `database-types` to base types for dynamic database types (eg. defined by user; postgres enums).
+
+  The `sql-jdbc.sync/database-type->base-type` is used as simple look-up, while this method is expected to do database
+  calls when necessary. At the time it was added, its purpose was to check for postgres enum types. Its meant to
+  be extended also for other dynamic types when necessary."
+  {:added "0.53.0" :arglists '([driver database database-types])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod dynamic-database-types-lookup ::driver
+  [_driver _database _database-types]
+  nil)

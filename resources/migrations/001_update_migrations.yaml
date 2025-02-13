@@ -10457,7 +10457,7 @@ databaseChangeLog:
                     nullable: true
                     referencedTableName: report_card
                     referencedColumnNames: id
-                    foreignKeyName: fk_notification_alert_card_id
+                    foreignKeyName: fk_notification_card_card_id
                     deleteCascade: true
               - column:
                   name: send_once
@@ -10525,7 +10525,44 @@ databaseChangeLog:
             constraintName: fk_notification_creator_id
             onDelete: CASCADE
             nullable: true
-            onDelete: CASCADE
+
+  - changeSet:
+      id: v53.2024-12-12T08:04:01
+      author: qnkhuat
+      comment: Add an index for `notification.creator_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification
+                indexName: idx_notification_creator_id
+      changes:
+        - createIndex:
+            indexName: idx_notification_creator_id
+            tableName: notification
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v53.2024-12-12T08:04:02
+      author: qnkhuat
+      comment: Add an index for `notification_card.card_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification_card
+                indexName: idx_notification_card_card_id
+      changes:
+        - createIndex:
+            indexName: idx_notification_card_card_id
+            tableName: notification_card
+            columns:
+              - column:
+                  name: card_id
 
   - changeSet:
       id: v53.2024-12-12T08:05:00
@@ -10534,11 +10571,19 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateAlertToNotification"
+
+  - changeSet:
+      id: v53.2024-12-12T08:06:00
+      author: qnkhuat
+      comment: Delete all the migrated alerts from notification table
+      changes:
+        - sql: select 1;
       rollback:
         # delete all migrated notification on rollback so we can re-run the migration
+        # no need to delete notification_card because the table will be dropped
         - sql:
             sql: >-
-              DELETE FROM notification WHERE internal_id IS NOT NULL;
+              DELETE FROM notification WHERE payload_type = 'notification/card';
 
   - changeSet:
       id: v53.2024-12-27T17:33:54
