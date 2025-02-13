@@ -89,6 +89,7 @@
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
   [dbs :- [:maybe [:sequential :map]]]
+  (data-perms/prime-db-cache (map :id dbs))
   (for [db dbs]
     (assoc db
            :native_permissions
