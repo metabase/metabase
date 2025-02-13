@@ -2,8 +2,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { useRef, useState } from "react";
 
-import ConfirmContent from "metabase/components/ConfirmContent";
-import Modal from "metabase/components/Modal";
+import { ConfirmationModal } from "metabase/components/ConfirmContent";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
@@ -148,13 +147,12 @@ export function PermissionsTable({
       </PermissionsTableRoot>
       {!hasItems && emptyState}
       {confirmations?.length > 0 && (
-        <Modal>
-          <ConfirmContent
-            {...confirmations[0]}
-            onAction={handleConfirm}
-            onCancel={handleCancelConfirm}
-          />
-        </Modal>
+        <ConfirmationModal
+          opened
+          {...confirmations[0]}
+          onConfirm={handleConfirm}
+          onClose={handleCancelConfirm}
+        />
       )}
     </>
   );

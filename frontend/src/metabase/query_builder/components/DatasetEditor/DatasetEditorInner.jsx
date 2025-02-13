@@ -9,8 +9,7 @@ import { useListModelIndexesQuery } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import EditBar from "metabase/components/EditBar";
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Button from "metabase/core/components/Button";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
@@ -567,12 +566,11 @@ const _DatasetEditorInner = props => {
         </ViewSidebar>
       </Flex>
 
-      <Modal isOpen={showCancelEditWarning}>
-        <LeaveConfirmationModalContent
-          onAction={handleCancelEdit}
-          onClose={handleCancelEditWarningClose}
-        />
-      </Modal>
+      <LeaveConfirmationModal
+        opened={showCancelEditWarning}
+        onConfirm={handleCancelEdit}
+        onClose={handleCancelEditWarningClose}
+      />
     </>
   );
 };

@@ -4,8 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
+import { Button } from "metabase/ui";
 
 interface ConfirmContentProps {
   "data-testid"?: string;
@@ -17,7 +17,6 @@ interface ConfirmContentProps {
   onCancel?: () => void;
   confirmButtonText?: string;
   confirmButtonPrimary?: boolean;
-  confirmButtonDanger?: boolean;
   cancelButtonText?: string;
 }
 
@@ -31,7 +30,6 @@ const ConfirmContent = ({
   onCancel = _.noop,
   confirmButtonText = t`Yes`,
   confirmButtonPrimary = false,
-  confirmButtonDanger = !confirmButtonPrimary,
   cancelButtonText = t`Cancel`,
 }: ConfirmContentProps) => (
   <ModalContent
@@ -59,8 +57,8 @@ const ConfirmContent = ({
         </Button>
       )}
       <Button
-        primary={confirmButtonPrimary}
-        danger={confirmButtonDanger}
+        variant="filled"
+        color={confirmButtonPrimary ? "primary" : "danger"}
         className={CS.ml2}
         onClick={() => {
           onAction();

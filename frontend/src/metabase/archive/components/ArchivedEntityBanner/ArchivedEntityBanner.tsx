@@ -98,6 +98,7 @@ export const ArchivedEntityBanner = ({
       )}
       {modal === "delete" && (
         <ConfirmDeleteModal
+          opened
           name={name}
           onClose={() => setModal(null)}
           onDelete={onDeletePermanently}

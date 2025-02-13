@@ -178,6 +178,7 @@ function ActionMenu({
       />
       {showDeleteModal && (
         <ConfirmDeleteModal
+          opened
           name={item.name}
           onClose={() => setShowDeleteModal(false)}
           onDelete={handleDeletePermanently}

@@ -1,37 +1,26 @@
-import type { Location } from "history";
-import type { InjectedRouter, Route } from "react-router";
-import { withRouter } from "react-router";
+import { t } from "ttag";
 
-import Modal from "metabase/components/Modal";
-import { useConfirmRouteLeaveModal } from "metabase/hooks/use-confirm-route-leave-modal";
-
-import { LeaveConfirmationModalContent } from "./LeaveConfirmationModalContent";
+import { ConfirmationModal } from "metabase/components/ConfirmContent/ConfirmationModal";
 
 interface Props {
-  isEnabled: boolean;
-  isLocationAllowed?: (location?: Location) => boolean;
-  route: Route;
-  router: InjectedRouter;
+  onConfirm?: () => void;
+  onCancel?: () => void;
+  onClose?: () => void;
+  opened: boolean | undefined;
 }
 
-const LeaveConfirmationModalBase = ({
-  isEnabled,
-  isLocationAllowed,
-  route,
-  router,
-}: Props) => {
-  const { opened, close, confirm } = useConfirmRouteLeaveModal({
-    isEnabled,
-    isLocationAllowed,
-    route,
-    router,
-  });
-
-  return (
-    <Modal isOpen={opened}>
-      <LeaveConfirmationModalContent onAction={confirm} onClose={close} />
-    </Modal>
-  );
-};
-
-export const LeaveConfirmationModal = withRouter(LeaveConfirmationModalBase);
+export const LeaveConfirmationModal = ({
+  onConfirm,
+  onClose,
+  opened,
+}: Props) => (
+  <ConfirmationModal
+    opened={opened}
+    confirmButtonText={t`Discard changes`}
+    data-testid="leave-confirmation"
+    message={t`Your changes haven't been saved, so you'll lose them if you navigate away.`}
+    title={t`Discard your changes?`}
+    onConfirm={onConfirm}
+    onClose={onClose}
+  />
+);

@@ -4,8 +4,7 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import {
   cancelEditingDashboard,
   fetchDashboard,
@@ -81,11 +80,11 @@ export const DashboardHeaderInner = ({
     if (isDirty && isEditing) {
       setShowCancelWarning(true);
     } else {
-      onCancel();
+      onConfirmCancel();
     }
   };
 
-  const onCancel = () => {
+  const onConfirmCancel = () => {
     dispatch(
       fetchDashboard({
         dashId: dashboard.id,
@@ -171,12 +170,11 @@ export const DashboardHeaderInner = ({
         isNightMode={isNightMode}
       />
 
-      <Modal isOpen={showCancelWarning}>
-        <LeaveConfirmationModalContent
-          onAction={onCancel}
-          onClose={() => setShowCancelWarning(false)}
-        />
-      </Modal>
+      <LeaveConfirmationModal
+        opened={showCancelWarning}
+        onConfirm={onConfirmCancel}
+        onClose={() => setShowCancelWarning(false)}
+      />
     </>
   );
 };

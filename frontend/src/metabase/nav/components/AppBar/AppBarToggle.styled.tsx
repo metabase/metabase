@@ -15,6 +15,7 @@ export const SidebarButton = styled.button<SidebarButtonProps>`
   align-items: center;
   justify-content: center;
   width: 2.25rem;
+  outline: 0 !important;
   padding: ${({ isSmallAppBar }) => (isSmallAppBar ? `0.5rem 0` : `1rem 0`)};
 `;
 

@@ -7,7 +7,7 @@ import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import { LeaveRouteConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Bookmark from "metabase/entities/bookmarks";
 import Timelines from "metabase/entities/timelines";
 import title from "metabase/hoc/Title";
@@ -425,7 +425,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         isShowingToaster={isShowingToaster}
       />
 
-      <LeaveConfirmationModal
+      <LeaveRouteConfirmationModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
         route={route}
