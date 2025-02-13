@@ -28,8 +28,8 @@
                                     (fn [x]
                                       (if (map? x)
                                         (reduce-kv
-                                         (fn [_acc k {:keys [key model] :as _hydrate-prop}]
-                                           (assoc x key (t2/select-one model (get x k))))
+                                         (fn [acc k {:keys [key model] :as _hydrate-prop}]
+                                           (assoc acc key (t2/select-one model (get x k))))
                                          x
                                          hydrates)
                                         x)))))}}}))
@@ -74,7 +74,7 @@
                                        :task_details {:trigger_type     :notification-subscription/system-event
                                                       :event_name       topic
                                                       :notification_ids (map :id notifications)}}
-        (log/infof "Found %d notifications for event: %s" (count notifications) topic)
+        (log/debugf "Found %d notifications for event: %s" (count notifications) topic)
         (doseq [notification notifications]
           (notification/send-notification! (assoc notification :payload {:event_info  (maybe-hydrate-event-info topic event-info)
                                                                          :event_topic topic})))))))

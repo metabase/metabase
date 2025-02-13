@@ -60,7 +60,7 @@ const VariantTemplate = (args: TextInputProps) => (
 );
 
 const IconTemplate = (args: TextInputProps) => (
-  <VariantTemplate {...args} icon={<Icon name="dashboard" />} />
+  <VariantTemplate {...args} leftSection={<Icon name="dashboard" />} />
 );
 
 const RightSectionTemplate = (args: TextInputProps) => (
@@ -137,7 +137,7 @@ export const ErrorMd = {
 
 export const IconMd = {
   render: IconTemplate,
-  name: "Icon, md",
+  name: "Left section, md",
   args: {
     label: sampleArgs.label,
     description: sampleArgs.description,
@@ -224,7 +224,7 @@ export const ErrorXs = {
 
 export const IconXs = {
   render: IconTemplate,
-  name: "Icon, xs",
+  name: "Left section, xs",
   args: {
     ...IconMd.args,
     size: "xs",
