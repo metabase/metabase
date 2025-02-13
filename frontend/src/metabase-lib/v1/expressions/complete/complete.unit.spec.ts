@@ -30,17 +30,15 @@ import {
 
 import { sharedMetadata } from "../__support__/shared";
 
-import {
-  type SuggestOptions,
-  suggestAggregations,
-  suggestFields,
-  suggestFunctions,
-  suggestLiterals,
-  suggestMetrics,
-  suggestPopular,
-  suggestSegments,
-  suggestShortcuts,
-} from "./complete";
+import { suggestAggregations } from "./aggregations";
+import type { SuggestOptions } from "./complete";
+import { suggestFields } from "./fields";
+import { suggestFunctions } from "./functions";
+import { suggestLiterals } from "./literals";
+import { suggestMetrics } from "./metrics";
+import { suggestPopular } from "./popular";
+import { suggestSegments } from "./segments";
+import { suggestShortcuts } from "./shortcuts";
 
 function complete(source: CompletionSource | null, doc: string) {
   if (!source) {
