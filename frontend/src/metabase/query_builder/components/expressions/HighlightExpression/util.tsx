@@ -1,10 +1,10 @@
-import { type Tag, highlightCode } from "@lezer/highlight";
+import { type Highlighter, type Tag, highlightCode } from "@lezer/highlight";
 
 import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
 
 import S from "./HighlightExpression.module.css";
 
-const highlighter = {
+const highlighter: Highlighter = {
   style: (tag: Tag[]) => classNameForTag(tag),
 };
 
