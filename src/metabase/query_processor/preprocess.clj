@@ -4,6 +4,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.database-routing.middleware :as database-routing.middleware]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-default-temporal-unit :as qp.add-default-temporal-unit]
@@ -117,6 +118,7 @@
    (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
+   (ensure-legacy #'database-routing.middleware/apply-database-routing)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses)
    (ensure-legacy #'qp.add-dimension-projections/add-remapped-columns)

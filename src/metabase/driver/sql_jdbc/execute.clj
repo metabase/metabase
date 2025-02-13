@@ -5,6 +5,7 @@
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
   (:require
+   [metabase.database-routing.core :as database-routing]
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -718,7 +719,9 @@
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond] [driver sql params max-rows context respond])}
-  ([driver {{sql :query, params :params} :native, :as outer-query} context respond]
+  ([driver {{sql :query, params :params} :native,
+            mirror-db-id :database-routing/mirror-db-id
+            :as outer-query} context respond]
    {:pre [(string? sql) (seq sql)]}
    (let [database (lib.metadata/database (qp.store/metadata-provider))
          sql      (if (get-in database [:details :include-user-id-and-hash] true)
@@ -726,12 +729,13 @@
                          (inject-remark driver sql))
                     sql)
          max-rows (limit/determine-query-max-rows outer-query)]
-     (execute-reducible-query driver sql params max-rows context respond)))
+     (execute-reducible-query driver sql mirror-db-id params max-rows context respond)))
 
-  ([driver sql params max-rows _context respond]
+  ([driver sql mirror-db-id params max-rows _context respond]
    (do-with-connection-with-options
     driver
-    (lib.metadata/database (qp.store/metadata-provider))
+    (or (some->> mirror-db-id (database-routing/get-mirror-db (lib.metadata/database (qp.store/metadata-provider))))
+        (lib.metadata/database (qp.store/metadata-provider)))
     {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
     (fn [^Connection conn]
       (with-open [stmt          (statement-or-prepared-statement driver conn sql params qp.pipeline/*canceled-chan*)
