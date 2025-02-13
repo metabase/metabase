@@ -1,7 +1,7 @@
-(ns metabase.models.pulse-card-test
+(ns metabase.pulse.models.pulse-card-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.pulse-card :as pulse-card]
+   [metabase.pulse.models.pulse-card :as pulse-card]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)

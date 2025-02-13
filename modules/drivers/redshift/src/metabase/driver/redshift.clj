@@ -201,9 +201,11 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
-  (h2x/+ [:raw "TIMESTAMP '1970-01-01T00:00:00Z'"]
-         (h2x/* expr
-                [:raw "INTERVAL '1 second'"])))
+  (h2x/with-database-type-info
+   (h2x/+ [:raw "TIMESTAMP '1970-01-01T00:00:00Z'"]
+          (h2x/* expr
+                 [:raw "INTERVAL '1 second'"]))
+   :timestamp))
 
 (defmethod sql.qp/current-datetime-honeysql-form :redshift
   [_]

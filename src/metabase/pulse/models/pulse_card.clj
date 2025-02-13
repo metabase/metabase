@@ -1,4 +1,4 @@
-(ns metabase.models.pulse-card
+(ns metabase.pulse.models.pulse-card
   (:require
    [metabase.util :as u]
    [metabase.util.malli :as mu]

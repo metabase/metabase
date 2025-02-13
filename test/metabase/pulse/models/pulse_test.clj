@@ -1,12 +1,12 @@
-(ns metabase.models.pulse-test
+(ns metabase.pulse.models.pulse-test
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse]
-   [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.permissions.models.permissions :as perms]
+   [metabase.pulse.models.pulse :as models.pulse]
+   [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]

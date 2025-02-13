@@ -32,7 +32,7 @@ type UseQuerySubscriptionResult<D extends QueryDefinition<any, any, any, any>> =
   Pick<QueryActionCreatorResult<D>, "refetch">;
 
 type UseQueryStateResult<
-  _ extends QueryDefinition<any, any, any, any>,
+  _D extends QueryDefinition<any, any, any, any>,
   R,
 > = TSHelpersNoInfer<R>;
 
