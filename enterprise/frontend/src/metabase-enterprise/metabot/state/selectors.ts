@@ -1,5 +1,4 @@
 import { createSelector } from "@reduxjs/toolkit";
-import _ from "underscore";
 
 import type { MetabotStoreState } from "./types";
 

@@ -4,14 +4,16 @@ import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
 import { Icon, type IconName } from "metabase/ui";
 
+import SS from "../Select.module.css";
+
 import S from "./SelectItem.module.css";
 import { getItemFontSize, getItemLineHeight } from "./utils";
 
 export interface SelectItemProps
-  extends HTMLAttributes<HTMLDivElement>,
+  extends Omit<HTMLAttributes<HTMLDivElement>, "style">,
     BoxProps {
   value: string;
-  label?: string;
+  label?: string | JSX.Element;
   size?: MantineSize;
   icon?: IconName;
   selected?: boolean;
@@ -34,24 +36,17 @@ export const SelectItem = forwardRef(function SelectItem(
   return (
     <Group
       ref={ref}
-      className={cx(
-        S.item,
-        {
-          [S.selected]: selected,
-          [S.disabled]: disabled,
-        },
-        className,
-      )}
+      className={cx(S.item, SS.SelectItems_Item, className)}
       fz={getItemFontSize(size)}
       lh={getItemLineHeight(size)}
       p="sm"
-      spacing="sm"
-      role="option"
+      gap="sm"
+      flex={1}
       aria-selected={selected}
       {...props}
     >
       {icon && <Icon name={icon} />}
-      <Text color="inherit" lh="inherit">
+      <Text c="inherit" lh="inherit">
         {label}
       </Text>
     </Group>

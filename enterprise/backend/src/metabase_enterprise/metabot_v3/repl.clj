@@ -102,6 +102,7 @@
   (defn- user-repl-with-context [context]
     (user-repl [] context (str (random-uuid))))
 
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (require '[metabase.test :as mt])
 
   ;; Discounted orders only

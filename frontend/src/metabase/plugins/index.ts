@@ -39,7 +39,7 @@ import type { MetabotContext } from "metabase/metabot";
 import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
-import type { GroupProps, IconName, IconProps } from "metabase/ui";
+import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -301,9 +301,9 @@ export const PLUGIN_COLLECTIONS = {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
-  isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
+  isRegularCollection: (_data: Partial<Collection> | Bookmark) => true,
   getCollectionType: (
-    _: Partial<Collection>,
+    _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
@@ -402,7 +402,7 @@ export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
   onClose: () => void;
-} & GroupProps;
+} & StackProps;
 
 export type PreemptiveCachingSwitchProps = {
   handleSwitchToggle: () => void;

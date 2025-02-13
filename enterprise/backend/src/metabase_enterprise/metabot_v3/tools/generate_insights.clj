@@ -4,7 +4,6 @@
    [metabase-enterprise.metabot-v3.envelope :as env]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase.public-settings :as public-settings]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
@@ -41,7 +40,7 @@
                            (re-matches #"(?:card__)?\d+" id))))
         (throw (ex-info "Invalid table_id" {:agent-error? true
                                             :table_id id})))
-      {:output (str (public-settings/site-url) results-url)
+      {:output results-url
        :reactions [{:type :metabot.reaction/redirect :url results-url}]})
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))

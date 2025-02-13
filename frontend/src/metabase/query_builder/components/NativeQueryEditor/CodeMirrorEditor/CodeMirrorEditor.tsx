@@ -69,21 +69,17 @@ export const CodeMirrorEditor = forwardRef<
     (update: ViewUpdate) => {
       // handle selection changes
       const value = update.state.doc.toString();
+
       if (onSelectionChange) {
-        const beforeRange = convertSelectionToRange(
-          update.startState.doc.toString(),
-          update.startState.selection.main,
-        );
-        const afterRange = convertSelectionToRange(
-          value,
-          update.state.selection.main,
-        );
+        const beforeSelection = update.startState.selection.main;
+        const afterSelection = update.state.selection.main;
 
         if (
-          beforeRange.start !== afterRange.start ||
-          beforeRange.end !== afterRange.end
+          beforeSelection.head !== afterSelection.head ||
+          beforeSelection.anchor !== afterSelection.anchor
         ) {
-          onSelectionChange(afterRange);
+          // only forward changes if the selection has actually changed
+          onSelectionChange(convertSelectionToRange(value, afterSelection));
         }
       }
       if (onCursorMoveOverCardTag) {

@@ -20,4 +20,7 @@ export const HARDCODED_JWT_SHARED_SECRET =
 // Name of the permission groups and collections to create.
 export const SANDBOXED_GROUP_NAMES = ["Customer A", "Customer B", "Customer C"];
 
-export const GENERATED_COMPONENTS_DEFAULT_PATH = "./src/components/metabase";
+export const GENERATED_COMPONENTS_DEFAULT_PATH = "components/metabase";
+
+// The demo route to be created in Next.js' router directory (e.g. pages or app)
+export const NEXTJS_DEMO_ROUTE_NAME = "analytics-demo";
