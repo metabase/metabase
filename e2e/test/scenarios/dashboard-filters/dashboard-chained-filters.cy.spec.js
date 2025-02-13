@@ -78,7 +78,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       H.filterWidget().contains("Location 1").click();
 
-      H.popover().within(() => {
+      H.dashboardParametersPopover().within(() => {
         if (has_field_values === "search") {
           H.fieldValuesInput().type("An");
         }
@@ -93,7 +93,7 @@ describe("scenarios > dashboard > chained filter", () => {
           : cy.findByTestId("field-values-widget");
 
       valuesWidget().within(() => {
-        cy.findByText("Anchorage");
+        cy.findByText("Anchorage").should("exist");
         cy.findByText("Anacoco").should("not.exist");
       });
 

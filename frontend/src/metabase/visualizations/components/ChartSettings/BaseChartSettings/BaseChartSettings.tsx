@@ -86,7 +86,7 @@ export const BaseChartSettings = ({
       return null;
     }
 
-    //We don't want to show series settings widget for waterfall charts
+    // We don't want to show series settings widget for waterfall charts
     if (display === "waterfall" || !seriesSettingsWidget) {
       return null;
     }
@@ -143,9 +143,11 @@ export const BaseChartSettings = ({
   }, [currentWidget, widgets]);
 
   const handleShowSection = useCallback(
-    (section: string) => {
-      setCurrentSection(section);
-      setCurrentWidget(null);
+    (section: string | null) => {
+      if (section) {
+        setCurrentSection(section);
+        setCurrentWidget(null);
+      }
     },
     [setCurrentSection],
   );

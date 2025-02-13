@@ -875,3 +875,31 @@
   (defmethod bad-connection-details driver
     [_driver]
     {:access_key (u.random/random-name)}))
+
+(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite]]
+  (defmethod driver/database-supports? [driver :test/arrays]
+    [_driver _feature _database]
+    true))
+
+(defmulti native-array-query
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-array-query :default
+  [_driver]
+  "select array['a', 'b', 'c']")
+
+(doseq [driver [:redshift :databricks]]
+  (defmethod native-array-query driver
+    [_driver]
+    "select array('a', 'b', 'c')"))
+
+(doseq [driver [:mysql :sqlite]]
+  (defmethod native-array-query driver
+    [_driver]
+    "select json_array('a', 'b', 'c')"))
+
+(defmethod native-array-query :snowflake
+  [_driver]
+  "select array_construct('a', 'b', 'c')")
