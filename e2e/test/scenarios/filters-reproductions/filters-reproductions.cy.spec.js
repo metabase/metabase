@@ -1728,7 +1728,7 @@ SELECT CAST('9223372036854775807' AS BIGINT) AS BIGINT`,
     });
 
     it("should be able to use id parameters with BIGINT columns in dashboards (metabase#5816)", () => {
-      const bigintQuestionDetails = {
+      const bigIntQuestionDetails = {
         name: "BIGINT values",
         native: {
           query: `SELECT 1 AS ID
@@ -1768,7 +1768,7 @@ SELECT -9223372036854775808 AS ID`,
       });
 
       cy.log("create a dashboard");
-      H.createNativeQuestion(bigintQuestionDetails).then(({ body: card }) => {
+      H.createNativeQuestion(bigIntQuestionDetails).then(({ body: card }) => {
         H.createQuestionAndDashboard({
           questionDetails: getQuestionDetails(card.id),
           dashboardDetails,
