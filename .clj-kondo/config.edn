@@ -856,8 +856,8 @@
   {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
-   clojure.core/defmulti                                                                                                     hooks.clojure.core/lint-defmulti
-   clojure.core/ns                                                                                                           hooks.clojure.core/lint-ns
+   clojure.core/defmulti                                                                                                     hooks.clojure.core.defmulti/lint-defmulti
+   clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
@@ -1067,9 +1067,9 @@
 
    :hooks
    {:analyze-call
-    {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
-     clojure.core/defn     hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
-     clojure.core/defn-    hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation}}}
+    {clojure.core/defmacro hooks.clojure.core.defn/non-thread-safe-form-should-end-with-exclamation
+     clojure.core/defn     hooks.clojure.core.defn/non-thread-safe-form-should-end-with-exclamation
+     clojure.core/defn-    hooks.clojure.core.defn/non-thread-safe-form-should-end-with-exclamation}}}
 
   source-namespaces
   {:linters
