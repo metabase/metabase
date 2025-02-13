@@ -14,7 +14,7 @@
 (jobs/defjob ^{:doc "Job that cleans up outdated sessions."}
   SessionCleanup
   [_]
-  (session/cleanup-sessions!))
+  (session/cleanup-sessions))
 
 (defmethod task/init! ::SessionCleanup [_]
   (let [job (jobs/build

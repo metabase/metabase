@@ -142,6 +142,6 @@
                                                :created_at (t/minus (t/local-date-time) (t/hours 5))}]
       (testing "session-cleanup deletes old sessions and keeps new enough ones"
         (is (t2/select-one :model/Session :id (old-session :id)))
-        (session/cleanup-sessions!)
+        (session/cleanup-sessions)
         (is (not (t2/exists? :model/Session :id (:id old-session))))
         (is (t2/exists? :model/Session :id (:id new-session)))))))
