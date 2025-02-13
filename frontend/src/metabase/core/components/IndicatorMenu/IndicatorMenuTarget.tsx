@@ -17,7 +17,12 @@ export const IndicatorMenuTarget = (props: PropsWithChildren) => {
 
   return (
     <Menu.Target>
-      <Indicator disabled={!showIndicator} size={6}>
+      <Indicator
+        data-show-indicator={showIndicator}
+        data-testid="menu-indicator-root"
+        disabled={!showIndicator}
+        size={6}
+      >
         {props.children}
       </Indicator>
     </Menu.Target>
