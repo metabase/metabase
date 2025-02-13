@@ -12,15 +12,6 @@
   color: var(--mb-color-text-light);
 }
 
-.ExampleCode {
-  padding: 0.5rem;
-  background-color: var(--mb-color-bg-light);
-  color: var(--mb-color-text-primary);
-  border-radius: 8px;
-  font-size: 0.8125rem;
-  line-height: 1.065rem;
-}
-
 .DocumentationLink {
   display: flex;
   align-items: center;
