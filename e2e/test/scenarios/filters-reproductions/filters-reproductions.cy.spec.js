@@ -1649,11 +1649,12 @@ describe("issue 44665", () => {
 });
 
 describe("issue 5816", () => {
-  const longValue = "9223372036854775807";
+  const minBigIntValue = "-9223372036854775808";
+  const maxBigIntValue = "9223372036854775807";
   const decimalValue = "9223372036854775808";
 
   const decimalQuestionDetails = {
-    name: "BIGINT values",
+    name: "DECIMAL values",
     native: {
       query: `SELECT CAST('9223372036854775807' AS DECIMAL) AS DECIMAL
 UNION ALL
@@ -1670,23 +1671,32 @@ SELECT CAST('9223372036854775809' AS DECIMAL) AS DECIMAL`,
   });
 
   describe("mbql queries", () => {
-    it("should be able to use filters with DECIMAL columns in the query builder (metabase#5816)", () => {
-      H.createNativeQuestion(decimalQuestionDetails, { visitQuestion: true });
+    it("should be able to use filters with BIGINT columns in the query builder (metabase#5816)", () => {
+      const questionDetails = {
+        name: "SQL BIGINT",
+        native: {
+          query: `SELECT CAST('9223372036854775806' AS BIGINT) AS BIGINT
+UNION ALL
+SELECT CAST('9223372036854775807' AS BIGINT) AS BIGINT`,
+        },
+        display: "table",
+      };
+      H.createNativeQuestion(questionDetails, { visitQuestion: true });
       H.queryBuilderHeader().findByText("Explore results").click();
-      H.assertQueryBuilderRowCount(3);
+      H.assertQueryBuilderRowCount(2);
       H.openNotebook();
       H.filter({ mode: "notebook" });
       H.popover().within(() => {
-        cy.findByText("DECIMAL").click();
+        cy.findByText("BIGINT").click();
         cy.findByLabelText("Filter operator").click();
       });
       H.popover().eq(1).findByText("Equal to").click();
       H.popover().within(() => {
-        cy.findByLabelText("Filter value").type(decimalValue);
+        cy.findByLabelText("Filter value").type(maxBigIntValue);
         cy.button("Add filter").click();
       });
       H.getNotebookStep("filter")
-        .findByText(`DECIMAL is equal to "${decimalValue}"`)
+        .findByText(`BIGINT is equal to "${maxBigIntValue}"`)
         .should("be.visible");
       H.visualize();
       H.assertQueryBuilderRowCount(1);
@@ -1742,17 +1752,17 @@ SELECT CAST('9223372036854775809' AS DECIMAL) AS DECIMAL`,
         .should("have.text", "18,760");
       H.filterWidget().click();
       H.popover().within(() => {
-        cy.findByPlaceholderText("Enter an ID").type(longValue);
+        cy.findByPlaceholderText("Enter an ID").type(maxBigIntValue);
         cy.button("Add filter").click();
       });
-      H.filterWidget().findByText(longValue).should("be.visible");
+      H.filterWidget().findByText(maxBigIntValue).should("be.visible");
       H.getDashboardCard()
         .findByTestId("scalar-value")
         .should("have.text", "0");
 
       cy.log("title drill-thru");
       H.getDashboardCard().findByText("Orders, Count").click();
-      H.queryBuilderFiltersPanel().findByText(`ID is ${longValue}`);
+      H.queryBuilderFiltersPanel().findByText(`ID is ${maxBigIntValue}`);
       H.queryBuilderMain()
         .findByTestId("scalar-value")
         .should("have.text", "0");
@@ -1760,13 +1770,35 @@ SELECT CAST('9223372036854775809' AS DECIMAL) AS DECIMAL`,
       cy.log("querystring parameter values");
       H.visitDashboard("@dashboardId", {
         params: {
-          [parameterDetails.slug]: longValue,
+          [parameterDetails.slug]: maxBigIntValue,
         },
       });
-      H.filterWidget().findByText(longValue).should("be.visible");
+      H.filterWidget().findByText(maxBigIntValue).should("be.visible");
       H.getDashboardCard()
         .findByTestId("scalar-value")
         .should("have.text", "0");
+    });
+
+    it("should be able to use filters with DECIMAL columns in the query builder (metabase#5816)", () => {
+      H.createNativeQuestion(decimalQuestionDetails, { visitQuestion: true });
+      H.queryBuilderHeader().findByText("Explore results").click();
+      H.assertQueryBuilderRowCount(3);
+      H.openNotebook();
+      H.filter({ mode: "notebook" });
+      H.popover().within(() => {
+        cy.findByText("DECIMAL").click();
+        cy.findByLabelText("Filter operator").click();
+      });
+      H.popover().eq(1).findByText("Equal to").click();
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type(decimalValue);
+        cy.button("Add filter").click();
+      });
+      H.getNotebookStep("filter")
+        .findByText(`DECIMAL is equal to "${decimalValue}"`)
+        .should("be.visible");
+      H.visualize();
+      H.assertQueryBuilderRowCount(1);
     });
 
     it("should be able to use number parameters with DECIMAL columns in dashboards (metabase#5816)", () => {
@@ -1781,7 +1813,7 @@ SELECT CAST('9223372036854775809' AS DECIMAL) AS DECIMAL`,
         parameters: [parameterDetails],
       };
       const getQuestionDetails = cardId => ({
-        name: "GUI",
+        name: "GUI DECIMAL",
         query: {
           "source-table": `card__${cardId}`,
           aggregation: [["count"]],
@@ -1848,6 +1880,165 @@ SELECT CAST('9223372036854775809' AS DECIMAL) AS DECIMAL`,
       H.getDashboardCard()
         .findByTestId("scalar-value")
         .should("have.text", "1");
+    });
+  });
+
+  describe("native queries", () => {
+    it("should be able to use variables with BIGINT values in the query builder (metabase#5816)", () => {
+      const questionDetails = {
+        name: "SQL BIGINT",
+        display: "scalar",
+        native: {
+          query: "SELECT CAST({{value}} AS VARCHAR) AS SCALAR",
+          "template-tags": {
+            value: {
+              id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+              name: "value",
+              "display-name": "Value",
+              type: "number",
+              default: minBigIntValue,
+            },
+          },
+        },
+      };
+
+      cy.log("default value");
+      H.createNativeQuestion(questionDetails, { visitQuestion: true });
+      H.filterWidget()
+        .findByRole("textbox")
+        .should("have.value", minBigIntValue);
+      H.queryBuilderMain()
+        .findByTestId("scalar-value")
+        .should("have.text", minBigIntValue);
+
+      cy.log("value via the filter widget");
+      H.filterWidget().findByRole("textbox").clear().type(maxBigIntValue);
+      H.filterWidget()
+        .findByRole("textbox")
+        .should("have.value", maxBigIntValue);
+      H.queryBuilderMain().findAllByTestId("run-button").eq(1).click();
+      H.queryBuilderMain()
+        .findByTestId("scalar-value")
+        .should("have.text", maxBigIntValue);
+    });
+
+    it("should be able to use field filters with BIGINT columns in dashboards (metabase#5816)", () => {
+      const questionDetails = {
+        name: "SQL BIGINT",
+        display: "scalar",
+        native: {
+          query: "SELECT CAST({{value}} AS VARCHAR) AS SCALAR",
+          "template-tags": {
+            value: {
+              id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+              name: "value",
+              "display-name": "Value",
+              type: "number",
+              default: minBigIntValue,
+            },
+          },
+        },
+      };
+      const parameterDetails = {
+        id: "b6ed2d72",
+        type: "number/=",
+        name: "Number",
+        slug: "number",
+        sectionId: "number",
+      };
+      const dashboardDetails = {
+        parameters: [parameterDetails],
+      };
+      const getParameterMapping = cardId => ({
+        card_id: cardId,
+        parameter_id: parameterDetails.id,
+        target: ["variable", ["template-tag", "value"]],
+      });
+
+      cy.log("create a dashboard");
+      H.createNativeQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: dashcard }) => {
+        H.addOrUpdateDashboardCard({
+          dashboard_id: dashcard.dashboard_id,
+          card_id: dashcard.card_id,
+          card: {
+            parameter_mappings: [getParameterMapping(dashcard.card_id)],
+          },
+        });
+        cy.wrap(dashcard.dashboard_id).as("dashboardId");
+      });
+
+      cy.log("parameter widgets");
+      H.visitDashboard("@dashboardId");
+      H.getDashboardCard()
+        .findByTestId("scalar-value")
+        .should("have.text", minBigIntValue);
+      H.filterWidget()
+        .findByRole("textbox")
+        .should("have.value", minBigIntValue);
+      H.filterWidget()
+        .findByRole("textbox")
+        .clear()
+        .type(maxBigIntValue)
+        .blur();
+      H.filterWidget()
+        .findByRole("textbox")
+        .should("have.value", maxBigIntValue);
+      H.getDashboardCard()
+        .findByTestId("scalar-value")
+        .should("have.text", maxBigIntValue);
+
+      cy.log("title drill-thru");
+      H.getDashboardCard().findByText(questionDetails.name).click();
+      H.queryBuilderMain()
+        .findByTestId("scalar-value")
+        .should("have.text", maxBigIntValue);
+      H.filterWidget()
+        .findByRole("textbox")
+        .should("have.value", maxBigIntValue);
+    });
+
+    it.skip("should be able to use number variables with DECIMAL values in the query builder (metabase#5816)", () => {
+      const negativeDecimalValue = "-9223372036854775808";
+      const questionDetails = {
+        name: "SQL DECIMAL",
+        display: "scalar",
+        native: {
+          query: `SELECT CASE
+WHEN CAST('${decimalValue}' AS DECIMAL) = {{value}} THEN 'A'
+WHEN CAST('${negativeDecimalValue}' AS DECIMAL) = {{value}} THEN 'B'
+ELSE 'C'
+END`,
+          "template-tags": {
+            value: {
+              id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+              name: "value",
+              "display-name": "Value",
+              type: "number",
+              default: decimalValue,
+            },
+          },
+        },
+      };
+
+      cy.log("default value");
+      H.createNativeQuestion(questionDetails, { visitQuestion: true });
+      H.filterWidget().findByRole("textbox").should("have.value", decimalValue);
+      H.queryBuilderMain()
+        .findByTestId("scalar-value")
+        .should("have.text", "A");
+
+      cy.log("value via the filter widget");
+      H.filterWidget().findByRole("textbox").clear().type(negativeDecimalValue);
+      H.filterWidget()
+        .findByRole("textbox")
+        .should("have.value", negativeDecimalValue);
+      H.queryBuilderMain().findAllByTestId("run-button").eq(1).click();
+      H.queryBuilderMain()
+        .findByTestId("scalar-value")
+        .should("have.text", "B");
     });
   });
 });
