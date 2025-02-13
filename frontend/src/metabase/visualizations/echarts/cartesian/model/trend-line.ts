@@ -1,5 +1,4 @@
 import Color from "color";
-import _ from "underscore";
 
 import { checkNumber, isNotNull } from "metabase/lib/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
