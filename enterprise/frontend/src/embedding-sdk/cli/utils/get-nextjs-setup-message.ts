@@ -40,7 +40,7 @@ export const getNextJsSetupMessages = async ({
     // so they can add the example providers and the example CSS to their file.
     componentSnippet += `  Next, add the example providers and CSS stylesheet to your ${green(layoutFile)} file. For example:
 
-  ${green(layoutSnippet)}`;
+${green(layoutSnippet)}`;
   } else {
     // Otherwise, we tell them that we've generated the needed files.
     componentSnippet += `  An example Next.js ${layoutFile} is also added with the example providers and CSS stylesheet.`;
