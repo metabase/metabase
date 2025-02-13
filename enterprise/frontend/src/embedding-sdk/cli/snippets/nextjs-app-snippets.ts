@@ -61,7 +61,11 @@ export default function RootLayout({children}) {
   return snippet.trim();
 }
 
-export function getNextJsCustomAppOrRootLayoutSnippet({
+/**
+ * Generates a root layout (for the app router) or a custom app (for the pages router),
+ * which wraps the entire app with the appropriate providers.
+ */
+export function getNextJsPagesWrapperOrAppWrapperSnippet({
   router,
   resolveImport,
 }: {

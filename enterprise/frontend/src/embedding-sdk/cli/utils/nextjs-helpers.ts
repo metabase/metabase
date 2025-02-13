@@ -4,7 +4,7 @@ import { glob } from "glob";
 import path from "path";
 
 import { NEXTJS_DEMO_ROUTE_NAME } from "../constants/config";
-import { getNextJsCustomAppOrRootLayoutSnippet } from "../snippets/nextjs-app-snippets";
+import { getNextJsPagesWrapperOrAppWrapperSnippet } from "../snippets/nextjs-app-snippets";
 import { getNextJsAnalyticsPageSnippet } from "../snippets/nextjs-page-snippet";
 
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
@@ -112,7 +112,7 @@ async function generateNextJsCustomAppOrRootLayoutFile(componentPath: string) {
   const extension = isInTypeScriptProject ? "tsx" : "js";
   const sourcePrefix = getNextJsSourceDirectoryPrefix();
 
-  const snippet = getNextJsCustomAppOrRootLayoutSnippet({
+  const snippet = getNextJsPagesWrapperOrAppWrapperSnippet({
     router,
     resolveImport: pathName =>
       getImportPathForRootLayout(componentPath, pathName),

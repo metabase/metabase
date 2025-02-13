@@ -5,7 +5,7 @@ import {
   LINK_TO_NEXT_JS_GUIDE,
   LINK_TO_NEXT_JS_SAMPLE,
 } from "../constants/messages";
-import { getNextJsCustomAppOrRootLayoutSnippet } from "../snippets/nextjs-app-snippets";
+import { getNextJsPagesWrapperOrAppWrapperSnippet } from "../snippets/nextjs-app-snippets";
 
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
 import {
@@ -35,7 +35,7 @@ export const getNextJsSetupMessages = async ({
   let componentSnippet = `Added an ${green("/" + NEXTJS_DEMO_ROUTE_NAME)} route to your "${green(router)}" directory.\n`;
 
   if (hasNextJsCustomAppOrRootLayout) {
-    const layoutSnippet = getNextJsCustomAppOrRootLayoutSnippet({
+    const layoutSnippet = getNextJsPagesWrapperOrAppWrapperSnippet({
       router,
       resolveImport: pathName =>
         getImportPathForRootLayout(componentPath, pathName),
