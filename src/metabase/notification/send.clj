@@ -184,5 +184,3 @@
            (fn []
              (send-notification-sync! notification)))
   nil)
-
-(prometheus/inc! :metabase-notification/send-error {:payload-type :notification/testing})
