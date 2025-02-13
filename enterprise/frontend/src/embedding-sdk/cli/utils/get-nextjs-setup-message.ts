@@ -1,5 +1,6 @@
 import { green } from "chalk";
 
+import { NEXTJS_DEMO_ROUTE_NAME } from "../constants/config";
 import {
   LINK_TO_NEXT_JS_GUIDE,
   LINK_TO_NEXT_JS_SAMPLE,
@@ -31,7 +32,7 @@ export const getNextJsSetupMessages = async ({
 
   const layoutFile = `${sourcePrefix}${router === "app" ? "app/layout" : "pages/_app"}.${componentExtension}`;
 
-  let componentSnippet = `Added an ${green("/analytics-demo")} route to your "${green(router)}" directory.\n`;
+  let componentSnippet = `Added an ${green("/" + NEXTJS_DEMO_ROUTE_NAME)} route to your "${green(router)}" directory.\n`;
 
   if (hasNextJsCustomAppOrRootLayout) {
     const layoutSnippet = getNextJsCustomAppOrRootLayoutSnippet({
