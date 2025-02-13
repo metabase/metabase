@@ -35,6 +35,10 @@
   color: var(--mb-color-saturated-red);
 }
 
+.paren {
+  color: inherit;
+}
+
 .comment,
 .lineComment,
 .blockComment {
