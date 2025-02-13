@@ -111,7 +111,7 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("checkbox"));
+        await userEvent.click(screen.getByRole("switch"));
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Agree and continue"));
@@ -137,7 +137,7 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("checkbox"));
+        await userEvent.click(screen.getByRole("switch"));
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Decline and go back"));
@@ -156,7 +156,7 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("checkbox"));
+        await userEvent.click(screen.getByRole("switch"));
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
         expect(updateSetting).toHaveBeenCalledTimes(1);

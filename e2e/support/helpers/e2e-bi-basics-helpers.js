@@ -65,8 +65,7 @@ export function filterFieldPopover(
   { value, placeholder, order } = {},
 ) {
   getFilterField(fieldName, order).within(() => {
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.get("input").last().click();
+    cy.findByRole("combobox").click();
   });
 
   if (value) {
