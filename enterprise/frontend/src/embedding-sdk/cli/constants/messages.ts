@@ -32,7 +32,7 @@ export const UNSUPPORTED_REACT_VERSION = `
 
   Try downloading and running one of our samples instead:
   - React: https://metaba.se/sdk-sample-react
-  - Next.js: https://metaba.se/sdk-sample-next
+  - Next.js: https://metaba.se/sdk-sample-nextjs
 `;
 
 export const DELETE_CONTAINER_MESSAGE = `Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.`;
