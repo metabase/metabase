@@ -2,8 +2,8 @@ import { type CSSProperties, type ComponentType, useState } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
-  type SDKCollectionId,
-  getNumericCollectionId,
+  type SDKCollectionReference,
+  getCollectionIdSlugFromReference,
 } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
@@ -50,7 +50,7 @@ const ENTITY_NAME_MAP: Partial<
 };
 
 export type CollectionBrowserProps = {
-  collectionId?: SDKCollectionId | "root";
+  collectionId?: SDKCollectionReference;
   onClick?: (item: CollectionItem) => void;
   pageSize?: number;
   visibleEntityTypes?: UserFacingEntityName[];
@@ -70,15 +70,12 @@ export const CollectionBrowserInner = ({
   className,
   style,
 }: CollectionBrowserProps) => {
-  const numericCollectionId = useSdkSelector(state =>
-    getNumericCollectionId(state, collectionId === "root" ? 0 : collectionId),
+  const baseCollectionId = useSdkSelector(state =>
+    getCollectionIdSlugFromReference(state, collectionId),
   );
 
-  const baseCollectionId =
-    numericCollectionId === 0 ? "root" : numericCollectionId;
-  const [currentCollectionId, setCurrentCollectionId] = useState<CollectionId>(
-    baseCollectionId ?? 0,
-  );
+  const [currentCollectionId, setCurrentCollectionId] =
+    useState<CollectionId>(baseCollectionId);
 
   const onClickItem = (item: CollectionItem) => {
     if (onClick) {

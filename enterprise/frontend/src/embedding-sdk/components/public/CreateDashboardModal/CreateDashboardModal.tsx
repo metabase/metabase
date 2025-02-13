@@ -3,8 +3,8 @@ import _ from "underscore";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
-  type SDKCollectionId,
-  getNumericCollectionId,
+  type SDKCollectionReference,
+  getCollectionNumericIdFromReference,
 } from "embedding-sdk/store/collections";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections from "metabase/entities/collections";
@@ -13,7 +13,7 @@ import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 export interface CreateDashboardModalProps {
-  initialCollectionId: SDKCollectionId;
+  initialCollectionId: SDKCollectionReference;
   isOpen?: boolean;
   onCreate: (dashboard: Dashboard) => void;
   onClose?: () => void;
@@ -26,7 +26,7 @@ const CreateDashboardModalInner = ({
   onClose,
 }: CreateDashboardModalProps) => {
   const numericCollectionId = useSelector((state: State) =>
-    getNumericCollectionId(state, initialCollectionId),
+    getCollectionNumericIdFromReference(state, initialCollectionId),
   );
 
   return (

@@ -1,4 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
+import { P, match } from "ts-pattern";
 
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { RegularCollectionId } from "metabase-types/api";
@@ -6,30 +7,50 @@ import type { RegularCollectionId } from "metabase-types/api";
 // "CollectionId" from core app also includes "root" | "users" and "trash", we don't want to include those
 // in public apis of the sdk, as we don't support them
 
-export type SDKCollectionId = RegularCollectionId | "personal";
+export type SDKCollectionReference = RegularCollectionId | "personal" | "root";
+
+export type ApiType = "collection" | "dashboard";
 
 /**
- * converts 'personal' to the numeric id of the id of the 'personal' collection
- * id of the logged in user
+ * Converts "personal" and "root" to the _numeric_ ids accepted by the api
+ * For the root collection id, the API expects null
  */
-export const getNumericCollectionId = createSelector(
+export const getCollectionNumericIdFromReference = createSelector(
   [
     getUserPersonalCollectionId,
-    (_, collectionId: SDKCollectionId | "root" | null) => collectionId,
+    (_, collectionReference: SDKCollectionReference) => collectionReference,
   ],
-  (personalCollectionId, collectionId) => {
-    if (collectionId === "personal") {
-      return personalCollectionId as RegularCollectionId;
-    }
+  (personalCollectionId, collectionReference) => {
+    return match(collectionReference)
+      .with("personal", () => personalCollectionId as RegularCollectionId)
+      .with("root", () => null)
+      .with(P.number, () => collectionReference)
+      .otherwise(() => {
+        throw new Error(
+          "Invalid collection id, expected `number | 'root' | 'personal'`",
+        );
+      });
+  },
+);
 
-    if (collectionId === "root") {
-      return "root" as const;
-    }
-
-    if (collectionId === null) {
-      return null;
-    }
-
-    return collectionId as RegularCollectionId;
+/**
+ * This return an "id"/"slug" that can be used in `/api/collection/{:id}`
+ * That endpoint has special handlers for "root" and "trash"
+ */
+export const getCollectionIdSlugFromReference = createSelector(
+  [
+    getUserPersonalCollectionId,
+    (_, collectionReference: SDKCollectionReference) => collectionReference,
+  ],
+  (personalCollectionId, collectionReference) => {
+    return match(collectionReference)
+      .with("personal", () => personalCollectionId as RegularCollectionId)
+      .with("root", () => "root" as const)
+      .with(P.number, () => collectionReference)
+      .otherwise(() => {
+        throw new Error(
+          "Invalid collection id, expected `number | 'root' | 'personal'`",
+        );
+      });
   },
 );
