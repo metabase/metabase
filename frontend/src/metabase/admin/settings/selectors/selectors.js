@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-import { UpsellWhitelabel } from "metabase/admin/upsells/UpsellWhitelabel";
+import { UpsellWhitelabel } from "metabase/admin/upsells";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
