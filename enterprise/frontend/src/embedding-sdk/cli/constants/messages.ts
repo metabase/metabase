@@ -63,6 +63,7 @@ export const getMetabaseInstanceSetupCompleteMessage = (
   Metabase is running at ${blue(instanceUrl)}
 
   Log in with
+
   Email: "${blue(email)}"
   Password: "${blue(password)}"
 
