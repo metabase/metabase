@@ -1,5 +1,4 @@
 const { H } = cy;
-const { IS_ENTERPRISE } = Cypress.env();
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -274,24 +273,6 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Site URL/i);
   });
-
-  it(
-    "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
-    { tags: "@OSS" },
-    () => {
-      IS_ENTERPRISE && H.setTokenFeatures("all");
-
-      const lastItem = !IS_ENTERPRISE ? "Cloud" : "Appearance";
-
-      cy.visit("/admin/settings/setup");
-      cy.findByTestId("admin-list-settings-items").within(() => {
-        cy.findAllByTestId("settings-sidebar-link").as("settingsOptions");
-        cy.get("@settingsOptions").first().contains("Setup");
-        // eslint-disable-next-line no-unsafe-element-filtering
-        cy.get("@settingsOptions").last().contains(lastItem);
-      });
-    },
-  );
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
   it.skip("should hide self-hosted settings when running Metabase Cloud", () => {

@@ -590,7 +590,7 @@ describe("Admin > Settings > UploadSetting", () => {
 
     await userEvent.hover(screen.getByText("Additional terms apply."));
     expect(
-      within(screen.getByRole("tooltip")).getByText(
+      within(await screen.findByRole("tooltip")).getByText(
         /By enabling uploads to the Sample Database, you agree that you will not upload or otherwise transmit any individually identifiable information/,
       ),
     ).toBeInTheDocument();
