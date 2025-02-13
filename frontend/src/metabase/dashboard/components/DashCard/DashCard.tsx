@@ -34,6 +34,7 @@ import type {
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
 
+import S from "./DashCard.module.css";
 import { DashCardRoot } from "./DashCard.styled";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
@@ -306,6 +307,7 @@ function DashCardInner({
         data-testid="dashcard"
         data-dashcard-key={dashcard.id}
         className={cx(
+          S.DashboardCardRoot,
           DashboardS.Card,
           EmbedFrameS.Card,
           CS.relative,
@@ -323,6 +325,7 @@ function DashCardInner({
       >
         {isEditingDashboardLayout && (
           <DashCardActionsPanel
+            className={S.DashCardActionsPanel}
             onMouseDown={preventDragging}
             onLeftEdge={dashcard.col === 0}
             series={series}

@@ -1,0 +1,15 @@
+.DashboardCardRootDragging {
+  .DashCardActionsPanel {
+    display: none;
+  }
+}
+
+.DashboardCardRoot {
+  &:hover,
+  &:focus-within {
+    .DashCardActionsPanel {
+      opacity: 1;
+      pointer-events: all;
+    }
+  }
+}
