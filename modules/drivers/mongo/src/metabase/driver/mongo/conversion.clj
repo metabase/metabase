@@ -44,9 +44,7 @@
   Binary
   (from-document [input _opts]
     (cond (= (.getType input) bson-uuid-type)
-          (let [buffer (-> input
-                           .getData
-                           ByteBuffer/wrap)
+          (let [buffer (-> input .getData ByteBuffer/wrap)
                 most-sig-bits (.getLong buffer)
                 least-sig-bits (.getLong buffer)]
             (UUID. most-sig-bits least-sig-bits))
