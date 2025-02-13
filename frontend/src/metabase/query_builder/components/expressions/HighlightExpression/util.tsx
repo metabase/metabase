@@ -1,8 +1,7 @@
 import { type Highlighter, type Tag, highlightCode } from "@lezer/highlight";
 
+import { classNameForTag } from "metabase/components/Editor/highlight";
 import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
-
-import S from "./HighlightExpression.module.css";
 
 const highlighter: Highlighter = {
   style: (tag: Tag[]) => classNameForTag(tag),
@@ -30,19 +29,4 @@ export function highlight(code: string): HTML {
   highlightCode(code, tree, highlighter, emit, eol);
 
   return res;
-}
-
-function classNameForTag(tag: Tag | Tag[]): string {
-  if (Array.isArray(tag)) {
-    return tag.map(classNameForTag).join(" ");
-  }
-
-  // lezer generates tags like function(variableName) for combined tags
-  // we split them up here so we generate classNames like .function.variableName
-  const names = tag.toString().split(/[\(\)]/);
-
-  return names
-    .map(name => S[name] ?? "")
-    .filter(x => x !== "")
-    .join(" ");
 }

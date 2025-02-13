@@ -5,7 +5,6 @@ import {
 } from "@codemirror/autocomplete";
 import { indentMore } from "@codemirror/commands";
 import {
-  HighlightStyle,
   foldService,
   indentUnit,
   syntaxHighlighting,
@@ -19,7 +18,6 @@ import {
   drawSelection,
   keymap,
 } from "@codemirror/view";
-import { type Tag, tags } from "@lezer/highlight";
 import type {
   EditorState,
   Extension,
@@ -29,6 +27,7 @@ import cx from "classnames";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
+import { metabaseSyntaxHighlighting } from "metabase/components/Editor/highlight";
 import { isNotNull } from "metabase/lib/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import * as Lib from "metabase-lib";
@@ -221,19 +220,8 @@ function fonts() {
   });
 }
 
-const metabaseStyle = HighlightStyle.define(
-  // Map all tags to CSS variables with the same name
-  // See ./CodeMirrorEditor.module.css for the colors
-  Object.entries(tags)
-    .filter((item): item is [string, Tag] => typeof item[1] !== "function")
-    .map(([name, tag]: [string, Tag]) => ({
-      tag,
-      class: `cm-token-${name}`,
-    })),
-);
-
 function highlighting() {
-  return syntaxHighlighting(metabaseStyle);
+  return syntaxHighlighting(metabaseSyntaxHighlighting);
 }
 
 function tagDecorator() {
