@@ -1418,7 +1418,9 @@ describe("issue 51925", () => {
         .should("have.attr", "href", "https://example.com/6");
     });
   });
+});
 
+describe("issue 53649", () => {
   it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
     H.startNewNativeModel();
 
