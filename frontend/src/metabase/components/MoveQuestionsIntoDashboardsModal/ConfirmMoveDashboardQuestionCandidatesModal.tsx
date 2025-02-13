@@ -56,8 +56,11 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
       data-testid="move-questions-into-dashboard-modal"
       size="64rem"
     >
-      <Modal.Overlay />
-      <Modal.Content className={S.modal}>
+      <Modal.Content
+        classNames={{
+          content: S.modal,
+        }}
+      >
         <Modal.Header
           px="2.5rem"
           pt="2rem"
@@ -150,7 +153,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
                 variant="filled"
                 onClick={onConfirm}
                 disabled={ctaDisabled}
-                color={mutationError ? "error" : "primary"}
+                color={mutationError ? "error" : "brand"}
               >
                 {t`Move these questions`}
               </Button>
