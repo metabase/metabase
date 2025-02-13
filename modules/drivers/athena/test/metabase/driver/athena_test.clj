@@ -161,6 +161,20 @@
                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
                   :AwsCredentialsProviderClass)))))))
 
+(deftest ^:parallel requires-region-in-connection-details-test
+  (testing "gracefully handle attempting to connect with no region"
+    (let [ex (try
+               (sql-jdbc.conn/connection-details->spec :athena {:region nil
+                                                                :workgroup nil
+                                                                :s3_staging_dir "s3://metabase-drivers-athena-results/"
+                                                                :catalog nil
+                                                                :access_key "access_key"
+                                                                :secret_key "secret_key"
+                                                                :advanced-options false})
+               (catch clojure.lang.ExceptionInfo e e))]
+      (is (instance? clojure.lang.ExceptionInfo ex))
+      (is (= "Region cannot be empty" (ex-message ex))))))
+
 (deftest ^:parallel page-test
   (testing ":page clause places OFFSET *before* LIMIT"
     (is (= [["SELECT"
