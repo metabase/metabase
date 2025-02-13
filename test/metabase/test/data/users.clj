@@ -31,6 +31,10 @@
                :first    "Rasta"
                :last     "Toucan"
                :password "blueberries"}
+   :alba      {:email     "alba@metabase.com"
+               :first     "Alba"
+               :last      "Albatross"
+               :password  "chickenofthesea"}
    :crowberto {:email     "crowberto@metabase.com"
                :first     "Crowberto"
                :last      "Corv"
