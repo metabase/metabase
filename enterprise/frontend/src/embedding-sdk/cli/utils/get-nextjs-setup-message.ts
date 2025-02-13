@@ -1,5 +1,4 @@
 import { green } from "chalk";
-import path from "path";
 
 import {
   LINK_TO_NEXT_JS_GUIDE,
@@ -8,7 +7,11 @@ import {
 import { getNextJsCustomAppOrRootLayoutSnippet } from "../snippets/nextjs-app-snippets";
 
 import { checkIsInTypeScriptProject } from "./check-typescript-project";
-import { checkIfUsingAppOrPagesRouter } from "./nextjs-helpers";
+import {
+  checkIfUsingAppOrPagesRouter,
+  getImportPathForRootLayout,
+  getNextJsSourceDirectoryPrefix,
+} from "./nextjs-helpers";
 
 export const getNextJsSetupMessages = async ({
   componentPath,
@@ -21,11 +24,12 @@ export const getNextJsSetupMessages = async ({
 }): Promise<string[]> => {
   const router = await checkIfUsingAppOrPagesRouter();
   const isInTypeScriptProject = await checkIsInTypeScriptProject();
+  const sourcePrefix = getNextJsSourceDirectoryPrefix();
   const componentExtension = isInTypeScriptProject ? "tsx" : "js";
 
   const snippets = [];
 
-  const layoutFile = `${router === "app" ? "app/layout" : "pages/_app"}.${componentExtension}`;
+  const layoutFile = `${sourcePrefix}${router === "app" ? "app/layout" : "pages/_app"}.${componentExtension}`;
 
   let componentSnippet = `Added an ${green("/analytics-demo")} route to your "${green(router)}" directory.\n`;
 
@@ -33,7 +37,7 @@ export const getNextJsSetupMessages = async ({
     const layoutSnippet = getNextJsCustomAppOrRootLayoutSnippet({
       router,
       resolveImport: pathName =>
-        path.normalize(`../${componentPath}/${pathName}`),
+        getImportPathForRootLayout(componentPath, pathName),
     });
 
     // If the user already has an _app.tsx or layout.tsx, we need to show them the snippet,

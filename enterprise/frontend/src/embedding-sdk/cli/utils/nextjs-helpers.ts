@@ -58,7 +58,7 @@ export async function checkIfUsingAppOrPagesRouter() {
  */
 export const checkIfNextJsProjectUsesSrcDirectory = () => hasPath("src");
 
-const getNextJsSourceDirectoryPrefix = () =>
+export const getNextJsSourceDirectoryPrefix = () =>
   checkIfNextJsProjectUsesSrcDirectory() ? "src/" : "";
 
 /**
@@ -93,6 +93,16 @@ export const withNextJsUseClientDirective = (
   isNextJs: boolean,
 ) => (isNextJs ? `'use client'\n${source}` : source);
 
+/** Strips the `src/` prefix from import paths. */
+export const stripSrcPrefixFromPath = (path: string) =>
+  path.replace("src/", "");
+
+/** Resolves the import path from root layout (or custom app) to components */
+export const getImportPathForRootLayout = (
+  componentPath: string,
+  pathName: string,
+) => path.normalize(`../${stripSrcPrefixFromPath(componentPath)}/${pathName}`);
+
 async function generateNextJsCustomAppOrRootLayoutFile(componentPath: string) {
   const router = await checkIfUsingAppOrPagesRouter();
   const isInTypeScriptProject = await checkIsInTypeScriptProject();
@@ -102,7 +112,7 @@ async function generateNextJsCustomAppOrRootLayoutFile(componentPath: string) {
   const snippet = getNextJsCustomAppOrRootLayoutSnippet({
     router,
     resolveImport: pathName =>
-      path.normalize(`../${componentPath}/${pathName}`),
+      getImportPathForRootLayout(componentPath, pathName),
   });
 
   if (router === "pages") {
@@ -138,7 +148,7 @@ export async function generateNextJsDemoFiles({
 
   const snippet = getNextJsAnalyticsPageSnippet({
     resolveImport(pathName: string) {
-      const basePath = `${reactComponentPath}/${pathName}`;
+      const basePath = `${stripSrcPrefixFromPath(reactComponentPath)}/${pathName}`;
 
       // Import path is two levels up from the app router's page directory.
       if (router === "app") {
@@ -146,7 +156,7 @@ export async function generateNextJsDemoFiles({
       }
 
       // Import path is one level up from the pages router's page file.
-      return path.normalize(`../${reactComponentPath}/${pathName}`);
+      return path.normalize(`../${basePath}`);
     },
   });
 
