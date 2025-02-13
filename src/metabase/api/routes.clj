@@ -80,6 +80,7 @@
          metabase.api.preview-embed/keep-me
          metabase.api.public/keep-me
          metabase.api.pulse.unsubscribe/keep-me
+         metabase.segments.api/keep-me
          metabase.api.setting/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
@@ -92,7 +93,6 @@
          metabase.indexed-entities.api/keep-me
          metabase.permissions.api/keep-me
          metabase.revisions.api/keep-me
-         metabase.segments.api/keep-me
          metabase.setup.api/keep-me
          metabase.user-key-value.api/keep-me)
 
