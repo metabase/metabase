@@ -1728,14 +1728,26 @@ SELECT CAST('9223372036854775807' AS BIGINT) AS BIGINT`,
     });
 
     it("should be able to use id parameters with BIGINT columns in dashboards (metabase#5816)", () => {
-      const questionDetails = {
+      const bigintQuestionDetails = {
+        name: "BIGINT values",
+        native: {
+          query: `SELECT 1 AS ID
+UNION ALL
+SELECT 9223372036854775807 AS ID
+UNION ALL
+SELECT -9223372036854775808 AS ID`,
+        },
+        display: "table",
+      };
+
+      const getQuestionDetails = cardId => ({
         name: "Orders, Count",
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": `card__${cardId}`,
           aggregation: [["count"]],
         },
         display: "scalar",
-      };
+      });
       const parameterDetails = {
         id: "b6ed2d72",
         type: "id",
@@ -1751,30 +1763,32 @@ SELECT CAST('9223372036854775807' AS BIGINT) AS BIGINT`,
         parameter_id: parameterDetails.id,
         target: [
           "dimension",
-          ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+          ["field", "ID", { "base-type": "type/BigInteger" }],
         ],
       });
 
       cy.log("create a dashboard");
-      H.createQuestionAndDashboard({
-        questionDetails,
-        dashboardDetails,
-      }).then(({ body: dashcard }) => {
-        H.addOrUpdateDashboardCard({
-          dashboard_id: dashcard.dashboard_id,
-          card_id: dashcard.card_id,
-          card: {
-            parameter_mappings: [getParameterMapping(dashcard.card_id)],
-          },
+      H.createNativeQuestion(bigintQuestionDetails).then(({ body: card }) => {
+        H.createQuestionAndDashboard({
+          questionDetails: getQuestionDetails(card.id),
+          dashboardDetails,
+        }).then(({ body: dashcard }) => {
+          H.addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              parameter_mappings: [getParameterMapping(dashcard.card_id)],
+            },
+          });
+          cy.wrap(dashcard.dashboard_id).as("dashboardId");
         });
-        cy.wrap(dashcard.dashboard_id).as("dashboardId");
       });
 
       cy.log("parameter widgets");
       H.visitDashboard("@dashboardId");
       H.getDashboardCard()
         .findByTestId("scalar-value")
-        .should("have.text", "18,760");
+        .should("have.text", "3");
       H.filterWidget().click();
       H.popover().within(() => {
         cy.findByPlaceholderText("Enter an ID").type(maxBigIntValue);
@@ -1783,25 +1797,27 @@ SELECT CAST('9223372036854775807' AS BIGINT) AS BIGINT`,
       H.filterWidget().findByText(maxBigIntValue).should("be.visible");
       H.getDashboardCard()
         .findByTestId("scalar-value")
-        .should("have.text", "0");
+        .should("have.text", "1");
 
       cy.log("title drill-thru");
       H.getDashboardCard().findByText("Orders, Count").click();
-      H.queryBuilderFiltersPanel().findByText(`ID is ${maxBigIntValue}`);
+      H.queryBuilderFiltersPanel().findByText(
+        `ID is equal to "${maxBigIntValue}"`,
+      );
       H.queryBuilderMain()
         .findByTestId("scalar-value")
-        .should("have.text", "0");
+        .should("have.text", "1");
 
       cy.log("querystring parameter values");
       H.visitDashboard("@dashboardId", {
         params: {
-          [parameterDetails.slug]: maxBigIntValue,
+          [parameterDetails.slug]: minBigIntValue,
         },
       });
-      H.filterWidget().findByText(maxBigIntValue).should("be.visible");
+      H.filterWidget().findByText(minBigIntValue).should("be.visible");
       H.getDashboardCard()
         .findByTestId("scalar-value")
-        .should("have.text", "0");
+        .should("have.text", "1");
     });
 
     it("should be able to use filters with DECIMAL columns in the query builder (metabase#5816)", () => {
