@@ -305,3 +305,38 @@
         (testing :does-not-contain
           (is (=? {:stages [{:filters [[:does-not-contain {} [:field {} (meta/id :reviews :body)] "text"]]}]}
                   (lib/drill-thru query -1 nil drill "does-not-contain"))))))))
+
+(deftest ^:parallel preserve-temporal-bucket-test-quick-filter
+  (testing "preserve the temporal bucket on a breakout column (#50722)"
+    (let [base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                             (lib/aggregate (lib/count))
+                             (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                               (lib/with-temporal-bucket :month))))
+          count-col      (m/find-first #(= (:name %) "count")
+                                       (lib/returned-columns base-query))
+          _              (is (some? count-col))
+          created-at-col (m/find-first #(= (:name %) "CREATED_AT")
+                                       (lib/returned-columns base-query))
+          _              (is (some? created-at-col))
+          context        {:column     created-at-col
+                          :column-ref (lib/ref created-at-col)
+                          :value      "2023-03-01T00:00:00Z"
+                          :row        [{:column     created-at-col,
+                                        :column-ref (lib/ref created-at-col)
+                                        :value      "2023-03-01T00:00:00Z"}
+                                       {:column     count-col
+                                        :column-ref (lib/ref count-col)
+                                        :value      127}]
+                          :dimensions [{:column     created-at-col
+                                        :column-ref (lib/ref created-at-col)
+                                        :value      "2023-03-01T00:00:00Z"}
+                                       {:column     count-col
+                                        :column-ref (lib/ref count-col)
+                                        :value      127}]}
+          drill          (m/find-first #(= (:type %) :drill-thru/quick-filter)
+                                       (lib/available-drill-thrus base-query context))]
+      (is (some? drill))
+      (is (=? {:stages [{:filters [[:= {}
+                                    [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                    "2023-03-01T00:00:00Z"]]}]}
+              (lib/drill-thru base-query -1 nil drill "="))))))
