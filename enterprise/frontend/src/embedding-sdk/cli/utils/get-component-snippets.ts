@@ -9,24 +9,15 @@ import {
 } from "../snippets";
 import type { DashboardInfo } from "../types/dashboard";
 
-import { withNextJsUseClientDirective } from "./nextjs-helpers";
-
 interface Options {
   instanceUrl: string;
   apiKey: string;
   dashboards: DashboardInfo[];
   userSwitcherEnabled: boolean;
-  isNextJs: boolean;
 }
 
-type SampleComponent = {
-  fileName: string;
-  componentName: string;
-  content: string;
-};
-
-export function getComponentSnippets(options: Options): SampleComponent[] {
-  const { userSwitcherEnabled, isNextJs } = options;
+export function getComponentSnippets(options: Options) {
+  const { userSwitcherEnabled } = options;
 
   const analyticsDashboardSnippet = getAnalyticsDashboardSnippet(options);
   const embeddingProviderSnippet = getEmbeddingProviderSnippet(options);
@@ -35,53 +26,33 @@ export function getComponentSnippets(options: Options): SampleComponent[] {
     ? ANALYTICS_PROVIDER_SNIPPET_WITH_USER_SWITCHER
     : ANALYTICS_PROVIDER_SNIPPET_MINIMAL;
 
-  const components: SampleComponent[] = [
+  const components = [
     {
-      fileName: "analytics-provider",
-      componentName: "AnalyticsProvider",
-      content: withNextJsUseClientDirective(
-        analyticsProviderSnippet,
-        isNextJs,
-      ).trim(),
+      name: "analytics-provider",
+      content: analyticsProviderSnippet.trim(),
     },
     {
-      fileName: "embedding-provider",
-      componentName: "EmbeddingProvider",
-      content: withNextJsUseClientDirective(
-        embeddingProviderSnippet,
-        isNextJs,
-      ).trim(),
+      name: "embedding-provider",
+      content: embeddingProviderSnippet.trim(),
     },
     {
-      fileName: "analytics-dashboard",
-      componentName: "AnalyticsDashboard",
-      content: withNextJsUseClientDirective(
-        analyticsDashboardSnippet,
-        isNextJs,
-      ).trim(),
+      name: "analytics-dashboard",
+      content: analyticsDashboardSnippet.trim(),
     },
     {
-      fileName: "theme-switcher",
-      componentName: "ThemeSwitcher",
+      name: "theme-switcher",
       content: THEME_SWITCHER_SNIPPET.trim(),
     },
-  ];
-
-  // Only generate the analytics page when not using Next.js.
-  // This is to prevent unintentionally adding multiple providers to pages.
-  if (!isNextJs) {
-    components.push({
-      fileName: "analytics-page",
-      componentName: "AnalyticsPage",
+    {
+      name: "analytics-page",
       content: ANALYTICS_PAGE_SNIPPET.trim(),
-    });
-  }
+    },
+  ];
 
   // Only generate the user switcher when multi-tenancy is enabled.
   if (userSwitcherEnabled) {
     components.push({
-      fileName: "user-switcher",
-      componentName: "UserSwitcher",
+      name: "user-switcher",
       content: getUserSwitcherSnippet().trim(),
     });
   }

@@ -6,33 +6,21 @@ import {
   getMetabaseInstanceSetupCompleteMessage,
 } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
-import { getNextJsSetupMessages } from "../utils/get-nextjs-setup-message";
 import { getSuggestedImportPath } from "../utils/get-suggested-import-path";
-import {
-  checkIfNextJsProjectUsesSrcDirectory,
-  checkIsInNextJsProject,
-} from "../utils/nextjs-helpers";
 import { printEmptyLines, printWithPadding } from "../utils/print";
 
 export const showPostSetupSteps: CliStepMethod = async state => {
-  const isNextJs = await checkIsInNextJsProject();
-  const isUsingSrcDirectory = checkIfNextJsProjectUsesSrcDirectory();
-
-  const START_SERVER_STEP = `
-  Generated an example Express.js server directory in "${state.mockServerPath}".
+  const STEP_1 = `
+  Generated an example Express.js server directory in "${state.mockServerDir}".
 
   Start the sample server.
-  ${green(`cd ${state.mockServerPath}`)}
+  ${green(`cd ${state.mockServerDir}`)}
   ${green("npm run start")}
 `;
 
-  const importPath = getSuggestedImportPath({
-    isNextJs,
-    isUsingSrcDirectory,
-    componentPath: state.reactComponentPath,
-  });
+  const importPath = getSuggestedImportPath(state.reactComponentDir);
 
-  const REACT_COMPONENT_IMPORT_STEP = `
+  const STEP_2 = `
   Import the component in your React frontend. For example:
   ${green(`import { AnalyticsPage } from "${importPath}";`)}
 
@@ -43,7 +31,7 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   ${green(`<AnalyticsPage />`)}
 `;
 
-  const INSTANCE_READY_STEP = getMetabaseInstanceSetupCompleteMessage(
+  const STEP_3 = getMetabaseInstanceSetupCompleteMessage(
     state.instanceUrl ?? "",
     state.email ?? "",
     state.password ?? "",
@@ -52,30 +40,10 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   const POST_SETUP_STEPS = [];
 
   if (state.token) {
-    POST_SETUP_STEPS.push(START_SERVER_STEP);
+    POST_SETUP_STEPS.push(STEP_1);
   }
 
-  if (!isNextJs) {
-    POST_SETUP_STEPS.push(REACT_COMPONENT_IMPORT_STEP);
-  }
-
-  // Show the Next.js setup messages if the project is using Next.js.
-  if (isNextJs) {
-    const messages = await getNextJsSetupMessages({
-      componentPath: state.reactComponentPath ?? "",
-
-      // Did the project initially have a custom app or root layout file?
-      hasNextJsCustomAppOrRootLayout:
-        state.hasNextJsCustomAppOrRootLayout ?? false,
-
-      // Did we generate an Express.js server?
-      hasExpressJsServer: !!state.token && !!state.mockServerPath,
-    });
-
-    POST_SETUP_STEPS.push(...messages);
-  }
-
-  POST_SETUP_STEPS.push(INSTANCE_READY_STEP);
+  POST_SETUP_STEPS.push(STEP_2, STEP_3);
 
   for (const message of POST_SETUP_STEPS) {
     printWithPadding(message);
