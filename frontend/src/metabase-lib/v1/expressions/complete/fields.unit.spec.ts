@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
 import { SAMPLE_DATABASE, createQuery } from "metabase-lib/test-helpers";
 import type { DatasetQuery, Join } from "metabase-types/api";
 import {
@@ -173,6 +174,135 @@ describe("suggestFields", () => {
     expect(results).toEqual({ ...RESULTS, to: 5 });
   });
 
+  it("should suggest foreign fields", () => {
+    const source = suggestFields({
+      query: createQuery(),
+      stageIndex: -1,
+      expressionIndex: undefined,
+    });
+
+    const result = complete(source, "[Use|");
+
+    expect(result).toEqual({
+      from: 0,
+      to: 4,
+      options: [
+        {
+          type: "field",
+          label: "[User ID]",
+          displayLabel: "User ID",
+          icon: "connections",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → Address]",
+          displayLabel: "User → Address",
+          icon: "string",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → City]",
+          displayLabel: "User → City",
+          icon: "location",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → Email]",
+          displayLabel: "User → Email",
+          icon: "string",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → ID]",
+          displayLabel: "User → ID",
+          icon: "label",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → Latitude]",
+          displayLabel: "User → Latitude",
+          icon: "location",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → Longitude]",
+          displayLabel: "User → Longitude",
+          icon: "location",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → Name]",
+          displayLabel: "User → Name",
+          icon: "string",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → Password]",
+          displayLabel: "User → Password",
+          icon: "string",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → Source]",
+          displayLabel: "User → Source",
+          icon: "string",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → State]",
+          displayLabel: "User → State",
+          icon: "location",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → Zip]",
+          displayLabel: "User → Zip",
+          icon: "location",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → Birth Date]",
+          displayLabel: "User → Birth Date",
+          icon: "calendar",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → Created At]",
+          displayLabel: "User → Created At",
+          icon: "calendar",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+      ],
+    });
+  });
+
   it("should suggest joined fields", async () => {
     const JOIN_CLAUSE: Join = {
       alias: "Foo",
@@ -229,6 +359,59 @@ describe("suggestFields", () => {
       icon: "label",
       column: expect.any(Object),
       matches: [[0, 2]],
+    });
+  });
+
+  it("should suggest nested query fields", () => {
+    const datasetQuery: DatasetQuery = {
+      database: SAMPLE_DATABASE.id,
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.TOTAL, null]],
+      },
+    };
+
+    const queryWithAggregation = createQuery({
+      metadata: sharedMetadata,
+      query: datasetQuery,
+    });
+
+    const query = Lib.appendStage(queryWithAggregation);
+    const stageIndexAfterNesting = 1;
+
+    const source = suggestFields({
+      query,
+      stageIndex: stageIndexAfterNesting,
+      expressionIndex: undefined,
+    });
+
+    const result = complete(source, "T|");
+    expect(result).toEqual({
+      from: 0,
+      to: 1,
+      options: [
+        {
+          type: "field",
+          label: "[Total]",
+          displayLabel: "Total",
+          icon: "int",
+          column: expect.any(Object),
+          matches: [
+            [0, 0],
+            [2, 2],
+          ],
+        },
+        {
+          type: "field",
+          label: "[Count]",
+          displayLabel: "Count",
+          icon: "int",
+          column: expect.any(Object),
+          matches: [[4, 4]],
+        },
+      ],
     });
   });
 });
