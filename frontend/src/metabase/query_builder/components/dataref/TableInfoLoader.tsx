@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import _ from "underscore";
+import { useLatest } from "react-use";
 
 import Tables from "metabase/entities/tables";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
@@ -37,14 +37,15 @@ function useDependentTableMetadata({
       isMissingFks && fetchForeignKeys({ id: table.id }),
     ]);
   }, [fetchMetadata, table, isMissingFks, isMissingFields, fetchForeignKeys]);
+  const fetchDependentDataRef = useLatest(fetchDependentData);
 
   useEffect(() => {
     if (shouldFetchMetadata) {
-      fetchDependentData().then(() => {
+      fetchDependentDataRef.current().then(() => {
         setHasFetchedMetadata(true);
       });
     }
-  }, [fetchDependentData, shouldFetchMetadata]);
+  }, [fetchDependentDataRef, shouldFetchMetadata]);
 
   return hasFetchedMetadata;
 }
