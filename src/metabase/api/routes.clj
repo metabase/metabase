@@ -38,7 +38,6 @@
    [metabase.api.table]
    [metabase.api.task]
    [metabase.api.testing]
-   [metabase.api.tiles]
    [metabase.api.user]
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
@@ -52,6 +51,7 @@
    [metabase.segments.api]
    [metabase.setup.api]
    [metabase.sync.api]
+   [metabase.tiles.api]
    [metabase.timeline.api]
    [metabase.user-key-value.api]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -86,7 +86,6 @@
          metabase.api.table/keep-me
          metabase.api.task/keep-me
          metabase.api.testing/keep-me
-         metabase.api.tiles/keep-me
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
@@ -94,6 +93,7 @@
          metabase.permissions.api/keep-me
          metabase.revisions.api/keep-me
          metabase.setup.api/keep-me
+         metabase.tiles.api/keep-me
          metabase.user-key-value.api/keep-me)
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
@@ -182,7 +182,7 @@
    "/table"                (+auth 'metabase.api.table)
    "/task"                 (+auth 'metabase.api.task)
    "/testing"              (if enable-testing-routes? 'metabase.api.testing pass-thru-handler)
-   "/tiles"                (+auth 'metabase.api.tiles)
+   "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
    "/user"                 (+auth 'metabase.api.user)

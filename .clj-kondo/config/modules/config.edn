@@ -529,6 +529,11 @@
            util
            enterprise/task}}
 
+  tiles
+  {:api  #{metabase.tiles.api
+           metabase.tiles.init}
+   :uses #{api legacy-mbql models query-processor util}}
+
   timeline
   {:api  #{metabase.timeline.api metabase.timeline.core}
    :uses #{analytics api models util}}

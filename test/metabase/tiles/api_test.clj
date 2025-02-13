@@ -1,11 +1,11 @@
-(ns metabase.api.tiles-test
+(ns metabase.tiles.api-test
   "Tests for `/api/tiles` endpoints."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.api.tiles :as api.tiles]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
+   [metabase.tiles.api :as api.tiles]
    [metabase.util.json :as json]))
 
 (defn- png? [s]
