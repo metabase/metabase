@@ -290,7 +290,10 @@ function GoogleSheetsConnectModal({
           <CopyButton value={serviceAccountEmail}></CopyButton>
         </Flex>
         <Box>
-          <Text>3. {t`Click on Done`} </Text>
+          <Text>
+            3.{" "}
+            {jt`Select ${(<strong>${t`Viewer`}</strong>)} permissions, and click on ${(<strong>${t`Send`}</strong>)}`}
+          </Text>
         </Box>
       </Flex>
       <form onSubmit={onSave}>
