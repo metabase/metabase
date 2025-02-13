@@ -1,5 +1,5 @@
 import { getDateFilterDisplayName } from "metabase/querying/filters/utils/dates";
-import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/dates";
+import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import type { Parameter } from "metabase-types/api";
 
 export function formatDateValue(

@@ -27,8 +27,12 @@ export const MISSING_REACT_DEPENDENCY = `
 `;
 
 export const UNSUPPORTED_REACT_VERSION = `
-  Your package.json file contains an unsupported React version.
-  Please make sure your package.json file contains a dependency for React 18.
+  Your app uses a version of React that is not supported.
+  See https://metaba.se/sdk-docs
+
+  Try downloading and running one of our samples instead:
+  - React: https://metaba.se/sdk-sample-react
+  - Next.js: https://metaba.se/sdk-sample-nextjs
 `;
 
 export const DELETE_CONTAINER_MESSAGE = `Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.`;
@@ -59,7 +63,6 @@ export const getMetabaseInstanceSetupCompleteMessage = (
   Metabase is running at ${blue(instanceUrl)}
 
   Log in with
-
   Email: "${blue(email)}"
   Password: "${blue(password)}"
 
@@ -102,3 +105,8 @@ export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK h
 )}`;
 
 export const CONTINUE_SETUP_ON_WARNING_MESSAGE = `Do you want to continue setup?`;
+
+export const LINK_TO_NEXT_JS_SAMPLE = `https://github.com/metabase/metabase-nextjs-sdk-embedding-sample`;
+
+// eslint-disable-next-line no-unconditional-metabase-links-render -- this is for the cli
+export const LINK_TO_NEXT_JS_GUIDE = `https://www.metabase.com/docs/latest/embedding/sdk/next-js`;

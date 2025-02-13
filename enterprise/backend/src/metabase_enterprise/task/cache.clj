@@ -45,14 +45,6 @@
   [refresh-task-fn]
   (.submit ^ExecutorService @pool ^Callable refresh-task-fn))
 
-(defn discarding-rff
-  "Returns a reducing function that discards result rows"
-  [_metadata]
-  (fn discarding-rf
-    ([] {:rows []})
-    ([result] result)
-    ([result _row] result)))
-
 (defn- refresh-task
   "Returns a function that serially reruns queries based on `refresh-defs`, and discards the results. Each refresh
   definition contains a card-id, an optional dashboard-id, and a list of queries to rerun."
@@ -73,8 +65,7 @@
                 {:executed-by  nil
                  :context      :cache-refresh
                  :card-id      card-id
-                 :dashboard-id dashboard-id})
-               discarding-rff)
+                 :dashboard-id dashboard-id}))
               (catch Exception e
                 (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e))))))))))
 
