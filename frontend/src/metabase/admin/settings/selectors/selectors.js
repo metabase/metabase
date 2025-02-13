@@ -3,7 +3,6 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-import { UpsellWhitelabel } from "metabase/admin/upsells/UpsellWhitelabel";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
@@ -492,16 +491,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
     order: 132,
     component: CloudPanel,
     settings: [],
-  },
-  whitelabel: {
-    name: t`Appearance`,
-    getHidden: settings => settings["token-features"]?.whitelabel === true,
-    order: 133,
-    component: props => (
-      <UpsellWhitelabel {...props} source="settings-appearance" />
-    ),
-    settings: [],
-    isUpsell: true,
   },
 };
 
