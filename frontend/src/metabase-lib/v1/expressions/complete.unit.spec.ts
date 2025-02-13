@@ -20,8 +20,15 @@ import {
   createMockStructuredDatasetQuery,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS,
+  ORDERS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
+import { sharedMetadata } from "./__support__/shared";
 import {
   type SuggestOptions,
   suggestAggregations,
@@ -707,6 +714,67 @@ describe("suggestFields", () => {
     const complete = setup();
     const results = complete("[Em|a]");
     expect(results).toEqual({ ...RESULTS, to: 5 });
+  });
+
+  it("should suggest joined fields", async () => {
+    const JOIN_CLAUSE: Join = {
+      alias: "Foo",
+      ident: "pbHOWTxjodLToOUnFJe_k",
+      "source-table": REVIEWS_ID,
+      condition: [
+        "=",
+        ["field", REVIEWS.PRODUCT_ID, null],
+        ["field", ORDERS.PRODUCT_ID, null],
+      ],
+    };
+    const queryWithJoins: DatasetQuery = {
+      database: SAMPLE_DATABASE.id,
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [JOIN_CLAUSE],
+      },
+    };
+
+    const query = createQuery({
+      metadata: sharedMetadata,
+      query: queryWithJoins,
+    });
+
+    const source = suggestFields({
+      query,
+      stageIndex: -1,
+      expressionIndex: undefined,
+      metadata: sharedMetadata,
+      startRule: "expression",
+    });
+
+    complete(source, "Foo|");
+
+    const result = await complete(source, "Foo|");
+
+    expect(result).toEqual({
+      from: 0,
+      to: 3,
+      options: expect.any(Array),
+    });
+
+    expect(result?.options[0]).toEqual({
+      displayLabel: "Foo → Body",
+      label: "[Foo → Body]",
+      type: "field",
+      icon: "string",
+      column: expect.any(Object),
+      matches: [[0, 2]],
+    });
+    expect(result?.options[1]).toEqual({
+      displayLabel: "Foo → ID",
+      label: "[Foo → ID]",
+      type: "field",
+      icon: "label",
+      column: expect.any(Object),
+      matches: [[0, 2]],
+    });
   });
 });
 
