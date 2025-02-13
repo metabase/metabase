@@ -172,7 +172,7 @@ export async function generateNextJsDemoFiles({
 
   if (router === "pages") {
     fs.writeFileSync(
-      sourcePrefix + `pages/${NEXTJS_DEMO_ROUTE_NAME}.${extension}`,
+      `${sourcePrefix}pages/${NEXTJS_DEMO_ROUTE_NAME}.${extension}`,
       snippet,
     );
   }
