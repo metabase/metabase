@@ -33,11 +33,11 @@ You'll also need to set up a dedicated [application database](../installation-an
 
 There are two ways to enter your license when self-hosting Metabase:
 
-1. **When Metabase is running**: go to **Settings** > **Admin settings**, and click **License and Billing** in the lefthand sidebar. Paste in your license token under **License** and click **Activate**.
+- **When Metabase is running**: go to **Settings** > **Admin settings**, and click **License and Billing** in the lefthand sidebar. Paste in your license token under **License** and click **Activate**.
 
 OR
 
-2. **Before you start Metabase**: you can also set the license token with the [`MB_PREMIUM_EMBEDDING_TOKEN` environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_premium_embedding_token). This environment variable must be set _before_ you start your Metabase.
+- **Before you start Metabase**: you can also set the license token with the [`MB_PREMIUM_EMBEDDING_TOKEN` environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_premium_embedding_token). This environment variable must be set _before_ you start your Metabase.
 
 ## Upgrading from the open-source edition of Metabase
 

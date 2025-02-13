@@ -11,11 +11,9 @@ import { EntityPickerModal } from "metabase/common/components/EntityPicker";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import LegacyModal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Toaster from "metabase/components/Toaster";
 import { UndoListOverlay, UndoToast } from "metabase/containers/UndoListing";
 import LegacySelect, { Option } from "metabase/core/components/Select";
-import TippyTooltip from "metabase/core/components/Tooltip";
 import { PaletteCard } from "metabase/palette/components/Palette";
 import {
   Box,
@@ -45,11 +43,11 @@ const LauncherGroup = ({
   title,
   children,
   ...props
-}: { title: string } & PaperProps) => (
+}: React.PropsWithChildren<{ title: string } & PaperProps>) => (
   <Paper {...props} p="md">
-    <Stack spacing="md">
+    <Stack gap="md">
       <Title order={3}>{title}</Title>
-      <Group noWrap={false}>{children}</Group>
+      <Group>{children}</Group>
     </Stack>
   </Paper>
 );
@@ -126,32 +124,23 @@ const _Launchers = ({
           </HoverCard.Dropdown>
         </HoverCard>
         <MantineSelect
-          data={[
-            {
-              label: "Mantine Select option 1",
-              value: "1",
-            },
-            {
-              label: "Mantine Select option 2",
-              value: "2",
-            },
-          ]}
+          data={
+            [
+              {
+                label: "Mantine Select option 1",
+                value: "1",
+              },
+              {
+                label: "Mantine Select option 2",
+                value: "2",
+              },
+            ] as {
+              label: string;
+              value: string;
+            }[]
+          }
           defaultValue={"1"}
         />
-        <TippyTooltip tooltip="Legacy tooltip content">
-          <Button>Legacy tooltip</Button>
-        </TippyTooltip>
-        <TippyPopover
-          placement="bottom"
-          content={
-            <Paper p="md" aria-label="Legacy popover content">
-              Legacy popover text content
-              {nestedLaunchers}
-            </Paper>
-          }
-        >
-          <Button>Legacy popover</Button>
-        </TippyPopover>
         <LegacySelect defaultValue="1" data-testid="LegacySelect">
           <Option value="1">Legacy Select option 1</Option>
           <Option value="2">Legacy Select option 2</Option>
@@ -280,7 +269,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
                 <Title p="md" order={3} id={modalTitleId}>
                   Legacy modal content
                 </Title>
-                <Stack spacing="md" p="md">
+                <Stack gap="md" p="md">
                   <Box p="1rem 0">Legacy modal text content</Box>
                   {enableNesting && <Launchers />}
                 </Stack>
@@ -296,7 +285,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           title={`Mantine Modal content`}
           onClose={() => setMantineModalCount(c => c - 1)}
         >
-          <Stack spacing="md">
+          <Stack gap="md">
             <Text>Mantine Modal text content</Text>
             {enableNesting && <Launchers />}
           </Stack>

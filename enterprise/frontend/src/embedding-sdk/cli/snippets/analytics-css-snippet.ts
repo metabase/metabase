@@ -19,6 +19,13 @@ export const ANALYTICS_CSS_SNIPPET = `
   margin: 0 auto;
   min-height: 100vh;
   padding: 30px 0;
+  container-type: inline-size;
+}
+
+@container (max-width: 900px) {
+  .analytics-header {
+    flex-direction: column;
+  }
 }
 
 .analytics-header,

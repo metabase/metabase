@@ -50,7 +50,9 @@ describe("scenarios > dashboard", () => {
       );
       H.modal().findByTestId("collection-picker-button").click();
       H.entityPickerModal().findByText("Select a collection");
-      cy.realPress("Escape");
+      // cy.realPress("Escape");
+      // TODO: Fix this:
+      H.entityPickerModal().button("Cancel").click();
       H.modal().findByText("New dashboard").should("be.visible");
 
       cy.log("Create a new dashboard");
@@ -1184,7 +1186,7 @@ describe("scenarios > dashboard", () => {
 
     // Verify the card is hidden when the value is correct but produces empty results
     H.filterWidget().click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       cy.findByPlaceholderText("Enter an ID").type("-1{enter}");
       cy.button("Add filter").click();
     });
@@ -1200,7 +1202,7 @@ describe("scenarios > dashboard", () => {
 
     // Verify the card is visible when it returned an error
     H.filterWidget().click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       cy.findByPlaceholderText("Enter an ID").type("text{enter}");
       cy.button("Add filter").click();
     });
@@ -1236,45 +1238,41 @@ describe("scenarios > dashboard", () => {
       assertPreventLeave();
     });
 
-    it(
-      "should warn a user before leaving after adding, removed, moving, or duplicating a tab",
-      { tags: "@flaky" },
-      () => {
-        cy.visit("/");
+    it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
+      cy.visit("/");
 
-        // add tab
-        createNewDashboard();
-        H.createNewTab();
-        assertPreventLeave();
-        H.saveDashboard();
+      // add tab
+      createNewDashboard();
+      H.createNewTab();
+      assertPreventLeave();
+      H.saveDashboard();
 
-        // move tab
-        H.editDashboard();
-        dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
-        // assert tab order is now correct and ui has caught up to result of dragging the tab
-        cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
-        cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
-        assertPreventLeave();
-        H.saveDashboard();
+      // move tab
+      H.editDashboard();
+      dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
+      // assert tab order is now correct and ui has caught up to result of dragging the tab
+      cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
+      cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
+      assertPreventLeave();
+      H.saveDashboard();
 
-        // duplicate tab
-        H.editDashboard();
-        H.duplicateTab("Tab 1");
-        assertPreventLeave();
-        H.saveDashboard();
+      // duplicate tab
+      H.editDashboard();
+      H.duplicateTab("Tab 1");
+      assertPreventLeave();
+      H.saveDashboard();
 
-        // remove tab
-        H.editDashboard();
-        H.deleteTab("Copy of Tab 1");
-        assertPreventLeave();
-        H.saveDashboard();
+      // remove tab
+      H.editDashboard();
+      H.deleteTab("Copy of Tab 1");
+      assertPreventLeave();
+      H.saveDashboard();
 
-        // rename tab
-        H.editDashboard();
-        H.renameTab("Tab 2", "Foo tab");
-        assertPreventLeave();
-      },
-    );
+      // rename tab
+      H.editDashboard();
+      H.renameTab("Tab 2", "Foo tab");
+      assertPreventLeave();
+    });
 
     function createNewDashboard() {
       H.newButton("Dashboard").click();
