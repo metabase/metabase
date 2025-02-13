@@ -12,6 +12,7 @@ import {
   getPackageVersions,
   hasPackageJson,
 } from "../utils/get-package-version";
+import { showWarningAndAskToContinue } from "../utils/show-warning-prompt";
 
 const isReactVersionSupported = (version: string) =>
   semver.satisfies(semver.coerce(version)!, "18.x");
@@ -36,24 +37,22 @@ export const checkIfReactProject: CliStepMethod = async state => {
     isReactVersionSupported(reactDep) &&
     isReactVersionSupported(reactDomDep);
 
-  let errorMessage: string | null = null;
+  let warningMessage: string | null = null;
 
   if (!hasReactDependency) {
-    errorMessage = MISSING_REACT_DEPENDENCY;
+    warningMessage = MISSING_REACT_DEPENDENCY;
   } else if (!hasSupportedReactVersion) {
-    errorMessage = UNSUPPORTED_REACT_VERSION;
+    warningMessage = UNSUPPORTED_REACT_VERSION;
   }
 
-  if (errorMessage) {
+  if (warningMessage) {
     spinner.fail();
 
-    return [
-      {
-        type: "error",
-        message: errorMessage,
-      },
-      state,
-    ];
+    const shouldContinue = await showWarningAndAskToContinue(warningMessage);
+
+    if (!shouldContinue) {
+      return [{ type: "error", message: "Canceled." }, state];
+    }
   } else {
     spinner.succeed(`React ${reactDep} and React DOM ${reactDomDep} found`);
   }

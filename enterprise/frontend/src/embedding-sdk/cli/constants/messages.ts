@@ -27,12 +27,8 @@ export const MISSING_REACT_DEPENDENCY = `
 `;
 
 export const UNSUPPORTED_REACT_VERSION = `
-  Your app uses a version of React that is not supported.
-  See https://metaba.se/sdk-docs
-
-  Try downloading and running one of our samples instead:
-  - React: https://metaba.se/sdk-sample-react
-  - Next.js: https://metaba.se/sdk-sample-nextjs
+  Your package.json file contains an unsupported React version.
+  Please make sure your package.json file contains a dependency for React 18.
 `;
 
 export const DELETE_CONTAINER_MESSAGE = `Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.`;
