@@ -384,17 +384,19 @@ export type StringFilterOptions = {
   caseSensitive?: boolean;
 };
 
+export type NumberFilterValue = number | bigint;
+
 export type NumberFilterParts = {
   operator: NumberFilterOperator;
   column: ColumnMetadata;
-  values: number[];
+  values: NumberFilterValue[];
 };
 
 export type CoordinateFilterParts = {
   operator: CoordinateFilterOperator;
   column: ColumnMetadata;
   longitudeColumn: ColumnMetadata | null;
-  values: number[];
+  values: NumberFilterValue[];
 };
 
 export type BooleanFilterParts = {
