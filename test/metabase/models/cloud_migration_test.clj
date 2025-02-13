@@ -65,6 +65,8 @@
       (is (not (cloud-migration/read-only-mode))))))
 
 (deftest read-only-login-test
-  (mt/with-temporary-setting-values [read-only-mode true]
+  (try
     (cloud-migration/read-only-mode! true)
-    (mt/client :post 200 "session" (mt/user->credentials :rasta))))
+    (mt/client :post 200 "session" (mt/user->credentials :rasta))
+    (finally
+      (cloud-migration/read-only-mode! false))))

@@ -91,34 +91,26 @@
   (->> copy/entities (map t2/table-name) (into #{})))
 
 (def ^:private read-only-mode-exceptions
-  (update-keys {;; Migrations need to update their own state
-                :model/CloudMigration :all :model/Setting :all
-                ;; Users need to login, make queries, and we need need to audit them.
-                :model/User :all :model/Session :all :model/LoginHistory :all
-                :model/UserParameterValue :all
-                :model/AuditLog :all :model/ViewLog :all
-                ;; Cards need to able to update their last used at timestamp, but we don't want to create
-                ;; new cards or update other fields.
-                :model/Card #{:id :last_used_at :updated_at}}
-               ;; These exceptions use table name instead of model name because you can actually bypass the model
-               ;; and write toucan2 functions that interact with table directly.
-               t2/table-name))
-
-(defn- update-exempted?
-  [table-name {:keys [changes]}]
-  (or (=  (read-only-mode-exceptions table-name) :all)
-      (set/subset? (read-only-mode-exceptions table-name)
-                   (->> changes keys (into #{})))))
+  (->> #{;; Migrations need to update their own state
+         :model/CloudMigration :model/Setting
+         ;; Users need to login, make queries, and we need need to audit them.
+         :model/User :model/Session :model/LoginHistory
+         :model/UserParameterValue
+         :model/AuditLog :model/ViewLog}
+       ;; These exceptions use table name instead of model name because you can actually bypass the model
+       ;; and write toucan2 functions that interact with table directly.
+       (map t2/table-name)
+       (into #{})))
 
 ;; Block write calls to most tables in read-only mode.
 (methodical/defmethod t2.pipeline/build :before [#_query-type     :toucan.statement-type/DML
                                                  #_model          :default
                                                  #_resolved-query :default]
-  [_query-type model parsed-args resolved-query]
+  [_query-type model _parsed-args resolved-query]
   (let [table-name (t2/table-name model)]
     (when (and (read-only-mode)
                (read-only-mode-inclusions table-name)
-               (not (update-exempted? table-name parsed-args)))
+               (not (read-only-mode-exceptions table-name)))
       (throw (ex-info (tru "Metabase is in read-only-mode mode!")
                       {:status-code 403}))))
   resolved-query)
