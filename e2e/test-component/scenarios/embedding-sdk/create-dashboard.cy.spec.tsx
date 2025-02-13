@@ -24,7 +24,7 @@ describe("scenarios > embedding-sdk > create-dashboard modal", () => {
       ).as("personalCollection");
     });
 
-    it("should create a dashboard in the personal collection when initialCollectionId is 'personal' and not thing that 'personal' is a numeric id", () => {
+    it("should create a dashboard in the personal collection when initialCollectionId is 'personal' and not think that 'personal' is a numeric id", () => {
       let personalCollectionId: number;
 
       cy.intercept("GET", "/api/user/current", req => {
