@@ -22,7 +22,7 @@ export const setupLicense: CliStepMethod = async state => {
 
   const shouldSetupLicense = await toggle({
     message: "Do you want to set up a Pro license?",
-    default: false,
+    default: true,
   });
 
   if (!shouldSetupLicense) {
