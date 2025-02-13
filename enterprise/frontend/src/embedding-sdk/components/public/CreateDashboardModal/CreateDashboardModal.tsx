@@ -4,7 +4,7 @@ import _ from "underscore";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SDKCollectionReference,
-  getCollectionNumericIdFromReference,
+  getCollectionIdSlugFromReference,
 } from "embedding-sdk/store/collections";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections from "metabase/entities/collections";
@@ -25,8 +25,8 @@ const CreateDashboardModalInner = ({
   onCreate,
   onClose,
 }: CreateDashboardModalProps) => {
-  const numericCollectionId = useSelector((state: State) =>
-    getCollectionNumericIdFromReference(state, initialCollectionId),
+  const translatedCollectionId = useSelector((state: State) =>
+    getCollectionIdSlugFromReference(state, initialCollectionId),
   );
 
   return (
@@ -34,7 +34,7 @@ const CreateDashboardModalInner = ({
       opened={isOpen}
       onCreate={onCreate}
       onClose={onClose}
-      collectionId={numericCollectionId}
+      collectionId={translatedCollectionId}
     />
   );
 };

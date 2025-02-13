@@ -70,6 +70,26 @@ describe("scenarios > embedding-sdk > create-dashboard modal", () => {
       cy.get("@personalCollectionSpy").should("not.have.been.called");
     });
   });
+
+  describe.only("root collection", () => {
+    beforeEach(() => {
+      signInAsAdminAndEnableEmbeddingSdk();
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+
+      cy.intercept("POST", "/api/dashboard").as("createDashboard");
+    });
+
+    it("should create a dashboard in the root collection when initialCollectionId is 'root'", () => {
+      mountSdkContent(<CreateDashboardModal initialCollectionId="root" />);
+
+      fillAndSubmitForm();
+
+      cy.wait("@createDashboard").then(interception => {
+        expect(interception.request.body.collection_id).to.equal(null);
+      });
+    });
+  });
 });
 
 const fillAndSubmitForm = ({

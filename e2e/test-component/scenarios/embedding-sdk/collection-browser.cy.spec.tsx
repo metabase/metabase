@@ -5,8 +5,17 @@ import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
 } from "e2e/support/helpers/component-testing-sdk/component-embedding-sdk-helpers";
+import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 describe("scenarios > embedding-sdk > collection browser", () => {
+  beforeEach(() => {
+    signInAsAdminAndEnableEmbeddingSdk();
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    cy.intercept("GET", "/api/collection/*").as("getCollection");
+  });
+
   describe("personal collection", () => {
     beforeEach(() => {
       signInAsAdminAndEnableEmbeddingSdk();
@@ -35,6 +44,10 @@ describe("scenarios > embedding-sdk > collection browser", () => {
             `/api/collection/${personalCollectionId}`,
           );
         });
+
+        getSdkRoot()
+          .findByText("Bobby Tables's Personal Collection")
+          .should("exist");
       });
     });
 
@@ -44,6 +57,24 @@ describe("scenarios > embedding-sdk > collection browser", () => {
       cy.wait("@getCollection").then(interception => {
         expect(interception.request.url).to.include("/api/collection/root");
       });
+    });
+  });
+
+  describe("root collection", () => {
+    beforeEach(() => {
+      signInAsAdminAndEnableEmbeddingSdk();
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+    });
+
+    it("should load the root collection if collectionId='root'", () => {
+      cy.intercept("GET", "/api/collection/root").as("getRootCollection");
+
+      mountSdkContent(<CollectionBrowser collectionId="root" />);
+
+      cy.wait("@getRootCollection");
+
+      getSdkRoot().findByText("Our analytics").should("exist");
     });
   });
 });
