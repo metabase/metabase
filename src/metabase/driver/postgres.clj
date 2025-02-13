@@ -460,15 +460,8 @@
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
   ;; Postgres doesn't support quarter in intervals (#20683)
-  (cond
-    (= unit :quarter)
+  (if (= unit :quarter)
     (recur driver hsql-form (* 3 amount) :month)
-
-    ;; date + interval -> timestamp, so cast the expression back to date
-    (h2x/is-of-type? hsql-form "date")
-    (h2x/cast "date" (h2x/+ hsql-form (interval amount unit)))
-
-    :else
     (let [hsql-form (->timestamp hsql-form)]
       (-> (h2x/+ hsql-form (interval amount unit))
           (h2x/with-type-info (h2x/type-info hsql-form))))))
@@ -479,8 +472,7 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
-  ;; without tagging the expression, other code will want to add a type
-  (h2x/with-database-type-info [:to_timestamp expr] "timestamptz"))
+  [:to_timestamp expr])
 
 (defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
@@ -519,10 +511,6 @@
     "timetz"
     (h2x/cast "timetz" (time-trunc unit expr))
 
-    ;; postgres returns timestamp or timestamptz from `date_trunc`, so cast back if we've got a date column
-    "date"
-    (h2x/cast "date" [:date_trunc (h2x/literal unit) expr])
-
     #_else
     (let [expr' (->timestamp expr)]
       (-> [:date_trunc (h2x/literal unit) expr']
@@ -540,6 +528,7 @@
 (defmethod sql.qp/date [:postgres :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))
 (defmethod sql.qp/date [:postgres :hour]             [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:postgres :hour-of-day]      [_ _ expr] (extract-integer :hour expr))
+(defmethod sql.qp/date [:postgres :day]              [_ _ expr] (h2x/->date expr))
 (defmethod sql.qp/date [:postgres :day-of-month]     [_ _ expr] (extract-integer :day expr))
 (defmethod sql.qp/date [:postgres :day-of-year]      [_ _ expr] (extract-integer :doy expr))
 (defmethod sql.qp/date [:postgres :month]            [_ _ expr] (date-trunc :month expr))
@@ -568,10 +557,6 @@
 (mu/defn- quoted? [database-type :- ::lib.schema.common/non-blank-string]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
-
-(defmethod sql.qp/date [:postgres :day]
-  [_ _ expr]
-  (h2x/maybe-cast (h2x/database-type expr) (h2x/->date expr)))
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
