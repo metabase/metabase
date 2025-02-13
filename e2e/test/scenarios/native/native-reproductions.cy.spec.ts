@@ -191,7 +191,7 @@ describe("issue 48712", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should not reset the suggesions when the query is edited (metabase#48712)", () => {
+  it("should not reset the suggestions when the query is edited (metabase#48712)", () => {
     H.startNewNativeQuestion();
 
     H.NativeEditor.type("pro");
@@ -247,7 +247,7 @@ describe("issue 53299", { tags: ["@mongo"] }, () => {
     cy.signInAsAdmin();
   });
 
-  it("should be possible to switch to mongodb when editing a sql question (metabase#53299)", () => {
+  it("should be possible to switch to mongodb when editing an sql question (metabase#53299)", () => {
     H.startNewNativeQuestion();
 
     H.selectNativeEditorDataSource("QA Mongo");
