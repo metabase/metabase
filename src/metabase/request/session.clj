@@ -1,8 +1,5 @@
 (ns metabase.request.session
   (:require
-   ;; ignored for now until I move this stuff into this namespace.
-   ;;
-   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.api.common
     :as api
     :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]

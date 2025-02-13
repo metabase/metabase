@@ -1228,7 +1228,7 @@ describe("issue 50686", () => {
     cy.button("Add comparison").click();
     H.popover().findByText("Value from another column…").click();
     H.popover().findByText("FORECAST").click();
-    cy.button("Done").click();
+    H.popover().button("Done").click();
 
     H.queryBuilderMain().within(() => {
       // First comparison still exists
