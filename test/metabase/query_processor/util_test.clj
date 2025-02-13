@@ -47,8 +47,8 @@
                 :type :query,
                 :query {:source-table 8},
                 :parameters [{:name "p1", :value ["9223372036854775808" 1]}]}]
-        (is (some? (query-hash-hex q1))
-            (= (query-hash-hex q1) (query-hash-hex q2)))))))
+        (is (some? (query-hash-hex q1)))
+        (is (= (query-hash-hex q1) (query-hash-hex q2)))))))
 
 (deftest ^:parallel ignore-lib-uuids-test
   (letfn [(query []
