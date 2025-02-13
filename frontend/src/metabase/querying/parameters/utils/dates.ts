@@ -2,71 +2,6 @@ import dayjs from "dayjs";
 
 import type { DateFilterValue } from "metabase/querying/filters/types";
 import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils/dates";
-import type { ParameterValueOrArray } from "metabase-types/api";
-
-function normalizeArray(value: ParameterValueOrArray | null | undefined) {
-  if (value == null) {
-    return [];
-  } else {
-    return Array.isArray(value) ? value : [value];
-  }
-}
-
-export function deserializeStringParameterValue(
-  value: ParameterValueOrArray | null | undefined,
-): string[] {
-  return normalizeArray(value).reduce((values: string[], item) => {
-    if (item != null && item !== "") {
-      values.push(String(item));
-    }
-    return values;
-  }, []);
-}
-
-export function deserializeNumberParameterValue(
-  value: ParameterValueOrArray | null | undefined,
-): number[] {
-  return normalizeArray(value).reduce((values: number[], item) => {
-    const number = typeof item === "number" ? item : parseFloat(String(item));
-    if (isFinite(number)) {
-      values.push(number);
-    }
-    return values;
-  }, []);
-}
-
-export function deserializeBooleanParameterValue(
-  value: ParameterValueOrArray | null | undefined,
-): boolean[] {
-  return normalizeArray(value).reduce((values: boolean[], item) => {
-    if (typeof item === "boolean") {
-      values.push(item);
-    }
-    if (item === "true") {
-      values.push(true);
-    }
-    if (item === "false") {
-      values.push(false);
-    }
-    return values;
-  }, []);
-}
-
-function serializeDate(date: Date, hasTime: boolean) {
-  return hasTime
-    ? dayjs(date).format("YYYY-MM-DDTHH:mm:ss")
-    : dayjs(date).format("YYYY-MM-DD");
-}
-
-function hasTimePart(s: string) {
-  return s.includes("T");
-}
-
-type DateFilterSerializer = {
-  regex: RegExp;
-  serialize: (value: DateFilterValue) => string | undefined;
-  deserialize: (match: RegExpMatchArray) => DateFilterValue | undefined;
-};
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -85,7 +20,23 @@ const MONTHS = [
   "Dec",
 ];
 
-const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
+function serializeDate(date: Date, hasTime: boolean) {
+  return hasTime
+    ? dayjs(date).format("YYYY-MM-DDTHH:mm:ss")
+    : dayjs(date).format("YYYY-MM-DD");
+}
+
+function hasTimePart(s: string) {
+  return s.includes("T");
+}
+
+type Serializer = {
+  regex: RegExp;
+  serialize: (value: DateFilterValue) => string | undefined;
+  deserialize: (match: RegExpMatchArray) => DateFilterValue | undefined;
+};
+
+const SERIALIZERS: Serializer[] = [
   // entire month, `2020-04`
   {
     regex: /^([0-9]{4})-([0-9]{2})$/,
@@ -493,7 +444,7 @@ const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
 ];
 
 export function serializeDateParameterValue(value: DateFilterValue): string {
-  for (const serializer of DATE_FILTER_SERIALIZERS) {
+  for (const serializer of SERIALIZERS) {
     const text = serializer.serialize(value);
     if (text != null) {
       return text;
@@ -504,14 +455,10 @@ export function serializeDateParameterValue(value: DateFilterValue): string {
 }
 
 export function deserializeDateParameterValue(
-  value: ParameterValueOrArray | null | undefined,
+  text: string,
 ): DateFilterValue | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  for (const serializer of DATE_FILTER_SERIALIZERS) {
-    const match = value.match(serializer.regex);
+  for (const serializer of SERIALIZERS) {
+    const match = text.match(serializer.regex);
     if (match != null) {
       const value = serializer.deserialize(match);
       if (value != null) {

@@ -12,11 +12,11 @@ import type {
 import { isStructuredDimensionTarget } from "metabase-types/guards";
 
 import {
-  deserializeBooleanParameterValue,
-  deserializeDateParameterValue,
-  deserializeNumberParameterValue,
-  deserializeStringParameterValue,
-} from "./parsing";
+  normalizeBooleanParameterValue,
+  normalizeDateParameterValue,
+  normalizeNumberParameterValue,
+  normalizeStringParameterValue,
+} from "./normalize";
 
 const STRING_OPERATORS: Partial<
   Record<ParameterType, Lib.StringFilterOperator>
@@ -130,7 +130,7 @@ function getStringParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const values = deserializeStringParameterValue(value);
+  const values = normalizeStringParameterValue(value);
   if (values.length === 0) {
     return;
   }
@@ -149,7 +149,7 @@ function getNumberParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const values = deserializeNumberParameterValue(value);
+  const values = normalizeNumberParameterValue(value);
   if (values.length === 0) {
     return;
   }
@@ -170,7 +170,7 @@ function getBooleanParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const values = deserializeBooleanParameterValue(value);
+  const values = normalizeBooleanParameterValue(value);
   if (values.length === 0) {
     return;
   }
@@ -183,7 +183,7 @@ function getDateParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const filter = deserializeDateParameterValue(value);
+  const filter = normalizeDateParameterValue(value);
   if (filter == null) {
     return;
   }

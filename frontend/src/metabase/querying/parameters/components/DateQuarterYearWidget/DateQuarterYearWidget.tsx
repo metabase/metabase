@@ -3,10 +3,8 @@ import { match } from "ts-pattern";
 
 import { QuarterYearPicker } from "metabase/querying/filters/components/QuarterYearPicker";
 import type { QuarterYearPickerValue } from "metabase/querying/filters/types";
-import {
-  deserializeDateParameterValue,
-  serializeDateParameterValue,
-} from "metabase/querying/parameters/utils/parsing";
+import { serializeDateParameterValue } from "metabase/querying/parameters/utils/dates";
+import { normalizeDateParameterValue } from "metabase/querying/parameters/utils/normalize";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateQuarterYearPickerProps = {
@@ -30,7 +28,7 @@ export function DateQuarterYearWidget({
 function getPickerValue(
   value: ParameterValueOrArray | null | undefined,
 ): QuarterYearPickerValue | undefined {
-  return match(deserializeDateParameterValue(value))
+  return match(normalizeDateParameterValue(value))
     .returnType<QuarterYearPickerValue | undefined>()
     .with({ type: "quarter" }, value => value)
     .otherwise(() => undefined);

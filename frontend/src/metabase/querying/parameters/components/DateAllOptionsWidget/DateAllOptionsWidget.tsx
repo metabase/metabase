@@ -7,10 +7,8 @@ import type {
   DatePickerOperator,
   DatePickerValue,
 } from "metabase/querying/filters/types";
-import {
-  deserializeDateParameterValue,
-  serializeDateParameterValue,
-} from "metabase/querying/parameters/utils/parsing";
+import { serializeDateParameterValue } from "metabase/querying/parameters/utils/dates";
+import { normalizeDateParameterValue } from "metabase/querying/parameters/utils/normalize";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateAllOptionsWidgetProps = {
@@ -45,7 +43,7 @@ export function DateAllOptionsWidget({
 function getPickerValue(
   value: ParameterValueOrArray | null | undefined,
 ): DatePickerValue | undefined {
-  return match(deserializeDateParameterValue(value))
+  return match(normalizeDateParameterValue(value))
     .returnType<DatePickerValue | undefined>()
     .with({ type: P.union("specific", "relative", "exclude") }, value => value)
     .otherwise(() => undefined);

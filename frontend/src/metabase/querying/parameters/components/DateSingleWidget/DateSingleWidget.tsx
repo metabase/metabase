@@ -7,10 +7,8 @@ import {
   SingleDatePicker,
   type SingleDatePickerValue,
 } from "metabase/querying/filters/components/DatePicker/SpecificDatePicker/SingleDatePicker";
-import {
-  deserializeDateParameterValue,
-  serializeDateParameterValue,
-} from "metabase/querying/parameters/utils/parsing";
+import { serializeDateParameterValue } from "metabase/querying/parameters/utils/dates";
+import { normalizeDateParameterValue } from "metabase/querying/parameters/utils/normalize";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateSingleWidgetProps = {
@@ -46,7 +44,7 @@ export function DateSingleWidget({
 function getPickerValue(
   value: ParameterValueOrArray | null | undefined,
 ): SingleDatePickerValue | undefined {
-  return match(deserializeDateParameterValue(value))
+  return match(normalizeDateParameterValue(value))
     .returnType<SingleDatePickerValue | undefined>()
     .with({ type: "specific", operator: "=" }, ({ values, hasTime }) => ({
       date: values[0],

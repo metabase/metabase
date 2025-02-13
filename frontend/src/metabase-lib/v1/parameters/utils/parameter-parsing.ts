@@ -1,10 +1,6 @@
 import type { Query } from "history";
 
-import {
-  deserializeBooleanParameterValue,
-  deserializeNumberParameterValue,
-  deserializeStringParameterValue,
-} from "metabase/querying/parameters/utils/parsing";
+import { normalizeNumberParameterValue } from "metabase/querying/parameters/utils/normalize";
 import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
@@ -83,24 +79,29 @@ function parseParameterValueForNumber(value: ParameterValueOrArray) {
     }
   }
 
-  return deserializeNumberParameterValue(value);
+  return normalizeNumberParameterValue(value);
 }
 
 function parseParameterValueForFields(
   value: ParameterValueOrArray,
   fields: Field[],
 ): ParameterValueOrArray {
+  if (Array.isArray(value)) {
+    return value.flatMap(v => parseParameterValueForFields(v, fields));
+  }
+
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
   if (fields.every(f => f.isNumeric() && !f.isDate())) {
-    return deserializeNumberParameterValue(value);
+    const number = parseFloat(String(value));
+    return isNaN(number) ? [] : number;
   }
 
   if (fields.every(f => f.isBoolean())) {
-    return deserializeBooleanParameterValue(value);
+    return value === "true" ? true : value === "false" ? false : [];
   }
 
   if (fields.every(f => f.isString() || f.isStringLike())) {
-    return deserializeStringParameterValue(value);
+    return String(value);
   }
 
   return value;
