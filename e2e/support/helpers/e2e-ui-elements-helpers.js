@@ -219,10 +219,6 @@ export const queryBuilderHeader = () => {
   return cy.findByTestId("qb-header");
 };
 
-export const queryBuilderFiltersPanel = () => {
-  return cy.findByTestId("qb-filters-panel");
-};
-
 export const queryBuilderFooter = () => {
   return cy.findByTestId("view-footer");
 };

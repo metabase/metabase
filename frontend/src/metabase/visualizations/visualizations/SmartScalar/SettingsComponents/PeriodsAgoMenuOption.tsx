@@ -50,7 +50,7 @@ export function PeriodsAgoMenuOption({
 
   const value = editedValue?.value ?? MIN_VALUE;
   const handleInputChange = useCallback(
-    (value: number | "") => {
+    (value: NumberValue) => {
       if (message) {
         setMessage(null);
       }

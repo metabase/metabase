@@ -1,6 +1,5 @@
 import dayjs from "dayjs";
 
-import { type NumberValue, parseNumber } from "metabase/lib/number";
 import type { DateFilterValue } from "metabase/querying/filters/types";
 import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils/dates";
 import type { ParameterValueOrArray } from "metabase-types/api";
@@ -24,35 +23,16 @@ export function deserializeStringParameterValue(
   }, []);
 }
 
-export function serializeNumberParameterValue(
-  value: NumberValue[],
-): ParameterValueOrArray {
-  return value.map(item => {
-    return typeof item === "number" ? item : String(item);
-  });
-}
-
 export function deserializeNumberParameterValue(
   value: ParameterValueOrArray | null | undefined,
-): NumberValue[] {
-  return normalizeArray(value).reduce((values: NumberValue[], item) => {
-    if (typeof item === "number" && Number.isFinite(item)) {
-      values.push(item);
-    }
-    if (typeof item === "string") {
-      const number = parseNumber(item);
-      if (number != null) {
-        values.push(number);
-      }
+): number[] {
+  return normalizeArray(value).reduce((values: number[], item) => {
+    const number = typeof item === "number" ? item : parseFloat(String(item));
+    if (isFinite(number)) {
+      values.push(number);
     }
     return values;
   }, []);
-}
-
-export function normalizeNumberParameterValue(
-  value: ParameterValueOrArray | null | undefined,
-): ParameterValueOrArray {
-  return serializeNumberParameterValue(deserializeNumberParameterValue(value));
 }
 
 export function deserializeBooleanParameterValue(
@@ -525,9 +505,9 @@ export function serializeDateParameterValue(value: DateFilterValue): string {
 
 export function deserializeDateParameterValue(
   value: ParameterValueOrArray | null | undefined,
-): DateFilterValue | null {
+): DateFilterValue | undefined {
   if (typeof value !== "string") {
-    return null;
+    return undefined;
   }
 
   for (const serializer of DATE_FILTER_SERIALIZERS) {
@@ -539,6 +519,4 @@ export function deserializeDateParameterValue(
       }
     }
   }
-
-  return null;
 }

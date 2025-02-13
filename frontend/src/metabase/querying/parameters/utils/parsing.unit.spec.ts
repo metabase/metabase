@@ -6,9 +6,7 @@ import {
   deserializeDateParameterValue,
   deserializeNumberParameterValue,
   deserializeStringParameterValue,
-  normalizeNumberParameterValue,
   serializeDateParameterValue,
-  serializeNumberParameterValue,
 } from "./parsing";
 
 describe("string parameters", () => {
@@ -17,9 +15,12 @@ describe("string parameters", () => {
     { value: ["a", "b", "", "c"], expectedValue: ["a", "b", "c"] },
     { value: [1, 2, 3], expectedValue: ["1", "2", "3"] },
     { value: [true, false], expectedValue: ["true", "false"] },
-  ])("should deserialize $value", ({ value, expectedValue }) => {
-    expect(deserializeStringParameterValue(value)).toEqual(expectedValue);
-  });
+  ])(
+    "should deserialize string parameter value $value",
+    ({ value, expectedValue }) => {
+      expect(deserializeStringParameterValue(value)).toEqual(expectedValue);
+    },
+  );
 
   it.each([null, undefined, "", [""]])(
     "should ignore invalid value %s",
@@ -31,38 +32,18 @@ describe("string parameters", () => {
 
 describe("number parameters", () => {
   it.each([
-    { value: [0], expectedValue: [0] },
-    { value: [1], expectedValue: [1] },
-    { value: [-1], expectedValue: [-1] },
-    { value: [10.1], expectedValue: [10.1] },
-    { value: [-10.1], expectedValue: [-10.1] },
-    { value: [10, 9007199254740993n], expectedValue: [10, "9007199254740993"] },
-  ])("should serialize $value", ({ value, expectedValue }) => {
-    expect(serializeNumberParameterValue(value)).toEqual(expectedValue);
-  });
-
-  it.each([
     { value: 1, expectedValue: [1] },
     { value: "1", expectedValue: [1] },
     { value: 1.5, expectedValue: [1.5] },
     { value: "1.5", expectedValue: [1.5] },
     { value: [1, 2, 3], expectedValue: [1, 2, 3] },
     { value: ["1", "2", "3"], expectedValue: [1, 2, 3] },
-    { value: [10, "9007199254740993"], expectedValue: [10, 9007199254740993n] },
-  ])("should deserialize $value", ({ value, expectedValue }) => {
-    expect(deserializeNumberParameterValue(value)).toEqual(expectedValue);
-  });
-
-  it.each([
-    { value: undefined, expectedValue: [] },
-    { value: null, expectedValue: [] },
-    {
-      value: [0, "1", 1.5, "abc", "9007199254740993"],
-      expectedValue: [0, 1, 1.5, "9007199254740993"],
+  ])(
+    "should deserialize number parameter value $value",
+    ({ value, expectedValue }) => {
+      expect(deserializeNumberParameterValue(value)).toEqual(expectedValue);
     },
-  ])("should normalize $value", ({ value, expectedValue }) => {
-    expect(normalizeNumberParameterValue(value)).toEqual(expectedValue);
-  });
+  );
 
   it.each([null, undefined, "", [""], ["abc"], NaN, [NaN], [true, false]])(
     "should ignore invalid value %s",
@@ -399,6 +380,6 @@ describe("date parameters", () => {
     "2024-ab",
     "Q5-2020",
   ])("should ignore invalid value %s", value => {
-    expect(deserializeDateParameterValue(value)).toBeNull();
+    expect(deserializeDateParameterValue(value)).toBeUndefined();
   });
 });
