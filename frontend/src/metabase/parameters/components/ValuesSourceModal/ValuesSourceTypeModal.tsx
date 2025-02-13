@@ -1,6 +1,5 @@
 import type { ChangeEvent } from "react";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -14,6 +13,7 @@ import Select, { Option } from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import { connect, useSelector } from "metabase/lib/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
@@ -528,7 +528,7 @@ const useParameterValues = ({
   onFetchParameterValues,
 }: UseParameterValuesOpts) => {
   const [state, setState] = useState<ParameterValuesState>({ values: [] });
-  const [, handleFetchValues] = useAsyncFn(onFetchParameterValues);
+  const handleFetchValues = useSafeAsyncFunction(onFetchParameterValues);
   const isValidSource = isValidSourceConfig(sourceType, sourceConfig);
 
   const parameter = useMemo(
