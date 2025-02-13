@@ -208,6 +208,9 @@ test/metabase/segments @metabase/core-backend-querying
 src/metabase/server @metabase/devexp
 test/metabase/server @metabase/devexp
 
+src/metabase/session @metabase/core-backend-admin-webapp
+test/metabase/session @metabase/core-backend-admin-webapp
+
 src/metabase/setup @metabase/core-backend-admin-webapp
 test/metabase/setup @metabase/core-backend-admin-webapp
 
