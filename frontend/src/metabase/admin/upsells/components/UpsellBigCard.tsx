@@ -9,24 +9,24 @@ import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
-export type UpsellBigCardProps = {
+export type UpsellBigCardProps = React.PropsWithChildren<{
   title: string;
   buttonText: string;
   campaign: string;
   source: string;
   illustrationSrc?: string;
-  children: React.ReactNode;
   style?: React.CSSProperties;
-} & (
-  | {
-      buttonLink: string;
-      onOpenModal?: never;
-    }
-  | {
-      buttonLink?: never;
-      onOpenModal: () => void;
-    }
-);
+}> &
+  (
+    | {
+        buttonLink: string;
+        onOpenModal?: never;
+      }
+    | {
+        buttonLink?: never;
+        onOpenModal: () => void;
+      }
+  );
 
 export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   title,
