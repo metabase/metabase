@@ -88,7 +88,11 @@ export const Table = forwardRef(function Table<TData>(
   return (
     <DndContext {...dndContextProps}>
       <div ref={ref} className={S.table} data-testid="TableInteractive-root">
-        <div className={S.tableGrid} ref={refs.gridRef}>
+        <div
+          className={S.tableGrid}
+          ref={refs.gridRef}
+          style={{ paddingRight: isAddColumnButtonSticky ? "36px" : 0 }}
+        >
           <div className={S.headerContainer}>
             {table.getHeaderGroups().map(headerGroup => (
               <div key={headerGroup.id} className={S.row}>
