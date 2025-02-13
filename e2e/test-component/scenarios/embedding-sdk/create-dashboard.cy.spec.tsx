@@ -71,7 +71,7 @@ describe("scenarios > embedding-sdk > create-dashboard modal", () => {
     });
   });
 
-  describe.only("root collection", () => {
+  describe("root collection", () => {
     beforeEach(() => {
       signInAsAdminAndEnableEmbeddingSdk();
       cy.signOut();
