@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import Radio from "metabase/core/components/Radio";
 import { connect } from "metabase/lib/redux";
-import { PLUGIN_ADMIN_TOOLS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
@@ -53,7 +52,12 @@ function Tools({
   children,
   navigateToTab,
 }: Props) {
-  const tabs: ToolTab[] = [...PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES_INFO];
+  const tabs: ToolTab[] = [
+    {
+      name: t`Questions`,
+      value: "errors",
+    },
+  ];
 
   if (isModelPersistenceEnabled) {
     tabs.push({
