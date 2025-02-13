@@ -1,4 +1,4 @@
-(ns metabase.task.email-remove-legacy-pulse
+(ns metabase.pulse.task.email-remove-legacy-pulse
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
