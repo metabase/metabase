@@ -123,5 +123,5 @@ export function isIdentifier(token: Token | null) {
 }
 
 export function isFieldReference(token: Token | null) {
-  return token != null && isIdentifier(token) && token.isReference;
+  return token != null && token.type === TOKEN.Identifier && token.isReference;
 }
