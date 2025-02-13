@@ -2,10 +2,6 @@ import fs from "fs/promises";
 
 import { input } from "@inquirer/prompts";
 
-import {
-  GENERATED_COMPONENTS_DEFAULT_PATH,
-  GENERATED_COMPONENTS_DEFAULT_PATH_NEXTJS,
-} from "../constants/config";
 import { getGeneratedComponentFilesMessage } from "../constants/messages";
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
 import type { CliStepMethod } from "../types/cli";
@@ -13,10 +9,12 @@ import { checkIsInTypeScriptProject } from "../utils/check-typescript-project";
 import { getComponentSnippets } from "../utils/get-component-snippets";
 import {
   checkIfNextJsCustomAppOrRootLayoutExists,
+  checkIfNextJsProjectUsesSrcDirectory,
   checkIsInNextJsProject,
   generateNextJsDemoFiles,
 } from "../utils/nextjs-helpers";
 import { printError, printSuccess } from "../utils/print";
+import { getGeneratedComponentsDefaultPath } from "../utils/snippets-helpers";
 
 export const generateReactComponentFiles: CliStepMethod = async state => {
   const { instanceUrl, apiKey, dashboards = [], token } = state;
@@ -29,15 +27,17 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
   }
 
   const isNextJs = await checkIsInNextJsProject();
+  const isUsingSrcDirectory = checkIfNextJsProjectUsesSrcDirectory();
+
+  const defaultComponentPath = getGeneratedComponentsDefaultPath({
+    isNextJs,
+    isUsingSrcDirectory,
+  });
 
   let reactComponentPath: string;
 
   // eslint-disable-next-line no-constant-condition -- ask until user provides a valid path
   while (true) {
-    const defaultComponentPath = isNextJs
-      ? GENERATED_COMPONENTS_DEFAULT_PATH_NEXTJS
-      : GENERATED_COMPONENTS_DEFAULT_PATH;
-
     reactComponentPath = await input({
       message: "Where do you want to save the example React components?",
       default: defaultComponentPath,

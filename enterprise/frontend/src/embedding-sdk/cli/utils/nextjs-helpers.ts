@@ -3,6 +3,7 @@ import fs from "fs";
 import { glob } from "glob";
 import path from "path";
 
+import { NEXTJS_DEMO_ROUTE_NAME } from "../constants/config";
 import { getNextJsCustomAppOrRootLayoutSnippet } from "../snippets/nextjs-app-snippets";
 import { getNextJsAnalyticsPageSnippet } from "../snippets/nextjs-page-snippet";
 
@@ -50,6 +51,15 @@ export async function checkIfUsingAppOrPagesRouter() {
 }
 
 /**
+ * Next.js 15's CLI introduced the option to store all sources under the `src` directory.
+ * This checks if the current project is using the `src` directory.
+ */
+export const checkIfNextJsProjectUsesSrcDirectory = () => hasPath("src");
+
+const getNextJsSourceDirectoryPrefix = () =>
+  checkIfNextJsProjectUsesSrcDirectory() ? "src/" : "";
+
+/**
  * Checks if the current Next.js project has a custom root layout (app router)
  * or custom app (pages router).
  *
@@ -58,15 +68,16 @@ export async function checkIfUsingAppOrPagesRouter() {
  */
 export async function checkIfNextJsCustomAppOrRootLayoutExists() {
   const router = await checkIfUsingAppOrPagesRouter();
+  const sourcePrefix = getNextJsSourceDirectoryPrefix();
 
   // App router uses the `app/layout` root layout file.
   if (router === "app") {
-    return hasPath("app/layout.*");
+    return hasPath(sourcePrefix + "app/layout.*");
   }
 
   // Pages router uses the `pages/_app` file.
   if (router === "pages") {
-    return hasPath("pages/_app.*");
+    return hasPath(sourcePrefix + "pages/_app.*");
   }
 
   return false;
@@ -84,6 +95,7 @@ async function generateNextJsCustomAppOrRootLayoutFile(componentPath: string) {
   const router = await checkIfUsingAppOrPagesRouter();
   const isInTypeScriptProject = await checkIsInTypeScriptProject();
   const extension = isInTypeScriptProject ? "tsx" : "js";
+  const sourcePrefix = getNextJsSourceDirectoryPrefix();
 
   const snippet = getNextJsCustomAppOrRootLayoutSnippet({
     router,
@@ -92,11 +104,11 @@ async function generateNextJsCustomAppOrRootLayoutFile(componentPath: string) {
   });
 
   if (router === "pages") {
-    fs.writeFileSync(`./pages/_app.${extension}`, snippet);
+    fs.writeFileSync(sourcePrefix + `pages/_app.${extension}`, snippet);
   }
 
   if (router === "app") {
-    fs.writeFileSync(`./app/layout.${extension}`, snippet);
+    fs.writeFileSync(sourcePrefix + `app/layout.${extension}`, snippet);
   }
 }
 
@@ -111,6 +123,7 @@ export async function generateNextJsDemoFiles({
 }) {
   const isNextJs = await checkIsInNextJsProject();
   const router = await checkIfUsingAppOrPagesRouter();
+  const sourcePrefix = getNextJsSourceDirectoryPrefix();
 
   if (!isNextJs) {
     return;
@@ -136,11 +149,16 @@ export async function generateNextJsDemoFiles({
   });
 
   if (router === "app") {
-    fs.mkdirSync("./app/analytics-demo", { recursive: true });
-    fs.writeFileSync(`./app/analytics-demo/page.${extension}`, snippet);
+    const routeDir = `${sourcePrefix}app/${NEXTJS_DEMO_ROUTE_NAME}`;
+
+    fs.mkdirSync(routeDir, { recursive: true });
+    fs.writeFileSync(`${routeDir}/page.${extension}`, snippet);
   }
 
   if (router === "pages") {
-    fs.writeFileSync(`./pages/analytics-demo.${extension}`, snippet);
+    fs.writeFileSync(
+      sourcePrefix + `pages/${NEXTJS_DEMO_ROUTE_NAME}.${extension}`,
+      snippet,
+    );
   }
 }

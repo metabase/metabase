@@ -8,11 +8,15 @@ import {
 import type { CliStepMethod } from "../types/cli";
 import { getNextJsSetupMessages } from "../utils/get-nextjs-setup-message";
 import { getSuggestedImportPath } from "../utils/get-suggested-import-path";
-import { checkIsInNextJsProject } from "../utils/nextjs-helpers";
+import {
+  checkIfNextJsProjectUsesSrcDirectory,
+  checkIsInNextJsProject,
+} from "../utils/nextjs-helpers";
 import { printEmptyLines, printWithPadding } from "../utils/print";
 
 export const showPostSetupSteps: CliStepMethod = async state => {
   const isNextJs = await checkIsInNextJsProject();
+  const isUsingSrcDirectory = checkIfNextJsProjectUsesSrcDirectory();
 
   const START_SERVER_STEP = `
   Generated an example Express.js server directory in "${state.mockServerPath}".
@@ -24,6 +28,7 @@ export const showPostSetupSteps: CliStepMethod = async state => {
 
   const importPath = getSuggestedImportPath({
     isNextJs,
+    isUsingSrcDirectory,
     componentPath: state.reactComponentPath,
   });
 
