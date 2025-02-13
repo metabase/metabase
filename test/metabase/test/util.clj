@@ -1579,12 +1579,12 @@
   registry and web-server."
   [[port system] & body]
   `(let [~system ^metabase.analytics.prometheus.PrometheusSystem
-         (#'metabase.analytics.prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
+         (#'prometheusmetheus/make-prometheus-system 0 (name (gensym "test-registry")))
          server#  ^Server (.web-server ~system)
          ~port   (.. server# getURI getPort)]
-     (with-redefs [metabase.analytics.prometheus/system ~system]
+     (with-redefs [rometheus/system ~system]
        (try ~@body
-            (finally (metabase.analytics.prometheus/stop-web-server ~system))))))
+            (finally (prometheus/stop-web-server ~system))))))
 
 (defn metric-value
   "Return the value of `metric` in `system`'s registry."
