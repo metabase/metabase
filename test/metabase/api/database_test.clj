@@ -876,23 +876,23 @@
 (deftest ^:parallel databases-caching
   (testing "GET /api/database"
     (testing "Testing that listing all databases does not make excessive queries with multiple databases"
-        (mt/with-temp [:model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}]
-          (t2/with-call-count [call-count]
-            (mt/user-http-request :rasta :get 200 "database")
-            (is (< (call-count) 10)))))))
+      (mt/with-temp [:model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}]
+        (t2/with-call-count [call-count]
+          (mt/user-http-request :rasta :get 200 "database")
+          (is (< (call-count) 10)))))))
 
 (deftest ^:parallel databases-list-test-2
   (testing "GET /api/database"
