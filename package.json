@@ -324,7 +324,7 @@
     "terser-webpack-plugin": "^5.3.9",
     "ts-morph": "^25.0.0",
     "tsx": "^4.19.2",
-    "webpack": "v5.94",
+    "webpack": "5.94.0",
     "webpack-bundle-analyzer": "^4.10.1",
     "webpack-cli": "^5.1.1",
     "webpack-dev-server": "^5.0.4",
