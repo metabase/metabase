@@ -49,7 +49,7 @@ export const ChartSettingSelect = ({
   const dropdownComponent =
     footer &&
     (({ children }) => (
-      <Stack p={0} w="100%" gap={0}>
+      <Stack p={0} w="100%" spacing={0}>
         {children}
         {footer}
       </Stack>
