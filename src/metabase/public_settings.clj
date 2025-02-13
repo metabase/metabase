@@ -1076,7 +1076,6 @@ See [fonts](../configuring-metabase/fonts.md).")
                     limit
                     (max limit 1048575)))))
 
-
 ;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
 ;;; should live in this namespace.
 
