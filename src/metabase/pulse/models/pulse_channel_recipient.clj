@@ -1,4 +1,4 @@
-(ns metabase.models.pulse-channel-recipient
+(ns metabase.pulse.models.pulse-channel-recipient
   (:require
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
