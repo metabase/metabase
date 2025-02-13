@@ -4,7 +4,7 @@
   background-color: var(--mb-color-bg-light);
   color: var(--mb-color-text-primary);
   border-radius: 8px;
-  font-size: 0.8125rem;
-  line-height: 1.065rem;
+  font-size: 0.8125em;
+  line-height: 1.065em;
   overflow: auto;
 }
