@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
 import Tables from "metabase/entities/tables";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import { connect } from "metabase/lib/redux";
 import type Table from "metabase-lib/v1/metadata/Table";
 
@@ -57,7 +57,7 @@ function useDependentTableMetadata({
   const shouldFetchMetadata = isMissingFields || isMissingFks;
   const [hasFetchedMetadata, setHasFetchedMetadata] =
     useState(!shouldFetchMetadata);
-  const [, fetchDependentData] = useAsyncFn(() => {
+  const fetchDependentData = useSafeAsyncFunction(() => {
     return Promise.all([
       isMissingFields && fetchMetadata({ id: tableId }),
       isMissingFks && fetchForeignKeys({ id: tableId }),
