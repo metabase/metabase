@@ -227,11 +227,11 @@ describe("issue 53194", () => {
     cy.icon("reference").click();
 
     cy.findByTestId("sidebar-content").within(() => {
-      cy.findByText("REVIEWS").click();
+      cy.findByText("REVIEWS").click(); // the infinite loop used to start with this action
       cy.findByText("ID").should("be.visible");
       cy.findByText("ORDERS").should("not.exist");
 
-      cy.findByTestId("sidebar-header-title").click();
+      cy.findByTestId("sidebar-header-title").click(); // if app is frozen, Cypress won't be able to execute this
       cy.findByText("ID").should("not.exist");
       cy.findByText("REVIEWS").should("be.visible");
 
