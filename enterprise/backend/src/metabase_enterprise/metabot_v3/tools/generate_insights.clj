@@ -4,7 +4,6 @@
    [metabase-enterprise.metabot-v3.envelope :as env]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase.public-settings :as public-settings]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
