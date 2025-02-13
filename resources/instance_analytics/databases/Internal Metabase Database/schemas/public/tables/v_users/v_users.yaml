@@ -21,4 +21,3 @@ serdes/meta:
 - id: v_users
   model: Table
 database_require_filter: null
-entity_id: VnUplpevdFkZyG2I9brb5

@@ -58,8 +58,7 @@
 
 (doto :model/Database
   (derive :metabase/model)
-  (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/timestamped?))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :before :model/Database
   [_model _explicit-attributes f]
@@ -408,12 +407,13 @@
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
+
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
   {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-               :description :engine :entity_id :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
-               :metadata_sync_schedule :name :points_of_interest :refingerprint :settings :timezone :uploads_enabled
-               :uploads_schema_name :uploads_table_prefix]
+               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :metadata_sync_schedule :name
+               :points_of_interest :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
+               :uploads_table_prefix]
    :skip      [;; deprecated field
                :cache_ttl]
    :transform {:created_at          (serdes/date)

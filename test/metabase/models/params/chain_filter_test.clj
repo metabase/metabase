@@ -470,7 +470,6 @@
               :has_more_values false}
              (chain-filter-search venues.category_id {venues.price 4} "zzzzz"))))))
 
-;; Detail: Key (entity_id)=(6nmVTpCpKFRkZJigvqSVm) already exists.
 (deftest use-cached-field-values-test
   (testing "chain-filter should use cached FieldValues if applicable (#13832)"
     (let [field-id (mt/id :categories :name)]
@@ -500,7 +499,7 @@
         (testing "should search with the cached FieldValues when search without constraints"
           (mt/with-temp
             [:model/Field       field (-> (t2/select-one :model/Field (mt/id :categories :name))
-                                          (dissoc :id :entity_id)
+                                          (dissoc :id)
                                           (assoc :name "NAME2"))
              :model/FieldValues  _    {:field_id (:id field)
                                        :type     :full
