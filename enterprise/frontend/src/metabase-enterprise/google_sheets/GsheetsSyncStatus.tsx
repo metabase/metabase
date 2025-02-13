@@ -116,13 +116,19 @@ function GsheetsSyncStatusView({
     .with("error", () => t`Error importing Google Sheets`)
     .otherwise(() => t`Importing Google Sheets...`);
 
+  if (error) {
+    console.error(error);
+  }
+
   const description = match(status)
     .with("complete", () => (
       <Link to={`browse/databases/${db_id}`}>{t`Start Exploring`}</Link>
     ))
     .with(
       "error",
-      () => t`There was an error importing your Google Sheets. ${error}`,
+      // eslint-disable-next-line no-literal-metabase-strings -- admin UI
+      () =>
+        t`Please check that the folder is shared with the Metabase Service Account.`,
     )
     .otherwise(() => undefined);
 

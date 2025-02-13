@@ -90,7 +90,7 @@ export function GsheetConnectButton() {
           trackSheetConnectionClick({ from: "db-page" });
         }}
         disabled={status === "loading"}
-        leftIcon={
+        leftSection={
           status === "complete" ? undefined : <Icon name="google_sheet" />
         }
       >
@@ -198,7 +198,7 @@ export function GsheetConnectionModal({
     (status === "not-connected" ? (
       <GoogleSheetsConnectModal
         onClose={onClose}
-        serviceAccountEmail={serviceAccountEmail}
+        serviceAccountEmail={serviceAccountEmail ?? "email not found"}
         folderUrl={folder_url}
       />
     ) : (
