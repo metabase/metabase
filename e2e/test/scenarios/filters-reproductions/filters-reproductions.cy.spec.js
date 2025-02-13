@@ -1733,9 +1733,9 @@ SELECT CAST('9223372036854775807' AS BIGINT) AS BIGINT`,
         native: {
           query: `SELECT 1 AS ID
 UNION ALL
-SELECT 9223372036854775807 AS ID
+SELECT ${maxBigIntValue} AS ID
 UNION ALL
-SELECT -9223372036854775808 AS ID`,
+SELECT ${minBigIntValue} AS ID`,
         },
         display: "table",
       };
