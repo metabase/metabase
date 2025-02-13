@@ -1,4 +1,4 @@
-(ns metabase.models.revision.diff
+(ns metabase.revisions.models.revision.diff
   (:require
    [clojure.core.match :refer [match]]
    [clojure.data :as data]

@@ -1,5 +1,4 @@
 (ns metabase.models.database
-  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.core.match :refer [match]]
    [medley.core :as m]
