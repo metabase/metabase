@@ -71,6 +71,7 @@ import { getDashcardDataMap } from "../selectors";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
+import DashCardS from "./DashCard/DashCard.module.css";
 import {
   DashboardCardContainer,
   DashboardGridContainer,
@@ -637,6 +638,9 @@ class DashboardGridInner extends Component<
         className={cx({
           [DashboardS.DashEditing]: this.isEditingLayout,
           [DashboardS.DashDragging]: this.state.isDragging,
+          // we use this class to hide a dashcard actions
+          // panel during dragging
+          [DashCardS.DashboardCardRootDragging]: this.state.isDragging,
         })}
         layouts={layouts}
         breakpoints={GRID_BREAKPOINTS}
