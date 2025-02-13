@@ -846,8 +846,8 @@
   (mt/test-driver :snowflake
     (testing "details should be normalized coming out of the DB"
       (mt/with-temp [:model/Database db1 {:name    "Legacy Snowflake DB"
-                                         :engine  :snowflake,
-                                         :details {:password "abc"}}
+                                          :engine  :snowflake,
+                                          :details {:password "abc"}}
                      :model/Database db2 {:name    "Legacy Snowflake DB"
                                           :engine  :snowflake,
                                           :details {:password "abc"

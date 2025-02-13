@@ -280,7 +280,7 @@
 
 (deftest maybe-test-and-migrate-details!-no-connect-test
   (mt/with-driver
-    :secret-test-driver
+   :secret-test-driver
     (mt/with-temp [:model/Database db {:engine "secret-test-driver"
                                        :name "Secret Test"
                                        :details {:keystore-value "secret"
@@ -296,7 +296,7 @@
 
 (deftest maybe-test-and-migrate-details!-password-test
   (mt/with-driver
-    :secret-test-driver
+   :secret-test-driver
     (mt/with-temp [:model/Database db {:engine "secret-test-driver"
                                        :name "Secret Test"
                                        :details {:keystore-value "secret"
@@ -313,7 +313,7 @@
 
 (deftest maybe-test-and-migrate-details!-keystore-test
   (mt/with-driver
-    :secret-test-driver
+   :secret-test-driver
     (mt/with-temp [:model/Database db {:engine "secret-test-driver"
                                        :name "Secret Test"
                                        :details {:keystore-value "secret"
