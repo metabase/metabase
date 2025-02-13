@@ -23,8 +23,4 @@ export const SANDBOXED_GROUP_NAMES = ["Customer A", "Customer B", "Customer C"];
 export const GENERATED_COMPONENTS_DEFAULT_PATH = "./src/components/metabase";
 
 // Tables from the sample database that are selected by default.
-export const SAMPLE_DATABASE_SELECTED_TABLES = [
-  "ORDERS",
-  "PRODUCTS",
-  "ACCOUNTS",
-];
+export const SAMPLE_DATABASE_SELECTED_TABLES = ["PEOPLE", "ORDERS", "PRODUCTS"];
