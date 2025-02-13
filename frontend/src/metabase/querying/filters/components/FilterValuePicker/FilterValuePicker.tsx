@@ -4,7 +4,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetFieldValuesQuery } from "metabase/api";
-import { checkNotNull } from "metabase/lib/types";
+import { parseNumber } from "metabase/lib/number";
+import { checkNotNull, isNotNull } from "metabase/lib/types";
 import { Center, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -139,10 +140,10 @@ export function NumberFilterValuePicker({
   values,
   onChange,
   ...props
-}: FilterValuePickerProps<number>) {
-  const shouldCreate = (query: string, values: string[]) => {
-    const number = parseFloat(query);
-    return isFinite(number) && !values.includes(query);
+}: FilterValuePickerProps<Lib.NumberFilterValue>) {
+  const shouldCreate = (value: string, values: string[]) => {
+    const number = parseNumber(value);
+    return number != null && !values.includes(value);
   };
 
   return (
@@ -152,7 +153,9 @@ export function NumberFilterValuePicker({
       values={values.map(value => String(value))}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
       shouldCreate={shouldCreate}
-      onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
+      onChange={newValue =>
+        onChange(newValue.map(parseNumber).filter(isNotNull))
+      }
     />
   );
 }

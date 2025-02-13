@@ -145,6 +145,9 @@ test/metabase/events @metabase/devexp
 src/metabase/formatter @metabase/core-backend-querying
 test/metabase/formatter @metabase/core-backend-querying
 
+src/metabase/indexed_entities @metabase/core-backend-querying
+test/metabase/indexed_entities @metabase/core-backend-querying
+
 src/metabase/integrations @metabase/core-workflows
 test/metabase/integrations @metabase/core-workflows
 
@@ -198,6 +201,9 @@ test/metabase/sample_data @metabase/core-backend-admin-webapp
 
 src/metabase/search @metabase/core-workflows
 test/metabase/search @metabase/core-workflows
+
+src/metabase/segments @metabase/core-backend-querying
+test/metabase/segments @metabase/core-backend-querying
 
 src/metabase/server @metabase/devexp
 test/metabase/server @metabase/devexp
