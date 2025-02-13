@@ -55,7 +55,7 @@
     (str/starts-with? region "cn-") ".amazonaws.com.cn"
     :else ".amazonaws.com"))
 
-(defn- get-subname 
+(defn- get-subname
   [region]
   (if (or (nil? region) (empty? region))
     ""
@@ -64,27 +64,27 @@
 (defmethod sql-jdbc.conn/connection-details->spec :athena
   [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog], :as details}]
   (-> (merge
-           {:classname      "com.amazon.athena.jdbc.AthenaDriver"
-            :subprotocol    "athena"
-            :subname        (get-subname region)
-            :User           access_key
-            :Password       secret_key
-            :OutputLocation s3_staging_dir
-            :WorkGroup      workgroup
-            :Region      region}
-           (when (and (not (premium-features/is-hosted?)) (str/blank? access_key))
-             {:CredentialsProvider "DefaultChain"})
-           (when-not (str/blank? catalog)
-             {:MetadataRetrievalMethod "ProxyAPI"
-              :Catalog                 catalog})
-           (dissoc details
+       {:classname      "com.amazon.athena.jdbc.AthenaDriver"
+        :subprotocol    "athena"
+        :subname        (get-subname region)
+        :User           access_key
+        :Password       secret_key
+        :OutputLocation s3_staging_dir
+        :WorkGroup      workgroup
+        :Region         region}
+       (when (and (not (premium-features/is-hosted?)) (str/blank? access_key))
+         {:CredentialsProvider "DefaultChain"})
+       (when-not (str/blank? catalog)
+         {:MetadataRetrievalMethod "ProxyAPI"
+          :Catalog                 catalog})
+       (dissoc details
                    ;; `:metabase.driver.athena/schema` is just a gross hack for testing so we can treat multiple tests datasets as
                    ;; different DBs -- see [[metabase.driver.athena/fast-active-tables]]. Not used outside of tests. -- Cam
-                   :db :catalog :metabase.driver.athena/schema
+               :db :catalog :metabase.driver.athena/schema
                    ;; Remove 2.x jdbc driver version options from details. Those are mapped to appropriate 3.x keys few
                    ;; on preceding lines
-                   :region :access_key :secret_key :s3_staging_dir :workgroup))
-          (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
+               :region :access_key :secret_key :s3_staging_dir :workgroup))
+      (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
 (defmethod sql-jdbc.conn/data-source-name :athena
   [_driver {:keys [catalog], s3-results-bucket :s3_staging_dir}]
