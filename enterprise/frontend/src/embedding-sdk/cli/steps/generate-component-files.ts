@@ -110,7 +110,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     {
       ...state,
       reactComponentPath,
-      hasNextJsCustomAppOrRootLayout: hasNextJsCustomAppOrRootLayout,
+      hasNextJsCustomAppOrRootLayout,
     },
   ];
 };
