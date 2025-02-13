@@ -138,10 +138,10 @@
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
 
 (defmethod sql-jdbc.execute/read-column-thunk :athena
-  [_ ^ResultSet rs _ ^Integer i]
+  [_driver ^ResultSet rs _rsmeta ^Integer i]
   (fn []
     (let [obj (.getObject rs i)
-          class-name (.getName (.getClass obj))]
+          class-name (some-> obj .getClass .getName)]
       (cond (= class-name "com.amazon.athena.jdbc.results.IteratorResultSetBase$AthenaArray")
             (vec (.getArray obj))
 
