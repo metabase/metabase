@@ -1,4 +1,4 @@
-import type React from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -21,7 +21,7 @@ export interface CollectionMenuProps {
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
-const mergeArrays = (arr: React.ReactNode[][]): React.ReactNode[] => {
+const mergeArrays = (arr: ReactNode[][]): ReactNode[] => {
   const filteredArr = arr.filter(v => v.length > 0);
   return filteredArr.length === 0
     ? []
@@ -36,6 +36,8 @@ export const CollectionMenu = ({
   isPersonalCollectionChild,
   onUpdateCollection,
 }: CollectionMenuProps): JSX.Element | null => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const hasDqCandidates = useHasDashboardQuestionCandidates(collection.id);
 
   const url = Urls.collection(collection);
@@ -120,9 +122,18 @@ export const CollectionMenu = ({
   }
 
   return (
-    <IndicatorMenu position="bottom-end" menuKey="collection-menu">
+    <IndicatorMenu
+      position="bottom-end"
+      menuKey="collection-menu"
+      opened={menuOpen}
+      onChange={setMenuOpen}
+    >
       <IndicatorMenu.Target>
-        <Tooltip label={t`Move, trash, and more...`} position="bottom">
+        <Tooltip
+          label={t`Move, trash, and more...`}
+          position="bottom"
+          disabled={menuOpen}
+        >
           <ActionIcon size={32} variant="viewHeader">
             <Icon name="ellipsis" color="text-dark" />
           </ActionIcon>
