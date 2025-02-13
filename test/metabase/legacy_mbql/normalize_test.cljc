@@ -221,7 +221,7 @@
 
 ;;; --------------------------------------------------- parameters ---------------------------------------------------
 
-(t/deftest ^:parallel normalize-parmaeters-test
+(t/deftest ^:parallel normalize-parameters-test
   (normalize-tests
    "make sure we're not running around trying to normalize the type in native query params"
    {{:type       :native

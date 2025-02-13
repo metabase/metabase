@@ -48,12 +48,10 @@
 
 (defn discarding-rff
   "Returns a reducing function that discards result rows"
-  [_metadata]
+  [metadata]
   (fn discarding-rf
-    ([] {:rows []})
-    ([result]
-     (def result result)
-     result)
+    ([] {:data metadata})
+    ([result] result)
     ([result _row] result)))
 
 (defn- refresh-task
