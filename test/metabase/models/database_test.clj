@@ -23,6 +23,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -265,7 +266,66 @@
     (is (= driver.u/default-sensitive-fields
            (database/sensitive-fields-for-db {})))))
 
-(defmethod driver/can-connect? :secret-test-driver [& _args] true)
+(def ^:private ^:dynamic *secret-can-connect?* (constantly true))
+
+(defmethod driver/can-connect? :secret-test-driver [& args] (apply *secret-can-connect?* args))
+
+(defmethod driver/db-details-to-test-and-migrate :secret-test-driver
+  [_ {:keys [password keystore-id] :as details}]
+  (when (and password keystore-id)
+    [(-> details
+         (assoc :keystore-value nil)
+         (dissoc :keystore-id))
+     (dissoc details :password)]))
+
+(deftest maybe-test-and-migrate-details!-no-connect-test
+  (mt/with-driver
+    :secret-test-driver
+    (mt/with-temp [:model/Database db {:engine "secret-test-driver"
+                                       :name "Secret Test"
+                                       :details {:keystore-value "secret"
+                                                 :password "secret"}}]
+      (log/with-no-logs
+        (testing "neither connects"
+          (binding [*secret-can-connect?* (constantly false)]
+            (is (= (:details db)
+                   (database/maybe-test-and-migrate-details! db)))
+            (is (= (:details db)
+                   (t2/select-one-fn :details :model/Database (:id db)))
+                [(:id db) "query"])))))))
+
+(deftest maybe-test-and-migrate-details!-password-test
+  (mt/with-driver
+    :secret-test-driver
+    (mt/with-temp [:model/Database db {:engine "secret-test-driver"
+                                       :name "Secret Test"
+                                       :details {:keystore-value "secret"
+                                                 :password "secret"}}]
+      (log/with-no-logs
+        (testing "password connects"
+          (binding [*secret-can-connect?* (fn [_driver details]
+                                            (contains? details :password))]
+            (is (= {:keystore-value nil
+                    :password "secret"}
+                   (database/maybe-test-and-migrate-details! db)))
+            (is (= {:password "secret"}
+                   (t2/select-one-fn :details :model/Database (:id db))))))))))
+
+(deftest maybe-test-and-migrate-details!-keystore-test
+  (mt/with-driver
+    :secret-test-driver
+    (mt/with-temp [:model/Database db {:engine "secret-test-driver"
+                                       :name "Secret Test"
+                                       :details {:keystore-value "secret"
+                                                 :password "secret"}}]
+      (log/with-no-logs
+        (testing "keystore connects"
+          (binding [*secret-can-connect?* (fn [_driver details]
+                                            (get details :keystore-id))]
+            (is (= {:keystore-id (get-in db [:details :keystore-id])}
+                   (database/maybe-test-and-migrate-details! db)))
+            (is (= {:keystore-id (get-in db [:details :keystore-id])}
+                   (t2/select-one-fn :details :model/Database (:id db))))))))))
 
 (deftest secrets-in-details-test
   (mt/with-driver :secret-test-driver
