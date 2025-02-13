@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import type { ErrorWithMessage, Token } from "../types";
 
-import { parser } from "./lezer";
+import { parser } from "./parser";
 import { OPERATOR, type Optional, TOKEN } from "./types";
 
 const escapes = {
