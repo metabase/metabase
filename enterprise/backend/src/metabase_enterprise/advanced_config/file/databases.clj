@@ -32,7 +32,7 @@
   (every? (fn [pattern]
             (try
               #_{:clj-kondo/ignore [:unused-value]}
-              (crufty/->regex pattern) true
+              (boolean (crufty/->regex pattern))
               (catch Exception e (log/error e) false)))
           patterns))
 
