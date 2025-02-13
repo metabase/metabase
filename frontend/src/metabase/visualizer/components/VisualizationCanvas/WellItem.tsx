@@ -15,6 +15,7 @@ export const WellItem = forwardRef<HTMLDivElement, WellItemProps>(
         align="center"
         bg="var(--mb-color-bg-white)"
         px="sm"
+        h="24px"
         {...props}
         style={{
           ...style,
@@ -24,7 +25,7 @@ export const WellItem = forwardRef<HTMLDivElement, WellItemProps>(
         }}
         ref={ref}
       >
-        <div>{children}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
         {!!onRemove && (
           <ActionIcon
             aria-label={t`Remove`}
