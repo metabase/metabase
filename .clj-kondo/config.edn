@@ -324,12 +324,14 @@
    ;;
    ;; PRO TIP: Check out the `dev.deps-graph` namespace for helpful tools to see where a module is used externally.
    :api-namespaces
-   {metabase.actions               #{metabase.actions.core
-                                     metabase.actions.api}
-    metabase.activity-feed         #{metabase.activity-feed.core
-                                     metabase.activity-feed.api
+   {metabase.actions               #{metabase.actions.api
+                                     metabase.actions.core}
+    metabase.activity-feed         #{metabase.activity-feed.api
                                      metabase.activity-feed.init}
-    metabase.analytics             #{metabase.analytics.core}
+    metabase.analytics             #{metabase.analytics.prometheus
+                                     metabase.analytics.snowplow
+                                     metabase.analytics.stats
+                                     metabase.analytics.sdk}                                        ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze.core}
     metabase.api                   #{metabase.api.common
                                      ;; I don't really like making all these namespaces external but they have to be
@@ -604,10 +606,8 @@
     metabase-enterprise.audit-app.pages.common                    common
     metabase-enterprise.sandbox.api.table                         table
     metabase-enterprise.test                                      met
-    metabase.analytics.core                                       analytics
     metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats
-    metabase.analytics.settings                                   analytics.settings
     metabase.analysis.native-query-analyzer                       nqa
     metabase.analysis.native-query-analyzer.parameter-substitution nqa.sub
     metabase.analyze.query-results                                qr
