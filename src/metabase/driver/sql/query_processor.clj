@@ -171,7 +171,7 @@
     ;; => \"timestamp with time zone '2024-07-01 23:35:18.407 +00:00'\""
   {:added "0.51.0", :arglists '(^String [driver x])}
   (fn [driver x]
-    [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
+    [(driver/dispatch-on-initialized-driver driver) (class x)])
   :hierarchy #'driver/hierarchy)
 
 (defn- sqlize-value [x]
