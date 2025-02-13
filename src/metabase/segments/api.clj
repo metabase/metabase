@@ -6,7 +6,6 @@
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
-   [metabase.models.revision :as revision]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -98,27 +97,6 @@
   (log/warn "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id.")
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
-
-(api.macros/defendpoint :get "/:id/revisions"
-  "Fetch `Revisions` for `Segment` with ID."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/read-check :model/Segment id)
-  (revision/revisions+details :model/Segment id))
-
-(api.macros/defendpoint :post "/:id/revert"
-  "Revert a `Segement` to a prior `Revision`."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   {:keys [revision_id]} :- [:map
-                             [:revision_id ms/PositiveInt]]]
-  (api/write-check :model/Segment id)
-  (revision/revert!
-   {:entity      :model/Segment
-    :id          id
-    :user-id     api/*current-user-id*
-    :revision-id revision_id}))
 
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."

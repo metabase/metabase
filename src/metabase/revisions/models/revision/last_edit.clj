@@ -1,4 +1,4 @@
-(ns metabase.models.revision.last-edit
+(ns metabase.revisions.models.revision.last-edit
   "A namespace to handle getting the last edited information about items that satisfy the revision system. The revision
   system is a 'reversion' system, built to easily revert to previous states and can compute on demand a changelog. The
   revision system works through events and so when editing something, you should construct the last-edit-info

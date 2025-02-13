@@ -31,7 +31,6 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.pulse]
    [metabase.api.pulse.unsubscribe]
-   [metabase.api.revision]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.session]
    [metabase.api.setting]
@@ -48,6 +47,7 @@
    [metabase.config :as config]
    [metabase.indexed-entities.api]
    [metabase.permissions.api]
+   [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
    [metabase.setup.api]
@@ -80,7 +80,7 @@
          metabase.api.preview-embed/keep-me
          metabase.api.public/keep-me
          metabase.api.pulse.unsubscribe/keep-me
-         metabase.api.revision/keep-me
+         metabase.segments.api/keep-me
          metabase.api.setting/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
@@ -92,7 +92,7 @@
          metabase.bookmarks.api/keep-me
          metabase.indexed-entities.api/keep-me
          metabase.permissions.api/keep-me
-         metabase.segments.api/keep-me
+         metabase.revisions.api/keep-me
          metabase.setup.api/keep-me
          metabase.user-key-value.api/keep-me)
 
@@ -131,6 +131,13 @@
     {"/unsubscribe" 'metabase.api.pulse.unsubscribe})
    (+auth metabase.api.pulse/routes)))
 
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                  DO NOT ADD `metabase.api.*` NAMESPACES THAT CONTAIN ENDPOINTS                 !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ;;; ↓↓↓ KEEP THIS SORTED OR ELSE! ↓↓↓
 (def ^:private route-map
   {"/action"               (+auth 'metabase.actions.api)
@@ -165,7 +172,7 @@
    "/preview_embed"        (+auth 'metabase.api.preview-embed)
    "/public"               (+public-exceptions 'metabase.api.public)
    "/pulse"                pulse-routes
-   "/revision"             (+auth 'metabase.api.revision)
+   "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
    "/session"              metabase.api.session/routes
@@ -182,6 +189,13 @@
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
    "/util"                 'metabase.api.util})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                  DO NOT ADD `metabase.api.*` NAMESPACES THAT CONTAIN ENDPOINTS                 !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for API endpoints."

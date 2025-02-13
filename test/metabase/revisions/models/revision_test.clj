@@ -1,10 +1,10 @@
-(ns metabase.models.revision-test
+(ns metabase.revisions.models.revision-test
   (:require
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
-   [metabase.models.revision :as revision]
-   [metabase.models.revision.diff :as revision.diff]
+   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.models.revision.diff :as revision.diff]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -100,8 +100,9 @@
 (deftest ^:parallel revision-contains-changes-that-has-havent-been-specced-test
   (testing "When revision object contains key that we don't know how to generate diff-string
            The identifier should be 'This', not 'it' "
-    ;; metabase.models.revision.diff/diff-string does not know how to generate diff string for :collection_unknown_field
-    ;; and it'll return nil. in that case the identifier should not be changed to "made it card public"
+    ;; [[metabase.revisions.models.revision.diff/diff-string]] does not know how to generate diff string
+    ;; for :collection_unknown_field and it'll return nil. in that case the identifier should not be changed to "made it
+    ;; card public"
     (is (= "made this Card public."
            (u/build-sentence
             ((get-method revision/diff-strings :default)
