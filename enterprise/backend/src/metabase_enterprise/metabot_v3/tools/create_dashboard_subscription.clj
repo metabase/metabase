@@ -2,7 +2,8 @@
   (:require
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.api.common :as api]
-   [metabase.models.pulse :as models.pulse]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.pulse.core :as pulse]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -46,7 +47,7 @@
          "no dashboard with this dashboard_id found"
 
          :else
-         (do (models.pulse/create-pulse! (map models.pulse/card->ref cards) [channel] pulse-data)
+         (do (pulse/create-pulse! (map pulse/card->ref cards) [channel] pulse-data)
              "success"))})
     {:output "invalid dashboard_id"}))
 
