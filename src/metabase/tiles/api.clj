@@ -1,4 +1,4 @@
-(ns metabase.api.tiles
+(ns metabase.tiles.api
   "`/api/tiles` endpoints."
   (:require
    [clojure.set :as set]
@@ -11,6 +11,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
    (java.awt Color)
@@ -161,6 +162,11 @@
       (assoc-in [:query :fields] [lat-field lon-field])
       (assoc-in [:query :limit] tile-coordinate-limit)))
 
+;;; TODO -- what if the field name contains a slash? Are we expected to URL-encode it? I don't think we have any code
+;;; that handles that.
+(mr/def ::field-id-or-name
+  [:string {:api/regex #"[^/]+"}])
+
 ;; TODO - this can be reworked to be async instead
 ;;
 ;; TODO - this should reduce results from the QP in a streaming fashion instead of requiring them all to be in memory
@@ -174,8 +180,8 @@
                                               [:zoom      ms/Int]
                                               [:x         ms/Int]
                                               [:y         ms/Int]
-                                              [:lat-field :string]
-                                              [:lon-field :string]]
+                                              [:lat-field ::field-id-or-name]
+                                              [:lon-field ::field-id-or-name]]
    {:keys [query]} :- [:map
                        [:query ms/JSONString]]]
   (let [lat-field-ref (field-ref lat-field)
