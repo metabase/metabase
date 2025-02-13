@@ -15,7 +15,7 @@ function checkLogo() {
 
 const MB = 1024 * 1024;
 
-describe("formatting > whitelabel", () => {
+describe("formatting > whitelabel", { tags: "@EE" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

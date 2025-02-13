@@ -3049,7 +3049,12 @@
                  (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pnotmodel)))))
         (testing "Can't re-persist non-model cards"
           (is (= "Card is not a model"
-                 (mt/user-http-request :crowberto :post 400 (format "card/%d/persist" (u/the-id notmodel))))))))))
+                 (mt/user-http-request :crowberto :post 400 (format "card/%d/persist" (u/the-id notmodel))))))))
+    (mt/with-temp
+      [:model/Card          notmodel  {:database_id (u/the-id db), :type :question}]
+      (mt/with-premium-features #{:cache-granular-controls}
+        (testing "Does not return error status when unpersisting a card that is not persisted"
+          (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id notmodel))))))))
 
 (defn param-values-url
   "Returns an URL used to get values for parameter of a card.
