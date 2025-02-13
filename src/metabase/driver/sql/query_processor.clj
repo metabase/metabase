@@ -31,10 +31,12 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.driver.common.parameters])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-   (java.util UUID)))
+   (java.util UUID)
+   (metabase.driver.common.parameters DataBaseType)))
 
 (set! *warn-on-reflection* true)
 
@@ -169,7 +171,7 @@
     ;; => \"timestamp with time zone '2024-07-01 23:35:18.407 +00:00'\""
   {:added "0.51.0", :arglists '(^String [driver x])}
   (fn [driver x]
-    [(driver/dispatch-on-initialized-driver driver) (class x)])
+    [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
   :hierarchy #'driver/hierarchy)
 
 (defn- sqlize-value [x]
@@ -1647,7 +1649,14 @@
 (defn- format-honeysql-2 [driver dialect honeysql-form]
   ;; make sure [[driver/*driver*]] is bound, we need it for [[sqlize-value]]
   (binding [driver/*driver* driver]
-    (if (map? honeysql-form)
+    (cond
+      (instance? DataBaseType honeysql-form)
+      (binding [sql/*dialect*      (sql/get-dialect dialect)
+                sql/*quoted*       true
+                sql/*quoted-snake* false
+                sql/*inline*       driver/*compile-with-inline-parameters*]
+        (sql/format-expr honeysql-form {:nested true :record true}))
+      (map? honeysql-form)
       (sql/format honeysql-form {:dialect      dialect
                                  :quoted       true
                                  :quoted-snake false
@@ -1655,6 +1664,7 @@
       ;; for weird cases when we want to compile just one particular snippet. Why are we doing this? Who knows. This seems
       ;; to not really be supported by Honey SQL 2, so hack around it for now. See upstream issue
       ;; https://github.com/seancorfield/honeysql/issues/456
+      :else
       (binding [sql/*dialect*      (sql/get-dialect dialect)
                 sql/*quoted*       true
                 sql/*quoted-snake* false

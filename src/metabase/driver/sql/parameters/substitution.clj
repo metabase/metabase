@@ -29,7 +29,7 @@
    (clojure.lang IPersistentVector Keyword)
    (java.time.temporal Temporal)
    (java.util UUID)
-   (metabase.driver.common.parameters Date DateRange DateTimeRange FieldFilter ReferencedCardQuery ReferencedQuerySnippet)))
+   (metabase.driver.common.parameters Date DateRange DateTimeRange FieldFilter ReferencedCardQuery ReferencedQuerySnippet DataBaseType)))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -60,6 +60,13 @@
         [snippet & args] (sql.qp/format-honeysql driver honeysql)]
     (make-stmt-subs snippet args)))
 
+(defn- honeysql->prepared-stmt-subs-database-type
+  "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
+  [driver x]
+  (let [honeysql         (sql.qp/->honeysql driver (:value x))
+        [snippet & args] (sql.qp/format-honeysql driver (assoc x :value honeysql))]
+    (make-stmt-subs snippet args)))
+
 (mu/defmethod ->prepared-substitution [:sql nil] :- PreparedStatementSubstitution
   [driver _]
   (honeysql->prepared-stmt-subs driver nil))
@@ -87,6 +94,10 @@
 (mu/defmethod ->prepared-substitution [:sql Temporal] :- PreparedStatementSubstitution
   [driver t]
   (honeysql->prepared-stmt-subs driver t))
+
+(mu/defmethod ->prepared-substitution [:sql DataBaseType] :- PreparedStatementSubstitution
+  [driver t]
+  (honeysql->prepared-stmt-subs-database-type driver t))
 
 (defmulti align-temporal-unit-with-param-type
   "Returns a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver.
@@ -214,10 +225,10 @@
        :prepared-statement-args (concat (:param-values start) (:param-values end))})))
 
 (defmethod ->replacement-snippet-info [:sql DateTimeRange]
-  [driver {:keys [start end]} & [field-identifier]]
+  [driver {:keys [start end]} & [field-identifier database-type]]
   (let [[start end]       (map (fn [s]
                                  (when s
-                                   (->prepared-substitution driver (maybe-parse-temporal-literal s))))
+                                   (->prepared-substitution driver (params/map->DataBaseType {:database-type database-type :value (maybe-parse-temporal-literal s)}))))
                                [start end])
         start-expr-native (when start
                             (format "%s >= %s" field-identifier (:sql-string start)))
@@ -293,10 +304,10 @@
 (defn- field-filter->replacement-snippet-for-datetime-field
   "Generate replacement snippet for field filter on datetime field. For details on how range is generated see
   the docstring of [[params.dates/date-str->datetime-range]]."
-  [driver {:keys [field] {:keys [value type]} :value :as _field-filter}]
+  [driver {:keys [field] {:keys [database-type]} :field {:keys [value type]} :value :as _field-filter}]
   (letfn [(->datetime-replacement-snippet-info
             [range]
-            (->replacement-snippet-info driver range (field->identifier driver field type value)))]
+            (->replacement-snippet-info driver range (field->identifier driver field type value) database-type))]
     (-> (params.dates/date-str->datetime-range value)
         params/map->DateTimeRange
         ->datetime-replacement-snippet-info)))

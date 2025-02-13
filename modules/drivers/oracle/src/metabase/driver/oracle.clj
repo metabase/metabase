@@ -31,6 +31,7 @@
    (java.security KeyStore)
    (java.sql Connection DatabaseMetaData ResultSet Types)
    (java.time Instant OffsetDateTime ZonedDateTime)
+   (metabase.driver.common.parameters DataBaseType)
    (oracle.jdbc OracleConnection OracleTypes)
    (oracle.sql TIMESTAMPTZ)))
 
@@ -659,6 +660,24 @@
 (defmethod sql.qp/inline-value [:oracle Instant]
   [driver t]
   (sql.qp/inline-value driver (t/zoned-date-time t (t/zone-id "UTC"))))
+
+(defn inline-value-date
+  "Format DATE type field with TO_DATE."
+  ;; see the docs - https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/TO_DATE.html
+  [t]
+  (let [fmt "yyyy-MM-dd HH:mm:ss"]
+    (format "TO_DATE('%s', '%s')" (t/format fmt t) fmt)))
+
+(defmethod sql.qp/inline-value [:oracle DataBaseType]
+  [driver ^DataBaseType t]
+  (let [database-type (:database-type t)
+        value (:value t)]
+    (cond
+      (= database-type "DATE")
+      (inline-value-date value)
+
+      :else
+      (sql.qp/inline-value driver value))))
 
 ;; Oracle doesn't really support boolean types so use bits instead (See #11592, similar issue for SQL Server)
 (defmethod driver.sql/->prepared-substitution [:oracle Boolean]
