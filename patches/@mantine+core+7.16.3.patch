@@ -1,3 +1,16 @@
+diff --git a/node_modules/@mantine/core/cjs/core/MantineProvider/MantineProvider.cjs b/node_modules/@mantine/core/cjs/core/MantineProvider/MantineProvider.cjs
+index d0006e5..49e2259 100644
+--- a/node_modules/@mantine/core/cjs/core/MantineProvider/MantineProvider.cjs
++++ b/node_modules/@mantine/core/cjs/core/MantineProvider/MantineProvider.cjs
+@@ -13,7 +13,7 @@ var suppressNextjsWarning = require('./suppress-nextjs-warning.cjs');
+ var useProviderColorScheme = require('./use-mantine-color-scheme/use-provider-color-scheme.cjs');
+ var useRespectReduceMotion = require('./use-respect-reduce-motion/use-respect-reduce-motion.cjs');
+ 
+-suppressNextjsWarning.suppressNextjsWarning();
++// suppressNextjsWarning.suppressNextjsWarning();
+ function MantineProvider({
+   theme,
+   children,
 diff --git a/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs b/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs
 index e928597..08a9360 100644
 --- a/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs
