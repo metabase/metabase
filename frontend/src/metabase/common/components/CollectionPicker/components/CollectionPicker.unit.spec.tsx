@@ -177,15 +177,15 @@ describe("CollectionPicker", () => {
     });
 
     expect(
-      await screen.findByRole("button", { name: /Our Analytics/ }),
+      await screen.findByRole("link", { name: /Our Analytics/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("button", { name: /Collection 4/ }),
+      await screen.findByRole("link", { name: /Collection 4/ }),
     ).toBeInTheDocument();
 
     expect(
-      await screen.findByRole("button", { name: /Collection 2/ }),
+      await screen.findByRole("link", { name: /Collection 2/ }),
     ).toBeInTheDocument();
   });
 
@@ -193,17 +193,17 @@ describe("CollectionPicker", () => {
     act(() => {
       setup({ initialValue: { id: 3, model: "collection" } });
     });
-    await screen.findByRole("button", { name: /Our Analytics/ });
+    await screen.findByRole("link", { name: /Our Analytics/ });
     expect(
-      await screen.findByRole("button", { name: /Our Analytics/ }),
+      await screen.findByRole("link", { name: /Our Analytics/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("button", { name: /Collection 4/ }),
+      await screen.findByRole("link", { name: /Collection 4/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("button", { name: /Collection 3/ }),
+      await screen.findByRole("link", { name: /Collection 3/ }),
     ).toHaveAttribute("data-active", "true");
   });
 
@@ -212,11 +212,11 @@ describe("CollectionPicker", () => {
       setup({ initialValue: { id: 5, model: "collection" } });
     });
     expect(
-      await screen.findByRole("button", { name: /My personal collection/ }),
+      await screen.findByRole("link", { name: /My personal collection/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
-      await screen.findByRole("button", { name: /personal sub_collection/ }),
+      await screen.findByRole("link", { name: /personal sub_collection/ }),
     ).toHaveAttribute("data-active", "true");
   });
 
@@ -225,7 +225,7 @@ describe("CollectionPicker", () => {
       setup({ initialValue: { id: 1, model: "collection" } });
     });
 
-    const personalSubCollectionButton = await screen.findByRole("button", {
+    const personalSubCollectionButton = await screen.findByRole("link", {
       name: /personal sub_collection/,
     });
     expect(personalSubCollectionButton).not.toHaveAttribute("data-active");

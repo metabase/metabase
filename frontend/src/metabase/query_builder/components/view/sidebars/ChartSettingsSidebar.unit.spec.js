@@ -1,7 +1,5 @@
-import { fireEvent, screen } from "@testing-library/react";
-
 import { createMockMetadata } from "__support__/metadata";
-import { renderWithProviders } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   SAMPLE_DB_ID,

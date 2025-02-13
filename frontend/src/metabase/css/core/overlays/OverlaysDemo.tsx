@@ -43,11 +43,11 @@ const LauncherGroup = ({
   title,
   children,
   ...props
-}: { title: string } & PaperProps) => (
+}: React.PropsWithChildren<{ title: string } & PaperProps>) => (
   <Paper {...props} p="md">
-    <Stack spacing="md">
+    <Stack gap="md">
       <Title order={3}>{title}</Title>
-      <Group noWrap={false}>{children}</Group>
+      <Group>{children}</Group>
     </Stack>
   </Paper>
 );
@@ -124,16 +124,21 @@ const _Launchers = ({
           </HoverCard.Dropdown>
         </HoverCard>
         <MantineSelect
-          data={[
-            {
-              label: "Mantine Select option 1",
-              value: "1",
-            },
-            {
-              label: "Mantine Select option 2",
-              value: "2",
-            },
-          ]}
+          data={
+            [
+              {
+                label: "Mantine Select option 1",
+                value: "1",
+              },
+              {
+                label: "Mantine Select option 2",
+                value: "2",
+              },
+            ] as {
+              label: string;
+              value: string;
+            }[]
+          }
           defaultValue={"1"}
         />
         <LegacySelect defaultValue="1" data-testid="LegacySelect">
@@ -215,7 +220,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           <UndoToasts undoCount={undoCount} setUndoCount={setUndoCount} />
         </UndoListOverlay>
       )}
-      {Array.from({ length: actionToastCount }).map((_, index) => (
+      {Array.from({ length: actionToastCount }).map((_value, index) => (
         <BulkActionBarPortal
           key={`simple-bulk-action-bar-${index}`}
           opened
@@ -232,7 +237,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           {enableNesting && <Launchers />}
         </BulkActionBarPortal>
       ))}
-      {Array.from({ length: toastCount }).map((_, index) => (
+      {Array.from({ length: toastCount }).map((_value, index) => (
         <Toaster
           key={`toaster-${index}`}
           message="Toaster-style toast text content"
@@ -264,7 +269,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
                 <Title p="md" order={3} id={modalTitleId}>
                   Legacy modal content
                 </Title>
-                <Stack spacing="md" p="md">
+                <Stack gap="md" p="md">
                   <Box p="1rem 0">Legacy modal text content</Box>
                   {enableNesting && <Launchers />}
                 </Stack>
@@ -280,14 +285,14 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           title={`Mantine Modal content`}
           onClose={() => setMantineModalCount(c => c - 1)}
         >
-          <Stack spacing="md">
+          <Stack gap="md">
             <Text>Mantine Modal text content</Text>
             {enableNesting && <Launchers />}
           </Stack>
         </SimpleModal>
       ))}
       {Array.from({ length: mantineModalWithTitlePropCount }).map(
-        (_, index) => (
+        (_value, index) => (
           <MantineModal
             opened
             key={`mantine-modal-with-title-prop-${index}`}
@@ -299,7 +304,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           </MantineModal>
         ),
       )}
-      {Array.from({ length: sidesheetCount }).map((_, index) => (
+      {Array.from({ length: sidesheetCount }).map((_value, index) => (
         <Sidesheet
           key={`sidesheet-${index}`}
           isOpen
@@ -310,7 +315,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           {enableNesting && <Launchers />}
         </Sidesheet>
       ))}
-      {Array.from({ length: entityPickerCount }).map((_, index) => (
+      {Array.from({ length: entityPickerCount }).map((_value, index) => (
         <EntityPickerModal
           key={`entity-picker-${index}`}
           title={`Entity Picker content`}
@@ -320,7 +325,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           onClose={() => {
             setEntityPickerCount(c => c - 1);
           }}
-          onItemSelect={(_: any) => {}}
+          onItemSelect={_.noop}
           onConfirm={() => {
             setEntityPickerCount(c => c - 1);
           }}
@@ -333,7 +338,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
           )}
         </EntityPickerModal>
       ))}
-      {Array.from({ length: commandPaletteCount }).map((_, index) => {
+      {Array.from({ length: commandPaletteCount }).map((_value, index) => {
         const modalTitleId = `command-palette-title-${index}`;
         return (
           <PaletteCard
