@@ -1,9 +1,13 @@
-import type { PolymorphicComponentProps } from "@mantine/utils";
 import type React from "react";
 import { useContext, useEffect } from "react";
 
 import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
-import { Badge, Menu, type MenuItemProps } from "metabase/ui";
+import {
+  Badge,
+  Menu,
+  type MenuItemProps,
+  type PolymorphicComponentProps,
+} from "metabase/ui";
 
 import { IndicatorMenuContext } from "./IndicatorMenuContext";
 
