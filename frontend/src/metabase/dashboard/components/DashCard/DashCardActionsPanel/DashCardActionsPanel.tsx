@@ -274,7 +274,6 @@ function DashCardActionsPanelInner({
       pos="absolute"
       top={0}
       right="20px"
-      opacity={isDashCardTabMenuOpen ? 1 : 0}
       data-testid="dashboardcard-actions-panel"
       onMouseDown={onMouseDown}
     >

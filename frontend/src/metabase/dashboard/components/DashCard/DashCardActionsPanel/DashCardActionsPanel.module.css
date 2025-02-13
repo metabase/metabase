@@ -27,8 +27,10 @@
   }
 
   pointer-events: none;
+  opacity: 0;
 
   &.isDashCardTabMenuOpen {
     pointer-events: all;
+    opacity: 1;
   }
 }
