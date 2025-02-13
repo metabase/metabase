@@ -74,6 +74,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
             </ExternalLink>
           ) : (
             <Box
+              component="button"
               className={S.UpsellCTALink}
               onClickCapture={() => trackUpsellClicked({ source, campaign })}
               onClick={onOpenModal}
