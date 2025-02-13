@@ -1648,6 +1648,31 @@ describe("issue 44665", () => {
   });
 });
 
+describe("issue 50731", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.viewport(800, 800);
+  });
+
+  it("tooltip content should not overflow the tooltip (metabase#50731)", () => {
+    H.openOrdersTable();
+    cy.icon("filter").click();
+    cy.icon("label").realHover();
+
+    H.popover()
+      .should("be.visible")
+      .and($element => {
+        const [container] = $element;
+        const descendants = container.querySelectorAll("*");
+
+        descendants.forEach(descendant => {
+          H.assertDescendantNotOverflowsContainer(descendant, container);
+        });
+      });
+  });
+});
+
 describe("issue 5816", () => {
   const questionDetails = {
     native: {
