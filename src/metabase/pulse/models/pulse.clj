@@ -1,4 +1,4 @@
-(ns metabase.models.pulse
+(ns metabase.pulse.models.pulse
   "Notifications are ways to deliver the results of Questions to users without going through the normal Metabase UI. At
   the time of this writing, there are two delivery mechanisms for Notifications -- email and Slack notifications;
   these destinations are known as 'Channels'. Notifications themselves are further divided into two categories --
@@ -24,8 +24,8 @@
    [metabase.events :as events]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.permissions.core :as perms]
+   [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]

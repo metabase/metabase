@@ -1,10 +1,10 @@
-(ns metabase.models.pulse-channel-test
+(ns metabase.pulse.models.pulse-channel-test
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.models.pulse-channel :as pulse-channel]
+   [metabase.pulse.models.pulse-channel :as pulse-channel]
+   [metabase.pulse.task.send-pulses :as task.send-pulses]
    [metabase.task :as task]
-   [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]

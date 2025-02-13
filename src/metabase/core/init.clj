@@ -15,6 +15,7 @@
    [metabase.logger.init]
    [metabase.models.init]
    [metabase.notification.init]
+   [metabase.pulse.init]
    [metabase.query-analysis.init]
    [metabase.revisions.init]
    [metabase.search.init]
