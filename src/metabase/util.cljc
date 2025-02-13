@@ -1207,3 +1207,21 @@
   "Like not-empty, but for strings"
   [s]
   (when-not (str/blank? s) s))
+
+#?(:clj
+   (defn do-with-timer-ms
+     "Impl of `with-timer-ms` for the JVM."
+     [thunk]
+     (let [start-time     (start-timer)
+           duration-ms-fn (fn [] (since-ms start-time))]
+       (thunk duration-ms-fn))))
+
+#?(:clj
+   (defmacro with-timer-ms
+     "Execute the body with a function that returns the duration in milliseconds.
+
+     (with-timer-ms [elapsed-ms-fn]
+       (do-something)
+       (elapsed-ms-fn))"
+     [[duration-ms-fn] & body]
+     `(do-with-timer-ms (fn [~duration-ms-fn] ~@body))))

@@ -194,7 +194,7 @@ export const RelativeNext = {
       name: "Next",
     });
     next.classList.add("pseudo-hover");
-    await userEvent.click(canvas.getByRole("searchbox", { name: "Unit" }));
+    await userEvent.click(canvas.getByRole("textbox", { name: "Unit" }));
   },
   decorators: [withMockDate],
 };

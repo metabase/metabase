@@ -32,9 +32,9 @@ const CypressBackend = {
         "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
         "-Duser.timezone=US/Pacific",
         process.env.SHOW_BACKEND_LOGS === "true"
-          ? ""
+          ? null
           : `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
-      ];
+      ].filter(Boolean);
 
       const metabaseConfig = {
         MB_DB_TYPE: "h2",
@@ -44,6 +44,8 @@ const CypressBackend = {
         MB_ENABLE_TEST_ENDPOINTS: "true",
         MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE: "true",
         MB_LAST_ANALYTICS_CHECKSUM: "-1",
+        MB_DB_CONNECTION_URI: "", // ignore connection URI in favor of the db file
+        MB_CONFIG_FILE_PATH: "__cypress__", // ignore config.yml
       };
 
       /**
