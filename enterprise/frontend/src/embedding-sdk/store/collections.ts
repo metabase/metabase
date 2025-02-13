@@ -9,8 +9,6 @@ import type { RegularCollectionId } from "metabase-types/api";
 
 export type SDKCollectionReference = RegularCollectionId | "personal" | "root";
 
-export type ApiType = "collection" | "dashboard";
-
 /**
  * Converts "personal" and "root" to the _numeric_ ids accepted by the api
  * For the root collection id, the API expects null
@@ -35,7 +33,9 @@ export const getCollectionNumericIdFromReference = createSelector(
 
 /**
  * This return an "id"/"slug" that can be used in `/api/collection/{:id}`
- * That endpoint has special handlers for "root" and "trash"
+ * That endpoint has special handlers for "root" and "trash" so unlike when
+ * creating a dashboard, we can have to pass "root" for the root collection
+ * instead of null
  */
 export const getCollectionIdSlugFromReference = createSelector(
   [
