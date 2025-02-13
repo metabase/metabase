@@ -5,9 +5,9 @@ import type {
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useLayoutEffect, useState } from "react";
 
-import { TextInput } from "../TextInput";
+import type { NumberValue } from "metabase/querying/filters/hooks/use-number-filter";
 
-type NumberValue = number | "";
+import { TextInput } from "../TextInput";
 
 export interface NumberInputProps
   extends Omit<
@@ -22,7 +22,7 @@ export interface NumberInputProps
   > {
   value: NumberValue;
   defaultValue?: NumberValue;
-  onChange?: (value: NumberValue) => void;
+  onChange?: (value: number | "") => void;
   vars?: TextInputProps["vars"];
   classNames?: TextInputProps["classNames"];
   styles?: TextInputProps["styles"];
