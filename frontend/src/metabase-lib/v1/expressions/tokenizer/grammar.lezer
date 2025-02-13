@@ -1,0 +1,218 @@
+@top Expression { expression }
+
+@external tokens reference from "./tokens" { Reference }
+
+@skip { space }
+
+@precedence {
+  not @left,
+  sum @left,
+  subtract @left,
+  product @left,
+  quotient @left,
+  and @left,
+  or @left,
+  gt @left,
+  gte @left,
+  lt @left,
+  lte @left,
+  eq @left,
+  neq @left
+}
+
+expression {
+  Number
+| String
+| Boolean
+| Reference
+| BinaryExpression
+| ParenExpression
+| CallExpression
+| UnaryExpression
+| SignedExpression
+}
+
+BinaryExpression {
+  expression !sum "+" expression
+| expression !subtract "-" expression
+| expression !product "*" expression
+| expression !quotient "/" expression
+| expression !and And expression
+| expression !or Or expression
+| expression !gt ">" expression
+| expression !gte ">=" expression
+| expression !lt "<" expression
+| expression !lte "<=" expression
+| expression !eq "=" expression
+| expression !neq "!=" expression
+}
+
+UnaryExpression {
+  !not Not expression
+}
+
+SignedExpression {
+  "+" | "-" expression
+}
+
+ParenExpression {
+  "(" expression ")"
+}
+
+CallExpression {
+  Identifier "(" ")"
+| Identifier "(" ArgList ")"
+}
+
+ArgList {
+  Arg ("," Arg)*
+}
+
+Arg {
+  expression
+}
+
+@skip {} {
+  String[isolate] {
+    '"' (stringContentDouble | Escape)* ('"' | "\n")
+  | "'" (stringContentSingle | Escape)* ("'" | "\n")
+  }
+}
+
+
+Not {
+  @specialize<Identifier,
+    "not"
+  | "Not"
+  | "nOt"
+  | "noT"
+  | "NOt"
+  | "nOT"
+  | "NoT"
+  | "NOT"
+  >
+}
+
+And {
+  @specialize<Identifier,
+    "and"
+  | "anD"
+  | "aNd"
+  | "aND"
+  | "And"
+  | "AnD"
+  | "ANd"
+  | "AND"
+  >
+}
+
+Or {
+  @specialize<Identifier,
+    "or"
+  | "oR"
+  | "Or"
+  | "OR"
+  >
+}
+
+Boolean {
+  True
+| False
+}
+
+True {
+  @specialize<Identifier,
+    "true"
+  | "truE"
+  | "trUe"
+  | "trUE"
+  | "tRue"
+  | "tRuE"
+  | "tRUe"
+  | "tRUE"
+  | "True"
+  | "TruE"
+  | "TrUe"
+  | "TrUE"
+  | "TRue"
+  | "TRuE"
+  | "TRUe"
+  | "TRUE"
+  >
+}
+
+False {
+  @specialize<Identifier,
+    "false"
+  | "falsE"
+  | "falSe"
+  | "falSE"
+  | "faLse"
+  | "faLsE"
+  | "faLSe"
+  | "faLSE"
+  | "fAlse"
+  | "fAlsE"
+  | "fAlSe"
+  | "fAlSE"
+  | "fALse"
+  | "fALsE"
+  | "fALSe"
+  | "fALSE"
+  | "False"
+  | "FalsE"
+  | "FalSe"
+  | "FalSE"
+  | "FaLse"
+  | "FaLsE"
+  | "FaLSe"
+  | "FaLSE"
+  | "FAlse"
+  | "FAlsE"
+  | "FAlSe"
+  | "FAlSE"
+  | "FALse"
+  | "FALsE"
+  | "FALSe"
+  | "FALSE"
+  >
+}
+
+
+@tokens {
+  space { @whitespace+ }
+  hex { $[0-9a-fA-F] }
+
+  Number {
+    (@digit ("_" | @digit)* ("." ("_" | @digit)*)?
+  | "." @digit ("_" | @digit)*) (("e" | "E") ("+" | "-")? ("_" | @digit)*)?
+  | "0x" ($[0-9a-fA-F] | "_")
+  | "0b" $[01_]+ "n"?
+  | "0o" $[0-7_]+ "n"?
+  }
+
+  stringContentSingle { ![\\\n']+ }
+  stringContentDouble { ![\\\n"]+ }
+
+  Identifier {
+    $[a-zA-Z_]$[a-zA-Z0-9_.]*
+  }
+
+  Escape {
+    "\\" ("x" hex hex | "u" ("{" hex+ "}" | hex hex hex hex) | ![xu])
+  }
+
+  "("
+  ")"
+  "+"
+  "-"
+  "*"
+  "/"
+  "="
+  "!="
+  "<"
+  "<="
+  ">"
+  ">="
+  ","
+}
