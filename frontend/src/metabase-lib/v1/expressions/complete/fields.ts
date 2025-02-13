@@ -9,7 +9,8 @@ import { formatIdentifier } from "..";
 
 import type { CompletionResult } from "./types";
 import { content, fuzzyMatcher, tokenAtPos } from "./util";
-type Options = {
+
+export type Options = {
   query: Lib.Query;
   stageIndex: number;
   expressionIndex?: number;

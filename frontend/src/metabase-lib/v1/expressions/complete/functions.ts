@@ -17,7 +17,7 @@ import {
   tokenAtPos,
 } from "./util";
 
-type Options = {
+export type Options = {
   startRule: string;
   query: Lib.Query;
   metadata: Metadata;

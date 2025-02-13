@@ -12,7 +12,7 @@ import {
   POPULAR_FUNCTIONS,
 } from "../config";
 
-type Options = {
+export type Options = {
   startRule: string;
   query: Lib.Query;
   metadata: Metadata;

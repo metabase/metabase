@@ -7,7 +7,7 @@ import { formatIdentifier } from "..";
 
 import { content, fuzzyMatcher, tokenAtPos } from "./util";
 
-type Options = {
+export type Options = {
   query: Lib.Query;
   stageIndex: number;
 };
