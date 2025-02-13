@@ -1,9 +1,8 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import type { QueryModalType } from "metabase/query_builder/constants";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -23,7 +22,7 @@ interface FilterHeaderButtonProps {
 
 export function FilterHeaderButton({
   className,
-  onOpenModal,
+  // onOpenModal,
   query,
   isExpanded,
   onExpand,
@@ -31,17 +30,31 @@ export function FilterHeaderButton({
 }: FilterHeaderButtonProps) {
   const label = isExpanded ? t`Hide filters` : t`Show filters`;
   const items = useMemo(() => query && getFilterItems(query), [query]);
+  const hasItems = items ? items.length > 0 : false;
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const shouldShowFilterPanelExpander = Boolean(
-    items?.length && onExpand && onCollapse,
+    hasItems && onExpand && onCollapse,
   );
+
+  const handleFilterClick = () => {
+    if (hasItems) {
+      if (isExpanded) {
+        onCollapse?.();
+      } else {
+        onExpand?.();
+      }
+    } else {
+      setIsDropdownOpen(true);
+    }
+  };
 
   return (
     <Button.Group>
       <Button
         leftSection={<Icon name="filter" />}
         className={cx(className, ViewTitleHeaderS.FilterButton)}
-        onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
+        onClick={handleFilterClick}
         data-testid="question-filter-header"
       >
         {t`Filter`}
