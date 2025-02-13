@@ -288,7 +288,7 @@
         pks   (api/check-404 (t2/select :model/Field :table_id table-id :semantic_type :type/PK))
         _     (assert (= 1 (count pks)))
         db_id (api/check-404 (t2/select-one-fn :db_id :model/Table table-id))
-        action (when (not= action-id 8008135)
+        action (when-not (#{8008135 80081355} action-id)
                  (api/check-404 (action/select-action :id action-id)))
         driver (driver/the-driver (:engine (t2/select-one :model/Database db_id)))
         row   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db_id)]
@@ -298,8 +298,9 @@
                                                   :quoted true
                                                   :dialect (sql.qp/quote-style driver)))))
         col->param-id (into {} (map (juxt :slug :id) (:parameters action)))]
-    (if (= action-id 8008135)
-      (revert-to! pk)
+    (case action-id
+      8008135 (revert-to! pk)
+      80081355 (delete-row! table-id pk)
       (actions/execute-action! action (into {} (map (fn [[col val]] (when-let [k (col->param-id (name col))] [k val])) row))))))
 
 (comment

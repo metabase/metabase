@@ -95,7 +95,8 @@
         model-id (some-> model-id parse-long)
         maybe-table-name (some->> (get-in query [:query :source-table]) maybe-int (t2/select-one-fn :name :model/Table))
         actions (t2/select-fn-vec #(select-keys % [:id :name]) :model/Action :model_id model-id :is_row_action true)
-        actions (concat actions (when (= maybe-table-name "table_edit_history") [{:id 8008135 :name "↪\uFE0F"}]))]
+        actions (vec (concat actions (when (= maybe-table-name "table_edit_history") [{:id 8008135 :name "↪\uFE0F"}])))
+        actions (conj actions {:id 80081355 :name "❌"})]
     (run-streaming-query
      (-> query
          (update-in [:middleware :js-int-to-string?] (fnil identity true))
@@ -264,3 +265,7 @@
                               [:parameter ms/Parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (parameter-values parameter field-ids query))
+
+(comment
+  (t2/delete! :model/TableEdit)
+  (t2/delete! :test_user))
