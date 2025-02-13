@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
-   [metabase.models.cloud-migration :as cloud-migration]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.core :as pulse]
    [metabase.pulse.send-test :as pulse.send-test]
