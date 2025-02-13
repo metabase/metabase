@@ -1862,7 +1862,7 @@ SELECT CAST('9223372036854775807' AS BIGINT) AS BIGINT`,
         .should("have.text", "1");
 
       cy.log("title drill-thru");
-      H.getDashboardCard().findByText("GUI").click();
+      H.getDashboardCard().findByText("GUI DECIMAL").click();
       H.queryBuilderFiltersPanel().findByText(
         `DECIMAL is equal to "${decimalValue}"`,
       );
@@ -1934,7 +1934,6 @@ SELECT CAST('9223372036854775807' AS BIGINT) AS BIGINT`,
               name: "value",
               "display-name": "Value",
               type: "number",
-              default: minBigIntValue,
             },
           },
         },
@@ -1945,6 +1944,7 @@ SELECT CAST('9223372036854775807' AS BIGINT) AS BIGINT`,
         name: "Number",
         slug: "number",
         sectionId: "number",
+        default: minBigIntValue,
       };
       const dashboardDetails = {
         parameters: [parameterDetails],
