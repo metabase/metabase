@@ -32,7 +32,6 @@ export interface SetupOpts {
   hasEnterprisePlugins?: boolean;
   dashboardQuestionCandidates?: DashboardQuestionCandidate[];
   moveToDashboard?: boolean;
-  collectionMenu?: boolean;
   numberOfCollectionItems?: number;
   numberOfStaleItems?: number;
 }
@@ -45,7 +44,6 @@ export const setup = ({
   hasEnterprisePlugins = false,
   dashboardQuestionCandidates = [],
   moveToDashboard = false,
-  collectionMenu = false,
   numberOfCollectionItems = 10,
   numberOfStaleItems = 0,
 }: SetupOpts) => {
@@ -56,14 +54,20 @@ export const setup = ({
   });
   setupDashboardQuestionCandidatesEndpoint(dashboardQuestionCandidates);
   setupUserKeyValueEndpoints({
-    namespace: "user_acknowledgement",
+    namespace: "indicator-menu",
     key: "collection-menu",
-    value: collectionMenu,
+    value: [],
   });
 
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "move-to-dashboard",
+    value: moveToDashboard,
+  });
+
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "clean-stale-items",
     value: moveToDashboard,
   });
 

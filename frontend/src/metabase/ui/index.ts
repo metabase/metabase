@@ -6,6 +6,7 @@ export type {
   MantineStyleProps,
   FloatingPosition,
   MantineSize,
+  PolymorphicComponentProps,
 } from "@mantine/core";
 export { useHover } from "@mantine/hooks";
 export * from "./components";
