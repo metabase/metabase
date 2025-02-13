@@ -1764,7 +1764,7 @@ SELECT ${minBigIntValue} AS ID`,
         display: "table",
       };
 
-      const getQuestionDetails = cardId => ({
+      const getNestedQuestionDetails = cardId => ({
         name: "BIGINT, Count",
         query: {
           "source-table": `card__${cardId}`,
@@ -1794,7 +1794,7 @@ SELECT ${minBigIntValue} AS ID`,
       cy.log("create a dashboard");
       H.createNativeQuestion(bigIntQuestionDetails).then(({ body: card }) => {
         H.createQuestionAndDashboard({
-          questionDetails: getQuestionDetails(card.id),
+          questionDetails: getNestedQuestionDetails(card.id),
           dashboardDetails,
         }).then(({ body: dashcard }) => {
           H.addOrUpdateDashboardCard({
