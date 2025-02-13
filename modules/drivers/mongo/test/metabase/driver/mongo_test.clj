@@ -876,40 +876,14 @@
                     ["4" "a string" "null" ""]]
                    results))))))))
 
-(deftest ^:parallel uuid-column-is-readable-test
-  (mt/test-driver :mongo
-    (let [uuid (random-uuid)]
-      (is (= uuid
-             (->> (mt/process-query
-                   {:database (mt/id)
-                    :type :native
-                    :native {:query (format "[
-                                               {
-                                                 \"$project\": {
-                                                   \"uuidfield\": {
-                                                     \"$function\": {
-                                                       \"body\": \"function() { return UUID('%s') }\",
-                                                       \"args\": [],
-                                                       \"lang\": \"js\"
-                                                     }
-                                                   }
-                                                 }
-                                               },
-                                               { \"$limit\": 1 }
-                                             ]" uuid)
-                             :collection "venues"}})
-                  :data
-                  :rows
-                  (map second)
-                  first))))))
-
-(deftest ^:parallel can-filter-mongo-by-uuid
-  (mt/test-driver :mongo
-    (mt/dataset uuid-dogs
-      (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
-             (->> {:filter [:=
-                            [:field (mt/id :dogs :person_id) {:base-type "type/*"}]
-                            "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]
-                   :source-table (mt/id :dogs)}
-                  (mt/run-mbql-query dogs) 
-                  mt/rows))))))
+(deftest ^:parallel mongo-uuid-test
+  (testing "mongo uuids can be filtered and are readable"
+    (mt/test-driver :mongo
+      (mt/dataset uuid-dogs
+        (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+               (->> {:filter [:=
+                              [:field (mt/id :dogs :person_id) {:base-type "type/*"}]
+                              "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]
+                     :source-table (mt/id :dogs)}
+                    (mt/run-mbql-query dogs)
+                    mt/rows)))))))

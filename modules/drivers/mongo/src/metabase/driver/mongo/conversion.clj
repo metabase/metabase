@@ -113,8 +113,7 @@
   (to-document [input] (mapv to-document input))
 
   UUID
-  (to-document [input]
-               (mongo.qp/uuid->bsonbinary input))
+  (to-document [input] (mongo.qp/uuid->bsonbinary input))
 
   Object
   (to-document [input] input))
