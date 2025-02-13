@@ -56,7 +56,7 @@ export default function RootLayout({children}) {
     </html>
   )
 }
-  `;
+`;
 
   return snippet.trim();
 }
