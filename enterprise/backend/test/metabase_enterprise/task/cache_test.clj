@@ -7,7 +7,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

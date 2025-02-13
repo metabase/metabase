@@ -5,7 +5,6 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.cache.strategies :as strategies]
-   [metabase.models.dashboard :as dashboard]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task :as task]

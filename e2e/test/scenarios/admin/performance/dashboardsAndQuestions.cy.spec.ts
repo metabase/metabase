@@ -7,7 +7,7 @@ import {
   sampleDashboard,
   sampleDatabase,
   sampleDurationStrategy,
-  sampleQuestion,
+  sampleNativeQuestion,
 } from "./helpers/constants";
 import {
   advanceServerClockBy,
@@ -37,8 +37,8 @@ const testCacheStrategy = ({
   it(description, () => {
     const { visitItem } =
       item.model === "question"
-        ? setupQuestionTest(sampleQuestion)
-        : setupDashboardTest(sampleDashboard, sampleQuestion);
+        ? setupQuestionTest(sampleNativeQuestion)
+        : setupDashboardTest(sampleDashboard, sampleNativeQuestion);
 
     const itemToConfigure = inheritsStrategyFrom ?? item;
 
@@ -81,8 +81,8 @@ const testDoNotCachePolicy = ({
   it(description, () => {
     const { visitItem } =
       item.model === "question"
-        ? setupQuestionTest(sampleQuestion)
-        : setupDashboardTest(sampleDashboard, sampleQuestion);
+        ? setupQuestionTest(sampleNativeQuestion)
+        : setupDashboardTest(sampleDashboard, sampleNativeQuestion);
     visitItem();
 
     // Don't try to disable caching on the root since it's disabled by default
@@ -143,39 +143,39 @@ describe(
             {
               description: "questions can use adaptive strategy",
               strategy: sampleAdaptiveStrategy,
-              item: sampleQuestion,
+              item: sampleNativeQuestion,
             },
             {
               description:
                 "questions can inherit adaptive strategy from database",
               strategy: sampleAdaptiveStrategy,
-              item: sampleQuestion,
+              item: sampleNativeQuestion,
               inheritsStrategyFrom: sampleDatabase,
             },
             {
               description:
                 "questions can inherit adaptive strategy from instance-wide default policy",
               strategy: sampleAdaptiveStrategy,
-              item: sampleQuestion,
+              item: sampleNativeQuestion,
               inheritsStrategyFrom: instanceDefault,
             },
             {
               description: "questions can use duration strategy",
               strategy: sampleDurationStrategy,
-              item: sampleQuestion,
+              item: sampleNativeQuestion,
             },
             {
               description:
                 "questions can inherit duration strategy from database",
               strategy: sampleDurationStrategy,
-              item: sampleQuestion,
+              item: sampleNativeQuestion,
               inheritsStrategyFrom: sampleDatabase,
             },
             {
               description:
                 "questions can inherit duration strategy from instance-wide default policy",
               strategy: sampleDurationStrategy,
-              item: sampleQuestion,
+              item: sampleNativeQuestion,
               inheritsStrategyFrom: instanceDefault,
             },
             {
@@ -225,18 +225,18 @@ describe(
           [
             {
               description: "questions can use no-caching policy",
-              item: sampleQuestion,
+              item: sampleNativeQuestion,
             },
             {
               description:
                 "questions can inherit no-caching policy from database",
-              item: sampleQuestion,
+              item: sampleNativeQuestion,
               inheritsStrategyFrom: sampleDatabase,
             },
             {
               description:
                 "questions can inherit no-caching policy from instance-wide default policy",
-              item: sampleQuestion,
+              item: sampleNativeQuestion,
               inheritsStrategyFrom: instanceDefault,
             },
             {
@@ -277,7 +277,7 @@ describe(
             description:
               "questions can inherit adaptive strategy from instance-wide default policy",
             strategy: sampleAdaptiveStrategy,
-            item: sampleQuestion,
+            item: sampleNativeQuestion,
             inheritsStrategyFrom: instanceDefault,
             oss: true,
           },
