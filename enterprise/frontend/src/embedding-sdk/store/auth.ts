@@ -157,7 +157,10 @@ const safeStringify = (value: unknown) => {
  */
 export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn =
   async url => {
-    const response = await fetch(url, {
+    const urlWithParams = new URL(url);
+    urlWithParams.searchParams.set("token", "true");
+
+    const response = await fetch(urlWithParams.toString(), {
       method: "GET",
       credentials: "include",
     });
