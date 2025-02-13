@@ -417,7 +417,7 @@ const goToDataPickerTab = async ({
   name: string;
   iconName: IconName;
 }) => {
-  const tabsView = within(screen.getByTestId("tabs-view"));
+  const tabsView = within(await screen.findByTestId("tabs-view"));
 
   const tabButton = tabsView.getByRole("tab", {
     name: `${iconName} icon ${name}`,
