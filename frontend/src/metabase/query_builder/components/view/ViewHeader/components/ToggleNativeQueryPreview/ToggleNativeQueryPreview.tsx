@@ -53,7 +53,7 @@ export const ToggleNativeQueryPreview = ({
 
   return (
     <Button
-      leftIcon={<Icon name="sql" />}
+      leftSection={<Icon name="sql" />}
       onClick={handleClick}
       aria-label={buttonText}
     >

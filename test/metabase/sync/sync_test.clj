@@ -118,6 +118,7 @@
     :db_id       true
     :entity_type :entity/GenericTable
     :id          true
+    :entity_id   true
     :updated_at  true}))
 
 (defn- field-defaults []
@@ -129,6 +130,7 @@
     :fk_target_field_id  false
     :database_is_auto_increment false
     :id                  true
+    :entity_id           true
     :last_analyzed       false
     :parent_id           false
     :position            0
