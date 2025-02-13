@@ -28,7 +28,7 @@
 ;; to Google Sheets data. When a user connects a Google Drive folder to Metabase, Harbormaster creates a connection to
 ;; the folder and starts syncing the data to Metabase. This data is then available to the user in Metabase as tables.
 ;;
-;; ## Steps to connect a new google drive folde
+;; ## Steps to connect a new google drive folder
 ;;
 ;; - An admin clicks Add Data > Connect Google Sheets
 ;; - FE sends :get "api/ee/gsheets/service-account" to get service-account email
