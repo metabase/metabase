@@ -1,5 +1,6 @@
 (ns metabase.sync.sync-metadata.crufty
-  (:require    [metabase.util :as u]))
+  (:require    
+    [metabase.util :as u]))
 
 (defn- matches-any-patterns? [name patterns]
   (some #(re-find % name) patterns))
