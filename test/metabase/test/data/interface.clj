@@ -909,6 +909,11 @@
     [_driver _feature _database]
     true))
 
+;; redshift only supports listagg which returns a string
+(defmethod driver/database-supports? [:redshift :test/array-aggregation]
+  [_driver _feature _database]
+  false)
+
 (defmulti agg-venues-by-category-id
   {:arglists '([driver])}
   dispatch-on-driver-with-test-extensions
