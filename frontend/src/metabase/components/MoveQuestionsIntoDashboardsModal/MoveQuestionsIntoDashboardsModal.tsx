@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { withRouter } from "react-router";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   skipToken,
