@@ -15,18 +15,17 @@ export function VerticalWell({ display }: VerticalWellProps) {
   if (isCartesianChart(display)) {
     return <CartesianVerticalWell />;
   }
-  if (display === "funnel") {
-    return <FunnelVerticalWell />;
-  }
-  if (display === "pie") {
-    return <PieVerticalWell />;
-  }
-  if (display === "pivot") {
-    return <PivotVerticalWell />;
+
+  switch (display) {
+    case "funnel":
+      return <FunnelVerticalWell />;
+    case "pie":
+      return <PieVerticalWell />;
+    case "pivot":
+      return <PivotVerticalWell />;
+    case "map":
+      return <MapVerticalWell />;
   }
 
-  if (display === "map") {
-    return <MapVerticalWell />;
-  }
   return null;
 }

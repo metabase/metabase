@@ -26,7 +26,7 @@ export const mapDropHandler = (
     extractReferencedColumns(state.columnValuesMapping),
   );
 
-  if (over.id === DROPPABLE_ID.MAP_METRIC && isNumeric(column)) {
+  if (over.id === DROPPABLE_ID.CANVAS_MAIN && isNumeric(column)) {
     let metricColumnName = state.settings["map.metric"];
 
     if (!metricColumnName) {

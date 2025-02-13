@@ -27,7 +27,7 @@ export const pieDropHandler = (
     extractReferencedColumns(state.columnValuesMapping),
   );
 
-  if (over.id === DROPPABLE_ID.PIE_METRIC && isNumeric(column)) {
+  if (over.id === DROPPABLE_ID.CANVAS_MAIN && isNumeric(column)) {
     let metricColumnName = state.settings["pie.metric"];
 
     if (!metricColumnName) {
