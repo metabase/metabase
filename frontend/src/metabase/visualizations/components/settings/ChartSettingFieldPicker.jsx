@@ -78,6 +78,8 @@ export const ChartSettingFieldPicker = ({
     options.length === 0 ||
     (options.length === 1 && options[0].value === value);
 
+  const hasLeftSection = showDragHandle || (showColorPicker && seriesKey);
+
   return (
     <ChartSettingFieldPickerRoot
       className={className}
@@ -90,13 +92,13 @@ export const ChartSettingFieldPicker = ({
         pl="sm"
         pr="xs"
         w="100%"
-        isInitiallyOpen={autoOpenWhenUnset && value === undefined}
+        defaultDropdownOpened={autoOpenWhenUnset && value === undefined}
         options={options}
         value={value}
         onChange={onChange}
-        icon={
-          showDragHandle || (showColorPicker && seriesKey) ? (
-            <Group noWrap spacing="sm" p="xs" ml="sm">
+        leftSection={
+          hasLeftSection ? (
+            <Group wrap="nowrap" gap="sm" p="xs" ml="sm" align="start">
               {showDragHandle && (
                 <GrabberHandle
                   name="grabber"
@@ -119,12 +121,12 @@ export const ChartSettingFieldPicker = ({
             </Group>
           ) : null
         }
+        leftSectionWidth="auto"
         placeholderNoOptions={t`No valid fields`}
         placeholder={t`Select a field`}
-        iconWidth="auto"
         rightSectionWidth="auto"
         rightSection={
-          <Group noWrap spacing="sm" p="xs" mr="sm">
+          <Group wrap="nowrap" gap="sm" p="xs" mr="sm">
             {!disabled && (
               <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
                 <Icon name="chevrondown" />
@@ -147,28 +149,30 @@ export const ChartSettingFieldPicker = ({
           </Group>
         }
         styles={{
-          wrapper: {
-            display: "flex",
+          root: {
+            overflow: "visible",
+            padding: "0px",
           },
-          icon: {
-            position: "static",
-            width: "auto",
+          wrapper: {
+            marginTop: "0px",
+          },
+          section: {
+            backgroundColor: "unset",
           },
           input: {
-            "&[data-with-icon]": {
-              paddingLeft: 0,
-            },
             marginLeft: theme.spacing.xs,
             textOverflow: "ellipsis",
             fontWeight: "bold",
-            "&[data-disabled]": {
-              backgroundColor: "var(--mb-color-bg-white) !important",
-            },
+
+            backgroundColor: disabled
+              ? "var(--mb-color-bg-white) !important"
+              : "inherit",
+
             border: "none",
             width: "100%",
-          },
-          rightSection: {
-            pointerEvents: "none",
+            color: "var(--mb-color-text-primary)",
+            cursor: "inherit",
+            pointerEvents: "unset",
           },
         }}
       />
