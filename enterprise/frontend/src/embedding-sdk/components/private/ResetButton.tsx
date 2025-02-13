@@ -14,7 +14,7 @@ export const ResetButton = (buttonProps: ButtonProps): React.JSX.Element => (
       variant="outline"
       radius="xl"
       size="xs"
-      leftIcon={<Icon name="revert" />}
+      leftSection={<Icon name="revert" />}
       style={sizeOverrideStyles}
       {...buttonProps}
     />

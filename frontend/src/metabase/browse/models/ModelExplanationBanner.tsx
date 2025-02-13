@@ -45,7 +45,7 @@ export const ModelExplanationBanner = () => {
     >
       <Flex>
         <ModelsVideoThumbnail onClick={() => setOpened(true)} />
-        <Stack spacing="md">
+        <Stack gap="md">
           <Title
             order={2}
             size="md"
@@ -55,7 +55,7 @@ export const ModelExplanationBanner = () => {
           <Text size="md" lh="1.5">
             {t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}
           </Text>
-          <Group spacing="md">
+          <Group gap="md">
             {showMetabaseLinks && (
               <Button variant="subtle" p={0}>
                 <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>

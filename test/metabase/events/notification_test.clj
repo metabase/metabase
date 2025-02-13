@@ -92,6 +92,16 @@
              :topic   :user-joined}
             {:user_id (mt/user->id :rasta)
              :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
+           ["multiple hydration in the same map"
+            [:map
+             (-> [:user_id :int] (#'events.schema/with-hydrate :user user-hydra-model))
+             (-> [:creator :int] (#'events.schema/with-hydrate :creator user-hydra-model))]
+            {:user_id    (mt/user->id :rasta)
+             :creator_id (mt/user->id :crowberto)}
+            {:user_id    (mt/user->id :rasta)
+             :user       (t2/select-one user-hydra-model (mt/user->id :rasta))
+             :creator_id (mt/user->id :crowberto)
+             :creator    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
            ["respect the options"
             [:map
              (-> [:user_id {:optional true} :int] (#'events.schema/with-hydrate :user user-hydra-model))]

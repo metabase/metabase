@@ -73,7 +73,7 @@ export function AnotherColumnForm({
         <PopoverBackButton
           onClick={onBack}
         >{t`Value from another column`}</PopoverBackButton>
-        <Stack pos="relative" w="100%" spacing="md">
+        <Stack pos="relative" w="100%" gap="md">
           <Select
             autoFocus={!column}
             value={column}
@@ -82,7 +82,10 @@ export function AnotherColumnForm({
             searchable
             onChange={handleChangeColumnKey}
             styles={{ dropdown: { width: "100%" } }}
-            withinPortal={false}
+            comboboxProps={{
+              withinPortal: false,
+              floatingStrategy: "fixed",
+            }}
           />
           <TextInput
             value={label}
