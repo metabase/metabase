@@ -1741,7 +1741,7 @@ SELECT -9223372036854775808 AS ID`,
       };
 
       const getQuestionDetails = cardId => ({
-        name: "Orders, Count",
+        name: "BIGINT, Count",
         query: {
           "source-table": `card__${cardId}`,
           aggregation: [["count"]],
@@ -1800,7 +1800,7 @@ SELECT -9223372036854775808 AS ID`,
         .should("have.text", "1");
 
       cy.log("title drill-thru");
-      H.getDashboardCard().findByText("Orders, Count").click();
+      H.getDashboardCard().findByText("BIGINT, Count").click();
       H.queryBuilderFiltersPanel().findByText(
         `ID is equal to "${maxBigIntValue}"`,
       );
