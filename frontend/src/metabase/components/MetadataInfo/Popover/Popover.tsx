@@ -21,7 +21,11 @@ const POPOVER_FAST_OPEN_DELAY = 150;
 // we don't close immediately but delay by a short amount to avoid flicker.
 const POPOVER_CLOSE_DELAY = POPOVER_FAST_OPEN_DELAY + 30;
 
-import { Dropdown, WidthBound } from "./Popover.styled";
+import {
+  Dropdown,
+  HackyInvisibleTargetFiller,
+  WidthBound,
+} from "./Popover.styled";
 
 export type PopoverProps = Pick<
   HoverCardProps,
@@ -78,6 +82,9 @@ export function Popover({
         onMouseUp={stopPropagation}
         className={group.shouldDelay ? Animation.fadeIn : null}
       >
+        {/* HACK: adds an element between the target and the card */}
+        {/* to avoid the card from disappearing */}
+        <HackyInvisibleTargetFiller />
         <WidthBound
           width={width}
           ref={node => {
