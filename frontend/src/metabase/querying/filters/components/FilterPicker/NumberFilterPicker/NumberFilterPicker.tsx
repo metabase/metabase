@@ -2,9 +2,9 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { isNotNull } from "metabase/lib/types";
 import {
-  type NumberValue,
-  isNotEmptyValue,
+  type NumberOrEmptyValue,
   useNumberFilter,
 } from "metabase/querying/filters/hooks/use-number-filter";
 import { Box, Flex, Text } from "metabase/ui";
@@ -101,10 +101,10 @@ interface NumberValueInputProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  values: NumberValue[];
+  values: NumberOrEmptyValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
-  onChange: (values: NumberValue[]) => void;
+  onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
 function NumberValueInput({
@@ -123,7 +123,7 @@ function NumberValueInput({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          values={values.filter(isNotEmptyValue)}
+          values={values.filter(isNotNull)}
           autoFocus
           onChange={onChange}
         />

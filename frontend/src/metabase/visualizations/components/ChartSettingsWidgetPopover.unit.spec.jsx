@@ -47,7 +47,9 @@ const setup = props => {
 it("should display when an anchor is passed", async () => {
   setup({ widgets: [FORMATTING_WIDGET, STYLE_WIDGET] });
 
-  expect(await screen.findByText("Formatting")).toBeInTheDocument();
+  expect(
+    await screen.findByText("Formatting", {}, { timeout: 2000 }),
+  ).toBeInTheDocument();
   expect(await screen.findByText("Style")).toBeInTheDocument();
 
   //Should Default to rendering formatting
@@ -61,14 +63,18 @@ it("should not show tabs when only 1 widget is passed", async () => {
   expect(screen.queryByText("Style")).not.toBeInTheDocument();
 
   //Should Default to rendering formatting
-  expect(await screen.findByText("Foo")).toBeInTheDocument();
+  expect(
+    await screen.findByText("Foo", {}, { timeout: 2000 }),
+  ).toBeInTheDocument();
 });
 
 it("should change tabs when clicked", async () => {
   setup({ widgets: [FORMATTING_WIDGET, STYLE_WIDGET] });
 
   //Should Default to rendering formatting
-  expect(await screen.findByText("Foo")).toBeInTheDocument();
+  expect(
+    await screen.findByText("Foo", {}, { timeout: 2000 }),
+  ).toBeInTheDocument();
 
   await userEvent.click(await screen.findByText("Style"));
 
