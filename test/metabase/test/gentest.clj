@@ -48,7 +48,7 @@
          stacktrace))
   ([stacktrace limit]
    (let [ps (pretty-stacktrace stacktrace)]
-     (subvec ps 0 (max (count ps) limit)))))
+     (subvec ps 0 (min (count ps) limit)))))
 
 (defn- ex->map
   [^Exception e]
