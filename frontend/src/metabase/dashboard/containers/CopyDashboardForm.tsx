@@ -100,7 +100,9 @@ function CopyDashboardForm({
     );
   }, [originalDashboard]);
 
-  const isShallowCopyDisabled = isLoading || error || hasDashboardQuestions;
+  const isShallowCopyDisabled = Boolean(
+    isLoading || error || hasDashboardQuestions,
+  );
 
   return (
     <FormProvider
