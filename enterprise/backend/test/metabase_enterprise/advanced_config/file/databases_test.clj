@@ -112,7 +112,7 @@
               tables (t2/select :model/Table :db_id (u/the-id db))
               fields (t2/select :model/Field :table_id [:in (map :id tables)])]
           (is (= freq (frequencies (map :visibility_type fields)))
-                message)))
+              message)))
       (finally
         (t2/delete! :model/Database :name test-db-name)))))
 
