@@ -56,6 +56,7 @@ const FileUploadLarge = ({
       id: upload.id,
       title: getName(upload),
       icon: "model",
+      href: upload.modelId ? `/model/${upload.modelId}` : undefined,
       description: Description({ upload }),
       isInProgress: isUploadInProgress(upload),
       isCompleted: isUploadCompleted(upload),
@@ -122,7 +123,7 @@ const getLoadingMessage = (time: number) => {
 
 const Description = ({ upload }: { upload: FileUpload }) => {
   if (upload.status === "complete" && upload.modelId) {
-    return <Link to={`/model/${upload.modelId}`}>Start exploring</Link>;
+    return t`Start exploring`;
   }
 
   if (upload.status === "error") {

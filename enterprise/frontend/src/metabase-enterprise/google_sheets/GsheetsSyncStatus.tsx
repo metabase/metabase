@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import Link from "metabase/core/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import StatusLarge from "metabase/status/components/StatusLarge";
@@ -116,18 +115,20 @@ function GsheetsSyncStatusView({
     .with("error", () => t`Error importing Google Sheets`)
     .otherwise(() => t`Importing Google Sheets...`);
 
+  const itemTitle = match(status)
+    .with("complete", () => t`Start exploring`)
+    .otherwise(() => t`Google Sheets`);
+
   if (error) {
     console.error(error);
   }
 
   const description = match(status)
-    .with("complete", () => (
-      <Link to={`browse/databases/${db_id}`}>{t`Start Exploring`}</Link>
-    ))
+    .with("complete", () => t`Files sync every 15 minutes`)
     .with(
       "error",
-      // eslint-disable-next-line no-literal-metabase-strings -- admin UI
       () =>
+        // eslint-disable-next-line no-literal-metabase-strings -- admin UI
         t`Please check that the folder is shared with the Metabase Service Account.`,
     )
     .otherwise(() => undefined);
@@ -138,7 +139,9 @@ function GsheetsSyncStatusView({
         title,
         items: [
           {
-            title: t`Google Sheets`,
+            title: itemTitle,
+            href:
+              status === "complete" ? `/browse/databases/${db_id}` : undefined,
             icon: "google_drive",
             description,
             isInProgress: status === "loading",
