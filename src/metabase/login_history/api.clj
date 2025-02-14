@@ -1,8 +1,8 @@
-(ns metabase.api.login-history
+(ns metabase.login-history.api
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.login-history :as login-history]
+   [metabase.login-history.models.login-history :as login-history]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 

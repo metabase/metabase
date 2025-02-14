@@ -1,7 +1,6 @@
-(ns metabase.models.login-history
+(ns metabase.login-history.models.login-history
   (:require
    [java-time.api :as t]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -38,18 +37,6 @@
                                  (t/zoned-date-time (u.date/with-time-zone-same-instant timestamp timezone) timezone)
                                  timestamp)))
           (update :device_description request/describe-user-agent)))))
-
-(defsetting send-email-on-first-login-from-new-device
-  ;; no need to i18n -- this isn't user-facing
-  "Should we send users a notification email the first time they log in from a new device? (Default: true). This is
-  currently only configurable via environment variable so users who gain access to an admin's credentials cannot
-  disable this Setting and access their account without them knowing."
-  :type       :boolean
-  :visibility :internal
-  :setter     :none
-  :default    true
-  :doc "This variable also controls the geocoding service that Metabase uses to know the location of your logged in users.
-        Setting this variable to false also disables this reverse geocoding functionality.")
 
 (methodical/defmethod t2/table-name :model/LoginHistory [_model] :login_history)
 
