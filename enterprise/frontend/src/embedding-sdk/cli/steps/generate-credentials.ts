@@ -1,12 +1,8 @@
-import fs from "fs/promises";
-
 import { input } from "@inquirer/prompts";
 
 import { isEmail } from "metabase/lib/email";
 
-import { SAMPLE_CREDENTIALS_FILE_NAME } from "../constants/config";
 import type { CliStepMethod } from "../types/cli";
-import { addFileToGitIgnore } from "../utils/add-file-to-git-ignore";
 import { generateRandomDemoPassword } from "../utils/generate-password";
 import {
   OUTPUT_STYLES,
@@ -26,14 +22,6 @@ export const generateCredentials: CliStepMethod = async state => {
   });
 
   const password = generateRandomDemoPassword();
-
-  await addFileToGitIgnore(SAMPLE_CREDENTIALS_FILE_NAME);
-
-  // Store the login credentials to a file.
-  await fs.writeFile(
-    `./${SAMPLE_CREDENTIALS_FILE_NAME}`,
-    JSON.stringify({ email, password }, null, 2),
-  );
 
   return [
     {
