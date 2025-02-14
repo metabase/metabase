@@ -56,7 +56,7 @@ export function diagnose({
   stageIndex: number;
   name?: string | null;
   metadata?: Metadata;
-  expressionIndex: number | undefined;
+  expressionIndex?: number | undefined;
 }): ErrorWithMessage | null {
   if (!source || source.length === 0) {
     return null;
@@ -177,7 +177,7 @@ function prattCompiler({
   name: string | null;
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex: number | undefined;
+  expressionIndex?: number | undefined;
   database?: Database | null;
 }): ErrorWithMessage | Expr {
   const tokens = lexify(source);
