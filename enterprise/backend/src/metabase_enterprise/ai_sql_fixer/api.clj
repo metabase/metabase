@@ -2,13 +2,11 @@
   "`/api/ee/ai-sql-fixer/` routes"
   (:require
    [clojure.set :as set]
-   ^{:clj-kondo/ignore [:metabase/modules]}
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.core :as metabot-v3]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.util :as driver.u]
-   ^{:clj-kondo/ignore [:metabase/modules]}
-   [metabase.query-analysis.native-query-analyzer :as nqa]
+   [metabase.query-analysis.core :as query-analyzer]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
@@ -62,7 +60,7 @@
 
 (defn- used-tables
   [{:keys [database] :as query}]
-  (let [queried-tables (->> (nqa/tables-for-native query :all-drivers-trusted? true)
+  (let [queried-tables (->> (query-analyzer/tables-for-native query :all-drivers-trusted? true)
                             :tables
                             (map #(set/rename-keys % {:table :name, :table-id :id})))
         {recognized-tables true, unrecognized-tables false} (group-by t2/instance? queried-tables)]
@@ -136,7 +134,7 @@
                                      [:error_message :string]]]
   (qp.perms/check-current-user-has-adhoc-native-query-perms query)
   (let [driver (-> query :database driver.u/database->driver)]
-    (-> (metabot-v3.client/fix-sql {:sql (-> query :native :query)
+    (-> (metabot-v3/fix-sql {:sql (-> query :native :query)
                                     :dialect driver
                                     :error_message error_message
                                     :schema_ddl (schema-sample query)})
