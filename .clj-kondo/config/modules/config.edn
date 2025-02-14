@@ -638,6 +638,10 @@
   {:api  #{metabase-enterprise.enhancements.init}
    :uses #{models premium-features sso util enterprise/sso}}
 
+  enterprise/gsheets
+  {:api  #{metabase-enterprise.gsheets.api}
+   :uses #{api analytics models premium-features util}}
+
   enterprise/llm
   {:api  #{metabase-enterprise.llm.api}
    :uses #{analytics analyze api models query-processor util}}
