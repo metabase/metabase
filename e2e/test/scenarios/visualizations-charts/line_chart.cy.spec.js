@@ -550,6 +550,17 @@ describe("scenarios > visualizations > line chart", () => {
         })
         .closest("[data-testid=chartsettings-field-picker]")
         .icon("grabber");
+
+      cy.log("Drag and drop the first y-axis field to the last position");
+      cy.findAllByTestId("chart-setting-select").then(initial => {
+        H.dragField(0, 1);
+
+        cy.findAllByTestId("chart-setting-select").should(content => {
+          expect(content[0].value).to.eq(initial[0].value); // Created At: Month
+          expect(content[1].value).to.eq(initial[2].value); // Sum of Total
+          expect(content[2].value).to.eq(initial[1].value); // Count
+        });
+      });
     });
 
     it("should allow changing a series' color - #53735", () => {
