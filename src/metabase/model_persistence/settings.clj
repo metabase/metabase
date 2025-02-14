@@ -18,3 +18,10 @@
   :default    "0 0 0/6 * * ? *"
   :visibility :admin
   :audit      :getter)
+
+(defsetting persist-models-enabled
+  (i18n/deferred-tru "Whether to enable models persistence for a specific Database.")
+  :default        false
+  :type           :boolean
+  :visibility     :public
+  :database-local :only)

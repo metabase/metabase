@@ -333,13 +333,6 @@
   [_database]
   [:name :engine])
 
-(defsetting persist-models-enabled
-  (deferred-tru "Whether to enable models persistence for a specific Database.")
-  :default        false
-  :type           :boolean
-  :visibility     :public
-  :database-local :only)
-
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]
   (let [maybe-alias #(h2x/identifier :field table-alias %)]
