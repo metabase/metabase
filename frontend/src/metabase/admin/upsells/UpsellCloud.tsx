@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -28,7 +28,8 @@ export const UpsellCloud = ({
       onOpenModal={onOpenModal}
       illustrationSrc="app/assets/img/upsell-cloud.png"
     >
-      {t`Get automatic backups, restores, and upgrades, built-in network monitoring, unlimited expert help from engineers and more.`}{" "}
+      {c("'restores' and 'upgrades' are nouns in plural in this context")
+        .t`Get automatic backups, restores, and upgrades, built-in network monitoring, unlimited expert help from engineers and more.`}{" "}
       <strong>{t`All your dashboards and questions will be copied to your Cloud instance.`}</strong>{" "}
       {t`Get your first 14 days of Metabase Cloud for free.`}
       <ExternalLink
