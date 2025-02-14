@@ -9,7 +9,7 @@ export const SAMPLE_APP_SETUP_CONFIGS: SampleAppSetupConfigs = {
   "metabase-nodejs-react-sdk-embedding-sample": [
     {
       subAppName: "client",
-      branch: "main",
+      defaultBranch: "main",
       env: {
         PORT: 4300,
         VITE_METABASE_INSTANCE_URL: METABASE_INSTANCE_URL,
@@ -21,7 +21,7 @@ export const SAMPLE_APP_SETUP_CONFIGS: SampleAppSetupConfigs = {
   "metabase-nextjs-sdk-embedding-sample": [
     {
       subAppName: "next-sample-pages-router",
-      branch: "main",
+      defaultBranch: "main",
       env: {
         PORT: 4301,
         NEXT_PUBLIC_METABASE_INSTANCE_URL: METABASE_INSTANCE_URL,
@@ -32,7 +32,7 @@ export const SAMPLE_APP_SETUP_CONFIGS: SampleAppSetupConfigs = {
     },
     {
       subAppName: "next-sample-app-router",
-      branch: "main",
+      defaultBranch: "main",
       env: {
         PORT: 4302,
         NEXT_PUBLIC_METABASE_INSTANCE_URL: METABASE_INSTANCE_URL,
@@ -44,7 +44,7 @@ export const SAMPLE_APP_SETUP_CONFIGS: SampleAppSetupConfigs = {
   ],
   shoppy: [
     {
-      branch: "main",
+      defaultBranch: "main",
       env: {
         PORT: 4303,
         // We have to reset API host for tests
