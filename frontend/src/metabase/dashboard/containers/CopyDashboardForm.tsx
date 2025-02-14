@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
+import { useGetDashboardQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import Button from "metabase/core/components/Button";
@@ -20,7 +21,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import type { CollectionId, Dashboard } from "metabase-types/api";
+import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 
 import { DashboardCopyModalShallowCheckboxLabel } from "../components/DashboardCopyModal/DashboardCopyModalShallowCheckboxLabel/DashboardCopyModalShallowCheckboxLabel";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "../constants";
@@ -51,7 +52,7 @@ export interface CopyDashboardFormProps {
   initialValues?: CopyDashboardFormProperties | null;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   onValuesChange?: (vals: CopyDashboardFormProperties) => void;
-  originalDashboard: Dashboard;
+  originalDashboardId: DashboardId;
 }
 
 function CopyDashboardForm({
@@ -61,8 +62,14 @@ function CopyDashboardForm({
   initialValues,
   filterPersonalCollections,
   onValuesChange,
-  originalDashboard,
+  originalDashboardId,
 }: CopyDashboardFormProps) {
+  const {
+    currentData: originalDashboard,
+    isLoading,
+    error,
+  } = useGetDashboardQuery({ id: originalDashboardId });
+
   const computedInitialValues = useMemo(
     () => ({
       ...DASHBOARD_SCHEMA.getDefault(),
@@ -87,9 +94,13 @@ function CopyDashboardForm({
     [onValuesChange],
   );
 
-  const hasDashboardQuestions = originalDashboard?.dashcards.some(
-    dc => dc.card.dashboard_id !== null,
-  );
+  const hasDashboardQuestions = useMemo(() => {
+    return !!originalDashboard?.dashcards.some(
+      dc => dc.card.dashboard_id !== null,
+    );
+  }, [originalDashboard]);
+
+  const isShallowCopyDisabled = isLoading || error || hasDashboardQuestions;
 
   return (
     <FormProvider
@@ -127,7 +138,7 @@ function CopyDashboardForm({
               hasDashboardQuestions={hasDashboardQuestions}
             />
           }
-          disabled={hasDashboardQuestions}
+          disabled={isShallowCopyDisabled}
         />
         <FormFooter>
           <FormErrorMessage inline />

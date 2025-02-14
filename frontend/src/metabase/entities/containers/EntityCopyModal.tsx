@@ -56,7 +56,7 @@ const EntityCopyModal = ({
           onSaved={onSaved}
           initialValues={initialValues}
           {...props}
-          originalDashboard={resolvedObject}
+          originalDashboardId={resolvedObject.id}
         />
       )}
       {entityType === "questions" && (
