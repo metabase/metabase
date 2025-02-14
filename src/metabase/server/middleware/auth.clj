@@ -3,8 +3,8 @@
   is not used as part of the normal `app`; it is instead added selectively to appropriate routes."
   (:require
    [clojure.string :as str]
-   [metabase.models.setting :as setting]
    [metabase.api.auth :as api.auth]
+   [metabase.models.setting :as setting]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-trs]]))
 
