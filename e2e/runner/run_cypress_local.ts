@@ -97,6 +97,9 @@ const init = async () => {
 
     printBold("⏳ Generating snapshots");
     await runCypress("snapshot", cleanup);
+  } else {
+    printBold("Skipping snapshot generation, beware of stale snapshot caches");
+    shell("echo 'Existing snapshots:' && ls -1 e2e/snapshots");
   }
 
   const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
