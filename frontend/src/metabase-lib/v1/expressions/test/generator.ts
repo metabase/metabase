@@ -1,13 +1,38 @@
-import { createRandom } from "./prng";
+type Generator<T> = () => T;
 
-export function generateExpression(seed, resultType, depth = 13) {
+type Node = {
+  type: number;
+  value?: number | string;
+  params?: Node[];
+  left?: Node;
+  right?: Node;
+  child?: Node;
+  op?: string;
+};
+
+function assert<T>(x: T | null | undefined): asserts x is T {
+  if (x === null || x === undefined) {
+    throw new Error("Assertion failed");
+  }
+}
+
+export function generateExpression(
+  seed: number,
+  resultType?: "boolean" | "number" | "string" | "expression",
+  depth: number = 13,
+) {
   const random = createRandom(seed);
 
-  const randomInt = max => Math.floor(max * random());
-  const randomItem = items => items[randomInt(items.length)];
-  const oneOf = functions => () => randomItem(functions).apply(null, []);
-  const listOf = (n, functions) => () =>
-    [...Array(n)].map(_ => oneOf(functions)());
+  const randomInt = (max: number): number => Math.floor(max * random());
+  const randomItem = <T>(items: T[]): T => items[randomInt(items.length)];
+  const oneOf =
+    <T>(generators: Generator<T>[]): Generator<T> =>
+    () =>
+      randomItem(generators).apply(null, []);
+  const listOf =
+    <T>(n: number, generators: Generator<T>[]) =>
+    () =>
+      [...Array(n)].map(_ => oneOf(generators)());
 
   const zero = () => 0;
   const one = () => 1;
@@ -50,15 +75,15 @@ export function generateExpression(seed, resultType, depth = 13) {
     Group: 6,
   };
 
-  const randomizeCase = str =>
+  const randomizeCase = (str: string) =>
     str
       .split("")
       .map(ch => (randomInt(10) < 3 ? ch.toUpperCase() : ch))
       .join("");
 
-  const format = node => {
+  const format = (node: Node): string => {
     const spaces = () => listOf(1, [space, () => ""])().join("");
-    const blank = ch => spaces() + ch + spaces();
+    const blank = (ch: string) => spaces() + ch + spaces();
     let str = null;
     const { type, value, op, left, right, child, params } = node;
     switch (type) {
@@ -67,12 +92,22 @@ export function generateExpression(seed, resultType, depth = 13) {
         str = value;
         break;
       case NODE.Unary:
+        assert(op);
+        assert(child);
         str = blank(op) + format(child);
         break;
       case NODE.Binary:
+        assert(left);
+        assert(op);
+        assert(right);
         str = format(left) + blank(op) + format(right);
         break;
       case NODE.FunctionCall:
+        assert(value);
+        assert(params);
+        if (typeof value !== "string") {
+          throw new Error("Unexpected value type");
+        }
         str =
           randomizeCase(value) +
           blank("(") +
@@ -80,6 +115,7 @@ export function generateExpression(seed, resultType, depth = 13) {
           blank(")");
         break;
       case NODE.Group:
+        assert(child);
         str = blank("(") + format(child) + blank(")");
         break;
     }
@@ -90,16 +126,16 @@ export function generateExpression(seed, resultType, depth = 13) {
     return String(str);
   };
 
-  const coalesce = fn => {
+  const coalesce = (fn: Generator<Node>): Node => {
     return {
       type: NODE.FunctionCall,
       value: "coalesce",
-      params: listOf(1 + randomInt(3), [fn])(),
+      params: listOf<Node>(1 + randomInt(3), [fn])(),
     };
   };
 
-  const caseExpression = fn => {
-    const params = [];
+  const caseExpression = (fn: Generator<Node>): Node => {
+    const params: Node[] = [];
     for (let i = 0; i < 1 + randomInt(3); ++i) {
       params.push(booleanExpression());
       params.push(fn());
@@ -114,7 +150,7 @@ export function generateExpression(seed, resultType, depth = 13) {
     };
   };
 
-  const numberExpression = () => {
+  const numberExpression = (): Node => {
     --depth;
     const node =
       depth <= 0
@@ -135,10 +171,11 @@ export function generateExpression(seed, resultType, depth = 13) {
     return node;
   };
 
-  const numberLiteral = () => {
+  const numberLiteral = (): Node => {
     const exp = () => randomItem(["", "-", "+"]) + randomInt(1e2);
-    const number = () => oneOf([zero, one, integer, float1, float2, float3])();
-    const sci = () => number() + randomItem(["e", "E"]) + exp();
+    const number = () =>
+      oneOf<number | string>([zero, one, integer, float1, float2, float3])();
+    const sci = (): string => number() + randomItem(["e", "E"]) + exp();
     return {
       type: NODE.Literal,
       value: oneOf([number, sci])(),
@@ -215,12 +252,12 @@ export function generateExpression(seed, resultType, depth = 13) {
 
   const caseNumber = () => caseExpression(numberExpression);
 
-  const booleanExpression = () => {
+  const booleanExpression = (): Node => {
     --depth;
     const node =
       depth <= 0
         ? field()
-        : oneOf([
+        : oneOf<Node>([
             field,
             logicalNot,
             logicalBinary,
@@ -252,11 +289,11 @@ export function generateExpression(seed, resultType, depth = 13) {
   };
 
   const comparison = () => {
-    const isNumberValue = value =>
+    const isNumberValue = (value: number | string | undefined) =>
       typeof value === "number" ||
       (typeof value === "string" && value[0] !== '"');
 
-    const isValidLHS = node => {
+    const isValidLHS = (node: Node) => {
       const { type, value, op, child } = node;
       if (type === NODE.Literal && isNumberValue(value)) {
         return false;
@@ -265,6 +302,7 @@ export function generateExpression(seed, resultType, depth = 13) {
         return false;
       }
       if (type === NODE.Group) {
+        assert(child);
         return isValidLHS(child);
       }
       return true;
@@ -325,12 +363,12 @@ export function generateExpression(seed, resultType, depth = 13) {
     };
   };
 
-  const stringExpression = () => {
+  const stringExpression = (): Node => {
     --depth;
     const node =
       depth <= 0
         ? stringLiteral()
-        : oneOf([
+        : oneOf<Node>([
             stringLiteral,
             field,
             stringConcat,
@@ -425,4 +463,29 @@ export function generateExpression(seed, resultType, depth = 13) {
   const expression = format(tree);
 
   return { tree, expression };
+}
+
+// Simple Fast Counter - as recommended by PRACTRAND
+function sfc32(a: number, b: number, c: number, d: number) {
+  return () => {
+    a >>>= 0;
+    b >>>= 0;
+    c >>>= 0;
+    d >>>= 0;
+    let t = (a + b) | 0;
+    a = b ^ (b >>> 9);
+    b = (c + (c << 3)) | 0;
+    c = (c << 21) | (c >>> 11);
+    d = (d + 1) | 0;
+    t = (t + d) | 0;
+    c = (c + t) | 0;
+    return (t >>> 0) / 4294967296;
+  };
+}
+
+export function createRandom(seed: number): () => number {
+  const u32seed = seed ^ 0xc0fefe;
+  const mathRandom = sfc32(0x9e3779b9, 0x243f6a88, 0xb7e15162, u32seed);
+  [...Array(15)].forEach(mathRandom);
+  return mathRandom;
 }
