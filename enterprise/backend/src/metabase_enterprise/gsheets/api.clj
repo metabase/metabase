@@ -263,12 +263,11 @@
               ;; Continue waiting
               :else (gsheets))
             (assoc :db_id (:id attached-dwh)
-                   ;; TEMP (gsheets)
-                   ;; here is some debugging info to make sure we have it straight:
-                   :hm/conn gdrive-conn
-                   :mb/sync-info {:status                status
-                                  :last-dwh-sync         last-dwh-sync
-                                  :last-gdrive-conn-sync last-gdrive-conn-sync})))
+                   ;; here is some debugging info that proved very helpful:
+                   #_#_:hm/conn gdrive-conn
+                   #_#_:mb/sync-info {:status                status
+                                      :last-dwh-sync         last-dwh-sync
+                                      :last-gdrive-conn-sync last-gdrive-conn-sync})))
       (do
         (reset-gsheets-status!)
         (error-response-in-body
