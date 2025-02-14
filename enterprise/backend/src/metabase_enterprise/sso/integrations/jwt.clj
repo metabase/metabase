@@ -9,9 +9,9 @@
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.common :as integrations.common]
-   [metabase.models.session :as session]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.session.models.session :as session]
    [metabase.util.i18n :refer [tru]]
    [ring.util.response :as response])
   (:import
