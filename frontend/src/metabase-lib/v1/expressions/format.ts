@@ -27,18 +27,18 @@ import {
 
 export { EDITOR_QUOTES } from "./config";
 
-type Options = {
+export type FormatOptions = {
   startRule: string;
   [key: string]: any;
 } & {
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex: number | undefined;
+  expressionIndex?: number | undefined;
 };
 
 // convert a MBQL expression back into an expression string
 // It is hard to provide correct types here, so we have to use any
-export function format(mbql: any, options: Options): string {
+export function format(mbql: any, options: FormatOptions): string {
   if (mbql == null || _.isEqual(mbql, [])) {
     return "";
   } else if (isNumberLiteral(mbql)) {
