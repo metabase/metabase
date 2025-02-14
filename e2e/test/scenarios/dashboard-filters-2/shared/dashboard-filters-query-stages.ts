@@ -411,7 +411,7 @@ export function setup1stStageExplicitJoinFilter() {
 export function apply1stStageExplicitJoinFilter() {
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
-    cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
+    cy.findByPlaceholderText("Search the list").type("abe.gorczany");
     cy.button("Add filter").click();
   });
 }
@@ -579,7 +579,7 @@ export function setup2ndStageExplicitJoinFilter() {
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
-    cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
+    cy.findByPlaceholderText("Search the list").type("abe.gorczany");
     cy.button("Add filter").click();
   });
   cy.wait(["@dashboardData", "@dashboardData"]);
