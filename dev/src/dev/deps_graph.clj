@@ -331,11 +331,7 @@
         (edn/read r))
       :metabase/modules
       ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
-      (dissoc 'connection-pool)
-      ;; technically `config` 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so
-      ;; we know if EE/test code is available; however we can ignore them since they're not real usages. So add them
-      ;; here so the diff thing doesn't suggest that we need to add them.
-      (update-in ['config :uses] conj 'test 'enterprise/core)))
+      (dissoc 'connection-pool)))
 
 (defn- kondo-config-diff-ignore-any
   "Ignore entries in the config that use `:any`."
