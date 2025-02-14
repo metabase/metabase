@@ -135,9 +135,9 @@
   (qp.perms/check-current-user-has-adhoc-native-query-perms query)
   (let [driver (-> query :database driver.u/database->driver)]
     (-> (metabot-v3/fix-sql {:sql (-> query :native :query)
-                                    :dialect driver
-                                    :error_message error_message
-                                    :schema_ddl (schema-sample query)})
+                             :dialect driver
+                             :error_message error_message
+                             :schema_ddl (schema-sample query)})
         (select-keys [:fixes]))))
 
 (def ^{:arglists '([request respond raise])} routes
