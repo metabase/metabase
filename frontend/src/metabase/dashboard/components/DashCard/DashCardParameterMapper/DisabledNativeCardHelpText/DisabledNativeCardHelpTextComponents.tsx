@@ -28,7 +28,9 @@ export const NativeCardIcon = (props: IconProps) => {
   );
 };
 
-export const NativeCardText = (props: BoxProps) => {
+export const NativeCardText = (
+  props: BoxProps & { children?: React.ReactNode },
+) => {
   return (
     <Box maw="15rem" lh="1.5rem" className={S.NativeCardText} {...props} />
   );
