@@ -1,7 +1,9 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { useField } from "formik";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
 import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
@@ -11,13 +13,14 @@ import {
   FormErrorMessage,
   FormRadioGroup,
   FormSelect,
+  type FormSelectProps,
   FormSubmitButton,
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
 import { isNullOrUndefined } from "metabase/lib/types";
 import { Button, Radio, Stack, rem } from "metabase/ui";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DashboardId } from "metabase-types/api";
 
 import S from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
@@ -58,20 +61,6 @@ export const SaveQuestionForm = ({
       : ["collection"];
 
   const showPickerInput = values.saveType === "create" && !saveToDashboard;
-
-  // TODO: make all the tab stuff reactive to the user selecting a dashboard from the entity picker
-  // not just if there was a dashboard already selected
-
-  const tabs = useMemo(() => {
-    return (
-      saveToDashboard?.tabs?.map(tab => ({
-        label: tab.name,
-        value: `${tab.id}`,
-      })) ?? []
-    );
-  }, [saveToDashboard]);
-
-  const showTabSelect = values.saveType === "create" && tabs.length > 1;
 
   return (
     <Form>
@@ -129,6 +118,7 @@ export const SaveQuestionForm = ({
             placeholder={t`It's optional but oh, so helpful`}
             styles={{ label: labelStyles }}
           />
+
           {isCollectionPickerEnabled && showPickerInput && (
             <FormCollectionAndDashboardPicker
               collectionIdFieldName="collection_id"
@@ -145,12 +135,18 @@ export const SaveQuestionForm = ({
               }}
             />
           )}
-          {showTabSelect && (
-            <FormSelect
+
+          {values.saveType === "create" && (
+            <FormDashboardTabPicker
               name="dashboard_tab_id"
               label="Which tab should this go on?"
-              data={tabs}
-              styles={{ label: labelStyles }}
+              dashboardId={values.dashboard_id}
+              styles={{
+                label: {
+                  ...labelStyles,
+                  marginBottom: rem("3px"),
+                },
+              }}
             />
           )}
         </Stack>
@@ -167,4 +163,45 @@ export const SaveQuestionForm = ({
       </FormFooter>
     </Form>
   );
+};
+
+const FormDashboardTabPicker = ({
+  dashboardId,
+  ...props
+}: { dashboardId: DashboardId | null | undefined } & Omit<
+  FormSelectProps,
+  "data"
+>) => {
+  const dashboardTabField = useField(props.name);
+  const dashboardTabHelpers = dashboardTabField[2];
+
+  const { currentData, isFetching, error } = useGetDashboardQuery(
+    dashboardId ? { id: dashboardId } : skipToken,
+  );
+
+  useEffect(
+    function updateDefaultTabOnDashboardChange() {
+      const firstTabId = currentData?.tabs?.length
+        ? "" + currentData.tabs[0].id
+        : undefined;
+      dashboardTabHelpers.setValue("" + firstTabId);
+    },
+    [currentData, dashboardTabHelpers],
+  );
+
+  const options = useMemo(() => {
+    return (
+      currentData?.tabs?.map(tab => ({
+        label: tab.name,
+        value: `${tab.id}`,
+      })) ?? []
+    );
+  }, [currentData]);
+
+  const showTabSelect = (isFetching || options.length > 1) && !error;
+  if (showTabSelect) {
+    return <FormSelect {...props} data={options} />;
+  }
+
+  return null;
 };

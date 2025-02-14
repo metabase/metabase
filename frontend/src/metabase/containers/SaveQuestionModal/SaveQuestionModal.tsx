@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import {
   LLMSuggestionQuestionInfo,
@@ -29,9 +27,6 @@ export const SaveQuestionModal = ({
     saveToDashboardId ? { id: saveToDashboardId } : skipToken,
   );
 
-  const initialDashboardTabId =
-    _.first(saveToDashboard?.tabs || [])?.id ?? null;
-
   return (
     <SaveQuestionProvider
       question={question}
@@ -49,7 +44,6 @@ export const SaveQuestionModal = ({
       multiStep={multiStep}
       initialCollectionId={initialCollectionId}
       saveToCollection={saveToCollection}
-      initialDashboardTabId={initialDashboardTabId}
     >
       <Modal.Root padding="2.5rem" {...modalProps}>
         <Modal.Overlay />

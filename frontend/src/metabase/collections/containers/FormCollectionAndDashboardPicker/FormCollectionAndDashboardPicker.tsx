@@ -3,6 +3,7 @@ import type { HTMLAttributes } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useLazyGetDashboardQuery } from "metabase/api";
 import {
   canonicalCollectionId,
   isTrashedCollection,
@@ -59,6 +60,7 @@ function ItemName({
 interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   collectionIdFieldName: string;
   dashboardIdFieldName: string;
+  dashboardTabIdFieldName?: string;
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
@@ -79,16 +81,20 @@ export function FormCollectionAndDashboardPicker({
   collectionPickerModalProps,
   collectionIdFieldName,
   dashboardIdFieldName,
+  dashboardTabIdFieldName,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
   const collectionField = useField(collectionIdFieldName);
-
   const [collectionIdInput, collectionIdMeta, collectionIdHelpers] =
     collectionField;
+
   const dashboardField = useField(dashboardIdFieldName);
   const [dashboardIdInput, dashboardIdMeta, dashboardIdHelpers] =
     dashboardField;
+
+  const dashboardTabField = useField(dashboardTabIdFieldName ?? "");
+  const dashboardTabHelpers = dashboardTabField[2];
 
   const pickerTitle = collectionPickerModalProps?.models?.includes("dashboard")
     ? t`Select a collection or dashboard`
@@ -155,16 +161,42 @@ export function FormCollectionAndDashboardPicker({
     [filterPersonalCollections, type, showCreateNewCollectionOption],
   );
 
+  const [fetchDashboard] = useLazyGetDashboardQuery();
+
   const handleChange = useCallback(
-    (item: CollectionPickerItem) => {
+    async (item: CollectionPickerItem) => {
       const { id, collection_id, model } = item;
       collectionIdHelpers.setValue(
         canonicalCollectionId(model === "dashboard" ? collection_id : id),
       );
-      dashboardIdHelpers.setValue(model === "dashboard" ? id : undefined);
+      const dashboardId = model === "dashboard" ? id : undefined;
+      dashboardIdHelpers.setValue(dashboardId);
+
+      // preload dashboard tab before close if tab field is tracked
+      if (dashboardTabIdFieldName) {
+        try {
+          const dashboard = dashboardId
+            ? await fetchDashboard({ id: dashboardId }).then(res => res.data)
+            : undefined;
+          const defaultTabId = dashboard?.tabs?.length
+            ? "" + dashboard.tabs[0].id
+            : undefined;
+          dashboardTabHelpers.setValue(defaultTabId);
+        } catch (err) {
+          console.error(err);
+          dashboardTabHelpers.setValue(undefined);
+        }
+      }
+
       setIsPickerOpen(false);
     },
-    [collectionIdHelpers, dashboardIdHelpers],
+    [
+      collectionIdHelpers,
+      dashboardIdHelpers,
+      dashboardTabHelpers,
+      dashboardTabIdFieldName,
+      fetchDashboard,
+    ],
   );
 
   const handleModalClose = () => {

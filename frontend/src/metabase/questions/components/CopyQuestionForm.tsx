@@ -15,7 +15,7 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
-import { Button } from "metabase/ui";
+import { Button, Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
@@ -77,35 +77,35 @@ export const CopyQuestionForm = ({
       }}
     >
       <Form>
-        <FormTextInput
-          name="name"
-          label={t`Name`}
-          placeholder={t`What is the name of your dashboard?`}
-          autoFocus
-          mb="1.5rem"
-        />
-        <FormTextarea
-          name="description"
-          label={t`Description`}
-          placeholder={t`It's optional but oh, so helpful`}
-          nullable
-          mb="1.5rem"
-          minRows={4}
-        />
-        <FormCollectionAndDashboardPicker
-          collectionIdFieldName="collection_id"
-          dashboardIdFieldName="dashboard_id"
-          title={t`Where do you want to save this?`}
-          collectionPickerModalProps={{
-            models,
-            recentFilter: items =>
-              items.filter(item => {
-                // narrow type and make sure it's a dashboard or
-                // collection that the user can write to
-                return item.model !== "table" && item.can_write;
-              }),
-          }}
-        />
+        <Stack gap="md">
+          <FormTextInput
+            name="name"
+            label={t`Name`}
+            placeholder={t`What is the name of your dashboard?`}
+            autoFocus
+          />
+          <FormTextarea
+            name="description"
+            label={t`Description`}
+            placeholder={t`It's optional but oh, so helpful`}
+            nullable
+            minRows={4}
+          />
+          <FormCollectionAndDashboardPicker
+            collectionIdFieldName="collection_id"
+            dashboardIdFieldName="dashboard_id"
+            title={t`Where do you want to save this?`}
+            collectionPickerModalProps={{
+              models,
+              recentFilter: items =>
+                items.filter(item => {
+                  // narrow type and make sure it's a dashboard or
+                  // collection that the user can write to
+                  return item.model !== "table" && item.can_write;
+                }),
+            }}
+          />
+        </Stack>
         <FormFooter>
           <FormErrorMessage inline />
           {!!onCancel && (

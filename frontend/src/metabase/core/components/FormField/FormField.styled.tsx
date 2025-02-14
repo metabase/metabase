@@ -93,7 +93,6 @@ export const FieldRoot = styled.div<FieldRootProps>`
     props.alignment === "end" &&
     props.orientation === "horizontal" &&
     "space-between"};
-  margin-bottom: 1.25rem;
 
   &:focus-within {
     ${FieldLabel} {
