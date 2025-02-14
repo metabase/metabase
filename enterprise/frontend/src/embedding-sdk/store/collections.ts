@@ -33,8 +33,8 @@ export const getCollectionNumericIdFromReference = createSelector(
 
 /**
  * This return an "id"/"slug" that can be used in `/api/collection/{:id}`
- * That endpoint has special handlers for "root" and "trash" so unlike when
- * creating a dashboard, we can have to pass "root" for the root collection
+ * There are extra handlers for "root" and "trash" so unlike when
+ * creating a dashboard, we have to pass "root" for the root collection
  * instead of null
  */
 export const getCollectionIdSlugFromReference = createSelector(

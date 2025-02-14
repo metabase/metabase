@@ -8,14 +8,6 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 describe("scenarios > embedding-sdk > collection browser", () => {
-  beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdk();
-    cy.signOut();
-    mockAuthProviderAndJwtSignIn();
-
-    cy.intercept("GET", "/api/collection/*").as("getCollection");
-  });
-
   describe("personal collection", () => {
     beforeEach(() => {
       signInAsAdminAndEnableEmbeddingSdk();
