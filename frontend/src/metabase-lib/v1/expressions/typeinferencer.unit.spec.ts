@@ -1,12 +1,12 @@
-import { parse } from "metabase-lib/v1/expressions/recursive-parser";
-import { resolve } from "metabase-lib/v1/expressions/resolver";
-import { infer } from "metabase-lib/v1/expressions/typeinferencer";
+import { parse } from "./recursive-parser";
+import { resolve } from "./resolver";
+import { infer } from "./typeinferencer";
 
 describe("metabase-lib/v1/expressions/typeinferencer", () => {
-  function mockResolve(kind, name) {
+  function mockResolve(_kind: string, name: string) {
     return ["field", name];
   }
-  function compileAs(source, startRule) {
+  function compileAs(source: string, startRule: string) {
     let mbql = null;
     try {
       mbql = resolve({
@@ -19,7 +19,7 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
   }
 
   // workaround the limitation of the parsing expecting a strict top-level grammar rule
-  function tryCompile(source) {
+  function tryCompile(source: string) {
     let mbql = compileAs(source, "expression");
     if (mbql === null) {
       mbql = compileAs(source, "boolean");
@@ -27,7 +27,7 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
     return mbql;
   }
 
-  function mockEnv(fieldRef) {
+  function mockEnv(fieldRef: ["ref", string]) {
     switch (fieldRef[1]) {
       case "Price":
         return "number";
@@ -45,7 +45,7 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
     }
   }
 
-  function type(expression) {
+  function type(expression: string) {
     return infer(tryCompile(expression), mockEnv);
   }
 
