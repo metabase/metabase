@@ -177,9 +177,9 @@
            plugins
            premium-features
            public-settings
+           pulse
            query-processor
            sync
-           task
            upload
            util}}
 
@@ -193,7 +193,7 @@
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
-   :uses #{api channel driver models notification premium-features util}}
+   :uses #{api driver models notification premium-features util}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -304,8 +304,6 @@
           metabase.models.params.custom-values
           metabase.models.params.field-values
           metabase.models.params.shared
-          metabase.models.pulse
-          metabase.models.pulse-channel
           metabase.models.query
           metabase.models.query-analysis
           metabase.models.query.permissions
@@ -340,6 +338,7 @@
            plugins
            premium-features
            public-settings
+           pulse
            query-analysis
            query-processor
            request
@@ -350,7 +349,6 @@
            task
            types
            util
-           enterprise/advanced-config
            enterprise/advanced-permissions}}
 
   moderation
@@ -362,7 +360,7 @@
            metabase.notification.init
            metabase.notification.payload.core
            metabase.notification.payload.execute}
-   :uses #{api channel events models permissions premium-features public-settings query-processor request util}}
+   :uses #{analytics api channel events models permissions premium-features public-settings query-processor request util}}
 
   permissions
   {:api  #{metabase.permissions.api
@@ -387,8 +385,13 @@
    :uses #{api config models plugins premium-features util enterprise/sso}}
 
   pulse
-  {:api  #{metabase.pulse.core}
-   :uses #{models notification util}}
+  {:api  #{metabase.pulse.api
+           metabase.pulse.core
+           metabase.pulse.init
+           metabase.pulse.task.send-pulses}
+   :uses #{api channel config db driver events integrations models notification permissions plugins premium-features
+           query-processor request task util
+           enterprise/advanced-config enterprise/advanced-permissions enterprise/sandbox}}
 
   query-analysis
   {:api  #{metabase.query-analysis.core metabase.query-analysis.init}
@@ -515,8 +518,7 @@
   {:api #{metabase.task
           metabase.task.bootstrap
           metabase.task.init
-          metabase.task.notification
-          metabase.task.send-pulses}
+          metabase.task.notification}
    :uses #{analytics
            channel
            config
@@ -528,10 +530,14 @@
            plugins
            premium-features
            public-settings
-           pulse
            query-processor
            util
            enterprise/task}}
+
+  tiles
+  {:api  #{metabase.tiles.api
+           metabase.tiles.init}
+   :uses #{api legacy-mbql models query-processor util}}
 
   timeline
   {:api  #{metabase.timeline.api metabase.timeline.core}

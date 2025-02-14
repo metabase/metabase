@@ -220,6 +220,9 @@ test/metabase/sync @metabase/drivers
 src/metabase/task @metabase/devexp
 test/metabase/task @metabase/devexp
 
+src/metabase/tiles @metabase/core-backend-dashviz
+test/metabase/tiles @metabase/core-backend-dashviz
+
 src/metabase/timeline @metabase/core-backend-dashviz
 test/metabase/timeline @metabase/core-backend-dashviz
 
