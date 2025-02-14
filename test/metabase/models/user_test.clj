@@ -581,7 +581,7 @@
       (mdb/setup-db! :create-sample-content? true)
       (is (thrown-with-msg?
            Exception
-           #"Instance has not been initialized"
+           #"Metabase instance has not been initialized"
            (user/create-and-invite-user! {:first_name "John"
                                           :last_name  "Smith"
                                           :email      "john.smith@gmail.com"
