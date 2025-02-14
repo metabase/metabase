@@ -5,7 +5,16 @@ const { printBold } = require("./cypress-runner-utils");
 
 const mode = process.argv?.[2]?.trim();
 
-const availableModes = ["start", "snapshot", "e2e", "component"];
+const availableModes = [
+  "start",
+  "snapshot",
+  "e2e",
+  "component",
+  "metabase-nodejs-react-sdk-embedding-sample-e2e",
+  "metabase-nextjs-sdk-embedding-sample-app-router-e2e",
+  "metabase-nextjs-sdk-embedding-sample-pages-router-e2e",
+  "shoppy-e2e",
+];
 
 if (!availableModes.includes(mode)) {
   console.error(`Invalid mode: ${mode}`);

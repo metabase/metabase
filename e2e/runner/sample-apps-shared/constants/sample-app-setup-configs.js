@@ -12,7 +12,7 @@ const BASE_SETUP_CONFIG = {
   "docker-down-command": "yarn docker:down",
   "docker-env-example-path": ".env.docker.example",
   "docker-env-path": ".env.docker",
-  branch: BRANCH_NAME,
+  defaultBranch: BRANCH_NAME,
   env: BASE_ENV,
 };
 
