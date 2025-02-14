@@ -124,7 +124,8 @@
    :type/DateTime       "DATETIME(3)"
    :type/DateTimeWithTZ "DATETIME(3)"
    :type/JSON           "JSON"
-   :type/Time           "TIME(3)"})
+   :type/Time           "TIME(3)"
+   :type/DateTimeWithLocalTZ "TIMESTAMP"})
 
 ;;; MySQL doesn't need to do anything special with nested transactions; the
 ;;; original transaction can proceed even if some specific statement errored.

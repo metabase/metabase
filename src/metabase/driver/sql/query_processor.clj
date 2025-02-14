@@ -10,6 +10,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -725,24 +726,27 @@
     (let [source-table-aliases (field-source-table-aliases field-clause)
           source-nfc-path      (field-nfc-path field-clause)
           source-alias         (field-source-alias field-clause)
-          field                (when (integer? id-or-name)
+          field-metadata       (when (integer? id-or-name)
                                  (lib.metadata/field (qp.store/metadata-provider) id-or-name))
-          allow-casting?       (and field
+          allow-casting?       (and field-metadata
                                     (not (:qp/ignore-coercion options)))
+          ->db-type            (sql-jdbc.actions/base-type->sql-type-map driver)
           database-type        (or database-type
-                                   (:database-type field))
+                                   (:database-type field-metadata)
+                                   (some-> options :base-type ->db-type))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
                                           (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
           maybe-add-db-type    (fn [expr]
+                                 (prn expr)
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
                                    expr
                                    (h2x/with-database-type-info expr database-type)))]
       (u/prog1
         (cond->> identifier
-          allow-casting?           (cast-field-if-needed driver field)
+          allow-casting?           (cast-field-if-needed driver field-metadata)
           ;; only add type info if it wasn't added by [[cast-field-if-needed]]
           database-type            maybe-add-db-type
           (:temporal-unit options) (apply-temporal-bucketing driver options)
