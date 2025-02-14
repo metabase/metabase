@@ -10,6 +10,7 @@
    [metabase.embed.settings :as embed.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [tru]]
    [ring.util.response :as response])

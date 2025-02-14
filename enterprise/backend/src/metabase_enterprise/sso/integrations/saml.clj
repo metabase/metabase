@@ -42,6 +42,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]

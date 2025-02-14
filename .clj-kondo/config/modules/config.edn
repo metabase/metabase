@@ -681,7 +681,7 @@
   {:api #{metabase-enterprise.sso.api.routes
           metabase-enterprise.sso.integrations.sso-settings
           metabase-enterprise.sso.integrations.sso-utils}
-   :uses #{api channel embed events models premium-features public-settings request sso util enterprise/scim}}
+   :uses #{api channel embed events models premium-features public-settings request session sso util enterprise/scim}}
 
   enterprise/stale
   {:api  #{metabase-enterprise.stale.routes}
