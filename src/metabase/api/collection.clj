@@ -23,11 +23,12 @@
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse]
-   [metabase.models.revision.last-edit :as last-edit]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.pulse.core :as pulse]
    [metabase.request.core :as request]
+   [metabase.revisions.core :as revisions]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -728,7 +729,8 @@
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
 
-(mu/defn- coalesce-edit-info :- last-edit/MaybeAnnotated
+;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
+(mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
   [row]
@@ -1253,7 +1255,7 @@
   users just as if they had be archived individually via the card API."
   [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (when-let [alerts (not-empty (models.pulse/retrieve-alerts-for-cards
+    (when-let [alerts (not-empty (pulse/retrieve-alerts-for-cards
                                   {:card-ids (t2/select-pks-set :model/Card :collection_id (u/the-id collection-before-update))}))]
       (t2/delete! :model/Pulse :id [:in (mapv u/the-id alerts)])
       (events/publish-event! :event/card-update.alerts-deleted.card-archived {:alerts alerts, :actor actor}))))

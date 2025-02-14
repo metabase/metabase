@@ -1,9 +1,8 @@
 import cx from "classnames";
-import { useMemo, useState } from "react";
 import * as React from "react";
+import { useMemo, useState } from "react";
 import reactAnsiStyle from "react-ansi-style";
 import { t } from "ttag";
-import _ from "underscore";
 
 import Select, { Option } from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";

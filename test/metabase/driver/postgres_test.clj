@@ -7,6 +7,7 @@
    [honey.sql :as sql]
    [malli.core :as mc]
    [metabase.actions.error :as actions.error]
+   [metabase.actions.models :as action]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
@@ -24,7 +25,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.models.action :as action]
    [metabase.models.secret :as secret]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -1019,7 +1019,7 @@
                                                             "other_status" "sad bird"
                                                             "type"         "turkey"}}))))))))))))
 
-;; API tests are in [[metabase.api.action-test]]
+;; API tests are in [[metabase.actions.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
   (testing "violate not null constraint"
     (is (= {:type :metabase.actions.error/violate-not-null-constraint,
@@ -1612,3 +1612,18 @@
                {:database (mt/id)
                 :type :native
                 :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))
+
+(deftest ^:parallel aggregated-array-is-returned-correctly-test
+  (testing "An aggregated array column should be returned in a readable format"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (is (= [["The Gorbals" "The Misfit Restaurant + Bar" "Marlowe" "Yamashiro Hollywood" "Musso & Frank Grill" "Pacific Dining Car" "Chez Jay" "Rush Street"]
+                ["Greenblatt's Delicatessen & Fine Wine Shop" "Handy Market"]]
+               (->> (mt/native-query {:query "select category_id, array_agg(name)
+                                              from venues
+                                              group by category_id
+                                              order by 1 asc
+                                              limit 2;"})
+                    mt/process-query
+                    mt/rows
+                    (map second))))))))

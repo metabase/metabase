@@ -30,7 +30,7 @@ function SemanticTypePicker({
   onChange,
   className,
 }) {
-  const [field, _, { setValue }] = useField(name);
+  const [field, _meta, { setValue }] = useField(name);
 
   const selectButtonRef = useRef();
 

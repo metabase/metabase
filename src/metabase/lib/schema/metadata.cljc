@@ -263,7 +263,7 @@
    [:lib/persisted-info {:optional true} [:maybe [:ref ::persisted-info]]]])
 
 (mr/def ::segment
-  "More or less the same as a [[metabase.models.segment]], but with kebab-case keys."
+  "More or less the same as a [[metabase.segments.models.segment]], but with kebab-case keys."
   [:map
    {:error/message "Valid Segment metadata"}
    [:lib/type   [:= :metadata/segment]]
