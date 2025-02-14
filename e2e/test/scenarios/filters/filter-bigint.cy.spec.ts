@@ -14,25 +14,25 @@ describe("scenarios > filters > bigint (metabase#5816)", () => {
   const positiveDecimalValue = "9223372036854775808";
 
   const bigIntQuestionDetails: NativeQuestionDetails = {
-    name: "SQL BIGINT",
+    name: "SQL NUMBER",
     native: {
-      query: `SELECT ${minBigIntValue} AS BIGINT
+      query: `SELECT ${minBigIntValue} AS NUMBER
 UNION ALL
-SELECT 0 AS BIGINT
+SELECT 0 AS NUMBER
 UNION ALL
-SELECT ${maxBigIntValue} AS BIGINT`,
+SELECT ${maxBigIntValue} AS NUMBER`,
     },
     display: "table",
   };
 
   const decimalQuestionDetails: NativeQuestionDetails = {
-    name: "SQL DECIMAL",
+    name: "SQL NUMBER",
     native: {
-      query: `SELECT CAST('${negativeDecimalValue}' AS DECIMAL) AS DECIMAL
+      query: `SELECT CAST('${negativeDecimalValue}' AS DECIMAL) AS NUMBER
 UNION ALL
-SELECT CAST(0 AS DECIMAL) AS DECIMAL
+SELECT CAST(0 AS DECIMAL) AS NUMBER
 UNION ALL
-SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
+SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     },
     display: "table",
   };
@@ -63,7 +63,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       H.openNotebook();
       H.filter({ mode: "notebook" });
       H.popover().within(() => {
-        cy.findByText("BIGINT").click();
+        cy.findByText("NUMBER").click();
         cy.findByLabelText("Filter operator").click();
       });
       H.popover().eq(1).findByText(filterOperator).click();
@@ -83,7 +83,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filterOperator: "Equal to",
       setFilterValue: () =>
         cy.findByLabelText("Filter value").type(maxBigIntValue),
-      filterDisplayName: `BIGINT is equal to "${maxBigIntValue}"`,
+      filterDisplayName: `NUMBER is equal to "${maxBigIntValue}"`,
       filteredRowCount: 1,
     });
 
@@ -92,7 +92,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filterOperator: "Not equal to",
       setFilterValue: () =>
         cy.findByLabelText("Filter value").type(minBigIntValue),
-      filterDisplayName: `BIGINT is not equal to "${minBigIntValue}"`,
+      filterDisplayName: `NUMBER is not equal to "${minBigIntValue}"`,
       filteredRowCount: 2,
     });
 
@@ -101,7 +101,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filterOperator: "Greater than",
       setFilterValue: () =>
         cy.findByLabelText("Filter value").type(minBigIntValue),
-      filterDisplayName: `BIGINT is greater than "${minBigIntValue}"`,
+      filterDisplayName: `NUMBER is greater than "${minBigIntValue}"`,
       filteredRowCount: 2,
     });
 
@@ -110,7 +110,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filterOperator: "Greater than or equal to",
       setFilterValue: () =>
         cy.findByLabelText("Filter value").type(minBigIntValue),
-      filterDisplayName: `BIGINT is greater than or equal to "${minBigIntValue}"`,
+      filterDisplayName: `NUMBER is greater than or equal to "${minBigIntValue}"`,
       filteredRowCount: 3,
     });
 
@@ -119,7 +119,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filterOperator: "Less than",
       setFilterValue: () =>
         cy.findByLabelText("Filter value").type(maxBigIntValue),
-      filterDisplayName: `BIGINT is less than "${maxBigIntValue}"`,
+      filterDisplayName: `NUMBER is less than "${maxBigIntValue}"`,
       filteredRowCount: 2,
     });
 
@@ -128,7 +128,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filterOperator: "Less than or equal to",
       setFilterValue: () =>
         cy.findByLabelText("Filter value").type(maxBigIntValue),
-      filterDisplayName: `BIGINT is less than or equal to "${maxBigIntValue}"`,
+      filterDisplayName: `NUMBER is less than or equal to "${maxBigIntValue}"`,
       filteredRowCount: 3,
     });
 
@@ -139,7 +139,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
         cy.findByPlaceholderText("Min").type(minBigIntValue);
         cy.findByPlaceholderText("Max").type("0");
       },
-      filterDisplayName: `BIGINT is between "${minBigIntValue}" and 0`,
+      filterDisplayName: `NUMBER is between "${minBigIntValue}" and 0`,
       filteredRowCount: 2,
     });
 
@@ -150,7 +150,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
         cy.findByPlaceholderText("Min").type("0");
         cy.findByPlaceholderText("Max").type(maxBigIntValue);
       },
-      filterDisplayName: `BIGINT is between 0 and "${maxBigIntValue}"`,
+      filterDisplayName: `NUMBER is between 0 and "${maxBigIntValue}"`,
       filteredRowCount: 2,
     });
 
@@ -161,7 +161,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
         cy.findByPlaceholderText("Min").type(minBigIntValue);
         cy.findByPlaceholderText("Max").type(maxBigIntValue);
       },
-      filterDisplayName: `BIGINT is ${minBigIntValue} – ${maxBigIntValue}`,
+      filterDisplayName: `NUMBER is ${minBigIntValue} – ${maxBigIntValue}`,
       filteredRowCount: 3,
     });
   });
@@ -207,7 +207,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filterOperator: "Equal to",
       setFilterValue: () =>
         cy.findByLabelText("Filter value").type(positiveDecimalValue),
-      filterDisplayName: `DECIMAL is equal to "${positiveDecimalValue}"`,
+      filterDisplayName: `NUMBER is equal to "${positiveDecimalValue}"`,
       filteredRowCount: 1,
     });
 
@@ -216,7 +216,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filterOperator: "Not equal to",
       setFilterValue: () =>
         cy.findByLabelText("Filter value").type(negativeDecimalValue),
-      filterDisplayName: `DECIMAL is not equal to "${negativeDecimalValue}"`,
+      filterDisplayName: `NUMBER is not equal to "${negativeDecimalValue}"`,
       filteredRowCount: 2,
     });
 
@@ -225,7 +225,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filterOperator: "Greater than",
       setFilterValue: () =>
         cy.findByLabelText("Filter value").type(negativeDecimalValue),
-      filterDisplayName: `DECIMAL is greater than "${negativeDecimalValue}"`,
+      filterDisplayName: `NUMBER is greater than "${negativeDecimalValue}"`,
       filteredRowCount: 2,
     });
 
@@ -234,7 +234,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filterOperator: "Greater than or equal to",
       setFilterValue: () =>
         cy.findByLabelText("Filter value").type(negativeDecimalValue),
-      filterDisplayName: `DECIMAL is greater than or equal to "${negativeDecimalValue}"`,
+      filterDisplayName: `NUMBER is greater than or equal to "${negativeDecimalValue}"`,
       filteredRowCount: 3,
     });
 
@@ -243,7 +243,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filterOperator: "Less than",
       setFilterValue: () =>
         cy.findByLabelText("Filter value").type(positiveDecimalValue),
-      filterDisplayName: `DECIMAL is less than "${positiveDecimalValue}"`,
+      filterDisplayName: `NUMBER is less than "${positiveDecimalValue}"`,
       filteredRowCount: 2,
     });
 
@@ -252,7 +252,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filterOperator: "Less than or equal to",
       setFilterValue: () =>
         cy.findByLabelText("Filter value").type(positiveDecimalValue),
-      filterDisplayName: `DECIMAL is less than or equal to "${positiveDecimalValue}"`,
+      filterDisplayName: `NUMBER is less than or equal to "${positiveDecimalValue}"`,
       filteredRowCount: 3,
     });
 
@@ -263,7 +263,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
         cy.findByPlaceholderText("Min").type(negativeDecimalValue);
         cy.findByPlaceholderText("Max").type("0");
       },
-      filterDisplayName: `DECIMAL is between "${negativeDecimalValue}" and 0`,
+      filterDisplayName: `NUMBER is between "${negativeDecimalValue}" and 0`,
       filteredRowCount: 2,
     });
 
@@ -274,7 +274,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
         cy.findByPlaceholderText("Min").type("0");
         cy.findByPlaceholderText("Max").type(positiveDecimalValue);
       },
-      filterDisplayName: `DECIMAL is between 0 and "${positiveDecimalValue}"`,
+      filterDisplayName: `NUMBER is between 0 and "${positiveDecimalValue}"`,
       filteredRowCount: 2,
     });
 
@@ -285,7 +285,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
         cy.findByPlaceholderText("Min").type(negativeDecimalValue);
         cy.findByPlaceholderText("Max").type(positiveDecimalValue);
       },
-      filterDisplayName: `DECIMAL is ${negativeDecimalValue} – ${positiveDecimalValue}`,
+      filterDisplayName: `NUMBER is ${negativeDecimalValue} – ${positiveDecimalValue}`,
       filteredRowCount: 3,
     });
   });
@@ -336,7 +336,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
         parameter_id: parameterDetails.id,
         target: [
           "dimension",
-          ["field", "BIGINT", { "base-type": "type/BigInteger" }],
+          ["field", "NUMBER", { "base-type": "type/BigInteger" }],
         ],
       });
 
@@ -386,7 +386,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       parameterSectionId: "id",
       setParameterValue: () =>
         cy.findByPlaceholderText("Enter an ID").type(maxBigIntValue),
-      filterDisplayName: `BIGINT is equal to "${maxBigIntValue}"`,
+      filterDisplayName: `NUMBER is equal to "${maxBigIntValue}"`,
       filterArgsDisplayName: maxBigIntValue,
       filteredRowCount: 1,
     });
@@ -396,7 +396,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       parameterType: "number/=",
       setParameterValue: () =>
         cy.findByPlaceholderText("Enter a number").type(maxBigIntValue),
-      filterDisplayName: `BIGINT is equal to "${maxBigIntValue}"`,
+      filterDisplayName: `NUMBER is equal to "${maxBigIntValue}"`,
       filterArgsDisplayName: maxBigIntValue,
       filteredRowCount: 1,
     });
@@ -406,7 +406,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       parameterType: "number/!=",
       setParameterValue: () =>
         cy.findByPlaceholderText("Enter a number").type(minBigIntValue),
-      filterDisplayName: `BIGINT is not equal to "${minBigIntValue}"`,
+      filterDisplayName: `NUMBER is not equal to "${minBigIntValue}"`,
       filterArgsDisplayName: minBigIntValue,
       filteredRowCount: 2,
     });
@@ -416,7 +416,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       parameterType: "number/>=",
       setParameterValue: () =>
         cy.findByPlaceholderText("Enter a number").type(minBigIntValue),
-      filterDisplayName: `BIGINT is greater than or equal to "${minBigIntValue}"`,
+      filterDisplayName: `NUMBER is greater than or equal to "${minBigIntValue}"`,
       filterArgsDisplayName: minBigIntValue,
       filteredRowCount: 3,
     });
@@ -426,7 +426,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       parameterType: "number/<=",
       setParameterValue: () =>
         cy.findByPlaceholderText("Enter a number").type(maxBigIntValue),
-      filterDisplayName: `BIGINT is less than or equal to "${maxBigIntValue}"`,
+      filterDisplayName: `NUMBER is less than or equal to "${maxBigIntValue}"`,
       filterArgsDisplayName: maxBigIntValue,
       filteredRowCount: 3,
     });
@@ -440,7 +440,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
           .type(minBigIntValue);
         cy.findAllByPlaceholderText("Enter a number").eq(1).type("0");
       },
-      filterDisplayName: `BIGINT is between "${minBigIntValue}" and 0`,
+      filterDisplayName: `NUMBER is between "${minBigIntValue}" and 0`,
       filterArgsDisplayName: "2 selections",
       filteredRowCount: 2,
     });
@@ -454,7 +454,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
           .eq(1)
           .type(maxBigIntValue);
       },
-      filterDisplayName: `BIGINT is between 0 and "${maxBigIntValue}"`,
+      filterDisplayName: `NUMBER is between 0 and "${maxBigIntValue}"`,
       filterArgsDisplayName: "2 selections",
       filteredRowCount: 2,
     });
@@ -470,7 +470,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
           .eq(1)
           .type(maxBigIntValue);
       },
-      filterDisplayName: `BIGINT is ${minBigIntValue} – ${maxBigIntValue}`,
+      filterDisplayName: `NUMBER is ${minBigIntValue} – ${maxBigIntValue}`,
       filterArgsDisplayName: "2 selections",
       filteredRowCount: 3,
     });
@@ -522,7 +522,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
         parameter_id: parameterDetails.id,
         target: [
           "dimension",
-          ["field", "DECIMAL", { "base-type": "type/Decimal" }],
+          ["field", "NUMBER", { "base-type": "type/Decimal" }],
         ],
       });
 
@@ -573,7 +573,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
     //   parameterSectionId: "id",
     //   setParameterValue: () =>
     //     cy.findByPlaceholderText("Enter an ID").type(positiveDecimalValue),
-    //   filterDisplayName: `DECIMAL is equal to "${positiveDecimalValue}"`,
+    //   filterDisplayName: `NUMBER is equal to "${positiveDecimalValue}"`,
     //   filterArgsDisplayName: positiveDecimalValue,
     //   filteredRowCount: 1,
     // });
@@ -583,7 +583,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       parameterType: "number/=",
       setParameterValue: () =>
         cy.findByPlaceholderText("Enter a number").type(positiveDecimalValue),
-      filterDisplayName: `DECIMAL is equal to "${positiveDecimalValue}"`,
+      filterDisplayName: `NUMBER is equal to "${positiveDecimalValue}"`,
       filterArgsDisplayName: positiveDecimalValue,
       filteredRowCount: 1,
     });
@@ -593,7 +593,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       parameterType: "number/!=",
       setParameterValue: () =>
         cy.findByPlaceholderText("Enter a number").type(negativeDecimalValue),
-      filterDisplayName: `DECIMAL is not equal to "${negativeDecimalValue}"`,
+      filterDisplayName: `NUMBER is not equal to "${negativeDecimalValue}"`,
       filterArgsDisplayName: negativeDecimalValue,
       filteredRowCount: 2,
     });
@@ -603,7 +603,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       parameterType: "number/>=",
       setParameterValue: () =>
         cy.findByPlaceholderText("Enter a number").type(negativeDecimalValue),
-      filterDisplayName: `DECIMAL is greater than or equal to "${negativeDecimalValue}"`,
+      filterDisplayName: `NUMBER is greater than or equal to "${negativeDecimalValue}"`,
       filterArgsDisplayName: negativeDecimalValue,
       filteredRowCount: 3,
     });
@@ -613,7 +613,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       parameterType: "number/<=",
       setParameterValue: () =>
         cy.findByPlaceholderText("Enter a number").type(positiveDecimalValue),
-      filterDisplayName: `DECIMAL is less than or equal to "${positiveDecimalValue}"`,
+      filterDisplayName: `NUMBER is less than or equal to "${positiveDecimalValue}"`,
       filterArgsDisplayName: positiveDecimalValue,
       filteredRowCount: 3,
     });
@@ -627,7 +627,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
           .type(negativeDecimalValue);
         cy.findAllByPlaceholderText("Enter a number").eq(1).type("0");
       },
-      filterDisplayName: `DECIMAL is between "${negativeDecimalValue}" and 0`,
+      filterDisplayName: `NUMBER is between "${negativeDecimalValue}" and 0`,
       filterArgsDisplayName: "2 selections",
       filteredRowCount: 2,
     });
@@ -641,7 +641,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
           .eq(1)
           .type(positiveDecimalValue);
       },
-      filterDisplayName: `DECIMAL is between 0 and "${positiveDecimalValue}"`,
+      filterDisplayName: `NUMBER is between 0 and "${positiveDecimalValue}"`,
       filterArgsDisplayName: "2 selections",
       filteredRowCount: 2,
     });
@@ -657,7 +657,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
           .eq(1)
           .type(positiveDecimalValue);
       },
-      filterDisplayName: `DECIMAL is ${negativeDecimalValue} – ${positiveDecimalValue}`,
+      filterDisplayName: `NUMBER is ${negativeDecimalValue} – ${positiveDecimalValue}`,
       filterArgsDisplayName: "2 selections",
       filteredRowCount: 3,
     });
