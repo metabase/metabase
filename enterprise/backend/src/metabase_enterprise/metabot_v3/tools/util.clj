@@ -42,6 +42,10 @@
   [query-id]
   (str "q" query-id "/"))
 
+(def any-prefix-pattern
+  "A prefix pattern accepting columns from any entity."
+  #"^.*/(\d+)")
+
 (defn- find-column-indexes
   [col-to-find cols]
   (keep-indexed (fn [i col]

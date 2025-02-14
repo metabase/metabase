@@ -13,6 +13,7 @@
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
+   [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -208,14 +209,44 @@
 (mr/def ::find-metric-result
   [:or
    [:map
-    {:encode/api-request #(update-keys % u/->kebab-case-en)
-     :encode/tool-api-request #(recursive-update-keys % safe->kebab-case-en)}
+    {:decode/api-response #(update-keys % u/->snake_case_en)
+     :decode/tool-api-response #(recursive-update-keys % safe->snake_case_en)}
     [:structured_output [:map
                          [:id :int]
                          [:name :string]
                          [:description [:maybe :string]]
                          [:default_time_dimension_field_id [:maybe ::result-column]]
                          [:queryable_dimensions [:sequential ::result-column]]]]]
+   [:map [:output :string]]])
+
+(mr/def ::find-outliers-arguments
+  [:map
+   {:encode/api-request #(update-keys % u/->kebab-case-en)
+    :encode/tool-api-request #(recursive-update-keys % safe->kebab-case-en)}
+   [:data_source [:or
+                  [:map
+                   [:query [:map
+                            [:database :int]]]
+                   [:query_id {:optional true} :string]
+                   [:result_field_id :string]]
+                  [:map
+                   [:metric_id :int]]
+                  [:map
+                   [:report_id :int]
+                   [:result_field_id :string]]
+                  [:map
+                   [:table_id :string]
+                   [:result_field_id :string]]]]])
+
+(mr/def ::find-outliers-result
+  [:or
+   [:map
+    {:decode/api-response #(update-keys % u/->snake_case_en)
+     :decode/tool-api-response #(recursive-update-keys % safe->snake_case_en)}
+    [:structured_output [:sequential
+                         [:map
+                          [:dimension :any]
+                          [:value [:or :int :double]]]]]]
    [:map [:output :string]]])
 
 (mr/def ::generate-insights-arguments
@@ -273,6 +304,22 @@
                        (mtx/transformer {:name :api-response}))
             (assoc :conversation_id conversation_id))
     (metabot-v3.context/log :llm.log/be->llm)))
+
+(api.macros/defendpoint :post "/find-outliers" :- [:merge ::find-outliers-result ::tool-request]
+  "Find outliers in the values provided by a data source for a given column."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::find-outliers-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log body :llm.log/llm->be)
+  (let [arguments (mc/encode ::find-outliers-arguments
+                             arguments (mtx/transformer {:name :api-request}))]
+    (doto (-> (mc/decode ::find-outliers-result
+                         (metabot-v3.tools.find-outliers/find-outliers arguments)
+                         (mtx/transformer {:name :api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
 
 (api.macros/defendpoint :post "/generate-insights" :- [:merge
                                                        [:map

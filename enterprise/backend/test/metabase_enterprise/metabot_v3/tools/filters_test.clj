@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
-   [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -298,24 +298,32 @@
                 :metabot.tool/filter-records
                 {:data-source {:query_id query-id}}
                 env))))
-    (testing "Filtering works."
-      (is (=? {:structured-output {:type :query,
-                                   :query_id string?
-                                   :query {:database (mt/id)
-                                           :type :query
-                                           :query {:source-query {:source-table table-id}
-                                                   :filter [:>
-                                                            [:field
-                                                             "DISCOUNT"
-                                                             {:base-type :type/Float}]
-                                                            3]}}}}
-              (metabot-v3.tools.interface/*invoke-tool*
-               :metabot.tool/filter-records
-               {:data-source {:query_id query-id}
-                :filters [{:field_id (->field-id "Discount")
-                           :operation "number-greater-than"
-                           :value 3}]}
-               env))))
+    (let [input {:data-source {:query_id query-id}
+                 :filters [{:field_id (->field-id "Discount")
+                            :operation "number-greater-than"
+                            :value 3}]}
+          expected {:structured-output {:type :query,
+                                        :query_id string?
+                                        :query {:database (mt/id)
+                                                :type :query
+                                                :query {:source-query {:source-table table-id}
+                                                        :filter [:>
+                                                                 [:field
+                                                                  "DISCOUNT"
+                                                                  {:base-type :type/Float}]
+                                                                 3]}}}}]
+      (testing "Filtering works."
+        (testing "classical tool call"
+          (is (=? expected
+                  (metabot-v3.tools.interface/*invoke-tool* :metabot.tool/filter-records input env))))
+        (testing "new tool call with query and query_id"
+          (is (=? expected
+                  (metabot-v3.tools.filters/filter-records
+                   (assoc input :data-source (select-keys query-details [:query :query_id]))))))
+        (testing "new tool call with just query"
+          (is (=? expected
+                  (metabot-v3.tools.filters/filter-records
+                   (assoc input :data-source (select-keys query-details [:query]))))))))
     (testing "Missing query results in an error."
       (is (= {:output (str "No query found with query_id " query-id)}
              (metabot-v3.tools.interface/*invoke-tool*
