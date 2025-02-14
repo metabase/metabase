@@ -22,10 +22,10 @@
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.api-key :as api-key]
-   [metabase.models.session :as session]
    [metabase.models.user :as user]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
@@ -162,7 +162,7 @@
                                         (config/config-int :max-session-age)
                                         (if (seq anti-csrf-token) :full-app-embed :normal)
                                         (premium-features/enable-advanced-permissions?))
-          params (concat [session-key (session/hash-session-key session-key)]
+          params (concat [session-key (encryption/hash-session-key session-key)]
                          (when (seq anti-csrf-token)
                            [anti-csrf-token]))]
       (some-> (t2/query-one (cons sql params))

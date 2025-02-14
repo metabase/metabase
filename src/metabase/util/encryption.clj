@@ -5,8 +5,10 @@
    [buddy.core.bytes :as bytes]
    [buddy.core.codecs :as codecs]
    [buddy.core.crypto :as crypto]
+   [buddy.core.hash :as buddy-hash]
    [buddy.core.kdf :as kdf]
    [buddy.core.nonce :as nonce]
+   [clojure.core.memoize :as memo]
    [clojure.string :as str]
    [environ.core :as env]
    [metabase.util :as u]
@@ -246,3 +248,7 @@
 
           :else
           v)))
+
+(def ^{:arglists '([session-key])} hash-session-key
+  "Hash the session-key for storage in the database"
+  (memo/lru (fn [session-key] (codecs/bytes->hex (buddy-hash/sha512 (.getBytes session-key java.nio.charset.StandardCharsets/US_ASCII)))) {} :lru/threshold 100))
