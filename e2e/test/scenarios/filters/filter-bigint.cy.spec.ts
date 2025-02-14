@@ -195,12 +195,11 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     });
   });
 
-  it("mbql query + dashboards", () => {
+  it("mbql query + dashboards + number parameters", () => {
     function testFilter({
       questionDetails,
       baseType,
       parameterType,
-      parameterSectionId = "number",
       setParameterValue,
       filterDisplayName,
       filterArgsDisplayName,
@@ -209,7 +208,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       questionDetails: NativeQuestionDetails;
       baseType: string;
       parameterType: string;
-      parameterSectionId?: string;
       setParameterValue: () => void;
       filterDisplayName: string;
       filterArgsDisplayName: string;
@@ -220,7 +218,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         type: parameterType,
         name: "Number",
         slug: "number",
-        sectionId: parameterSectionId,
+        sectionId: "number",
       };
 
       const dashboardDetails: DashboardDetails = {
@@ -297,20 +295,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       minValue: string;
       maxValue: string;
     }) {
-      cy.log("id parameter");
-      // TODO mbql.clj https://github.com/metabase/metabase/blob/6694870932830ff36964edd8b2c4555b81ddeda8/src/metabase/query_processor/middleware/parameters/mbql.clj#L21
-      // testFilter({
-      //   questionDetails,
-      //   baseType,
-      //   parameterType: "id",
-      //   parameterSectionId: "id",
-      //   setParameterValue: () =>
-      //     cy.findByPlaceholderText("Enter an ID").type(maxValue),
-      //   filterDisplayName: `NUMBER is equal to "${maxValue}"`,
-      //   filterArgsDisplayName: maxValue,
-      //   filteredRowCount: 1,
-      // });
-
       cy.log("number/= parameter");
       testFilter({
         questionDetails,
