@@ -195,13 +195,6 @@ Default: `null`
 
 When `true`, this will enable `/api/testing` endpoint. **Warning:** This should never be enabled in production system.
 
-### `MB_ENABLE_XRAYS`
-
-Type: boolean<br>
-Default: `true`
-
-Allow users to explore data using X-rays.
-
 ### `MB_ENCRYPTION_SECRET_KEY`
 
 Type: string<br>
