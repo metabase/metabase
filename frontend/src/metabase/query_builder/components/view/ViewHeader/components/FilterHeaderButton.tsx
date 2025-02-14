@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import type { QueryModalType } from "metabase/query_builder/constants";
@@ -19,6 +19,11 @@ interface FilterHeaderButtonProps {
   isExpanded?: boolean;
   onExpand?: () => void;
   onCollapse?: () => void;
+
+  dirtyAddedFilters: Filter[];
+  dirtyRemovedFilters: Filter[];
+  setDirtyAddedFilters: Dispatch<SetStateAction<Filter[]>>;
+  setDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>;
 }
 
 type Filter = Lib.Clause | Lib.SegmentMetadata;
@@ -30,10 +35,13 @@ export function FilterHeaderButton({
   isExpanded,
   onExpand,
   onCollapse,
+
+  dirtyAddedFilters,
+  dirtyRemovedFilters,
+  setDirtyAddedFilters,
+  // setDirtyRemovedFilters,
 }: FilterHeaderButtonProps) {
   const label = isExpanded ? t`Hide filters` : t`Show filters`;
-  const [dirtyAddedFilters, setDirtyAddedFilters] = useState<Filter[]>([]);
-  const [dirtyRemovedFilters, setDirtyRemovedFilters] = useState<Filter[]>([]);
   const items = useMemo(() => {
     const items = getFilterItems(query);
 
@@ -60,6 +68,8 @@ export function FilterHeaderButton({
       }
     } else {
       setIsDropdownOpen(true);
+
+      dirtyRemovedFilters;
     }
   };
 

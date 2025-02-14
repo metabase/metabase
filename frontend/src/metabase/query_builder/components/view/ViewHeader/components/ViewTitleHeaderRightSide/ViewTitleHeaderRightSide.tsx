@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type React from "react";
-import { useCallback } from "react";
+import { type Dispatch, type SetStateAction, useCallback } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -63,7 +63,14 @@ interface ViewTitleHeaderRightSideProps {
   onCloseQuestionInfo: () => void;
   isShowingQuestionInfoSidebar: boolean;
   isObjectDetail: boolean;
+
+  dirtyAddedFilters: Filter[];
+  dirtyRemovedFilters: Filter[];
+  setDirtyAddedFilters: Dispatch<SetStateAction<Filter[]>>;
+  setDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>;
 }
+
+type Filter = Lib.Clause | Lib.SegmentMetadata;
 
 export function ViewTitleHeaderRightSide({
   question,
@@ -93,6 +100,10 @@ export function ViewTitleHeaderRightSide({
   onCloseQuestionInfo,
   isShowingQuestionInfoSidebar,
   isObjectDetail,
+  dirtyAddedFilters,
+  dirtyRemovedFilters,
+  setDirtyAddedFilters,
+  setDirtyRemovedFilters,
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -158,6 +169,10 @@ export function ViewTitleHeaderRightSide({
           isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
+          dirtyAddedFilters={dirtyAddedFilters}
+          dirtyRemovedFilters={dirtyRemovedFilters}
+          setDirtyAddedFilters={setDirtyAddedFilters}
+          setDirtyRemovedFilters={setDirtyRemovedFilters}
         />
       )}
       {QuestionSummarizeWidget.shouldRender({

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { type Dispatch, type SetStateAction, useMemo } from "react";
 
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -7,13 +7,32 @@ import S from "./FilterPanel.module.css";
 import { FilterPanelPopover } from "./FilterPanelPopover";
 import { getFilterItems } from "./utils";
 
+type Filter = Lib.Clause | Lib.SegmentMetadata;
+
 interface FilterPanelProps {
   query: Lib.Query;
   onChange: (query: Lib.Query) => void;
+  dirtyAddedFilters: Filter[];
+  dirtyRemovedFilters: Filter[];
+  setDirtyAddedFilters: Dispatch<SetStateAction<Filter[]>>;
+  setDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>;
 }
 
-export function FilterPanel({ query, onChange }: FilterPanelProps) {
-  const items = useMemo(() => getFilterItems(query), [query]);
+export function FilterPanel({
+  dirtyAddedFilters,
+  query,
+  onChange,
+}: FilterPanelProps) {
+  const items = useMemo(() => {
+    const items = getFilterItems(query);
+
+    const dirtyAddedFilterItems = dirtyAddedFilters.map(filter => ({
+      filter,
+      stageIndex: -1,
+    }));
+
+    return [...items, ...dirtyAddedFilterItems];
+  }, [query, dirtyAddedFilters]);
 
   const handleChange = (query: Lib.Query) => {
     onChange(Lib.dropEmptyStages(query));

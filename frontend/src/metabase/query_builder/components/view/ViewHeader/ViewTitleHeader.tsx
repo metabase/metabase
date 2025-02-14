@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type React from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -74,6 +74,8 @@ interface ViewTitleHeaderProps {
   style?: React.CSSProperties;
 }
 
+type Filter = Lib.Clause | Lib.SegmentMetadata;
+
 export function ViewTitleHeader({
   question,
   isObjectDetail,
@@ -111,6 +113,8 @@ export function ViewTitleHeader({
   ] = useToggle(!question?.isSaved());
 
   const previousQuestion = usePrevious(question);
+  const [dirtyAddedFilters, setDirtyAddedFilters] = useState<Filter[]>([]);
+  const [dirtyRemovedFilters, setDirtyRemovedFilters] = useState<Filter[]>([]);
 
   const query = question.query();
   const previousQuery = usePrevious(query);
@@ -201,6 +205,10 @@ export function ViewTitleHeader({
           areFiltersExpanded={areFiltersExpanded}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
+          dirtyAddedFilters={dirtyAddedFilters}
+          dirtyRemovedFilters={dirtyRemovedFilters}
+          setDirtyAddedFilters={setDirtyAddedFilters}
+          setDirtyRemovedFilters={setDirtyRemovedFilters}
         />
       </ViewSection>
 
@@ -213,6 +221,10 @@ export function ViewTitleHeader({
           expanded={areFiltersExpanded}
           question={question}
           updateQuestion={updateQuestion}
+          dirtyAddedFilters={dirtyAddedFilters}
+          dirtyRemovedFilters={dirtyRemovedFilters}
+          setDirtyAddedFilters={setDirtyAddedFilters}
+          setDirtyRemovedFilters={setDirtyRemovedFilters}
         />
       )}
     </>
