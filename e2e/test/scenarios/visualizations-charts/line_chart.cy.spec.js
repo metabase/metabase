@@ -518,6 +518,33 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
+  describe("color series", () => {
+    it("should allow changing a series' color", () => {
+      H.visitQuestionAdhoc({
+        dataset_query: testQuery,
+        display: "line",
+      });
+
+      H.openVizSettingsSidebar();
+      H.openSeriesSettings("Count");
+
+      H.popover().within(() => {
+        cy.findByTestId("color-selector-button").button().click();
+      });
+
+      H.popover()
+        .should("have.length", 2)
+        .last()
+        .within(() => {
+          cy.findByLabelText("#EF8C8C").realClick();
+        });
+
+      cy.button("Done").click();
+
+      H.cartesianChartCircleWithColor("#EF8C8C");
+    });
+  });
+
   describe("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {
     const RENAMED_FIRST_SERIES = "Foo";
     const RENAMED_SECOND_SERIES = "Bar";
