@@ -4,7 +4,12 @@
 const fs = require("fs");
 const path = require("path");
 
-const IGNORED_PACKAGES = ["react", "react-dom"];
+const IGNORED_PACKAGES = [
+  "react",
+  "react-dom",
+  "@types/react",
+  "@types/react-dom",
+];
 const SDK_DIST_DIR = path.resolve("./resources/embedding-sdk");
 
 function filterOutReactDependencies(object) {
