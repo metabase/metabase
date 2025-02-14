@@ -614,7 +614,7 @@
    :uses #{api models moderation util enterprise/api}}
 
   enterprise/core
-  {:api  #{metabase-enterprise.core metabase-enterprise.core.init}
+  {:api  #{metabase-enterprise.core.init}
    :uses #{enterprise/enhancements}}
 
   enterprise/dashboard-subscription-filters
