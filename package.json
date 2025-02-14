@@ -276,7 +276,7 @@
     "lint-staged": "^13.1.2",
     "loki": "^0.35.1",
     "mini-css-extract-plugin": "2.7.2",
-    "mocha": "^10.2.0",
+    "mocha": "^10.8.1",
     "mocha-junit-reporter": "^2.2.1",
     "mochawesome": "^7.1.3",
     "mochawesome-merge": "^4.2.1",
