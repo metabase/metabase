@@ -42,7 +42,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     cy.signInAsNormalUser();
   });
 
-  it("mbql query + query builder ", () => {
+  it("mbql query + query builder", () => {
     function testFilter({
       questionDetails,
       filterOperator,
@@ -298,7 +298,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       maxValue: string;
     }) {
       cy.log("id parameter");
-      // see https://github.com/metabase/metabase/blob/6694870932830ff36964edd8b2c4555b81ddeda8/src/metabase/query_processor/middleware/parameters/mbql.clj#L21
+      // TODO https://github.com/metabase/metabase/blob/6694870932830ff36964edd8b2c4555b81ddeda8/src/metabase/query_processor/middleware/parameters/mbql.clj#L21
       // testFilter({
       //   questionDetails,
       //   baseType,
@@ -415,5 +415,73 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       minValue: negativeDecimalValue,
       maxValue: positiveDecimalValue,
     });
+  });
+
+  it("native query + query builder + variable", () => {
+    function testFilter({
+      questionDetails,
+      value,
+    }: {
+      questionDetails: NativeQuestionDetails;
+      value: string;
+    }) {
+      const getQuestionDetails = (cardId: number): NativeQuestionDetails => {
+        const cardTagName = `#${cardId}-sql-number`;
+
+        return {
+          name: "MBQL",
+          native: {
+            query: `SELECT COUNT(*) FROM {{#${cardId}-sql-number}} [[WHERE NUMBER = {{number}}]]`,
+            "template-tags": {
+              [cardTagName]: {
+                id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
+                name: cardTagName,
+                "display-name": cardTagName,
+                type: "card",
+                "card-id": cardId,
+              },
+              number: {
+                id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+                name: "number",
+                "display-name": "Number",
+                type: "number",
+              },
+            },
+          },
+          display: "scalar",
+        };
+      };
+
+      cy.log("create a question");
+      H.createNativeQuestion(questionDetails).then(({ body: card }) => {
+        H.createNativeQuestion(getQuestionDetails(card.id), {
+          visitQuestion: true,
+        });
+      });
+      H.queryBuilderMain()
+        .findByTestId("scalar-value")
+        .should("have.text", "3");
+
+      cy.log("add a filter");
+      H.filterWidget().findByRole("textbox").type(value);
+      H.filterWidget().findByRole("textbox").should("have.value", value);
+      H.queryBuilderMain().findAllByTestId("run-button").eq(1).click();
+      H.queryBuilderMain()
+        .findByTestId("scalar-value")
+        .should("have.text", "1");
+    }
+
+    cy.log("BIGINT");
+    testFilter({
+      questionDetails: bigIntQuestionDetails,
+      value: maxBigIntValue,
+    });
+
+    cy.log("DECIMAL");
+    // TODO https://github.com/metabase/metabase/blob/63c69f5461ad877bf1e6cf036ef8db25489b1a42/src/metabase/driver/common/parameters/values.clj#L293
+    // testFilter({
+    //   questionDetails: decimalQuestionDetails,
+    //   value: negativeDecimalValue,
+    // });
   });
 });
