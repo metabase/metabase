@@ -361,6 +361,7 @@
     metabase.api.common                                           api
     metabase.channel.core                                         channel
     metabase.channel.render.core                                  channel.render
+    metabase.cloud-migration.core                                 cloud-migration
     metabase.cmd.copy.h2                                          copy.h2
     metabase.config                                               config
     metabase.config.file                                          config.file
