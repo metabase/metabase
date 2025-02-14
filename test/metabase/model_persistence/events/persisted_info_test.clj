@@ -1,4 +1,4 @@
-(ns metabase.events.persisted-info-test
+(ns metabase.model-persistence.events.persisted-info-test
   (:require
    [clojure.test :refer [deftest is]]
    [metabase.events :as events]

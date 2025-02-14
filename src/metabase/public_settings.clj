@@ -376,22 +376,6 @@ x.com")
   :visibility :authenticated
   :audit      :getter)
 
-(defsetting persisted-models-enabled
-  (deferred-tru "Allow persisting models into the source database.")
-  :type       :boolean
-  :default    false
-  :visibility :public
-  :export?    true
-  :audit      :getter)
-
-(defsetting persisted-model-refresh-cron-schedule
-  (deferred-tru "cron syntax string to schedule refreshing persisted models.")
-  :encryption :no
-  :type       :string
-  :default    "0 0 0/6 * * ? *"
-  :visibility :admin
-  :audit      :getter)
-
 (def ^:private ^:const global-max-caching-kb
   "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
   MySQL) we are not curretly setup to deal with data of that size. The datatypes we are using will hold this data in

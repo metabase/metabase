@@ -11,7 +11,6 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
-   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
@@ -22,7 +21,6 @@
    [metabase.models.database :as database]
    [metabase.models.field :refer [readable-fields-only]]
    [metabase.models.interface :as mi]
-   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.secret :as secret]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.core :as perms]
@@ -34,7 +32,6 @@
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
-   [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
@@ -877,45 +874,6 @@
                 details))
             details
             (database/sensitive-fields-for-db database)))))
-
-(api.macros/defendpoint :post "/:id/persist"
-  "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/check (public-settings/persisted-models-enabled)
-             400
-             (tru "Persisting models is not enabled."))
-  (api/let-404 [database (t2/select-one :model/Database :id id)]
-    (api/write-check database)
-    (if (-> database :settings :persist-models-enabled)
-      ;; todo: some other response if already persisted?
-      api/generic-204-no-content
-      (let [[success? error] (ddl.i/check-can-persist database)
-            schema           (ddl.i/schema-name database (public-settings/site-uuid))]
-        (if success?
-          ;; do secrets require special handling to not clobber them or mess up encryption?
-          (do (t2/update! :model/Database id {:settings (assoc (:settings database) :persist-models-enabled true)})
-              (task.persist-refresh/schedule-persistence-for-database!
-               database
-               (public-settings/persisted-model-refresh-cron-schedule))
-              api/generic-204-no-content)
-          (throw (ex-info (ddl.i/error->message error schema)
-                          {:error error
-                           :database (:name database)})))))))
-
-(api.macros/defendpoint :post "/:id/unpersist"
-  "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/let-404 [database (t2/select-one :model/Database :id id)]
-    (api/write-check database)
-    (if (-> database :settings :persist-models-enabled)
-      (do (t2/update! :model/Database id {:settings (dissoc (:settings database) :persist-models-enabled)})
-          (persisted-info/mark-for-pruning! {:database_id id})
-          (task.persist-refresh/unschedule-persistence-for-database! database)
-          api/generic-204-no-content)
-      ;; todo: a response saying this was a no-op? an error? same on the post to persist
-      api/generic-204-no-content)))
 
 (api.macros/defendpoint :put "/:id"
   "Update a `Database`."
