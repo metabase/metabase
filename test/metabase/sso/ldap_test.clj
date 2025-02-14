@@ -1,10 +1,11 @@
-(ns metabase.integrations.ldap-test
+(ns metabase.sso.ldap-test
   (:require
    [clojure.test :refer :all]
-   [metabase.integrations.ldap :as ldap]
-   [metabase.integrations.ldap.default-implementation :as default-impl]
+   [metabase.sso.ldap :as ldap]
+   [metabase.sso.ldap-test-util :as ldap.test]
+   [metabase.sso.ldap.default-implementation :as default-impl]
+   [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]
-   [metabase.test.integrations.ldap :as ldap.test]
    [toucan2.core :as t2])
   (:import
    (com.unboundid.ldap.sdk DN LDAPConnectionPool)))
@@ -134,7 +135,6 @@
                   :email            "john.smith@metabase.com"}
                  (into {} (t2/select-one [:model/User :first_name :last_name :email] :email "john.smith@metabase.com"))))
           (finally (t2/delete! :model/User :email "john.smith@metabase.com"))))
-
       (try
         (testing "a user without a givenName attribute has `nil` for that attribute"
           (ldap/fetch-or-create-user! (ldap/find-user "jmiller"))
@@ -160,22 +160,22 @@
 
 (deftest group-matching-test
   (testing "LDAP group matching should identify Metabase groups using DN equality rules"
-    (is (= #{1 2 3}
-           (mt/with-temporary-setting-values
-             [ldap-group-mappings {"cn=accounting,ou=groups,dc=metabase,dc=com" [1 2]
-                                   "cn=shipping,ou=groups,dc=metabase,dc=com" [2 3]}]
+    (mt/with-temporary-setting-values
+      [ldap-group-mappings {"cn=accounting,ou=groups,dc=metabase,dc=com" [1 2]
+                            "cn=shipping,ou=groups,dc=metabase,dc=com" [2 3]}]
+      (is (= #{1 2 3}
              (#'default-impl/ldap-groups->mb-group-ids
               ["CN=Accounting,OU=Groups,DC=metabase,DC=com"
                "CN=Shipping,OU=Groups,DC=metabase,DC=com"]
-              {:group-mappings (ldap/ldap-group-mappings)}))))))
+              {:group-mappings (sso.settings/ldap-group-mappings)}))))))
 
 (deftest valid-group-mapping
   (testing "Validating that a group mapping DN can contain a forward slash when set as a keyword (#29629)"
     (mt/with-temporary-setting-values
       [ldap-group-mappings nil]
-      (ldap/ldap-group-mappings! {(keyword "CN=People,OU=Security/Distribution Groups,DC=metabase,DC=com") []})
+      (sso.settings/ldap-group-mappings! {(keyword "CN=People,OU=Security/Distribution Groups,DC=metabase,DC=com") []})
       (is (= {(DN. "CN=People,OU=Security/Distribution Groups,DC=metabase,DC=com") []}
-             (ldap/ldap-group-mappings))))))
+             (sso.settings/ldap-group-mappings))))))
 
 ;; For hosts that do not support IPv6, the connection code will return an error
 ;; This isn't a failure of the code, it's a failure of the host.
