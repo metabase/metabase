@@ -166,7 +166,6 @@
     (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
       (with-redefs [hm.client/make-request (partial mock-make-request (+syncing happy-responses))]
         (let [resp (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link})]
-          #p resp
           (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly nil)
                         gsheets.api/seconds-from-epoch-now (constantly
                                                             ;; set "now" to 1 second after now + folder upload time:
