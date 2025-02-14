@@ -1,4 +1,4 @@
-(ns metabase.test.integrations.ldap
+(ns metabase.sso.ldap-test-util
   (:require
    [clojure.java.io :as io]
    [metabase.test.util :as tu]
