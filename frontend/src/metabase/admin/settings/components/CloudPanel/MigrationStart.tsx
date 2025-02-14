@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { UpsellCloud } from "metabase/admin/upsells/UpsellCloud";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useToggle } from "metabase/hooks/use-toggle";
-import { Button, Icon, Modal, Text } from "metabase/ui";
+import { Box, Button, Icon, Modal, Text } from "metabase/ui";
 
 interface MigrationStartProps {
   startNewMigration: () => void;
@@ -19,7 +19,9 @@ export const MigrationStart = ({
 
   return (
     <>
-      <UpsellCloud onOpenModal={openModal} source="settings-cloud" />
+      <Box mb="xl">
+        <UpsellCloud onOpenModal={openModal} source="settings-cloud" />
+      </Box>
 
       <Modal.Root
         opened={isModalOpen}
