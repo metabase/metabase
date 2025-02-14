@@ -5,6 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getIsHosted } from "metabase/setup/selectors";
 
 import { UpsellCard } from "./components";
+import { CLOUD_URL } from "./constants";
 
 // the default 200px width will break the title into two lines
 const UPSELL_CARD_WIDTH = 202;
@@ -21,7 +22,7 @@ export const UpsellHosting = ({ source }: { source: string }) => {
       title={t`Minimize maintenance`}
       campaign="hosting"
       buttonText={t`Learn more`}
-      buttonLink="https://www.metabase.com/cloud"
+      buttonLink={CLOUD_URL}
       illustrationSrc={RocketGlobeIllustrationSrc}
       source={source}
       maxWidth={UPSELL_CARD_WIDTH}
@@ -45,7 +46,7 @@ export const UpsellHostingUpdates = ({ source }: { source: string }) => {
       title={t`Get automatic updates`}
       campaign="hosting"
       buttonText={t`Learn more`}
-      buttonLink="https://www.metabase.com/cloud"
+      buttonLink={CLOUD_URL}
       illustrationSrc={RocketGlobeIllustrationSrc}
       source={source}
       maxWidth={UPSELL_CARD_WIDTH}
