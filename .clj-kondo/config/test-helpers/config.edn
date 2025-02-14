@@ -98,6 +98,7 @@
      metabase.query-processor.streaming.interface/write-row!
      metabase.sample-data/try-to-extract-sample-database!
      metabase.setup.core/create-token!
+     metabase.sso.ldap-test-util/start-ldap-server!
      metabase.sync.core/sync-database!
      metabase.sync.sync-metadata.fields.sync-metadata/update-field-metadata-if-needed!
      metabase.sync.sync-metadata/sync-db-metadata!
@@ -105,10 +106,10 @@
      metabase.sync.util/store-sync-summary!
      metabase.task/delete-task!
      metabase.test.data.bigquery-cloud-sdk/execute!
+     metabase.test.data.impl.get-or-create/set-test-db-permissions!
      metabase.test.data.impl/copy-db-tables-and-fields!
      metabase.test.data.impl/get-or-create-database!
      metabase.test.data.impl/get-or-create-default-dataset!
-     metabase.test.data.impl.get-or-create/set-test-db-permissions!
      metabase.test.data.interface/create-db!
      metabase.test.data.interface/destroy-db!
      metabase.test.data.oracle/create-user!
@@ -117,7 +118,6 @@
      metabase.test.data.users/clear-cached-session-tokens!
      metabase.test.initialize/do-initialization!
      metabase.test.initialize/initialize-if-needed!
-     metabase.test.integrations.ldap/start-ldap-server!
      metabase.test.util.log/ensure-unique-logger!
      metabase.test.util.log/set-ns-log-level!
      metabase.test.util/do-with-temp-env-var-value!

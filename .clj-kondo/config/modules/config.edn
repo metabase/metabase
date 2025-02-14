@@ -68,7 +68,6 @@
           metabase.api.common
           metabase.api.common.validation
           metabase.api.dataset
-          metabase.api.ldap
           metabase.api.macros
           metabase.api.open-api
           metabase.api.query-metadata
@@ -211,13 +210,8 @@
    :uses #{analytics api driver legacy-mbql lib models query-processor search sync task util}}
 
   integrations
-  {:api #{metabase.integrations.common
-          metabase.integrations.google
-          metabase.integrations.google.interface
-          metabase.integrations.ldap
-          metabase.integrations.ldap.default-implementation
-          metabase.integrations.slack}
-   :uses #{api config events models permissions plugins premium-features util enterprise/enhancements}}
+  {:api  #{metabase.integrations.slack}
+   :uses #{events models util}}
 
   legacy-mbql
   {:api #{metabase.legacy-mbql.normalize
@@ -339,7 +333,6 @@
            db
            driver
            events
-           integrations
            legacy-mbql
            lib
            moderation
@@ -378,7 +371,7 @@
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
            metabase.permissions.util}
-   :uses #{api audit config db integrations models plugins premium-features request server util}}
+   :uses #{api audit config db models plugins premium-features request server util}}
 
   plugins
   {:api  #{metabase.plugins metabase.plugins.classloader}
@@ -391,7 +384,7 @@
 
   public-settings
   {:api  #{metabase.public-settings}
-   :uses #{api config models plugins premium-features util enterprise/sso}}
+   :uses #{api config models premium-features util}}
 
   pulse
   {:api  #{metabase.pulse.api
@@ -499,7 +492,7 @@
 
   session
   {:api  #{metabase.session.api metabase.session.init metabase.session.models.session}
-   :uses #{api channel config db driver events integrations login-history models public-settings request task util}}
+   :uses #{api channel config db driver events login-history models public-settings request sso task util}}
 
   setup
   {:api  #{metabase.setup.api metabase.setup.core}
@@ -518,6 +511,13 @@
            request
            session
            util}}
+
+  sso
+  {:api  #{metabase.sso.api
+           metabase.sso.core
+           metabase.sso.init}
+   :uses #{api models permissions premium-features util}}
+
   sync
   {:api #{metabase.sync.api
           metabase.sync.concurrent
@@ -640,10 +640,8 @@
    :uses #{premium-features}}
 
   enterprise/enhancements
-  {:api  #{metabase-enterprise.enhancements.init
-           metabase-enterprise.enhancements.integrations.google
-           metabase-enterprise.enhancements.integrations.ldap}
-   :uses #{integrations models premium-features util enterprise/sso}}
+  {:api  #{metabase-enterprise.enhancements.init}
+   :uses #{models premium-features sso util enterprise/sso}}
 
   enterprise/llm
   {:api  #{metabase-enterprise.llm.api}
@@ -693,8 +691,7 @@
   {:api #{metabase-enterprise.sso.api.routes
           metabase-enterprise.sso.integrations.sso-settings
           metabase-enterprise.sso.integrations.sso-utils}
-   :uses #{api channel embed events integrations models premium-features public-settings request session util
-           enterprise/scim}}
+   :uses #{api channel embed events models premium-features public-settings request session sso util enterprise/scim}}
 
   enterprise/stale
   {:api  #{metabase-enterprise.stale.routes}

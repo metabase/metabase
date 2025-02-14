@@ -8,13 +8,10 @@
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
-   [metabase.util.i18n
-    :as i18n
-    :refer [available-locales-with-names deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
@@ -51,15 +48,13 @@
 (defn ldap-enabled?
   "Is LDAP enabled?"
   []
-  (classloader/require 'metabase.api.ldap)
-  ((resolve 'metabase.api.ldap/ldap-enabled)))
+  (setting/get :ldap-enabled))
 
 (defn- ee-sso-configured? []
   (when config/ee-available?
-    (classloader/require 'metabase-enterprise.sso.integrations.sso-settings))
-  (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-enabled?)]
-    (varr)))
+    (setting/get :other-sso-enabled?)))
 
+;;; TODO -- consider whether this belongs here or in the `sso` module
 (defn sso-enabled?
   "Any SSO provider is configured and enabled"
   []
@@ -702,6 +697,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :audit      :getter
   :feature    :whitelabel)
 
+;;; TODO -- consider whether this belongs here or in the `sso` module
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
   :visibility :public

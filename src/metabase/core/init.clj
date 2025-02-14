@@ -23,6 +23,7 @@
    [metabase.revisions.init]
    [metabase.search.init]
    [metabase.session.init]
+   [metabase.sso.init]
    [metabase.sync.init]
    [metabase.task.init]
    [metabase.tiles.init]

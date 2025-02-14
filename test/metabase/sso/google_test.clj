@@ -1,11 +1,11 @@
-(ns metabase.integrations.google-test
+(ns metabase.sso.google-test
   (:require
    [clojure.test :refer :all]
    [metabase.channel.email-test :as et]
-   [metabase.integrations.google :as google]
-   [metabase.integrations.google.interface :as google.i]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
+   [metabase.sso.google :as google]
+   [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -24,15 +24,15 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\""
-           (google/google-auth-client-id! "invalid-client-id"))))
+           (sso.settings/google-auth-client-id! "invalid-client-id"))))
 
     (testing "Trailing whitespace in client ID is stripped upon save"
-      (google/google-auth-client-id! "test-client-id.apps.googleusercontent.com     ")
-      (is (= "test-client-id.apps.googleusercontent.com" (google/google-auth-client-id))))
+      (sso.settings/google-auth-client-id! "test-client-id.apps.googleusercontent.com     ")
+      (is (= "test-client-id.apps.googleusercontent.com" (sso.settings/google-auth-client-id))))
 
     (testing "Saving an empty string will clear the client ID setting"
-      (google/google-auth-client-id! "")
-      (is (= nil (google/google-auth-client-id))))))
+      (sso.settings/google-auth-client-id! "")
+      (is (= nil (sso.settings/google-auth-client-id))))))
 
 ;;; --------------------------------------------- account autocreation -----------------------------------------------
 
@@ -53,7 +53,7 @@
     (with-no-sso-google-token!
       (is (thrown?
            clojure.lang.ExceptionInfo
-           (google.i/google-auth-auto-create-accounts-domain! "metabase.com, example.com"))))))
+           (sso.settings/google-auth-auto-create-accounts-domain! "metabase.com, example.com"))))))
 
 (deftest google-auth-create-new-user!-test
   (mt/with-model-cleanup [:model/User]
