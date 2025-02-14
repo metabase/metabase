@@ -8,7 +8,6 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.embed.settings :as embed.settings]
-   [metabase.models.session :as session]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.sso.core :as sso]

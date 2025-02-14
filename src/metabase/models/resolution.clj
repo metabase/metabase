@@ -22,7 +22,7 @@
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
-    :model/CloudMigration                    metabase.models.cloud-migration
+    :model/CloudMigration                    metabase.cloud-migration.models.cloud-migration
     :model/Collection                        metabase.models.collection
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.models.collection-permission-graph-revision
@@ -74,7 +74,7 @@
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.models.secret
     :model/Segment                           metabase.segments.models.segment
-    :model/Session                           metabase.models.session
+    :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.models.setting
     :model/Table                             metabase.models.table
     :model/TablePrivileges                   metabase.models.table-privileges

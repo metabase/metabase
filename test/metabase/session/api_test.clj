@@ -1,16 +1,16 @@
-(ns metabase.api.session-test
+(ns metabase.session.api-test
   "Tests for /api/session"
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.session :as api.session]
    [metabase.driver.h2 :as h2]
    [metabase.http-client :as client]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.sso.ldap-test-util :as ldap.test]
+   [metabase.session.api :as api.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]

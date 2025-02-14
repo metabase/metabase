@@ -1,4 +1,4 @@
-(ns metabase.api.session
+(ns metabase.session.api
   "/api/session endpoints"
   (:require
    [java-time.api :as t]
@@ -8,12 +8,12 @@
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
    [metabase.events :as events]
-   [metabase.models.session :as session]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.sso.core :as sso]
+   [metabase.session.models.session :as session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]

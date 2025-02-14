@@ -11,7 +11,6 @@
    [metabase.events :as events]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.session :as session]
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
