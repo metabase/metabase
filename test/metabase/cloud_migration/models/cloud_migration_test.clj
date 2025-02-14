@@ -1,8 +1,9 @@
-(ns metabase.models.cloud-migration-test
+(ns metabase.cloud-migration.models.cloud-migration-test
   (:require
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
-   [metabase.models.cloud-migration :as cloud-migration]
+   [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
+   [metabase.cloud-migration.settings :as cloud-migration.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -62,9 +63,9 @@
       (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
       (#'cloud-migration/migrate! migration)
       (is (< (:progress (t2/select-one :model/CloudMigration :id (:id migration))) 100))
-      (is (not (cloud-migration/read-only-mode))))))
+      (is (not (cloud-migration.settings/read-only-mode))))))
 
 (deftest read-only-login-test
   (mt/with-temporary-setting-values [read-only-mode true]
-    (cloud-migration/read-only-mode! true)
+    (cloud-migration.settings/read-only-mode! true)
     (mt/client :post 200 "session" (mt/user->credentials :rasta))))

@@ -7,7 +7,6 @@
    [metabase.api.cache]
    [metabase.api.card]
    [metabase.api.cards]
-   [metabase.api.cloud-migration]
    [metabase.api.collection]
    [metabase.api.dashboard]
    [metabase.api.database]
@@ -38,6 +37,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.bookmarks.api]
    [metabase.channel.api]
+   [metabase.cloud-migration.api]
    [metabase.config :as config]
    [metabase.indexed-entities.api]
    [metabase.permissions.api]
@@ -59,7 +59,6 @@
          metabase.api.cache/keep-me
          metabase.api.card/keep-me
          metabase.api.cards/keep-me
-         metabase.api.cloud-migration/keep-me
          metabase.api.collection/keep-me
          metabase.api.dashboard/keep-me
          metabase.api.database/keep-me
@@ -82,6 +81,7 @@
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
+         metabase.cloud-migration.api/keep-me
          metabase.indexed-entities.api/keep-me
          metabase.permissions.api/keep-me
          metabase.revisions.api/keep-me
@@ -138,7 +138,7 @@
    "/card"                 (+auth 'metabase.api.card)
    "/cards"                (+auth 'metabase.api.cards)
    "/channel"              (+auth metabase.channel.api/channel-routes)
-   "/cloud-migration"      (+auth 'metabase.api.cloud-migration)
+   "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.api.collection)
    "/dashboard"            (+auth 'metabase.api.dashboard)
    "/database"             (+auth 'metabase.api.database)
