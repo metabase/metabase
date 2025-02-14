@@ -168,6 +168,8 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             key="error-overview"
             path="errors"
             title={t`Erroring Questions`}
+            // If the audit_app feature flag is present, our enterprise plugin system kicks in and we render the
+            // appropriate enterprise component. The upsell component is shown in all other cases.
             component={PLUGIN_ADMIN_TOOLS.COMPONENT || ToolsUpsell}
           />
           <Route
