@@ -80,7 +80,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       H.assertQueryBuilderRowCount(filteredRowCount);
     }
 
-    function testColumnType({
+    function testFilterSet({
       questionDetails,
       minValue,
       maxValue,
@@ -181,14 +181,14 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     }
 
     cy.log("BIGINT");
-    testColumnType({
+    testFilterSet({
       questionDetails: bigIntQuestionDetails,
       minValue: minBigIntValue,
       maxValue: maxBigIntValue,
     });
 
     cy.log("DECIMAL");
-    testColumnType({
+    testFilterSet({
       questionDetails: decimalQuestionDetails,
       minValue: negativeDecimalValue,
       maxValue: positiveDecimalValue,
@@ -284,7 +284,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         .should("have.text", String(filteredRowCount));
     }
 
-    function testColumnType({
+    function testFilterSet({
       questionDetails,
       baseType,
       minValue,
@@ -386,14 +386,14 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       });
     }
 
-    testColumnType({
+    testFilterSet({
       questionDetails: bigIntQuestionDetails,
       baseType: "type/BigInteger",
       minValue: minBigIntValue,
       maxValue: maxBigIntValue,
     });
 
-    testColumnType({
+    testFilterSet({
       questionDetails: decimalQuestionDetails,
       baseType: "type/Decimal",
       minValue: negativeDecimalValue,
