@@ -481,7 +481,7 @@
 
   session
   {:api  #{metabase.session.api metabase.session.init metabase.session.models.session}
-   :uses #{analytics api channel config db driver events integrations models public-settings request task util}}
+   :uses #{analytics api channel config db driver events models public-settings request sso task util}}
 
   setup
   {:api  #{metabase.setup.api metabase.setup.core}
@@ -499,7 +499,6 @@
            public-settings
            request
            session
-           sso
            util}}
 
   sso
@@ -682,8 +681,7 @@
   {:api #{metabase-enterprise.sso.api.routes
           metabase-enterprise.sso.integrations.sso-settings
           metabase-enterprise.sso.integrations.sso-utils}
-   :uses #{api channel embed events integrations models premium-features public-settings request sso session util
-           enterprise/scim}}
+   :uses #{api channel embed events models premium-features public-settings request sso util enterprise/scim}}
 
   enterprise/stale
   {:api  #{metabase-enterprise.stale.routes}
