@@ -69,7 +69,7 @@
     background-color: color-mix(
       in srgb,
       var(--mb-color-bg-white),
-      transparent 20%
+      transparent 80%
     );
   }
 }

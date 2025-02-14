@@ -103,7 +103,6 @@ export const DashCardCardParameterMapperButton = ({
           buttonText: formatSelected(selectedMappingOption),
           buttonIcon: (
             <Button
-              iconSize={12}
               icon="close"
               className={S.CloseIconButton}
               role="button"
