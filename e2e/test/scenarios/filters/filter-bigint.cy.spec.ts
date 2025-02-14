@@ -586,7 +586,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     // TODO values.clj https://github.com/metabase/metabase/blob/63c69f5461ad877bf1e6cf036ef8db25489b1a42/src/metabase/driver/common/parameters/values.clj#L293
     // testFilter({
     //   questionDetails: decimalQuestionDetails,
-    //   value: negativeDecimalValue,
+    //   value: positiveDecimalValue,
     // });
   });
 });
