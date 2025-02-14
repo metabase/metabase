@@ -1,4 +1,4 @@
-(ns metabase.events.alerts-deleted-on-card-save
+(ns metabase.pulse.events.alerts-deleted-on-card-save
   (:require
    [medley.core :as m]
    [metabase.channel.email.messages :as messages]

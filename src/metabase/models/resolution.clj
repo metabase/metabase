@@ -58,10 +58,10 @@
     :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
     :model/PermissionsRevision               metabase.permissions.models.permissions-revision
     :model/PersistedInfo                     metabase.models.persisted-info
-    :model/Pulse                             metabase.models.pulse
-    :model/PulseCard                         metabase.models.pulse-card
-    :model/PulseChannel                      metabase.models.pulse-channel
-    :model/PulseChannelRecipient             metabase.models.pulse-channel-recipient
+    :model/Pulse                             metabase.pulse.models.pulse
+    :model/PulseCard                         metabase.pulse.models.pulse-card
+    :model/PulseChannel                      metabase.pulse.models.pulse-channel
+    :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
     :model/Query                             metabase.models.query
     :model/QueryAction                       metabase.actions.models
     :model/QueryAnalysis                     metabase.models.query-analysis

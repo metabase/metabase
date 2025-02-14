@@ -1,23 +1,23 @@
-(ns ^:mb/driver-tests metabase.api.pulse-test
+(ns ^:mb/driver-tests metabase.pulse.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.card-test :as api.card-test]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.api.pulse :as api.pulse]
    [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
-   [metabase.models.pulse-channel :as pulse-channel]
-   [metabase.models.pulse-test :as pulse-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.pulse.api.pulse :as api.pulse]
+   [metabase.pulse.models.pulse-channel :as pulse-channel]
+   [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.request.core :as request]
    [metabase.test :as mt]

@@ -1,7 +1,7 @@
-(ns metabase.task.email-remove-legacy-pulse-test
+(ns metabase.pulse.task.email-remove-legacy-pulse-test
   (:require
    [clojure.test :refer :all]
-   [metabase.task.email-remove-legacy-pulse :as email-remove-legacy-pulse]
+   [metabase.pulse.task.email-remove-legacy-pulse :as email-remove-legacy-pulse]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
