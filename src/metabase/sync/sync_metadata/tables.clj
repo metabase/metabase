@@ -102,11 +102,11 @@
                                 database
                                 sync-stage :- [:enum ::reactivate ::create ::update]]
   ;; if this is a crufty table, mark initial sync as complete since we'll be skipping the subsequent sync steps
-  (let [is-crufty? (crufty/name? table-name {:patterns        crufty-table-patterns
-                                             :pattern-strings (some-> database :settings :auto-cruft-tables)})]
+  (let [is-crufty? (crufty/name? table-name (into crufty-table-patterns
+                                                  (some-> database :settings :auto-cruft-tables)))]
     {:initial_sync_status (cond
                             ;; if a table exists, we don't want to overwrite the initial sync status
-                            ;; while updating its table metadata, so that it is "complete" during the sync.
+                            ;; while updating its table metadata, so that it is still "complete" during the sync.
                             ;; See: [[metabase.sync.util-test/initial-sync-status-table-only-test]]
                             (= sync-stage ::update) (:initial_sync_status table)
                             ;; if a table is crufty, we mark it as complete to skip the subsequent sync steps
@@ -126,7 +126,8 @@
            :schema                  (:schema table)
            :description             (:description table)
            :database_require_filter (:database_require_filter table)
-           :display_name            (or (:display_name table) (humanization/name->human-readable-name (:name table)))
+           :display_name            (or (:display_name table)
+                                        (humanization/name->human-readable-name (:name table)))
            :name                    (:name table)})))
 
 (defn create-or-reactivate-table!

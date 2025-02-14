@@ -21,7 +21,7 @@
   These are set from database.setting.auto-cruft-tables and database.setting.auto-cruft-columns, and are both vectors
   of strings that are converted into regexes.
 
-  If you want to match a table or column name directly, use `^my-table$` or `^my-column$`."
-  [nname {:keys [patterns pattern-strings]}]
+  If you want to match a table or column name exactly, use `^my-table$` or `^my-column$`."
+  [nname regexes+pattern-strings]
   (matches-any-patterns? (u/lower-case-en nname)
-                         (concat patterns (map ->regex pattern-strings))))
+                         (map ->regex regexes+pattern-strings)))
