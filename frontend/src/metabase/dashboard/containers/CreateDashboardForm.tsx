@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import { useCreateDashboardMutation } from "metabase/api";
@@ -88,7 +87,7 @@ export function CreateDashboardForm({
       onSubmit={handleCreate}
     >
       {() => (
-        <Form as={Stack} spacing={0}>
+        <Form as={Stack} gap={0}>
           <FormTextInput
             labelProps={{ mb: "xs", fw: 800 }}
             name="name"

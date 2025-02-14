@@ -215,11 +215,11 @@ describe("issue 39487", () => {
   }
 
   function nextButton() {
-    return H.popover().get("button[data-next]");
+    return H.popover().get("button[data-direction=next]");
   }
 
   function previousButton() {
-    return H.popover().get("button[data-previous]");
+    return H.popover().get("button[data-direction=previous]");
   }
 });
 

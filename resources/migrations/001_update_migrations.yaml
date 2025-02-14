@@ -10509,6 +10509,72 @@ databaseChangeLog:
                   type: ${timestamp_type}
                   remarks: The timestamp at which a user was deactivated
 
+  - changeSet:
+      id: v54.2025-01-30T16:10:55
+      author: bshepherdson
+      comment: Add `entity_id` column to the `metabase_database` table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: entity_id
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v54.2025-01-30T16:13:20
+      author: bshepherdson
+      comment: Add `entity_id` column to the `metabase_table` table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: entity_id
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v54.2025-01-30T16:14:02
+      author: bshepherdson
+      comment: Add `entity_id` column to the `metabase_field` table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_field
+                columnName: entity_id
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
