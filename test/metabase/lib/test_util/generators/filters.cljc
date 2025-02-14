@@ -10,7 +10,7 @@
 
 ;; Filter values =================================================================================
 (defn- gen-int []
-  (- (rand-int 2000000) 1000000))
+  (- (tu.rng/rand-int 2000000) 1000000))
 
 (def ^:private valid-ascii
   (mapv char (range 0x20 0x7f)))
