@@ -1,5 +1,6 @@
 export * from "./UpsellBetterSupport";
 export * from "./UpsellCacheConfig";
+export * from "./UpsellCloud";
 export * from "./UpsellHosting";
 export * from "./UpsellMetabaseBanner";
 export * from "./UpsellPerformanceTools";
