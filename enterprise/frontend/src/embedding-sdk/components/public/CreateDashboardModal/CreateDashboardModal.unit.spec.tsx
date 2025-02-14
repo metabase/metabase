@@ -1,4 +1,3 @@
-import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -6,7 +5,7 @@ import {
   setupCollectionByIdEndpoint,
   setupDashboardCreateEndpoint,
 } from "__support__/server-mocks";
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";

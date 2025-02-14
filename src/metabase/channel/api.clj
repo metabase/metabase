@@ -1,6 +1,4 @@
 (ns metabase.channel.api
-  "Not sure if this namespace is really adding a lot of value versus us just directly embedding these handlers directly
-  in [[metabase.api.routes/routes]]."
   (:require
    [metabase.api.macros :as api.macros]
    [metabase.channel.api.channel]

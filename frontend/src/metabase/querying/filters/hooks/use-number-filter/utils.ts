@@ -1,3 +1,4 @@
+import { isNotNull } from "metabase/lib/types";
 import {
   getAvailableOperatorOptions,
   getDefaultAvailableOperator,
@@ -5,13 +6,7 @@ import {
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
-import type { NumberValue, OperatorOption } from "./types";
-
-export function isNotEmptyValue(
-  value: NumberValue,
-): value is Lib.NumberFilterValue {
-  return value !== "";
-}
+import type { NumberOrEmptyValue, OperatorOption } from "./types";
 
 export function getAvailableOptions(
   query: Lib.Query,
@@ -48,22 +43,22 @@ export function getDefaultOperator(
 
 export function getDefaultValues(
   operator: Lib.NumberFilterOperator,
-  values: NumberValue[],
-): NumberValue[] {
+  values: NumberOrEmptyValue[],
+): NumberOrEmptyValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   if (hasMultipleValues) {
-    return values.filter(isNotEmptyValue);
+    return values.filter(isNotNull);
   }
 
   return Array(valueCount)
-    .fill("")
+    .fill(null)
     .map((value, index) => values[index] ?? value);
 }
 
 export function isValidFilter(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ) {
   return getFilterParts(operator, column, values) != null;
 }
@@ -71,7 +66,7 @@ export function isValidFilter(
 export function getFilterClause(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ) {
   const filterParts = getFilterParts(operator, column, values);
   return filterParts != null ? Lib.numberFilterClause(filterParts) : undefined;
@@ -80,7 +75,7 @@ export function getFilterClause(
 function getFilterParts(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.NumberFilterParts | undefined {
   switch (operator) {
     case "between":
@@ -93,10 +88,10 @@ function getFilterParts(
 function getSimpleFilterParts(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.NumberFilterParts | undefined {
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
-  if (!values.every(isNotEmptyValue)) {
+  if (!values.every(isNotNull)) {
     return undefined;
   }
   if (hasMultipleValues ? values.length === 0 : values.length !== valueCount) {
@@ -106,17 +101,17 @@ function getSimpleFilterParts(
   return {
     operator,
     column,
-    values: values.filter(isNotEmptyValue),
+    values: values.filter(isNotNull),
   };
 }
 
 function getBetweenFilterParts(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.NumberFilterParts | undefined {
   const [startValue, endValue] = values;
-  if (isNotEmptyValue(startValue) && isNotEmptyValue(endValue)) {
+  if (isNotNull(startValue) && isNotNull(endValue)) {
     const minValue = startValue < endValue ? startValue : endValue;
     const maxValue = startValue < endValue ? endValue : startValue;
 
@@ -125,13 +120,13 @@ function getBetweenFilterParts(
       column,
       values: [minValue, maxValue],
     };
-  } else if (isNotEmptyValue(startValue)) {
+  } else if (isNotNull(startValue)) {
     return {
       operator: ">=",
       column,
       values: [startValue],
     };
-  } else if (isNotEmptyValue(endValue)) {
+  } else if (isNotNull(endValue)) {
     return {
       operator: "<=",
       column,

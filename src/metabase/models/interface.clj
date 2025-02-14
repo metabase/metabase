@@ -282,10 +282,12 @@
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (seq (->> (map mbql.normalize/normalize-source-metadata metadata)
-              ;; This is necessary, because in the wild, there may be cards created prior to this change.
-              (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
-              (map lib.binning/ensure-binning-in-display-name)))))
+    (not-empty (mapv #(-> %
+                          mbql.normalize/normalize-source-metadata
+                          ;; This is necessary, because in the wild, there may be cards created prior to this change.
+                          lib.temporal-bucket/ensure-temporal-unit-in-display-name
+                          lib.binning/ensure-binning-in-display-name)
+                     metadata))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."

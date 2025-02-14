@@ -28,8 +28,6 @@ const setup = () => {
 
 describe("EmbeddingSdkLegaleseModal", () => {
   it("should update the settings and close the modal when the user clicks Accept", async () => {
-    jest.useFakeTimers();
-
     const { updateSetting, onClose } = setup();
 
     await userEvent.click(screen.getByText("Agree and continue"), {
@@ -39,8 +37,6 @@ describe("EmbeddingSdkLegaleseModal", () => {
     expect(
       screen.getByRole("button", { name: "Agree and continue" }),
     ).toHaveAttribute("data-is-loading", "true");
-
-    jest.advanceTimersToNextTimer();
 
     await waitFor(() => {
       expect(updateSetting).toHaveBeenCalledTimes(2);
@@ -56,9 +52,10 @@ describe("EmbeddingSdkLegaleseModal", () => {
       { key: "enable-embedding-sdk" },
       true,
     );
-    expect(onClose).toHaveBeenCalled();
 
-    jest.useRealTimers();
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled();
+    });
   });
 
   it("should not update settings when the user clicks Decline", async () => {

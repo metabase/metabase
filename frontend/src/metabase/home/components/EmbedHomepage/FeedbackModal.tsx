@@ -41,7 +41,7 @@ export const FeedbackModal = ({
       onClose={onClose}
     >
       <Title pb="sm">{t`How can we improve embedding?`}</Title>
-      <Stack spacing="lg">
+      <Stack gap="lg">
         {/* eslint-disable-next-line no-literal-metabase-strings -- only admins can see this component */}
         <Text>{t`Please let us know what happened. We’re always looking for ways to improve Metabase.`}</Text>
 
@@ -61,7 +61,7 @@ export const FeedbackModal = ({
           onChange={e => setEmail(e.currentTarget.value)}
         />
 
-        <Group position="right">
+        <Group justify="flex-end">
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button variant="filled" onClick={handleSubmit}>
             {comment.trim().length + email.trim().length > 0

@@ -154,13 +154,17 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
     ModalRoot: {
       defaultProps: {
         withinPortal: true,
-        target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+        portalProps: {
+          target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+        },
       }, // satisfies Partial<ModalRootProps>,
     },
     Modal: {
       defaultProps: {
         withinPortal: true,
-        target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+        portalProps: {
+          target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+        },
       }, // satisfies Partial<ModalProps>,
     },
     Popover: {

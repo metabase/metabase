@@ -13,7 +13,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -109,11 +108,9 @@
 (t2/define-before-delete :model/PermissionsGroup
   [{id :id, :as group}]
   (check-not-magic-group group)
-  ;; Remove from LDAP mappings
-  (classloader/require 'metabase.integrations.ldap)
   (setting/set-value-of-type!
    :json :ldap-group-mappings
-   (when-let [mappings (setting/get-value-of-type :json :ldap-group-mappings)]
+   (when-let [mappings (setting/get :ldap-group-mappings)]
      (zipmap (keys mappings)
              (for [val (vals mappings)]
                (remove (partial = id) val))))))

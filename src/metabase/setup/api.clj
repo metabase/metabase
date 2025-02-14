@@ -10,16 +10,16 @@
    [metabase.db :as mdb]
    [metabase.embed.settings :as embed.settings]
    [metabase.events :as events]
-   [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models.interface :as mi]
-   [metabase.models.session :as session]
+   [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.session.models.session :as session]
    [metabase.setup.core :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -186,7 +186,7 @@
                 :app-origin  (boolean (embed.settings/embedding-app-origins-interactive))}
    :configured {:email (email/email-configured?)
                 :slack (slack/slack-configured?)
-                :sso   (google/google-auth-enabled)}
+                :sso   (setting/get :google-auth-enabled)}
    :counts     {:user  (t2/count :model/User {:where (mi/exclude-internal-content-hsql :model/User)})
                 :card  (t2/count :model/Card {:where (mi/exclude-internal-content-hsql :model/Card)})
                 :table (val (ffirst (t2/query {:select [:%count.*]
