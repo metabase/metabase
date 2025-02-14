@@ -22,5 +22,5 @@
           (is (not (sso.settings/ldap-enabled))))))))
 
 (deftest ^:parallel send-new-sso-user-admin-email?-test
-  (is (boolean? (sso.settings/send-new-sso-user-admin-email?))
-      "Make sure this Setting returns a boolean, not some other type of value."))
+  (is ((some-fn nil? boolean?) (sso.settings/send-new-sso-user-admin-email?))
+      "Make sure this Setting returns a boolean, not some other type of value. (It was returning a function before I fixed it.)"))

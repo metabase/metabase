@@ -1,12 +1,14 @@
 (ns metabase-enterprise.enhancements.integrations.google-test
   (:require
    [clojure.test :refer :all]
-   [metabase.premium-features.core :as premium-features]
    [metabase.sso.core :as sso]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest google-auth-create-new-user!-test
-  (with-redefs [premium-features/enable-sso-google? (constantly true)]
+  (mt/with-premium-features #{:sso-google}
     (testing "should support multiple domains (#5218)"
       (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com,example.com"]
         (mt/with-model-cleanup [:model/User]

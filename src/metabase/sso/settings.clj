@@ -105,10 +105,12 @@
                   (recur (json/decode new-value))
 
                   (map? new-value)
-                  (do (doseq [k (keys new-value)]
+                  (do
+                    (doseq [k (keys new-value)]
+                      (when-not (instance? DN k) ; handle DN-encoded keys like we get from the `:getter`
                         (when-not (DN/isValidDN (u/qualified-name k))
-                          (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (u/qualified-name k))))))
-                      (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
+                          (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (u/qualified-name k)))))))
+                    (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
 
 (defsetting ldap-configured?
   (deferred-tru "Have the mandatory LDAP settings (host and user search base) been validated and saved?")
@@ -203,5 +205,5 @@
   :type :boolean)
 
 (define-multi-setting-impl send-new-sso-user-admin-email? :oss
-  :getter (fn [] (constantly true))
+  :getter (constantly true)
   :setter :none)

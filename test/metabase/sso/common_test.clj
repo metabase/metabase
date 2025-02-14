@@ -24,7 +24,7 @@
     (mt/with-user-in-groups [group {:name (str ::group)}
                              user  [group]]
       (integrations.common/sync-group-memberships! user #{group} #{group})
-      (is (= #{"All Users" ":metabase.integrations.common-test/group"}
+      (is (= #{"All Users" ":metabase.sso.common-test/group"}
              (group-memberships user))))))
 
 (deftest sync-groups-test-2
@@ -45,8 +45,8 @@
                              group-2 {:name (str ::group-2)}
                              user    [group-1]]
       (integrations.common/sync-group-memberships! user #{group-1 group-2} #{group-1 group-2})
-      (is (= #{":metabase.integrations.common-test/group-1"
-               ":metabase.integrations.common-test/group-2"
+      (is (= #{":metabase.sso.common-test/group-1"
+               ":metabase.sso.common-test/group-2"
                "All Users"}
              (group-memberships user))))))
 
@@ -65,7 +65,7 @@
                              group-2 {:name (str ::group-2)}
                              user    [group-1]]
       (integrations.common/sync-group-memberships! user #{group-2} #{group-1 group-2})
-      (is (= #{":metabase.integrations.common-test/group-2" "All Users"}
+      (is (= #{":metabase.sso.common-test/group-2" "All Users"}
              (group-memberships user))))))
 
 (deftest sync-groups-test-6
@@ -80,7 +80,7 @@
     (mt/with-user-in-groups [group-1 {:name (str ::group-1)}
                              user    [group-1]]
       (integrations.common/sync-group-memberships! user #{} #{})
-      (is (= #{":metabase.integrations.common-test/group-1"
+      (is (= #{":metabase.sso.common-test/group-1"
                "All Users"}
              (group-memberships user))))))
 
@@ -90,7 +90,7 @@
       (mt/with-user-in-groups [group {:name (str ::group)}
                                user    []]
         (integrations.common/sync-group-memberships! user #{Integer/MAX_VALUE group} #{Integer/MAX_VALUE group})
-        (is (= #{"All Users" ":metabase.integrations.common-test/group"}
+        (is (= #{"All Users" ":metabase.sso.common-test/group"}
                (group-memberships user)))))))
 
 (deftest sync-groups-test-9a
@@ -127,7 +127,7 @@
         (mt/with-user-in-groups [group {:name (str ::group)}
                                  user  [(perms-group/admin)]]
           (integrations.common/sync-group-memberships! user #{group} #{group})
-          (is (= #{"All Users" "Administrators" ":metabase.integrations.common-test/group"}
+          (is (= #{"All Users" "Administrators" ":metabase.sso.common-test/group"}
                  (group-memberships user))))))))
 
 (deftest sync-groups-test-10

@@ -93,6 +93,6 @@
       (when sync-groups?
         (let [group-ids            (sso/ldap-groups->mb-group-ids groups settings)
               all-mapped-group-ids (sso/all-mapped-ldap-group-ids settings)]
-          (sso.common/sync-group-memberships! user
-                                              group-ids
-                                              all-mapped-group-ids))))))
+          (sso/sync-group-memberships! user
+                                       group-ids
+                                       all-mapped-group-ids))))))

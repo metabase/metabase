@@ -89,7 +89,7 @@
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   (when (and sso_source (not (setup/has-user-setup)))
     ;; Only allow SSO users to be provisioned if the setup flow has been completed and an admin has been created
-    (throw (Exception. (trs "Instance has not been initialized"))))
+    (throw (Exception. (trs "Metabase instance has not been initialized"))))
   (premium-features/airgap-check-user-count)
   (merge
    insert-default-values

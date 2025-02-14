@@ -7,8 +7,11 @@
    [metabase.sso.ldap :as ldap]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest find-test
   (mt/with-premium-features #{:sso-ldap}
