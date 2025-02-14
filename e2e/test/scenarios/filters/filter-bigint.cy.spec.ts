@@ -298,7 +298,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       maxValue: string;
     }) {
       cy.log("id parameter");
-      // TODO https://github.com/metabase/metabase/blob/6694870932830ff36964edd8b2c4555b81ddeda8/src/metabase/query_processor/middleware/parameters/mbql.clj#L21
+      // TODO mbql.clj https://github.com/metabase/metabase/blob/6694870932830ff36964edd8b2c4555b81ddeda8/src/metabase/query_processor/middleware/parameters/mbql.clj#L21
       // testFilter({
       //   questionDetails,
       //   baseType,
@@ -417,7 +417,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     });
   });
 
-  it("native query + query builder + variable", () => {
+  it("native query + variable + query builder", () => {
     function testFilter({
       questionDetails,
       value,
@@ -429,7 +429,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         const cardTagName = `#${cardId}-sql-number`;
 
         return {
-          name: "MBQL",
+          name: "SQL",
           native: {
             query: `SELECT COUNT(*) FROM {{#${cardId}-sql-number}} [[WHERE NUMBER = {{number}}]]`,
             "template-tags": {
@@ -478,7 +478,112 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     });
 
     cy.log("DECIMAL");
-    // TODO https://github.com/metabase/metabase/blob/63c69f5461ad877bf1e6cf036ef8db25489b1a42/src/metabase/driver/common/parameters/values.clj#L293
+    // TODO values.clj https://github.com/metabase/metabase/blob/63c69f5461ad877bf1e6cf036ef8db25489b1a42/src/metabase/driver/common/parameters/values.clj#L293
+    // testFilter({
+    //   questionDetails: decimalQuestionDetails,
+    //   value: negativeDecimalValue,
+    // });
+  });
+
+  it("native query + variable + dashboards", () => {
+    function testFilter({
+      questionDetails,
+      value,
+    }: {
+      questionDetails: NativeQuestionDetails;
+      value: string;
+    }) {
+      const parameterDetails: Parameter = {
+        id: "b6ed2d71",
+        type: "number/=",
+        name: "Number",
+        slug: "number",
+        sectionId: "number",
+      };
+
+      const dashboardDetails: DashboardDetails = {
+        parameters: [parameterDetails],
+      };
+
+      const getQuestionDetails = (cardId: number): NativeQuestionDetails => {
+        const cardTagName = `#${cardId}-sql-number`;
+
+        return {
+          name: "SQL",
+          native: {
+            query: `SELECT COUNT(*) FROM {{#${cardId}-sql-number}} [[WHERE NUMBER = {{number}}]]`,
+            "template-tags": {
+              [cardTagName]: {
+                id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
+                name: cardTagName,
+                "display-name": cardTagName,
+                type: "card",
+                "card-id": cardId,
+              },
+              number: {
+                id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+                name: "number",
+                "display-name": "Number",
+                type: "number",
+              },
+            },
+          },
+          display: "scalar",
+        };
+      };
+
+      const getParameterMapping = (
+        cardId: number,
+      ): DashboardParameterMapping => ({
+        card_id: cardId,
+        parameter_id: parameterDetails.id,
+        target: ["variable", ["template-tag", "number"]],
+      });
+
+      cy.log("create a dashboard");
+      H.createNativeQuestion(questionDetails).then(({ body: card }) => {
+        H.createNativeQuestionAndDashboard({
+          questionDetails: getQuestionDetails(card.id),
+          dashboardDetails,
+        }).then(({ body: dashcard, questionId }) => {
+          H.addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: questionId,
+            card: {
+              parameter_mappings: [getParameterMapping(questionId)],
+            },
+          });
+          cy.wrap(dashcard.dashboard_id).as("dashboardId");
+        });
+      });
+
+      cy.log("add a filter");
+      H.visitDashboard("@dashboardId");
+      H.getDashboardCard()
+        .findByTestId("scalar-value")
+        .should("have.text", "3");
+      H.filterWidget().findByRole("textbox").type(value).blur();
+      H.filterWidget().findByRole("textbox").should("have.value", value);
+      H.getDashboardCard()
+        .findByTestId("scalar-value")
+        .should("have.text", "1");
+
+      cy.log("drill-thru");
+      H.getDashboardCard().findByText("SQL").click();
+      H.queryBuilderMain()
+        .findByTestId("scalar-value")
+        .should("have.text", "1");
+      H.filterWidget().findByRole("textbox").should("have.value", value);
+    }
+
+    cy.log("BIGINT");
+    testFilter({
+      questionDetails: bigIntQuestionDetails,
+      value: maxBigIntValue,
+    });
+
+    cy.log("DECIMAL");
+    // TODO values.clj https://github.com/metabase/metabase/blob/63c69f5461ad877bf1e6cf036ef8db25489b1a42/src/metabase/driver/common/parameters/values.clj#L293
     // testFilter({
     //   questionDetails: decimalQuestionDetails,
     //   value: negativeDecimalValue,
