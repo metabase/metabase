@@ -339,8 +339,6 @@
 
   (reset-gsheets-status!)
 
-
-  (require '[metabase.util.json :as json])
   ;; need an "attached dwh" locally?
   (t2/update! :model/Database 1
               {:is_attached_dwh true

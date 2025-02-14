@@ -1,6 +1,7 @@
 (ns metabase.api.auth
-  (:require [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.premium-features.core :as premium-features]))
+  (:require
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.premium-features.core :as premium-features]))
 
 (defsetting api-key
   "When set, this API key is required for all API requests."

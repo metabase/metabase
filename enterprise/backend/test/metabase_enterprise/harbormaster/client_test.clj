@@ -1,8 +1,9 @@
 (ns metabase-enterprise.harbormaster.client-test
-  (:require [clojure.test :refer [deftest is testing]]
-            [metabase-enterprise.harbormaster.client :as hm.client]
-            [metabase.models.setting :as setting]
-            [metabase.test.util :as mt]))
+  (:require
+   [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.harbormaster.client :as hm.client]
+   [metabase.models.setting :as setting]
+   [metabase.test.util :as mt]))
 
 (deftest ->config-good-test
   (testing "Both needed values are present and pulled from settings"

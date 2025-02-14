@@ -1,11 +1,12 @@
 (ns metabase-enterprise.api.gsheets-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer [deftest is]]
-            [java-time.api :as t]
-            [metabase-enterprise.gsheets :as gsheets.api]
-            [metabase-enterprise.harbormaster.client :as hm.client]
-            [metabase.test :as mt]
-            [toucan2.core :as t2])
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer [deftest is]]
+   [java-time.api :as t]
+   [metabase-enterprise.gsheets :as gsheets.api]
+   [metabase-enterprise.harbormaster.client :as hm.client]
+   [metabase.test :as mt]
+   [toucan2.core :as t2])
   (:import [java.time
             LocalDate
             LocalTime
