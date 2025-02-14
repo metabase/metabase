@@ -181,7 +181,162 @@
            lib
            logger
            models
-           plug
+           plugins
+           premium-features
+           public-settings
+           pulse
+           query-processor
+           sync
+           upload
+           util}}
+
+  eid-translation
+  {:api  #{metabase.eid-translation}
+   :uses #{}}
+
+  embed
+  {:api  #{metabase.embed.settings}
+   :uses #{analytics models premium-features util}}
+
+  events
+  {:api  #{metabase.events metabase.events.init metabase.events.notification}
+   :uses #{api driver models notification premium-features public-settings util}}
+
+  formatter
+  {:api  #{metabase.formatter}
+   :uses #{models public-settings query-processor types util}}
+
+  indexed-entities
+  {:api  #{metabase.indexed-entities.api metabase.indexed-entities.init}
+   :uses #{analytics api driver legacy-mbql lib models query-processor search sync task util}}
+
+  integrations
+  {:api #{metabase.integrations.common
+          metabase.integrations.google
+          metabase.integrations.google.interface
+          metabase.integrations.ldap
+          metabase.integrations.ldap.default-implementation
+          metabase.integrations.slack}
+   :uses #{api config events models permissions plugins premium-features util enterprise/enhancements}}
+
+  legacy-mbql
+  {:api #{metabase.legacy-mbql.normalize
+          metabase.legacy-mbql.predicates
+          metabase.legacy-mbql.schema
+          metabase.legacy-mbql.schema.helpers
+          metabase.legacy-mbql.util}
+   :uses #{lib models types util}}
+
+  lib
+  {:api #{metabase.lib.binning
+          metabase.lib.binning.util
+          metabase.lib.card
+          metabase.lib.convert
+          metabase.lib.core
+          metabase.lib.equality
+          metabase.lib.field
+          metabase.lib.filter
+          metabase.lib.ident
+          metabase.lib.join.util
+          metabase.lib.metadata
+          metabase.lib.metadata.calculation
+          metabase.lib.metadata.jvm
+          metabase.lib.metadata.protocols
+          metabase.lib.normalize
+          metabase.lib.options
+          metabase.lib.query
+          metabase.lib.schema
+          metabase.lib.schema.actions
+          metabase.lib.schema.binning
+          metabase.lib.schema.common
+          metabase.lib.schema.expression
+          metabase.lib.schema.expression.temporal
+          metabase.lib.schema.expression.window
+          metabase.lib.schema.id
+          metabase.lib.schema.info
+          metabase.lib.schema.literal
+          metabase.lib.schema.metadata
+          metabase.lib.schema.parameter
+          metabase.lib.schema.template-tag
+          metabase.lib.schema.temporal-bucketing
+          metabase.lib.schema.util
+          metabase.lib.temporal-bucket
+          metabase.lib.types.isa
+          metabase.lib.util
+          metabase.lib.util.match
+          metabase.lib.walk}
+   :uses #{config driver legacy-mbql models types util}}
+
+  logger
+  {:api  #{metabase.logger metabase.logger.init}
+   :uses #{config plugins}}
+
+  login-history
+  {:api #{metabase.login-history.api
+          metabase.login-history.core
+          metabase.login-history.init}
+   :uses #{analytics api channel models request util}}
+
+  models
+  {:api #{metabase.models.api-key
+          metabase.models.application-permissions-revision
+          metabase.models.audit-log
+          metabase.models.cache-config
+          metabase.models.card
+          metabase.models.card.metadata
+          metabase.models.collection
+          metabase.models.collection-permission-graph-revision
+          metabase.models.collection.graph
+          metabase.models.collection.root
+          metabase.models.dashboard
+          metabase.models.dashboard-card
+          metabase.models.dashboard-tab
+          metabase.models.dashboard.constants
+          metabase.models.database
+          metabase.models.dispatch
+          metabase.models.field
+          metabase.models.field-usage
+          metabase.models.field-values
+          metabase.models.humanization
+          metabase.models.init
+          metabase.models.interface
+          metabase.models.moderation-review
+          metabase.models.native-query-snippet
+          metabase.models.native-query-snippet.permissions
+          metabase.models.notification
+          metabase.models.params
+          metabase.models.params.chain-filter
+          metabase.models.params.custom-values
+          metabase.models.params.field-values
+          metabase.models.params.shared
+          metabase.models.persisted-info
+          metabase.models.query
+          metabase.models.query-analysis
+          metabase.models.query.permissions
+          metabase.models.resolution
+          metabase.models.secret
+          metabase.models.serialization
+          metabase.models.setting
+          metabase.models.setting.cache
+          metabase.models.setting.multi-setting
+          metabase.models.table
+          metabase.models.task-history
+          metabase.models.user
+          metabase.models.user-parameter-value
+          metabase.models.view-log-impl
+          metabase.models.visualization-settings}
+   :uses #{analytics
+           analyze
+           api
+           audit
+           channel
+           config
+           db
+           driver
+           events
+           integrations
+           legacy-mbql
+           lib
            moderation
            permissions
            plugins
