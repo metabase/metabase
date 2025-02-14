@@ -19,9 +19,13 @@ interface FilterPanelProps {
 }
 
 export function FilterPanel({
-  dirtyAddedFilters,
   query,
   onChange,
+
+  dirtyAddedFilters,
+  dirtyRemovedFilters,
+  setDirtyAddedFilters,
+  setDirtyRemovedFilters,
 }: FilterPanelProps) {
   const items = useMemo(() => {
     const items = getFilterItems(query);
@@ -59,6 +63,10 @@ export function FilterPanel({
           stageIndex={stageIndex}
           filter={filter}
           onChange={handleChange}
+          dirtyAddedFilters={dirtyAddedFilters}
+          dirtyRemovedFilters={dirtyRemovedFilters}
+          setDirtyAddedFilters={setDirtyAddedFilters}
+          setDirtyRemovedFilters={setDirtyRemovedFilters}
         />
       ))}
     </Flex>

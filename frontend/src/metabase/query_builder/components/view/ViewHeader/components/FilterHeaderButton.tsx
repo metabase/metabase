@@ -43,7 +43,9 @@ export function FilterHeaderButton({
 }: FilterHeaderButtonProps) {
   const label = isExpanded ? t`Hide filters` : t`Show filters`;
   const items = useMemo(() => {
-    const items = getFilterItems(query);
+    const items = getFilterItems(query).filter(({ filter }) => {
+      return !dirtyRemovedFilters.includes(filter);
+    });
 
     const dirtyAddedFilterItems = dirtyAddedFilters.map(filter => ({
       filter,
@@ -51,7 +53,7 @@ export function FilterHeaderButton({
     }));
 
     return [...items, ...dirtyAddedFilterItems];
-  }, [query, dirtyAddedFilters]);
+  }, [query, dirtyRemovedFilters, dirtyAddedFilters]);
   const hasItems = items ? items.length > 0 : false;
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
