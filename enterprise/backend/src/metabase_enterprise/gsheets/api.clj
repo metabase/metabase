@@ -1,17 +1,18 @@
-(ns metabase-enterprise.gsheets
-  "/api/gsheets endpoints"
+(ns metabase-enterprise.gsheets.api
   (:require
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.gsheets.constants :as gsheets.constants]
+   [metabase-enterprise.gsheets.settings
+    :as gsheets.settings
+    :refer [gsheets gsheets!]]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.auth :as api.auth]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -32,15 +33,16 @@
 ;;
 ;; - An admin clicks Add Data > Connect Google Sheets
 ;; - FE sends :get "api/ee/gsheets/service-account" to get service-account email
-;; - FE shows instructions for how to connect a folder:
+;;   - If the FE cannot find the service-account email, it does not show the "connect to google sheets" (ctgs) button.
+;; - user clicks ctgs button -> FE shows instructions for how to connect a folder:
 ;;   - user shares their Google Drive folder w/ service-account email
-;;   - user copies their Google Drive share link into MB and hits submit
+;;   - user copies their Google Drive share link into MB form and hits submit
 ;; - FE sends :post "api/ee/gsheets/folder" w/ folder url string as `request.body.url`
-;;   - BE forwards request to :post "/api/v2/mb/connections" w/ body: `{:type "gdrive" :secret {:resources
-;;   - ["the-url"]}}`
+;;   - BE forwards request to :post "/api/v2/mb/connections" w/ body:
+;;     `{:type "gdrive" :secret {:resources ["the-url"]}}`
 ;;     - on unexceptional status:
-;;       - BE sets `gsheets.status` to `"syncing"`
-;;       - BE returns the gsheets shape: `{:status "syncing" :folder_url "the-url"}`
+;;       - BE sets `gsheets.status` to `"loading"`
+;;       - BE returns the gsheets shape: `{:status "loading" :folder_url "the-url" :folder-upload-time <epoch-time> :gdrive/conn-id <uuid>}}`
 ;;     - on exceptional status, BE returns a message like: "Unable to setup drive folder sync. Please check that the
 ;;       folder is shared with the proper service account email and sharing permissions."
 ;;
@@ -52,6 +54,13 @@
 ;;   - If the connection exists and is active AND the latest sync of the attached datawarehouse is AFTER the sync time
 ;;         on Harbormaster's gdrive connection, return `body.status` == "complete".
 ;; - FE sees status == "complete"
+;;
+;; ### What does "complete" mean?
+;; When the status is "complete", the user can access their google sheets info inside Metabase.
+;; This means that both:
+;; 1. the gdrive connection has been marked active
+;; 2. the attached datawarehouse has completed syncing inside metabase
+;; To check this, we compare the last sync time of the attached datawarehouse with the last sync time of the gdrive.
 ;;
 ;; ### What if the sync takes too long or never ends?
 ;; Upon the successful creation of a gdrive connection, we start a timer that will error out if the sync does not
@@ -69,50 +78,13 @@
 ;; availiable in the attached datawarehouse, and when MB finishes the sync (and puts an item into :model/TaskHistory
 ;; saying so), the user can start using their Google Sheets data in Metabase.
 ;;
-;; ## Why do we check for multiple gdrive connections in the delete endpoint?
-;; We check for multiple gdrive connections in the delete endpoint to make sure that we are deleting all gdrive
-;; connections. As of Milestone 2 there are supposed to be only one gdrive connection, but we saw multiple being
-;; created and want the delete endpoint to basically reset us to a blank slate. If there are multiple gdrive
-;; connections, we will delete all of them.
+;; ## Why do we check for multiple gdrive connections in the delete endpoint? We check for multiple gdrive connections
+;; in the delete endpoint to make sure that we are deleting _all_ gdrive connections. As of Milestone 2 there is
+;; supposed to be only one gdrive connection, but we observed multiple being created (distributed systems amirite?) and
+;; want the delete endpoint to basically reset us to a blank slate. If there are multiple gdrive connections, we will
+;; delete all of them. If there are errors during the gdrive conn deletion we ignore them.
 
 (set! *warn-on-reflection* true)
-
-(def ^:private not-connected {:status "not-connected"})
-
-(defsetting gsheets
-  #_"
-  This value has 3 states:
-
-  1) The Google Sheets Folder is not setup.
-  {:status \"not-connected\"}
-
-  2) We have uploaded a Folder URL to HM, but have not synced it in MB yet.
-  {:status \"loading\"
-   :folder_url \"https://drive.google.com/drive/abc\"
-   :gdrive/conn-id <uuid>
-   ;; in seconds from epoch:
-   :folder-upload-time 1738266997}
-
-  3)  Google Sheets Integration is enabled, and users can view their google sheets tables.
-  {:status \"complete\"
-   :folder_url \"https://drive.google.com/drive/abc\"}"
-  (deferred-tru "Information about Google Sheets Integration")
-  :encryption :when-encryption-key-set
-  :export? true
-  :visibility :public
-  :type :json
-  :getter (fn [] (or
-                  ;; This NEEDS to be up to date between instances on a cluster, so:
-                  ;; we are going around the settings cache:
-                  (some-> (t2/select-one :model/Setting :key "gsheets") :value json/decode+kw)
-                  (u/prog1 not-connected
-                    (setting/set-value-of-type! :json :gsheets <>)))))
-
-(defn- seconds-from-epoch-now [] (.getEpochSecond (t/instant)))
-
-(mr/def ::gsheets [:map
-                   [:status                      [:enum "not-connected" "loading" "complete"]]
-                   [:folder_url {:optional true} ms/NonBlankString]])
 
 (defn error-response-in-body
   "We've decided to return errors as a map with an `:error` key. This function is a helper to make that map.
@@ -120,7 +92,11 @@
   This formats and throws an ex-info that will put the message into the body of the response."
   ([message] (error-response-in-body message {}))
   ([message data]
-   (throw (ex-info message (merge data {:errors true :message message})))))
+   (throw (ex-info message (merge data {;; the `:errors true` bit informs the exception middleware to return the message
+                                        ;; in the body, even if we want to pass a stauts code. Without `:errors true`,
+                                        ;; sending a stuats code will ellide the message from the response.
+                                        :errors true
+                                        :message message})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs
@@ -136,14 +112,15 @@
        (tru "Google service-account is not setup in harbormaster.")
        {:status-code 502}))))
 
-(mr/def ::gdrive-conn [:map {:description "The Harbormaster Gdrive Connection"}
-                       [:id :string]
-                       [:type [:= "gdrive"]]
-                       [:status [:enum "initializing" "syncing" "active" "error"]]
-                       [:last-sync-at [:maybe :time/zoned-date-time]]
-                       [:last-sync-started-at [:maybe :time/zoned-date-time]]
-                       [:created-at :time/zoned-date-time]
-                       [:updated-at :time/zoned-date-time]])
+(mr/def :gdrive/connection
+  [:map {:description "A Harbormaster Gdrive Connection"}
+   [:id :string]
+   [:type [:= "gdrive"]]
+   [:status [:enum "initializing" "syncing" "active" "error"]]
+   [:last-sync-at [:maybe :time/zoned-date-time]]
+   [:last-sync-started-at [:maybe :time/zoned-date-time]]
+   [:created-at :time/zoned-date-time]
+   [:updated-at :time/zoned-date-time]])
 
 (defn- is-gdrive?
   "Is this connection a gdrive connection?"
@@ -159,7 +136,7 @@
       (m/update-existing :created-at u.date/parse)
       (m/update-existing :updated-at u.date/parse)))
 
-(mu/defn- hm-get-gdrive-conns :- [:sequential ::gdrive-conn]
+(mu/defn- hm-get-gdrive-conns :- [:sequential :gdrive/connection]
   "Get the harbormaster gdrive type connection.
 
   If the response fails:    return an empty list.
@@ -171,25 +148,27 @@
             (filter is-gdrive? (or (some-> response :body) [])))
       [])))
 
-(mu/defn- hm-delete-conn! :- ::hm.client/http-reply
+(mu/defn- hm-delete-conn! :- :hm.client/http-reply
   "Delete (presumably a gdrive) connection on HM."
   [conn-id]
   (hm.client/make-request :delete (str "/api/v2/mb/connections/" conn-id)))
 
-(defn- reset-gsheets-status! []
-  (gsheets! not-connected)
-  (doseq [{:keys [id]} (hm-get-gdrive-conns)]
-    (hm-delete-conn! id))
-  not-connected)
+(defn- reset-gsheets-status!
+  "Reset the gsheets status to not-connected and delete all known gdrive connections."
+  []
+  (u/prog1 gsheets.constants/not-connected
+    (gsheets! <>)
+    (doseq [{:keys [id]} (hm-get-gdrive-conns)]
+      (hm-delete-conn! id))))
 
-(mu/defn hm-get-gdrive-conn :- ::hm.client/http-reply
+(mu/defn hm-get-gdrive-conn :- :hm.client/http-reply
   "Get a specific gdrive connection by id."
   [id]
   (when-not id
     (throw (ex-info "must have an id to lookup by id" {})))
   (hm.client/make-request :get (str "/api/v2/mb/connections/" id)))
 
-(mu/defn- hm-create-gdrive-conn! :- ::hm.client/http-reply
+(mu/defn- hm-create-gdrive-conn! :- :hm.client/http-reply
   "Creating a gdrive connection on HM starts the sync w/ drive folder."
   [drive-folder-url]
   (hm.client/make-request :post "/api/v2/mb/connections" {:type "gdrive" :secret {:resources [drive-folder-url]}}))
@@ -202,16 +181,16 @@
   "Checks to see if service-account is setup or not, delegates to HM only if we haven't set it from a metabase cluster
   before."
   []
-  (api/check-superuser)
-  (when-not (api.auth/show-google-sheets-integration)
+  (when-not (gsheets.settings/show-google-sheets-integration)
     (reset-gsheets-status!)
     (error-response-in-body (tru "Google Sheets integration is not enabled.") {:status-code 402}))
   {:email (hm-service-account-email)})
 
-(api.macros/defendpoint :post "/folder" :- ::gsheets
+(defn- seconds-from-epoch-now [] (.getEpochSecond (t/instant)))
+
+(api.macros/defendpoint :post "/folder" :- :gsheets/gsheets
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
   [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
-  (api/check-superuser)
   (let [[status response] (hm-create-gdrive-conn! url)]
     (if (= status :ok)
       (u/prog1 {:status "loading"
@@ -237,6 +216,7 @@
                     :task "sync"
                     :status :success
                     {:order-by [[:ended_at :desc]]}))
+
 
 (def ^:dynamic ^:private *folder-setup-timeout-seconds*
   "We want to avoid polling forever, even if harbormaster never finishes the sync, so if the sync does not happen during
@@ -295,13 +275,12 @@
          (tru "Unable to find google drive connection.")
          {:status-code 404})))))
 
-(api.macros/defendpoint :get "/folder" :- ::gsheets
+(api.macros/defendpoint :get "/folder" :- :gsheets/gsheets
   "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to
   stop showing the setup widget.
 
   Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
   [] :- ::gsheets
-  (api/check-superuser)
   (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
     (when-not (some? attached-dwh)
       (snowplow/track-event! ::snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
@@ -312,20 +291,25 @@
 (api.macros/defendpoint :delete "/folder"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []
-  (api/check-superuser)
   (snowplow/track-event! ::snowplow/simple_event {:event "sheets_disconnected"})
   (reset-gsheets-status!))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/gsheets` routes."
-  ;; TODO add api/+check-superuser +auth and +check-setting
-  (api.macros/ns-handler *ns*))
+  (api/+check-superuser
+   (api.macros/ns-handler *ns*)))
 
 (comment
-   ;; TEMP (gsheets)
 
   (def drive-folder-url
     "https://drive.google.com/drive/folders/1H2gz8_TUsCNyFpooFeQB8Y7FXRZA_esH?usp=drive_link")
+
+  ;; need an "attached dwh" locally?
+  (t2/update! :model/Database 1
+              {:is_attached_dwh true
+               :settings
+               (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"
+                    "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")})
 
   (do
     ;; This is what the notify endpoint calls:
@@ -335,15 +319,8 @@
     (sync-metadata/sync-db-metadata!
      (t2/select-one :model/Database :is_attached_dwh true)))
 
-  (gsheets)
+  (gsheets.settings/gsheets)
 
   (reset-gsheets-status!)
-
-  ;; need an "attached dwh" locally?
-  (t2/update! :model/Database 1
-              {:is_attached_dwh true
-               :settings
-               (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"
-                    "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")})
 
   )

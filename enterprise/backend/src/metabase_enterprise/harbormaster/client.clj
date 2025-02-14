@@ -53,9 +53,9 @@
 ;; PUBLIC API:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(mr/def ::http-reply [:tuple [:enum :ok :error] :map])
+(mr/def :hm-client/http-reply [:tuple [:enum :ok :error] :map])
 
-(mu/defn make-request :- ::http-reply
+(mu/defn make-request :- :hm-client/http-reply
   "Makes a request to the store-api-url with the given method, path, and body.
 
   Returns a tuple of [:ok response] if the request was successful, or [:error response] if it failed."
