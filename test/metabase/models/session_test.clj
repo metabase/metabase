@@ -66,7 +66,7 @@
                                :model/LoginHistory _ {:user_id   user-id
                                                       :device_id device
                                                       :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]
-                  (metabase.login-history.record/maybe-send-login-from-new-device-email
+                  (#'metabase.login-history.record/maybe-send-login-from-new-device-email
                    {:user_id user-id
                     :device_id device
                     :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"
