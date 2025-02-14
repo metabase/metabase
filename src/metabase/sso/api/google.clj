@@ -1,10 +1,10 @@
-(ns metabase.api.google
+(ns metabase.sso.api.google
   "/api/google endpoints"
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.integrations.google :as google]
    [metabase.models.setting :as setting]
+   [metabase.sso.settings :as sso.settings]
    [toucan2.core :as t2]))
 
 (api.macros/defendpoint :put "/settings"
@@ -21,4 +21,4 @@
   (t2/with-transaction [_conn]
     (setting/set-many! {:google-auth-client-id                   google-auth-client-id
                         :google-auth-auto-create-accounts-domain google-auth-auto-create-accounts-domain})
-    (google/google-auth-enabled! google-auth-enabled)))
+    (sso.settings/google-auth-enabled! google-auth-enabled)))
