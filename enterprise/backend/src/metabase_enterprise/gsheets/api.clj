@@ -239,7 +239,7 @@
                                        {:conn-id conn-id})))]
     (if (= :ok sstatus)
       (let [{:keys [status] last-gdrive-conn-sync :last-sync-at
-             :as   gdrive-conn} (normalize-gdrive-conn conn)
+             :as   _gdrive-conn} (normalize-gdrive-conn conn)
             last-dwh-sync       (get-last-mb-dwh-sync-time)]
         (-> (cond
               (sync-complete? {:status status :last-dwh-sync last-dwh-sync :last-gdrive-conn-sync last-gdrive-conn-sync})
