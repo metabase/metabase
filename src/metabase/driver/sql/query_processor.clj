@@ -740,7 +740,6 @@
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
           maybe-add-db-type    (fn [expr]
-                                 (prn expr)
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
                                    expr
                                    (h2x/with-database-type-info expr database-type)))]
