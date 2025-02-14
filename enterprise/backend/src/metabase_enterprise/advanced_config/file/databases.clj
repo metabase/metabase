@@ -6,7 +6,6 @@
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.driver.util :as driver.u]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -31,7 +30,7 @@
 (defn- valid-regex-patterns? [patterns]
   (every? (fn [pattern]
             (try
-              (boolean (crufty/->regex pattern))
+              (boolean (re-pattern pattern))
               (catch Exception e (log/error e) false)))
           patterns))
 

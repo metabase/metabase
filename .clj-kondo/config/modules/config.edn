@@ -711,7 +711,7 @@
 
   enterprise/upload-management
   {:api  #{metabase-enterprise.upload-management.api}
-   :uses #{api models upload util}}}
+   :uses #{api models premium-features upload util}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
