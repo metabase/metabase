@@ -1,10 +1,8 @@
-import styled from "@emotion/styled";
-
-export const ItemName = styled.span`
+.ItemName {
   color: var(--mb-color-brand);
-`;
+}
 
-export const ColumnClickBehaviorHeader = styled.div`
+.ColumnClickBehaviorHeader {
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -12,11 +10,11 @@ export const ColumnClickBehaviorHeader = styled.div`
   &:hover {
     color: var(--mb-color-brand);
   }
-`;
+}
 
-export const ChevronIconContainer = styled.div`
+.ChevronIconContainer {
   padding: 4px 6px;
   margin-right: 8px;
   border: 1px solid var(--mb-color-border);
   border-radius: 4px;
-`;
+}
