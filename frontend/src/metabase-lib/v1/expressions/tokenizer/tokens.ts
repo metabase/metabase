@@ -1,6 +1,6 @@
 import { ExternalTokenizer } from "@lezer/lr";
 
-import { Reference } from "./parser.terms";
+import { Reference } from "./lezer.terms";
 
 function char(char: string): number {
   if (char.length !== 1) {

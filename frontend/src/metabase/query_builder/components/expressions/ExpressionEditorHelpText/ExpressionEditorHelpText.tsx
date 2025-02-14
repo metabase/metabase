@@ -9,6 +9,8 @@ import { Box, Icon, Text } from "metabase/ui";
 import { getHelpDocsUrl } from "metabase-lib/v1/expressions/helper-text-strings";
 import type { HelpText } from "metabase-lib/v1/expressions/types";
 
+import { HighlightExpression } from "../HighlightExpression";
+
 import ExpressionEditorHelpTextS from "./ExpressionEditorHelpText.module.css";
 
 export type ExpressionEditorHelpTextProps = {
@@ -86,18 +88,20 @@ export const ExpressionEditorHelpText = ({
           </Box>
         )}
 
-        <Box
-          className={ExpressionEditorHelpTextS.BlockSubtitleText}
-          data-testid="argument-example"
-        >{t`Example`}</Box>
-        <Box
-          className={cx(
-            ExpressionEditorHelpTextS.ExampleCode,
-            CS.textMonospace,
-          )}
-        >
-          {helpText.example}
-        </Box>
+        {helpText.example && (
+          <>
+            <Box
+              className={ExpressionEditorHelpTextS.BlockSubtitleText}
+              data-testid="argument-example"
+            >
+              {t`Example`}
+            </Box>
+            <HighlightExpression
+              expression={helpText.example}
+              data-testid="expression-helper-popover-example"
+            />
+          </>
+        )}
         {showMetabaseLinks && (
           <ExternalLink
             className={ExpressionEditorHelpTextS.DocumentationLink}

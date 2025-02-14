@@ -64,8 +64,11 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     cy.findByText("Returns the string of text in all lower case.").should(
       "be.visible",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("lower([Status])").should("be.visible");
+
+    cy.findByTestId("expression-helper-popover-example").should(
+      "contain.text",
+      "lower([Status])",
+    );
 
     cy.findByTestId("expression-helper-popover-arguments")
       .findByText("text")

@@ -1132,7 +1132,8 @@ describe("scenarios > question > custom column > help text", () => {
       blur: false,
     });
 
-    cy.findByTestId("expression-helper-popover").findByText(
+    cy.findByTestId("expression-helper-popover-example").should(
+      "contain.text",
       "round([Temperature])",
     );
 
@@ -1141,7 +1142,8 @@ describe("scenarios > question > custom column > help text", () => {
     cy.findByTestId("expression-helper-popover").should("not.exist");
 
     cy.get("@formula").focus();
-    cy.findByTestId("expression-helper-popover").findByText(
+    cy.findByTestId("expression-helper-popover-example").should(
+      "contain.text",
       "round([Temperature])",
     );
 
@@ -1155,10 +1157,17 @@ describe("scenarios > question > custom column > help text", () => {
   it("should not disappear when clicked on (metabase#17548)", () => {
     H.enterCustomColumnDetails({ formula: "rou{enter}", blur: false });
 
+    cy.findByTestId("expression-helper-popover-example").should(
+      "contain.text",
+      "round([Temperature])",
+    );
+
     // Shouldn't hide on click
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("round([Temperature])").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("round([Temperature])");
+    cy.findByTestId("expression-helper-popover-example").click();
+
+    cy.findByTestId("expression-helper-popover-example").should(
+      "contain.text",
+      "round([Temperature])",
+    );
   });
 });
