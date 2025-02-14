@@ -45,8 +45,7 @@
      {:type "section" :text {:type "mrkdwn" :text (or description "N/A")}}
      {:type "rich_text"
       :elements [{:type "rich_text_section"
-                  :elements [
-                             {:type "text"
+                  :elements [{:type "text"
                               :text "\n\nURL:\n"
                               :style {:bold true}}
                              {:type "link"
