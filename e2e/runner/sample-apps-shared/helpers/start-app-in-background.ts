@@ -19,19 +19,23 @@ export function startAppInBackground({
     stdio: "ignore",
   });
 
-  ["exit", "SIGINT", "SIGTERM", "uncaughtException"].forEach(signal => {
-    process.on(signal, () => {
-      logWithPrefix(
-        `Parent received ${signal}, killing process with PID=${child.pid}...`,
-        loggerPrefix,
-      );
-      try {
-        if (child.pid) {
-          process.kill(child.pid);
-        }
-      } catch {}
+  if (process.env.CI) {
+    child.unref();
+  } else {
+    ["exit", "SIGINT", "SIGTERM", "uncaughtException"].forEach(signal => {
+      process.on(signal, () => {
+        logWithPrefix(
+          `Parent received ${signal}, killing process with PID=${child.pid}...`,
+          loggerPrefix,
+        );
+        try {
+          if (child.pid) {
+            process.kill(child.pid);
+          }
+        } catch {}
+      });
     });
-  });
+  }
 
   logWithPrefix(
     `Launched the process with PID=${child.pid} in background.`,

@@ -5,11 +5,22 @@ const { printBold } = require("./cypress-runner-utils");
 
 const mode = process.argv?.[2]?.trim();
 
-const availableModes = ["start", "snapshot", "e2e", "component"];
+const availableModes = [
+  "start",
+  "snapshot",
+  "e2e",
+  "sample-apps-embedding-sdk-e2e",
+  "component",
+];
 
 if (!availableModes.includes(mode)) {
   console.error(`Invalid mode: ${mode}`);
   process.exit(FAILURE_EXIT_CODE);
+}
+
+// To read it in other places
+if (!process.env.TEST_SUITE) {
+  process.env.TEST_SUITE = mode;
 }
 
 const startServer = async () => {
