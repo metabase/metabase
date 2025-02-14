@@ -4,7 +4,7 @@
    [clojure.tools.trace :as trace]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.cloud-migration.core :as cloud-migration]
    [metabase.config :as config]
    [metabase.core.config-from-file :as config-from-file]
@@ -87,7 +87,7 @@
   (log/info "Metabase Shutting Down ...")
   (task/stop-scheduler!)
   (server/stop-web-server!)
-  (prometheus/shutdown!)
+  (analytics/shutdown!)
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
@@ -127,7 +127,7 @@
   (init-status/set-progress! 0.4)
   ;; Set up Prometheus
   (log/info "Setting up prometheus metrics")
-  (prometheus/setup!)
+  (analytics/setup!)
   (init-status/set-progress! 0.5)
 
   (premium-features/airgap-check-user-count)
