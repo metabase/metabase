@@ -120,6 +120,17 @@ export function ViewTitleHeader({
   const previousQuery = usePrevious(query);
   const { isNative } = Lib.queryDisplayInfo(query);
 
+  const isQueryDirty =
+    dirtyAddedFilters.length + dirtyRemovedFilters.length > 0;
+
+  useEffect(() => {
+    if (isQueryDirty) {
+      // TODO mark dirty
+    } else {
+      // TODO mark clean
+    }
+  }, [isQueryDirty]);
+
   useEffect(() => {
     const isPreviousQuestionNative =
       previousQuery && Lib.queryDisplayInfo(previousQuery).isNative;
