@@ -1,4 +1,4 @@
-(ns metabase.models.session
+(ns metabase.session.models.session
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.nonce :as nonce]

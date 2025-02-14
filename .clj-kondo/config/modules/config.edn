@@ -311,7 +311,6 @@
           metabase.models.resolution
           metabase.models.secret
           metabase.models.serialization
-          metabase.models.session
           metabase.models.setting
           metabase.models.setting.cache
           metabase.models.setting.multi-setting
@@ -488,6 +487,10 @@
    :uses #{analytics api config core db driver embed models premium-features public-settings request util
            enterprise/sso}}
 
+  session
+  {:api  #{metabase.session.api metabase.session.init metabase.session.models.session}
+   :uses #{analytics api channel config db driver events integrations models public-settings request task util}}
+
   setup
   {:api  #{metabase.setup.api metabase.setup.core}
    :uses #{analytics
@@ -503,6 +506,7 @@
            premium-features
            public-settings
            request
+           session
            util}}
   sync
   {:api #{metabase.sync.api
@@ -680,7 +684,8 @@
   {:api #{metabase-enterprise.sso.api.routes
           metabase-enterprise.sso.integrations.sso-settings
           metabase-enterprise.sso.integrations.sso-utils}
-   :uses #{api channel embed events integrations models premium-features public-settings request util enterprise/scim}}
+   :uses #{api channel embed events integrations models premium-features public-settings request session util
+           enterprise/scim}}
 
   enterprise/stale
   {:api  #{metabase-enterprise.stale.routes}

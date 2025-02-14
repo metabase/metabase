@@ -26,7 +26,6 @@
    [metabase.api.preview-embed]
    [metabase.api.public]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.session]
    [metabase.api.setting]
    [metabase.api.slack]
    [metabase.api.table]
@@ -45,6 +44,7 @@
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
+   [metabase.session.api]
    [metabase.setup.api]
    [metabase.sync.api]
    [metabase.tiles.api]
@@ -163,7 +163,7 @@
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
-   "/session"              metabase.api.session/routes
+   "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.api.setting)
    "/setup"                'metabase.setup.api
    "/slack"                (+auth 'metabase.api.slack)
