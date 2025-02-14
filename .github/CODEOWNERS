@@ -116,6 +116,9 @@ test/metabase/cmd @metabase/devexp
 src/metabase/channel @metabase/core-workflows
 test/metabase/channel @metabase/core-workflows
 
+src/metabase/cloud_migration @metabase/core-workflows
+test/metabase/cloud_migration @metabase/core-workflows
+
 src/metabase/cmd @metabase/devexp
 test/metabase/cmd @metabase/devexp
 
