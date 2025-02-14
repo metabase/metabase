@@ -79,6 +79,7 @@ export function FilterHeaderButton({
       >
         <Popover.Target>
           <Button
+            aria-label={hasItems ? label : t`Add filter`}
             leftSection={<Icon name="filter" />}
             rightSection={
               shouldShowFilterPanelExpander ? (
