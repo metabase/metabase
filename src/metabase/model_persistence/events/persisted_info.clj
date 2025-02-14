@@ -1,8 +1,8 @@
-(ns metabase.events.persisted-info
+(ns metabase.model-persistence.events.persisted-info
   (:require
    [metabase.events :as events]
-   [metabase.models.persisted-info :as persisted-info]
-   [metabase.public-settings :as public-settings]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -19,7 +19,7 @@
     ;; If there is already a PersistedInfo, even in "off" or "deletable" state, we skip it as this
     ;; is only supposed to be that initial edge when the dataset is being changed.
     (when (and (= (:type card) :model)
-               (public-settings/persisted-models-enabled)
+               (model-persistence.settings/persisted-models-enabled)
                (get-in (t2/select-one :model/Database :id (:database_id card)) [:settings :persist-models-enabled])
                (nil? (t2/select-one-fn :id :model/PersistedInfo :card_id (:id card))))
       (persisted-info/turn-on-model! user-id card))

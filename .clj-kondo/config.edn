@@ -407,6 +407,7 @@
     metabase.lib.util                                             lib.util
     metabase.lib.util.match                                       lib.util.match
     metabase.login-history.core                                   login-history
+    metabase.model-persistence.core                               model-persistence
     metabase.models.dependency                                    dependency
     metabase.models.interface                                     mi
     metabase.models.setting                                       setting
@@ -609,7 +610,6 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
-   metabase.api.card-test/with-persistence-setup!                                                                            hooks.common/with-one-top-level-binding
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params!                                                                 hooks.common/with-two-bindings
    metabase.api.collection-test/with-french-user-and-personal-collection!                                                    hooks.common/with-two-top-level-bindings
@@ -621,7 +621,6 @@
    metabase.api.embed-test/with-temp-card                                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-dashcard                                                                                hooks.common/let-one-with-optional-value
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
-   metabase.api.persist-test/with-setup!                                                                                     hooks.common/with-one-top-level-binding
    metabase.api.public-test/with-required-param-card!                                                                        hooks.common/with-one-binding
    metabase.api.public-test/with-temp-public-card                                                                            hooks.common/let-one-with-optional-value
    metabase.api.public-test/with-temp-public-dashboard                                                                       hooks.common/let-one-with-optional-value
@@ -641,6 +640,9 @@
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
+   metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
+   metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
+   metabase.model-persistence.test-util/with-persistence-enabled!                                                            hooks.metabase.model-persistence.test-util/with-persistence-enabled!
    metabase.models.collection-test/with-collection-hierarchy!                                                                hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
    metabase.models.dashboard-tab-test/with-dashtab-in-personal-collection                                                    hooks.common/with-one-top-level-binding
@@ -699,6 +701,7 @@
    metabase.test/with-log-level                                                                                              hooks.common/with-ignored-first-arg
    metabase.test/with-log-messages-for-level                                                                                 hooks.metabase.util.log.capture/with-log-messages-for-level
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
+   metabase.test/with-persistence-enabled!                                                                                   hooks.metabase.model-persistence.test-util/with-persistence-enabled!
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-prometheus-system!                                                                                     hooks.common/with-two-bindings
@@ -752,7 +755,6 @@
    metabase.test.util/with-temp-env-var-value!                                   macros.metabase.test.util/with-temp-env-var-value!
    metabase.test.util/with-temporary-raw-setting-values                          macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.test/with-group-for-user                                             macros.metabase.test.data.users/with-group-for-user
-   metabase.test/with-persistence-enabled!                                       macros.metabase.test.persistence/with-persistence-enabled!
    metabase.test/with-temp-env-var-value!                                        macros.metabase.test.util/with-temp-env-var-value!
    metabase.test/with-temporary-raw-setting-values                               macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.util.namespaces/import-fn                                            macros.metabase.util.namespaces/import-fn

@@ -15,6 +15,7 @@
    [metabase.indexed-entities.init]
    [metabase.logger.init]
    [metabase.login-history.init]
+   [metabase.model-persistence.init]
    [metabase.models.init]
    [metabase.notification.init]
    [metabase.pulse.init]
