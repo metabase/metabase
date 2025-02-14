@@ -42,20 +42,22 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     cy.signInAsNormalUser();
   });
 
-  it("mbql query + query builder + BIGINT column ", () => {
+  it("mbql query + query builder ", () => {
     function testFilter({
+      questionDetails,
       filterOperator,
       setFilterValue,
       filterDisplayName,
       filteredRowCount,
     }: {
+      questionDetails: NativeQuestionDetails;
       filterOperator: string;
       setFilterValue: () => void;
       filterDisplayName: string;
       filteredRowCount: number;
     }) {
       cy.log("create a question");
-      H.createNativeQuestion(bigIntQuestionDetails, { visitQuestion: true });
+      H.createNativeQuestion(questionDetails, { visitQuestion: true });
       H.queryBuilderHeader().findByText("Explore results").click();
       H.assertQueryBuilderRowCount(3);
 
@@ -78,215 +80,118 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       H.assertQueryBuilderRowCount(filteredRowCount);
     }
 
-    cy.log("= operator");
-    testFilter({
-      filterOperator: "Equal to",
-      setFilterValue: () =>
-        cy.findByLabelText("Filter value").type(maxBigIntValue),
-      filterDisplayName: `NUMBER is equal to "${maxBigIntValue}"`,
-      filteredRowCount: 1,
-    });
-
-    cy.log("!= operator");
-    testFilter({
-      filterOperator: "Not equal to",
-      setFilterValue: () =>
-        cy.findByLabelText("Filter value").type(minBigIntValue),
-      filterDisplayName: `NUMBER is not equal to "${minBigIntValue}"`,
-      filteredRowCount: 2,
-    });
-
-    cy.log("> operator");
-    testFilter({
-      filterOperator: "Greater than",
-      setFilterValue: () =>
-        cy.findByLabelText("Filter value").type(minBigIntValue),
-      filterDisplayName: `NUMBER is greater than "${minBigIntValue}"`,
-      filteredRowCount: 2,
-    });
-
-    cy.log(">= operator");
-    testFilter({
-      filterOperator: "Greater than or equal to",
-      setFilterValue: () =>
-        cy.findByLabelText("Filter value").type(minBigIntValue),
-      filterDisplayName: `NUMBER is greater than or equal to "${minBigIntValue}"`,
-      filteredRowCount: 3,
-    });
-
-    cy.log("< operator");
-    testFilter({
-      filterOperator: "Less than",
-      setFilterValue: () =>
-        cy.findByLabelText("Filter value").type(maxBigIntValue),
-      filterDisplayName: `NUMBER is less than "${maxBigIntValue}"`,
-      filteredRowCount: 2,
-    });
-
-    cy.log("<= operator");
-    testFilter({
-      filterOperator: "Less than or equal to",
-      setFilterValue: () =>
-        cy.findByLabelText("Filter value").type(maxBigIntValue),
-      filterDisplayName: `NUMBER is less than or equal to "${maxBigIntValue}"`,
-      filteredRowCount: 3,
-    });
-
-    cy.log("between operator - min value");
-    testFilter({
-      filterOperator: "Between",
-      setFilterValue: () => {
-        cy.findByPlaceholderText("Min").type(minBigIntValue);
-        cy.findByPlaceholderText("Max").type("0");
-      },
-      filterDisplayName: `NUMBER is between "${minBigIntValue}" and 0`,
-      filteredRowCount: 2,
-    });
-
-    cy.log("between operator - max value");
-    testFilter({
-      filterOperator: "Between",
-      setFilterValue: () => {
-        cy.findByPlaceholderText("Min").type("0");
-        cy.findByPlaceholderText("Max").type(maxBigIntValue);
-      },
-      filterDisplayName: `NUMBER is between 0 and "${maxBigIntValue}"`,
-      filteredRowCount: 2,
-    });
-
-    cy.log("between operator - min and max values");
-    testFilter({
-      filterOperator: "Between",
-      setFilterValue: () => {
-        cy.findByPlaceholderText("Min").type(minBigIntValue);
-        cy.findByPlaceholderText("Max").type(maxBigIntValue);
-      },
-      filterDisplayName: `NUMBER is ${minBigIntValue} – ${maxBigIntValue}`,
-      filteredRowCount: 3,
-    });
-  });
-
-  it("mbql query + query builder + DECIMAL column ", () => {
-    function testFilter({
-      filterOperator,
-      setFilterValue,
-      filterDisplayName,
-      filteredRowCount,
+    function testColumnType({
+      questionDetails,
+      minValue,
+      maxValue,
     }: {
-      filterOperator: string;
-      setFilterValue: () => void;
-      filterDisplayName: string;
-      filteredRowCount: number;
+      questionDetails: NativeQuestionDetails;
+      minValue: string;
+      maxValue: string;
     }) {
-      cy.log("create a question");
-      H.createNativeQuestion(decimalQuestionDetails, { visitQuestion: true });
-      H.queryBuilderHeader().findByText("Explore results").click();
-      H.assertQueryBuilderRowCount(3);
+      cy.log("= operator");
+      testFilter({
+        questionDetails,
+        filterOperator: "Equal to",
+        setFilterValue: () => cy.findByLabelText("Filter value").type(maxValue),
+        filterDisplayName: `NUMBER is equal to "${maxValue}"`,
+        filteredRowCount: 1,
+      });
 
-      cy.log("add a filter");
-      H.openNotebook();
-      H.filter({ mode: "notebook" });
-      H.popover().within(() => {
-        cy.findByText("DECIMAL").click();
-        cy.findByLabelText("Filter operator").click();
+      cy.log("!= operator");
+      testFilter({
+        questionDetails,
+        filterOperator: "Not equal to",
+        setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
+        filterDisplayName: `NUMBER is not equal to "${minValue}"`,
+        filteredRowCount: 2,
       });
-      H.popover().eq(1).findByText(filterOperator).click();
-      H.popover().within(() => {
-        setFilterValue();
-        cy.button("Add filter").click();
+
+      cy.log("> operator");
+      testFilter({
+        questionDetails,
+        filterOperator: "Greater than",
+        setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
+        filterDisplayName: `NUMBER is greater than "${minValue}"`,
+        filteredRowCount: 2,
       });
-      H.getNotebookStep("filter")
-        .findByText(filterDisplayName)
-        .should("be.visible");
-      H.visualize();
-      H.assertQueryBuilderRowCount(filteredRowCount);
+
+      cy.log(">= operator");
+      testFilter({
+        questionDetails,
+        filterOperator: "Greater than or equal to",
+        setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
+        filterDisplayName: `NUMBER is greater than or equal to "${minValue}"`,
+        filteredRowCount: 3,
+      });
+
+      cy.log("< operator");
+      testFilter({
+        questionDetails,
+        filterOperator: "Less than",
+        setFilterValue: () => cy.findByLabelText("Filter value").type(maxValue),
+        filterDisplayName: `NUMBER is less than "${maxValue}"`,
+        filteredRowCount: 2,
+      });
+
+      cy.log("<= operator");
+      testFilter({
+        questionDetails,
+        filterOperator: "Less than or equal to",
+        setFilterValue: () => cy.findByLabelText("Filter value").type(maxValue),
+        filterDisplayName: `NUMBER is less than or equal to "${maxValue}"`,
+        filteredRowCount: 3,
+      });
+
+      cy.log("between operator - min value");
+      testFilter({
+        questionDetails,
+        filterOperator: "Between",
+        setFilterValue: () => {
+          cy.findByPlaceholderText("Min").type(minValue);
+          cy.findByPlaceholderText("Max").type("0");
+        },
+        filterDisplayName: `NUMBER is between "${minValue}" and 0`,
+        filteredRowCount: 2,
+      });
+
+      cy.log("between operator - max value");
+      testFilter({
+        questionDetails,
+        filterOperator: "Between",
+        setFilterValue: () => {
+          cy.findByPlaceholderText("Min").type("0");
+          cy.findByPlaceholderText("Max").type(maxValue);
+        },
+        filterDisplayName: `NUMBER is between 0 and "${maxValue}"`,
+        filteredRowCount: 2,
+      });
+
+      cy.log("between operator - min and max values");
+      testFilter({
+        questionDetails,
+        filterOperator: "Between",
+        setFilterValue: () => {
+          cy.findByPlaceholderText("Min").type(minValue);
+          cy.findByPlaceholderText("Max").type(maxValue);
+        },
+        filterDisplayName: `NUMBER is ${minValue} – ${maxValue}`,
+        filteredRowCount: 3,
+      });
     }
 
-    cy.log("= operator");
-    testFilter({
-      filterOperator: "Equal to",
-      setFilterValue: () =>
-        cy.findByLabelText("Filter value").type(positiveDecimalValue),
-      filterDisplayName: `NUMBER is equal to "${positiveDecimalValue}"`,
-      filteredRowCount: 1,
+    cy.log("BIGINT");
+    testColumnType({
+      questionDetails: bigIntQuestionDetails,
+      minValue: minBigIntValue,
+      maxValue: maxBigIntValue,
     });
 
-    cy.log("!= operator");
-    testFilter({
-      filterOperator: "Not equal to",
-      setFilterValue: () =>
-        cy.findByLabelText("Filter value").type(negativeDecimalValue),
-      filterDisplayName: `NUMBER is not equal to "${negativeDecimalValue}"`,
-      filteredRowCount: 2,
-    });
-
-    cy.log("> operator");
-    testFilter({
-      filterOperator: "Greater than",
-      setFilterValue: () =>
-        cy.findByLabelText("Filter value").type(negativeDecimalValue),
-      filterDisplayName: `NUMBER is greater than "${negativeDecimalValue}"`,
-      filteredRowCount: 2,
-    });
-
-    cy.log(">= operator");
-    testFilter({
-      filterOperator: "Greater than or equal to",
-      setFilterValue: () =>
-        cy.findByLabelText("Filter value").type(negativeDecimalValue),
-      filterDisplayName: `NUMBER is greater than or equal to "${negativeDecimalValue}"`,
-      filteredRowCount: 3,
-    });
-
-    cy.log("< operator");
-    testFilter({
-      filterOperator: "Less than",
-      setFilterValue: () =>
-        cy.findByLabelText("Filter value").type(positiveDecimalValue),
-      filterDisplayName: `NUMBER is less than "${positiveDecimalValue}"`,
-      filteredRowCount: 2,
-    });
-
-    cy.log("<= operator");
-    testFilter({
-      filterOperator: "Less than or equal to",
-      setFilterValue: () =>
-        cy.findByLabelText("Filter value").type(positiveDecimalValue),
-      filterDisplayName: `NUMBER is less than or equal to "${positiveDecimalValue}"`,
-      filteredRowCount: 3,
-    });
-
-    cy.log("between operator - min value");
-    testFilter({
-      filterOperator: "Between",
-      setFilterValue: () => {
-        cy.findByPlaceholderText("Min").type(negativeDecimalValue);
-        cy.findByPlaceholderText("Max").type("0");
-      },
-      filterDisplayName: `NUMBER is between "${negativeDecimalValue}" and 0`,
-      filteredRowCount: 2,
-    });
-
-    cy.log("between operator - max value");
-    testFilter({
-      filterOperator: "Between",
-      setFilterValue: () => {
-        cy.findByPlaceholderText("Min").type("0");
-        cy.findByPlaceholderText("Max").type(positiveDecimalValue);
-      },
-      filterDisplayName: `NUMBER is between 0 and "${positiveDecimalValue}"`,
-      filteredRowCount: 2,
-    });
-
-    cy.log("between operator - min and max values");
-    testFilter({
-      filterOperator: "Between",
-      setFilterValue: () => {
-        cy.findByPlaceholderText("Min").type(negativeDecimalValue);
-        cy.findByPlaceholderText("Max").type(positiveDecimalValue);
-      },
-      filterDisplayName: `NUMBER is ${negativeDecimalValue} – ${positiveDecimalValue}`,
-      filteredRowCount: 3,
+    cy.log("DECIMAL");
+    testColumnType({
+      questionDetails: decimalQuestionDetails,
+      minValue: negativeDecimalValue,
+      maxValue: positiveDecimalValue,
     });
   });
 
