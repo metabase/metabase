@@ -25,7 +25,7 @@ import {
   isStringLiteral,
 } from "./index";
 
-export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
+export { EDITOR_QUOTES } from "./config";
 
 type Options = {
   startRule: string;
