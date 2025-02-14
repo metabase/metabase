@@ -8,6 +8,7 @@
   (:require
    [metabase.activity-feed.init]
    [metabase.channel.init]
+   [metabase.cloud-migration.init]
    [metabase.config :as config]
    [metabase.driver.init]
    [metabase.events.init]
