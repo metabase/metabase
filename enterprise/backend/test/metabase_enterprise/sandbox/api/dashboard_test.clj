@@ -40,7 +40,7 @@
                                                                                       :parameter_id "bax"
                                                                                       :target       [:dimension
                                                                                                      [:field (mt/id :users :name) nil]]}]}]
-          ;; Mnually activate Field values since they are not created during sync (#53387)
+          ;; Manually activate Field values since they are not created during sync (#53387)
           (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
           (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
           (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :users :name)))

@@ -521,7 +521,7 @@
               (testing "all fields are fingerprinted"
                 (is (every? some? (t2/select-fn-vec :fingerprint :model/Field :id [:in all-field-ids]))))
               (testing "Field values are correctly synced"
-                ;; Mnually activate Field values since they are not created during sync (#53387)
+                ;; Manually activate Field values since they are not created during sync (#53387)
                 (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
                   (field-values/get-or-create-full-field-values! field))
                 (is (= {"customer_id"   #{1 2 3}

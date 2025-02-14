@@ -587,7 +587,7 @@
 (deftest table-rescan-values-test
   (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
     (testing "POST /api/table/:id/rescan_values"
-      ;; Mnually activate Field values since they are not created during sync (#53387)
+      ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
       (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
         (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
@@ -723,7 +723,7 @@
                    :model/Table       {table-id :id}  {:db_id db-id}
                    :model/Field       {field-id :id}  {:table_id table-id}
                    :model/FieldValues {values-id :id} {:field_id field-id, :values [1 2 3 4]}]
-      ;; Mnually activate Field values since they are not created during sync (#53387)
+      ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
       (with-redefs [api.database/*rescan-values-async* false]
         (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"

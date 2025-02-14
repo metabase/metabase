@@ -925,7 +925,7 @@
 ;;; --------------------------- Check that parameter information comes back with Dashboard ---------------------------
 
 (deftest double-check-that-the-field-has-fieldvalues
-  ;; Mnually activate Field values since they are not created during sync (#53387)
+  ;; Manually activate Field values since they are not created during sync (#53387)
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
   (is (= [1 2 3 4]
          (t2/select-one-fn :values :model/FieldValues :field_id (mt/id :venues :price)))))
@@ -943,7 +943,7 @@
                                                                               :target  ["dimension" dimension]}]}))
 
 (defn- GET-param-values! [dashboard]
-  ;; Mnually activate Field values since they are not created during sync (#53387)
+  ;; Manually activate Field values since they are not created during sync (#53387)
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (:param_values (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard))))))

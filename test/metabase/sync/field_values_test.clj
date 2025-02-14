@@ -24,7 +24,7 @@
 (deftest sync-recreate-field-values-test
   (testing "Test that when we delete FieldValues syncing the Table again will cause them to be re-created"
     (testing "Check that we have expected field values to start with"
-      ;; Mnually activate Field values since they are not created during sync (#53387)
+      ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
       ;; Reset them to values that should get updated during sync
       (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
@@ -41,7 +41,7 @@
       (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
              (sync-database!' "update-field-values" (data/db)))))
     (testing "Now re-sync the table and make sure they're back"
-      ;; Mnually activate Field values since they are not created during sync (#53387)
+      ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
       ;; Reset them to values that should get updated during sync
       (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
@@ -150,7 +150,7 @@
   (one-off-dbs/with-blueberries-db
     ;; insert 50 rows & sync
     (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50))
-    ;; Mnually activate Field values since they are not created during sync (#53387)
+    ;; Manually activate Field values since they are not created during sync (#53387)
     (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
     (testing "has_field_values should be auto-list"
       (is (= :auto-list
@@ -185,7 +185,7 @@
   (one-off-dbs/with-blueberries-db
     ;; insert 50 rows & sync
     (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 50 "A"))])
-    ;; Mnually activate Field values since they are not created during sync (#53387)
+    ;; Manually activate Field values since they are not created during sync (#53387)
     (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
     (testing "has_field_values should be auto-list"
       (is (= :auto-list
@@ -218,7 +218,7 @@
       ;; insert 50 bloobs & sync
       (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50))
       ;; change has_field_values to list
-      ;; Mnually activate Field values since they are not created during sync (#53387)
+      ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
       (t2/update! :model/Field (mt/id :blueberries_consumed :str) {:has_field_values "list"})
       (testing "has_more_values should initially be false"
@@ -250,7 +250,7 @@
     (one-off-dbs/with-blueberries-db
       ;; insert a row with values contain 50 chars
       (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 50 "A"))])
-      ;; Mnually activate Field values since they are not created during sync (#53387)
+      ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
       ;; change has_field_values to list
       (t2/update! :model/Field (mt/id :blueberries_consumed :str) {:has_field_values "list"})
