@@ -137,7 +137,10 @@
 (mu/defn send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
   [{:keys [id payload_type] :as notification-info} :- notification.payload/Notification]
-  (u/with-timer-ms [duration-ms-fn]
+  (u/with-timer-ms
+    ;; TODO: write a hook for this
+    #_{:clj-kondo/ignore [:unresolved-symbol]}
+    [duration-ms-fn]
     (try
       (log/infof "[Notification %d] Sending" id)
       (prometheus/inc! :metabase-notification/concurrent-tasks)

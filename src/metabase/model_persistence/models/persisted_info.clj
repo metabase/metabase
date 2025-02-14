@@ -1,4 +1,4 @@
-(ns metabase.models.persisted-info
+(ns metabase.model-persistence.models.persisted-info
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
@@ -61,6 +61,18 @@
   "Allow persisted substitution. When refreshing, set this to nil to ensure that all underlying queries are used to
   rebuild the persisted table."
   true)
+
+(defn allow-persisted-substitution?
+  "Whether to allow persisted substitution. When refreshing, set this to nil to ensure that all underlying queries are
+  used to rebuild the persisted table."
+  []
+  *allow-persisted-substitution*)
+
+(defmacro with-persisted-substituion-disabled
+  "Execute `body` with [[*allow-persisted-substitution*]] set to `false`."
+  [& body]
+  `(binding [*allow-persisted-substitution* false]
+     ~@body))
 
 (defn- slug-name
   "A slug from a card suitable for a table name. This slug is not intended to be unique but to be human guide if looking

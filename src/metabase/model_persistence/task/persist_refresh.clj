@@ -1,4 +1,4 @@
-(ns metabase.task.persist-refresh
+(ns metabase.model-persistence.task.persist-refresh
   (:require
    [clojure.string :as str]
    [clojurewerkz.quartzite.conversion :as qc]
@@ -6,19 +6,20 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
-   [metabase.channel.email.messages :as messages]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.persisted-info :as persisted-info]
+   [metabase.events :as events]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.models.task-history :as task-history]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [potemkin.types :as p]
    [toucan2.core :as t2])
   (:import
@@ -88,8 +89,9 @@
   [results]
   (some-> results :error-details seq))
 
-(defn- send-persist-refresh-email-if-error!
-  "Send an email to the admin if there are any errors in the persisted model refresh task."
+(mu/defn- publish-refresh-error-event!
+  "Fire off an event that will eventually send an email to the admin if there are any errors in the persisted model
+  refresh task."
   [db-id task-details]
   (try
     (let [error-details       (error-details task-details)
@@ -97,10 +99,10 @@
           persisted-infos     (->> (t2/hydrate (t2/select :model/PersistedInfo :id [:in (keys error-details-by-id)])
                                                [:card :collection] :database)
                                    (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
-      (messages/send-persistent-model-error-email!
-       db-id
-       persisted-infos
-       (:trigger task-details)))
+      (events/publish-event! :event/persisted-model-refresh-error
+                             {:database-id     db-id
+                              :persisted-infos persisted-infos
+                              :trigger         (:trigger task-details)}))
     (catch Exception e
       (log/error e "Error sending persist refresh email"))))
 
@@ -113,7 +115,7 @@
                                    :on-success-info (fn [_update-map task-details]
                                                       (let [error (error-details task-details)]
                                                         (when (and error (= "persist-refresh" task-type))
-                                                          (send-persist-refresh-email-if-error! db-id task-details))
+                                                          (publish-refresh-error-event! db-id task-details))
                                                         {:task_details task-details
                                                          :status       (if error :failed :success)}))}
     (thunk)))
@@ -398,10 +400,11 @@
 
 (defn reschedule-refresh!
   "Reschedule refresh for all enabled databases. Removes all existing triggers, and schedules refresh for databases with
-  `:persist-models-enabled` in the settings at interval [[public-settings/persisted-model-refresh-cron-schedule]]."
+  `:persist-models-enabled` in the settings at
+  interval [[model-persistence.settings/persisted-model-refresh-cron-schedule]]."
   []
   (let [dbs-with-persistence (filter (comp :persist-models-enabled :settings) (t2/select :model/Database))
-        cron-schedule        (public-settings/persisted-model-refresh-cron-schedule)]
+        cron-schedule        (model-persistence.settings/persisted-model-refresh-cron-schedule)]
     (unschedule-all-refresh-triggers! refresh-job-key)
     (doseq [db dbs-with-persistence]
       (schedule-persistence-for-database! db cron-schedule))))
@@ -439,5 +442,5 @@
 (defmethod task/init! ::PersistPrune
   [_]
   (task/add-job! prune-job)
-  (when (public-settings/persisted-models-enabled)
+  (when (model-persistence.settings/persisted-models-enabled)
     (enable-persisting!)))
