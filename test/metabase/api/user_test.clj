@@ -173,13 +173,11 @@
         (testing "when group manager requests the group"
           (is (= ["alba@metabase.com" "crowberto@metabase.com" "lucky@metabase.com" "rasta@metabase.com"]
                  (->> ((mt/user-http-request :rasta :get 200 "user" :group_id group-id1) :data)
-                      (filter mt/test-user?)
                       (map :email)
                       (into [])))))
         (testing "when admin user requests the group"
           (is (= ["alba@metabase.com" "crowberto@metabase.com" "lucky@metabase.com" "rasta@metabase.com"]
                  (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id1) :data)
-                      (filter mt/test-user?)
                       (map :email)
                       (into [])))))))))
 
