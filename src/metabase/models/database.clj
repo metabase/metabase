@@ -143,18 +143,40 @@
     (catch Throwable e
       (log/error e "Error scheduling tasks for DB"))))
 
-(defn health-check-database!
-  "Checks database health off-thread, currently just checks connectivity."
+(defn maybe-test-and-migrate-details!
+  "When a driver has db-details to test and migrate:
+   we loop through them until we find one that works and update the database with the working details."
   [{:keys [engine details] :as database}]
+  (if-let [details-to-test (seq (driver/db-details-to-test-and-migrate (keyword engine) details))]
+    (do
+      (log/infof "Attempting to connect to %d possible legacy details" (count details-to-test))
+      (loop [[test-details & tail] details-to-test]
+        (if test-details
+          (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
+            (do
+              (log/infof "Successfully connected, migrating to: %s" (pr-str test-details))
+              (t2/update! :model/Database (:id database) {:details test-details})
+              test-details)
+            (recur tail))
+          ;; if we go through the list and we can't fine a working detail to test, keep original value
+          details)))
+    details))
+
+(defn health-check-database!
+  "Checks database health off-thread.
+   - checks connectivity
+   - cleans-up ambiguous legacy, db-details"
+  [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
     (sync.concurrent/submit-task!
      (fn []
-       (try
-         (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
-           (prometheus/inc! :metabase-database/healthy {:driver engine} 1)
-           (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1))
-         (catch Throwable _
-           (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))))))
+       (let [details (maybe-test-and-migrate-details! database)]
+         (try
+           (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
+             (prometheus/inc! :metabase-database/healthy {:driver engine} 1)
+             (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1))
+           (catch Throwable _
+             (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1))))))))
 
 (defn check-health-and-schedule-tasks!
   "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
