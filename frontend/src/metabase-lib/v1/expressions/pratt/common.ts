@@ -1,10 +1,4 @@
-import { getMBQLName } from "metabase-lib/v1/expressions/config";
-import type { Expr } from "metabase-lib/v1/expressions/pratt";
-import {
-  lexify,
-  compile as newCompile,
-  parse,
-} from "metabase-lib/v1/expressions/pratt";
+import { getMBQLName } from "../config";
 import {
   adjustCaseOrIf,
   adjustMultiArgOptions,
@@ -12,10 +6,11 @@ import {
   adjustOptions,
   parse as oldParser,
   useShorthands,
-} from "metabase-lib/v1/expressions/recursive-parser";
-import { resolve } from "metabase-lib/v1/expressions/resolver";
+} from "../recursive-parser";
+import { resolve } from "../resolver";
+import { generateExpression } from "../test/generator";
 
-import { generateExpression } from "../generator";
+import { type Expr, lexify, compile as newCompile, parse } from ".";
 
 type Type = "expression" | "boolean";
 
@@ -49,7 +44,7 @@ export function compile(source: string, type: Type, opts: Opts = {}) {
   );
 }
 
-export function mockResolve(kind: any, name: string): Expr {
+export function mockResolve(_kind: any, name: string): Expr {
   return ["dimension", name];
 }
 
