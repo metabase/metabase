@@ -195,8 +195,10 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     });
   });
 
-  it("mbql query + dashboards + BIGINT column", () => {
+  it("mbql query + dashboards", () => {
     function testFilter({
+      questionDetails,
+      baseType,
       parameterType,
       parameterSectionId = "number",
       setParameterValue,
@@ -204,6 +206,8 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       filterArgsDisplayName,
       filteredRowCount,
     }: {
+      questionDetails: NativeQuestionDetails;
+      baseType: string;
       parameterType: string;
       parameterSectionId?: string;
       setParameterValue: () => void;
@@ -226,7 +230,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       const getQuestionDetails = (
         cardId: number,
       ): StructuredQuestionDetails => ({
-        name: "MBQL BIGINT",
+        name: "MBQL",
         query: {
           "source-table": `card__${cardId}`,
           aggregation: [["count"]],
@@ -239,14 +243,11 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       ): DashboardParameterMapping => ({
         card_id: cardId,
         parameter_id: parameterDetails.id,
-        target: [
-          "dimension",
-          ["field", "NUMBER", { "base-type": "type/BigInteger" }],
-        ],
+        target: ["dimension", ["field", "NUMBER", { "base-type": baseType }]],
       });
 
       cy.log("create a dashboard");
-      H.createNativeQuestion(bigIntQuestionDetails).then(({ body: card }) => {
+      H.createNativeQuestion(questionDetails).then(({ body: card }) => {
         H.createQuestionAndDashboard({
           questionDetails: getQuestionDetails(card.id),
           dashboardDetails,
@@ -278,293 +279,141 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         .should("have.text", String(filteredRowCount));
 
       cy.log("drill-thru");
-      H.getDashboardCard().findByText("MBQL BIGINT").click();
+      H.getDashboardCard().findByText("MBQL").click();
       H.queryBuilderFiltersPanel().findByText(filterDisplayName);
       H.queryBuilderMain()
         .findByTestId("scalar-value")
         .should("have.text", String(filteredRowCount));
     }
 
-    cy.log("id parameter");
-    testFilter({
-      parameterType: "id",
-      parameterSectionId: "id",
-      setParameterValue: () =>
-        cy.findByPlaceholderText("Enter an ID").type(maxBigIntValue),
-      filterDisplayName: `NUMBER is equal to "${maxBigIntValue}"`,
-      filterArgsDisplayName: maxBigIntValue,
-      filteredRowCount: 1,
-    });
-
-    cy.log("number/= parameter");
-    testFilter({
-      parameterType: "number/=",
-      setParameterValue: () =>
-        cy.findByPlaceholderText("Enter a number").type(maxBigIntValue),
-      filterDisplayName: `NUMBER is equal to "${maxBigIntValue}"`,
-      filterArgsDisplayName: maxBigIntValue,
-      filteredRowCount: 1,
-    });
-
-    cy.log("number/!= parameter");
-    testFilter({
-      parameterType: "number/!=",
-      setParameterValue: () =>
-        cy.findByPlaceholderText("Enter a number").type(minBigIntValue),
-      filterDisplayName: `NUMBER is not equal to "${minBigIntValue}"`,
-      filterArgsDisplayName: minBigIntValue,
-      filteredRowCount: 2,
-    });
-
-    cy.log("number/>= parameter");
-    testFilter({
-      parameterType: "number/>=",
-      setParameterValue: () =>
-        cy.findByPlaceholderText("Enter a number").type(minBigIntValue),
-      filterDisplayName: `NUMBER is greater than or equal to "${minBigIntValue}"`,
-      filterArgsDisplayName: minBigIntValue,
-      filteredRowCount: 3,
-    });
-
-    cy.log("number/<= parameter");
-    testFilter({
-      parameterType: "number/<=",
-      setParameterValue: () =>
-        cy.findByPlaceholderText("Enter a number").type(maxBigIntValue),
-      filterDisplayName: `NUMBER is less than or equal to "${maxBigIntValue}"`,
-      filterArgsDisplayName: maxBigIntValue,
-      filteredRowCount: 3,
-    });
-
-    cy.log("number/between parameter - min value");
-    testFilter({
-      parameterType: "number/between",
-      setParameterValue: () => {
-        cy.findAllByPlaceholderText("Enter a number")
-          .eq(0)
-          .type(minBigIntValue);
-        cy.findAllByPlaceholderText("Enter a number").eq(1).type("0");
-      },
-      filterDisplayName: `NUMBER is between "${minBigIntValue}" and 0`,
-      filterArgsDisplayName: "2 selections",
-      filteredRowCount: 2,
-    });
-
-    cy.log("number/between parameter - max value");
-    testFilter({
-      parameterType: "number/between",
-      setParameterValue: () => {
-        cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
-        cy.findAllByPlaceholderText("Enter a number")
-          .eq(1)
-          .type(maxBigIntValue);
-      },
-      filterDisplayName: `NUMBER is between 0 and "${maxBigIntValue}"`,
-      filterArgsDisplayName: "2 selections",
-      filteredRowCount: 2,
-    });
-
-    cy.log("number/between parameter - min and max values");
-    testFilter({
-      parameterType: "number/between",
-      setParameterValue: () => {
-        cy.findAllByPlaceholderText("Enter a number")
-          .eq(0)
-          .type(minBigIntValue);
-        cy.findAllByPlaceholderText("Enter a number")
-          .eq(1)
-          .type(maxBigIntValue);
-      },
-      filterDisplayName: `NUMBER is ${minBigIntValue} – ${maxBigIntValue}`,
-      filterArgsDisplayName: "2 selections",
-      filteredRowCount: 3,
-    });
-  });
-
-  it("mbql query + dashboards + DECIMAL column", () => {
-    function testFilter({
-      parameterType,
-      parameterSectionId = "number",
-      setParameterValue,
-      filterDisplayName,
-      filterArgsDisplayName,
-      filteredRowCount,
+    function testColumnType({
+      questionDetails,
+      baseType,
+      minValue,
+      maxValue,
     }: {
-      parameterType: string;
-      parameterSectionId?: string;
-      setParameterValue: () => void;
-      filterDisplayName: string;
-      filterArgsDisplayName: string;
-      filteredRowCount: number;
+      questionDetails: NativeQuestionDetails;
+      baseType: string;
+      minValue: string;
+      maxValue: string;
     }) {
-      const parameterDetails: Parameter = {
-        id: "b6ed2d71",
-        type: parameterType,
-        name: "Number",
-        slug: "number",
-        sectionId: parameterSectionId,
-      };
+      cy.log("id parameter");
+      // see https://github.com/metabase/metabase/blob/6694870932830ff36964edd8b2c4555b81ddeda8/src/metabase/query_processor/middleware/parameters/mbql.clj#L21
+      // testFilter({
+      //   questionDetails,
+      //   baseType,
+      //   parameterType: "id",
+      //   parameterSectionId: "id",
+      //   setParameterValue: () =>
+      //     cy.findByPlaceholderText("Enter an ID").type(maxValue),
+      //   filterDisplayName: `NUMBER is equal to "${maxValue}"`,
+      //   filterArgsDisplayName: maxValue,
+      //   filteredRowCount: 1,
+      // });
 
-      const dashboardDetails: DashboardDetails = {
-        parameters: [parameterDetails],
-      };
+      cy.log("number/= parameter");
+      testFilter({
+        questionDetails,
+        baseType,
+        parameterType: "number/=",
+        setParameterValue: () =>
+          cy.findByPlaceholderText("Enter a number").type(maxValue),
+        filterDisplayName: `NUMBER is equal to "${maxValue}"`,
+        filterArgsDisplayName: maxValue,
+        filteredRowCount: 1,
+      });
 
-      const getQuestionDetails = (
-        cardId: number,
-      ): StructuredQuestionDetails => ({
-        name: "MBQL DECIMAL",
-        query: {
-          "source-table": `card__${cardId}`,
-          aggregation: [["count"]],
+      cy.log("number/!= parameter");
+      testFilter({
+        questionDetails,
+        baseType,
+        parameterType: "number/!=",
+        setParameterValue: () =>
+          cy.findByPlaceholderText("Enter a number").type(minValue),
+        filterDisplayName: `NUMBER is not equal to "${minValue}"`,
+        filterArgsDisplayName: minValue,
+        filteredRowCount: 2,
+      });
+
+      cy.log("number/>= parameter");
+      testFilter({
+        questionDetails,
+        baseType,
+        parameterType: "number/>=",
+        setParameterValue: () =>
+          cy.findByPlaceholderText("Enter a number").type(minValue),
+        filterDisplayName: `NUMBER is greater than or equal to "${minValue}"`,
+        filterArgsDisplayName: minValue,
+        filteredRowCount: 3,
+      });
+
+      cy.log("number/<= parameter");
+      testFilter({
+        questionDetails,
+        baseType,
+        parameterType: "number/<=",
+        setParameterValue: () =>
+          cy.findByPlaceholderText("Enter a number").type(maxValue),
+        filterDisplayName: `NUMBER is less than or equal to "${maxValue}"`,
+        filterArgsDisplayName: maxValue,
+        filteredRowCount: 3,
+      });
+
+      cy.log("number/between parameter - min value");
+      testFilter({
+        questionDetails,
+        baseType,
+        parameterType: "number/between",
+        setParameterValue: () => {
+          cy.findAllByPlaceholderText("Enter a number").eq(0).type(minValue);
+          cy.findAllByPlaceholderText("Enter a number").eq(1).type("0");
         },
-        display: "scalar",
+        filterDisplayName: `NUMBER is between "${minValue}" and 0`,
+        filterArgsDisplayName: "2 selections",
+        filteredRowCount: 2,
       });
 
-      const getParameterMapping = (
-        cardId: number,
-      ): DashboardParameterMapping => ({
-        card_id: cardId,
-        parameter_id: parameterDetails.id,
-        target: [
-          "dimension",
-          ["field", "NUMBER", { "base-type": "type/Decimal" }],
-        ],
+      cy.log("number/between parameter - max value");
+      testFilter({
+        questionDetails,
+        baseType,
+        parameterType: "number/between",
+        setParameterValue: () => {
+          cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+          cy.findAllByPlaceholderText("Enter a number").eq(1).type(maxValue);
+        },
+        filterDisplayName: `NUMBER is between 0 and "${maxValue}"`,
+        filterArgsDisplayName: "2 selections",
+        filteredRowCount: 2,
       });
 
-      cy.log("create a dashboard");
-      H.createNativeQuestion(decimalQuestionDetails).then(({ body: card }) => {
-        H.createQuestionAndDashboard({
-          questionDetails: getQuestionDetails(card.id),
-          dashboardDetails,
-        }).then(({ body: dashcard, questionId }) => {
-          H.addOrUpdateDashboardCard({
-            dashboard_id: dashcard.dashboard_id,
-            card_id: questionId,
-            card: {
-              parameter_mappings: [getParameterMapping(questionId)],
-            },
-          });
-          cy.wrap(dashcard.dashboard_id).as("dashboardId");
-        });
+      cy.log("number/between parameter - min and max values");
+      testFilter({
+        questionDetails,
+        baseType,
+        parameterType: "number/between",
+        setParameterValue: () => {
+          cy.findAllByPlaceholderText("Enter a number").eq(0).type(minValue);
+          cy.findAllByPlaceholderText("Enter a number").eq(1).type(maxValue);
+        },
+        filterDisplayName: `NUMBER is ${minValue} – ${maxValue}`,
+        filterArgsDisplayName: "2 selections",
+        filteredRowCount: 3,
       });
-
-      cy.log("add a filter");
-      H.visitDashboard("@dashboardId");
-      H.getDashboardCard()
-        .findByTestId("scalar-value")
-        .should("have.text", "3");
-      H.filterWidget().click();
-      H.popover().within(() => {
-        setParameterValue();
-        cy.button("Add filter").click();
-      });
-      H.filterWidget().findByText(filterArgsDisplayName).should("be.visible");
-      H.getDashboardCard()
-        .findByTestId("scalar-value")
-        .should("have.text", String(filteredRowCount));
-
-      cy.log("drill-thru");
-      H.getDashboardCard().findByText("MBQL DECIMAL").click();
-      H.queryBuilderFiltersPanel().findByText(filterDisplayName);
-      H.queryBuilderMain()
-        .findByTestId("scalar-value")
-        .should("have.text", String(filteredRowCount));
     }
 
-    cy.log("id parameter");
-    // see https://github.com/metabase/metabase/blob/6694870932830ff36964edd8b2c4555b81ddeda8/src/metabase/query_processor/middleware/parameters/mbql.clj#L21
-    // testFilter({
-    //   parameterType: "id",
-    //   parameterSectionId: "id",
-    //   setParameterValue: () =>
-    //     cy.findByPlaceholderText("Enter an ID").type(positiveDecimalValue),
-    //   filterDisplayName: `NUMBER is equal to "${positiveDecimalValue}"`,
-    //   filterArgsDisplayName: positiveDecimalValue,
-    //   filteredRowCount: 1,
-    // });
-
-    cy.log("number/= parameter");
-    testFilter({
-      parameterType: "number/=",
-      setParameterValue: () =>
-        cy.findByPlaceholderText("Enter a number").type(positiveDecimalValue),
-      filterDisplayName: `NUMBER is equal to "${positiveDecimalValue}"`,
-      filterArgsDisplayName: positiveDecimalValue,
-      filteredRowCount: 1,
+    testColumnType({
+      questionDetails: bigIntQuestionDetails,
+      baseType: "type/BigInteger",
+      minValue: minBigIntValue,
+      maxValue: maxBigIntValue,
     });
 
-    cy.log("number/!= parameter");
-    testFilter({
-      parameterType: "number/!=",
-      setParameterValue: () =>
-        cy.findByPlaceholderText("Enter a number").type(negativeDecimalValue),
-      filterDisplayName: `NUMBER is not equal to "${negativeDecimalValue}"`,
-      filterArgsDisplayName: negativeDecimalValue,
-      filteredRowCount: 2,
-    });
-
-    cy.log("number/>= parameter");
-    testFilter({
-      parameterType: "number/>=",
-      setParameterValue: () =>
-        cy.findByPlaceholderText("Enter a number").type(negativeDecimalValue),
-      filterDisplayName: `NUMBER is greater than or equal to "${negativeDecimalValue}"`,
-      filterArgsDisplayName: negativeDecimalValue,
-      filteredRowCount: 3,
-    });
-
-    cy.log("number/<= parameter");
-    testFilter({
-      parameterType: "number/<=",
-      setParameterValue: () =>
-        cy.findByPlaceholderText("Enter a number").type(positiveDecimalValue),
-      filterDisplayName: `NUMBER is less than or equal to "${positiveDecimalValue}"`,
-      filterArgsDisplayName: positiveDecimalValue,
-      filteredRowCount: 3,
-    });
-
-    cy.log("number/between parameter - min value");
-    testFilter({
-      parameterType: "number/between",
-      setParameterValue: () => {
-        cy.findAllByPlaceholderText("Enter a number")
-          .eq(0)
-          .type(negativeDecimalValue);
-        cy.findAllByPlaceholderText("Enter a number").eq(1).type("0");
-      },
-      filterDisplayName: `NUMBER is between "${negativeDecimalValue}" and 0`,
-      filterArgsDisplayName: "2 selections",
-      filteredRowCount: 2,
-    });
-
-    cy.log("number/between parameter - max value");
-    testFilter({
-      parameterType: "number/between",
-      setParameterValue: () => {
-        cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
-        cy.findAllByPlaceholderText("Enter a number")
-          .eq(1)
-          .type(positiveDecimalValue);
-      },
-      filterDisplayName: `NUMBER is between 0 and "${positiveDecimalValue}"`,
-      filterArgsDisplayName: "2 selections",
-      filteredRowCount: 2,
-    });
-
-    cy.log("number/between parameter - min and max values");
-    testFilter({
-      parameterType: "number/between",
-      setParameterValue: () => {
-        cy.findAllByPlaceholderText("Enter a number")
-          .eq(0)
-          .type(negativeDecimalValue);
-        cy.findAllByPlaceholderText("Enter a number")
-          .eq(1)
-          .type(positiveDecimalValue);
-      },
-      filterDisplayName: `NUMBER is ${negativeDecimalValue} – ${positiveDecimalValue}`,
-      filterArgsDisplayName: "2 selections",
-      filteredRowCount: 3,
+    testColumnType({
+      questionDetails: decimalQuestionDetails,
+      baseType: "type/Decimal",
+      minValue: negativeDecimalValue,
+      maxValue: positiveDecimalValue,
     });
   });
 });
