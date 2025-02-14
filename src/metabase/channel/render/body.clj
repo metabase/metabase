@@ -63,9 +63,8 @@
 
 (defn show-in-table?
   "Should this column be shown in a rendered table in a Pulse?"
-  [{:keys [semantic_type visibility_type] :as _column}]
-  (and (not (isa? semantic_type :type/Description))
-       (not (contains? #{:details-only :retired :sensitive} visibility_type))))
+  [{:keys [visibility_type] :as _column}]
+  (not (contains? #{:details-only :retired :sensitive} visibility_type)))
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
@@ -168,6 +167,7 @@
     card
     {:keys [cols rows viz-settings], :as _data}
     {:keys [bar-column] :as data-attributes}]
+
    (let [remapping-lookup (create-remapping-lookup cols)]
      (cons
       (query-results->header-row remapping-lookup card cols bar-column)
@@ -241,11 +241,12 @@
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
+        filtered-cols               (filter show-in-table? ordered-cols)
         table-body                  [:div
                                      (table/render-table
                                       (js.color/make-color-selector unordered-data viz-settings)
-                                      {:cols-for-color-lookup (mapv :name ordered-cols)
-                                       :col-names             (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
+                                      {:cols-for-color-lookup (mapv :name filtered-cols)
+                                       :col-names             (common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
                                       (prep-for-html-rendering timezone-id card data))
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments
