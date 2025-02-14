@@ -48,7 +48,7 @@
 
 (def ^{:arglists '([session-key])} hash-session-key
   "Hash the session-key for storage in the database"
-  (memo/lru (fn [session-key] (codecs/bytes->hex (buddy-hash/sha512 (str session-key)))) {} :lru/threshold 100))
+  (memo/lru (fn [session-key] (codecs/bytes->hex (buddy-hash/sha512 (.getBytes session-key java.nio.charset.StandardCharsets/US_ASCII)))) {} :lru/threshold 100))
 
 (def ^:private CreateSessionUserInfo
   [:map
