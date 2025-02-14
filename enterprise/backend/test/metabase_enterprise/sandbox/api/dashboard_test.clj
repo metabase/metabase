@@ -124,7 +124,8 @@
                                                                :values_source_type   "card"
                                                                :values_source_config {:card_id     card-id
                                                                                       :value_field (mt/$ids $categories.name)}}]}]
-
+        ;; Manually activate Field values since they are not created during sync (#53387)
+        (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/$ids %categories.name)))
         (testing "when getting values"
           (let [get-values (fn [user]
                              (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-values-url dashboard-id "abc")))]
