@@ -4,7 +4,7 @@
    [metabase-enterprise.scim.api :as scim-api]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.driver :as driver]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [toucan2.core :as t2]))
 
 (defenterprise ee-snowplow-features-data

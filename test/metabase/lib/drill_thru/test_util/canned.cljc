@@ -4,6 +4,7 @@
    [clojure.test :refer [is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.util :as u]))
@@ -19,8 +20,7 @@
                (base-context column (get row (:name column))))))
 
 (defn- column-by-name [{:keys [query]} column-name]
-  (let [columns (lib/returned-columns query)]
-    (m/find-first #(= (:name %) column-name) columns)))
+  (lib.drill-thru.tu/column-by-name query column-name))
 
 (defn- null-value [{:keys [value] :as context}]
   ; This special case is only for *top-level* contexts, not :dimensions or :row, hence the separate function.

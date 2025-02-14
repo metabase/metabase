@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 
-import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
+import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import {
   BackButton,
   Breakout,
@@ -10,15 +10,14 @@ import {
   Editor,
   EditorButton,
   Filter,
-  FilterButton,
   FilterDropdown,
   QuestionResetButton,
   QuestionSettings,
+  QuestionSettingsDropdown,
   QuestionVisualization,
   SaveButton,
   SdkSaveQuestionForm,
   Summarize,
-  SummarizeButton,
   SummarizeDropdown,
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
@@ -31,7 +30,6 @@ import {
   type InteractiveQuestionResultProps,
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { FlexibleSizeProps } from "embedding-sdk/components/public/FlexibleSizeComponent";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId?: InteractiveQuestionProviderProps["cardId"];
@@ -97,11 +95,9 @@ const InteractiveQuestion = withPublicComponentWrapper(
   BackButton: typeof BackButton;
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
-  FilterButton: typeof FilterButton;
   ResetButton: typeof QuestionResetButton;
   Title: typeof Title;
   Summarize: typeof Summarize;
-  SummarizeButton: typeof SummarizeButton;
   SummarizeDropdown: typeof SummarizeDropdown;
   /** @deprecated Use `InteractiveQuestion.Editor` instead */
   Notebook: typeof Editor;
@@ -114,8 +110,8 @@ const InteractiveQuestion = withPublicComponentWrapper(
   SaveButton: typeof SaveButton;
   ChartTypeSelector: typeof ChartTypeSelector;
   ChartTypeDropdown: typeof ChartTypeDropdown;
-  EditorViewControl: typeof EditorViewControl;
   QuestionSettings: typeof QuestionSettings;
+  QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
   Breakout: typeof Breakout;
   BreakoutDropdown: typeof BreakoutDropdown;
 };
@@ -123,11 +119,9 @@ const InteractiveQuestion = withPublicComponentWrapper(
 InteractiveQuestion.BackButton = BackButton;
 InteractiveQuestion.Filter = Filter;
 InteractiveQuestion.FilterDropdown = FilterDropdown;
-InteractiveQuestion.FilterButton = FilterButton;
 InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
-InteractiveQuestion.SummarizeButton = SummarizeButton;
 InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
 /** @deprecated Use `InteractiveQuestion.Editor` instead */
 InteractiveQuestion.Notebook = Editor;
@@ -139,8 +133,8 @@ InteractiveQuestion.QuestionVisualization = QuestionVisualization;
 InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
 InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
-InteractiveQuestion.EditorViewControl = EditorViewControl;
 InteractiveQuestion.QuestionSettings = QuestionSettings;
+InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
 InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
 InteractiveQuestion.Breakout = Breakout;
 InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;

@@ -7,7 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import { Box, Flex } from "metabase/ui";
-import type { Query } from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import type {
   NotebookStep as INotebookStep,
@@ -30,7 +30,7 @@ interface NotebookStepProps {
   reportTimezone: string;
   readOnly?: boolean;
   openStep: (id: string) => void;
-  updateQuery: (query: Query) => Promise<void>;
+  updateQuery: (query: Lib.Query) => Promise<void>;
 }
 
 export function NotebookStep({
@@ -60,8 +60,8 @@ export function NotebookStep({
             <NotebookActionButton
               key={`actionButton_${title}`}
               className={cx({
-                [cx(CS.mr2, CS.mt2)]: isLastStep,
-                [CS.mr1]: !isLastStep,
+                [cx(CS.mr2, CS.mt2)]: isLastStep && hasLargeActionButtons,
+                [CS.mr1]: !isLastStep || (isLastStep && !hasLargeActionButtons),
               })}
               large={hasLargeActionButtons}
               {...stepUi}
@@ -135,7 +135,6 @@ export function NotebookStep({
                 icon="play"
                 title={t`Preview`}
                 color={c("text-light")}
-                transparent
                 onClick={openPreview}
                 data-testid="step-preview-button"
               />

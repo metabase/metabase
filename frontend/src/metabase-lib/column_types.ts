@@ -16,9 +16,10 @@ export const isStringLike: TypeFn = TYPES.string_like_QMARK_;
 export const isStringOrStringLike: TypeFn = TYPES.string_or_string_like_QMARK_;
 export const isTime: TypeFn = TYPES.time_QMARK_;
 
-// Legacy helpers that mix effective and semantic types.
-export const isCategory: TypeFn = TYPES.category_QMARK_;
-export const isNumber: TypeFn = TYPES.number_QMARK_;
+// Checks for both effective and semantic types. This hack is required to
+// support numbers stored as strings in MySQL until there is a proper
+// coercion strategy. `isString` and `isNumeric` would be both `true` for such
+// columns; that's why `isNumeric` needs to be called first. See #44431.
 export const isNumeric: TypeFn = TYPES.numeric_QMARK_;
 
 // Semantic type checks. A semantic type can be assigned to a column with an
@@ -26,6 +27,7 @@ export const isNumeric: TypeFn = TYPES.numeric_QMARK_;
 // semantic type.
 export const isAddress: TypeFn = TYPES.address_QMARK_;
 export const isAvatarURL: TypeFn = TYPES.avatar_URL_QMARK_;
+export const isCategory: TypeFn = TYPES.category_QMARK_;
 export const isCity: TypeFn = TYPES.city_QMARK_;
 export const isComment: TypeFn = TYPES.comment_QMARK_;
 export const isCoordinate: TypeFn = TYPES.coordinate_QMARK_;

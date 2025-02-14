@@ -21,12 +21,13 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.humanize :as mu.humanize]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [peridot.multipart]
    [ring.util.codec :as codec])
   (:import
    (java.io ByteArrayInputStream InputStream)
-   (metabase.async.streaming_response StreamingResponse)))
+   (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 
@@ -75,6 +76,9 @@
 
       (= "multipart/form-data" content-type)
       (peridot.multipart/build http-body)
+
+      (= "application/x-www-form-urlencoded" content-type)
+      {:body (ByteArrayInputStream. (.getBytes ^String (codec/form-encode http-body) "UTF-8"))}
 
       :else
       (throw (ex-info "If you want this content-type to work, improve me"
@@ -370,7 +374,7 @@
   [args]
   (let [parsed (http-client-args-parser args)]
     (when (= parsed :malli.core/invalid)
-      (let [explain-data (mc/explain http-client-args args)]
+      (let [explain-data (mr/explain http-client-args args)]
         (throw (ex-info (str "Invalid http-client args: " (mu.humanize/humanize explain-data))
                         explain-data))))
     (cond-> parsed

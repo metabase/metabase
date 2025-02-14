@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { withRouter } from "react-router";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import { useUserSetting } from "metabase/common/hooks";
@@ -147,7 +146,7 @@ const _CleanupCollectionModal = ({
     >
       <Modal.Overlay />
       <Modal.Content
-        className={CS.modalContent}
+        classNames={{ content: CS.modalContent }}
         mih={isLoading ? `min(25rem, ${getModalHeightCalc("0px")})` : undefined}
       >
         <Modal.Header

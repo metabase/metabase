@@ -2,7 +2,7 @@ import { replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { connect } from "metabase/lib/redux";
+import { MetabaseReduxContext, connect } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
 export const createAdminRouteGuard = (routeKey, Component) => {
@@ -13,6 +13,7 @@ export const createAdminRouteGuard = (routeKey, Component) => {
     authenticatedSelector: state =>
       getAdminPaths(state)?.find(path => path.key === routeKey) != null,
     redirectAction: routerActions.replace,
+    context: MetabaseReduxContext,
   });
 
   return Wrapper(Component ?? (({ children }) => children));

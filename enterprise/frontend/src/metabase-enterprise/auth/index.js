@@ -192,7 +192,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         display_name: t`JWT Identity Provider URI`,
         placeholder: "https://jwt.yourdomain.org",
         type: "string",
-        required: true,
+        required: false,
         autoFocus: true,
         getHidden: (_, derivedSettings) => !derivedSettings["jwt-enabled"],
       },
@@ -269,7 +269,7 @@ if (hasPremiumFeature("sso_ldap")) {
       "ldap-user-provisioning-enabled?": Yup.boolean().default(null),
     },
     UserProvisioning: ({ fields, settings }) => (
-      <Stack spacing="0.75rem" m="2.5rem 0">
+      <Stack gap="0.75rem" m="2.5rem 0">
         <SettingHeader
           id="ldap-user-provisioning-enabled?"
           setting={settings["ldap-user-provisioning-enabled?"]}

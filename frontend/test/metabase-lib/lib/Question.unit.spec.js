@@ -3,6 +3,7 @@ import { parse } from "url";
 
 import { createMockMetadata } from "__support__/metadata";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
@@ -808,6 +809,7 @@ describe("Question", () => {
         isComposed: false,
       });
 
+      expect(Lib.stageCount(questionWithFilters.query())).toBe(1);
       expect(questionWithFilters.datasetQuery().query.filter).toEqual([
         "starts-with",
         [
@@ -842,7 +844,7 @@ describe("Question", () => {
         id: 3,
         slug: "param_date",
         type: "date/month",
-        target: ["dimension", ["field", 3, null]],
+        target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
       },
       {
         id: 4,
@@ -863,9 +865,9 @@ describe("Question", () => {
       dataset_query: {
         type: "query",
         query: {
-          "source-table": 1,
+          "source-table": PRODUCTS_ID,
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
     };
 
@@ -959,13 +961,14 @@ describe("Question", () => {
               dissoc(card, "id"),
               ["dataset_query", "query", "filter"],
               [
-                "=",
+                "between",
                 [
                   "field",
-                  3,
-                  { "base-type": "type/BigInteger", "temporal-unit": "month" },
+                  PRODUCTS.CREATED_AT,
+                  { "base-type": "type/DateTime" },
                 ],
                 "2017-05-01",
+                "2017-05-31",
               ],
             ),
             original_card_id: card.id,

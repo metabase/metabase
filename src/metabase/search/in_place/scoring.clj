@@ -113,7 +113,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.util :as search.util]
    [metabase.util :as u]))

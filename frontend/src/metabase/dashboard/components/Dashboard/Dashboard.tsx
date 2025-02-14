@@ -13,7 +13,6 @@ import {
   setArchivedDashboard,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { useHasDashboardScroll } from "metabase/dashboard/components/Dashboard/use-has-dashboard-scroll";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import type {
   CancelledFetchDashboardResult,
@@ -87,6 +86,7 @@ export type DashboardProps = {
   isNavigatingBackToDashboard: boolean;
   addCardOnLoad?: DashCardId;
   editingOnLoad?: string | string[] | boolean;
+  autoScrollToDashcardId: DashCardId | undefined;
   dashboardId: DashboardId;
   parameterQueryParams: Query;
 
@@ -170,14 +170,16 @@ export type DashboardProps = {
     reload?: boolean;
     clearCache?: boolean;
   }) => void;
+
+  reportAutoScrolledToDashcard: () => void;
 } & DashboardDisplayOptionControls;
 
 function Dashboard(props: DashboardProps) {
   const {
     addCardOnLoad,
     addCardToDashboard,
+    autoScrollToDashcardId,
     cancelFetchDashboardCardData,
-    closeNavbar,
     dashboard,
     dashboardId,
     editingOnLoad,
@@ -191,6 +193,7 @@ function Dashboard(props: DashboardProps) {
     isSharing,
     onRefreshPeriodChange,
     parameterValues,
+    reportAutoScrolledToDashcard,
     selectedTabId,
     setEditingDashboard,
     setErrorPage,
@@ -205,8 +208,6 @@ function Dashboard(props: DashboardProps) {
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
-
-  const hasScroll = useHasDashboardScroll({ isInitialized });
 
   const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);
@@ -235,17 +236,18 @@ function Dashboard(props: DashboardProps) {
 
   const handleSetEditing = useCallback(
     (dashboard: IDashboard | null) => {
-      onRefreshPeriodChange(null);
-      setEditingDashboard(dashboard);
+      if (!isEditing) {
+        onRefreshPeriodChange(null);
+        setEditingDashboard(dashboard);
+      }
     },
-    [onRefreshPeriodChange, setEditingDashboard],
+    [isEditing, onRefreshPeriodChange, setEditingDashboard],
   );
 
   const handleAddQuestion = useCallback(() => {
-    onRefreshPeriodChange(null);
-    setEditingDashboard(dashboard);
+    handleSetEditing(dashboard);
     toggleSidebar(SIDEBAR_NAME.addQuestion);
-  }, [onRefreshPeriodChange, setEditingDashboard, dashboard, toggleSidebar]);
+  }, [handleSetEditing, dashboard, toggleSidebar]);
 
   const handleLoadDashboard = useCallback(
     async (dashboardId: DashboardId) => {
@@ -349,50 +351,38 @@ function Dashboard(props: DashboardProps) {
     cancelFetchDashboardCardData();
   });
 
-  const renderContent = () => {
-    if (!dashboard) {
-      return null;
+  const renderEmptyStates = () => {
+    if (!dashboardHasCards) {
+      return canWrite ? (
+        <DashboardEmptyState
+          addQuestion={handleAddQuestion}
+          isDashboardEmpty={true}
+          isEditing={isEditing}
+          isNightMode={shouldRenderAsNightMode}
+        />
+      ) : (
+        <DashboardEmptyStateWithoutAddPrompt
+          isDashboardEmpty={true}
+          isNightMode={shouldRenderAsNightMode}
+        />
+      );
     }
 
-    if (!dashboardHasCards && !canWrite) {
-      return (
-        <DashboardEmptyStateWithoutAddPrompt
-          isNightMode={shouldRenderAsNightMode}
-        />
-      );
-    }
-    if (!dashboardHasCards) {
-      return (
-        <DashboardEmptyState
-          dashboard={dashboard}
-          isNightMode={shouldRenderAsNightMode}
-          addQuestion={handleAddQuestion}
-          closeNavbar={closeNavbar}
-        />
-      );
-    }
     if (dashboardHasCards && !tabHasCards) {
-      return (
+      return canWrite ? (
+        <DashboardEmptyState
+          addQuestion={handleAddQuestion}
+          isDashboardEmpty={false}
+          isEditing={isEditing}
+          isNightMode={shouldRenderAsNightMode}
+        />
+      ) : (
         <DashboardEmptyStateWithoutAddPrompt
+          isDashboardEmpty={false}
           isNightMode={shouldRenderAsNightMode}
         />
       );
     }
-    return (
-      <DashboardGridConnected
-        clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
-        isNightMode={shouldRenderAsNightMode}
-        isFullscreen={props.isFullscreen}
-        isEditingParameter={props.isEditingParameter}
-        isEditing={props.isEditing}
-        dashboard={dashboard}
-        slowCards={props.slowCards}
-        navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
-        selectedTabId={selectedTabId}
-        onEditingChange={handleSetEditing}
-        downloadsEnabled={downloadsEnabled}
-      />
-    );
   };
 
   return (
@@ -408,6 +398,9 @@ function Dashboard(props: DashboardProps) {
         if (!dashboard) {
           return null;
         }
+
+        const isEmpty =
+          !dashboardHasCards || (dashboardHasCards && !tabHasCards);
 
         return (
           <DashboardStyled>
@@ -463,17 +456,39 @@ function Dashboard(props: DashboardProps) {
                 id={DASHBOARD_PDF_EXPORT_ROOT_ID}
                 data-element-id="dashboard-parameters-and-cards"
                 data-testid="dashboard-parameters-and-cards"
+                isEmpty={isEmpty}
                 shouldMakeDashboardHeaderStickyAfterScrolling={
                   !isFullscreen && (isEditing || isSharing)
                 }
               >
-                <DashboardParameterPanel
-                  isFullscreen={isFullscreen}
-                  hasScroll={hasScroll}
-                />
-                <CardsContainer data-element-id="dashboard-cards-container">
-                  {renderContent()}
-                </CardsContainer>
+                <DashboardParameterPanel isFullscreen={isFullscreen} />
+                {isEmpty ? (
+                  renderEmptyStates()
+                ) : (
+                  <CardsContainer data-element-id="dashboard-cards-container">
+                    <DashboardGridConnected
+                      clickBehaviorSidebarDashcard={
+                        props.clickBehaviorSidebarDashcard
+                      }
+                      isNightMode={shouldRenderAsNightMode}
+                      isFullscreen={props.isFullscreen}
+                      isEditingParameter={props.isEditingParameter}
+                      isEditing={props.isEditing}
+                      dashboard={dashboard}
+                      slowCards={props.slowCards}
+                      navigateToNewCardFromDashboard={
+                        props.navigateToNewCardFromDashboard
+                      }
+                      selectedTabId={selectedTabId}
+                      onEditingChange={handleSetEditing}
+                      downloadsEnabled={downloadsEnabled}
+                      autoScrollToDashcardId={autoScrollToDashcardId}
+                      reportAutoScrolledToDashcard={
+                        reportAutoScrolledToDashcard
+                      }
+                    />
+                  </CardsContainer>
+                )}
               </ParametersAndCardsContainer>
 
               <DashboardSidebars

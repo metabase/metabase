@@ -4,8 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test.data.interface :as tx]))
 
 (deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
@@ -92,9 +91,9 @@
 (deftest ^:parallel segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Share containing a Segment"
-      (t2.with-temp/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                                :definition {:source-table (mt/id :venues)
-                                                                             :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                      :definition {:source-table (mt/id :venues)
+                                                                   :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
         (is (= [[0.94]]
                (mt/formatted-rows
                 [2.0]
@@ -104,10 +103,10 @@
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Share inside a Metric"
-      (t2.with-temp/with-temp [:model/Card {metric-id :id} {:dataset_query (mt/mbql-query venues
-                                                                             {:aggregation [:share [:< $price 4]]
-                                                                              :source-table $$venues})
-                                                            :type :metric}]
+      (mt/with-temp [:model/Card {metric-id :id} {:dataset_query (mt/mbql-query venues
+                                                                   {:aggregation [:share [:< $price 4]]
+                                                                    :source-table $$venues})
+                                                  :type :metric}]
         (is (= [[0.94]]
                (mt/formatted-rows
                 [2.0]

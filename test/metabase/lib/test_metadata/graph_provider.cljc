@@ -5,6 +5,7 @@
    [clojure.core.protocols]
    [clojure.test :refer [deftest is]]
    [medley.core :as m]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
 (defn- graph-database [metadata-graph]
@@ -33,6 +34,13 @@
   ;; not implemented for the simple graph metadata provider.
   nil)
 
+(defn- graph->prefix-fn [metadata-graph]
+  (let [db-name (:name (graph-database metadata-graph))]
+    (memoize
+     (fn [table-id]
+       (let [table (graph-table metadata-graph table-id)]
+         (lib.metadata.ident/table-prefix db-name table))))))
+
 (defn- graph-metadatas [metadata-graph metadata-type ids]
   (let [f (case metadata-type
             :metadata/table         graph-table
@@ -40,8 +48,11 @@
             :metadata/segment       graph-segment
             :metadata/card          graph-card)]
     (into []
-          (keep (fn [id]
-                  (f metadata-graph id)))
+          (comp (keep (fn [id]
+                        (f metadata-graph id)))
+                (if (= metadata-type :metadata/column)
+                  (lib.metadata.ident/attach-idents (graph->prefix-fn metadata-graph))
+                  identity))
           ids)))
 
 (defn- graph-tables [metadata-graph]
@@ -57,7 +68,9 @@
     (cond->> (get table k)
       (= metadata-type :metadata/metric)
       (filterv #(and (= (:type %) :metric)
-                     (not (:archived %)))))))
+                     (not (:archived %))))
+      (= metadata-type :metadata/column)
+      (lib.metadata.ident/attach-idents (graph->prefix-fn metadata-graph)))))
 
 (defn- graph-setting [metadata-graph setting-name]
   (get-in metadata-graph [:settings (keyword setting-name)]))

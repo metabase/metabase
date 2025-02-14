@@ -4,7 +4,6 @@
    [metabase.models.notification :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.public-settings :as public-settings]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p]
@@ -139,6 +138,7 @@
 
 (defmulti payload
   "Given a notification info, return the notification payload."
+  {:arglists '([notification-info])}
   :payload_type)
 
 (mu/defn notification-payload :- NotificationPayload
@@ -151,14 +151,9 @@
 
 (defmulti should-send-notification?
   "Determine whether a notification should be sent. Default to true."
+  {:arglists '([notification-payload])}
   :payload_type)
 
 (defmethod should-send-notification? :default
   [_notification-payload]
   true)
-
-;; ------------------------------------------------------------------------------------------------;;
-;;                                    Load the implementations                                     ;;
-;; ------------------------------------------------------------------------------------------------;;
-(when-not *compile-files*
-  (u/find-and-load-namespaces! "metabase.notification.payload.impl"))

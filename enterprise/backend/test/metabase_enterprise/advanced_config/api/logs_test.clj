@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.advanced-config.api.logs-test
+(ns metabase-enterprise.advanced-config.api.logs-test
   "Tests for /api/ee/logs endpoints"
   (:require
    [clojure.test :refer :all]

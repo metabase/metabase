@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.cmd.load-from-h2-test
+(ns metabase.cmd.load-from-h2-test
   (:require
    [clojure.test :refer :all]
    [metabase.cmd.copy :as copy]

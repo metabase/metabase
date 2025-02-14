@@ -12,10 +12,10 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -31,8 +31,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (comment
   query-perms/keep-me)
@@ -401,7 +400,7 @@
                   "querying of a card as a nested query. Part of the row level perms check is looking at the table (or "
                   "card) to see if row level permissions apply. This was broken when it wasn't expecting a card and "
                   "only expecting resolved source-tables")
-      (t2.with-temp/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
         (let [query (mt/mbql-query nil
                       {:source-table (format "card__%s" (u/the-id card))
                        :aggregation  [["count"]]})]
@@ -1138,9 +1137,9 @@
 (deftest is-sandboxed-success-test
   (testing "Integration test that checks that is_sandboxed is recorded in query_execution correctly for a sandboxed query"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
-      (t2.with-temp/with-temp [:model/Card card {:database_id   (mt/id)
-                                                 :table_id      (mt/id :categories)
-                                                 :dataset_query (mt/mbql-query categories)}]
+      (mt/with-temp [:model/Card card {:database_id   (mt/id)
+                                       :table_id      (mt/id :categories)
+                                       :dataset_query (mt/mbql-query categories)}]
         (let [query (:dataset_query card)]
           (process-userland-query-test/with-query-execution! [qe query]
             (qp/process-query (qp/userland-query query))

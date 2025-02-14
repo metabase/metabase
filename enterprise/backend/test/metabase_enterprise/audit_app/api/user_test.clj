@@ -1,14 +1,13 @@
-(ns ^:mb/once metabase-enterprise.audit-app.api.user-test
+(ns metabase-enterprise.audit-app.api.user-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.permissions-test :as ee-perms-test]
    [metabase.audit :as audit]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -16,7 +15,7 @@
   (testing "DELETE /api/ee/audit-app/user/:id/subscriptions"
     (testing "Should require a token with `:audit-app`"
       (mt/with-premium-features #{}
-        (t2.with-temp/with-temp [:model/User {user-id :id}]
+        (mt/with-temp [:model/User {user-id :id}]
           (mt/assert-has-premium-feature-error "Audit app" (mt/user-http-request user-id
                                                                                  :delete 402
                                                                                  (format "ee/audit-app/user/%d/subscriptions" user-id))))))

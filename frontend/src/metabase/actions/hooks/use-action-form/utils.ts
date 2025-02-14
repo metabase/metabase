@@ -20,7 +20,7 @@ export function stripTZInfo(dateOrTimeString: string) {
 }
 
 export const formatInitialValue = (
-  value: string | number | null,
+  value: string | number | boolean | null,
   inputType?: InputSettingType,
 ) => {
   if (!isEmpty(value) && typeof value === "string") {

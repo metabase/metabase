@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useCreateDashboardMutation } from "metabase/api";
-import FormFooter from "metabase/core/components/FormFooter";
+import { FormFooter } from "metabase/core/components/FormFooter";
 import {
   Form,
   FormErrorMessage,
@@ -62,7 +62,7 @@ export const NewDashboardDialog = ({
         initialValues={{ name: "" }}
         onSubmit={onCreateNewDashboard}
       >
-        {({ dirty }: { dirty: boolean }) => (
+        {({ dirty, isSubmitting }) => (
           <Form>
             <FormTextInput
               name="name"
@@ -79,7 +79,7 @@ export const NewDashboardDialog = ({
                 <FormSubmitButton
                   type="submit"
                   label={t`Create`}
-                  disabled={!dirty}
+                  disabled={!dirty || isSubmitting}
                   variant="filled"
                 />
               </Flex>

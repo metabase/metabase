@@ -5,7 +5,6 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import * as parameterActions from "metabase/dashboard/actions/parameters";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -220,7 +219,7 @@ describe("DashCardCardParameterMapper", () => {
       expect(queryIcon("sparkles")).not.toBeInTheDocument();
     });
 
-    it("should render only an icon when a dashcard is short", () => {
+    it("should render only an icon when a dashcard is short", async () => {
       const card = createMockCard();
       const dashcard = createMockDashboardCard({ card, size_y: 3, size_x: 5 });
 
@@ -239,7 +238,9 @@ describe("DashCardCardParameterMapper", () => {
       });
 
       expect(screen.queryByText("Auto-connected")).not.toBeInTheDocument();
-      expect(getIcon("sparkles")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("img", { name: /sparkles/ }),
+      ).toBeInTheDocument();
     });
 
     it("should not render an icon when a dashcard is narrow", () => {
@@ -424,65 +425,5 @@ describe("DashCardCardParameterMapper", () => {
       });
       expect(screen.queryByText(/Variable to map to/i)).not.toBeInTheDocument();
     });
-  });
-
-  it("should reset mapping on parameter change", () => {
-    const card = createMockCard({
-      dataset_query: createMockNativeDatasetQuery({
-        dataset_query: {
-          native: createMockNativeQuery({
-            query: "SELECT * FROM ORDERS WHERE tax = {{ tax }}",
-            "template-tags": [
-              createMockTemplateTag({
-                name: "tax",
-                type: "number/=",
-              }),
-            ],
-          }),
-        },
-      }),
-    });
-
-    jest.spyOn(parameterActions, "resetParameterMapping");
-
-    const question = new Question(card, metadata);
-    const dashcard = createMockDashboardCard({ card });
-    const editingParameter = createMockParameter({ type: "number/=" });
-    const props = {
-      card,
-      question,
-      dashcard,
-      target: ["variable", ["template-tag", "tax"]],
-      editingParameter,
-      mappingOptions: [
-        {
-          name: "Tax",
-          icon: "int",
-          isForeign: false,
-          target: ["variable", ["template-tag", "tax"]],
-        },
-      ],
-      isRecentlyAutoConnected: false,
-      isMobile: false,
-    };
-
-    expect(parameterActions.resetParameterMapping).not.toHaveBeenCalled();
-
-    const { rerender } = setup(props);
-
-    rerender(
-      <DashCardCardParameterMapper
-        {...props}
-        editingParameter={{
-          ...editingParameter,
-          type: "number/!=",
-        }}
-      />,
-    );
-
-    expect(parameterActions.resetParameterMapping).toHaveBeenCalledWith(
-      editingParameter.id,
-      dashcard.id,
-    );
   });
 });

@@ -2,19 +2,18 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
-   [metabase.timeseries-query-processor-test.util :as tqpt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.timeseries-query-processor-test.util :as tqpt]))
 
 (deftest metrics-inside-aggregation-clauses-test
   (mt/test-driver :druid-jdbc
     (testing "check that we can handle METRICS inside expression aggregation clauses"
       (tqpt/with-flattened-dbdef
-        (t2.with-temp/with-temp [:model/Card {metric-id :id} {:dataset_query
-                                                              (mt/mbql-query checkins
-                                                                {:aggregation [:sum $venue_price]
-                                                                 :filter      [:> $venue_price 1]
-                                                                 :source-table (mt/id :checkins)})
-                                                              :type :metric}]
+        (mt/with-temp [:model/Card {metric-id :id} {:dataset_query
+                                                    (mt/mbql-query checkins
+                                                      {:aggregation [:sum $venue_price]
+                                                       :filter      [:> $venue_price 1]
+                                                       :source-table (mt/id :checkins)})
+                                                    :type :metric}]
           (is (= [[2 1231]
                   [3  346]
                   [4  197]]

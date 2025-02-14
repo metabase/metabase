@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util-test
+(ns metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require
    #?@(:clj [[metabase.test :as mt]

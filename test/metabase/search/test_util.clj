@@ -1,9 +1,8 @@
 (ns metabase.search.test-util
   (:require
    [metabase.api.common :as api]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.request.core :as request]
-   ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
+   [metabase.permissions.util :as perms-util]
+   [metabase.request.core :as request] ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
@@ -23,6 +22,23 @@
       ;; We need ingestion to happen on the same thread so that it uses the right search index.
        (binding [metabase.search.ingestion/*force-sync* true]
          ~@body))))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-new-search-if-available
+  "Create a temporary index table for the duration of the body."
+  [& body]
+  `(if (search/supports-index?)
+     (mt/with-dynamic-fn-redefs [search.impl/default-engine (constantly :search.engine/appdb)]
+       (with-temp-index-table
+         (search/reindex!)
+         ~@body))
+     ~@body))
+
+(defmacro with-legacy-search
+  "Ensure legacy search, which doesn't require an index, is used."
+  [& body]
+  `(mt/with-dynamic-fn-redefs [search.impl/default-engine (constantly :search.engine/in-place)]
+     ~@body))
 
 (defmacro with-api-user [raw-ctx & body]
   `(let [raw-ctx# ~raw-ctx]
@@ -54,8 +70,8 @@
                             {:current-user-id       api/*current-user-id*
                              :current-user-perms    @api/*current-user-permissions-set*
                              :is-superuser?         api/*is-superuser?*
-                             :is-impersonated-user? (premium-features/impersonated-user?)
-                             :is-sandboxed-user?    (premium-features/impersonated-user?)})
+                             :is-impersonated-user? (perms-util/impersonated-user?)
+                             :is-sandboxed-user?    (perms-util/impersonated-user?)})
                         {:archived         false
                          :context          :default
                          :search-string    search-string

@@ -4,7 +4,10 @@ import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 
 import { skipToken } from "metabase/api";
-import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import {
+  LoadingAndErrorWrapper as DefaultLoadingAndErrorWrapper,
+  type LoadingAndErrorWrapperProps,
+} from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setRequestError,
@@ -37,13 +40,6 @@ interface ChildrenProps<Entity, EntityWrapper> {
   reload: () => void;
 }
 
-interface LoadingAndErrorWrapperProps {
-  children: ReactNode;
-  loading?: boolean;
-  error?: unknown;
-  noWrapper?: boolean;
-}
-
 interface Props<Entity, EntityWrapper> {
   ComposedComponent: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
   entityAlias?: string;
@@ -53,7 +49,7 @@ interface Props<Entity, EntityWrapper> {
   fetchType?: FetchType;
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
-  reload?: boolean;
+  reload?: boolean | ChildrenProps<Entity, EntityWrapper>["reload"]; // reload can be passed as a callback from the outer loader
   requestType?: RequestType;
   selectorName?: "getObject" | "getObjectUnfiltered";
   wrapped?: boolean;
@@ -135,7 +131,7 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
     isFetching,
     refetch,
   } = useGetQuery(entityId != null ? finalQuery : skipToken, {
-    refetchOnMountOrArgChange: reload,
+    refetchOnMountOrArgChange: reload === true,
   });
 
   const queryKey = useMemo(
@@ -170,7 +166,7 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
   }, [dispatch, rtkError, requestStatePath, queryKey]);
 
   useEffect(() => {
-    if (data) {
+    if (data && !isFetching) {
       const transformed = transformResponse(data, finalQuery);
       const normalized = entityDefinition.normalize(transformed);
 
@@ -188,6 +184,7 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
     data,
     entityDefinition,
     finalQuery,
+    isFetching,
     transformResponse,
     requestStatePath,
     queryKey,

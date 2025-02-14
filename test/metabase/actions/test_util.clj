@@ -3,12 +3,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.actions.models :as action]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.http-client :as client]
-   [metabase.models.action :as action]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
@@ -19,8 +19,7 @@
    [metabase.test.util :as tu]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.random :as u.random]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -271,7 +270,7 @@
            binding-forms-and-option-maps])]
     `(do
        (initialize/initialize-if-needed! :web-server)
-       (t2.with-temp/with-temp ~[:model/Card model model-def]
+       (mt/with-temp ~[:model/Card model model-def]
          (tu/with-model-cleanup [:model/Action]
            (let [~custom-binding ~model
                  ~@(mapcat (fn [[binding-form option-map]]

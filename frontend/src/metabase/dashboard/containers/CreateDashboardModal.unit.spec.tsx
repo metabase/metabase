@@ -15,6 +15,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
@@ -22,7 +23,7 @@ import {
   createMockCollectionItemFromCollection,
 } from "metabase-types/api/mocks";
 
-import { CreateDashboardModalConnected } from "./CreateDashboardModal";
+import { CreateDashboardModal } from "./CreateDashboardModal";
 
 const COLLECTION = {
   ROOT: createMockCollection({
@@ -87,7 +88,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
     .filter(c => c.id !== "root")
     .forEach(c => fetchMock.get(`path:/api/collection/${c.id}`, c));
 
-  renderWithProviders(<CreateDashboardModalConnected onClose={onClose} />, {
+  renderWithProviders(<CreateDashboardModal opened onClose={onClose} />, {
     storeInitialState: {
       entities: createMockEntitiesState({ collections }),
       settings,
@@ -169,7 +170,16 @@ describe("CreateDashboardModal", () => {
       });
     const dashModalTitle = () =>
       screen.getByRole("heading", { name: /new dashboard/i });
-    const cancelBtn = () => screen.getByRole("button", { name: /cancel/i });
+
+    const newCollCancelButton = () =>
+      within(screen.getByRole("dialog", { name: /new collection/ })).getByRole(
+        "button",
+        { name: /cancel/i },
+      );
+    const selectCollCancelButton = () =>
+      within(
+        screen.getByRole("dialog", { name: /Select a collection/ }),
+      ).getByRole("button", { name: /cancel/i });
 
     it("should have a new collection button in the collection picker", async () => {
       setup();
@@ -190,9 +200,9 @@ describe("CreateDashboardModal", () => {
       await userEvent.click(newCollBtn());
       await screen.findByText("Give it a name");
       // Close New Collection Dialog
-      await userEvent.click(cancelBtn());
+      await userEvent.click(newCollCancelButton());
       // Close Collection Picker
-      await userEvent.click(cancelBtn());
+      await userEvent.click(selectCollCancelButton());
 
       await waitFor(() => expect(dashModalTitle()).toBeInTheDocument());
       expect(nameField()).toHaveValue(name);
@@ -207,7 +217,7 @@ describe("CreateDashboardModal", () => {
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       //Select Parent Collection
       await userEvent.click(
-        await screen.findByRole("button", {
+        await screen.findByRole("link", {
           name: new RegExp(COLLECTION.PARENT.name),
         }),
       );

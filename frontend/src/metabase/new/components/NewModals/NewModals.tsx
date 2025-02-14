@@ -6,7 +6,7 @@ import { push } from "react-router-redux";
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import Modal from "metabase/components/Modal";
-import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
+import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -44,12 +44,11 @@ export const NewModals = withRouter((props: WithRouterProps) => {
 
     case "dashboard":
       return (
-        <Modal onClose={handleModalClose}>
-          <CreateDashboardModalConnected
-            onClose={handleModalClose}
-            collectionId={collectionId}
-          />
-        </Modal>
+        <CreateDashboardModal
+          opened
+          onClose={handleModalClose}
+          collectionId={collectionId}
+        />
       );
     case "action":
       return (

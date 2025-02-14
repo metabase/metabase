@@ -1,10 +1,10 @@
 ---
-title: Slack
+title: Set up Slack
 redirect_from:
   - /docs/latest/administration-guide/09-setting-up-slack
 ---
 
-# Slack
+# Set up Slack
 
 If you want to have your [dashboard subscriptions](../dashboards/subscriptions.md) or [alerts](../questions/alerts.md) sent to Slack channels (or people on Slack), an admin must first integrate your Metabase with Slack.
 
@@ -53,6 +53,7 @@ oauth_config:
       - chat:write
       - chat:write.customize
       - chat:write.public
+      - groups:read
 ```
 
 The manifest just take cares of some settings for your app and helps speed things along.
@@ -83,7 +84,17 @@ In order to send subscriptions and alerts to private Slack channels, you must fi
 
 In Slack, go to the private channel and mention the Metabase app. For example, if you called your Slack app "Metabase", you'd just type `@Metabase`. Slack will ask you if you want to invite your app to your channel, which you should.
 
-Once your Metabase app is added to the private channel, you'll need to type out the private channel's name in the subscription or alert. Make sure to spell the channel's name correctly, or Metabase won't be able to send the notification.
+### Metabase not listing your private channel?
+
+It can take a little time for metabase to see all the channels the app has been invited to. New channels may not appear in listings for up to 10 minutes after inviting the app to the channel.
+
+In order for metabase to see private channels, the app must have the `groups:read` oauth scope. Although this scope should be granted when setting up the app through metabase, older installations might not have this scope. 
+If you think this might be the case [visit the app settings in slack](https://api.slack.com/apps/):
+- Click on the metabase app in the app listing.
+- Click on **OAuth & Permissions** in the sidebar.
+- Under **Scopes** add the `groups:read` scope.
+- The app will the need to be reinstalled to the workspace
+  by clicking the **Reinstall** button under **OAuth Tokens**.
 
 ## Further reading
 

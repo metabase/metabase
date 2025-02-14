@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [mb.hawk.init]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test.initialize :as initialize]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -81,6 +81,7 @@
   (comp
    (memoize
     (fn [toucan-model]
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (t2.with-temp/with-temp [toucan-model x {}
                                toucan-model y {}]
         (let [[_ _ things-in-both] (data/diff x y)]

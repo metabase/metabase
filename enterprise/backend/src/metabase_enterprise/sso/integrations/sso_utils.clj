@@ -3,7 +3,7 @@
   (:require
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.common :as api]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
    [metabase.events.notification :as events.notification]
    [metabase.integrations.common :as integrations.common]

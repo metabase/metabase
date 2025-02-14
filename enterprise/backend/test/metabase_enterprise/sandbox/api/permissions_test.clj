@@ -3,15 +3,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.persisted-info :as persisted-info]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (defn- db-graph-keypath [group]
   [:groups (u/the-id group) (mt/id) :view-data])
@@ -100,8 +99,8 @@
   (testing "PUT /api/permissions/graph"
     (testing "granting sandboxed permissions for a group should *not* delete an associated GTAP (#16190)"
       (mt/with-temp-copy-of-db
-        (t2.with-temp/with-temp [:model/GroupTableAccessPolicy _ {:group_id (u/the-id (perms-group/all-users))
-                                                                  :table_id (mt/id :venues)}]
+        (mt/with-temp [:model/GroupTableAccessPolicy _ {:group_id (u/the-id (perms-group/all-users))
+                                                        :table_id (mt/id :venues)}]
           (let [graph  (mt/user-http-request :crowberto :get 200 "permissions/graph")
                 graph' (assoc-in graph (db-graph-keypath (perms-group/all-users))
                                  {"PUBLIC" {(mt/id :venues) "sandboxed"}})]

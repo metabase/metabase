@@ -2,28 +2,28 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { isNumber } from "metabase/lib/types";
+import { isNotNull } from "metabase/lib/types";
 import {
-  type NumberValue,
+  type NumberOrEmptyValue,
   useNumberFilter,
 } from "metabase/querying/filters/hooks/use-number-filter";
-import { Flex, Grid, NumberInput, Text } from "metabase/ui";
+import { Flex, Grid, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
+import { NumberFilterInput } from "../../NumberFilterInput";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
+import { useFilterModalContext } from "../context";
 import type { FilterEditorProps } from "../types";
 
 export function NumberFilterEditor({
-  query,
   stageIndex,
   column,
   filter,
-  isSearching,
   onChange,
-  onInput,
 }: FilterEditorProps) {
+  const { query, onInput } = useFilterModalContext();
   const columnIcon = useMemo(() => getColumnIcon(column), [column]);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -51,7 +51,7 @@ export function NumberFilterEditor({
     onChange(getFilterClause(newOperator, newValues));
   };
 
-  const handleInputChange = (newValues: NumberValue[]) => {
+  const handleInputChange = (newValues: NumberOrEmptyValue[]) => {
     setValues(newValues);
     if (isFocused) {
       onInput();
@@ -74,11 +74,9 @@ export function NumberFilterEditor({
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle
-            query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
-            isSearching={isSearching}
           >
             <FilterOperatorPicker
               value={operator}
@@ -109,10 +107,10 @@ interface NumberValueInputProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  values: NumberValue[];
+  values: NumberOrEmptyValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
-  onChange: (values: NumberValue[]) => void;
+  onChange: (values: NumberOrEmptyValue[]) => void;
   onFocus: () => void;
   onBlur: () => void;
 }
@@ -134,7 +132,7 @@ function NumberValueInput({
         query={query}
         stageIndex={stageIndex}
         column={column}
-        values={values.filter(isNumber)}
+        values={values.filter(isNotNull)}
         compact
         onChange={onChange}
         onFocus={onFocus}
@@ -145,7 +143,7 @@ function NumberValueInput({
 
   if (valueCount === 1) {
     return (
-      <NumberInput
+      <NumberFilterInput
         value={values[0]}
         placeholder={t`Enter a number`}
         aria-label={t`Filter value`}
@@ -159,20 +157,20 @@ function NumberValueInput({
   if (valueCount === 2) {
     return (
       <Flex align="center">
-        <NumberInput
+        <NumberFilterInput
           value={values[0]}
           placeholder={t`Min`}
           maw="8rem"
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
+          onChange={newValue => onChange([newValue, values[1]])}
           onFocus={onFocus}
           onBlur={onBlur}
         />
         <Text mx="sm">{t`and`}</Text>
-        <NumberInput
+        <NumberFilterInput
           value={values[1]}
           placeholder={t`Max`}
           maw="8rem"
-          onChange={(newValue: number) => onChange([values[0], newValue])}
+          onChange={newValue => onChange([values[0], newValue])}
           onFocus={onFocus}
           onBlur={onBlur}
         />

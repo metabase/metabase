@@ -12,7 +12,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.interface :as tx]
@@ -20,8 +20,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (com.google.cloud.bigquery TableResult)))
 
@@ -700,13 +699,13 @@
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Querying a different project-id works"
-      (t2.with-temp/with-temp [:model/Database
-                               {db-id :id :as temp-db}
-                               {:engine  :bigquery-cloud-sdk
-                                :details (-> (:details (mt/db))
-                                             (assoc :project-id "bigquery-public-data"
-                                                    :dataset-filters-type "inclusion"
-                                                    :dataset-filters-patterns "chicago_taxi_trips"))}]
+      (mt/with-temp [:model/Database
+                     {db-id :id :as temp-db}
+                     {:engine  :bigquery-cloud-sdk
+                      :details (-> (:details (mt/db))
+                                   (assoc :project-id "bigquery-public-data"
+                                          :dataset-filters-type "inclusion"
+                                          :dataset-filters-patterns "chicago_taxi_trips"))}]
         (mt/with-db temp-db
           (testing " for sync"
             (sync/sync-database! temp-db {:scan :schema})
@@ -867,7 +866,7 @@
         (try
           (let [synced-tables (t2/select :model/Table :db_id (mt/id))]
             (is (= 2 (count synced-tables)))
-            (t2/insert! :model/Table (map #(dissoc % :id :schema) synced-tables))
+            (t2/insert! :model/Table (map #(dissoc % :id :entity_id :schema) synced-tables))
             (sync/sync-database! (mt/db) {:scan :schema})
             (let [synced-tables (t2/select :model/Table :db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]
@@ -1026,7 +1025,7 @@
                        mt/process-query))))))))))
 
 (defn- synced-tables [db-attributes]
-  (t2.with-temp/with-temp [:model/Database db db-attributes]
+  (mt/with-temp [:model/Database db db-attributes]
     (sync/sync-database! db {:scan :schema})
     (t2/select :model/Table :db_id (u/the-id db))))
 
@@ -1222,3 +1221,15 @@
               (is (= (if (= :cancelled stop-tag) "Query cancelled" "My Exception")
                      (:error result)))))))
       (is (< (count before-names) (+ (count (future-thread-names)) 5))))))
+
+(deftest alternate-host-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Alternate BigQuery host can be configured"
+      (mt/with-temp [:model/Database {:as temp-db}
+                     {:engine  :bigquery-cloud-sdk
+                      :details (-> (:details (mt/db))
+                                   (assoc :host "bigquery.example.com"))}]
+        (let [client (#'bigquery/database-details->client (:details temp-db))]
+          (is (= "bigquery.example.com"
+                 (.getHost (.getOptions client)))
+              "BigQuery client should be configured with alternate host"))))))

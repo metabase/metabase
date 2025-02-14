@@ -54,10 +54,13 @@
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data
                         auto-retry
+                        string-to-bytes
+                        bytes-to-string
                         decode-base64
                         decode-base64-to-bytes
                         deref-with-timeout
                         encode-base64
+                        encode-base64-bytes
                         filtered-stacktrace
                         full-exception-chain
                         host-port-up?
@@ -65,15 +68,12 @@
                         poll
                         host-up?
                         ip-address?
-                        metabase-namespace-symbols
                         sorted-take
                         varargs
                         with-timeout
                         with-us-locale]
                        [u.str
-                        build-sentence]
-                       [u.ns
-                        find-and-load-namespaces!]))
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
@@ -1202,3 +1202,26 @@
     (if res
       (assoc m k res)
       (dissoc m k))))
+
+(defn not-blank
+  "Like not-empty, but for strings"
+  [s]
+  (when-not (str/blank? s) s))
+
+#?(:clj
+   (defn do-with-timer-ms
+     "Impl of `with-timer-ms` for the JVM."
+     [thunk]
+     (let [start-time     (start-timer)
+           duration-ms-fn (fn [] (since-ms start-time))]
+       (thunk duration-ms-fn))))
+
+#?(:clj
+   (defmacro with-timer-ms
+     "Execute the body with a function that returns the duration in milliseconds.
+
+     (with-timer-ms [elapsed-ms-fn]
+       (do-something)
+       (elapsed-ms-fn))"
+     [[duration-ms-fn] & body]
+     `(do-with-timer-ms (fn [~duration-ms-fn] ~@body))))

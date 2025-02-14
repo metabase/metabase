@@ -168,7 +168,9 @@
 
 (defn raw-hash
   "Hashes a Clojure value into an 8-character hex string, which is used as the identity hash.
-  Don't call this outside a test, use [[identity-hash]] instead."
+
+  Don't call this outside a test, use [[identity-hash]] instead. Exception: [[metabase-enterprise.audit-app.audit]]
+  uses this because it needs reproducible `:entity_id`s that differ from the usual [[hash-fields]] ones."
   [target]
   (when (sequential? target)
     (assert (seq target) "target cannot be an empty sequence"))
@@ -372,6 +374,7 @@
      :skip [;; it's nice to comment why it's skipped
             :internal_data]
      :transform {:card_id (serdes/fk :model/Card)}})"
+  {:arglists '([model-name opts])}
   (fn [model-name _opts] model-name))
 
 (defmethod make-spec :default [_ _] nil)
@@ -704,6 +707,7 @@
   Keyed on the model name.
 
   Returns the primary key of the updated or inserted entity."
+  {:arglists '([ingested maybe-local])}
   (fn [ingested _]
     (ingested-model ingested)))
 
@@ -921,13 +925,13 @@
 (defn ^:dynamic ^::cache *import-user*
   "Imports a user by their email address.
   If a user with that email address exists, returns its primary key.
-  If no such user exists, creates a dummy one with the default settings, blank name, and randomized password.
+  If no such user exists, creates a dummy inactive one with the default settings, blank name, and randomized password.
   Does not send any invite emails."
   [email]
   (when email
     (or (*import-fk-keyed* email 'User :email)
         ;; Need to break a circular dependency here.
-        (:id ((resolve 'metabase.models.user/serdes-synthesize-user!) {:email email})))))
+        (:id ((resolve 'metabase.models.user/serdes-synthesize-user!) {:email email :is_active false})))))
 
 ;;; ## Tables
 

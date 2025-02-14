@@ -5,12 +5,12 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.models.search-index-metadata :as search-index-metadata]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
+   [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -18,6 +18,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
+   (org.h2.jdbc JdbcSQLSyntaxErrorException)
    (org.postgresql.util PSQLException)))
 
 (comment
@@ -33,7 +34,7 @@
 (defonce ^:dynamic ^:private *index-version-id*
   (if config/is-prod?
     (:hash config/mb-version-info)
-    (str (random-uuid))))
+    (u/lower-case-en (u/generate-nano-id))))
 
 (defonce ^:private next-sync-at (atom nil))
 
@@ -78,7 +79,7 @@
 (defn gen-table-name
   "Generate a unique table name to use as a search index table."
   []
-  (keyword (str/replace (str "search_index__" (random-uuid)) #"-" "_")))
+  (keyword (str/replace (str "search_index__" (u/lower-case-en (u/generate-nano-id))) #"-" "_")))
 
 (defn- table-name [kw]
   (cond-> (name kw)
@@ -212,7 +213,7 @@
 (defn- document->entry [entity]
   (-> entity
       (select-keys
-       ;; remove attrs that get aliased
+       ;; remove attrs that get explicitly aliased below
        (remove #{:id :created_at :updated_at :native_query}
                (conj search.spec/attr-columns :model :display_data :legacy_input)))
       (update :display_data json/encode)
@@ -224,24 +225,19 @@
        :model_updated_at (:updated_at entity))
       (merge (specialization/extra-entry-fields entity))))
 
-(defn delete!
-  "Remove any entries corresponding directly to a given model instance."
-  [id search-models]
-  ;; In practice, we expect this to be 1-1, but the data model does not preclude it.
-  (when (seq search-models)
-    (doseq [table-name [(active-table) (pending-table)] :when table-name]
-      (t2/delete! table-name :model_id id :model [:in search-models]))))
-
 (defn- safe-batch-upsert! [table-name entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when table-name
     (try
       (specialization/batch-upsert! table-name entries)
       (catch Exception e
-        ;; TODO we should handle the H2, MySQL, and MariaDB flavors here too
-        (if (instance? PSQLException (ex-cause e))
-          ;; Suppress database errors, which are likely due to stale tracking data.
-          (sync-tracking-atoms!)
+        ;; TODO we should handle the MySQL and MariaDB flavors here too
+        (if (or (instance? PSQLException (ex-cause e))
+                (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
+          ;; If resetting tracking atoms resolves the issue (which is likely happened because of stale tracking data),
+          ;; suppress the issue - but throw it all the way to the caller if the issue persists
+          (do (sync-tracking-atoms!)
+              (specialization/batch-upsert! table-name entries))
           (throw e))))))
 
 (defn- batch-update!
@@ -265,13 +261,18 @@
         active-updated?  (safe-batch-upsert! (active-table) entries)
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
-      (->> entries (map :model) frequencies))))
+      (u/prog1 (->> entries (map :model) frequencies)
+        (log/trace "indexed documents" <>)))))
 
 (defmethod search.engine/consume! :search.engine/appdb [_engine document-reducible]
   (transduce (comp (partition-all insert-batch-size)
                    (map batch-update!))
              (partial merge-with +)
              document-reducible))
+
+(defmethod search.engine/delete! :search.engine/appdb [_engine search-model ids]
+  (doseq [table-name [(active-table) (pending-table)] :when table-name]
+    (t2/delete! table-name :model search-model :model_id [:in ids])))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."
@@ -312,13 +313,15 @@
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
-  "Create a temporary index table for the duration of the body."
+  "Create a temporary index table for the duration of the body. Uses the existing index if we're already mocking."
   [& body]
-  `(let [table-name# (gen-table-name)]
-     (binding [*mocking-tables* true
-               *indexes*        (atom {:active table-name#})]
-       (try
-         (create-table! table-name#)
-         ~@body
-         (finally
-           (#'drop-table! table-name#))))))
+  `(if @#'*mocking-tables*
+     ~@body
+     (let [table-name# (gen-table-name)]
+       (binding [*mocking-tables* true
+                 *indexes*        (atom {:active table-name#})]
+         (try
+           (create-table! table-name#)
+           ~@body
+           (finally
+             (#'drop-table! table-name#)))))))

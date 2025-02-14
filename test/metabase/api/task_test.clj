@@ -4,8 +4,7 @@
    [java-time.api :as t]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (def ^:private default-task-history
   {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil :status "success"})
@@ -102,14 +101,14 @@
 
 (deftest fetch-perms-test
   (testing "Regular users can't query for a specific TaskHistory"
-    (t2.with-temp/with-temp [:model/TaskHistory task]
+    (mt/with-temp [:model/TaskHistory task]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "task/%s" (u/the-id task))))))))
 
 (deftest fetch-test
   (testing "Superusers querying for specific TaskHistory will get that task info"
-    (t2.with-temp/with-temp [:model/TaskHistory task {:task     "Test Task"
-                                                      :duration 100}]
+    (mt/with-temp [:model/TaskHistory task {:task     "Test Task"
+                                            :duration 100}]
       (is (= (merge default-task-history {:task "Test Task", :duration 100})
              (mt/boolean-ids-and-timestamps
               (mt/user-http-request :crowberto :get 200 (format "task/%s" (u/the-id task)))))))))

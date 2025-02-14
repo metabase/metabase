@@ -5,7 +5,7 @@
    [crypto.random :as crypto-random]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [deferred-tru]]

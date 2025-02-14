@@ -174,15 +174,15 @@
   "Returns a transducer for computing metadata about the fields in `db`."
   [driver db]
   (map (fn [col]
-         (let [base-type      (database-type->base-type-or-warn driver (:database-type col))
-               semantic-type  (calculated-semantic-type driver (:name col) (:database-type col))
-               json?          (isa? base-type :type/JSON)]
+         (let [base-type (database-type->base-type-or-warn driver (:database-type col))
+               semantic-type (calculated-semantic-type driver (:name col) (:database-type col))
+               json? (isa? base-type :type/JSON)
+               database-position (some-> (:database-position col) int)]
            (merge
             (u/select-non-nil-keys col [:table-name
                                         :pk?
                                         :name
                                         :database-type
-                                        :database-position
                                         :field-comment
                                         :database-required
                                         :database-is-auto-increment])
@@ -190,6 +190,8 @@
              :base-type         base-type
              ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
              :json-unfolding    json?}
+            (when database-position
+              {:database-position database-position})
             (when semantic-type
               {:semantic-type semantic-type})
             (when (and json? (driver/database-supports? driver :nested-field-columns db))

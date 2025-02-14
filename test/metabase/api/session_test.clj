@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.api.session-test
+(ns metabase.api.session-test
   "Tests for /api/session"
   (:require
    [clj-http.client :as http]
@@ -18,8 +18,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -68,15 +67,22 @@
         (is (get-in response [:cookies session-cookie :expires])))
       (let [body (assoc (mt/user->credentials :rasta) :remember false)
             response (mt/client-real-response :post 200 "session" body)]
-        (is (nil? (get-in response [:cookies session-cookie :expires]))))))
-  (testing "failure should log an error(#14317)"
-    (t2.with-temp/with-temp [:model/User user]
+        (is (nil? (get-in response [:cookies session-cookie :expires])))))))
+
+(deftest login-failure-logging-test
+  (reset-throttlers!)
+  (testing "POST /api/session failure should log an error (#14317)"
+    (mt/with-temp [:model/User user]
       (mt/with-log-messages-for-level [messages :error]
-        (mt/client :post 400 "session" {:email (:email user), :password "wooo"})
+        (is (=? {:specific-errors {:username ["missing required key, received: nil"]}}
+                (mt/client :post 400 "session" {:email (:email user), :password "wooo"})))
         (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
-                (->> (messages)
-                     ;; geojson can throw errors and we want the authentication error
-                     (m/find-first #(= (:message %) "Authentication endpoint error")))))))))
+                (or (->> (messages)
+                         ;; geojson can throw errors and we want the authentication error
+                         ;;
+                         ;; TODO -- huh? geojson???? -- Cam
+                         (m/find-first #(= (:message %) "Authentication endpoint error")))
+                    ["no matching message:" (messages)])))))))
 
 (deftest login-validation-test
   (reset-throttlers!)
@@ -293,7 +299,7 @@
       (mt/with-fake-inbox
         (let [password {:old "password"
                         :new "whateverUP12!!"}]
-          (t2.with-temp/with-temp [:model/User {:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
+          (mt/with-temp [:model/User {:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
             (let [token (u/prog1 (str id "_" (random-uuid))
                           (t2/update! :model/User id {:reset_token <>}))
                   creds {:old {:password (:old password)
@@ -344,7 +350,7 @@
         (mt/with-fake-inbox
           (let [password {:old "password"
                           :new "whateverUP12!!"}]
-            (t2.with-temp/with-temp [:model/User {:keys [id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
+            (mt/with-temp [:model/User {:keys [id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
               (let [token       (u/prog1 (str id "_" (random-uuid))
                                   (t2/update! :model/User id {:reset_token <> :last_login :%now}))
                     reset-token (t2/select-one-fn :reset_token :model/User :id id)]
@@ -488,7 +494,7 @@
   (testing "POST /google_auth"
     (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
       (testing "Google auth works with an active account"
-        (t2.with-temp/with-temp [:model/User _ {:email "test@metabase.com" :is_active true}]
+        (mt/with-temp [:model/User _ {:email "test@metabase.com" :is_active true}]
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
@@ -499,7 +505,7 @@
             (is (malli= SessionResponse
                         (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
       (testing "Google auth throws exception for a disabled account"
-        (t2.with-temp/with-temp [:model/User _ {:email "test@metabase.com" :is_active false}]
+        (mt/with-temp [:model/User _ {:email "test@metabase.com" :is_active false}]
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
@@ -516,8 +522,8 @@
   (reset-throttlers!)
   (ldap.test/with-ldap-server!
     (testing "Test that we can login with LDAP"
-      (t2.with-temp/with-temp [:model/User _ {:email    "ngoc@metabase.com"
-                                              :password "securedpassword"}]
+      (mt/with-temp [:model/User _ {:email    "ngoc@metabase.com"
+                                    :password "securedpassword"}]
         (is (malli= SessionResponse
                     (mt/client :post 200 "session" {:username "ngoc@metabase.com"
                                                     :password "securedpassword"})))))
@@ -538,17 +544,17 @@
              (mt/client :post 401 "session" (mt/user->credentials :lucky)))))
 
     (testing "Test that a deactivated user cannot login with LDAP"
-      (t2.with-temp/with-temp [:model/User _ {:email    "ngoc@metabase.com"
-                                              :password "securedpassword"
-                                              :is_active false}]
+      (mt/with-temp [:model/User _ {:email    "ngoc@metabase.com"
+                                    :password "securedpassword"
+                                    :is_active false}]
         (is (= {:errors {:_error "Your account is disabled."}}
                (mt/client :post 401 "session" {:username "ngoc@metabase.com"
                                                :password "securedpassword"})))))
 
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
-        (t2.with-temp/with-temp [:model/User _ {:email    "ngoc@metabase.com"
-                                                :password "securedpassword"}]
+        (mt/with-temp [:model/User _ {:email    "ngoc@metabase.com"
+                                      :password "securedpassword"}]
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "ngoc@metabase.com"
                                                       :password "securedpassword"}))))))
@@ -573,7 +579,7 @@
           (t2/delete! :model/User :email "John.Smith@metabase.com"))))
 
     (testing "test that group sync works even if ldap doesn't return uid (#22014)"
-      (t2.with-temp/with-temp [:model/PermissionsGroup group {:name "Accounting"}]
+      (mt/with-temp [:model/PermissionsGroup group {:name "Accounting"}]
         (mt/with-temporary-raw-setting-values
           [ldap-group-mappings (json/encode {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
           (is (malli= SessionResponse
@@ -585,10 +591,11 @@
 (deftest no-password-no-login-test
   (reset-throttlers!)
   (testing "A user with no password should not be able to do password-based login"
-    (t2.with-temp/with-temp [:model/User user]
+    (mt/with-temp [:model/User user]
       (t2/update! :model/User (u/the-id user) {:password nil, :password_salt nil})
       (let [device-info {:device_id          "Cam's Computer"
                          :device_description "The computer where Cam wrote this test"
+                         :embedded            false
                          :ip_address         "192.168.1.1"}]
         (is (= nil
                (#'api.session/email-login (:email user) nil device-info)))

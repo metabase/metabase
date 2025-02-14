@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -340,10 +340,13 @@ describe("scenarios > organization > timelines > question", () => {
         cy.button("Create").click();
         cy.wait("@createEvent");
 
+        H.undoToast().icon("close").click();
         H.echartsIcon("star").should("be.visible");
 
         // should then hide the newly created event
+        timelineEventVisibility("RC2").should("be.checked");
         toggleEventVisibility("RC2");
+        timelineEventVisibility("RC2").should("not.be.checked");
 
         H.echartsIcon("star").should("not.exist");
 
@@ -550,7 +553,9 @@ function timelineEventCard(eventName) {
 }
 
 function toggleEventVisibility(eventName) {
-  timelineEventCard(eventName).within(() => {
-    cy.findByRole("checkbox").click();
-  });
+  timelineEventVisibility(eventName).click();
+}
+
+function timelineEventVisibility(eventName) {
+  return timelineEventCard(eventName).findByRole("checkbox");
 }

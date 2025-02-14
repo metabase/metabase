@@ -27,7 +27,7 @@ Check out the [Interactive embedding quick start](https://www.metabase.com/docs/
 
 ## Prerequisites for interactive embedding
 
-1. Make sure you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [Pro or Enterprise plan](https://store.metabase.com/checkout/login-details).
+1. Make sure you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise plan](https://store.metabase.com/checkout/login-details).
 2. Organize people into Metabase [groups](../people-and-groups/start.md).
 3. Set up [permissions](../permissions/introduction.md) for each group.
 4. Set up [SSO](../people-and-groups/start.md#authentication) to automatically apply permissions and show people the right data upon sign-in. In general, **we recommend using [SSO with JWT](../people-and-groups/authenticating-with-jwt.md)**.
@@ -61,19 +61,39 @@ Once you're ready to roll out your interactive embed, make sure that people **al
 
 ### Pointing an iframe to a Metabase URL
 
-Go to your Metabase instance and find the page that you want to embed.
+Go to your Metabase and find the page that you want to embed.
 
 For example, to embed your Metabase home page, set the `src` attribute to your [site URL](../configuring-metabase/settings.md#site-url), such as:
 
 ```
-http://metabase.yourcompany.com/
+src="http://metabase.yourcompany.com/"
 ```
 
-To embed a specific Metabase dashboard, use the dashboard's URL, such as:
+To embed a specific Metabase dashboard, you'll want to use the dashboard's Entity ID URL `/dashboard/entity/[Entity ID]`.
 
 ```
-http://metabase.yourcompany.com/dashboard/1
+src="http://metabase.yourcompany.com/dashboard/entity/[Entity ID]"
 ```
+
+To get a dashboard's Entity ID, visit the dashboard and click on the **info** button. In the **Overview** tab, copy the **Entity ID**.  Then in your iframe's `src` attribute to:
+
+```
+src=http://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b
+```
+
+If your dashboard has more than one tab, select the tab you want people to land on and copy the Tab's ID. Add the tab's ID to the URL:
+
+```
+src=http://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b?tab=YLNdEYtzuSMA0lqO7u3FD
+```
+
+You _can_ use a dashboard's sequential ID, but you should prefer the Entity ID, as Entity IDs are stable across different Metabase environments (e.g., if you're testing on a staging environment, the Entity IDs will remain the same when [exporting the data and importing it](../installation-and-operation/serialization.md) into a production environment).
+
+If you want to point to a question, collection, or model, visit the item, click on its info, grab the item's Entity ID and follow the url structure: `/[Item type]/entity/[Entity-Id]`. Examples:
+
+- `/collection/entity/[Entity ID]`
+- `/model/entity/[Entity ID]`
+- `/question/entity/[Entity ID]`
 
 ### Pointing an iframe to an authentication endpoint
 
@@ -234,6 +254,8 @@ Options include:
 - [Search](#search)
 - [Side nav](#side_nav)
 - [Top nav](#top_nav)
+
+> To make sure that query parameters are preserved when using [click behavior](../dashboards/interactive.md#customizing-click-behavior), configure the [Site URL](../configuring-metabase/settings.md#site-url) Admin setting to be your Metabase server URL.
 
 ### `action_buttons`
 

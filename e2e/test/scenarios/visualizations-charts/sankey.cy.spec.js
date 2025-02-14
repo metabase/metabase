@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const SANKEY_QUERY = `
@@ -46,14 +46,14 @@ describe("scenarios > visualizations > sankey", () => {
     });
 
     // Select Sankey viz type
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Sankey-button").click();
 
     // Ensure it shows node labels
     H.echartsContainer().findByText("Social Media");
 
     // Edit viz settings
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar")
       .as("settings-sidebar")
       .findByText("Display")

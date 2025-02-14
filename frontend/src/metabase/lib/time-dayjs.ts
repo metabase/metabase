@@ -41,10 +41,17 @@ const NUMERIC_UNIT_FORMATS: Record<string, (value: number) => Dayjs> = {
       .weekday(value - 1)
       .startOf("day"),
   "day-of-month": (value: number) =>
-    dayjs("2016-01-01").date(value).startOf("day"),
+    dayjs("2016-01-01") // initial date must be in leap year to format properly
+      .date(value)
+      .startOf("day"),
   "day-of-year": (value: number) =>
-    dayjs("2016-01-01").dayOfYear(value).startOf("day"),
-  "week-of-year": (value: number) => dayjs().week(value).startOf("week"),
+    dayjs("2016-01-01") // initial date must be in leap year to format properly
+      .dayOfYear(value)
+      .startOf("day"),
+  "week-of-year": (value: number) =>
+    dayjs("2016-01-01") // initial date must be in a year with 53 iso weeks to format properly
+      .isoWeek(value) // set the iso week number to not depend on the first day of week
+      .startOf("isoWeek"),
   "month-of-year": (value: number) =>
     dayjs()
       .month(value - 1)

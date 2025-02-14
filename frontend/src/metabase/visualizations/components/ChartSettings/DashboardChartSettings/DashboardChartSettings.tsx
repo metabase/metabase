@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
 import { getClickBehaviorSettings } from "metabase/visualizations/lib/settings";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -71,7 +70,7 @@ export const DashboardChartSettings = ({
   );
 
   return (
-    <ChartSettingsRoot className={CS.spread}>
+    <ChartSettingsRoot>
       <BaseChartSettings
         series={series}
         onChange={setTempSettings}

@@ -83,7 +83,7 @@ export function QueryColumnFingerprintInfo({
         timezone={timezone}
       />
     );
-  } else if (Lib.isNumber(column)) {
+  } else if (Lib.isNumeric(column)) {
     return (
       <NumberFingerprint
         className={className}

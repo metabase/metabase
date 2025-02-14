@@ -194,7 +194,7 @@ There's a few other things Metabase needs to know when comparing test results. F
 
 This is actually a common problem, and luckily we have figured out how to work around it. The solution is usually something like using different _schemas_ in place of different databases, or prefixing table names with the database name, and creating everything in the same database. For SQL-based databases, you can implement `sql.tx/qualified-name-components` to have tests use a different identifier instead of what they would normally use, for example `"shared_db"."test-data_venues".id` instead of `"test-data".venues.id`. The SQL Server and Oracle test extensions are good examples of such black magic in action.
 
-# Setting up CI
+## Setting up CI
 
 Once you have all the tests passing, you'll need to set up GitHub Actions to run those tests against your driver. You'll need to add a new job to [`.github/workflows/drivers.yml`](https://github.com/metabase/metabase/blob/master/.github/workflows/drivers.yml) to run tests against your database.
 

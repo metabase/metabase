@@ -103,8 +103,10 @@
               (is (not= (hash-for-user-id user-id-1 {"State" "CA"} (mt/id :categories :name))
                         (hash-for-user-id user-id-2 {"State" "NY"} (mt/id :categories :name))))
               (is (not= (hash-for-user-id user-id-1 {} (mt/id :categories :name))
-                        (hash-for-user-id user-id-2 {"State" "NY"} (mt/id :categories :name)))))))))
+                        (hash-for-user-id user-id-2 {"State" "NY"} (mt/id :categories :name)))))))))))
 
+(deftest advanced-field-values-hash-test-2
+  (mt/with-premium-features #{:sandboxes}
     (testing "gtap with card and remappings"
       ;; hack so that we don't have to setup all the sandbox permissions the table
       (with-redefs [ee-params.field-values/field-is-sandboxed? (constantly true)]

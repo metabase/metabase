@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util.password-test
+(ns metabase.util.password-test
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]

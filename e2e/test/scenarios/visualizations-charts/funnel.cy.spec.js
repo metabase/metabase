@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -21,7 +21,7 @@ describe("scenarios > visualizations > funnel chart", () => {
       },
       display: "funnel",
     });
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.sidebar().findByText("Data").click();
   });
 

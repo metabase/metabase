@@ -37,5 +37,6 @@ serdes/meta:
   model: Table
 - id: id
   model: Field
-database_indexed: null
+database_indexed: false
 database_partitioned: null
+entity_id: lBBw7t427Jo24hA7Ax383

@@ -18,6 +18,7 @@ export const DashboardInfoButton = () => {
       tooltipLabel={t`More info`}
       icon="info"
       isActive={isShowingDashboardInfoSidebar}
+      disabled={isShowingDashboardInfoSidebar}
       onClick={() =>
         isShowingDashboardInfoSidebar
           ? dispatch(closeSidebar())

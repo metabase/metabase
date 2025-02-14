@@ -1,7 +1,6 @@
 import type { MouseEvent } from "react";
 import { memo, useCallback, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
@@ -34,6 +33,7 @@ interface Props {
   isLoading: boolean;
   isPreviewing: boolean;
   hasError: boolean;
+  isTrashedOnRemove: boolean;
   onRemove: (dashcard: DashboardCard) => void;
   onAddSeries: (dashcard: DashboardCard) => void;
   onReplaceCard: (dashcard: DashboardCard) => void;
@@ -58,6 +58,7 @@ function DashCardActionsPanelInner({
   isLoading,
   isPreviewing,
   hasError,
+  isTrashedOnRemove,
   onRemove,
   onAddSeries,
   onReplaceCard,
@@ -237,6 +238,28 @@ function DashCardActionsPanelInner({
     }
   }
 
+  if (isTrashedOnRemove) {
+    buttons.push(
+      <DashCardActionButton
+        onClick={handleRemoveCard}
+        tooltip={t`Remove and trash`}
+        key="remove"
+      >
+        <DashCardActionButton.Icon name="trash" />
+      </DashCardActionButton>,
+    );
+  } else {
+    buttons.push(
+      <DashCardActionButton
+        onClick={handleRemoveCard}
+        tooltip={t`Remove`}
+        key="remove"
+      >
+        <DashCardActionButton.Icon name="close" />
+      </DashCardActionButton>,
+    );
+  }
+
   return (
     <>
       <DashCardActionsPanelContainer
@@ -247,9 +270,6 @@ function DashCardActionsPanelInner({
       >
         <DashCardActionButtonsContainer>
           {buttons}
-          <DashCardActionButton onClick={handleRemoveCard} tooltip={t`Remove`}>
-            <DashCardActionButton.Icon name="close" />
-          </DashCardActionButton>
         </DashCardActionButtonsContainer>
       </DashCardActionsPanelContainer>
     </>

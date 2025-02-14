@@ -5,8 +5,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.connection :as t2.connection]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection)
    (java.util.concurrent Semaphore)))
@@ -23,7 +22,7 @@
         user-exists?              (fn [email]
                                     (t2/exists? :model/User :email email))
         create-user!              (fn [email]
-                                    (t2/insert! :model/User (assoc (t2.with-temp/with-temp-defaults :model/User) :email email)))
+                                    (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email)))
         transaction-exception     (Exception. "(Abort the current transaction)")
         is-transaction-exception? (fn is-transaction-exception? [e]
                                     (or (identical? e transaction-exception)

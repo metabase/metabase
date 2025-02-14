@@ -1,8 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import type { DashboardCardCustomMenuItem } from "embedding-sdk";
+/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
+/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { editQuestion } from "metabase/dashboard/actions";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
@@ -115,14 +118,18 @@ export const DashCardMenuItems = ({
     withEditLink,
   ]);
 
-  return menuItems.map(item => (
-    <Menu.Item
-      fw="bold"
-      {...item}
-      key={item.key}
-      icon={<Icon name={item.iconName} aria-hidden />}
-    >
-      {item.label}
-    </Menu.Item>
-  ));
+  return menuItems.map(item => {
+    const { iconName, key, ...rest } = item;
+
+    return (
+      <Menu.Item
+        fw="bold"
+        {...rest}
+        key={key}
+        leftSection={<Icon name={iconName} aria-hidden />}
+      >
+        {item.label}
+      </Menu.Item>
+    );
+  });
 };

@@ -1,34 +1,37 @@
 (ns metabase.pulse.send-test
   "These are mostly Alerts test, dashboard subscriptions could be found in
   [[metabase.dashboard-subscription-test]]."
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.channel.email :as email]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
-   [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse :as models.pulse]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.core :as pulse]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.retry :as retry]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each
+  (fn warn-possible-rebuild
+    [thunk]
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n\n"
+      (thunk))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Util Fns & Macros                                                |
@@ -82,8 +85,8 @@
                                                     :channel_type "http"
                                                     :channel_id   chn-id})]
     (if (= pulse-channel :email)
-      (t2.with-temp/with-temp [:model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                                               :pulse_channel_id pc-id}]
+      (mt/with-temp [:model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                     :pulse_channel_id pc-id}]
         (f pulse))
       (f pulse))))
 
@@ -132,7 +135,7 @@
                          ((keyword "channel" (name channel-type))
                           (pulse.test-util/with-captured-channel-send-messages!
                             (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
-                              (pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
+                              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
                     (thunk []
                       (if fixture
                         (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
@@ -387,8 +390,8 @@
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
-        (t2.with-temp/with-temp [:model/PulseChannelRecipient _ {:user_id          (mt/user->id :crowberto)
-                                                                 :pulse_channel_id (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id)}]
+        (mt/with-temp [:model/PulseChannelRecipient _ {:user_id          (mt/user->id :crowberto)
+                                                       :pulse_channel_id (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id)}]
           (thunk)))
 
       :assert
@@ -653,17 +656,17 @@
 
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:name                   "Test card"
-                                                        :dataset_query          {:database (mt/id)
-                                                                                 :type     :native
-                                                                                 :native   {:query (str "select count(*) as total_per_day, date as the_day "
-                                                                                                        "from checkins "
-                                                                                                        "group by date")}}
-                                                        :display                :line
-                                                        :visualization_settings {:graph.show_goal  true
-                                                                                 :graph.goal_value 5.9
-                                                                                 :graph.dimensions ["THE_DAY"]
-                                                                                 :graph.metrics    ["TOTAL_PER_DAY"]}}]
+    (mt/with-temp [:model/Card {card-id :id} {:name                   "Test card"
+                                              :dataset_query          {:database (mt/id)
+                                                                       :type     :native
+                                                                       :native   {:query (str "select count(*) as total_per_day, date as the_day "
+                                                                                              "from checkins "
+                                                                                              "group by date")}}
+                                              :display                :line
+                                              :visualization_settings {:graph.show_goal  true
+                                                                       :graph.goal_value 5.9
+                                                                       :graph.dimensions ["THE_DAY"]
+                                                                       :graph.metrics    ["TOTAL_PER_DAY"]}}]
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:alert_condition  "goal"
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]

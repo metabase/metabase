@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -107,7 +107,16 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    cy.findByTestId("chart-legend").findByText("Doohickey").realHover();
+    // flakiness prevention
+    cy.findByTestId("chart-container").findByText("TOTAL").should("be.visible");
+    cy.findByTestId("view-footer")
+      .findByText("Showing 4 rows")
+      .should("be.visible");
+
+    cy.findByTestId("chart-legend")
+      .findByText("Doohickey")
+      .trigger("mouseover");
+
     [
       ["Doohickey", "true"],
       ["Gadget", "false"],
@@ -125,7 +134,7 @@ describe("scenarios > visualizations > pie chart", () => {
       },
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
@@ -146,7 +155,7 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
@@ -218,7 +227,7 @@ describe("scenarios > visualizations > pie chart", () => {
 
     ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // Open color picker
     cy.findByLabelText("#F2A86F").click();
@@ -247,7 +256,7 @@ describe("scenarios > visualizations > pie chart", () => {
     ensurePieChartRendered(["Gadget", "Doohickey"]);
 
     // Ensure row settings should show only two rows
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.getDraggableElements().should("have.length", 2);
     H.getDraggableElements().contains("Woooget").should("not.exist");
     H.getDraggableElements().contains("Gizmo").should("not.exist");
@@ -305,8 +314,9 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
     );
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
@@ -318,6 +328,7 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
@@ -694,6 +705,7 @@ function confirmSliceClickBehavior(sliceLabel, value, elementIndex) {
     if (elementIndex == null) {
       cy.findByText(sliceLabel).click({ force: true });
     } else {
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByText(sliceLabel).eq(elementIndex).click({ force: true });
     }
   });

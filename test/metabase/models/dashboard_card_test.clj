@@ -9,8 +9,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
 
@@ -269,9 +268,9 @@
                    :model/Dashboard dashboard {}]
       (card-test/test-visualization-settings-normalization
        (fn [original expected]
-         (t2.with-temp/with-temp [:model/DashboardCard dashcard {:dashboard_id           (u/the-id dashboard)
-                                                                 :card_id                (u/the-id card)
-                                                                 :visualization_settings original}]
+         (mt/with-temp [:model/DashboardCard dashcard {:dashboard_id           (u/the-id dashboard)
+                                                       :card_id                (u/the-id card)
+                                                       :visualization_settings original}]
            (is (= expected
                   (t2/select-one-fn :visualization_settings :model/DashboardCard :id (u/the-id dashcard))))))))))
 

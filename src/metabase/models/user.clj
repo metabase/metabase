@@ -10,15 +10,13 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-group-membership :as perms-group-membership]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.setup :as setup]
+   [metabase.setup.core :as setup]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
@@ -121,11 +119,11 @@
     (log/infof "Adding User %s to All Users permissions group..." user-id)
     (when superuser?
       (log/infof "Adding User %s to All Users permissions group..." user-id))
-    (let [groups (filter some? [(perms-group/all-users)
-                                (when superuser? (perms-group/admin))])]
-      (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
+    (let [groups (filter some? [(perms/all-users-group)
+                                (when superuser? (perms/admin-group))])]
+      (perms/allow-changing-all-users-group-members
         ;; do a 'simple' insert against the Table name so we don't trigger the after-insert behavior
-        ;; for [[metabase.models.permissions-group-membership]]... we don't want it recursively trying to update
+        ;; for [[metabase.permissions.models.permissions-group-membership]]... we don't want it recursively trying to update
         ;; the user
         (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
                     (for [group groups]
@@ -140,25 +138,25 @@
          active? :is_active
          :keys [email locale]}    (t2/changes user)
         in-admin-group?           (t2/exists? :model/PermissionsGroupMembership
-                                              :group_id (:id (perms-group/admin))
+                                              :group_id (:id (perms/admin-group))
                                               :user_id  id)]
     ;; Do not let the last admin archive themselves
     (when (and in-admin-group?
                (false? active?))
-      (perms-group-membership/throw-if-last-admin!))
+      (perms/throw-if-last-admin!))
     (when (some? superuser?)
       (cond
         (and superuser?
              (not in-admin-group?))
         (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
-                    :group_id (u/the-id (perms-group/admin))
+                    :group_id (u/the-id (perms/admin-group))
                     :user_id  id)
         ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
              in-admin-group?)
         (t2/delete! (t2/table-name :model/PermissionsGroupMembership)
-                    :group_id (u/the-id (perms-group/admin))
+                    :group_id (u/the-id (perms/admin-group))
                     :user_id  id)))
     ;; make sure email and locale are valid if set
     (when email
@@ -170,10 +168,13 @@
       (t2/delete! 'PulseChannelRecipient :user_id id))
     ;; If we're setting the reset_token then encrypt it before it goes into the DB
     (cond-> user
-      true        (merge (hashed-password-values (t2/changes user)))
-      reset-token (update :reset_token u.password/hash-bcrypt)
-      locale      (update :locale i18n/normalized-locale-string)
-      email       (update :email u/lower-case-en))))
+      true             (merge (hashed-password-values (t2/changes user)))
+      reset-token      (update :reset_token u.password/hash-bcrypt)
+      locale           (update :locale i18n/normalized-locale-string)
+      email            (update :email u/lower-case-en)
+      ;; Set or clear deactivated_at if the :is_active key changes. Not used directly in product.
+      active?          (assoc :deactivated_at nil)
+      (false? active?) (assoc :deactivated_at :%now))))
 
 (defn add-common-name
   "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.
@@ -224,14 +225,6 @@
   [user-or-id]
   (when user-or-id
     (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (u/the-id user-or-id))))
-
-(def UserGroupMembership
-  "Group Membership info of a User.
-  In which :is_group_manager is only included if `advanced-permissions` is enabled."
-  [:map
-   [:id ms/PositiveInt]
-   ;; is_group_manager only included if `advanced-permissions` is enabled
-   [:is_group_manager {:optional true} :boolean]])
 
 (defmethod mi/exclude-internal-content-hsql :model/User
   [_model & {:keys [table-alias]}]
@@ -372,8 +365,8 @@
   (u/prog1 (insert-new-user! (assoc new-user :sso_source "google"))
     ;; send an email to everyone including the site admin if that's set
     (when (integrations.common/send-new-sso-user-admin-email?)
-      (classloader/require 'metabase.email.messages)
-      ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
+      (classloader/require 'metabase.channel.email.messages)
+      ((resolve 'metabase.channel.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
 
 (mu/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
@@ -416,6 +409,7 @@
   {:pre [(string? reset-token)]}
   (str (public-settings/site-url) "/auth/reset_password/" reset-token))
 
+;; TODO -- does this belong HERE, or in the `permissions` module?
 (defn set-permissions-groups!
   "Set the user's group memberships to equal the supplied group IDs. Returns `true` if updates were made, `nil`
   otherwise."

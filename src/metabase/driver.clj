@@ -54,10 +54,11 @@
     timezone-id
     (str (t/zone-id))))
 
+;; TODO -- we really need to decouple this stuff and use an event for this
+
 (defn- update-send-pulse-triggers-timezone!
   []
-  (classloader/require 'metabase.task.send-pulses)
-  ((resolve 'metabase.task.send-pulses/update-send-pulse-triggers-timezone!)))
+  ((requiring-resolve 'metabase.pulse.task.send-pulses/update-send-pulse-triggers-timezone!)))
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
@@ -160,6 +161,7 @@
     (the-driver :baby)     ; -> Exception"
   [driver]
   {:pre [((some-fn keyword? string?) driver)]}
+  (classloader/the-classloader)
   (let [driver (keyword driver)]
     (driver.impl/load-driver-namespace-if-needed! driver)
     driver))
@@ -716,7 +718,15 @@
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
-    :test/dynamic-dataset-loading})
+    :test/dynamic-dataset-loading
+
+    ;; Some DBs allow you to connect to a DB that doesn't exist by creating it for you.
+    ;; This is to allow such DBs to opt out of tests that rely on not being able to connect to non-existent DBs.
+    :test/creates-db-on-connect
+
+    ;; For some cloud DBs the test database is never created, and can't or shouldn't be destroyed.
+    ;; This is to allow avoiding destroying the test DBs of such cloud DBs.
+    :test/cannot-destroy-db})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -1057,7 +1067,7 @@
   nil)
 
 (defmulti execute-write-query!
-  "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.models.action]]).
+  "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.actions.models]]).
   Drivers that support `:actions/custom` must implement this method."
   {:changelog-test/ignore true, :added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
@@ -1216,3 +1226,17 @@
   {:added "0.48.0", :arglists '([driver database & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti dynamic-database-types-lookup
+  "Generate mapping of `database-types` to base types for dynamic database types (eg. defined by user; postgres enums).
+
+  The `sql-jdbc.sync/database-type->base-type` is used as simple look-up, while this method is expected to do database
+  calls when necessary. At the time it was added, its purpose was to check for postgres enum types. Its meant to
+  be extended also for other dynamic types when necessary."
+  {:added "0.53.0" :arglists '([driver database database-types])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod dynamic-database-types-lookup ::driver
+  [_driver _database _database-types]
+  nil)

@@ -6,14 +6,15 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.driver :as driver]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
@@ -61,7 +62,7 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/database
   [model]
-  (classloader/require 'metabase.models.database)
+  (t2/resolve-model :model/Database) ; for side-effects
   model)
 
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
@@ -88,7 +89,7 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/table
   [model]
-  (classloader/require 'metabase.models.table)
+  (t2/resolve-model :model/Table)
   model)
 
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
@@ -108,12 +109,14 @@
 
 (derive :metadata/column :model/Field)
 
+(def ^:private ^:dynamic *table-idents* nil)
+
 (methodical/defmethod t2.model/resolve-model :metadata/column
   [model]
-  (classloader/require 'metabase.models.dimension
-                       'metabase.models.field
-                       'metabase.models.field-values
-                       'metabase.models.table)
+  (t2/resolve-model :model/Dimension) ; for side-effects
+  (t2/resolve-model :model/Field)
+  (t2/resolve-model :model/FieldValues)
+  (t2/resolve-model :model/Table)
   model)
 
 (methodical/defmethod t2.model/model->namespace :metadata/column
@@ -183,6 +186,8 @@
      (dissoc field
              :dimension/human-readable-field-id :dimension/id :dimension/name :dimension/type
              :values/human-readable-values :values/values)
+     (when-let [prefix (get *table-idents* (:table-id field))]
+       {:ident (lib.metadata.ident/ident-for-field prefix field)})
      (when (and (= dimension-type :external)
                 (:dimension/human-readable-field-id field))
        {:lib/external-remap {:lib/type :metadata.column.remapping/external
@@ -208,8 +213,8 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/card
   [model]
-  (classloader/require 'metabase.models.card
-                       'metabase.models.persisted-info)
+  (t2/resolve-model :model/Card)
+  (t2/resolve-model :model/PersistedInfo)
   model)
 
 (methodical/defmethod t2.model/model->namespace :metadata/card
@@ -285,8 +290,8 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/segment
   [model]
-  (classloader/require 'metabase.models.segment
-                       'metabase.models.table)
+  (t2.model/resolve-model :model/Segment)
+  (t2.model/resolve-model :model/Table)
   model)
 
 (methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/segment
@@ -342,17 +347,21 @@
 
 (defn- tables [database-id]
   (t2/select :metadata/table
-             :db_id           database-id
-             :active          true
-             :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
+             {:where [:and
+                      [:= :db_id database-id]
+                      [:= :active true]
+                      [:or
+                       [:is :visibility_type nil]
+                       [:not-in :visibility_type #{"hidden" "technical" "cruft"}]]]}))
 
 (defn- metadatas-for-table [metadata-type table-id]
   (case metadata-type
     :metadata/column
-    (t2/select :metadata/column
-               :table_id        table-id
-               :active          true
-               :visibility_type [:not-in #{"sensitive" "retired"}])
+    (into [] (lib.metadata.ident/attach-idents #(get *table-idents* %))
+          (t2/select :metadata/column
+                     :table_id        table-id
+                     :active          true
+                     :visibility_type [:not-in #{"sensitive" "retired"}]))
 
     :metadata/metric
     (t2/select :metadata/metric :table_id table-id, :source_card_id [:= nil], :type :metric, :archived false)
@@ -365,16 +374,47 @@
     :metadata/metric
     (t2/select :metadata/metric :source_card_id card-id, :type :metric, :archived false)))
 
-(p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
+(defn- database-name [database-id atom-db-name]
+  (if-let [db-name @atom-db-name]
+    db-name
+    (reset! atom-db-name (:name (database database-id)))))
+
+(defn- table-idents [db-name tbls]
+  (into {} (comp (filter identity)
+                 (map (juxt :id #(lib.metadata.ident/table-prefix db-name %))))
+        tbls))
+
+(defn- ensure-table-idents [table-idents-atom db-name table-ids]
+  (let [id->ident (or @table-idents-atom {})]
+    (or (when-let [missing-ids (not-empty (into #{} (remove id->ident) table-ids))]
+          (log/debugf "Fetching tables for their idents: %s" (pr-str missing-ids))
+          (let [tbls (t2/select :metadata/table :id [:in missing-ids])]
+            (swap! table-idents-atom merge (table-idents db-name tbls))))
+        id->ident)))
+
+(defn- attach-idents [table-idents-atom db-name columns]
+  (let [table-ids (into #{} (map :table-id) columns)
+        id->ident (ensure-table-idents table-idents-atom db-name table-ids)]
+    (lib.metadata.ident/attach-idents id->ident columns)))
+
+(p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id db-name-atom table-idents-atom]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
-    (database database-id))
+    (let [db (database database-id)]
+      (reset! db-name-atom (:name db))
+      db))
   (metadatas [_this metadata-type ids]
-    (metadatas database-id metadata-type ids))
+    (let [ms (metadatas database-id metadata-type ids)]
+      (cond->> ms
+        (= metadata-type :metadata/column) (attach-idents table-idents-atom (database-name database-id db-name-atom)))))
   (tables [_this]
-    (tables database-id))
+    (let [tbls (tables database-id)]
+      (swap! table-idents-atom merge (table-idents (database-name database-id db-name-atom) tbls))
+      tbls))
   (metadatas-for-table [_this metadata-type table-id]
-    (metadatas-for-table metadata-type table-id))
+    (ensure-table-idents table-idents-atom (database-name database-id db-name-atom) [table-id])
+    (binding [*table-idents* @table-idents-atom]
+      (metadatas-for-table metadata-type table-id)))
   (metadatas-for-card [_this metadata-type card-id]
     (metadatas-for-card metadata-type card-id))
   (setting [_this setting-name]
@@ -396,7 +436,7 @@
   Call [[application-database-metadata-provider]] instead, which wraps this inner function with optional, dynamically
   scoped caching, to allow reuse of `MetadataProvider`s across the life of an API request."
   [database-id]
-  (-> (->UncachedApplicationDatabaseMetadataProvider database-id)
+  (-> (->UncachedApplicationDatabaseMetadataProvider database-id (atom nil) (atom {}))
       lib.metadata.cached-provider/cached-metadata-provider
       lib.metadata.invocation-tracker/invocation-tracker-provider))
 

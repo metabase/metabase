@@ -3,13 +3,13 @@ import type { DatePickerShortcut } from "metabase/querying/filters/types";
 export const MAIN_SHORTCUTS: DatePickerShortcut[] = [
   "today",
   "yesterday",
-  "last-week",
-  "last-month",
+  "previous-week",
+  "previous-month",
 ];
 
 export const SECONDARY_SHORTCUTS: DatePickerShortcut[] = [
-  "last-7-days",
-  "last-30-days",
-  "last-3-months",
-  "last-12-months",
+  "previous-7-days",
+  "previous-30-days",
+  "previous-3-months",
+  "previous-12-months",
 ];

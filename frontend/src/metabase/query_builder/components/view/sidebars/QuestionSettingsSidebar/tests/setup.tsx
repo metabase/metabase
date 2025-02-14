@@ -41,12 +41,12 @@ export const setup = async ({
   const currentUser = createMockUser();
   setupCardEndpoints(card);
   setupPerformanceEndpoints([]);
-  setupModelPersistenceEndpoints(
+  setupModelPersistenceEndpoints([
     getMockModelCacheInfo({
       card_id: card.id as number,
       state: "persisted",
     }),
-  );
+  ]);
 
   setupDatabaseEndpoints(
     createSampleDatabase({

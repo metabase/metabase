@@ -10,6 +10,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.formatter :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
+   [metabase.public-settings :as public-settings]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -989,3 +990,26 @@
                                    first)]
             (testing "Renders with at least one category name visible"
               (is (= "Doohickey" category-text)))))))))
+
+(deftest render-correct-day-of-week-test
+  (testing "The static-viz bar chart renders with the correct start of the week."
+    (mt/with-temporary-setting-values [public-settings/start-of-week "monday"]
+      (mt/dataset test-data
+        (let [q    (mt/mbql-query products
+                     {:aggregation [[:sum $price]]
+                      :breakout    [$category
+                                    !day-of-week.created_at]})
+              card {:name                   "bar-test"
+                    :display                :bar
+                    :dataset_query          q
+                    :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                             :graph.metrics ["sum"]}}]
+          (mt/with-temp [:model/Card {card-id :id} card]
+            (let [doc            (render.tu/render-card-as-hickory! card-id)
+                  first-day-text (->> (hik.s/select (hik.s/tag :text) doc)
+                                      (map (fn [el] (-> el :content first)))
+                                      (take-last 7)
+                                      (map str/trim)
+                                      first)]
+              (testing "Renders with correct day of week first"
+                (is (= "Monday" first-day-text))))))))))

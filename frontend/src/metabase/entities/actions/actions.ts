@@ -1,7 +1,11 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
-import { actionApi, useGetActionQuery } from "metabase/api";
+import {
+  actionApi,
+  useGetActionQuery,
+  useListActionsQuery,
+} from "metabase/api";
 import {
   createEntity,
   entityCompatibleQuery,
@@ -120,6 +124,7 @@ const Actions = createEntity({
     getUseGetQuery: () => ({
       useGetQuery: useGetActionQuery,
     }),
+    useListQuery: useListActionsQuery,
   },
   api: {
     list: (entityQuery: ListActionsRequest, dispatch: Dispatch) =>

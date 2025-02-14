@@ -1,7 +1,7 @@
 (ns metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   (:require
    [metabase.db.query :as mdb.query]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -75,7 +75,7 @@
        data-perm-changes))))
 
 (defenterprise delete-gtaps-if-needed-after-permissions-change!
-  "For use only inside `metabase.models.permissions`; don't call this elsewhere. Delete GTAPs (sandboxes) that are no
+  "For use only inside `metabase.permissions.models.permissions`; don't call this elsewhere. Delete GTAPs (sandboxes) that are no
   longer needed after the permissions graph is updated. `changes` are the parts of the graph that have changed, i.e.
   the `things-only-in-new` returned by `clojure.data/diff`."
   :feature :sandboxes

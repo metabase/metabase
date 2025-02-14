@@ -245,7 +245,7 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperatorName =
+export type ExpressionOperator =
   | "+"
   | "-"
   | "*"
@@ -278,7 +278,7 @@ export type ExpressionOperatorName =
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
 export type ExpressionParts = {
-  operator: ExpressionOperatorName;
+  operator: ExpressionOperator;
   args: (ExpressionArg | ExpressionParts)[];
   options: ExpressionOptions;
 };
@@ -384,17 +384,19 @@ export type StringFilterOptions = {
   caseSensitive?: boolean;
 };
 
+export type NumberFilterValue = number | bigint;
+
 export type NumberFilterParts = {
   operator: NumberFilterOperator;
   column: ColumnMetadata;
-  values: number[];
+  values: NumberFilterValue[];
 };
 
 export type CoordinateFilterParts = {
   operator: CoordinateFilterOperator;
   column: ColumnMetadata;
   longitudeColumn: ColumnMetadata | null;
-  values: number[];
+  values: NumberFilterValue[];
 };
 
 export type BooleanFilterParts = {
@@ -597,6 +599,11 @@ export type FilterDrillDetails = {
 };
 
 export type PivotType = "category" | "location" | "time";
+
+export type PivotDrillDetails = {
+  pivotTypes: PivotType[];
+  stageIndex: number;
+};
 
 export interface ClickObjectDimension {
   value: RowValue;

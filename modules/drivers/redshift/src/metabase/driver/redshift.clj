@@ -201,9 +201,11 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
-  (h2x/+ [:raw "TIMESTAMP '1970-01-01T00:00:00Z'"]
-         (h2x/* expr
-                [:raw "INTERVAL '1 second'"])))
+  (h2x/with-database-type-info
+   (h2x/+ [:raw "TIMESTAMP '1970-01-01T00:00:00Z'"]
+          (h2x/* expr
+                 [:raw "INTERVAL '1 second'"]))
+   :timestamp))
 
 (defmethod sql.qp/current-datetime-honeysql-form :redshift
   [_]
@@ -544,3 +546,8 @@
   (let [[column-name type-and-constraints] (first column-definitions)
         type (first type-and-constraints)]
     (throw (ex-info (format "There's a value with the wrong type ('%s') in the '%s' column" (name type) (name column-name)) {}))))
+
+(defmethod sql.qp/cast-temporal-byte [:redshift :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:from_varbyte expr (h2x/literal "UTF8")]))

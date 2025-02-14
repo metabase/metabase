@@ -31,6 +31,9 @@
         metadata-provider (lib.js.metadata/metadata-provider 1 metadata)]
     (is (= {:lib/type           :metadata/column
             :id                 36
+            ;; This is a bit busted because of the partial metadata, but it's still there.
+            ;; No DB or table names, so those are blank.
+            :ident              "field____!noschema!____CATEGORY_ID"
             :name               "CATEGORY_ID"
             :has-field-values   :none
             :lib/external-remap {:lib/type :metadata.column.remapping/external
@@ -54,9 +57,38 @@
         metadata-provider (lib.js.metadata/metadata-provider 1 metadata)]
     (is (= {:lib/type           :metadata/column
             :id                 33
+            ;; This is a bit busted because of the partial metadata, but it's still there.
+            ;; No DB or table names, so those are blank.
+            :ident              "field____!noschema!____ID"
             :name               "ID"
             :has-field-values   :none
             :lib/internal-remap {:lib/type :metadata.column.remapping/internal
                                  :id       66
                                  :name     "ID [internal remap]"}}
            (lib.metadata/field metadata-provider 33)))))
+
+(def ^:private mock-metadata-with-generic-tables-and-fields
+  #js {:databases #js {"1" #js {:id 1
+                                :name "fake DB"}}
+       :tables    #js {"6" #js {:id     6
+                                :name   "basic_table"
+                                :db_id  1
+                                :fields #js {}}
+                       "7" #js {:id     7
+                                :name   "another_table"
+                                :schema "SomeSchema"
+                                :db_id  1
+                                :fields #js {}}}
+       :fields    #js {"600" #js {:id   600
+                                  :table_id 6
+                                  :name "one_field"}
+                       "700" #js {:id   700
+                                  :table_id 7
+                                  :name "two_field"}}})
+
+(deftest ^:parallel idents-test
+  (let [mp (lib.js.metadata/metadata-provider 1 mock-metadata-with-generic-tables-and-fields)]
+    (is (= "field__fake DB__!noschema!__basic_table__one_field"
+           (:ident (lib.metadata/field mp 600))))
+    (is (= "field__fake DB__SomeSchema__another_table__two_field"
+           (:ident (lib.metadata/field mp 700))))))

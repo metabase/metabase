@@ -9,7 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
    [metabase.util.i18n
@@ -226,7 +226,7 @@ x.com")
   "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*
   site-wide UUID that we use for the EE/premium features token feature check API calls. It works in fundamentally the
   same way as [[site-uuid]] but should only be used by the token check logic
-  in [[metabase.public-settings.premium-features/fetch-token-status]]. (`site-uuid` is used for anonymous
+  in [[metabase.premium-features.core/fetch-token-status]]. (`site-uuid` is used for anonymous
   analytics/stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
   :encryption :when-encryption-key-set
@@ -318,13 +318,6 @@ x.com")
                 (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
-  :visibility :public
-  :audit      :getter)
-
-(defsetting map-tile-server-url
-  (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :encryption :no
-  :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
   :visibility :public
   :audit      :getter)
 
@@ -818,9 +811,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defsetting not-behind-proxy
   (deferred-tru
    (str "Indicates whether Metabase is running behind a proxy that sets the source-address-header for incoming "
-        "requests. Defaults to false, but can be set to true via environment variable."))
+        "requests."))
   :type       :boolean
-  :setter     :none
   :visibility :internal
   :default    false
   :export?    false)
@@ -897,6 +889,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :attached_dwh                   (premium-features/has-attached-dwh?)
                       :audit_app                      (premium-features/enable-audit-app?)
                       :cache_granular_controls        (premium-features/enable-cache-granular-controls?)
+                      :cache_preemptive               (premium-features/enable-preemptive-caching?)
                       :collection_cleanup             (premium-features/enable-collection-cleanup?)
                       :database_auth_providers        (premium-features/enable-database-auth-providers?)
                       :config_text_file               (premium-features/enable-config-text-file?)
@@ -1056,7 +1049,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru "Whether or not we analyze any queries at all")
   :visibility :admin
   :export?    false
-  :default    true
+  :default    false
   :type       :boolean)
 
 (defsetting download-row-limit
@@ -1065,11 +1058,14 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :integer)
 
+;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
+;;; should live in this namespace.
+
 (defsetting search-engine
   (deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
   :visibility :internal
   :export?    false
-  :default    :in-place
+  :default    :appdb
   :type       :keyword)
 
 (defsetting experimental-search-weight-overrides
@@ -1089,6 +1085,13 @@ See [fonts](../configuring-metabase/fonts.md).")
   :default    false
   :setter     :none
   :audit      :getter)
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                         DO NOT ADD ANY MORE SETTINGS IN THIS NAMESPACE                         !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin
@@ -1139,3 +1142,10 @@ See [fonts](../configuring-metabase/fonts.md).")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                         DO NOT ADD ANY MORE SETTINGS IN THIS NAMESPACE                         !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

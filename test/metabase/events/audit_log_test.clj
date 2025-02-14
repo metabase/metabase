@@ -10,8 +10,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,7 +23,7 @@
 
 (deftest card-create-test
   (testing ":card-create event"
-    (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card"}]
+    (mt/with-temp [:model/Card card {:name "My Cool Card"}]
       (is (= {:object card :user-id (mt/user->id :rasta)}
              (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)})))
       (is (partial=
@@ -63,7 +62,7 @@
   (testing :card-update
     (doseq [card-type [:question :model]]
       (testing card-type
-        (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card", :type card-type}]
+        (mt/with-temp [:model/Card card {:name "My Cool Card", :type card-type}]
           (mt/with-test-user :rasta
             (is (= {:object card :user-id (mt/user->id :rasta)}
                    (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :rasta)})))
@@ -83,7 +82,7 @@
   (testing :card-delete
     (doseq [card-type [:question :model]]
       (testing card-type
-        (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card", :type card-type}]
+        (mt/with-temp [:model/Card card {:name "My Cool Card", :type card-type}]
           (mt/with-test-user :rasta
             (is (= {:object card :user-id (mt/user->id :rasta)}
                    (events/publish-event! :event/card-delete {:object card :user-id (mt/user->id :rasta)})))
@@ -98,7 +97,7 @@
 
 (deftest dashboard-create-event-test
   (testing :dashboard-create
-    (t2.with-temp/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}]
+    (mt/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}]
       (is (= {:object dashboard :user-id (mt/user->id :rasta)}
              (events/publish-event! :event/dashboard-create {:object dashboard :user-id (mt/user->id :rasta)})))
       (is (partial=
@@ -111,7 +110,7 @@
 
 (deftest dashboard-delete-event-test
   (testing :dashboard-delete
-    (t2.with-temp/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}]
+    (mt/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}]
       (is (= {:object dashboard :user-id (mt/user->id :rasta)}
              (events/publish-event! :event/dashboard-delete {:object dashboard :user-id (mt/user->id :rasta)})))
       (is (partial=
@@ -181,7 +180,7 @@
 
 (deftest metric-create-event-test
   (testing :metric-create
-    (t2.with-temp/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)}]
+    (mt/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)}]
       (is (= {:object metric :user-id (mt/user->id :rasta)}
              (events/publish-event! :event/metric-create {:object metric :user-id (mt/user->id :rasta)})))
       (is (= {:topic       :metric-create
@@ -196,7 +195,7 @@
 
 (deftest metric-update-event-test
   (testing :metric-update
-    (t2.with-temp/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)}]
+    (mt/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)}]
       (let [event {:object           metric
                    :revision-message "update this mofo"
                    :user-id          (mt/user->id :rasta)}]
@@ -215,7 +214,7 @@
 
 (deftest metric-delete-event-test
   (testing :metric-delete
-    (t2.with-temp/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)}]
+    (mt/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)}]
       (let [event {:object           metric
                    :revision-message "deleted"
                    :user-id          (mt/user->id :rasta)}]
@@ -233,11 +232,11 @@
                (mt/latest-audit-log-entry "metric-delete" (:id metric))))))))
 
 (deftest subscription-events-test
-  (t2.with-temp/with-temp [:model/Dashboard      {dashboard-id :id} {}
-                           :model/Pulse          pulse {:archived     false
-                                                        :name         "name"
-                                                        :dashboard_id dashboard-id
-                                                        :parameters   ()}]
+  (mt/with-temp [:model/Dashboard      {dashboard-id :id} {}
+                 :model/Pulse          pulse {:archived     false
+                                              :name         "name"
+                                              :dashboard_id dashboard-id
+                                              :parameters   ()}]
     (let [recipients [{:email "test@metabase.com"}
                       {:id    (mt/user->id :rasta)
                        :email "rasta@metabase.com"}]
@@ -277,12 +276,12 @@
                (mt/latest-audit-log-entry "subscription-create" (:id pulse))))))))
 
 (deftest alert-events-test
-  (t2.with-temp/with-temp [:model/Dashboard      {dashboard-id :id} {}
-                           :model/Card           card {:name "card-name"}
-                           :model/Pulse          pulse {:archived     false
-                                                        :name         "name"
-                                                        :dashboard_id dashboard-id
-                                                        :parameters   ()}]
+  (mt/with-temp [:model/Dashboard      {dashboard-id :id} {}
+                 :model/Card           card {:name "card-name"}
+                 :model/Pulse          pulse {:archived     false
+                                              :name         "name"
+                                              :dashboard_id dashboard-id
+                                              :parameters   ()}]
     (let [pulse (-> pulse
                     (assoc :card card)
                     (assoc :channels [{:channel_type  :email
@@ -381,7 +380,7 @@
 
 (deftest segment-create-event-test
   (testing :segment-create
-    (t2.with-temp/with-temp [:model/Segment segment]
+    (mt/with-temp [:model/Segment segment]
       (mt/with-test-user :rasta
         (is (= {:object segment :user-id (mt/user->id :rasta)}
                (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :rasta)})))
@@ -397,7 +396,7 @@
 
 (deftest segment-update-event-test
   (testing :segment-update
-    (t2.with-temp/with-temp [:model/Segment segment]
+    (mt/with-temp [:model/Segment segment]
       (let [event (-> {:object segment}
                       (assoc :revision-message "update this mofo")
                       (assoc :user-id (mt/user->id :rasta)))]
@@ -416,7 +415,7 @@
 
 (deftest segment-delete-event-test
   (testing :segment-delete
-    (t2.with-temp/with-temp [:model/Segment segment]
+    (mt/with-temp [:model/Segment segment]
       (let [event (assoc {:object segment}
                          :revision-message "deleted"
                          :user-id (mt/user->id :rasta))]

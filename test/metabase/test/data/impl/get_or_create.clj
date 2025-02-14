@@ -6,10 +6,10 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.sync :as sync]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.tools.with-temp])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
@@ -256,7 +256,7 @@
   (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
         db                 (first (t2/insert-returning-instances! :model/Database
                                                                   (merge
-                                                                   (t2.with-temp/with-temp-defaults :model/Database)
+                                                                   (toucan2.tools.with-temp/with-temp-defaults :model/Database)
                                                                    {:name     (tx/database-display-name-for-driver driver database-name)
                                                                     :engine   driver
                                                                     :details  connection-details

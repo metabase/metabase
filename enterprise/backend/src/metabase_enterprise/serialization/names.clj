@@ -2,11 +2,11 @@
   "Consistent instance-independent naming scheme that replaces IDs with human-readable paths."
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
    [metabase.db :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
@@ -25,7 +25,9 @@
   "Inverse of `safe-name`."
   codec/url-decode)
 
-(defmulti ^:private fully-qualified-name* mi/model)
+(defmulti ^:private fully-qualified-name*
+  {:arglists '([instance])}
+  mi/model)
 
 (def ^{:arglists '([entity] [model id])} fully-qualified-name
   "Get the logical path for entity `entity`."
@@ -130,8 +132,10 @@
    [:user       {:optional true} ms/PositiveInt]
    [:snippet    {:optional true} [:maybe ms/PositiveInt]]])
 
-(defmulti ^:private path->context* (fn [_ model _ _]
-                                     model))
+(defmulti ^:private path->context*
+  {:arglists '([context model model-attrs entity-name])}
+  (fn [_ model _ _]
+    model))
 
 (def ^:private ^{:arglists '([context model model-attrs entity-name])} path->context
   "Extract entities from a logical path."
@@ -303,7 +307,7 @@
                         new-context
                         (recur new-context more))))]
       (if (and
-           (not (mc/validate [:maybe Context] context))
+           (not (mr/validate [:maybe Context] context))
            (not *suppress-log-name-lookup-exception*))
         (log/warn
          (ex-info (format "Can't resolve %s in fully qualified name %s"

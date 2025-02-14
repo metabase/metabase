@@ -1,4 +1,4 @@
-import { getLinkedIssues, getPRsFromCommitMessage, getBackportSourcePRNumber } from "./linked-issues";
+import { getBackportSourcePRNumber, getLinkedIssues, getPRsFromCommitMessage } from "./linked-issues";
 
 const closingKeywords = [
   "Close",
@@ -51,6 +51,11 @@ describe("getLinkedIssues", () => {
         #123
         `),
       ).toBeNull();
+    });
+
+    it("should not match issues from other repositories", () => {
+      expect(getLinkedIssues("closes https://github.com/metabase/metabase-fake/issues/123")).toBeNull();
+      expect(getLinkedIssues("closes https://github.com/metabase/metabae/issues/123")).toBeNull();
     });
   });
 
