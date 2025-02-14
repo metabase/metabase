@@ -4,8 +4,13 @@
   (:require
    [clojure.string :as str]
    [metabase.models.setting :as setting]
+   [metabase.api.auth :as api.auth]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-trs]]))
+
+(comment
+  ;; needed to load the api-key setting
+  api.auth/keep-me)
 
 (def ^:private ^:const ^String static-metabase-api-key-header "x-metabase-apikey")
 
