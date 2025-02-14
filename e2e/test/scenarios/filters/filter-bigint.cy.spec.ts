@@ -8,6 +8,30 @@ describe("scenarios > filters > bigint (metabase#5816)", () => {
   const negativeDecimalValue = "-9223372036854775809";
   const positiveDecimalValue = "9223372036854775808";
 
+  const bigIntQuestionDetails: NativeQuestionDetails = {
+    name: "SQL BIGINT",
+    native: {
+      query: `SELECT ${minBigIntValue} AS BIGINT
+UNION ALL
+SELECT 0 AS BIGINT
+UNION ALL
+SELECT ${maxBigIntValue} AS BIGINT`,
+    },
+    display: "table",
+  };
+
+  const decimalQuestionDetails: NativeQuestionDetails = {
+    name: "SQL DECIMAL",
+    native: {
+      query: `SELECT CAST('${negativeDecimalValue}' AS DECIMAL) AS DECIMAL
+UNION ALL
+SELECT CAST(0 AS DECIMAL) AS DECIMAL
+UNION ALL
+SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
+    },
+    display: "table",
+  };
+
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -25,20 +49,8 @@ describe("scenarios > filters > bigint (metabase#5816)", () => {
       filterDisplayName: string;
       filteredRowCount: number;
     }) {
-      const questionDetails: NativeQuestionDetails = {
-        name: "SQL BIGINT",
-        native: {
-          query: `SELECT ${minBigIntValue} AS BIGINT
-UNION ALL
-SELECT 0 AS BIGINT
-UNION ALL
-SELECT ${maxBigIntValue} AS BIGINT`,
-        },
-        display: "table",
-      };
-
       cy.log("create a question");
-      H.createNativeQuestion(questionDetails, { visitQuestion: true });
+      H.createNativeQuestion(bigIntQuestionDetails, { visitQuestion: true });
       H.queryBuilderHeader().findByText("Explore results").click();
       H.assertQueryBuilderRowCount(3);
 
@@ -161,20 +173,8 @@ SELECT ${maxBigIntValue} AS BIGINT`,
       filterDisplayName: string;
       filteredRowCount: number;
     }) {
-      const questionDetails: NativeQuestionDetails = {
-        name: "SQL DECIMAL",
-        native: {
-          query: `SELECT CAST('${negativeDecimalValue}' AS DECIMAL) AS DECIMAL
-UNION ALL
-SELECT CAST(0 AS DECIMAL) AS DECIMAL
-UNION ALL
-SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
-        },
-        display: "table",
-      };
-
       cy.log("create a question");
-      H.createNativeQuestion(questionDetails, { visitQuestion: true });
+      H.createNativeQuestion(decimalQuestionDetails, { visitQuestion: true });
       H.queryBuilderHeader().findByText("Explore results").click();
       H.assertQueryBuilderRowCount(3);
 
@@ -284,4 +284,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 3,
     });
   });
+
+  it("mbql query + dashboards + number parameter + BIGINT column", () => {});
 });
