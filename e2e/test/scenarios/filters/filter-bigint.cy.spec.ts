@@ -1,4 +1,9 @@
-import type { NativeQuestionDetails } from "e2e/support/helpers";
+import type {
+  DashboardDetails,
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
+import type { DashboardParameterMapping, Parameter } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -285,5 +290,176 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
     });
   });
 
-  it("mbql query + dashboards + number parameter + BIGINT column", () => {});
+  it("mbql query + dashboards + number parameter + BIGINT column", () => {
+    function testFilter({
+      parameterType,
+      setParameterValue,
+      filterDisplayName,
+      filterArgsDisplayName,
+      filteredRowCount,
+    }: {
+      parameterType: string;
+      setParameterValue: () => void;
+      filterDisplayName: string;
+      filterArgsDisplayName: string;
+      filteredRowCount: number;
+    }) {
+      const parameterDetails: Parameter = {
+        id: "b6ed2d71",
+        type: parameterType,
+        name: "Number",
+        slug: "number",
+        sectionId: "number",
+      };
+
+      const dashboardDetails: DashboardDetails = {
+        parameters: [parameterDetails],
+      };
+
+      const getQuestionDetails = (
+        cardId: number,
+      ): StructuredQuestionDetails => ({
+        name: "MBQL BIGINT",
+        query: {
+          "source-table": `card__${cardId}`,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      const getParameterMapping = (
+        cardId: number,
+      ): DashboardParameterMapping => ({
+        card_id: cardId,
+        parameter_id: parameterDetails.id,
+        target: [
+          "dimension",
+          ["field", "BIGINT", { "base-type": "type/BigInteger" }],
+        ],
+      });
+
+      cy.log("create a dashboard");
+      H.createNativeQuestion(bigIntQuestionDetails).then(({ body: card }) => {
+        H.createQuestionAndDashboard({
+          questionDetails: getQuestionDetails(card.id),
+          dashboardDetails,
+        }).then(({ body: dashcard, questionId }) => {
+          H.addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: questionId,
+            card: {
+              parameter_mappings: [getParameterMapping(questionId)],
+            },
+          });
+          cy.wrap(dashcard.dashboard_id).as("dashboardId");
+        });
+      });
+
+      cy.log("add a filter");
+      H.visitDashboard("@dashboardId");
+      H.getDashboardCard()
+        .findByTestId("scalar-value")
+        .should("have.text", "3");
+      H.filterWidget().click();
+      H.popover().within(() => {
+        setParameterValue();
+        cy.button("Add filter").click();
+      });
+      H.filterWidget().findByText(filterArgsDisplayName).should("be.visible");
+      H.getDashboardCard()
+        .findByTestId("scalar-value")
+        .should("have.text", String(filteredRowCount));
+
+      cy.log("drill-thru");
+      H.getDashboardCard().findByText("MBQL BIGINT").click();
+      H.queryBuilderFiltersPanel().findByText(filterDisplayName);
+      H.queryBuilderMain()
+        .findByTestId("scalar-value")
+        .should("have.text", String(filteredRowCount));
+    }
+
+    cy.log("= operator");
+    testFilter({
+      parameterType: "number/=",
+      setParameterValue: () =>
+        cy.findByPlaceholderText("Enter a number").type(maxBigIntValue),
+      filterDisplayName: `BIGINT is equal to "${maxBigIntValue}"`,
+      filterArgsDisplayName: maxBigIntValue,
+      filteredRowCount: 1,
+    });
+
+    cy.log("!= operator");
+    testFilter({
+      parameterType: "number/!=",
+      setParameterValue: () =>
+        cy.findByPlaceholderText("Enter a number").type(minBigIntValue),
+      filterDisplayName: `BIGINT is not equal to "${minBigIntValue}"`,
+      filterArgsDisplayName: minBigIntValue,
+      filteredRowCount: 2,
+    });
+
+    cy.log(">= operator");
+    testFilter({
+      parameterType: "number/>=",
+      setParameterValue: () =>
+        cy.findByPlaceholderText("Enter a number").type(minBigIntValue),
+      filterDisplayName: `BIGINT is greater than or equal to "${minBigIntValue}"`,
+      filterArgsDisplayName: minBigIntValue,
+      filteredRowCount: 3,
+    });
+
+    cy.log("<= operator");
+    testFilter({
+      parameterType: "number/<=",
+      setParameterValue: () =>
+        cy.findByPlaceholderText("Enter a number").type(maxBigIntValue),
+      filterDisplayName: `BIGINT is less than or equal to "${maxBigIntValue}"`,
+      filterArgsDisplayName: maxBigIntValue,
+      filteredRowCount: 3,
+    });
+
+    cy.log("between operator - min value");
+    testFilter({
+      parameterType: "number/between",
+      setParameterValue: () => {
+        cy.findAllByPlaceholderText("Enter a number")
+          .eq(0)
+          .type(minBigIntValue);
+        cy.findAllByPlaceholderText("Enter a number").eq(1).type("0");
+      },
+      filterDisplayName: `BIGINT is between "${minBigIntValue}" and 0`,
+      filterArgsDisplayName: "2 selections",
+      filteredRowCount: 2,
+    });
+
+    cy.log("between operator - max value");
+    testFilter({
+      parameterType: "number/between",
+      setParameterValue: () => {
+        cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+        cy.findAllByPlaceholderText("Enter a number")
+          .eq(1)
+          .type(maxBigIntValue);
+      },
+      filterDisplayName: `BIGINT is between 0 and "${maxBigIntValue}"`,
+      filterArgsDisplayName: "2 selections",
+      filteredRowCount: 2,
+    });
+
+    cy.log("between operator - min and max values");
+    testFilter({
+      parameterType: "number/between",
+      setParameterValue: () => {
+        cy.findAllByPlaceholderText("Enter a number")
+          .eq(0)
+          .type(minBigIntValue);
+        cy.findAllByPlaceholderText("Enter a number")
+          .eq(1)
+          .type(maxBigIntValue);
+      },
+      filterDisplayName: `BIGINT is ${minBigIntValue} – ${maxBigIntValue}`,
+      filterArgsDisplayName: "2 selections",
+      filteredRowCount: 3,
+    });
+  });
 });
