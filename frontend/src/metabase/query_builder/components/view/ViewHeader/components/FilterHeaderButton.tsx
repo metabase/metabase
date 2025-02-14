@@ -2,14 +2,14 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { QueryModalType } from "metabase/query_builder/constants";
+import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
+import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
+import { Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
-import type { QueryModalType } from "metabase/query_builder/constants";
-import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import { Button, Icon, Popover } from "metabase/ui";
 
-import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 
 interface FilterHeaderButtonProps {
@@ -21,6 +21,8 @@ interface FilterHeaderButtonProps {
   onCollapse?: () => void;
 }
 
+type Filter = Lib.Clause | Lib.SegmentMetadata;
+
 export function FilterHeaderButton({
   className,
   // onOpenModal,
@@ -30,7 +32,18 @@ export function FilterHeaderButton({
   onCollapse,
 }: FilterHeaderButtonProps) {
   const label = isExpanded ? t`Hide filters` : t`Show filters`;
-  const items = useMemo(() => query && getFilterItems(query), [query]);
+  const [dirtyAddedFilters, setDirtyAddedFilters] = useState<Filter[]>([]);
+  const [dirtyRemovedFilters, setDirtyRemovedFilters] = useState<Filter[]>([]);
+  const items = useMemo(() => {
+    const items = getFilterItems(query);
+
+    const dirtyAddedFilterItems = dirtyAddedFilters.map(filter => ({
+      filter,
+      stageIndex: -1,
+    }));
+
+    return [...items, ...dirtyAddedFilterItems];
+  }, [query, dirtyAddedFilters]);
   const hasItems = items ? items.length > 0 : false;
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -50,8 +63,10 @@ export function FilterHeaderButton({
     }
   };
 
-  const handleAddFilter = (filter: Lib.Clause | Lib.SegmentMetadata) => {
-    // TODO
+  const handleAddFilter = (filter: Filter) => {
+    setDirtyAddedFilters(filters => [...filters, filter]);
+    setIsDropdownOpen(false);
+    onExpand?.();
   };
 
   return (
