@@ -1,10 +1,10 @@
 (ns metabase-enterprise.sso.api.interface
   (:require
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [ring.util.response :as response]))
 
-(defn- select-sso-backend
-  [req]
+(defn- select-sso-backend [req]
   (if (contains? (:params req) :jwt)
     :jwt
     :saml))
@@ -14,6 +14,7 @@
   complex logic around this, but now it's just a simple priority. If SAML is configured use that otherwise JWT"
   [req]
   (cond
+    (and (not (:jwt (:params req))) (= (:token (:params req)) "true")) :init
     (and (sso-settings/saml-enabled) (sso-settings/jwt-enabled)) (select-sso-backend req)
     (sso-settings/saml-enabled) :saml
     (sso-settings/jwt-enabled)  :jwt
@@ -24,6 +25,10 @@
   result in a redirect to an SSO backend"
   {:arglists '([request])}
   sso-backend)
+
+(defmethod sso-get :init [_]
+  (-> (response/redirect (str (sso-settings/jwt-identity-provider-uri) "?" "token=true"))
+      (response/header "Access-Control-Allow-Credentials" "true")))
 
 (defmulti sso-post
   "Multi-method for supporting a POST-back from an SSO signin request. An implementation of this method will need to

@@ -130,14 +130,13 @@
      (ex-info (tru "SDK Embedding is disabled. Enable it in the Embedding settings.")
               {:status      "error-embedding-sdk-disabled"
                :status-code 402}))
-(-> (response/response
-           {:status :ok
-            :id     (:id session)
-            :exp    (:exp jwt-data)
-            :iat    (:iat jwt-data)})
-          (response/header "Access-Control-Allow-Credentials" "true")
-          )
-    ))
+
+    (-> (response/response
+         {:status :ok
+          :id     (:id session)
+          :exp    (:exp jwt-data)
+          :iat    (:iat jwt-data)})
+        (response/header "Access-Control-Allow-Credentials" "true"))))
 
 (defn ^:private redirect-to-idp
   [idp redirect]
@@ -149,7 +148,7 @@
 
 (defn ^:private handle-jwt-authentication
   [{:keys [session redirect-url jwt-data]} token request]
-  (if ( = token  "true")
+  (if (= token  "true")
     (generate-response-token session jwt-data)
     (request/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT")))))
 
