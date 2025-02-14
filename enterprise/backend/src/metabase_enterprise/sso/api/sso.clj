@@ -8,6 +8,7 @@
    [metabase-enterprise.sso.integrations.jwt]
    [metabase-enterprise.sso.integrations.saml]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase-enterprise.sso.integrations.token]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
@@ -24,6 +25,7 @@
 
 ;; load the SSO integrations so their implementations for the multimethods below are available.
 (comment metabase-enterprise.sso.integrations.jwt/keep-me
+         metabase-enterprise.sso.integrations.token/keep-me
          metabase-enterprise.sso.integrations.saml/keep-me)
 
 ;; GET /auth/sso
@@ -33,7 +35,7 @@
   (try
     (sso.i/sso-get request)
     (catch Throwable e
-      (log/error #_e "Error returning SSO entry point")
+      (log/error #_e "Error returning SSO entry point" e)
       (throw e))))
 
 (mu/defn- sso-error-page

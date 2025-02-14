@@ -165,13 +165,21 @@ export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn =
       credentials: "include",
     });
 
-    if (!response.ok) {
+    const urlObj = await response.json();
+    const backendObj = urlObj.url;
+
+    const backendResponse = await fetch(backendObj, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    if (!backendResponse.ok) {
       throw new Error(
-        `Failed to fetch the session, HTTP status: ${response.status}`,
+        `Failed to fetch the session, HTTP status: ${backendResponse.status}`,
       );
     }
 
-    const asText = await response.text();
+    const asText = await backendResponse.text();
 
     try {
       return JSON.parse(asText);
