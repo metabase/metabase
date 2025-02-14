@@ -33,9 +33,10 @@
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.pulse :as models.pulse]
    [metabase.models.query.permissions :as query-perms]
    [metabase.permissions.core :as perms]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.pulse.core :as pulse]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -828,7 +829,7 @@
   [dashboard-id original-dashboard-params]
   (doseq [{:keys [pulse-id] :as broken-subscription} (broken-subscription-data dashboard-id original-dashboard-params)]
     ;; Archive the pulse
-    (models.pulse/update-pulse! {:id pulse-id :archived true})
+    (pulse/update-pulse! {:id pulse-id :archived true})
     ;; Let the pulse and subscription creator know about the broken pulse
     (messages/send-broken-subscription-notification! broken-subscription)))
 
