@@ -1,9 +1,6 @@
-import {
-  enclosingFunction,
-  partialMatch,
-} from "metabase-lib/v1/expressions/completer";
+import { enclosingFunction, partialMatch } from "./completer";
 
-describe("metabase-lib/v1/expressions/completer", () => {
+describe("completer", () => {
   describe("partialMatch", () => {
     it("should get the function name", () => {
       expect(partialMatch("Lowe")).toEqual("Lowe");
