@@ -1,7 +1,6 @@
 import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { UploadInput } from "metabase/components/upload";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
@@ -136,14 +135,14 @@ export const QuestionActions = ({
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Item
-                    icon={<Icon name="add" />}
+                    leftSection={<Icon name="add" />}
                     onClick={() => handleUploadClick(UploadMode.append)}
                   >
                     {t`Append data to this model`}
                   </Menu.Item>
 
                   <Menu.Item
-                    icon={<Icon name="refresh" />}
+                    leftSection={<Icon name="refresh" />}
                     onClick={() => handleUploadClick(UploadMode.replace)}
                   >
                     {t`Replace all data in this model`}

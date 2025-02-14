@@ -48,7 +48,7 @@ function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
         {match({ isFetching, count })
           .with({ isFetching: true }, () => <Loader />)
           .with({ isFetching: false, count: P.nonNullable }, () => (
-            <Text weight="bold">{t`${count} rows`}</Text>
+            <Text fw="bold">{t`${count} rows`}</Text>
           ))
           .otherwise(() => null)}
         <Button

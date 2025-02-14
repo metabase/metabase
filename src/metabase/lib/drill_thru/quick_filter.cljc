@@ -50,6 +50,7 @@
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.util.malli :as mu]))
@@ -60,7 +61,9 @@
 (mu/defn- operators-for :- [:sequential ::lib.schema.drill-thru/drill-thru.quick-filter.operator]
   [column :- ::lib.schema.metadata/column
    value]
-  (let [field-ref (lib.ref/ref column)]
+  (let [field-ref (cond-> (lib.ref/ref column)
+                    (:temporal-unit column)
+                    (lib.temporal-bucket/with-temporal-bucket (:temporal-unit column)))]
     (cond
       (lib.types.isa/structured? column)
       []
@@ -123,11 +126,14 @@
     ;; [[lib.drill-thru.column-filter/prepare-query-for-drill-addition]] handles this. (#34346)
     (when-let [drill-details (lib.drill-thru.column-filter/prepare-query-for-drill-addition
                               query stage-number column column-ref :filter)]
-      (merge drill-details
-             {:lib/type   :metabase.lib.drill-thru/drill-thru
-              :type       :drill-thru/quick-filter
-              :operators  (operators-for (:column drill-details) value)
-              :value      value}))))
+      (let [temporal-unit (lib.temporal-bucket/temporal-bucket column-ref)
+            column (cond-> (:column drill-details)
+                     temporal-unit (assoc :temporal-unit temporal-unit))]
+        (merge drill-details
+               {:lib/type   :metabase.lib.drill-thru/drill-thru
+                :type       :drill-thru/quick-filter
+                :operators  (operators-for column value)
+                :value      value})))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/quick-filter
   [_query _stage-number drill-thru]

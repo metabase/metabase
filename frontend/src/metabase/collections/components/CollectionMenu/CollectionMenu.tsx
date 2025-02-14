@@ -65,7 +65,7 @@ export const CollectionMenu = ({
     moveItems.push(
       <Menu.Item
         key="collection-move"
-        icon={<Icon name="move" />}
+        leftSection={<Icon name="move" />}
         component={ForwardRefLink}
         to={`${url}/move`}
       >{t`Move`}</Menu.Item>,
@@ -85,7 +85,7 @@ export const CollectionMenu = ({
     editItems.push(
       <Menu.Item
         key="collection-edit"
-        icon={<Icon name="lock" />}
+        leftSection={<Icon name="lock" />}
         component={ForwardRefLink}
         to={`${url}/permissions`}
       >{t`Edit permissions`}</Menu.Item>,
@@ -101,12 +101,10 @@ export const CollectionMenu = ({
     cleanupItems.push(
       <Menu.Item
         key="collection-move-to-dashboards"
-        icon={<Icon name="add_to_dash" />}
+        leftSection={<Icon name="add_to_dash" />}
         component={ForwardRefLink}
         to={`${url}/move-questions-dashboard`}
-        rightSection={
-          !hasSeenMoveToDashboard && <Badge variant="light">New</Badge>
-        }
+        rightSection={!hasSeenMoveToDashboard && <Badge>New</Badge>}
         onClick={() => !hasSeenMoveToDashboard && ackHasMoveToDashboard()}
       >{t`Move questions into their dashboards`}</Menu.Item>,
     );
@@ -116,7 +114,7 @@ export const CollectionMenu = ({
     trashItems.push(
       <Menu.Item
         key="collection-trash"
-        icon={<Icon name="trash" />}
+        leftSection={<Icon name="trash" />}
         component={ForwardRefLink}
         to={`${url}/archive`}
       >{t`Move to trash`}</Menu.Item>,

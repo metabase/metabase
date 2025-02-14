@@ -259,7 +259,7 @@ function compileInfixOp(node: Node, opts: Options) {
   const text = node.token?.text;
   let left: any = leftFn(node.children[0], opts);
   if (Array.isArray(left) && left[0]?.toUpperCase() === text?.toUpperCase()) {
-    const [_, ...args] = left;
+    const [_first, ...args] = left;
     left = args;
   } else {
     left = [left];
