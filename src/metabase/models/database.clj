@@ -168,6 +168,7 @@
    - cleans-up ambiguous legacy, db-details"
   [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
+    (log/info (u/format-color :cyan "Health check: queueing %s {:id %d}" (:name database) (:id database)))
     (sync.concurrent/submit-task!
      (fn []
        (let [details (maybe-test-and-migrate-details! database)]
