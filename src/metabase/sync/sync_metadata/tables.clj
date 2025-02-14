@@ -101,15 +101,13 @@
 (mu/defn- cruft-dependent-cols [{table-name :name :as table}
                                 database
                                 sync-stage :- [:enum ::reactivate ::create ::update]]
-  ;; if this is a crufty table, mark initial sync as complete since we'll be skipping the subsequent sync steps
   (let [is-crufty? (crufty/name? table-name (into crufty-table-patterns
                                                   (some-> database :settings :auto-cruft-tables)))]
     {:initial_sync_status (cond
-                            ;; if a table exists, we don't want to overwrite the initial sync status
-                            ;; while updating its table metadata, so that it is still "complete" during the sync.
-                            ;; See: [[metabase.sync.util-test/initial-sync-status-table-only-test]]
+                            ;; if we're updating a table, we don't overwrite the initial sync status, so that it remain
+                            ;; "complete" during the sync. See:
+                            ;; [[metabase.sync.util-test/initial-sync-status-table-only-test]]
                             (= sync-stage ::update) (:initial_sync_status table)
-                            ;; if a table is crufty, we mark it as complete to skip the subsequent sync steps
                             is-crufty?              "complete"
                             :else                   "incomplete")
      :visibility_type     (when is-crufty? :cruft)}))
