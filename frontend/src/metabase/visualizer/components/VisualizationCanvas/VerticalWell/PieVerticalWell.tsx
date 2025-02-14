@@ -33,7 +33,7 @@ function PieMetricWell() {
   const dispatch = useDispatch();
 
   const { active, isOver, setNodeRef } = useDroppable({
-    id: DROPPABLE_ID.CANVAS_MAIN,
+    id: DROPPABLE_ID.PIE_METRIC,
   });
 
   const metric = columns.find(col => col.name === settings["pie.metric"]);

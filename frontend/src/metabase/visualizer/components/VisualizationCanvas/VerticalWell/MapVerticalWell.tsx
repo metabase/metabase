@@ -81,7 +81,7 @@ function MapMetricWell() {
   const dispatch = useDispatch();
 
   const { active, isOver, setNodeRef } = useDroppable({
-    id: DROPPABLE_ID.CANVAS_MAIN,
+    id: DROPPABLE_ID.MAP_METRIC,
   });
 
   const isHighlighted = useMemo(() => {
