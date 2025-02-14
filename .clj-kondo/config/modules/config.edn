@@ -640,7 +640,11 @@
 
   enterprise/gsheets
   {:api  #{metabase-enterprise.gsheets.api}
-   :uses #{api analytics models premium-features util}}
+   :uses #{api analytics enterprise/harbormaster models premium-features util}}
+
+  enterprise/harbormaster
+  {:api #{metabase-enterprise.harbormaster.client}
+   :uses #{models util}}
 
   enterprise/llm
   {:api  #{metabase-enterprise.llm.api}
