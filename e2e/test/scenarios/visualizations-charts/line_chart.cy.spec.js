@@ -519,7 +519,40 @@ describe("scenarios > visualizations > line chart", () => {
   });
 
   describe("color series", () => {
-    it("should allow changing a series' color", () => {
+    it("should allow drag and drop", () => {
+      const testQuery = {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      };
+
+      H.visitQuestionAdhoc({
+        dataset_query: testQuery,
+        display: "line",
+      });
+
+      H.openVizSettingsSidebar();
+
+      // making sure the grabber icon is there
+      cy.findAllByTestId("chart-setting-select")
+        .then($elements => {
+          for (const element of $elements) {
+            if (element.value === "Sum of Total") {
+              return cy.wrap(element);
+            }
+          }
+        })
+        .closest("[data-testid=chartsettings-field-picker]")
+        .icon("grabber");
+    });
+
+    it("should allow changing a series' color - #53735", () => {
       H.visitQuestionAdhoc({
         dataset_query: testQuery,
         display: "line",
