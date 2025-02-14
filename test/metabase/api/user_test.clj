@@ -158,10 +158,13 @@
   (testing "user list for a groups sorts all suers by first name"
     (mt/with-premium-features #{:advanced-permissions}
       (mt/with-temp
-        [:model/User                      {alba-id :id} {:email     "alba@metabase.com"
-                                                         :first     "Alba"
-                                                         :last      "Albatross"
-                                                         :password  "chickenofthesea"}
+        [:model/User                       {alba-id :id} {:email        "alba@metabase.com"
+                                                          :first_name   "Alba"
+                                                          :last_name    "Albatross"
+                                                          :password     "chickenofthesea"
+                                                          :is_superuser false
+                                                          :is_qbnewb    true
+                                                          :is_active    true}
          :model/PermissionsGroup           {group-id1 :id} {:name "Well Sorted"}
          :model/PermissionsGroupMembership _ {:user_id alba-id :group_id group-id1 :is_group_manager false}
          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id1 :is_group_manager false}
