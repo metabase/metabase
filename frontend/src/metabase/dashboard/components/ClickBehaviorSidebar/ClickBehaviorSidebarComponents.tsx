@@ -6,6 +6,8 @@ export const Heading = (props: TitleProps) => {
   return <Title order={4} className={S.Heading} {...props} />;
 };
 
-export const SidebarContent = (props: BoxProps) => {
+export const SidebarContent = (
+  props: BoxProps & { children?: React.ReactNode },
+) => {
   return <Box px="xl" {...props} />;
 };
