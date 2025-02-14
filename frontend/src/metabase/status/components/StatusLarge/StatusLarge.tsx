@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import Link from "metabase/core/components/Link";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
@@ -28,6 +29,7 @@ type Status = {
 
 type StatusItem = {
   id?: number;
+  href?: string;
   title: string | JSX.Element;
   icon: string;
   description?: string | JSX.Element;
@@ -93,33 +95,38 @@ const StatusCard = ({
 
   const isVisible = useStatusVisibility(isActive || isInProgress);
 
+  const LinkWrapper = ({ children }: { children: JSX.Element }) =>
+    item?.href ? <Link to={item.href}>{children}</Link> : children;
+
   if (!isVisible) {
     return null;
   }
 
   return (
-    <StatusCardRoot key={id} hasBody={!!description}>
-      <StatusCardIcon>
-        <Icon name={icon as unknown as IconName} />
-      </StatusCardIcon>
-      <StatusCardBody>
-        <StatusCardTitle>
-          <Ellipsified>{title}</Ellipsified>
-        </StatusCardTitle>
-        <StatusCardDescription>{description}</StatusCardDescription>
-      </StatusCardBody>
-      {isInProgress && <StatusCardSpinner size={24} borderWidth={3} />}
-      {isCompleted && (
-        <StatusCardIconContainer>
-          <Icon name="check" size={12} />
-        </StatusCardIconContainer>
-      )}
-      {isAborted && (
-        <StatusCardIconContainer isError={true}>
-          <Icon name="warning" size={12} />
-        </StatusCardIconContainer>
-      )}
-    </StatusCardRoot>
+    <LinkWrapper key={id}>
+      <StatusCardRoot hasBody={!!description}>
+        <StatusCardIcon>
+          <Icon name={icon as unknown as IconName} />
+        </StatusCardIcon>
+        <StatusCardBody>
+          <StatusCardTitle>
+            <Ellipsified>{title}</Ellipsified>
+          </StatusCardTitle>
+          <StatusCardDescription>{description}</StatusCardDescription>
+        </StatusCardBody>
+        {isInProgress && <StatusCardSpinner size={24} borderWidth={3} />}
+        {isCompleted && (
+          <StatusCardIconContainer>
+            <Icon name="check" size={12} />
+          </StatusCardIconContainer>
+        )}
+        {isAborted && (
+          <StatusCardIconContainer isError={true}>
+            <Icon name="warning" size={12} />
+          </StatusCardIconContainer>
+        )}
+      </StatusCardRoot>
+    </LinkWrapper>
   );
 };
 

@@ -152,6 +152,9 @@ describe("GsheetsSyncStatus", () => {
     expect(
       await screen.findByText("Imported Google Sheets"),
     ).toBeInTheDocument();
+
+    screen.getByText("Start exploring");
+    screen.getByText("Files sync every 15 minutes");
   });
 
   it("should show errors", async () => {
