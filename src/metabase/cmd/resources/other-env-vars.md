@@ -74,13 +74,6 @@ Default: `config.yml`
 
 This feature requires the `config-text-file` feature flag on your token.
 
-### `MB_CUSTOM_GEOJSON_ENABLED`
-
-Type: boolean<br>
-Default: `true`
-
-Whether or not the use of custom GeoJSON is enabled.
-
 ### `MB_DB_AUTOMIGRATE`
 
 Type: boolean<br>
