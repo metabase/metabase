@@ -668,6 +668,7 @@
     metabase.legacy-mbql.util                                     mbql.u
     metabase.lib.util                                             lib.util
     metabase.lib.util.match                                       lib.util.match
+    metabase.login-history.core                                   login-history
     metabase.models.dependency                                    dependency
     metabase.models.interface                                     mi
     metabase.notification.core                                    notification
@@ -932,6 +933,7 @@
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
    metabase.test.data/mbql-query                                                                                             hooks.metabase.test.data/mbql-query
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
+   metabase.test.gentest/with-gentest                                                                                        hooks.metabase.test.gentest/with-gentest
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
    metabase.test.util/discard-setting-changes                                                                                hooks.common/with-ignored-first-arg

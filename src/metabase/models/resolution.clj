@@ -43,7 +43,7 @@
     :model/ImplicitAction                    metabase.actions.models
     :model/LegacyMetric                      metabase.models.legacy-metric
     :model/LegacyMetricImportantField        metabase.models.legacy-metric-important-field
-    :model/LoginHistory                      metabase.models.login-history
+    :model/LoginHistory                      metabase.login-history.models.login-history
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.models.moderation-review
