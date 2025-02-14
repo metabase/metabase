@@ -3,19 +3,17 @@
   (:require
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.api.ldap :as api.ldap]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
    [metabase.events :as events]
-   [metabase.integrations.google :as google]
-   [metabase.integrations.ldap :as ldap]
    [metabase.models.session :as session]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -50,17 +48,17 @@
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- request/DeviceInfo]
-  (when (api.ldap/ldap-enabled)
+  (when (sso/ldap-enabled)
     (try
-      (when-let [user-info (ldap/find-user username)]
-        (when-not (ldap/verify-password user-info password)
+      (when-let [user-info (sso/find-ldap-user username)]
+        (when-not (sso/verify-ldap-password user-info password)
           ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly
           ;; outdated password
           (throw (ex-info (str password-fail-message)
                           {:status-code 401
                            :errors      {:password password-fail-snippet}})))
         ;; password is ok, return new session if user is not deactivated
-        (let [user (ldap/fetch-or-create-user! user-info)]
+        (let [user (sso/fetch-or-create-ldap-user! user-info)]
           (if (:is_active user)
             (session/create-session! :sso user device-info)
             (throw (ex-info (str disabled-account-message)
@@ -274,14 +272,14 @@
    _body :- [:map
              [:token ms/NonBlankString]]
    request]
-  (when-not (google/google-auth-client-id)
+  (when-not (sso/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google
   (if throttling-disabled?
-    (google/do-google-auth request)
+    (sso/do-google-auth request)
     (http-401-on-error
       (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
-        (let [user (google/do-google-auth request)
+        (let [user (sso/do-google-auth request)
               {session-uuid :id, :as session} (session/create-session! :sso user (request/device-info request))
               response {:id (str session-uuid)}
               user (t2/select-one [:model/User :id :is_active], :email (:email user))]

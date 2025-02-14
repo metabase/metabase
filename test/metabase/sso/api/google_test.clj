@@ -1,8 +1,7 @@
-(ns metabase.api.google-test
+(ns metabase.sso.api.google-test
   (:require
    [clojure.test :refer :all]
-   [metabase.integrations.google :as google]
-   [metabase.integrations.google.interface :as google.i]
+   [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]))
 
 (def ^:private test-client-id "test-client-id.apps.googleusercontent.com")
@@ -16,8 +15,8 @@
         (mt/user-http-request :crowberto :put 200 "google/settings" {:google-auth-client-id test-client-id
                                                                      :google-auth-enabled true
                                                                      :google-auth-auto-create-accounts-domain "foo.com"})
-        (is (google/google-auth-enabled))
+        (is (sso.settings/google-auth-enabled))
         (is (= test-client-id
-               (google/google-auth-client-id)))
+               (sso.settings/google-auth-client-id)))
         (is (= "foo.com"
-               (google.i/google-auth-auto-create-accounts-domain)))))))
+               (sso.settings/google-auth-auto-create-accounts-domain)))))))

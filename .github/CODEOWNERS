@@ -211,6 +211,9 @@ test/metabase/server @metabase/devexp
 src/metabase/setup @metabase/core-backend-admin-webapp
 test/metabase/setup @metabase/core-backend-admin-webapp
 
+src/metabase/sso @metabase/core-backend-admin-webapp
+test/metabase/sso @metabase/core-backend-admin-webapp
+
 src/metabase/sync @metabase/drivers
 test/metabase/sync @metabase/drivers
 
