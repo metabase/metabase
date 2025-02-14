@@ -4,11 +4,11 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import Radio from "metabase/core/components/Radio";
+import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
+import { Box } from "metabase/ui";
 import type { State } from "metabase-types/store";
-
-import { ContentContainer, TabsContainer } from "./Tools.styled";
 
 type ToolsOwnProps = {
   location: Location;
@@ -71,7 +71,7 @@ function Tools({
   return (
     <>
       {tabs.length > 1 && (
-        <TabsContainer>
+        <Box mt="sm" px="lg" className={CS.borderBottom}>
           <Radio
             colorScheme="accent7"
             value={currentTab}
@@ -79,9 +79,11 @@ function Tools({
             onOptionClick={navigateToTab}
             variant="underlined"
           />
-        </TabsContainer>
+        </Box>
       )}
-      <ContentContainer>{children}</ContentContainer>
+      <Box mt="xl" px="lg">
+        {children}
+      </Box>
     </>
   );
 }
