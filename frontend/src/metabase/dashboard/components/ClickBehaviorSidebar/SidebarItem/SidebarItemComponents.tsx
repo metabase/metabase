@@ -20,7 +20,7 @@ export const BaseSidebarItemRoot = (
       className={cx(
         S.BaseSidebarItemRoot,
         {
-          [S.padded]: padded,
+          [S.padded]: padded !== false,
           [S.disabled]: disabled,
         },
         className,

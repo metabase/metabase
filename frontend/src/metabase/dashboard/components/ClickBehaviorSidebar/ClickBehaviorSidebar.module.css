@@ -13,11 +13,12 @@
 .SidebarContentBordered {
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--mb-color-border);
-}
 
-.SelectedClickBehaviorItemIcon {
-  border-color: transparent;
-  padding-left: 12px;
+  /* increase specificity */
+  .SelectedClickBehaviorItemIcon {
+    border-color: transparent;
+    padding-left: 12px;
+  }
 }
 
 .Heading {
