@@ -6,7 +6,7 @@
 
 .IconContainer {
   flex-shrink: 0;
-  border: 1px solid #f2f2f2;
+  border: 1px solid var(--mb-color-border);
   border-radius: 8px;
 }
 
