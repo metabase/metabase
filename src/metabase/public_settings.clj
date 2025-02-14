@@ -321,13 +321,6 @@ x.com")
   :visibility :public
   :audit      :getter)
 
-(defsetting map-tile-server-url
-  (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :encryption :no
-  :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-  :visibility :public
-  :audit      :getter)
-
 (defn- coerce-to-relative-url
   "Get the path of a given URL if the URL contains an origin.
    Otherwise make the landing-page a relative path."
