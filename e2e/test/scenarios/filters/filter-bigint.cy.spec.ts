@@ -290,15 +290,17 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
     });
   });
 
-  it("mbql query + dashboards + number parameter + BIGINT column", () => {
+  it("mbql query + dashboards + BIGINT column", () => {
     function testFilter({
       parameterType,
+      parameterSectionId = "number",
       setParameterValue,
       filterDisplayName,
       filterArgsDisplayName,
       filteredRowCount,
     }: {
       parameterType: string;
+      parameterSectionId?: string;
       setParameterValue: () => void;
       filterDisplayName: string;
       filterArgsDisplayName: string;
@@ -309,7 +311,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
         type: parameterType,
         name: "Number",
         slug: "number",
-        sectionId: "number",
+        sectionId: parameterSectionId,
       };
 
       const dashboardDetails: DashboardDetails = {
@@ -378,7 +380,18 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
         .should("have.text", String(filteredRowCount));
     }
 
-    cy.log("= operator");
+    cy.log("id parameter");
+    testFilter({
+      parameterType: "id",
+      parameterSectionId: "id",
+      setParameterValue: () =>
+        cy.findByPlaceholderText("Enter an ID").type(maxBigIntValue),
+      filterDisplayName: `BIGINT is equal to "${maxBigIntValue}"`,
+      filterArgsDisplayName: maxBigIntValue,
+      filteredRowCount: 1,
+    });
+
+    cy.log("number/= parameter");
     testFilter({
       parameterType: "number/=",
       setParameterValue: () =>
@@ -388,7 +401,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 1,
     });
 
-    cy.log("!= operator");
+    cy.log("number/!= parameter");
     testFilter({
       parameterType: "number/!=",
       setParameterValue: () =>
@@ -398,7 +411,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 2,
     });
 
-    cy.log(">= operator");
+    cy.log("number/>= parameter");
     testFilter({
       parameterType: "number/>=",
       setParameterValue: () =>
@@ -408,7 +421,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 3,
     });
 
-    cy.log("<= operator");
+    cy.log("number/<= parameter");
     testFilter({
       parameterType: "number/<=",
       setParameterValue: () =>
@@ -418,7 +431,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 3,
     });
 
-    cy.log("between operator - min value");
+    cy.log("number/between parameter - min value");
     testFilter({
       parameterType: "number/between",
       setParameterValue: () => {
@@ -432,7 +445,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 2,
     });
 
-    cy.log("between operator - max value");
+    cy.log("number/between parameter - max value");
     testFilter({
       parameterType: "number/between",
       setParameterValue: () => {
@@ -446,7 +459,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 2,
     });
 
-    cy.log("between operator - min and max values");
+    cy.log("number/between parameter - min and max values");
     testFilter({
       parameterType: "number/between",
       setParameterValue: () => {
@@ -463,15 +476,17 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
     });
   });
 
-  it("mbql query + dashboards + number parameter + DECIMAL column", () => {
+  it("mbql query + dashboards + DECIMAL column", () => {
     function testFilter({
       parameterType,
+      parameterSectionId = "number",
       setParameterValue,
       filterDisplayName,
       filterArgsDisplayName,
       filteredRowCount,
     }: {
       parameterType: string;
+      parameterSectionId?: string;
       setParameterValue: () => void;
       filterDisplayName: string;
       filterArgsDisplayName: string;
@@ -482,7 +497,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
         type: parameterType,
         name: "Number",
         slug: "number",
-        sectionId: "number",
+        sectionId: parameterSectionId,
       };
 
       const dashboardDetails: DashboardDetails = {
@@ -551,7 +566,19 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
         .should("have.text", String(filteredRowCount));
     }
 
-    cy.log("= operator");
+    cy.log("id parameter");
+    // see https://github.com/metabase/metabase/blob/6694870932830ff36964edd8b2c4555b81ddeda8/src/metabase/query_processor/middleware/parameters/mbql.clj#L21
+    // testFilter({
+    //   parameterType: "id",
+    //   parameterSectionId: "id",
+    //   setParameterValue: () =>
+    //     cy.findByPlaceholderText("Enter an ID").type(positiveDecimalValue),
+    //   filterDisplayName: `DECIMAL is equal to "${positiveDecimalValue}"`,
+    //   filterArgsDisplayName: positiveDecimalValue,
+    //   filteredRowCount: 1,
+    // });
+
+    cy.log("number/= parameter");
     testFilter({
       parameterType: "number/=",
       setParameterValue: () =>
@@ -561,7 +588,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 1,
     });
 
-    cy.log("!= operator");
+    cy.log("number/!= parameter");
     testFilter({
       parameterType: "number/!=",
       setParameterValue: () =>
@@ -571,7 +598,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 2,
     });
 
-    cy.log(">= operator");
+    cy.log("number/>= parameter");
     testFilter({
       parameterType: "number/>=",
       setParameterValue: () =>
@@ -581,7 +608,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 3,
     });
 
-    cy.log("<= operator");
+    cy.log("number/<= parameter");
     testFilter({
       parameterType: "number/<=",
       setParameterValue: () =>
@@ -591,7 +618,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 3,
     });
 
-    cy.log("between operator - min value");
+    cy.log("number/between parameter - min value");
     testFilter({
       parameterType: "number/between",
       setParameterValue: () => {
@@ -605,7 +632,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 2,
     });
 
-    cy.log("between operator - max value");
+    cy.log("number/between parameter - max value");
     testFilter({
       parameterType: "number/between",
       setParameterValue: () => {
@@ -619,7 +646,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS DECIMAL`,
       filteredRowCount: 2,
     });
 
-    cy.log("between operator - min and max values");
+    cy.log("number/between parameter - min and max values");
     testFilter({
       parameterType: "number/between",
       setParameterValue: () => {
