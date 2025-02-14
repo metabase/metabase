@@ -5,7 +5,7 @@ import { t } from "ttag";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import { Button, Icon, Popover } from "metabase/ui";
+import { Badge, Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
@@ -80,6 +80,18 @@ export function FilterHeaderButton({
         <Popover.Target>
           <Button
             leftSection={<Icon name="filter" />}
+            rightSection={
+              shouldShowFilterPanelExpander ? (
+                <Badge
+                  bg="color-filter"
+                  color="text"
+                  style={{ cursor: "pointer" }}
+                  px="sm"
+                >
+                  {items.length}
+                </Badge>
+              ) : null
+            }
             className={cx(className, ViewTitleHeaderS.FilterButton)}
             onClick={handleFilterClick}
             data-testid="question-filter-header"
@@ -95,21 +107,6 @@ export function FilterHeaderButton({
           />
         </Popover.Dropdown>
       </Popover>
-
-      {shouldShowFilterPanelExpander && (
-        <Button
-          aria-label={label}
-          className={ViewTitleHeaderS.FilterButtonAttachment}
-          onClick={isExpanded ? onCollapse : onExpand}
-          data-testid="filters-visibility-control"
-          data-expanded={isExpanded}
-          style={{ borderLeft: "none" }} // mantine puts a double border between buttons in groups
-        >
-          <div className={ViewTitleHeaderS.FilterCountChip}>
-            {items?.length}
-          </div>
-        </Button>
-      )}
     </Button.Group>
   );
 }
