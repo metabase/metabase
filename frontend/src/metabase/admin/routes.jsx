@@ -52,7 +52,7 @@ import {
 
 import { PerformanceTabId } from "./performance/types";
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
-import { UpsellPerformanceTools } from "./upsells";
+import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route
@@ -168,7 +168,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             key="error-overview"
             path="errors"
             title={t`Erroring Questions`}
-            component={PLUGIN_ADMIN_TOOLS.COMPONENT || UpsellPerformanceTools}
+            component={PLUGIN_ADMIN_TOOLS.COMPONENT || ToolsUpsell}
           />
           <Route
             path="model-caching"
