@@ -608,10 +608,10 @@
   "Can this type be a category or list?"
   [base-type semantic-type]
   (not
-    (or (isa? base-type :type/Temporal)
-        (isa? base-type :type/Collection)
-        (isa? base-type :type/Float)
+   (or (isa? base-type :type/Temporal)
+       (isa? base-type :type/Collection)
+       (isa? base-type :type/Float)
         ;; Don't let IDs become list Fields (they already can't become categories, because they already have a semantic
         ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
-        (isa? semantic-type :type/PK)
-        (isa? semantic-type :type/FK))))
+       (isa? semantic-type :type/PK)
+       (isa? semantic-type :type/FK))))

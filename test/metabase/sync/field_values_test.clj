@@ -178,8 +178,8 @@
       (testing "its FieldValues be limited."
         (is (=? {:values #(>= analyze/auto-list-cardinality-threshold (count %))
                  :has_more_values true}
-               (t2/select-one :model/FieldValues
-                              :field_id (mt/id :blueberries_consumed :str))))))))
+                (t2/select-one :model/FieldValues
+                               :field_id (mt/id :blueberries_consumed :str))))))))
 
 (deftest auto-list-with-max-length-threshold-test
   (one-off-dbs/with-blueberries-db
@@ -209,8 +209,8 @@
         (is (=? {:has_more_values true
                  :values [(str/join (repeat 50 "A"))
                           (str/join (repeat 10 "B"))]}
-               (t2/select-one :model/FieldValues
-                              :field_id (mt/id :blueberries_consumed :str))))))))
+                (t2/select-one :model/FieldValues
+                               :field_id (mt/id :blueberries_consumed :str))))))))
 
 (deftest list-with-cardinality-threshold-test
   (testing "If we had explicitly marked the Field as `list` (instead of `auto-list`)"

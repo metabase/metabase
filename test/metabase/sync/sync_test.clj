@@ -268,7 +268,6 @@
               (is (= (expected-movie-table) movie))
               (is (= (expected-studio-table) studio)))))))))
 
-
 (deftest scanning-test
   (mt/with-temp [:model/Database db {:engine ::sync-test}]
     (sync/sync-database! db)
