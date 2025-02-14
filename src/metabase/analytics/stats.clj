@@ -15,7 +15,6 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.eid-translation :as eid-translation]
-   [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -126,7 +125,7 @@
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")
    :email_configured                     (setting/get :email-configured?)
    :slack_configured                     (slack/slack-configured?)
-   :sso_configured                       (google/google-auth-enabled)
+   :sso_configured                       (setting/get :google-auth-enabled)
    :instance_started                     (snowplow/instance-creation)
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
    :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (setting/get :enable-embedding)
@@ -789,7 +788,7 @@
     :enabled   (slack/slack-configured?)}
    {:name      :sso-google
     :available true
-    :enabled   (google/google-auth-configured)}
+    :enabled   (setting/get :google-auth-configured)}
    {:name      :sso-ldap
     :available true
     :enabled   (public-settings/ldap-enabled?)}

@@ -1,11 +1,11 @@
-(ns metabase.integrations.ldap.default-implementation
+(ns metabase.sso.ldap.default-implementation
   "Default LDAP integration. This integration is used by OSS or for EE if enterprise features are not enabled."
   (:require
    [clj-ldap.client :as ldap]
    [clojure.string :as str]
-   [metabase.integrations.common :as integrations.common]
    [metabase.models.user :as user]
    [metabase.premium-features.core :refer [defenterprise-schema]]
+   [metabase.sso.common :as sso.common]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -27,8 +27,7 @@
 
 (def LDAPSettings
   "Options passed to LDAP integration implementations. These are just the various LDAP Settings from
-  `metabase.integrations.ldap`, packaged up as a single map so implementations don't need to fetch Setting values
-  directly."
+  [[metabase.sso.ldap]], packaged up as a single map so implementations don't need to fetch Setting values directly."
   [:map
    [:first-name-attribute ms/NonBlankString]
    [:last-name-attribute  ms/NonBlankString]
@@ -172,4 +171,4 @@
       (when sync-groups?
         (let [group-ids            (ldap-groups->mb-group-ids groups settings)
               all-mapped-group-ids (all-mapped-group-ids settings)]
-          (integrations.common/sync-group-memberships! new-user group-ids all-mapped-group-ids))))))
+          (sso.common/sync-group-memberships! new-user group-ids all-mapped-group-ids))))))
