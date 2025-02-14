@@ -21,6 +21,7 @@
    [metabase.search.init]
    [metabase.sync.init]
    [metabase.task.init]
+   [metabase.tiles.init]
    [metabase.user-key-value.init]))
 
 ;; load EE init code on system launch if it exists.
