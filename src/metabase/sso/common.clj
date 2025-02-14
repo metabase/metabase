@@ -1,13 +1,10 @@
-(ns metabase.integrations.common
+(ns metabase.sso.common
   "Shared functionality used by different integrations."
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [metabase.models.setting.multi-setting :refer [define-multi-setting define-multi-setting-impl]]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -52,14 +49,3 @@
         (t2/insert! :model/PermissionsGroupMembership :group_id id, :user_id user-id)
         (catch Throwable e
           (log/errorf e "Error adding User %s to Group %s" user-id id))))))
-
-(define-multi-setting send-new-sso-user-admin-email?
-  (deferred-tru "Should new email notifications be sent to admins, for all new SSO users?")
-  (fn [] (if (premium-features/enable-any-sso?)
-           :ee
-           :oss))
-  :type :boolean)
-
-(define-multi-setting-impl send-new-sso-user-admin-email? :oss
-  :getter (fn [] (constantly true))
-  :setter :none)
