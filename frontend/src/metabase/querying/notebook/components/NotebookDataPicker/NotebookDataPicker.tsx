@@ -244,7 +244,6 @@ function EmbeddingDataPicker({
   if (shouldUseSimpleDataPicker) {
     return (
       <SimpleDataPicker
-        key={pickerInfo?.tableId}
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
         selectedEntity={pickerInfo?.tableId}
         isInitiallyOpen={!table}

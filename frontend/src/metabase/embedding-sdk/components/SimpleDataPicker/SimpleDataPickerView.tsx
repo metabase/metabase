@@ -9,7 +9,7 @@ import type { TableId } from "metabase-types/api";
 interface SimpleDataPickerProps {
   selectedEntity?: TableId;
   options: Options[];
-  onClick: (option: any) => void;
+  onClick: (tableId: TableId) => void;
 }
 
 interface Options {

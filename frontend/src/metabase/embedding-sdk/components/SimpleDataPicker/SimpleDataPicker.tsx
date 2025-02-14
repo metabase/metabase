@@ -55,7 +55,11 @@ export function SimpleDataPicker({
     <Popover
       opened={isDataPickerOpened}
       position="bottom-start"
-      onClose={close}
+      onChange={isOpen => {
+        if (!isOpen) {
+          close();
+        }
+      }}
       trapFocus
     >
       <Popover.Target>
@@ -65,7 +69,10 @@ export function SimpleDataPicker({
         <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
           <SimpleDataPickerView
             selectedEntity={selectedEntity}
-            onClick={setSourceTableFn}
+            onClick={tableId => {
+              close();
+              setSourceTableFn(tableId);
+            }}
             options={options}
           />
         </DelayedLoadingAndErrorWrapper>
