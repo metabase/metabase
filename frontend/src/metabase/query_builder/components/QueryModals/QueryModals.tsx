@@ -34,6 +34,7 @@ import type { QueryBuilderMode } from "metabase-types/store";
 import { MoveQuestionModal } from "../MoveQuestionModal";
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
+
 interface QueryModalsProps {
   modal: QueryModalType;
   modalContext: number;
