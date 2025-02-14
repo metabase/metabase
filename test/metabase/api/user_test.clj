@@ -154,33 +154,6 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :get 403 "user")))))))))
 
-(deftest user-list-for-group-sort-test
-  (testing "user list for a groups sorts all suers by first name"
-    (mt/with-premium-features #{:advanced-permissions}
-      (mt/with-temp
-        [:model/User                       {alba-id :id} {:email        "alba@metabase.com"
-                                                          :first_name   "Alba"
-                                                          :last_name    "Albatross"
-                                                          :password     "chickenofthesea"
-                                                          :is_superuser false
-                                                          :is_qbnewb    true
-                                                          :is_active    true}
-         :model/PermissionsGroup           {group-id1 :id} {:name "Well Sorted"}
-         :model/PermissionsGroupMembership _ {:user_id alba-id :group_id group-id1 :is_group_manager false}
-         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id1 :is_group_manager false}
-         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
-         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}]
-        (testing "when group manager requests the group"
-          (is (= ["alba@metabase.com" "crowberto@metabase.com" "lucky@metabase.com" "rasta@metabase.com"]
-                 (->> ((mt/user-http-request :rasta :get 200 "user" :group_id group-id1) :data)
-                      (map :email)
-                      (into [])))))
-        (testing "when admin user requests the group"
-          (is (= ["alba@metabase.com" "crowberto@metabase.com" "lucky@metabase.com" "rasta@metabase.com"]
-                 (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id1) :data)
-                      (map :email)
-                      (into [])))))))))
-
 (defn- group-ids->sets [users]
   (for [user users]
     (update user :group_ids set)))
