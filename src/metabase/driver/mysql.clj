@@ -382,6 +382,18 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str (h2x/->datetime expr))))
 
+(defn- ->timestamp [expr]
+  (if (h2x/is-of-type? expr "timestamp")
+    expr
+    (-> [:timestamp expr]
+        (h2x/with-database-type-info "timestamp"))))
+
+(defn- ->datetime [expr]
+  (if (h2x/is-of-type? expr "datetime")
+    expr
+    (-> [:datetime expr]
+        (h2x/with-database-type-info "datetime"))))
+
 (defn- ->date [expr]
   (if (h2x/is-of-type? expr "date")
     expr
@@ -411,7 +423,6 @@
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:mysql :minute-of-hour]  [_ _ expr] (h2x/minute expr))
 (defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (h2x/hour expr))
-(defmethod sql.qp/date [:mysql :day]             [_ _ expr] (->date expr))
 (defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] [:dayofmonth expr])
 (defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] [:dayofyear expr])
 (defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (h2x/month expr))
@@ -421,6 +432,13 @@
 (defmethod sql.qp/date [:mysql :day-of-week]
   [driver _unit expr]
   (sql.qp/adjust-day-of-week driver [:dayofweek expr]))
+
+(defmethod sql.qp/date [:mysql :day]
+  [_ _ expr]
+  (let [as-date (->date expr)]
+    (cond-> as-date
+      (h2x/is-of-type? expr "timestamp") ->timestamp
+      (h2x/is-of-type? expr "datetime")  ->datetime)))
 
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week
