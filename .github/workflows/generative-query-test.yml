@@ -10,7 +10,7 @@ on:
         description: 'Number of test iterations (overrides `seconds`)'
         type: number
       seconds:
-        description: 'No furhter iteration after _this_ number of seconds since test started'
+        description: 'No further iteration after _this_ number of seconds since test started'
       ref:
         description: 'Ref to run generative tests on'
         default: qgen-milestone-1
