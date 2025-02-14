@@ -9,6 +9,7 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption :as encryption]
    [ring.mock.request :as ring.mock]
    [toucan2.core :as t2]))
 
@@ -36,7 +37,7 @@
   (testing "Valid requests should add `metabase-user-id` to requests with valid session info"
     (let [session-id (session/generate-session-id)
           session-key (session/generate-session-key)
-          session-key-hashed (session/hash-session-key session-key)]
+          session-key-hashed (encryption/hash-session-key session-key)]
       (try
         (t2/insert! :model/Session {:id         session-id
                                     :key_hashed session-key-hashed
@@ -57,7 +58,7 @@
       ;; expiration
       (let [session-id (session/generate-session-id)
             session-key (session/generate-session-key)
-            session-key-hashed (session/hash-session-key session-key)]
+            session-key-hashed (encryption/hash-session-key session-key)]
         (try
           (t2/insert! :model/Session {:id      session-id
                                       :key_hashed session-key-hashed
@@ -74,7 +75,7 @@
       ;; NOTE that :trashbird is our INACTIVE test user
       (let [session-id (session/generate-session-id)
             session-key (session/generate-session-key)
-            session-key-hashed (session/hash-session-key session-key)]
+            session-key-hashed (encryption/hash-session-key session-key)]
         (try
           (t2/insert! :model/Session {:id         session-id
                                       :key_hashed session-key-hashed

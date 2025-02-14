@@ -13,6 +13,7 @@
    [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n]
    [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
@@ -24,7 +25,7 @@
 (def ^:private session-timeout-cookie request/metabase-session-timeout-cookie)
 
 (def ^:private test-session-key "092797dd-a82a-4748-b393-697d7bb9ab65")
-(def ^:private test-session-key-hashed (session/hash-session-key test-session-key))
+(def ^:private test-session-key-hashed (encryption/hash-session-key test-session-key))
 (def ^:private test-session-id "abcd1234")
 
 (deftest session-expired-test
@@ -40,7 +41,7 @@
           (mt/with-temp [:model/User {user-id :id}]
             (let [session-id (session/generate-session-id)
                   session-key (str (random-uuid))
-                  session-key-hashed (session/hash-session-key session-key)]
+                  session-key-hashed (encryption/hash-session-key session-key)]
               (t2/insert! (t2/table-name :model/Session) {:id session-id :key_hashed session-key-hashed, :user_id user-id, :created_at created-at})
               (let [session (#'mw.session/current-user-info-for-session session-key nil)]
                 (if expected
@@ -355,7 +356,7 @@
         (mt/with-temp [:model/User {user-id :id}]
           (let [session-id (session/generate-session-id)
                 session-key (str (random-uuid))
-                session-key-hashed (session/hash-session-key session-key)]
+                session-key-hashed (encryption/hash-session-key session-key)]
             (t2/insert! :model/Session {:id session-id :key_hashed session-key-hashed, :user_id user-id})
             (is (= nil
                    (session-locale session-key)))
@@ -368,7 +369,7 @@
         (mt/with-temp [:model/User {user-id :id} {:locale "es-MX"}]
           (let [session-id (session/generate-session-id)
                 session-key (str (random-uuid))
-                session-key-hashed (session/hash-session-key session-key)]
+                session-key-hashed (encryption/hash-session-key session-key)]
             (t2/insert! :model/Session {:id session-id :key_hashed session-key-hashed, :user_id user-id, :created_at :%now})
             (is (= "es_MX"
                    (session-locale session-key)))

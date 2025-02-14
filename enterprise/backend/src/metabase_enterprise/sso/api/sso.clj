@@ -10,9 +10,9 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.session :as session]
    [metabase.request.core :as request]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
@@ -69,7 +69,7 @@
   "Logout."
   [_route-params _query-params _body {cookies :cookies, :as _request}]
   (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
-        metabase-session-key-hashed (session/hash-session-key metabase-session-key)]
+        metabase-session-key-hashed (encryption/hash-session-key metabase-session-key)]
     (let [{:keys [email sso_source]}
           (t2/query-one {:select [:u.email :u.sso_source]
                          :from   [[:core_user :u]]
