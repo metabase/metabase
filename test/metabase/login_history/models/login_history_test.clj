@@ -1,7 +1,7 @@
-(ns metabase.models.login-history-test
+(ns metabase.login-history.models.login-history-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.login-history :as login-history]
+   [metabase.login-history.models.login-history :as login-history]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)

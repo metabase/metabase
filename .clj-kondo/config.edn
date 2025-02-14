@@ -407,6 +407,7 @@
     metabase.legacy-mbql.util                                     mbql.u
     metabase.lib.util                                             lib.util
     metabase.lib.util.match                                       lib.util.match
+    metabase.login-history.core                                   login-history
     metabase.models.dependency                                    dependency
     metabase.models.interface                                     mi
     metabase.notification.core                                    notification
