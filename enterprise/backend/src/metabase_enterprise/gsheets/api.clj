@@ -148,7 +148,7 @@
             (filter is-gdrive? (or (some-> response :body) [])))
       [])))
 
-(mu/defn- hm-delete-conn! :- :hm.client/http-reply
+(mu/defn- hm-delete-conn! :- :hm-client/http-reply
   "Delete (presumably a gdrive) connection on HM."
   [conn-id]
   (hm.client/make-request :delete (str "/api/v2/mb/connections/" conn-id)))
@@ -161,14 +161,14 @@
     (doseq [{:keys [id]} (hm-get-gdrive-conns)]
       (hm-delete-conn! id))))
 
-(mu/defn hm-get-gdrive-conn :- :hm.client/http-reply
+(mu/defn hm-get-gdrive-conn :- :hm-client/http-reply
   "Get a specific gdrive connection by id."
   [id]
   (when-not id
     (throw (ex-info "must have an id to lookup by id" {})))
   (hm.client/make-request :get (str "/api/v2/mb/connections/" id)))
 
-(mu/defn- hm-create-gdrive-conn! :- :hm.client/http-reply
+(mu/defn- hm-create-gdrive-conn! :- :hm-client/http-reply
   "Creating a gdrive connection on HM starts the sync w/ drive folder."
   [drive-folder-url]
   (hm.client/make-request :post "/api/v2/mb/connections" {:type "gdrive" :secret {:resources [drive-folder-url]}}))

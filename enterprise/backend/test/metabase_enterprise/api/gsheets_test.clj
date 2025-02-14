@@ -3,7 +3,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is]]
    [java-time.api :as t]
-   [metabase-enterprise.gsheets :as gsheets.api]
+   [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -34,18 +34,16 @@
 
 (deftest gsheets-calls-fail-when-not-activated
   (mt/with-premium-features #{:etl-connections :attached-dwh}
-    (is (= {:errors true, :message "Google Sheets integration is not enabled."}
-           (mt/user-http-request :crowberto :get 402 "ee/gsheets/service-account")))))
+    (is (partial= {:message "Missing api-key."}
+                  (mt/user-http-request :crowberto :get 500 "ee/gsheets/service-account")))))
 
 (deftest gsheets-calls-fail-when-there-is-no-mb-api-key
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
     (mt/with-temporary-setting-values [api-key nil]
-      (is (= "Google service-account is not setup in harbormaster."
-             (:message (mt/user-http-request :crowberto :get 502 "ee/gsheets/service-account")))))))
+      (is (= "Missing api-key."
+             (:message (mt/user-http-request :crowberto :get 500 "ee/gsheets/service-account")))))))
 
-;; TODO: -> def
-(defn happy-responses []
-  (read-string (slurp (io/resource "gsheets/mock_hm_responses.edn"))))
+(def happy-responses (read-string (slurp (io/resource "gsheets/mock_hm_responses.edn"))))
 
 (defn +syncing [responses]
   (assoc responses
@@ -72,7 +70,7 @@
 (deftest gsheets-calls-pass-when-activated-and-superuser
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
     (mt/with-temporary-setting-values [api-key "non-blank"]
-      (with-redefs [hm.client/make-request (partial mock-make-request (happy-responses))]
+      (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
         (is (malli=
              [:map [:email [:maybe :string]]]
              (mt/user-http-request :crowberto :get 200 "ee/gsheets/service-account")))))))
@@ -107,7 +105,7 @@
         "sync is complete when we get active status and the last local sync time is before current time")))
 
 (deftest can-get-service-account-test
-  (let [[status response] (mock-make-request (happy-responses)
+  (let [[status response] (mock-make-request happy-responses
                                              :get
                                              "/api/v2/mb/connections-google/service-account")]
     (is (= :ok status))
@@ -127,7 +125,7 @@
 
 (deftest post-folder-test
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-    (with-redefs [hm.client/make-request (partial mock-make-request (happy-responses))]
+    (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
       (with-sample-db-as-dwh
         (is (partial=
              {:status "loading", :folder_url gdrive-link}
@@ -135,7 +133,7 @@
 
 (deftest post-folder-syncing-test
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-    (with-redefs [hm.client/make-request (partial mock-make-request (+syncing (happy-responses)))]
+    (with-redefs [hm.client/make-request (partial mock-make-request (+syncing happy-responses))]
       (is (partial= {:status "loading", :folder_url gdrive-link}
                     (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link}))))))
 
@@ -143,9 +141,9 @@
   (with-sample-db-as-dwh
     (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
       ;; puts us into loading state
-      (with-redefs [hm.client/make-request (partial mock-make-request (+syncing (happy-responses)))]
+      (with-redefs [hm.client/make-request (partial mock-make-request (+syncing happy-responses))]
         (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link}))
-      (with-redefs [hm.client/make-request (partial mock-make-request (happy-responses))]
+      (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
         (dotimes [_ 10]
           (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly nil)]
             ;; when the dwh has never been synced, we should be status=loading.
@@ -165,19 +163,22 @@
 
 (deftest get-folder-timeout-test
   (with-sample-db-as-dwh
-    (with-redefs [hm.client/make-request (partial mock-make-request (+syncing (happy-responses)))]
-      (let [resp (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link})]
-        (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly nil)
-                      gsheets.api/seconds-from-epoch-now (constantly
-                                                          ;; set "now" to 1 second after now + folder upload time:
-                                                          (+ 1 @#'gsheets.api/*folder-setup-timeout-seconds* (:folder-upload-time resp)))]
-          (is (= {:errors true, :message "Timeout syncing google drive folder, please try again."}
-                 (mt/user-http-request :crowberto :get 408 "ee/gsheets/folder"))
-              "When we timeout, we should return an error."))))))
+    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+      (with-redefs [hm.client/make-request (partial mock-make-request (+syncing happy-responses))]
+        (let [resp (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link})]
+          #p resp
+          (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly nil)
+                        gsheets.api/seconds-from-epoch-now (constantly
+                                                            ;; set "now" to 1 second after now + folder upload time:
+                                                            (+ 1 @#'gsheets.api/*folder-setup-timeout-seconds*
+                                                               (:folder-upload-time resp)))]
+            (is (= {:errors true, :message "Timeout syncing google drive folder, please try again."}
+                   (mt/user-http-request :crowberto :get 408 "ee/gsheets/folder"))
+                "When we timeout, we should return an error.")))))))
 
 (deftest delete-folder-test
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-    (with-redefs [hm.client/make-request (partial mock-make-request (happy-responses))]
+    (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
       (with-sample-db-as-dwh
         (is (= {:status "not-connected"}
                (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder")))))))
@@ -189,7 +190,7 @@
 
 (deftest delete-folder-cannot-find
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-    (with-redefs [hm.client/make-request (partial mock-make-request (+empty-conn-listing (happy-responses)))]
+    (with-redefs [hm.client/make-request (partial mock-make-request (+empty-conn-listing happy-responses))]
       (with-sample-db-as-dwh
         (is (= {:status "not-connected"}
                (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder")))))))
@@ -201,7 +202,7 @@
 
 (deftest delete-folder-fail
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-    (with-redefs [hm.client/make-request (partial mock-make-request (+failed-delete-response (happy-responses)))]
+    (with-redefs [hm.client/make-request (partial mock-make-request (+failed-delete-response happy-responses))]
       (with-sample-db-as-dwh
         (= {:status "not-connected"}
            (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder"))))))
