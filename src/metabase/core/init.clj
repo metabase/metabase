@@ -8,6 +8,7 @@
   (:require
    [metabase.activity-feed.init]
    [metabase.channel.init]
+   [metabase.cloud-migration.init]
    [metabase.config :as config]
    [metabase.driver.init]
    [metabase.events.init]
@@ -20,6 +21,7 @@
    [metabase.query-analysis.init]
    [metabase.revisions.init]
    [metabase.search.init]
+   [metabase.session.init]
    [metabase.sync.init]
    [metabase.task.init]
    [metabase.tiles.init]

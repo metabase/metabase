@@ -1,4 +1,4 @@
-(ns metabase.api.cloud-migration
+(ns metabase.cloud-migration.api
   "/api/cloud-migration endpoints.
   Only one migration should be happening at any given time.
   But if something weird happens with concurrency, /cancel will
@@ -6,7 +6,8 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.cloud-migration :as cloud-migration]
+   [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
+   [metabase.cloud-migration.settings :as cloud-migration.settings]
    [metabase.premium-features.core :as premium-features]
    [toucan2.core :as t2]))
 
@@ -43,5 +44,5 @@
   "Cancel any ongoing cloud migrations, if any."
   []
   (api/check-superuser)
-  (cloud-migration/read-only-mode! false)
+  (cloud-migration.settings/read-only-mode! false)
   (t2/update! :model/CloudMigration {:state [:not-in cloud-migration/terminal-states]} {:state :cancelled}))
