@@ -341,7 +341,7 @@
     "cookie": "^0.7.0",
     "cross-spawn": "^7.0.5",
     "d3-color": "^3.1.0",
-    "elliptic": "^6.6.0",
+    "elliptic": "^6.6.1",
     "debug": "^4.3.4",
     "follow-redirects": "^1.15.5",
     "jsdom": "^22.1.0",
