@@ -20,6 +20,7 @@
    [metabase.query-analysis.init]
    [metabase.revisions.init]
    [metabase.search.init]
+   [metabase.session.init]
    [metabase.sync.init]
    [metabase.task.init]
    [metabase.tiles.init]
