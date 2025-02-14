@@ -161,8 +161,14 @@ describe("applyParameter", () => {
       {
         type: "number/=",
         target: getFilterColumnTarget("ORDERS", "ID"),
-        value: "9007199254740993",
-        expectedDisplayName: "ID is 9007199254740993",
+        value: "9223372036854775807",
+        expectedDisplayName: "ID is 9223372036854775807",
+      },
+      {
+        type: "number/!=",
+        target: getFilterColumnTarget("ORDERS", "ID"),
+        value: "9223372036854775807",
+        expectedDisplayName: "ID is not 9223372036854775807",
       },
       {
         type: "string/=", // category filter
@@ -219,6 +225,18 @@ describe("applyParameter", () => {
         target: getFilterColumnTarget("ORDERS", "ID"),
         value: [1, "9223372036854775807"],
         expectedDisplayName: 'ID is between 1 and "9223372036854775807"',
+      },
+      {
+        type: "number/between",
+        target: getFilterColumnTarget("ORDERS", "ID"),
+        value: ["-9223372036854775808", 1],
+        expectedDisplayName: 'ID is between "-9223372036854775808" and 1',
+      },
+      {
+        type: "number/between",
+        target: getFilterColumnTarget("ORDERS", "ID"),
+        value: ["-9223372036854775808", "9223372036854775807"],
+        expectedDisplayName: "ID is -9223372036854775808 – 9223372036854775807",
       },
       {
         type: "id",
