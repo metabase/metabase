@@ -298,7 +298,6 @@
    :dashboard         :model/Dashboard
    :dashboard-card    :model/DashboardCard
    :dashboard-tab     :model/DashboardTab
-   :database          :model/Database
    :dataset           :model/Card
    :dimension         :model/Dimension
    :metric            :model/Card
@@ -308,7 +307,6 @@
    :pulse-channel     :model/PulseChannel
    :segment           :model/Segment
    :snippet           :model/NativeQuerySnippet
-   :table             :model/Table
    :timeline          :model/Timeline
    :user              :model/User})
 

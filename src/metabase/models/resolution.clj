@@ -22,7 +22,7 @@
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
-    :model/CloudMigration                    metabase.models.cloud-migration
+    :model/CloudMigration                    metabase.cloud-migration.models.cloud-migration
     :model/Collection                        metabase.models.collection
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.models.collection-permission-graph-revision
@@ -58,10 +58,10 @@
     :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
     :model/PermissionsRevision               metabase.permissions.models.permissions-revision
     :model/PersistedInfo                     metabase.models.persisted-info
-    :model/Pulse                             metabase.models.pulse
-    :model/PulseCard                         metabase.models.pulse-card
-    :model/PulseChannel                      metabase.models.pulse-channel
-    :model/PulseChannelRecipient             metabase.models.pulse-channel-recipient
+    :model/Pulse                             metabase.pulse.models.pulse
+    :model/PulseCard                         metabase.pulse.models.pulse-card
+    :model/PulseChannel                      metabase.pulse.models.pulse-channel
+    :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
     :model/Query                             metabase.models.query
     :model/QueryAction                       metabase.actions.models
     :model/QueryAnalysis                     metabase.models.query-analysis
@@ -74,7 +74,7 @@
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.models.secret
     :model/Segment                           metabase.segments.models.segment
-    :model/Session                           metabase.models.session
+    :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.models.setting
     :model/Table                             metabase.models.table
     :model/TablePrivileges                   metabase.models.table-privileges
