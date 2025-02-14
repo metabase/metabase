@@ -271,6 +271,12 @@
   {:api  #{metabase.logger metabase.logger.init}
    :uses #{config plugins}}
 
+  login-history
+  {:api #{metabase.login-history.api
+          metabase.login-history.core
+          metabase.login-history.init}
+   :uses #{analytics api channel models request util}}
+
   models
   {:api #{metabase.models.api-key
           metabase.models.application-permissions-revision
@@ -294,7 +300,6 @@
           metabase.models.humanization
           metabase.models.init
           metabase.models.interface
-          metabase.models.login-history
           metabase.models.moderation-review
           metabase.models.native-query-snippet
           metabase.models.native-query-snippet.permissions
@@ -488,7 +493,7 @@
 
   session
   {:api  #{metabase.session.api metabase.session.init metabase.session.models.session}
-   :uses #{analytics api channel config db driver events integrations models public-settings request task util}}
+   :uses #{api channel config db driver events integrations login-history models public-settings request task util}}
 
   setup
   {:api  #{metabase.setup.api metabase.setup.core}
