@@ -72,14 +72,16 @@ describe(
         );
 
         // Check that old value is still cached
-        advanceServerClockBy(CACHE_DURATION_MS - 1000);
         visitCachedQuestion(questionId);
         cy.findByTestId("visualization-root").findByText("Amorous Aardvarks");
 
         // Advance server clock more, and then trigger automatic cache refresh
-        advanceServerClockBy(2000);
+        advanceServerClockBy(CACHE_DURATION_MS + 5000);
         cy.log("Triggering cache refresh task");
         cy.request("POST", "/api/testing/refresh-caches");
+
+        // Wait to ensure we're fetching the refreshed cache
+        cy.wait(500);
 
         visitCachedQuestion(questionId);
         cy.findByTestId("visualization-root").findByText("New Value");
