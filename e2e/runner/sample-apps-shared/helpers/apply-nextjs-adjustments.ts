@@ -32,7 +32,7 @@ function disableAppApiRoutesCaching({
 }
 
 // For app router components we should append `use client` directive in order to make entity id injection working
-function appendAppRouterUseClientDirective({
+function prependAppRouterUseClientDirective({
   installationPath,
   loggerPrefix,
 }: {
@@ -70,5 +70,5 @@ export function applyNextJsAdjustments({
   loggerPrefix: string;
 }) {
   disableAppApiRoutesCaching({ installationPath, loggerPrefix });
-  appendAppRouterUseClientDirective({ installationPath, loggerPrefix });
+  prependAppRouterUseClientDirective({ installationPath, loggerPrefix });
 }

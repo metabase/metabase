@@ -4,6 +4,7 @@ import {
 } from "../../../support/constants/embedding-sdk";
 import { FAILURE_EXIT_CODE } from "../../constants/exit-code";
 import { printBold } from "../../cypress-runner-utils";
+import { applyNextJsAdjustments } from "../helpers/apply-nextjs-adjustments";
 import type { SampleAppSetupConfigs } from "../types";
 
 export const SAMPLE_APP_SETUP_CONFIGS: SampleAppSetupConfigs = {
@@ -11,7 +12,6 @@ export const SAMPLE_APP_SETUP_CONFIGS: SampleAppSetupConfigs = {
     {
       subAppName: "client",
       branch: "main",
-      framework: "vite",
       env: {
         PORT: 4300,
         VITE_METABASE_INSTANCE_URL: METABASE_INSTANCE_URL,
@@ -24,30 +24,29 @@ export const SAMPLE_APP_SETUP_CONFIGS: SampleAppSetupConfigs = {
     {
       subAppName: "next-sample-pages-router",
       branch: "main",
-      framework: "next",
       env: {
         PORT: 4301,
         NEXT_PUBLIC_METABASE_INSTANCE_URL: METABASE_INSTANCE_URL,
         NEXT_PUBLIC_AUTH_PROVIDER_URI: AUTH_PROVIDER_URL,
       },
+      additionalSetup: applyNextJsAdjustments,
       startCommand: ["start"],
     },
     {
       subAppName: "next-sample-app-router",
       branch: "main",
-      framework: "next",
       env: {
         PORT: 4302,
         NEXT_PUBLIC_METABASE_INSTANCE_URL: METABASE_INSTANCE_URL,
         NEXT_PUBLIC_AUTH_PROVIDER_URI: AUTH_PROVIDER_URL,
       },
+      additionalSetup: applyNextJsAdjustments,
       startCommand: ["start"],
     },
   ],
   shoppy: [
     {
       branch: "main",
-      framework: "vite",
       env: {
         PORT: 4303,
         VITE_APP_API_HOST: "http://localhost:4304/api",
@@ -57,7 +56,6 @@ export const SAMPLE_APP_SETUP_CONFIGS: SampleAppSetupConfigs = {
     {
       subAppName: "api",
       branch: "main",
-      framework: "none",
       env: {
         PORT: 4304,
         FRONTEND_URL: "http://localhost:4303",

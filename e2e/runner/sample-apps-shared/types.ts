@@ -5,13 +5,14 @@ export type SampleAppName =
 
 export type EmbeddingSdkVersion = string | "local" | undefined;
 
-export type SampleAppFramework = "none" | "vite" | "next";
-
 export type SampleAppSetupConfig = {
   subAppName?: string;
   branch: string;
-  framework: SampleAppFramework;
   env: Record<string, string | number>;
+  additionalSetup?: (data: {
+    installationPath: string;
+    loggerPrefix: string;
+  }) => void;
   startCommand: string[];
   beforeSetup?: (metadata: { appName: string; subAppName?: string }) => void;
 };
