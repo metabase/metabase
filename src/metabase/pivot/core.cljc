@@ -3,7 +3,8 @@
    #?(:clj [metabase.util.json :as json])
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n]))
 
 (defn is-pivot-group-column
   "Is the given column the pivot-grouping column?"
@@ -109,7 +110,7 @@
     tree))
 
 (defn- select-indexes
-  "Given a row, "
+  "Given a row, returns a subset of its values according to the provided indexes."
   [row indexes]
   (map #(nth row %) indexes))
 
@@ -190,7 +191,6 @@
      :values-by-key values-by-key}))
 
 (defn format-values-in-tree
-  "Formats values in a row or column tree according to `formatters`"
   [tree formatters cols]
   (let [formatter (first formatters)
         col       (first cols)]
@@ -206,6 +206,30 @@
                                 :col col}]}))
      tree)))
 
+(defn- maybe-add-row-totals-column
+  [col-tree settings]
+  (if (and (> (count col-tree) 1)
+           (:pivot.show_row_totals settings))
+    (conj
+     col-tree
+     {:value (i18n/tru "Row totals")
+      :children []
+      :isSubtotal true
+      :isGrandTotal true})
+    col-tree))
+
+(defn- maybe-add-grand-totals-row
+  [row-tree settings]
+  (if (and (> (count row-tree) 1)
+           (:pivot.show_column_totals settings))
+    (conj
+     row-tree
+     {:value (i18n/tru "Grand totals")
+      :children []
+      :isSubtotal true
+      :isGrandTotal true})
+    row-tree))
+
 (defn add-subtotal
   "TODO"
   [row-item show-subs-by-col should-show-subtotal]
@@ -218,19 +242,18 @@
                                 :span 1
                                 :isSubtotal true
                                 :children []}]
-
                               [])]
     (if (:isCollapsed row-item)
       subtotal
       (let [node (merge row-item
                         {:hasSubtotal has-subtotal
                          :children (mapcat (fn [child] (if (not-empty (:children child))
-                                                        (add-subtotal child
-                                                                      rest-subs-by-col
-                                                                      (or (> (count (:children child)) 1)
-                                                                          (:isCollapsed child)))
-                                                        [child]))
-                                        (:children row-item))})]
+                                                         (add-subtotal child
+                                                                       rest-subs-by-col
+                                                                       (or (> (count (:children child)) 1)
+                                                                           (:isCollapsed child)))
+                                                         [child]))
+                                           (:children row-item))})]
         (if (not-empty subtotal)
           [node (first subtotal)]
           [node])))))
@@ -248,9 +271,10 @@
 (defn- display-name-for-col
   "@tsp - ripped from frontend/src/metabase/lib/formatting/column.ts"
   [column]
+  (def column column)
   (or (:display_name (:remapped_to_column column))
-   (:display_name column)
-   "(empty)"))
+      (:display_name column)
+      "(empty)"))
 
 (defn- update-node
   "TODO"
@@ -268,8 +292,65 @@
                                                  :children []
                                                  :isValueColumn true})
                         val-cols)]
-    (if (empty? col-tree)
-      leaf-nodes)
-    (if (<= (count val-cols) 1)
-      col-tree)
+    (when (empty? col-tree) leaf-nodes)
+    (when (<= (count val-cols) 1) col-tree)
     (map #(update-node % leaf-nodes) col-tree)))
+
+(defn maybe-add-empty-path [paths]
+  (if (empty? paths)
+    [[]]
+    paths))
+
+(defn- enumerate-paths
+  "Given a node of a row or column tree, generates all paths to leaf nodes."
+  [{:keys [rawValue isGrandTotal children isValueColumn]}
+   & [path]]
+  (let [path (or path [])]
+    (cond
+      isGrandTotal [[]]
+      isValueColumn [path]
+      (empty? children) [(conj path rawValue)]
+      :else (mapcat #(enumerate-paths % (conj path rawValue)) children))))
+
+;; TODO: make this clojure-compatable
+(defn- extract-column-settings
+  [cols settings]
+  #?(:cljs
+     (let [column-settings (map (fn [col] ((:column settings) col))
+                                cols)]
+       (js->clj column-settings :keywordize-keys true))))
+
+(defn format
+  "Formats rows, columns, and measure values in a pivot table according to
+  provided formatters."
+  [row-tree col-tree row-indexes col-indexes val-indexes cols top-formatters left-formatters value-formatters settings]
+  (def col-indexes col-indexes)
+  (def settings settings)
+  (def cols cols)
+
+  (let [col-settings (extract-column-settings cols settings)
+        left-index-columns (map cols row-indexes)
+        formatted-row-tree-without-subtotals (into [] (format-values-in-tree row-tree left-formatters left-index-columns))
+        formatted-row-tree (into [] (add-subtotals formatted-row-tree-without-subtotals row-indexes col-settings))
+        formatted-row-tree-with-totals (-> formatted-row-tree
+                                           (maybe-add-grand-totals-row settings))
+
+        row-paths (->> formatted-row-tree-with-totals
+                       (mapcat enumerate-paths)
+                       maybe-add-empty-path)
+
+        top-index-columns (map cols col-indexes)
+        formatted-col-tree-without-values (into [] (format-values-in-tree col-tree top-formatters top-index-columns))
+        formatted-col-tree-with-totals (maybe-add-row-totals-column formatted-col-tree-without-values settings)
+        col-paths (->> formatted-col-tree-with-totals
+                       (mapcat enumerate-paths)
+                       maybe-add-empty-path)
+        formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals val-indexes col-settings))]
+    (def formatted-col-tree-with-totals formatted-col-tree-with-totals)
+    (def val-indexes val-indexes)
+    (def col-settings col-settings)
+
+    {:columnIndex col-paths
+     :rowIndex row-paths
+     :formattedRowTree formatted-row-tree-with-totals
+     :formattedColumnTree formatted-col-tree}))
