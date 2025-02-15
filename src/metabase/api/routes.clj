@@ -26,7 +26,6 @@
    [metabase.api.preview-embed]
    [metabase.api.public]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.session]
    [metabase.api.setting]
    [metabase.api.slack]
    [metabase.api.table]
@@ -45,6 +44,7 @@
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
+   [metabase.session.api]
    [metabase.setup.api]
    [metabase.sync.api]
    [metabase.tiles.api]
@@ -119,6 +119,8 @@
 (defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (->handler handler)))
 (defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (->handler handler)))
 
+(declare routes)
+
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!
 ;;; !!                  DO NOT ADD `metabase.api.*` NAMESPACES THAT CONTAIN ENDPOINTS                 !!
@@ -143,7 +145,7 @@
    "/dashboard"            (+auth 'metabase.api.dashboard)
    "/database"             (+auth 'metabase.api.database)
    "/dataset"              'metabase.api.dataset
-   "/docs"                 metabase.api.docs/routes
+   "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions 'metabase.api.embed)
    "/field"                (+auth 'metabase.api.field)
@@ -163,7 +165,7 @@
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
-   "/session"              metabase.api.session/routes
+   "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.api.setting)
    "/setup"                'metabase.setup.api
    "/slack"                (+auth 'metabase.api.slack)
