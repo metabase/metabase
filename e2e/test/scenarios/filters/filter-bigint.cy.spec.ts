@@ -411,6 +411,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     }) {
       const getQuestionDetails = (cardId: number): NativeQuestionDetails => {
         const cardTagName = `#${cardId}-sql-number`;
+        const cardTagDisplayName = `#${cardId} Sql Number`;
 
         return {
           name: "SQL",
@@ -420,7 +421,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
               [cardTagName]: {
                 id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
                 name: cardTagName,
-                "display-name": cardTagName,
+                "display-name": cardTagDisplayName,
                 type: "card",
                 "card-id": cardId,
               },
