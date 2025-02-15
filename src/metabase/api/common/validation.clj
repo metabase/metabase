@@ -4,17 +4,18 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.embed.settings :as embed.settings]
+   [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [tru]]))
 
 ;; TODO: figure out what other functions to move here from metabase.api.common
 
+;;; TODO -- move this into the `public-sharing` module
 (defn check-public-sharing-enabled
   "Check that the `public-sharing-enabled` Setting is `true`, or throw a `400`."
   []
-  (api/check (public-settings/enable-public-sharing)
+  (api/check (setting/get :enable-public-sharing)
              [400 (tru "Public sharing is not enabled.")]))
 
 (defn check-embedding-enabled

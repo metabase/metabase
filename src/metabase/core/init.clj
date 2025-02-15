@@ -17,6 +17,7 @@
    [metabase.login-history.init]
    [metabase.models.init]
    [metabase.notification.init]
+   [metabase.public-sharing.init]
    [metabase.pulse.init]
    [metabase.query-analysis.init]
    [metabase.revisions.init]

@@ -41,17 +41,14 @@
    :uses #{api config db events models util}}
 
   analytics
-  {:api  #{metabase.analytics.prometheus
-           metabase.analytics.sdk
-           metabase.analytics.snowplow
-           metabase.analytics.stats}
+  {:api  #{metabase.analytics.core
+           metabase.analytics.prometheus
+           metabase.analytics.snowplow}
    :uses #{api
-           channel
            config
            db
            driver
            eid-translation
-           embed
            integrations
            models
            premium-features
@@ -64,11 +61,14 @@
 
   api
   {:api #{metabase.api.cache
+          metabase.api.card
           metabase.api.collection
           metabase.api.common
           metabase.api.common.validation
+          metabase.api.dashboard
           metabase.api.dataset
           metabase.api.ldap
+          metabase.api.field
           metabase.api.macros
           metabase.api.open-api
           metabase.api.query-metadata
@@ -342,6 +342,7 @@
            plugins
            premium-features
            public-settings
+           public-sharing
            pulse
            query-analysis
            query-processor
@@ -495,8 +496,7 @@
           metabase.server.middleware.json
           metabase.server.middleware.session
           metabase.server.streaming-response}
-   :uses #{analytics api config core db driver embed models premium-features public-settings request util
-           enterprise/sso}}
+   :uses #{analytics api config core db driver models premium-features public-settings request util enterprise/sso}}
 
   session
   {:api  #{metabase.session.api metabase.session.init metabase.session.models.session}
