@@ -679,9 +679,8 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     testFilter({ value: maxBigIntValue });
 
     cy.log("DECIMAL");
-    // TODO values.clj https://github.com/metabase/metabase/blob/63c69f5461ad877bf1e6cf036ef8db25489b1a42/src/metabase/driver/common/parameters/values.clj#L293
-    // setupQuestion({ sourceQuestionDetails: decimalQuestionDetails });
-    // testFilter({ value: negativeDecimalValue });
+    setupQuestion({ sourceQuestionDetails: decimalQuestionDetails });
+    testFilter({ value: negativeDecimalValue });
   });
 
   it("native query + variable + dashboards", () => {
@@ -781,8 +780,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     testFilter({ value: maxBigIntValue });
 
     cy.log("DECIMAL");
-    // TODO values.clj https://github.com/metabase/metabase/blob/63c69f5461ad877bf1e6cf036ef8db25489b1a42/src/metabase/driver/common/parameters/values.clj#L293
-    // setupDashboard({ sourceQuestionDetails: decimalQuestionDetails });
-    // testFilter({ value: positiveDecimalValue });
+    setupDashboard({ sourceQuestionDetails: decimalQuestionDetails });
+    testFilter({ value: positiveDecimalValue });
   });
 });
