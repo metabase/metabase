@@ -92,15 +92,6 @@
                  :breakout    [$price]
                  :order-by    [[:asc [:aggregation 0]]]})))))))
 
-(defmethod driver/database-supports? [::driver/driver ::floors-average]
-  [_driver _feature _database]
-  false)
-
-(doseq [driver [:redshift :sqlserver]]
-  (defmethod driver/database-supports? [driver ::floors-average]
-    [_driver _feature _database]
-    true))
-
 (deftest ^:parallel order-by-aggregate-fields-test-4
   (mt/test-drivers (mt/normal-drivers)
     (testing :avg
