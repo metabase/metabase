@@ -49,6 +49,7 @@ export function multiLevelPivot(data, settings) {
   const { pivotData, columns } = Pivot.split_pivot_data(data);
 
   const columnSettings = columns.map(column => settings.column(column));
+  console.log({ columnSettings });
   const allCollapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
 
   const collapsedSubtotals = filterCollapsedSubtotals(
@@ -70,6 +71,7 @@ export function multiLevelPivot(data, settings) {
     collapsedSubtotals,
   );
 
+
   for (const [_, rowVal] of Object.entries(valuesByKey)) {
     rowVal["valueColumns"] = valueColumnIndexes.map(index => columns[index])
     for (const [_, dataVal] of Object.entries(rowVal.data)) {
@@ -84,6 +86,7 @@ export function multiLevelPivot(data, settings) {
   const columnColumnTree = colTree || [];
 
   const subtotalValues = Pivot.subtotal_values(pivotData, valueColumnIndexes);
+  console.log({ subtotalValues })
 
   // pivot tables have a lot of repeated values, so we use memoized formatters for each column
   const [valueFormatters, topIndexFormatters, leftIndexFormatters] = [
@@ -99,58 +102,69 @@ export function multiLevelPivot(data, settings) {
     ),
   );
 
-  const topIndexColumns = columnColumnIndexes.map(index => columns[index]);
-  const formattedColumnTreeWithoutValues = Pivot.format_values_in_tree(
-    columnColumnTree,
-    topIndexFormatters,
-    topIndexColumns,
-  );
 
-  if (
-    formattedColumnTreeWithoutValues.length > 1 &&
-    settings["pivot.show_row_totals"]
-  ) {
-    // if there are multiple columns, we should add another for row totals
-    formattedColumnTreeWithoutValues.push({
-      value: t`Row totals`,
-      children: [],
-      isSubtotal: true,
-      isGrandTotal: true,
-    });
-  }
-  const columnIndex = addEmptyIndexItem(
-    formattedColumnTreeWithoutValues.flatMap(root => enumeratePaths(root)),
-  );
-  const formattedColumnTree = Pivot.add_value_column_nodes(formattedColumnTreeWithoutValues, valueColumnIndexes, columnSettings)
+  const formatResults = Pivot.format(rowColumnTree, columnColumnTree, rowColumnIndexes, columnColumnIndexes, valueColumnIndexes, columns, topIndexFormatters, leftIndexFormatters, valueFormatters, settings);
 
-  const leftIndexColumns = rowColumnIndexes.map(index => columns[index]);
-  const formattedRowTreeWithoutSubtotals = Pivot.format_values_in_tree(
-    rowColumnTree,
-    leftIndexFormatters,
-    leftIndexColumns,
-  );
+  const { columnIndex, rowIndex, formattedRowTree, formattedColumnTree } = formatResults;
 
-  const formattedRowTree = Pivot.add_subtotals(formattedRowTreeWithoutSubtotals, rowColumnIndexes, columnSettings)
 
-  if (
-    formattedRowTreeWithoutSubtotals.length > 1 &&
-    settings["pivot.show_column_totals"]
-  ) {
-    // if there are multiple columns, we should add another for row totals
-    formattedRowTree.push({
-      value: t`Grand totals`,
-      isSubtotal: true,
-      isGrandTotal: true,
-      children: [],
-    });
-  }
+  //const topIndexColumns = columnColumnIndexes.map(index => columns[index]);
+  //const formattedColumnTreeWithoutValues = Pivot.format_values_in_tree(
+  //  columnColumnTree,
+  //  topIndexFormatters,
+  //  topIndexColumns,
+  //);
+  //
+  //if (
+  //  formattedColumnTreeWithoutValues.length > 1 &&
+  //  settings["pivot.show_row_totals"]
+  //) {
+  //  // if there are multiple columns, we should add another for row totals
+  //  formattedColumnTreeWithoutValues.push({
+  //    value: t`Row totals`,
+  //    children: [],
+  //    isSubtotal: true,
+  //    isGrandTotal: true,
+  //  });
+  //}
+  //const columnIndex = addEmptyIndexItem(
+  //  formattedColumnTreeWithoutValues.flatMap(root => enumeratePaths(root)),
+  //);
+  //
+  //const formattedColumnTree = Pivot.add_value_column_nodes(formattedColumnTreeWithoutValues, valueColumnIndexes, columnSettings)
+  //
+  //
+  //const leftIndexColumns = rowColumnIndexes.map(index => columns[index]);
+  //const formattedRowTreeWithoutSubtotals = Pivot.format_values_in_tree(
+  //  rowColumnTree,
+  //  leftIndexFormatters,
+  //  leftIndexColumns,
+  //);
+  //
+  //const formattedRowTree = Pivot.add_subtotals(formattedRowTreeWithoutSubtotals, rowColumnIndexes, columnSettings)
+  //
+  //if (
+  //  formattedRowTreeWithoutSubtotals.length > 1 &&
+  //  settings["pivot.show_column_totals"]
+  //) {
+  //  // if there are multiple columns, we should add another for row totals
+  //  formattedRowTree.push({
+  //    value: t`Grand totals`,
+  //    isSubtotal: true,
+  //    isGrandTotal: true,
+  //    children: [],
+  //  });
+  //}
+  //
+  //const rowIndex = addEmptyIndexItem(
+  //  formattedRowTree.flatMap(root => enumeratePaths(root)),
+  //);
 
-  const rowIndex = addEmptyIndexItem(
-    formattedRowTree.flatMap(root => enumeratePaths(root)),
-  );
-
+  console.log({ formattedColumnTree })
   const leftHeaderItems = treeToArray(formattedRowTree.flat());
   const topHeaderItems = treeToArray(formattedColumnTree.flat());
+
+  console.log({ leftHeaderItems });
 
   const colorGetter = makeCellBackgroundGetter(
     pivotData[primaryRowsKey],
@@ -158,6 +172,9 @@ export function multiLevelPivot(data, settings) {
     settings["table.column_formatting"] ?? [],
     true,
   );
+
+  console.log({ rowIndex })
+  console.log({ columnIndex })
 
   const getRowSection = createRowSectionGetter({
     valuesByKey,
@@ -181,11 +198,6 @@ export function multiLevelPivot(data, settings) {
     columnIndexes: columnColumnIndexes,
     valueIndexes: valueColumnIndexes,
   };
-}
-
-function addEmptyIndexItem(index) {
-  // we need a single item even if all columns are on the other axis
-  return index.length === 0 ? [[]] : index;
 }
 
 // A path can't be collapsed if subtotals are turned off for that column.
@@ -251,14 +263,14 @@ function createRowSectionGetter({
       data === undefined
         ? o
         : {
-            ...o,
-            clicked: { data, dimensions },
-            backgroundColor: colorGetter(
-              values[index],
-              o.rowIndex,
-              valueColumns[index].name,
-            ),
-          },
+          ...o,
+          clicked: { data, dimensions },
+          backgroundColor: colorGetter(
+            values[index],
+            o.rowIndex,
+            valueColumns[index].name,
+          ),
+        },
     );
   };
   return _.memoize(getter, (i1, i2) => [i1, i2].join());
@@ -332,14 +344,14 @@ function addSubtotal(
   const hasSubtotal = isSubtotalEnabled && shouldShowSubtotal;
   const subtotal = hasSubtotal
     ? [
-        {
-          value: t`Totals for ${item.value}`,
-          rawValue: item.rawValue,
-          span: 1,
-          isSubtotal: true,
-          children: [],
-        },
-      ]
+      {
+        value: t`Totals for ${item.value}`,
+        rawValue: item.rawValue,
+        span: 1,
+        isSubtotal: true,
+        children: [],
+      },
+    ]
     : [];
   if (item.isCollapsed) {
     return subtotal;
@@ -351,8 +363,8 @@ function addSubtotal(
       // add subtotals until the last level
       child.children.length > 0
         ? addSubtotal(child, showSubtotalsByColumn, {
-            shouldShowSubtotal: child.children.length > 1 || child.isCollapsed,
-          })
+          shouldShowSubtotal: child.children.length > 1 || child.isCollapsed,
+        })
         : child,
     ),
   };
@@ -439,7 +451,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
   }
 
   // provide some column metadata to maintain consistency
-  const cols = pivotValues.map(function (value, idx) {
+  const cols = pivotValues.map(function(value, idx) {
     if (idx === 0) {
       // first column is always the coldef of the normal column
       return data.cols[normalCol];
