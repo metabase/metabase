@@ -58,9 +58,22 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       filterDisplayName: string;
       filteredRowCount: number;
     }) {
+      const getTargetQuestionDetails = (
+        cardId: number,
+      ): StructuredQuestionDetails => ({
+        name: "MBQL",
+        query: {
+          "source-table": `card__${cardId}`,
+        },
+        display: "scalar",
+      });
+
       cy.log("create a question");
-      H.createNativeQuestion(questionDetails, { visitQuestion: true });
-      H.queryBuilderHeader().findByText("Explore results").click();
+      H.createNativeQuestion(questionDetails).then(({ body: card }) => {
+        H.createQuestion(getTargetQuestionDetails(card.id), {
+          visitQuestion: true,
+        });
+      });
       H.assertQueryBuilderRowCount(3);
 
       cy.log("add a filter");
@@ -227,7 +240,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         parameters: [parameterDetails],
       };
 
-      const getQuestionDetails = (
+      const getTargetQuestionDetails = (
         cardId: number,
       ): StructuredQuestionDetails => ({
         name: "MBQL",
@@ -249,7 +262,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       cy.log("create a dashboard");
       H.createNativeQuestion(questionDetails).then(({ body: card }) => {
         H.createQuestionAndDashboard({
-          questionDetails: getQuestionDetails(card.id),
+          questionDetails: getTargetQuestionDetails(card.id),
           dashboardDetails,
         }).then(({ body: dashcard, questionId }) => {
           H.addOrUpdateDashboardCard({
@@ -411,7 +424,9 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       questionDetails: NativeQuestionDetails;
       value: string;
     }) {
-      const getQuestionDetails = (cardId: number): NativeQuestionDetails => {
+      const getTargetQuestionDetails = (
+        cardId: number,
+      ): NativeQuestionDetails => {
         const cardTagName = `#${cardId}-sql-number`;
         const cardTagDisplayName = `#${cardId} Sql Number`;
 
@@ -441,7 +456,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("create a question");
       H.createNativeQuestion(questionDetails).then(({ body: card }) => {
-        H.createNativeQuestion(getQuestionDetails(card.id), {
+        H.createNativeQuestion(getTargetQuestionDetails(card.id), {
           visitQuestion: true,
         });
       });
@@ -492,7 +507,9 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         parameters: [parameterDetails],
       };
 
-      const getQuestionDetails = (cardId: number): NativeQuestionDetails => {
+      const getTargetQuestionDetails = (
+        cardId: number,
+      ): NativeQuestionDetails => {
         const cardTagName = `#${cardId}-sql-number`;
         const cardTagDisplayName = `#${cardId} Sql Number`;
 
@@ -531,7 +548,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       cy.log("create a dashboard");
       H.createNativeQuestion(questionDetails).then(({ body: card }) => {
         H.createNativeQuestionAndDashboard({
-          questionDetails: getQuestionDetails(card.id),
+          questionDetails: getTargetQuestionDetails(card.id),
           dashboardDetails,
         }).then(({ body: dashcard, questionId }) => {
           H.addOrUpdateDashboardCard({
