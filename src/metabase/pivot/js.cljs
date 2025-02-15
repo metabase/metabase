@@ -58,6 +58,19 @@
         cols (js->clj cols)]
     (clj->js (pivot/format-values-in-tree tree formatters cols))))
 
+(defn ^:export format
+  "Formats rows, columns, and measure values in a pivot table according to
+  provided formatters."
+  [row-tree col-tree row-indexes col-indexes val-indexes cols top-formatters left-formatters value-formatters settings]
+  (let [row-tree (js->clj row-tree :keywordize-keys true)
+        col-tree (js->clj col-tree :keywordize-keys true)
+        row-indexes (js->clj row-indexes)
+        col-indexes (js->clj col-indexes)
+        val-indexes (js->clj val-indexes)
+        cols (js->clj cols :keywordize-keys true)
+        settings (js->clj settings :keywordize-keys true)]
+    (clj->js (pivot/format row-tree col-tree row-indexes col-indexes val-indexes cols top-formatters left-formatters value-formatters settings))))
+
 (defn ^:export add-subtotals
   [row-tree row-indexes col-settings]
   (let [row-tree (js->clj row-tree :keywordize-keys true)
