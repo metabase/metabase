@@ -350,13 +350,6 @@ x.com")
   :visibility :authenticated
   :audit      :getter)
 
-(defsetting enable-public-sharing
-  (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :audit      :getter)
-
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type       :boolean
@@ -796,15 +789,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :default    false
   :export?    false)
-
-(defn remove-public-uuid-if-public-sharing-is-disabled
-  "If public sharing is *disabled* and `object` has a `:public_uuid`, remove it so people don't try to use it (since it
-  won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
-  [object]
-  (if (and (:public_uuid object)
-           (not (enable-public-sharing)))
-    (assoc object :public_uuid nil)
-    object))
 
 (defsetting available-fonts
   "Available fonts"
