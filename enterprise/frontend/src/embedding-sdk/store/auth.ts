@@ -160,10 +160,20 @@ export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn =
     const urlWithParams = new URL(url);
     urlWithParams.searchParams.set("token", "true");
 
-    const response = await fetch(urlWithParams.toString(), {
+    const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
+
+    const fetchParams: RequestInit = {
       method: "GET",
       credentials: "include",
-    });
+      headers: {
+        // eslint-disable-next-line no-literal-metabase-strings -- header name
+        "X-Metabase-Client": "embedding-sdk-react",
+        // eslint-disable-next-line no-literal-metabase-strings -- header name
+        "X-Metabase-Client-Version": EMBEDDING_SDK_VERSION,
+      },
+    };
+
+    const response = await fetch(urlWithParams.toString(), fetchParams);
 
     const urlObj = await response.json();
     const backendObj = urlObj.url;
@@ -173,13 +183,18 @@ export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn =
       credentials: "include",
     });
 
-    if (!backendResponse.ok) {
+    const urlObj2 = await backendResponse.json();
+    const backendObj2 = urlObj2.url;
+
+    const backToAuthResponse = await fetch(`${backendObj2}`, fetchParams);
+
+    if (!backToAuthResponse.ok) {
       throw new Error(
-        `Failed to fetch the session, HTTP status: ${backendResponse.status}`,
+        `Failed to fetch the session, HTTP status: ${backToAuthResponse.status}`,
       );
     }
 
-    const asText = await backendResponse.text();
+    const asText = await backToAuthResponse.text();
 
     try {
       return JSON.parse(asText);

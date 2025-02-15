@@ -148,7 +148,7 @@
 
 (defn ^:private handle-jwt-authentication
   [{:keys [session redirect-url jwt-data]} token request]
-  (if (= token  "true")
+  (if (= (get (:headers request) "x-metabase-client") "embedding-sdk-react")
     (generate-response-token session jwt-data)
     (request/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT")))))
 

@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [ring.util.response :as response]))
 
 (defn- select-sso-backend [req]
@@ -13,8 +14,12 @@
   "Function that powers the defmulti in figuring out which SSO backend to use. It might be that we need to have more
   complex logic around this, but now it's just a simple priority. If SAML is configured use that otherwise JWT"
   [req]
+  (log/info req)
+  (log/debug req)
+  (log/info (not (:jwt (:params req))))
+(log/info (= (get (:headers req) "x-metabase-client") "embedding-sdk-react"))
   (cond
-    (and (not (:jwt (:params req))) (= (:token (:params req)) "true")) :token
+    (and (not (:jwt (:params req))) (= (get (:headers req) "x-metabase-client") "embedding-sdk-react")) :token
     (and (sso-settings/saml-enabled) (sso-settings/jwt-enabled)) (select-sso-backend req)
     (sso-settings/saml-enabled) :saml
     (sso-settings/jwt-enabled)  :jwt
