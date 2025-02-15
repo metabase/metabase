@@ -51,36 +51,16 @@
          :colTree (-> trees :col-tree postprocess-tree)
          :valuesByKey (-> trees :values-by-key clj->js)}))
 
-(defn ^:export format-values-in-tree
-  "TODO"
-  [tree formatters cols]
-  (let [tree (js->clj tree :keywordize-keys true)
-        cols (js->clj cols)]
-    (clj->js (pivot/format-values-in-tree tree formatters cols))))
-
-(defn ^:export format
+(defn ^:export process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
-  [row-tree col-tree row-indexes col-indexes val-indexes cols top-formatters left-formatters value-formatters settings]
+  [row-tree col-tree row-indexes col-indexes val-indexes cols top-formatters left-formatters value-formatters settings col-settings]
   (let [row-tree (js->clj row-tree :keywordize-keys true)
         col-tree (js->clj col-tree :keywordize-keys true)
         row-indexes (js->clj row-indexes)
         col-indexes (js->clj col-indexes)
         val-indexes (js->clj val-indexes)
         cols (js->clj cols :keywordize-keys true)
-        settings (js->clj settings :keywordize-keys true)]
-    (clj->js (pivot/format row-tree col-tree row-indexes col-indexes val-indexes cols top-formatters left-formatters value-formatters settings))))
-
-(defn ^:export add-subtotals
-  [row-tree row-indexes col-settings]
-  (let [row-tree (js->clj row-tree :keywordize-keys true)
-        row-indexes (js->clj row-indexes)
+        settings (js->clj settings :keywordize-keys true)
         col-settings (js->clj col-settings :keywordize-keys true)]
-    (clj->js (pivot/add-subtotals row-tree row-indexes col-settings))))
-
-(defn ^:export add-value-column-nodes
-  [col-tree col-indexes col-settings]
-  (let [col-tree (js->clj col-tree :keywordize-keys true)
-        col-indexes (js->clj col-indexes)
-        col-settings (js->clj col-settings :keywordize-keys true)]
-    (clj->js (pivot/add-value-column-nodes col-tree col-indexes col-settings))))
+    (clj->js (pivot/process-pivot-table row-tree col-tree row-indexes col-indexes val-indexes cols top-formatters left-formatters value-formatters settings col-settings))))

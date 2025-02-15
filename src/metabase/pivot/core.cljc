@@ -190,7 +190,7 @@
      :col-tree sorted-col-tree
      :values-by-key values-by-key}))
 
-(defn format-values-in-tree
+(defn- format-values-in-tree
   [tree formatters cols]
   (let [formatter (first formatters)
         col       (first cols)]
@@ -271,13 +271,11 @@
 (defn- display-name-for-col
   "@tsp - ripped from frontend/src/metabase/lib/formatting/column.ts"
   [column]
-  (def column column)
   (or (:display_name (:remapped_to_column column))
       (:display_name column)
       "(empty)"))
 
 (defn- update-node
-  "TODO"
   [node leaf-nodes]
   (let [new-children (if (empty? (:children node))
                        leaf-nodes
@@ -285,18 +283,21 @@
     (merge node {:children new-children})))
 
 (defn add-value-column-nodes
-  "TODO"
-  [col-tree col-indexes col-settings]
-  (let [val-cols (map (fn [idx] [(:column (nth col-settings idx)) (nth col-settings idx)]) col-indexes)
+  "This might add value column(s) to the bottom of the top header tree. We
+  display the value column names if there are multiple or if there are no
+  columns pivoted to the top header."
+  [col-tree cols col-indexes col-settings]
+  (let [val-cols (map (fn [idx] [(nth cols idx) (nth col-settings idx)]) col-indexes)
         leaf-nodes (map (fn [[col col-setting]] {:value (or (:column_title col-setting) (display-name-for-col col))
                                                  :children []
                                                  :isValueColumn true})
                         val-cols)]
-    (when (empty? col-tree) leaf-nodes)
-    (when (<= (count val-cols) 1) col-tree)
-    (map #(update-node % leaf-nodes) col-tree)))
+    (cond
+      (empty? col-tree) leaf-nodes
+      (<= (count val-cols) 1) col-tree
+      :else (map #(update-node % leaf-nodes) col-tree))))
 
-(defn maybe-add-empty-path [paths]
+(defn- maybe-add-empty-path [paths]
   (if (empty? paths)
     [[]]
     paths))
@@ -312,24 +313,11 @@
       (empty? children) [(conj path rawValue)]
       :else (mapcat #(enumerate-paths % (conj path rawValue)) children))))
 
-;; TODO: make this clojure-compatable
-(defn- extract-column-settings
-  [cols settings]
-  #?(:cljs
-     (let [column-settings (map (fn [col] ((:column settings) col))
-                                cols)]
-       (js->clj column-settings :keywordize-keys true))))
-
-(defn format
+(defn process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
-  [row-tree col-tree row-indexes col-indexes val-indexes cols top-formatters left-formatters value-formatters settings]
-  (def col-indexes col-indexes)
-  (def settings settings)
-  (def cols cols)
-
-  (let [col-settings (extract-column-settings cols settings)
-        left-index-columns (map cols row-indexes)
+  [row-tree col-tree row-indexes col-indexes val-indexes cols top-formatters left-formatters _value-formatters settings col-settings]
+  (let [left-index-columns (map cols row-indexes)
         formatted-row-tree-without-subtotals (into [] (format-values-in-tree row-tree left-formatters left-index-columns))
         formatted-row-tree (into [] (add-subtotals formatted-row-tree-without-subtotals row-indexes col-settings))
         formatted-row-tree-with-totals (-> formatted-row-tree
@@ -345,10 +333,7 @@
         col-paths (->> formatted-col-tree-with-totals
                        (mapcat enumerate-paths)
                        maybe-add-empty-path)
-        formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals val-indexes col-settings))]
-    (def formatted-col-tree-with-totals formatted-col-tree-with-totals)
-    (def val-indexes val-indexes)
-    (def col-settings col-settings)
+        formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals cols val-indexes col-settings))]
 
     {:columnIndex col-paths
      :rowIndex row-paths
