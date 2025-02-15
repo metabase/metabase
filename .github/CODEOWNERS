@@ -159,6 +159,9 @@ test/metabase/lib @metabase/core-backend-querying
 src/metabase/logger @metabase/devexp
 test/metabase/logger @metabase/devexp
 
+src/metabase/login_history @metabase/core-backend-admin-webapp
+test/metabase/login_history @metabase/core-backend-admin-webapp
+
 src/metabase/models @metabase/devexp
 test/metabase/models @metabase/devexp
 
