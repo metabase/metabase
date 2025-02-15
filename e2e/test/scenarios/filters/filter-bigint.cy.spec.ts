@@ -21,6 +21,7 @@ UNION ALL
 SELECT 0 AS NUMBER
 UNION ALL
 SELECT ${maxBigIntValue} AS NUMBER`,
+      "template-tags": {},
     },
     display: "table",
   };
@@ -33,6 +34,7 @@ UNION ALL
 SELECT CAST(0 AS DECIMAL) AS NUMBER
 UNION ALL
 SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
+      "template-tags": {},
     },
     display: "table",
   };
