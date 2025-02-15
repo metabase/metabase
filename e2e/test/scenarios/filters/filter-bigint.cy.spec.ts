@@ -214,33 +214,54 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
   });
 
   it("mbql query + dashboards + number parameters", () => {
-    function testFilter({
-      questionDetails,
+    function setupDashboard({
+      sourceQuestionDetails,
       baseType,
-      parameterType,
-      setParameterValue,
-      filterDisplayName,
-      filterArgsDisplayName,
-      filteredRowCount,
     }: {
-      questionDetails: NativeQuestionDetails;
+      sourceQuestionDetails: NativeQuestionDetails;
       baseType: string;
-      parameterType: string;
-      setParameterValue: () => void;
-      filterDisplayName: string;
-      filterArgsDisplayName: string;
-      filteredRowCount: number;
     }) {
-      const parameterDetails: Parameter = {
-        id: "b6ed2d71",
-        type: parameterType,
-        name: "Number",
-        slug: "number",
-        sectionId: "number",
-      };
+      const parameters: Parameter[] = [
+        {
+          id: "b6ed2d71",
+          type: "number/=",
+          name: "Equal to",
+          slug: "equal-to",
+          sectionId: "number",
+        },
+        {
+          id: "b6ed2d72",
+          type: "number/!=",
+          name: "Not equal to",
+          slug: "not-equal=to",
+          sectionId: "number",
+        },
+        {
+          id: "b6ed2d73",
+          type: "number/>=",
+          name: "Greater than or equal to",
+          slug: "greater-than-or-equal-to",
+          sectionId: "number",
+        },
+        {
+          id: "b6ed2d74",
+          type: "number/<=",
+          name: "Less than or equal to",
+          slug: "less-than-or-equal-to",
+          sectionId: "number",
+        },
+        {
+          id: "b6ed2d75",
+          type: "number/between",
+          name: "Between",
+          slug: "between",
+          sectionId: "number",
+        },
+      ];
 
       const dashboardDetails: DashboardDetails = {
-        parameters: [parameterDetails],
+        name: "Dashboard",
+        parameters,
       };
 
       const getTargetQuestionDetails = (
@@ -255,41 +276,67 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       });
 
       const getParameterMapping = (
+        parameterId: string,
         cardId: number,
       ): DashboardParameterMapping => ({
+        parameter_id: parameterId,
         card_id: cardId,
-        parameter_id: parameterDetails.id,
         target: ["dimension", ["field", "NUMBER", { "base-type": baseType }]],
       });
 
-      cy.log("create a dashboard");
-      H.createNativeQuestion(questionDetails).then(({ body: card }) => {
-        H.createQuestionAndDashboard({
-          questionDetails: getTargetQuestionDetails(card.id),
-          dashboardDetails,
-        }).then(({ body: dashcard, questionId }) => {
-          H.addOrUpdateDashboardCard({
-            dashboard_id: dashcard.dashboard_id,
-            card_id: questionId,
-            card: {
-              parameter_mappings: [getParameterMapping(questionId)],
+      H.createNativeQuestion(sourceQuestionDetails).then(
+        ({ body: sourceCard }) => {
+          H.createQuestion(getTargetQuestionDetails(sourceCard.id)).then(
+            ({ body: targetCard }) => {
+              H.createDashboard(dashboardDetails).then(
+                ({ body: dashboard }) => {
+                  H.addOrUpdateDashboardCard({
+                    dashboard_id: dashboard.id,
+                    card_id: targetCard.id,
+                    card: {
+                      parameter_mappings: parameters.map(parameter =>
+                        getParameterMapping(parameter.id, targetCard.id),
+                      ),
+                    },
+                  });
+                  H.visitDashboard(dashboard.id);
+                },
+              );
             },
-          });
-          cy.wrap(dashcard.dashboard_id).as("dashboardId");
-        });
-      });
+          );
+        },
+      );
+    }
 
+    function findFilterWidget(parameterName: string) {
+      return H.filterWidget().filter(`:contains(${parameterName})`);
+    }
+
+    function testFilter({
+      parameterName,
+      setParameterValue,
+      filterDisplayName,
+      filterArgsDisplayName,
+      filteredRowCount,
+    }: {
+      parameterName: string;
+      setParameterValue: () => void;
+      filterDisplayName: string;
+      filterArgsDisplayName: string;
+      filteredRowCount: number;
+    }) {
       cy.log("add a filter");
-      H.visitDashboard("@dashboardId");
       H.getDashboardCard()
         .findByTestId("scalar-value")
         .should("have.text", "3");
-      H.filterWidget().click();
+      findFilterWidget(parameterName).click();
       H.popover().within(() => {
         setParameterValue();
         cy.button("Add filter").click();
       });
-      H.filterWidget().findByText(filterArgsDisplayName).should("be.visible");
+      findFilterWidget(parameterName)
+        .findByText(filterArgsDisplayName)
+        .should("be.visible");
       H.getDashboardCard()
         .findByTestId("scalar-value")
         .should("have.text", String(filteredRowCount));
@@ -300,24 +347,29 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       H.queryBuilderMain()
         .findByTestId("scalar-value")
         .should("have.text", String(filteredRowCount));
+
+      cy.log("cleanup");
+      H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
+      findFilterWidget(parameterName).icon("close").click();
     }
 
     function testFilterSet({
-      questionDetails,
+      sourceQuestionDetails,
       baseType,
       minValue,
       maxValue,
     }: {
-      questionDetails: NativeQuestionDetails;
+      sourceQuestionDetails: NativeQuestionDetails;
       baseType: string;
       minValue: string;
       maxValue: string;
     }) {
+      cy.log("setup");
+      setupDashboard({ sourceQuestionDetails, baseType });
+
       cy.log("number/= parameter");
       testFilter({
-        questionDetails,
-        baseType,
-        parameterType: "number/=",
+        parameterName: "Equal to",
         setParameterValue: () =>
           cy.findByPlaceholderText("Enter a number").type(maxValue),
         filterDisplayName: `NUMBER is equal to "${maxValue}"`,
@@ -327,9 +379,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("number/!= parameter");
       testFilter({
-        questionDetails,
-        baseType,
-        parameterType: "number/!=",
+        parameterName: "Not equal to",
         setParameterValue: () =>
           cy.findByPlaceholderText("Enter a number").type(minValue),
         filterDisplayName: `NUMBER is not equal to "${minValue}"`,
@@ -339,9 +389,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("number/>= parameter");
       testFilter({
-        questionDetails,
-        baseType,
-        parameterType: "number/>=",
+        parameterName: "Greater than or equal to",
         setParameterValue: () =>
           cy.findByPlaceholderText("Enter a number").type(minValue),
         filterDisplayName: `NUMBER is greater than or equal to "${minValue}"`,
@@ -351,9 +399,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("number/<= parameter");
       testFilter({
-        questionDetails,
-        baseType,
-        parameterType: "number/<=",
+        parameterName: "Less than or equal to",
         setParameterValue: () =>
           cy.findByPlaceholderText("Enter a number").type(maxValue),
         filterDisplayName: `NUMBER is less than or equal to "${maxValue}"`,
@@ -363,9 +409,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("number/between parameter - min value");
       testFilter({
-        questionDetails,
-        baseType,
-        parameterType: "number/between",
+        parameterName: "Between",
         setParameterValue: () => {
           cy.findAllByPlaceholderText("Enter a number").eq(0).type(minValue);
           cy.findAllByPlaceholderText("Enter a number").eq(1).type("0");
@@ -377,9 +421,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("number/between parameter - max value");
       testFilter({
-        questionDetails,
-        baseType,
-        parameterType: "number/between",
+        parameterName: "Between",
         setParameterValue: () => {
           cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
           cy.findAllByPlaceholderText("Enter a number").eq(1).type(maxValue);
@@ -391,9 +433,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("number/between parameter - min and max values");
       testFilter({
-        questionDetails,
-        baseType,
-        parameterType: "number/between",
+        parameterName: "Between",
         setParameterValue: () => {
           cy.findAllByPlaceholderText("Enter a number").eq(0).type(minValue);
           cy.findAllByPlaceholderText("Enter a number").eq(1).type(maxValue);
@@ -405,14 +445,14 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     }
 
     testFilterSet({
-      questionDetails: bigIntQuestionDetails,
+      sourceQuestionDetails: bigIntQuestionDetails,
       baseType: "type/BigInteger",
       minValue: minBigIntValue,
       maxValue: maxBigIntValue,
     });
 
     testFilterSet({
-      questionDetails: decimalQuestionDetails,
+      sourceQuestionDetails: decimalQuestionDetails,
       baseType: "type/Decimal",
       minValue: negativeDecimalValue,
       maxValue: positiveDecimalValue,
@@ -421,10 +461,10 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
   it("native query + variable + query builder", () => {
     function testFilter({
-      questionDetails,
+      sourceQuestionDetails,
       value,
     }: {
-      questionDetails: NativeQuestionDetails;
+      sourceQuestionDetails: NativeQuestionDetails;
       value: string;
     }) {
       const getTargetQuestionDetails = (
@@ -458,7 +498,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       };
 
       cy.log("create a question");
-      H.createNativeQuestion(questionDetails).then(({ body: card }) => {
+      H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
         H.createNativeQuestion(getTargetQuestionDetails(card.id), {
           visitQuestion: true,
         });
@@ -478,24 +518,24 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
     cy.log("BIGINT");
     testFilter({
-      questionDetails: bigIntQuestionDetails,
+      sourceQuestionDetails: bigIntQuestionDetails,
       value: maxBigIntValue,
     });
 
     cy.log("DECIMAL");
     // TODO values.clj https://github.com/metabase/metabase/blob/63c69f5461ad877bf1e6cf036ef8db25489b1a42/src/metabase/driver/common/parameters/values.clj#L293
     // testFilter({
-    //   questionDetails: decimalQuestionDetails,
+    //   sourceQuestionDetails: decimalQuestionDetails,
     //   value: negativeDecimalValue,
     // });
   });
 
   it("native query + variable + dashboards", () => {
     function testFilter({
-      questionDetails,
+      sourceQuestionDetails,
       value,
     }: {
-      questionDetails: NativeQuestionDetails;
+      sourceQuestionDetails: NativeQuestionDetails;
       value: string;
     }) {
       const parameterDetails: Parameter = {
@@ -549,7 +589,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       });
 
       cy.log("create a dashboard");
-      H.createNativeQuestion(questionDetails).then(({ body: card }) => {
+      H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
         H.createNativeQuestionAndDashboard({
           questionDetails: getTargetQuestionDetails(card.id),
           dashboardDetails,
@@ -586,14 +626,14 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
     cy.log("BIGINT");
     testFilter({
-      questionDetails: bigIntQuestionDetails,
+      sourceQuestionDetails: bigIntQuestionDetails,
       value: maxBigIntValue,
     });
 
     cy.log("DECIMAL");
     // TODO values.clj https://github.com/metabase/metabase/blob/63c69f5461ad877bf1e6cf036ef8db25489b1a42/src/metabase/driver/common/parameters/values.clj#L293
     // testFilter({
-    //   questionDetails: decimalQuestionDetails,
+    //   sourceQuestionDetails: decimalQuestionDetails,
     //   value: positiveDecimalValue,
     // });
   });
