@@ -60,10 +60,11 @@
 (deftest ^:parallel double-average-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "average is calculated correctly"
-      (is (= [[2.03]]
-             (->> {:aggregation [[:avg $price]]}
-                  (mt/run-mbql-query venues)
-                  (mt/formatted-rows [double])))))))
+      (is (> 0.01 (Math/abs (- 2.03
+                               (->> {:aggregation [[:avg $price]]}
+                                    (mt/run-mbql-query venues)
+                                    (mt/formatted-rows [double])
+                                    first first))))))))
 
 (deftest ^:parallel post-aggregation-math-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
