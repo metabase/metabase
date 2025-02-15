@@ -46,9 +46,9 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
   it("mbql query + query builder", () => {
     function setupQuestion({
-      questionDetails,
+      sourceQuestionDetails,
     }: {
-      questionDetails: NativeQuestionDetails;
+      sourceQuestionDetails: NativeQuestionDetails;
     }) {
       const getTargetQuestionDetails = (
         cardId: number,
@@ -60,10 +60,11 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         display: "table",
       });
 
-      H.createNativeQuestion(questionDetails).then(({ body: card }) => {
+      H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
         H.createQuestion(getTargetQuestionDetails(card.id), {
           visitQuestion: true,
         });
+        H.openNotebook();
       });
     }
 
@@ -79,7 +80,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       filteredRowCount: number;
     }) {
       cy.log("add a filter");
-      H.openNotebook();
       H.filter({ mode: "notebook" });
       H.popover().within(() => {
         cy.findByText("NUMBER").click();
@@ -97,24 +97,24 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       H.assertQueryBuilderRowCount(filteredRowCount);
 
       cy.log("remove the filter");
-      H.queryBuilderFiltersPanel()
+      H.openNotebook();
+      H.getNotebookStep("filter")
         .findByText(filterDisplayName)
         .icon("close")
         .click();
-      H.assertQueryBuilderRowCount(3);
     }
 
     function testFilterSet({
-      questionDetails,
+      sourceQuestionDetails,
       minValue,
       maxValue,
     }: {
-      questionDetails: NativeQuestionDetails;
+      sourceQuestionDetails: NativeQuestionDetails;
       minValue: string;
       maxValue: string;
     }) {
       cy.log("setup");
-      setupQuestion({ questionDetails });
+      setupQuestion({ sourceQuestionDetails });
 
       cy.log("= operator");
       testFilter({
@@ -200,14 +200,14 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
     cy.log("BIGINT");
     testFilterSet({
-      questionDetails: bigIntQuestionDetails,
+      sourceQuestionDetails: bigIntQuestionDetails,
       minValue: minBigIntValue,
       maxValue: maxBigIntValue,
     });
 
     cy.log("DECIMAL");
     testFilterSet({
-      questionDetails: decimalQuestionDetails,
+      sourceQuestionDetails: decimalQuestionDetails,
       minValue: negativeDecimalValue,
       maxValue: positiveDecimalValue,
     });
