@@ -45,18 +45,10 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
   });
 
   it("mbql query + query builder", () => {
-    function testFilter({
+    function setupQuestion({
       questionDetails,
-      filterOperator,
-      setFilterValue,
-      filterDisplayName,
-      filteredRowCount,
     }: {
       questionDetails: NativeQuestionDetails;
-      filterOperator: string;
-      setFilterValue: () => void;
-      filterDisplayName: string;
-      filteredRowCount: number;
     }) {
       const getTargetQuestionDetails = (
         cardId: number,
@@ -65,17 +57,27 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         query: {
           "source-table": `card__${cardId}`,
         },
-        display: "scalar",
+        display: "table",
       });
 
-      cy.log("create a question");
       H.createNativeQuestion(questionDetails).then(({ body: card }) => {
         H.createQuestion(getTargetQuestionDetails(card.id), {
           visitQuestion: true,
         });
       });
-      H.assertQueryBuilderRowCount(3);
+    }
 
+    function testFilter({
+      filterOperator,
+      setFilterValue,
+      filterDisplayName,
+      filteredRowCount,
+    }: {
+      filterOperator: string;
+      setFilterValue: () => void;
+      filterDisplayName: string;
+      filteredRowCount: number;
+    }) {
       cy.log("add a filter");
       H.openNotebook();
       H.filter({ mode: "notebook" });
@@ -93,6 +95,13 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         .should("be.visible");
       H.visualize();
       H.assertQueryBuilderRowCount(filteredRowCount);
+
+      cy.log("remove the filter");
+      H.queryBuilderFiltersPanel()
+        .findByText(filterDisplayName)
+        .icon("close")
+        .click();
+      H.assertQueryBuilderRowCount(3);
     }
 
     function testFilterSet({
@@ -104,9 +113,11 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       minValue: string;
       maxValue: string;
     }) {
+      cy.log("setup");
+      setupQuestion({ questionDetails });
+
       cy.log("= operator");
       testFilter({
-        questionDetails,
         filterOperator: "Equal to",
         setFilterValue: () => cy.findByLabelText("Filter value").type(maxValue),
         filterDisplayName: `NUMBER is equal to "${maxValue}"`,
@@ -115,7 +126,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("!= operator");
       testFilter({
-        questionDetails,
         filterOperator: "Not equal to",
         setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
         filterDisplayName: `NUMBER is not equal to "${minValue}"`,
@@ -124,7 +134,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("> operator");
       testFilter({
-        questionDetails,
         filterOperator: "Greater than",
         setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
         filterDisplayName: `NUMBER is greater than "${minValue}"`,
@@ -133,7 +142,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log(">= operator");
       testFilter({
-        questionDetails,
         filterOperator: "Greater than or equal to",
         setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
         filterDisplayName: `NUMBER is greater than or equal to "${minValue}"`,
@@ -142,7 +150,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("< operator");
       testFilter({
-        questionDetails,
         filterOperator: "Less than",
         setFilterValue: () => cy.findByLabelText("Filter value").type(maxValue),
         filterDisplayName: `NUMBER is less than "${maxValue}"`,
@@ -151,7 +158,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("<= operator");
       testFilter({
-        questionDetails,
         filterOperator: "Less than or equal to",
         setFilterValue: () => cy.findByLabelText("Filter value").type(maxValue),
         filterDisplayName: `NUMBER is less than or equal to "${maxValue}"`,
@@ -160,7 +166,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("between operator - min value");
       testFilter({
-        questionDetails,
         filterOperator: "Between",
         setFilterValue: () => {
           cy.findByPlaceholderText("Min").type(minValue);
@@ -172,7 +177,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("between operator - max value");
       testFilter({
-        questionDetails,
         filterOperator: "Between",
         setFilterValue: () => {
           cy.findByPlaceholderText("Min").type("0");
@@ -184,7 +188,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       cy.log("between operator - min and max values");
       testFilter({
-        questionDetails,
         filterOperator: "Between",
         setFilterValue: () => {
           cy.findByPlaceholderText("Min").type(minValue);
