@@ -1,7 +1,6 @@
 import { getSampleAppsNamesFromEnv } from "../../support/helpers/e2e-sample-apps-helpers";
 import { FAILURE_EXIT_CODE } from "../constants/exit-code";
 import { booleanify, printBold, unBooleanify } from "../cypress-runner-utils";
-import { applyAppSpecificAdjustments } from "../sample-apps-shared/helpers/apply-app-specific-adjustments";
 import { buildApp } from "../sample-apps-shared/helpers/build-app";
 import { fetchApp } from "../sample-apps-shared/helpers/fetch-app";
 import { getSetupConfigsForSampleApps } from "../sample-apps-shared/helpers/get-setup-configs-for-sample-apps";
@@ -41,8 +40,14 @@ async function initSampleApp({
   setupConfig: SampleAppSetupConfig;
   embeddingSdkVersion: EmbeddingSdkVersion;
 }) {
-  const { subAppName, branch, framework, env, startCommand, beforeSetup } =
-    setupConfig;
+  const {
+    subAppName,
+    branch,
+    env,
+    startCommand,
+    beforeSetup,
+    additionalSetup,
+  } = setupConfig;
   const loggerPrefix = [appName, subAppName].filter(Boolean).join("/");
 
   beforeSetup?.({ appName, subAppName });
@@ -63,7 +68,7 @@ async function initSampleApp({
 
   setupEntityIdsInjection({ installationPath, loggerPrefix });
 
-  applyAppSpecificAdjustments({ installationPath, framework, loggerPrefix });
+  additionalSetup?.({ installationPath, loggerPrefix });
 
   await installDependencies({
     installationPath,
