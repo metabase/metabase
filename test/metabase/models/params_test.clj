@@ -2,7 +2,7 @@
   "Tests for the utility functions for dealing with parameters in `metabase.models.params`."
   (:require
    [clojure.test :refer :all]
-   [metabase.api.public-test :as public-test]
+   [metabase.public-sharing.api-test :as public-test]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.params :as params]
    [metabase.test :as mt]

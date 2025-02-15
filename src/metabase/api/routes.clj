@@ -20,7 +20,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.premium-features]
    [metabase.api.preview-embed]
-   [metabase.api.public]
+   [metabase.public-sharing.api]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.setting]
    [metabase.api.slack]
@@ -67,7 +67,6 @@
          metabase.api.geojson/keep-me
          metabase.api.native-query-snippet/keep-me
          metabase.api.preview-embed/keep-me
-         metabase.api.public/keep-me
          metabase.api.setting/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
@@ -81,6 +80,7 @@
          metabase.login-history.api/keep-me
          metabase.model-persistence.api/keep-me
          metabase.permissions.api/keep-me
+         metabase.public-sharing.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
          metabase.setup.api/keep-me
@@ -157,7 +157,7 @@
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.api.premium-features/routes)
    "/preview_embed"        (+auth 'metabase.api.preview-embed)
-   "/public"               (+public-exceptions 'metabase.api.public)
+   "/public"               (+public-exceptions 'metabase.public-sharing.api)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)

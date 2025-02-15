@@ -350,13 +350,6 @@ x.com")
   :visibility :authenticated
   :audit      :getter)
 
-(defsetting enable-public-sharing
-  (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :audit      :getter)
-
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type       :boolean

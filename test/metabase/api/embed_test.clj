@@ -13,7 +13,7 @@
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed.common :as api.embed.common]
-   [metabase.api.public-test :as public-test]
+   [metabase.public-sharing.api-test :as public-test]
    [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.field-values :as field-values]

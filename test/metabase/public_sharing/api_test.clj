@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.api.public-test
+(ns ^:mb/driver-tests metabase.public-sharing.api-test
   "Tests for `api/public/` (public links) endpoints."
   (:require
    [clojure.data.csv :as csv]
@@ -10,7 +10,7 @@
    [metabase.analytics.stats :as stats]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.api.public :as api.public]
+   [metabase.public-sharing.api :as api.public]
    [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.interface :as mi]

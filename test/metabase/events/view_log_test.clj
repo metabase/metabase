@@ -4,7 +4,7 @@
    [java-time.api :as t]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed-test :as embed-test]
-   [metabase.api.public-test :as public-test]
+   [metabase.public-sharing.api-test :as public-test]
    [metabase.events :as events]
    [metabase.events.view-log :as events.view-log]
    [metabase.http-client :as client]
