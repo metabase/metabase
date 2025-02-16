@@ -30,8 +30,6 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.math BigDecimal)
-   (java.text DecimalFormat NumberFormat)
    (java.util UUID)))
 
 (set! *warn-on-reflection* true)
@@ -291,41 +289,14 @@
 
 ;;; Parsing Values
 
-(defn- bigdecimal-integer?
-  "Check if a BigDecimal is an integer."
-  [^BigDecimal number]
-  (<= 0 (.scale (.stripTrailingZeros number))))
-
-(defn- bigdecimal->maybe-long
-  "Convert a BigDecimal to Long if it's an integer within the Long range."
-  [^BigDecimal number]
-  (when (and (bigdecimal-integer? number)
-             (>= 0 (.compareTo number (BigDecimal. Long/MIN_VALUE)))
-             (<= 0 (.compareTo number (BigDecimal. Long/MAX_VALUE))))
-    (.longValueExact number)))
-
-(defn- bigdecimal->maybe-biginteger
-  "Convert a BigDecimal to BigInteger if it's an integer."
-  [^BigDecimal number]
-  (when (bigdecimal-integer? number)
-    (.toBigIntegerExact number)))
-
-(defn- bigdecimal->double
-  "Convert a BigDecimal to Double."
-  [^BigDecimal number]
-  (.doubleValue number))
-
 (mu/defn- parse-number :- number?
-  "Parse a string like `1` or `2.0` into a valid number. Returns Long, BigInteger, or Double."
+  "Parse a string like `1` or `2.0` into a valid number. Done mostly to keep people from passing in
+  things that aren't numbers, like SQL identifiers. When the value is an integer outside the Long range, BigInteger
+  is returned."
   [s :- :string]
-  (let [format (NumberFormat/getInstance)
-        _      (when (instance? DecimalFormat format) (.setParseBigDecimal format))
-        number (.parse format)]
-    (if (instance? BigDecimal)
-      (or (bigdecimal->maybe-long number)
-          (bigdecimal->maybe-biginteger number)
-          (bigdecimal->double number))
-      number)))
+  (if (re-find #"\." s)
+    (Double/parseDouble s)
+    (or (parse-long s) (biginteger s))))
 
 (mu/defn- value->number :- [:or number? [:sequential {:min 1} number?]]
   "Parse a 'numeric' param value. Normally this returns an integer or floating-point number, but as a somewhat
