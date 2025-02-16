@@ -229,7 +229,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       H.resetTestTable({ type: dialect, table: tableName });
       cy.signInAsAdmin();
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName });
-      cy.signInAsNormalUser();
     }
 
     function getTableId(tableName: string) {
