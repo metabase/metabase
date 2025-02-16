@@ -1,8 +1,9 @@
+import process from "process";
 import _ from "underscore";
 
-import { tokenize } from "metabase-lib/v1/expressions/tokenizer";
+import { generateExpression } from "../test/generator";
 
-import { generateExpression } from "./generator";
+import { tokenize } from "./tokenize";
 
 const fuzz = process.env.MB_FUZZ ? describe : _.noop;
 
