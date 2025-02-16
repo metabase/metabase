@@ -291,7 +291,7 @@
 
 ;;; Parsing Values
 
-(defn- decimal-integer?
+(defn- bigdecimal-integer?
   "Check if BigDecimal is an integer."
   [^BigDecimal number]
   (<= 0 (.scale (.stripTrailingZeros number))))
@@ -299,7 +299,7 @@
 (defn- bigdecimal->maybe-long
   "Convert a BigDecimal to Long if it's an integer within the Long range."
   [^BigDecimal number]
-  (when (and (decimal-integer? number)
+  (when (and (bigdecimal-integer? number)
              (>= 0 (.compareTo number (BigDecimal. Long/MIN_VALUE)))
              (<= 0 (.compareTo number (BigDecimal. Long/MAX_VALUE))))
     (.longValueExact number)))
@@ -307,7 +307,7 @@
 (defn- bigdecimal->maybe-biginteger
   "Convert a BigDecimal to BigInteger if it's an integer."
   [^BigDecimal number]
-  (when (decimal-integer? number)
+  (when (bigdecimal-integer? number)
     (.toBigIntegerExact number)))
 
 (defn- bigdecimal->double
