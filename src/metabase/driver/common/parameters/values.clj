@@ -292,7 +292,7 @@
 ;;; Parsing Values
 
 (defn- bigdecimal-integer?
-  "Check if BigDecimal is an integer."
+  "Check if a BigDecimal is an integer."
   [^BigDecimal number]
   (<= 0 (.scale (.stripTrailingZeros number))))
 
