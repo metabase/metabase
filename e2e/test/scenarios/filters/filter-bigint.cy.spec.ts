@@ -223,13 +223,12 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     const bigIntPkTableName = "bigint_pk_table";
     const decimalPkTableName = "decimal_pk_table";
 
-    function setupDatabase() {
+    function setupDatabase({ tableName }: { tableName: string }) {
       const dialect = "postgres";
       H.restore("postgres-writable");
-      H.resetTestTable({ type: dialect, table: bigIntPkTableName });
-      H.resetTestTable({ type: dialect, table: decimalPkTableName });
+      H.resetTestTable({ type: dialect, table: tableName });
       cy.signInAsAdmin();
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName });
       cy.signInAsNormalUser();
     }
 
@@ -352,10 +351,8 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       H.filterWidget().icon("close").click();
     }
 
-    cy.log("create tables");
-    setupDatabase();
-
     cy.log("BIGINT");
+    setupDatabase({ tableName: bigIntPkTableName });
     setupDashboard({
       tableName: bigIntPkTableName,
       baseType: "type/BigInteger",
@@ -364,6 +361,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     testFilter({ value: maxBigIntValue });
 
     cy.log("DECIMAL");
+    setupDatabase({ tableName: decimalPkTableName });
     setupDashboard({
       tableName: decimalPkTableName,
       baseType: "type/Decimal",
