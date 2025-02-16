@@ -235,7 +235,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
     function getTableId(tableName: string) {
       return cy
-        .request("GET", `/api/database/${WRITABLE_DB_ID}/schema/public`)
+        .request("GET", "/api/table")
         .then(({ body: tables }: { body: Table[] }) => {
           const table = tables.find(table => table.name === tableName);
           if (!table) {
