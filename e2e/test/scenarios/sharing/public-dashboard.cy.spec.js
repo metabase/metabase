@@ -308,7 +308,7 @@ describe("scenarios > public > dashboard", () => {
   });
 });
 
-H.describeEE("scenarios [EE] > public > dashboard", () => {
+describe("scenarios [EE] > public > dashboard", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

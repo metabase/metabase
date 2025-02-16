@@ -28,14 +28,14 @@
    [metabase.driver :as driver]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.models.setting :as setting]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
+   [metabase.pulse.task.send-pulses :as task.send-pulses]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.task :as task]
    [metabase.task.notification :as task.notification]
-   [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -1065,7 +1065,9 @@
           ;; we're testing here, so let's override it to be a no-op. Other tests add DBs using the table name instead of
           ;; model name, so they don't hit the post-insert hook, but here we're relying on the transformations being
           ;; applied so we can't do that.
-          (with-redefs [database/set-new-database-permissions! (constantly nil)]
+          (with-redefs [database/set-new-database-permissions! (constantly nil)
+                        ;; The entity_id column doesn't exist on Databases until 54, but it will be set automatically.
+                        mi/add-entity-id                       identity]
             (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
               (let [default-db                {:name       "DB"
                                                :engine     "postgres"

@@ -14,12 +14,16 @@ import { BreakoutBadgeList } from "../BreakoutBadgeList";
 import { BreakoutPicker } from "../BreakoutPicker";
 import { type SDKBreakoutItem, useBreakoutData } from "../use-breakout-data";
 
+type BreakoutDropdownProps = Omit<
+  PopoverProps,
+  "children" | "onClose" | "opened"
+>;
+
 export const BreakoutDropdownInner = ({
   question,
   updateQuestion,
   ...popoverProps
-}: QuestionStateParams &
-  Omit<PopoverProps, "children" | "onClose" | "opened">) => {
+}: QuestionStateParams & BreakoutDropdownProps) => {
   const items = useBreakoutData({ question, updateQuestion });
 
   const [step, setStep] = useState<MultiStepState<"picker" | "list">>(null);
@@ -80,7 +84,7 @@ export const BreakoutDropdownInner = ({
   );
 };
 
-export const BreakoutDropdown = () => {
+export const BreakoutDropdown = (props: BreakoutDropdownProps) => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 
   if (!question) {
@@ -91,6 +95,7 @@ export const BreakoutDropdown = () => {
     <BreakoutDropdownInner
       question={question}
       updateQuestion={updateQuestion}
+      {...props}
     />
   );
 };

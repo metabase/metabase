@@ -577,7 +577,7 @@ describe("scenarios > filters > sql filters > values source", () => {
   });
 });
 
-H.describeEE("scenarios > filters > sql filters > values source", () => {
+describe("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -724,7 +724,10 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       });
 
       FieldFilter.openEntryForm();
-      H.fieldValuesInput().type("Tw");
+      H.dashboardParametersPopover().within(() => {
+        H.multiAutocompleteInput().type("Tw");
+      });
+
       checkFilterValueNotInList("10");
       checkFilterValueNotInList("20");
       // eslint-disable-next-line no-unsafe-element-filtering
@@ -808,7 +811,9 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
       FieldFilter.openEntryForm();
 
-      H.multiAutocompleteInput().type("Tw");
+      H.dashboardParametersPopover().within(() => {
+        H.multiAutocompleteInput().type("Tw");
+      });
       // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText("Twenty").click();
 

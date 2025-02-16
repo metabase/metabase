@@ -68,7 +68,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
 
     // Add multiple values (metabase#18113)
     H.filterWidget().click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       H.fieldValuesInput().type("Gizmo,Gadget").blur();
     });
 

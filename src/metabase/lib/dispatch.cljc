@@ -1,5 +1,6 @@
 (ns metabase.lib.dispatch
-  (:require [metabase.util :as u]))
+  (:require
+   [metabase.util :as u]))
 
 (defn- mbql-clause-type [x]
   (when (and (vector? x)

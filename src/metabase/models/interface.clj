@@ -83,7 +83,11 @@
   (let [fn-symb (symbol (str (ns-name *ns*)) (name fn-name))]
     (when-let [existing-fn-symb (get @defined-hydration-methods hydration-key)]
       (when (not= fn-symb existing-fn-symb)
-        (throw (ex-info (format "Hydration key %s already exists at %s" hydration-key existing-fn-symb)
+        (throw (ex-info (str (format "Hydration key %s already exists at %s" hydration-key existing-fn-symb)
+                             "\n\n"
+                             "You can remove it with"
+                             "\n"
+                             (pr-str (list 'swap! `defined-hydration-methods 'dissoc hydration-key)))
                         {:hydration-key       hydration-key
                          :existing-definition existing-fn-symb}))))
     (swap! defined-hydration-methods assoc hydration-key fn-symb))
@@ -278,10 +282,12 @@
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (seq (->> (map mbql.normalize/normalize-source-metadata metadata)
-              ;; This is necessary, because in the wild, there may be cards created prior to this change.
-              (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
-              (map lib.binning/ensure-binning-in-display-name)))))
+    (not-empty (mapv #(-> %
+                          mbql.normalize/normalize-source-metadata
+                          ;; This is necessary, because in the wild, there may be cards created prior to this change.
+                          lib.temporal-bucket/ensure-temporal-unit-in-display-name
+                          lib.binning/ensure-binning-in-display-name)
+                     metadata))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."

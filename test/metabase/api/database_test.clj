@@ -79,7 +79,7 @@
   ([{driver :engine, :as db}]
    (merge
     (mt/object-defaults :model/Database)
-    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version
+    (select-keys db [:created_at :id :entity_id :details :updated_at :timezone :name :dbms_version
                      :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled])
     {:engine               (u/qualified-name (:engine db))
      :settings             {}
@@ -88,7 +88,7 @@
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
-             (select-keys table [:active :created_at :db_id :description :display_name :entity_type
+             (select-keys table [:active :created_at :db_id :description :display_name :entity_id :entity_type
                                  :id :name :rows :schema :updated_at :visibility_type :initial_sync_status]))
       (update :entity_type #(when % (str "entity/" (name %))))
       (update :visibility_type #(when % (name %)))
@@ -106,7 +106,8 @@
     {:target nil}
     (select-keys
      field
-     [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position]))))
+     [:updated_at :id :entity_id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id
+      :position]))))
 
 (defn- card-with-native-query [card-name & {:as kvs}]
   (merge
@@ -632,7 +633,7 @@
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults :model/Table))
-                                    (t2/select-one [:model/Table :created_at :updated_at] :id (mt/id :categories))
+                                    (t2/select-one [:model/Table :created_at :updated_at :entity_id] :id (mt/id :categories))
                                     {:schema              "PUBLIC"
                                      :name                "CATEGORIES"
                                      :display_name        "Categories"
@@ -871,6 +872,27 @@
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
                      (set (keys db)))))))))))
+
+(deftest ^:parallel databases-caching
+  (testing "GET /api/database"
+    (testing "Testing that listing all databases does not make excessive queries with multiple databases"
+      (mt/with-temp [:model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}]
+        (t2/with-call-count [call-count]
+          (mt/user-http-request :rasta :get 200 "database")
+          (is (< (call-count) 10)))))))
 
 (deftest ^:parallel databases-list-test-2
   (testing "GET /api/database"
@@ -2190,58 +2212,6 @@
                (-> (messages)
                    first
                    :message)))))))
-
-(deftest persist-database-test-2
-  (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-    (mt/dataset test-data
-      (let [db-id (:id (mt/db))]
-        (mt/with-temp
-          [:model/Card card {:database_id db-id
-                             :type        :model}]
-          (mt/with-temporary-setting-values [persisted-models-enabled false]
-            (testing "requires persist setting to be enabled"
-              (is (= "Persisting models is not enabled."
-                     (mt/user-http-request :crowberto :post 400 (str "database/" db-id "/persist"))))))
-
-          (mt/with-temporary-setting-values [persisted-models-enabled true]
-            (testing "only users with permissions can persist a database"
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :post 403 (str "database/" db-id "/persist")))))
-
-            (testing "should be able to persit an database"
-              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/persist"))
-              (is (= "creating" (t2/select-one-fn :state 'PersistedInfo
-                                                  :database_id db-id
-                                                  :card_id     (:id card))))
-              (is (true? (t2/select-one-fn (comp :persist-models-enabled :settings)
-                                           :model/Database
-                                           :id db-id)))
-              (is (true? (get-in (mt/user-http-request :crowberto :get 200
-                                                       (str "database/" db-id))
-                                 [:settings :persist-models-enabled]))))
-            (testing "it's okay to trigger persist even though the database is already persisted"
-              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/persist")))))))))
-
-(deftest unpersist-database-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-    (mt/dataset test-data
-      (let [db-id (:id (mt/db))]
-        (mt/with-temp
-          [:model/Card     _ {:database_id db-id
-                              :type        :model}]
-          (testing "only users with permissions can persist a database"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :post 403 (str "database/" db-id "/unpersist")))))
-
-          (mt/with-temporary-setting-values [persisted-models-enabled true]
-            (testing "should be able to persit an database"
-              ;; trigger persist first
-              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/unpersist"))
-              (is (nil? (t2/select-one-fn (comp :persist-models-enabled :settings)
-                                          :model/Database
-                                          :id db-id))))
-            (testing "it's okay to unpersist even though the database is not persisted"
-              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/unpersist")))))))))
 
 (deftest autocomplete-suggestions-do-not-include-dashboard-cards
   (testing "GET /api/database/:id/card_autocomplete_suggestions"

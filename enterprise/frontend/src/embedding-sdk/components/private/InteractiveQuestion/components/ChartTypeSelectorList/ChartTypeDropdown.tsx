@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import { Icon, Menu } from "metabase/ui";
+import { Icon, Menu, type MenuProps } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
@@ -12,7 +12,7 @@ import { useSensibleVisualizations } from "../../hooks/use-sensible-visualizatio
 import ToolbarButtonS from "../../styles/ToolbarButton.module.css";
 import { ToolbarButton } from "../util/ToolbarButton";
 
-export const ChartTypeDropdown = () => {
+export const ChartTypeDropdown = (menuProps: MenuProps) => {
   const { selectedVisualization, updateQuestionVisualization } =
     useQuestionVisualization();
 
@@ -57,7 +57,7 @@ export const ChartTypeDropdown = () => {
   );
 
   return (
-    <Menu position="bottom-start">
+    <Menu position="bottom-start" {...menuProps}>
       <Menu.Target>
         <ToolbarButton
           data-testid="chart-type-selector-button"
@@ -67,7 +67,7 @@ export const ChartTypeDropdown = () => {
           variant="default"
           px={undefined}
           pr="md"
-          rightIcon={<Icon ml="xs" size={10} name="chevrondown" />}
+          leftSection={<Icon ml="xs" size={10} name="chevrondown" />}
           className={ToolbarButtonS.PrimaryToolbarButton}
         />
       </Menu.Target>
@@ -76,7 +76,7 @@ export const ChartTypeDropdown = () => {
           <Menu.Item
             key={`${value}/${index}`}
             onClick={() => updateQuestionVisualization(value)}
-            icon={iconName ? <Icon name={iconName} /> : null}
+            leftSection={iconName ? <Icon name={iconName} /> : null}
           >
             {label}
           </Menu.Item>
@@ -87,7 +87,7 @@ export const ChartTypeDropdown = () => {
           <Menu.Item
             key={`${value}/${index}`}
             onClick={() => updateQuestionVisualization(value)}
-            icon={iconName ? <Icon name={iconName} /> : null}
+            leftSection={iconName ? <Icon name={iconName} /> : null}
           >
             {label}
           </Menu.Item>

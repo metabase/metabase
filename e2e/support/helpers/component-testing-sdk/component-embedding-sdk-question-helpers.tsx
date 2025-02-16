@@ -5,16 +5,21 @@ import {
 } from "@metabase/embedding-sdk-react";
 import type { ComponentProps } from "react";
 
-import { mountSdkContent } from "./component-embedding-sdk-helpers";
+import {
+  type MountSdkContentOptions,
+  mountSdkContent,
+} from "./component-embedding-sdk-helpers";
 
-interface Options {
+interface MountQuestionOptions extends MountSdkContentOptions {
   shouldAssertCardQuery?: boolean;
   sdkProviderProps?: Partial<MetabaseProviderProps>;
 }
 
 export function mountInteractiveQuestion(
   extraProps: Partial<ComponentProps<typeof InteractiveQuestion>> = {},
-  { shouldAssertCardQuery = true, sdkProviderProps }: Options = {},
+  { shouldAssertCardQuery, ...mountSdkContentOptions }: MountQuestionOptions = {
+    shouldAssertCardQuery: true,
+  },
 ) {
   cy.intercept("GET", "/api/card/*").as("getCard");
   cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -22,7 +27,7 @@ export function mountInteractiveQuestion(
   cy.get<number>("@questionId").then(questionId => {
     mountSdkContent(
       <InteractiveQuestion questionId={questionId} {...extraProps} />,
-      sdkProviderProps,
+      mountSdkContentOptions,
     );
   });
 
@@ -35,7 +40,9 @@ export function mountInteractiveQuestion(
 
 export function mountStaticQuestion(
   extraProps: Partial<ComponentProps<typeof StaticQuestion>> = {},
-  { shouldAssertCardQuery }: Options = { shouldAssertCardQuery: true },
+  { shouldAssertCardQuery }: MountQuestionOptions = {
+    shouldAssertCardQuery: true,
+  },
 ) {
   cy.intercept("GET", "/api/card/*").as("getCard");
   cy.intercept("POST", "/api/card/*/query").as("cardQuery");

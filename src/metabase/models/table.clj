@@ -39,7 +39,11 @@
   (derive :metabase/model)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
+  ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
+  ;; cause duplication rather than good matching if the two instances are later linked by serdes.
+  #_(derive :hook/entity-id))
 
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
@@ -278,7 +282,7 @@
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter]
+               :database_require_filter :entity_id]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
                :db_id      (serdes/fk :model/Database :name)}})

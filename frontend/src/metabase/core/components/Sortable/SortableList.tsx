@@ -7,6 +7,7 @@ import type {
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import _ from "underscore";
 
 import GrabberS from "metabase/css/components/grabber.module.css";
@@ -135,17 +136,22 @@ export const SortableList = <T,>({
       modifiers={modifiers}
     >
       <SortableContext items={itemIds}>{sortableElements}</SortableContext>
-      {useDragOverlay && (
-        <DragOverlay>
-          {activeItem
-            ? renderItem({
-                item: activeItem,
-                id: getId(activeItem),
-                isDragOverlay: true,
-              })
-            : null}
-        </DragOverlay>
-      )}
+      {useDragOverlay &&
+        // to avoid offset of the dragged item if the list lives in a scrolled/portalled container
+        // we need to render the DragOverlay in a separate portal
+        // (https://docs.dndkit.com/api-documentation/draggable/drag-overlay#portals)
+        createPortal(
+          <DragOverlay>
+            {activeItem
+              ? renderItem({
+                  item: activeItem,
+                  id: getId(activeItem),
+                  isDragOverlay: true,
+                })
+              : null}
+          </DragOverlay>,
+          document.body,
+        )}
     </DndContext>
   );
 };

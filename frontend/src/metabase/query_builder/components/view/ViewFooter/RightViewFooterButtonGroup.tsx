@@ -15,13 +15,15 @@ import { QuestionLastUpdated } from "../QuestionLastUpdated/QuestionLastUpdated"
 import QuestionRowCount from "../QuestionRowCount";
 import QuestionTimelineWidget from "../QuestionTimelineWidget";
 
+import S from "./RightViewFooterButtonGroup.module.css";
+
 export const RightViewFooterButtonGroup = () => {
   const isTimeseries = useSelector(getIsTimeseries);
   const result = useSelector(getFirstQueryResult);
   const isObjectDetail = useSelector(getIsObjectDetail);
 
   return (
-    <Group noWrap>
+    <Group wrap="nowrap" justify="right" className={S.Root}>
       {QuestionRowCount.shouldRender({
         result,
         isObjectDetail,
@@ -29,7 +31,7 @@ export const RightViewFooterButtonGroup = () => {
       {ExecutionTime.shouldRender({ result }) && (
         <ExecutionTime time={result.running_time} />
       )}
-      <Group spacing="sm" noWrap>
+      <Group gap="sm" wrap="nowrap">
         {QuestionLastUpdated.shouldRender({ result }) && (
           <QuestionLastUpdated
             className={cx(CS.hide, CS.smShow)}

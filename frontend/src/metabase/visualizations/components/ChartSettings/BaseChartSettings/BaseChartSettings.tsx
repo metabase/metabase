@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
 import Radio from "metabase/core/components/Radio";
-import CS from "metabase/css/core/index.css";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
   getComputedSettings,
@@ -87,7 +86,7 @@ export const BaseChartSettings = ({
       return null;
     }
 
-    //We don't want to show series settings widget for waterfall charts
+    // We don't want to show series settings widget for waterfall charts
     if (display === "waterfall" || !seriesSettingsWidget) {
       return null;
     }
@@ -144,9 +143,11 @@ export const BaseChartSettings = ({
   }, [currentWidget, widgets]);
 
   const handleShowSection = useCallback(
-    (section: string) => {
-      setCurrentSection(section);
-      setCurrentWidget(null);
+    (section: string | null) => {
+      if (section) {
+        setCurrentSection(section);
+        setCurrentWidget(null);
+      }
     },
     [setCurrentSection],
   );
@@ -201,7 +202,7 @@ export const BaseChartSettings = ({
             />
           </SectionContainer>
         )}
-        <ChartSettingsListContainer className={CS.scrollShow}>
+        <ChartSettingsListContainer data-testid="chartsettings-list-container">
           <ChartSettingsWidgetList
             widgets={visibleWidgets}
             extraWidgetProps={extraWidgetProps}
