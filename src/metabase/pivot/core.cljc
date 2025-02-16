@@ -4,7 +4,9 @@
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util.i18n :as i18n])
+  (:import
+   #?(:clj (java.text Collator))))
 
 (defn is-pivot-group-column
   "Is the given column the pivot-grouping column?"
@@ -150,10 +152,16 @@
 
 (defn- compare-fn
   [sort-order]
-  (case (keyword sort-order)
-    :ascending  compare
-    :descending #(compare %2 %1)
-    nil))
+  (let [locale-compare
+        #?(:clj
+           (let [collator (Collator/getInstance)]
+             (fn [a b] (.compare collator (str a) (str b))))
+           :cljs
+           (fn [a b] (.localeCompare (str a) (str b))))]
+    (case (keyword sort-order)
+      :ascending  locale-compare
+      :descending #(locale-compare %2 %1)
+      nil)))
 
 (defn- sort-tree
   "Converts each level of a tree to a sorted map as needed, based on the values
@@ -220,8 +228,7 @@
 
 (defn- maybe-add-grand-totals-row
   [row-tree settings]
-  (if (and (> (count row-tree) 1)
-           (:pivot.show_column_totals settings))
+  (if (:pivot.show_column_totals settings)
     (conj
      row-tree
      {:value (i18n/tru "Grand totals")
@@ -259,14 +266,19 @@
           [node])))))
 
 (defn add-subtotals
-  "Adds subtotals to the row tree if needed, based on column settings."
-  [row-tree row-indexes col-settings]
-  (let [show-subs-by-col (map (fn [idx]
-                                (not= ((nth col-settings idx) :pivot_table.column_show_totals) false))
-                              row-indexes)
-        not-flat         (some #(> (count (:children %)) 1) row-tree)
-        res              (mapcat (fn [row-item] (add-subtotal row-item show-subs-by-col (or not-flat (> (count (:children row-item)) 1)))) row-tree)]
-    res))
+  [row-tree row-indexes settings col-settings]
+  (if (:pivot.show_column_totals settings)
+    (let [show-subs-by-col (map (fn [idx]
+                                  (not= ((nth col-settings idx) :pivot_table.column_show_totals) false))
+                                row-indexes)
+          not-flat         (some #(> (count (:children %)) 1) row-tree)
+          res              (mapcat (fn [row-item]
+                                     (add-subtotal row-item show-subs-by-col
+                                                   (or not-flat
+                                                       (> (count (:children row-item)) 1))))
+                                   row-tree)]
+      res)
+    row-tree))
 
 (defn- display-name-for-col
   "@tsp - ripped from frontend/src/metabase/lib/formatting/column.ts"
@@ -319,10 +331,11 @@
   [row-tree col-tree row-indexes col-indexes val-indexes cols top-formatters left-formatters _value-formatters settings col-settings]
   (let [left-index-columns (map cols row-indexes)
         formatted-row-tree-without-subtotals (into [] (format-values-in-tree row-tree left-formatters left-index-columns))
-        formatted-row-tree (into [] (add-subtotals formatted-row-tree-without-subtotals row-indexes col-settings))
-        formatted-row-tree-with-totals (-> formatted-row-tree
-                                           (maybe-add-grand-totals-row settings))
-
+        ;; TODO condense the below functions
+        formatted-row-tree (into [] (add-subtotals formatted-row-tree-without-subtotals row-indexes settings col-settings))
+        formatted-row-tree-with-totals (if (> (count formatted-row-tree-without-subtotals) 1)
+                                         (maybe-add-grand-totals-row formatted-row-tree settings)
+                                         formatted-row-tree)
         row-paths (->> formatted-row-tree-with-totals
                        (mapcat enumerate-paths)
                        maybe-add-empty-path)
