@@ -293,7 +293,7 @@ export function generateExpression(
       typeof value === "number" ||
       (typeof value === "string" && value[0] !== '"');
 
-    const isValidLHS = (node: Node) => {
+    const isValidLHS = (node: Node): boolean => {
       const { type, value, op, child } = node;
       if (type === NODE.Literal && isNumberValue(value)) {
         return false;
