@@ -9,8 +9,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import { Box, DelayGroup, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-
-import type { Completion } from "../types";
+import type { Completion } from "metabase-lib/v1/expressions/complete";
 
 import S from "./Listbox.module.css";
 import { MatchText } from "./MatchText";

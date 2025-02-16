@@ -6,6 +6,7 @@ import CS from "metabase/css/core/index.css";
 import { isNotNull } from "metabase/lib/types";
 import { Box, Button, Flex, TextInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type { Shortcut } from "metabase-lib/v1/expressions/complete";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 
 import {
@@ -14,7 +15,7 @@ import {
 } from "../../analytics";
 
 import { CombineColumns, hasCombinations } from "./CombineColumns";
-import { Editor, type Shortcut } from "./Editor";
+import { Editor } from "./Editor";
 import ExpressionWidgetS from "./ExpressionWidget.module.css";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
