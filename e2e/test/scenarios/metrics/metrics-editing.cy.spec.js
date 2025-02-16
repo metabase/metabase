@@ -407,8 +407,9 @@ describe("scenarios > metrics > editing", () => {
       H.enterCustomColumnDetails({
         formula: `[${ORDERS_SCALAR_METRIC.name}] / 2`,
         name: "",
+        blur: true,
       });
-      H.popover().button("Update").click();
+      H.popover().button("Update").should("not.be.disabled").click();
       saveMetric();
       verifyScalarValue("9,380");
     });

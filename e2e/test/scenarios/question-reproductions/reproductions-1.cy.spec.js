@@ -75,7 +75,7 @@ describe("issue 6239", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    cy.get(".ace_text-input").type("CountIf([Total] > 0)").blur();
+    H.CustomExpressionEditor.type("CountIf([Total] > 0)").blur();
 
     cy.findByPlaceholderText("Something nice and descriptive").type("CE");
     cy.button("Done").click();

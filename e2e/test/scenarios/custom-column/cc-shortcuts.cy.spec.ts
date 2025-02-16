@@ -5,15 +5,15 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 function selectExtractColumn() {
-  cy.findByTestId("expression-suggestions-list").within(() => {
-    cy.findByText("Extract columns").click();
-  });
+  H.CustomExpressionEditor.completions().should("be.visible");
+  cy.wait(300);
+  H.CustomExpressionEditor.completion("Extract columns").click();
 }
 
 function selectCombineColumns() {
-  cy.findByTestId("expression-suggestions-list").within(() => {
-    cy.findByText("Combine columns").click();
-  });
+  H.CustomExpressionEditor.completions().should("be.visible");
+  cy.wait(300);
+  H.CustomExpressionEditor.completion("Combine columns").realClick();
 }
 
 function selectColumn(index: number, table: string, name?: string) {
@@ -139,10 +139,7 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
         .click();
       H.popover().findAllByRole("button").contains(extraction.name).click();
 
-      cy.findByTestId("expression-editor-textfield").should(
-        "contain",
-        `${extraction.fn}(`,
-      );
+      H.CustomExpressionEditor.shouldContain(`${extraction.fn}(`);
 
       H.expressionEditorWidget()
         .findByTestId("expression-name")
@@ -242,6 +239,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   it("should be possible to select a combine columns shortcut", () => {
     H.openOrdersTable({ mode: "notebook", limit: 5 });
     H.addCustomColumn();
+
     selectCombineColumns();
 
     selectColumn(0, "Total");
@@ -268,8 +266,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
 
       cy.button("Done").click();
 
-      cy.findByTestId("expression-editor-textfield").should(
-        "contain",
+      H.CustomExpressionEditor.shouldContain(
         'concat([Total], "__", [Product → Rating])',
       );
       cy.findByTestId("expression-name").should(
@@ -292,7 +289,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
       cy.findByText("Select columns to combine").click();
     });
 
-    cy.get(".ace_text-input").should("have.value", "\n\n");
+    H.CustomExpressionEditor.shouldContain("");
     cy.findByTestId("expression-name").should("have.value", "");
   });
 
