@@ -3,8 +3,18 @@ import { blue, green, yellow } from "chalk";
 import {
   CONTAINER_NAME,
   SAMPLE_CREDENTIALS_FILE_NAME,
-  SDK_NPM_LINK,
+  SDK_DOCS_LINK,
 } from "./config";
+
+export const SHOW_ON_STARTUP_MESSAGE = `
+  This tool will spin up a local Metabase instance via Docker and help you get
+  an embedded dashboard in your app.
+
+  - You can't use this tool to connect to an existing Metabase instance.
+  - The tool's default setup (which uses API keys) won’t work in production.
+    It's only intended for you to quickly try out the SDK on your local machine.
+    A production setup requires a Pro/Enterprise license and SSO with JWT.
+`;
 
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
@@ -17,8 +27,12 @@ export const MISSING_REACT_DEPENDENCY = `
 `;
 
 export const UNSUPPORTED_REACT_VERSION = `
-  Your package.json file contains an unsupported React version.
-  Please make sure your package.json file contains a dependency for React 18.
+  Your app uses a version of React that is not supported.
+  See https://metaba.se/sdk-docs
+
+  Try downloading and running one of our samples instead:
+  - React: https://metaba.se/sdk-sample-react
+  - Next.js: https://metaba.se/sdk-sample-nextjs
 `;
 
 export const DELETE_CONTAINER_MESSAGE = `Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.`;
@@ -49,7 +63,6 @@ export const getMetabaseInstanceSetupCompleteMessage = (
   Metabase is running at ${blue(instanceUrl)}
 
   Log in with
-
   Email: "${blue(email)}"
   Password: "${blue(password)}"
 
@@ -88,7 +101,12 @@ export const SETUP_PRO_LICENSE_MESSAGE = `
 `;
 
 export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK here: ${green(
-  SDK_NPM_LINK,
+  SDK_DOCS_LINK,
 )}`;
 
 export const CONTINUE_SETUP_ON_WARNING_MESSAGE = `Do you want to continue setup?`;
+
+export const LINK_TO_NEXT_JS_SAMPLE = `https://github.com/metabase/metabase-nextjs-sdk-embedding-sample`;
+
+// eslint-disable-next-line no-unconditional-metabase-links-render -- this is for the cli
+export const LINK_TO_NEXT_JS_GUIDE = `https://www.metabase.com/docs/latest/embedding/sdk/next-js`;

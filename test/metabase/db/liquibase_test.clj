@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.db :as mdb]
    [metabase.db.liquibase :as liquibase]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
@@ -12,7 +13,10 @@
    [metabase.test :as mt]
    [metabase.util.yaml :as u.yaml]
    [next.jdbc :as next.jdbc]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (liquibase Liquibase)
+   (liquibase.lockservice LockServiceFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -110,7 +114,7 @@
               (is (= :done (liquibase/wait-for-all-locks sleep-ms timeout-ms))))))))))
 
 (deftest release-all-locks-if-needed!-test
-  (mt/test-drivers #{:h2 :mysql :postgres}
+  (mt/test-drivers #{:h2}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
         (testing "When we release the locks from outside the migration...\n"
@@ -128,3 +132,24 @@
             (deliver released true)
             (testing "The lock was released before the migration finished"
               (is (not @locked?)))))))))
+
+(deftest auto-release-session-lock-test
+  (mt/test-drivers #{:mysql :postgres}
+    (testing "Session lock is released on conn close"
+      ;; Session lock provided automatically by the com.github.blagerweij/liquibase-sessionlock dependency
+      (mt/with-temp-empty-app-db [_conn driver/*driver*]
+        (let [;; use data-source so with-liquibase opens and closes the conn itself
+              data-source (mdb/data-source)
+              lock        (fn [^Liquibase liquibase]
+                            (->> liquibase
+                                 .getDatabase
+                                 (.getLockService (LockServiceFactory/getInstance))
+                                 .acquireLock))]
+          (liquibase/with-liquibase [liquibase1 data-source]
+            (is (lock liquibase1) "Can initially acquire session lock")
+            (is (lock liquibase1) "Can require acquire session lock on same liquibase")
+            (liquibase/with-liquibase [liquibase2 data-source]
+              (is (not (lock liquibase2)) "Cannot acquire session lock on a different liquibase while it is taken")))
+          (liquibase/with-liquibase [liquibase3 data-source]
+            ;; This will fail if the com.github.blagerweij/liquibase-sessionlock dep is not present
+            (is (lock liquibase3) "Can acquire session lock when conn closed without lock release")))))))

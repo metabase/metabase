@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
-   [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
    [metabase.api.card :as api.card]
@@ -24,7 +23,6 @@
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.revision :as revision]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -36,9 +34,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.request.core :as request]
-   [metabase.sync.task.sync-databases :as task.sync-databases]
-   [metabase.task :as task]
-   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
@@ -48,8 +44,7 @@
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)
-   (org.apache.poi.ss.usermodel DataFormatter)
-   (org.quartz.impl StdSchedulerFactory)))
+   (org.apache.poi.ss.usermodel DataFormatter)))
 
 (set! *warn-on-reflection* true)
 
@@ -1910,126 +1905,6 @@
          (mt/user-http-request :crowberto :delete 404 "card/12345"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                  Timelines                                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- timelines-request
-  [card include-events?]
-  (if include-events?
-    (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card) "/timelines") :include "events")
-    (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card) "/timelines"))))
-
-(defn- timelines-range-request
-  [card {:keys [start end]}]
-  (apply mt/user-http-request (concat [:rasta :get 200
-                                       (str "card/" (u/the-id card) "/timelines")
-                                       :include "events"]
-                                      (when start [:start start])
-                                      (when end [:end end]))))
-
-(defn- timeline-names [timelines]
-  (->> timelines (map :name) set))
-
-(defn- event-names [timelines]
-  (->> timelines (mapcat :events) (map :name) set))
-
-(deftest timelines-test
-  (testing "GET /api/card/:id/timelines"
-    (mt/with-temp [:model/Collection coll-a {:name "Collection A"}
-                   :model/Collection coll-b {:name "Collection B"}
-                   :model/Collection coll-c {:name "Collection C"}
-                   :model/Card card-a {:name          "Card A"
-                                       :collection_id (u/the-id coll-a)}
-                   :model/Card card-b {:name          "Card B"
-                                       :collection_id (u/the-id coll-b)}
-                   :model/Card card-c {:name          "Card C"
-                                       :collection_id (u/the-id coll-c)}
-                   :model/Timeline tl-a {:name          "Timeline A"
-                                         :collection_id (u/the-id coll-a)}
-                   :model/Timeline tl-b {:name          "Timeline B"
-                                         :collection_id (u/the-id coll-b)}
-                   :model/Timeline _ {:name          "Timeline B-old"
-                                      :collection_id (u/the-id coll-b)
-                                      :archived      true}
-                   :model/Timeline _ {:name          "Timeline C"
-                                      :collection_id (u/the-id coll-c)}
-                   :model/TimelineEvent _ {:name        "event-aa"
-                                           :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _ {:name        "event-ab"
-                                           :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _ {:name        "event-ba"
-                                           :timeline_id (u/the-id tl-b)}
-                   :model/TimelineEvent _ {:name        "event-bb"
-                                           :timeline_id (u/the-id tl-b)
-                                           :archived    true}]
-      (testing "Timelines in the collection of the card are returned"
-        (is (= #{"Timeline A"}
-               (timeline-names (timelines-request card-a false)))))
-      (testing "Timelines in the collection have a hydrated `:collection` key"
-        (is (= #{(u/the-id coll-a)}
-               (->> (timelines-request card-a false)
-                    (map #(get-in % [:collection :id]))
-                    set))))
-      (testing "check that `:can_write` key is hydrated"
-        (is (every?
-             #(contains? % :can_write)
-             (map :collection (timelines-request card-a false)))))
-      (testing "Only un-archived timelines in the collection of the card are returned"
-        (is (= #{"Timeline B"}
-               (timeline-names (timelines-request card-b false)))))
-      (testing "Timelines have events when `include=events` is passed"
-        (is (= #{"event-aa" "event-ab"}
-               (event-names (timelines-request card-a true)))))
-      (testing "Timelines have only un-archived events when `include=events` is passed"
-        (is (= #{"event-ba"}
-               (event-names (timelines-request card-b true)))))
-      (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
-        (is (= '()
-               (->> (timelines-request card-c true) first :events)))))))
-
-(deftest timelines-range-test
-  (testing "GET /api/card/:id/timelines?include=events&start=TIME&end=TIME"
-    (mt/with-temp [:model/Collection collection {:name "Collection"}
-                   :model/Card card {:name          "Card A"
-                                     :collection_id (u/the-id collection)}
-                   :model/Timeline tl-a {:name          "Timeline A"
-                                         :collection_id (u/the-id collection)}
-                   ;; the temp defaults set {:time_matters true}
-                   :model/TimelineEvent _ {:name        "event-a"
-                                           :timeline_id (u/the-id tl-a)
-                                           :timestamp   #t "2020-01-01T10:00:00.0Z"}
-                   :model/TimelineEvent _ {:name        "event-b"
-                                           :timeline_id (u/the-id tl-a)
-                                           :timestamp   #t "2021-01-01T10:00:00.0Z"}
-                   :model/TimelineEvent _ {:name        "event-c"
-                                           :timeline_id (u/the-id tl-a)
-                                           :timestamp   #t "2022-01-01T10:00:00.0Z"}
-                   :model/TimelineEvent _ {:name        "event-d"
-                                           :timeline_id (u/the-id tl-a)
-                                           :timestamp   #t "2023-01-01T10:00:00.0Z"}]
-      (testing "Events are properly filtered when given only `start=` parameter"
-        (is (= #{"event-c" "event-d"}
-               (event-names (timelines-range-request card {:start "2022-01-01T10:00:00.0Z"})))))
-      (testing "Events are properly filtered when given only `end=` parameter"
-        (is (= #{"event-a" "event-b" "event-c"}
-               (event-names (timelines-range-request card {:end "2022-01-01T10:00:00.0Z"})))))
-      (testing "Events are properly filtered when given `start=` and `end=` parameters"
-        (is (= #{"event-b" "event-c"}
-               (event-names (timelines-range-request card {:start "2020-12-01T10:00:00.0Z"
-                                                           :end   "2022-12-01T10:00:00.0Z"})))))
-      (mt/with-temp [:model/TimelineEvent _ {:name         "event-a2"
-                                             :timeline_id  (u/the-id tl-a)
-                                             :timestamp    #t "2020-01-01T10:00:00.0Z"
-                                             :time_matters false}]
-        (testing "Events are properly filtered considering the `time_matters` state."
-          ;; notice that event-a and event-a2 have the same timestamp, but different time_matters states.
-          ;; time_matters = false effectively means "We care only about the DATE of this event", so
-          ;; if a start or end timestamp is on the same DATE (regardless of time), include the event
-          (is (= #{"event-a2"}
-                 (event-names (timelines-range-request card {:start "2020-01-01T11:00:00.0Z"
-                                                             :end   "2020-12-01T10:00:00.0Z"})))))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            CSV/JSON/XLSX DOWNLOADS                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -3047,109 +2922,6 @@
           (is (= "details-only" (-> query-result
                                     :data :cols last :visibility_type))
               "in cols (important for the saved metadata)"))))))
-
-(defn- do-with-persistence-setup! [f]
-  ;; mt/with-temp-scheduler! actually just reuses the current scheduler. The scheduler factory caches by name set in
-  ;; the resources/quartz.properties file and we reuse that scheduler
-  (let [sched (.getScheduler
-               (StdSchedulerFactory. (doto (java.util.Properties.)
-                                       (.setProperty "org.quartz.scheduler.instanceName" (str (gensym "card-api-test")))
-                                       (.setProperty "org.quartz.scheduler.instanceID" "AUTO")
-                                       (.setProperty "org.quartz.properties" "non-existant")
-                                       (.setProperty "org.quartz.threadPool.threadCount" "6")
-                                       (.setProperty "org.quartz.threadPool.class" "org.quartz.simpl.SimpleThreadPool"))))]
-    ;; a binding won't work since we need to cross thread boundaries
-    (with-redefs [task/scheduler (constantly sched)]
-      (try
-        (qs/standby sched)
-        (#'task.persist-refresh/job-init!)
-        (#'task.sync-databases/job-init)
-        (mt/with-temporary-setting-values [:persisted-models-enabled true]
-          ;; Use a postgres DB because it supports the :persist-models feature
-          (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true} :engine :postgres}]
-            (f db)))
-        (finally
-          (qs/shutdown sched))))))
-
-(defmacro ^:private with-persistence-setup!
-  "Sets up a temp scheduler, a temp database and enabled persistence. Scheduler will be in standby mode so that jobs
-  won't run. Just check for trigger presence."
-  [db-binding & body]
-  `(do-with-persistence-setup! (fn [~db-binding] ~@body)))
-
-(defn- job-info-for-individual-refresh
-  "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."
-  []
-  (some->> (deref #'task.persist-refresh/refresh-job-key)
-           task/job-info
-           :triggers
-           (map :data)
-           (filter (comp #{"individual"} #(get % "type")))
-           (map #(get % "persisted-id"))
-           set))
-
-(deftest refresh-persistence
-  (testing "Can schedule refreshes for models"
-    (with-persistence-setup! db
-      (mt/with-temp
-        [:model/Card          model      {:type :model :database_id (u/the-id db)}
-         :model/Card          notmodel   {:type :question :database_id (u/the-id db)}
-         :model/Card          archived   {:type :model :archived true :database_id (u/the-id db)}
-         :model/PersistedInfo pmodel     {:card_id (u/the-id model) :database_id (u/the-id db)}
-         :model/PersistedInfo pnotmodel  {:card_id (u/the-id notmodel) :database_id (u/the-id db)}
-         :model/PersistedInfo parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]
-        (testing "Can refresh models"
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/refresh" (u/the-id model)))
-          (is (contains? (job-info-for-individual-refresh)
-                         (u/the-id pmodel))
-              "Missing refresh of model"))
-        (testing "Won't refresh archived models"
-          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id archived)))
-          (is (not (contains? (job-info-for-individual-refresh)
-                              (u/the-id pnotmodel)))
-              "Scheduled refresh of archived model"))
-        (testing "Won't refresh cards no longer models"
-          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id notmodel)))
-          (is (not (contains? (job-info-for-individual-refresh)
-                              (u/the-id parchived)))
-              "Scheduled refresh of archived model"))))))
-
-(deftest unpersist-persist-model-test
-  (with-persistence-setup! db
-    (mt/with-temp
-      [:model/Card          model     {:database_id (u/the-id db), :type :model}
-       :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}]
-      (testing "Can't unpersist models without :cache-granular-controls feature flag enabled"
-        (mt/with-premium-features #{}
-          (mt/user-http-request :crowberto :post 402 (format "card/%d/unpersist" (u/the-id model)))
-          (is (= "persisted"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
-      (testing "Can unpersist models with the :cache-granular-controls feature flag enabled"
-        (mt/with-premium-features #{:cache-granular-controls}
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id model)))
-          (is (= "off"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
-      (testing "Can't re-persist models with the :cache-granular-controls feature flag enabled"
-        (mt/with-premium-features #{}
-          (mt/user-http-request :crowberto :post 402 (format "card/%d/persist" (u/the-id model)))
-          (is (= "off"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
-      (testing "Can re-persist models with the :cache-granular-controls feature flag enabled"
-        (mt/with-premium-features #{:cache-granular-controls}
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/persist" (u/the-id model)))
-          (is (= "creating"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel)))))))
-    (mt/with-temp
-      [:model/Card          notmodel  {:database_id (u/the-id db), :type :question}
-       :model/PersistedInfo pnotmodel {:database_id (u/the-id db), :card_id (u/the-id notmodel)}]
-      (mt/with-premium-features #{:cache-granular-controls}
-        (testing "Allows unpersisting non-model cards"
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id notmodel)))
-          (is (= "off"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pnotmodel)))))
-        (testing "Can't re-persist non-model cards"
-          (is (= "Card is not a model"
-                 (mt/user-http-request :crowberto :post 400 (format "card/%d/persist" (u/the-id notmodel))))))))))
 
 (defn param-values-url
   "Returns an URL used to get values for parameter of a card.
@@ -4172,3 +3944,84 @@
             :moderation_status nil}
            (-> (mt/user-http-request :rasta :get 200 (str "card/" card-id))
                :dashboard)))))
+
+(deftest cannot-join-question-with-itself
+  (testing "Cannot join card with itself."
+    (let [mp (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/aggregate (lib/count))
+                    (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
+                                                            (lib/breakoutable-columns $q)))))]
+      (doseq [card-type-a [:question :metric :model]]
+        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query (lib/->legacy-MBQL query) :type card-type-a}]
+          (let [card (lib.metadata/card mp id)
+                columns (lib/returned-columns (lib/query mp card))
+                right-column (m/find-first (comp #{"ID"} :display-name) columns)
+                query-with-self-join (lib/join query
+                                               (lib/join-clause card
+                                                                [(lib/=
+                                                                  (lib.metadata/field mp (mt/id :orders :id))
+                                                                  right-column)]))]
+            (doseq [card-type-b [:question :metric :model]]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id)
+                                    {:dataset_query (lib/->legacy-MBQL query-with-self-join)
+                                     :type card-type-b}))))))))
+
+(deftest cannot-use-self-as-source
+  (testing "Cannot use self as source for card."
+    (let [mp (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (doseq [card-type-a [:question :model]]
+        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query (lib/->legacy-MBQL query) :type card-type-a}]
+          (let [query-with-self-source (lib/with-different-table query (str "card__" id))]
+            (doseq [card-type-b [:question :model]]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id)
+                                    {:dataset_query (lib/->legacy-MBQL query-with-self-source)
+                                     :type card-type-b}))))))))
+
+(deftest cannot-save-metric-with-formula-cycle
+  (testing "Cannot aggregate a metric with itself."
+    (let [mp (mt/metadata-provider)
+          query-a (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/count))
+                      (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
+                                                              (lib/breakoutable-columns $q)))))]
+      (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :metric}]
+        (let [query-b (lib/aggregate query-a (lib.metadata/metric mp id-a))]
+          (mt/with-temp [:model/Card {id-b :id} {:dataset_query (lib/->legacy-MBQL query-b) :type :metric}]
+            (let [query-with-cycle (lib/aggregate query-a (lib.metadata/metric mp id-b))]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
+                                    {:dataset_query (lib/->legacy-MBQL query-with-cycle)
+                                     :type :metric}))))))))
+
+(deftest cannot-join-question-with-other-question-joining-original
+  (testing "Cannot join in a chain of cards to make cycle."
+    (let [mp (mt/metadata-provider)
+          query-a (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/count))
+                      (as-> $q (lib/breakout $q (m/find-first (comp #{"Created At"} :display-name)
+                                                              (lib/breakoutable-columns $q)))))]
+      (doseq [card-type-a [:question :metric :model]]
+        (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type card-type-a}]
+          (let [card-a (lib.metadata/card mp id-a)
+                columns (lib/returned-columns (lib/query mp card-a))
+                right-column-a (m/find-first (comp #{"ID"} :display-name) columns)
+                query-b (lib/join query-a
+                                  (lib/join-clause card-a
+                                                   [(lib/=
+                                                     (lib.metadata/field mp (mt/id :orders :id))
+                                                     right-column-a)]))]
+            (doseq [card-type-b [:question :metric :model]]
+              (mt/with-temp [:model/Card {id-b :id} {:dataset_query (lib/->legacy-MBQL query-b) :type card-type-b}]
+                (let [card-b (lib.metadata/card mp id-b)
+                      columns (lib/returned-columns (lib/query mp card-b))
+                      left-column-b (m/find-first (comp #{"ID"} :display-name) columns)
+                      query-cycle (lib/join query-a
+                                            (lib/join-clause card-b
+                                                             [(lib/=
+                                                               left-column-b
+                                                               right-column-a)]))]
+                  (doseq [card-type-c [:question :metric :model]]
+                    (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
+                                          {:dataset_query (lib/->legacy-MBQL query-cycle)
+                                           :type card-type-c})))))))))))

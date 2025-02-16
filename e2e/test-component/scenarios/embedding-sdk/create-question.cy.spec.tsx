@@ -7,7 +7,6 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   createQuestion,
-  describeEE,
   entityPickerModal,
   entityPickerModalTab,
   modal,
@@ -21,7 +20,7 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
 
-describeEE("scenarios > embedding-sdk > create-question", () => {
+describe("scenarios > embedding-sdk > create-question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
   });

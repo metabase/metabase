@@ -135,7 +135,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // another column
     H.menu().findByText("Value from another column…").click();
-    H.popover().findByText("Mega Count").click();
+    H.selectDropdown().findByText("Mega Count").click();
     H.menu().button("Done").click();
 
     cy.findByTestId("scalar-previous-value").within(() => {
@@ -145,7 +145,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     });
 
     cy.findByTestId("chartsettings-sidebar").findByText("(Mega Count)").click();
-    H.menu().findByLabelText("Column").click();
+    H.menu().findByRole("textbox", { name: "Column" }).click();
     H.popover().findByText("Count").click();
     H.menu().button("Done").click();
 
@@ -291,7 +291,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     H.popover().button("Done").click();
 
     cy.findByTestId("chartsettings-field-picker")
-      .find('input[type="search"]')
+      .findByRole("textbox")
       .should("have.value", "Mega Count")
       .click();
 
@@ -495,5 +495,45 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("Line-button").click();
     cy.icon("warning").should("not.exist");
     H.cartesianChartCircle().should("have.length", 3);
+  });
+
+  it("should support quick-filter drill thru (metabase#46168)", () => {
+    H.createQuestion(
+      {
+        name: "46168",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: AGGREGATIONS,
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        display: "smartscalar",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("scalar-period")
+      .findByText("Apr 2026")
+      .should("be.visible");
+    cy.findByTestId("scalar-container").findByText("344").click();
+
+    H.popover().within(() => {
+      // Validate expected filter options
+      cy.findByText("Filter by this value").should("be.visible");
+      cy.findByText(">").should("be.visible");
+      cy.findByText("<").should("be.visible");
+      cy.findByText("=").should("be.visible");
+      cy.findByText("≠").should("be.visible");
+
+      // Apply the drill
+      cy.findByText(">").click();
+    });
+
+    // Validate that the filter was applied
+    cy.findByTestId("scalar-period")
+      .findByText("Mar 2026")
+      .should("be.visible");
+    cy.findByTestId("scalar-container").findByText("527").should("be.visible");
   });
 });

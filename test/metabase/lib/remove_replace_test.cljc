@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
@@ -1143,6 +1144,33 @@
                     first
                     :joins
                     (map :alias))))))))
+
+(deftest ^:parallel replace-join-on-models-test
+  (testing "ambiguous model fields shouldn't get a join alias added incorrectly"
+    (let [base-query {:lib/type :mbql/query
+                      :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
+                      :database (meta/id)
+                      :stages [{:lib/type :mbql.stage/mbql
+                                :source-card (:id ((lib.tu/mock-cards) :orders))}]}
+          product-card ((lib.tu/mock-cards) :products)
+          [orders-id orders-product-id] (lib/join-condition-lhs-columns base-query product-card nil nil)
+          [products-id] (lib/join-condition-rhs-columns base-query product-card orders-product-id nil)
+          query (lib/join base-query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))
+          [join] (lib/joins query)
+          new-clause (lib.join/with-join-alias
+                      (lib/join-clause product-card [(lib/= orders-id products-id)])
+                      "fake join alias")
+          new-query (lib/replace-clause query join new-clause)
+          [new-join] (lib/joins new-query)]
+      (is (=? {:stages
+               [{:joins
+                 [{:conditions
+                   [[:=
+                     {}
+                     [:field #(not (contains? % :join-alias)) "ID"]
+                     [:field {:join-alias (:alias new-join)} any?]]]
+                   :alias (:alias new-join)}]}]}
+              new-query)))))
 
 (deftest ^:parallel remove-first-in-long-series-of-join-test
   (testing "Recursive join removal (#35049)"

@@ -4,14 +4,23 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
-## Metabase 0.53.0 
+## Metabase 0.54.0
 
-- Added the multi-method `bad-connection-details` to allow mocking bad connection parameters for tests.
+- Added a feature `:test/arrays` and multimethod `native-array-query` to enable the testing of array types for
+  databases that support them.
 
-- Added `driver/dynamic-database-types-lookup` and its `:postgres` implementation. The method generates map 
-  of `database_type` to `base_type`, for dynamic types, ie. those which are not covered 
+## Metabase 0.53.0
+
+- Added the multimethod `bad-connection-details` to allow mocking bad connection parameters for tests.
+
+- Added `driver/dynamic-database-types-lookup` and its `:postgres` implementation. The method generates map
+  of `database_type` to `base_type`, for dynamic types, ie. those which are not covered
   by `sql-jdbc.sync/database-type->base-type`. Its original purpose was to enable mapping of user defined enums in
   postgres to appropriate base type in results metadata.
+
+## Metabase 0.52.12
+
+- Added the multimethod `metabase.driver/db-details-to-test-and-migrate`. This can be used to cleanup and migrate ambiguous connection details from previous versions.
 
 ## Metabase 0.52.0
 
