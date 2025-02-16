@@ -4,6 +4,8 @@ import { type HTMLAttributes, type Ref, forwardRef } from "react";
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Icon } from "metabase/ui";
 
+import S from "./BadgeListItem.module.css";
+
 type BadgeListItemRootProps = BadgeProps & HTMLAttributes<HTMLDivElement>;
 
 interface BadgeListItemProps extends BadgeListItemRootProps {
@@ -20,11 +22,9 @@ const _BadgeListItem = (
     size="lg"
     tt="capitalize"
     variant="light"
-    bg="var(--mb-color-brand-light)"
-    c="var(--mb-color-text-brand)"
     classNames={{
-      root: CS.bgLightHover,
-      inner: CS.cursorPointer,
+      root: S.BadgeListItem,
+      label: CS.cursorPointer,
     }}
     pr={0}
     pl="sm"
@@ -37,7 +37,7 @@ const _BadgeListItem = (
           e.stopPropagation();
           onRemoveItem?.();
         }}
-        className={CS.bgMediumHover}
+        className={S.BadgeListRemoveButton}
       >
         <Icon name="close" c="var(--mb-color-text-brand)" size={10} />
       </ActionIcon>

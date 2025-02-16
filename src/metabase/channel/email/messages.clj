@@ -142,7 +142,7 @@
 
 (mu/defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
-  login history information as returned by `metabase.models.login-history/human-friendly-infos`."
+  login history information as returned by [[metabase.login-history.models.login-history/human-friendly-infos]]."
   [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
   (let [user-info    (or (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
                          (throw (ex-info (tru "User {0} does not exist" user-id)
@@ -268,13 +268,25 @@
     (email/send-message! message)))
 
 (defn generate-pulse-unsubscribe-hash
-  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
+  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions.
+
+  Deprecated: only used for dashboard subscriptions for now, should be migrated to `generate-notification-unsubscribe-hash`
+  once we migrate all the dashboard subscriptions to the new notification system."
   [pulse-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
     (json/encode {:salt     (public-settings/site-uuid-for-unsubscribing-url)
                   :email    email
                   :pulse-id pulse-id}))))
+
+(defn generate-notification-unsubscribe-hash
+  "Generates hash to allow for non-users to unsubscribe from notifications."
+  [notification-id email]
+  (codecs/bytes->hex
+   (encryption/validate-and-hash-secret-key
+    (json/encode {:salt            (public-settings/site-uuid-for-unsubscribing-url)
+                  :email           email
+                  :notification-id notification-id}))))
 
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."

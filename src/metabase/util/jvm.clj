@@ -274,7 +274,7 @@
   DEPRECATED: Using this is an anti-pattern, it messes up our ability to analyze the code and find dependencies between
   namespaces or to topographically sort them correctly during compilation. See
   https://metaboat.slack.com/archives/CKZEMT1MJ/p1734635053499399 or ask Cam for more info."}
-  ^:deprecated metabase-namespace-symbols
+ ^:deprecated metabase-namespace-symbols
   (vec (sort (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
                    :when   (and (str/starts-with? ns-symb "metabase")
                                 (not (str/includes? ns-symb "test")))]
@@ -309,7 +309,7 @@
   The default timeout is 1000ms and the default interval is 100ms.
 
     (u/poll {:thunk       (fn [] (upload!))
-             :done        (fn [response] (get-in response [:status :done]))
+             :done?       (fn [response] (get-in response [:status :done]))
              :timeout-ms  1000
              :interval-ms 100})"
   [{:keys [thunk done? timeout-ms interval-ms]

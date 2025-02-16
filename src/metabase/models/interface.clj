@@ -25,6 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
    [taoensso.nippy :as nippy]
@@ -82,7 +83,11 @@
   (let [fn-symb (symbol (str (ns-name *ns*)) (name fn-name))]
     (when-let [existing-fn-symb (get @defined-hydration-methods hydration-key)]
       (when (not= fn-symb existing-fn-symb)
-        (throw (ex-info (format "Hydration key %s already exists at %s" hydration-key existing-fn-symb)
+        (throw (ex-info (str (format "Hydration key %s already exists at %s" hydration-key existing-fn-symb)
+                             "\n\n"
+                             "You can remove it with"
+                             "\n"
+                             (pr-str (list 'swap! `defined-hydration-methods 'dissoc hydration-key)))
                         {:hydration-key       hydration-key
                          :existing-definition existing-fn-symb}))))
     (swap! defined-hydration-methods assoc hydration-key fn-symb))
@@ -161,9 +166,29 @@
   [obj]
   (json-out obj false))
 
+(defn- elide-data [obj]
+  (walk/postwalk (fn [x] (cond
+                           (string? x) (string/elide x 250)
+                           (and (sequential? x) (> (count x) 50)) (take 50 x)
+                           :else x)) obj))
+
+(defn- json-in-with-eliding
+  [obj]
+  (if (string? obj)
+    obj
+    (json/encode (elide-data obj))))
+
 (def transform-json
   "Transform for json."
   {:in  json-in
+   :out json-out-with-keywordization})
+
+(def transform-json-eliding
+  "Serializes object as JSON, but:
+    - elides any long strings to a max of 250 chars
+    - limits sequences to the first 50 entries
+   Useful for debugging/human-consuming information which can be unbounded-ly large"
+  {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
 (defn- serialize-mlv2-query
@@ -257,10 +282,12 @@
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (seq (->> (map mbql.normalize/normalize-source-metadata metadata)
-              ;; This is necessary, because in the wild, there may be cards created prior to this change.
-              (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
-              (map lib.binning/ensure-binning-in-display-name)))))
+    (not-empty (mapv #(-> %
+                          mbql.normalize/normalize-source-metadata
+                          ;; This is necessary, because in the wild, there may be cards created prior to this change.
+                          lib.temporal-bucket/ensure-temporal-unit-in-display-name
+                          lib.binning/ensure-binning-in-display-name)
+                     metadata))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."

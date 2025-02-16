@@ -1,13 +1,13 @@
 import { onlyOn } from "@cypress/skip-test";
-import _ from "underscore";
 
-const { H } = cy;
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+
+const { H } = cy;
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -296,7 +296,9 @@ describe(
                     H.openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
 
-                    findSelectedPickerItem("Orders in a dashboard");
+                    H.entityPickerModalTab("Dashboards").click();
+
+                    findActivePickerItem("Orders in a dashboard");
                   });
 
                   it("should handle lost access", () => {
@@ -343,9 +345,7 @@ describe(
 
                     cy.wait("@mostRecentlyViewedDashboard");
 
-                    H.entityPickerModal()
-                      .button(/Orders in a dashboard/)
-                      .should("be.disabled");
+                    findInactivePickerItem("Orders in a dashboard");
                   });
                 });
               });
@@ -367,9 +367,8 @@ describe(
                   .findByText("First collection")
                   .should("be.visible");
 
-                findPickerItem("Orders in a dashboard").then($button => {
-                  expect($button).to.have.attr("disabled");
-                });
+                findInactivePickerItem("Orders in a dashboard");
+
                 H.entityPickerModal().within(() => {
                   cy.findByPlaceholderText(/Search/).type(
                     "Orders in a dashboard{Enter}",
@@ -476,21 +475,12 @@ function turnIntoModel() {
 }
 
 function findPickerItem(name) {
-  return cy
-    .findByTestId("entity-picker-modal")
-    .findByText(name)
-    .closest("button");
+  return cy.findByTestId("entity-picker-modal").findByText(name).parents("a");
 }
 
 function findActivePickerItem(name) {
   return findPickerItem(name).then($button => {
     expect($button).to.have.attr("data-active", "true");
-  });
-}
-
-function findSelectedPickerItem(name) {
-  return findPickerItem(name).then($button => {
-    expect($button).to.have.attr("aria-selected", "true");
   });
 }
 

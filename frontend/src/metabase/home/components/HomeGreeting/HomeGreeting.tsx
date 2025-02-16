@@ -5,12 +5,13 @@ import _ from "underscore";
 import styles from "metabase/css/core/animation.module.css";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
-import { Box, Tooltip } from "metabase/ui";
+import { Tooltip } from "metabase/ui";
 
 import { getHasMetabotLogo } from "../../selectors";
 
 import {
   GreetingLogo,
+  GreetingLogoContainer,
   GreetingMessage,
   GreetingRoot,
 } from "./HomeGreeting.styled";
@@ -83,14 +84,7 @@ const MetabotGreeting = () => {
       label={t`Don't tell anyone, but you're my favorite.`}
       position="bottom"
     >
-      <Box
-        style={{
-          position: "relative",
-          width: "54px",
-          height: "40px",
-          marginInlineEnd: "0.5rem",
-        }}
-      >
+      <GreetingLogoContainer>
         <GreetingLogo
           isCool={isCool}
           className={`${styles.SpinOut} ${isCooling ? styles.SpinOutActive : ""}`}
@@ -101,7 +95,7 @@ const MetabotGreeting = () => {
           className={`${styles.SpinOut} ${isCooling ? styles.SpinOutActive : ""}`}
           variant="happy"
         />
-      </Box>
+      </GreetingLogoContainer>
     </Tooltip>
   );
 };

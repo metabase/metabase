@@ -30,7 +30,6 @@ export function ChartSettingsButton({
   return (
     <>
       <DashCardActionButton
-        as="div"
         tooltip={t`Visualization options`}
         aria-label={t`Show visualization options`}
         onClick={open}

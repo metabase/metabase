@@ -23,12 +23,11 @@
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse]
-   [metabase.models.revision.last-edit :as last-edit]
-   [metabase.models.timeline :as timeline]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.request.core :as request]
+   [metabase.revisions.core :as revisions]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -729,7 +728,8 @@
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
 
-(mu/defn- coalesce-edit-info :- last-edit/MaybeAnnotated
+;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
+(mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
   [row]
@@ -983,27 +983,6 @@
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
   (collection-detail (api/read-check (collection/trash-collection))))
-
-(api.macros/defendpoint :get "/root/timelines"
-  "Fetch the root Collection's timelines."
-  [_route-params
-   {:keys [include archived]} :- [:map
-                                  [:include  {:optional true} [:maybe [:= "events"]]]
-                                  [:archived {:default false} [:maybe :boolean]]]]
-  (api/read-check collection/root-collection)
-  (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
-                                          :timeline/archived? archived}))
-
-(api.macros/defendpoint :get "/:id/timelines"
-  "Fetch a specific Collection's timelines."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [include archived]} :- [:map
-                                  [:include  {:optional true} [:maybe [:= "events"]]]
-                                  [:archived {:default false} [:maybe :boolean]]]]
-  (api/read-check (t2/select-one :model/Collection :id id))
-  (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
-                                         :timeline/archived? archived}))
 
 (api.macros/defendpoint :get "/:id/items"
   "Fetch a specific Collection's items with the following options:

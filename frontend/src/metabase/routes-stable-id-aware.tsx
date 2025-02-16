@@ -20,11 +20,9 @@ type ParamConfig = {
   name: string;
   type: ParamType;
   resourceType: ResourceType;
-  required?: boolean;
 };
 
 type ParamWithValue = {
-  required: boolean;
   value: string;
   name: string;
   type: ParamType;
@@ -52,7 +50,6 @@ export const EntityIdRedirect = ({
         .exhaustive();
       return {
         ...config,
-        required: config.required ?? true,
         value,
       };
     });
@@ -124,23 +121,16 @@ function handleResults({
   let shouldRedirect = false;
   let url = currentUrl;
   let notFound = false;
-  for (const { value, required } of paramsWithValues) {
+  for (const { value } of paramsWithValues) {
     if (isBaseEntityID(value)) {
       const mappedEntityId = entity_ids?.[value];
       // if the entity id is found, we replace it with the numeric id
       if (mappedEntityId?.id) {
         shouldRedirect = true;
         url = url.replace(value, String(mappedEntityId.id));
-      } else if (!canBeNormalId(value)) {
-        // if it's found and cannot be a normal slug (ie: it doesn't start with a number)
-        if (required) {
-          // if it's required, then we show an error, this is needed because at this time some endpoints
-          // become stuck in infinite loading if they fail to parse the numeric id from the slug
-          notFound = true;
-        } else {
-          // if it's not required then we remove it from the url
-          url = url.replace(value, "");
-        }
+      } else {
+        // if it's not found we show a 404
+        notFound = true;
       }
     }
   }
@@ -162,9 +152,4 @@ export function createEntityIdRedirect(config: {
 
 export const canBeEntityId = (id: string): id is BaseEntityId => {
   return isBaseEntityID(id);
-};
-
-export const canBeNormalId = (id: string) => {
-  const parts = id.split("-");
-  return !isNaN(parseInt(parts[0]));
 };

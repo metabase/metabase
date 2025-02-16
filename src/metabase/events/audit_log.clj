@@ -122,6 +122,8 @@
 (derive :event/notification-create ::notification-event)
 (derive :event/notification-update ::notification-event)
 (derive :event/notification-unsubscribe ::notification-event)
+(derive :event/notification-unsubscribe-ex ::notification-event)
+(derive :event/notification-unsubscribe-undo-ex ::notification-event)
 
 (methodical/defmethod events/publish-event! ::notification-event
   [topic {:keys [object user-id] :as event}]

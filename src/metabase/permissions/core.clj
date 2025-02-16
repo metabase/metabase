@@ -23,6 +23,7 @@
   full-schema-permission-for-user
   most-permissive-database-permission-for-user
   permissions-for-user
+  prime-db-cache
   schema-permission-for-user
   set-database-permission!
   set-new-database-permissions!

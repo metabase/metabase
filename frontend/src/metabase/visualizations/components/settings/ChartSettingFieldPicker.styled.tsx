@@ -1,3 +1,4 @@
+import isPropValid from "@emotion/is-prop-valid";
 import styled from "@emotion/styled";
 
 import Triggerable from "metabase/components/Triggerable";
@@ -12,9 +13,9 @@ interface ChartSettingFieldPickerRootProps extends GroupProps {
   showDragHandle: boolean;
 }
 
-export const ChartSettingFieldPickerRoot = styled(
-  Group,
-)<ChartSettingFieldPickerRootProps>`
+export const ChartSettingFieldPickerRoot = styled(Group, {
+  shouldForwardProp: isPropValid,
+})<ChartSettingFieldPickerRootProps>`
   border: 1px solid var(--mb-color-border);
   border-radius: ${({ theme }) => theme.radius.md};
   cursor: ${props => (props.showDragHandle ? "grab" : "default")};
