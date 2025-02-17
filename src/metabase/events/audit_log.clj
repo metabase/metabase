@@ -122,8 +122,6 @@
 (derive :event/notification-create ::notification-event)
 (derive :event/notification-update ::notification-event)
 (derive :event/notification-unsubscribe ::notification-event)
-(derive :event/notification-unsubscribe-ex ::notification-event)
-(derive :event/notification-unsubscribe-undo-ex ::notification-event)
 
 (methodical/defmethod events/publish-event! ::notification-event
   [topic {:keys [object user-id] :as event}]
@@ -131,6 +129,19 @@
                            (merge
                             event
                             {:model    :model/Notification
+                             :model-id (:id object)
+                             :user-id  user-id})))
+
+(derive ::notification-handler-event ::event)
+(derive :event/notification-unsubscribe-ex ::notification-handler-event)
+(derive :event/notification-unsubscribe-undo-ex ::notification-handler-event)
+
+(methodical/defmethod events/publish-event! ::notification-handler-event
+  [topic {:keys [object user-id] :as event}]
+  (audit-log/record-event! topic
+                           (merge
+                            event
+                            {:model    :model/NotificationHandler
                              :model-id (:id object)
                              :user-id  user-id})))
 
