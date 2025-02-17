@@ -13,7 +13,7 @@
     "\"alma\" llama" "\"\"\"alma\"\" llama\""))
 
 (deftest ^:parallel schema-sample-test
-  (mt/with-driver :h2
+  (mt/test-driver :h2
     (let [query {:database (mt/id)
                  :native {:query (str "SELECT * FROM x.orders1"
                                       " INNER JOIN products ON orders1.product_id = products.id"
@@ -51,7 +51,7 @@
                  normalize))))))
 
 (deftest ^:parallel no-used-table-test
-  (mt/with-driver :postgres
+  (mt/test-driver :postgres
     (let [query {:database (mt/id)
                  :native {:query "SELECT * FROM x.orders1"}}
           normalize #(into #{} (str/split % #"(?<=;)\n"))]
