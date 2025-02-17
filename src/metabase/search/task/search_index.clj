@@ -3,7 +3,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.search.core :as search]
    [metabase.task :as task]
    [metabase.util :as u]
@@ -34,9 +34,9 @@
 ;; We define the job bodies outside the defrecord, so that we can redefine them live from the REPL
 
 (defn- report->prometheus! [duration report]
-  (prometheus/inc! :metabase-search/index-ms duration)
+  (analytics/inc! :metabase-search/index-ms duration)
   (doseq [[model cnt] report]
-    (prometheus/inc! :metabase-search/index {:model model} cnt)))
+    (analytics/inc! :metabase-search/index {:model model} cnt)))
 
 (defn init!
   "Create a new index, if necessary"
@@ -52,7 +52,7 @@
               true)
           (log/info "Found existing search index, and using it.")))
       (catch Exception e
-        (prometheus/inc! :metabase-search/index-error)
+        (analytics/inc! :metabase-search/index-error)
         (throw e)))))
 
 (defn reindex!
@@ -68,7 +68,7 @@
         (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
         report)
       (catch Exception e
-        (prometheus/inc! :metabase-search/index-error)
+        (analytics/inc! :metabase-search/index-error)
         (throw e)))))
 
 (defn- update-index! []
@@ -86,7 +86,7 @@
               (report->prometheus! duration report)
               (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) report))))
           (catch Exception e
-            (prometheus/inc! :metabase-search/index-error)
+            (analytics/inc! :metabase-search/index-error)
             (throw e))))
       (catch Exception e
         (log/error e "Updating search index failed")

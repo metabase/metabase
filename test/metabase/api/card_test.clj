@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
-   [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
    [metabase.api.card :as api.card]
@@ -34,9 +33,6 @@
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
-   [metabase.sync.task.sync-databases :as task.sync-databases]
-   [metabase.task :as task]
-   [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
@@ -46,8 +42,7 @@
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)
-   (org.apache.poi.ss.usermodel DataFormatter)
-   (org.quartz.impl StdSchedulerFactory)))
+   (org.apache.poi.ss.usermodel DataFormatter)))
 
 (set! *warn-on-reflection* true)
 
@@ -2947,114 +2942,6 @@
           (is (= "details-only" (-> query-result
                                     :data :cols last :visibility_type))
               "in cols (important for the saved metadata)"))))))
-
-(defn- do-with-persistence-setup! [f]
-  ;; mt/with-temp-scheduler! actually just reuses the current scheduler. The scheduler factory caches by name set in
-  ;; the resources/quartz.properties file and we reuse that scheduler
-  (let [sched (.getScheduler
-               (StdSchedulerFactory. (doto (java.util.Properties.)
-                                       (.setProperty "org.quartz.scheduler.instanceName" (str (gensym "card-api-test")))
-                                       (.setProperty "org.quartz.scheduler.instanceID" "AUTO")
-                                       (.setProperty "org.quartz.properties" "non-existant")
-                                       (.setProperty "org.quartz.threadPool.threadCount" "6")
-                                       (.setProperty "org.quartz.threadPool.class" "org.quartz.simpl.SimpleThreadPool"))))]
-    ;; a binding won't work since we need to cross thread boundaries
-    (with-redefs [task/scheduler (constantly sched)]
-      (try
-        (qs/standby sched)
-        (#'task.persist-refresh/job-init!)
-        (#'task.sync-databases/job-init)
-        (mt/with-temporary-setting-values [:persisted-models-enabled true]
-          ;; Use a postgres DB because it supports the :persist-models feature
-          (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true} :engine :postgres}]
-            (f db)))
-        (finally
-          (qs/shutdown sched))))))
-
-(defmacro ^:private with-persistence-setup!
-  "Sets up a temp scheduler, a temp database and enabled persistence. Scheduler will be in standby mode so that jobs
-  won't run. Just check for trigger presence."
-  [db-binding & body]
-  `(do-with-persistence-setup! (fn [~db-binding] ~@body)))
-
-(defn- job-info-for-individual-refresh
-  "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."
-  []
-  (some->> (deref #'task.persist-refresh/refresh-job-key)
-           task/job-info
-           :triggers
-           (map :data)
-           (filter (comp #{"individual"} #(get % "type")))
-           (map #(get % "persisted-id"))
-           set))
-
-(deftest refresh-persistence
-  (testing "Can schedule refreshes for models"
-    (with-persistence-setup! db
-      (mt/with-temp
-        [:model/Card          model      {:type :model :database_id (u/the-id db)}
-         :model/Card          notmodel   {:type :question :database_id (u/the-id db)}
-         :model/Card          archived   {:type :model :archived true :database_id (u/the-id db)}
-         :model/PersistedInfo pmodel     {:card_id (u/the-id model) :database_id (u/the-id db)}
-         :model/PersistedInfo pnotmodel  {:card_id (u/the-id notmodel) :database_id (u/the-id db)}
-         :model/PersistedInfo parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]
-        (testing "Can refresh models"
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/refresh" (u/the-id model)))
-          (is (contains? (job-info-for-individual-refresh)
-                         (u/the-id pmodel))
-              "Missing refresh of model"))
-        (testing "Won't refresh archived models"
-          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id archived)))
-          (is (not (contains? (job-info-for-individual-refresh)
-                              (u/the-id pnotmodel)))
-              "Scheduled refresh of archived model"))
-        (testing "Won't refresh cards no longer models"
-          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id notmodel)))
-          (is (not (contains? (job-info-for-individual-refresh)
-                              (u/the-id parchived)))
-              "Scheduled refresh of archived model"))))))
-
-(deftest unpersist-persist-model-test
-  (with-persistence-setup! db
-    (mt/with-temp
-      [:model/Card          model     {:database_id (u/the-id db), :type :model}
-       :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}]
-      (testing "Can't unpersist models without :cache-granular-controls feature flag enabled"
-        (mt/with-premium-features #{}
-          (mt/user-http-request :crowberto :post 402 (format "card/%d/unpersist" (u/the-id model)))
-          (is (= "persisted"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
-      (testing "Can unpersist models with the :cache-granular-controls feature flag enabled"
-        (mt/with-premium-features #{:cache-granular-controls}
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id model)))
-          (is (= "off"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
-      (testing "Can't re-persist models with the :cache-granular-controls feature flag enabled"
-        (mt/with-premium-features #{}
-          (mt/user-http-request :crowberto :post 402 (format "card/%d/persist" (u/the-id model)))
-          (is (= "off"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
-      (testing "Can re-persist models with the :cache-granular-controls feature flag enabled"
-        (mt/with-premium-features #{:cache-granular-controls}
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/persist" (u/the-id model)))
-          (is (= "creating"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel)))))))
-    (mt/with-temp
-      [:model/Card          notmodel  {:database_id (u/the-id db), :type :question}
-       :model/PersistedInfo pnotmodel {:database_id (u/the-id db), :card_id (u/the-id notmodel)}]
-      (mt/with-premium-features #{:cache-granular-controls}
-        (testing "Allows unpersisting non-model cards"
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id notmodel)))
-          (is (= "off"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pnotmodel)))))
-        (testing "Can't re-persist non-model cards"
-          (is (= "Card is not a model"
-                 (mt/user-http-request :crowberto :post 400 (format "card/%d/persist" (u/the-id notmodel))))))))
-    (mt/with-temp
-      [:model/Card          notmodel  {:database_id (u/the-id db), :type :question}]
-      (mt/with-premium-features #{:cache-granular-controls}
-        (testing "Does not return error status when unpersisting a card that is not persisted"
-          (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id notmodel))))))))
 
 (defn param-values-url
   "Returns an URL used to get values for parameter of a card.

@@ -15,12 +15,12 @@
    [metabase.models.interface :as mi]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
-   [metabase.models.pulse :as models.pulse]
-   [metabase.models.pulse-card :as pulse-card]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.permissions.core :as perms]
-   [metabase.public-settings :as public-settings]
+   [metabase.public-sharing.core :as public-sharing]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.pulse.core :as pulse]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -99,54 +99,10 @@
       (when (:archived changes)
         (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
-(defn- update-dashboard-subscription-pulses!
-  "Updates the pulses' names and collection IDs, and syncs the PulseCards"
-  [dashboard]
-  (let [dashboard-id (u/the-id dashboard)
-        affected     (mdb.query/query
-                      {:select-distinct [[:p.id :pulse-id] [:pc.card_id :card-id]]
-                       :from            [[:pulse :p]]
-                       :join            [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
-                       :where           [:= :p.dashboard_id dashboard-id]})]
-    (when-let [pulse-ids (seq (distinct (map :pulse-id affected)))]
-      (let [correct-card-ids     (->> (mdb.query/query
-                                       {:select-distinct [:dc.card_id]
-                                        :from            [[:report_dashboardcard :dc]]
-                                        :where           [:and
-                                                          [:= :dc.dashboard_id dashboard-id]
-                                                          [:not= :dc.card_id nil]]})
-                                      (map :card_id)
-                                      set)
-            stale-card-ids       (->> affected
-                                      (keep :card-id)
-                                      set)
-            cards-to-add         (set/difference correct-card-ids stale-card-ids)
-            card-id->dashcard-id (when (seq cards-to-add)
-                                   (t2/select-fn->pk :card_id :model/DashboardCard :dashboard_id dashboard-id
-                                                     :card_id [:in cards-to-add]))
-            positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
-                                                      (range)))
-            new-pulse-cards      (for [pulse-id                         pulse-ids
-                                       [[card-id dashcard-id] position] (map vector
-                                                                             card-id->dashcard-id
-                                                                             (positions-for pulse-id))]
-                                   {:pulse_id          pulse-id
-                                    :card_id           card-id
-                                    :dashboard_card_id dashcard-id
-                                    :position          position})]
-        (t2/with-transaction [_conn]
-          (binding [models.pulse/*allow-moving-dashboard-subscriptions* true]
-            (t2/update! :model/Pulse {:dashboard_id dashboard-id}
-                        ;; TODO we probably don't need this anymore
-                        ;; pulse.name is no longer used for generating title.
-                        ;; pulse.collection_id is a thing for the old "Pulse" feature, but it was removed
-                        {:name (:name dashboard)
-                         :collection_id (:collection_id dashboard)})
-            (pulse-card/bulk-create! new-pulse-cards)))))))
-
 (t2/define-after-update :model/Dashboard
   [dashboard]
-  (update-dashboard-subscription-pulses! dashboard))
+  ; TODO -- should this be done on `:event/dashboard-update` ?
+  (pulse/update-dashboard-subscription-pulses! dashboard))
 
 (defn- migrate-parameter [p]
   (cond-> p
@@ -175,7 +131,7 @@
   [dashboard]
   (-> dashboard
       migrate-parameters-list
-      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
+      public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
 
 (defmethod serdes/hash-fields :model/Dashboard
   [_dashboard]
