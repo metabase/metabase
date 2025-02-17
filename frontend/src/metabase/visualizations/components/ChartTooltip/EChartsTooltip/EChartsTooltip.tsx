@@ -1,6 +1,5 @@
 import cx from "classnames";
 import type React from "react";
-import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 

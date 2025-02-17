@@ -3,11 +3,11 @@
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.test :refer :all]
-   [metabase.api.alert :as api.alert]
-   [metabase.api.alert-test :as alert-test]
-   [metabase.models.pulse :as models.pulse]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.pulse.api.alert :as api.alert]
+   [metabase.pulse.api.alert-test :as alert-test]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send-test :as pulse.send-test]
    [metabase.test :as mt]
    [metabase.util :as u]
