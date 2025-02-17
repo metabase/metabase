@@ -1,6 +1,6 @@
 import { CreateDashboardModal } from "@metabase/embedding-sdk-react";
 
-const { H } = cy;
+import { H } from "e2e/support";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/component-testing-sdk";
 import {
   mockAuthProviderAndJwtSignIn,
