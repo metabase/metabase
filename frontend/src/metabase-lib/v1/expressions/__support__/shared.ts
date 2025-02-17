@@ -402,6 +402,13 @@ const filter = [
   ],
   ["notnull([Tax])", ["not-null", tax], "not null"],
   ["notempty([Total])", ["not-empty", total], "not empty"],
+  ["NOT isnull([Tax])", ["not", ["is-null", tax]], "not is null"],
+  ["NOT isempty([Tax])", ["not", ["is-empty", tax]], "not is empty"],
+  [
+    'NOT doesNotContain([Tax], "John")',
+    ["not", ["does-not-contain", tax, "John"]],
+    "not does not contain",
+  ],
 ] as const;
 
 type TestCase = readonly [string, unknown, string];
