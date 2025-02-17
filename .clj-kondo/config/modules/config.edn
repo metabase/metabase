@@ -573,7 +573,7 @@
 
   enterprise/ai-sql-fixer
   {:api #{metabase-enterprise.ai-sql-fixer.api}
-   :uses #{api driver query-analysis query-processor util}}
+   :uses #{api driver enterprise/metabot-v3 query-analysis query-processor util}}
 
   enterprise/airgap
   {:api  #{}
@@ -635,7 +635,7 @@
    :uses #{analytics analyze api models query-processor util}}
 
   enterprise/metabot-v3
-  {:api #{metabase-enterprise.metabot-v3.api}
+  {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core}
    :uses #{api config db legacy-mbql lib models premium-features public-settings pulse query-processor util}}
 
   enterprise/query-reference-validation
