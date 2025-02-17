@@ -46,25 +46,15 @@ export function multiLevelPivot(data, settings) {
   const { pivotData, columns } = Pivot.split_pivot_data(data);
 
   const columnSettings = columns.map(column => settings.column(column));
-  const allCollapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
-
-  const collapsedSubtotals = filterCollapsedSubtotals(
-    allCollapsedSubtotals,
-    rowColumnIndexes.map(index => columnSettings[index]),
-  );
-
-  const primaryRowsKey = JSON.stringify(
-    _.range(columnColumnIndexes.length + rowColumnIndexes.length),
-  );
 
   const { rowTree, colTree, valuesByKey } = Pivot.build_pivot_trees(
-    pivotData[primaryRowsKey],
+    pivotData,
     columns,
-    columnColumnIndexes,
     rowColumnIndexes,
+    columnColumnIndexes,
     valueColumnIndexes,
+    settings,
     columnSettings,
-    collapsedSubtotals,
   );
 
   for (const [_key, rowVal] of Object.entries(valuesByKey)) {
@@ -116,6 +106,10 @@ export function multiLevelPivot(data, settings) {
   const leftHeaderItems = treeToArray(formattedRowTree.flat());
   const topHeaderItems = treeToArray(formattedColumnTree.flat());
 
+  const primaryRowsKey = JSON.stringify(
+    _.range(columnColumnIndexes.length + rowColumnIndexes.length),
+  );
+
   const colorGetter = makeCellBackgroundGetter(
     pivotData[primaryRowsKey],
     columns,
@@ -145,21 +139,6 @@ export function multiLevelPivot(data, settings) {
     columnIndexes: columnColumnIndexes,
     valueIndexes: valueColumnIndexes,
   };
-}
-
-// A path can't be collapsed if subtotals are turned off for that column.
-// TODO: can we move this to the COLLAPSED_ROW_SETTING itself?
-function filterCollapsedSubtotals(collapsedSubtotals, columnSettings) {
-  const columnIsCollapsible = columnSettings.map(
-    settings => settings[COLUMN_SHOW_TOTALS] !== false,
-  );
-  return collapsedSubtotals.filter(pathOrLengthString => {
-    const pathOrLength = JSON.parse(pathOrLengthString);
-    const length = Array.isArray(pathOrLength)
-      ? pathOrLength.length
-      : pathOrLength;
-    return columnIsCollapsible[length - 1];
-  });
 }
 
 // The getter returned from this function returns the value(s) at given (column, row) location
