@@ -25,6 +25,7 @@
                                  0
                                  (cached-active-users-count)))
                      :visibility :admin}]
+              :active-users-count
               (defn active-users-count "Docstring." [])
               (defn active-users-count! "Docstring." [_value-or-nil]))
            (-> {:node node}
