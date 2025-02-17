@@ -37,7 +37,7 @@
   [data]
   (let [group-index (u/index-of is-pivot-group-column (:cols data))
         columns     (filter #(not (is-pivot-group-column %)) (:cols data))
-        breakouts   (filter #(= (:source %) "breakout") columns)
+        breakouts   (filter #(= (keyword (:source %)) :breakout) columns)
         pivot-data  (->> (:rows data)
                          (group-by #(nth % group-index))
                          ;; TODO: Make this logic more understandable
@@ -119,11 +119,20 @@
 (defn build-values-by-key
   "Replicate valuesByKey construction"
   [rows cols row-indexes col-indexes val-indexes]
+  (def rows rows)
+  (def cols cols)
+  (def row-indexes row-indexes)
+  (def col-indexes col-indexes)
+  (def val-indexes val-indexes)
   (let [col-and-row-indexes (concat col-indexes row-indexes)]
+    (def col-and-row-indexes col-and-row-indexes)
+    (def row (first rows))
     (reduce
      (fn [acc row]
        (let [value-key  (to-key (select-indexes row col-and-row-indexes))
+             _ (def value-key value-key)
              values     (select-indexes row val-indexes)
+             _ (def values values)
              ;; @tsp - this now assumes that cols is indexed the same as the row
              data       (map-indexed
                          (fn [index value]
@@ -147,7 +156,7 @@
 
 (defn- sort-orders-from-settings
   [col-settings indexes]
-  (->> (map col-settings indexes)
+  (->> (map (into [] col-settings) indexes)
        (map :pivot_table.column_sort_order)))
 
 (defn- compare-fn
@@ -175,10 +184,31 @@
      (for [[k v] tree]
        [k (assoc v :children (sort-tree (:children v) (rest sort-orders)))]))))
 
+;; TODO: can we move this to the COLLAPSED_ROW_SETTING itself?
+(defn- filter-collapsed-subtotals
+  [row-indexes settings col-settings]
+  (let [all-collapsed-subtotals (-> settings :pivot_table.collapsed_rows :value)
+        pivot-row-settings (map #(nth col-settings %) row-indexes)
+        column-is-collapsible? (map #(not= false (:pivot_table.column_show_totals %)) pivot-row-settings)]
+    #?(:cljs (js/console.log col-settings))
+    ;; A path can't be collapsed if subtotals are turned off for that column
+    (filter (fn [path-or-length]
+              (let [path-or-length (json-parse path-or-length)
+                    length (if (sequential? path-or-length)
+                             (count path-or-length)
+                             path-or-length)]
+                (nth column-is-collapsible? (dec length) false)))
+            all-collapsed-subtotals)))
+
 (defn build-pivot-trees
   "TODO"
-  [rows cols row-indexes col-indexes val-indexes col-settings collapsed-subtotals]
-  (let [{:keys [row-tree col-tree]}
+  [pivot-data cols row-indexes col-indexes val-indexes settings col-settings]
+  (let [collapsed-subtotals (filter-collapsed-subtotals row-indexes settings col-settings)
+        primary-rows-key (to-key (range (+ (count row-indexes)
+                                           (count col-indexes))))
+
+        rows (get pivot-data primary-rows-key)
+        {:keys [row-tree col-tree]}
         (reduce
          (fn [{:keys [row-tree col-tree]} row]
            (let [row-path (select-indexes row row-indexes)
@@ -237,8 +267,7 @@
       :isGrandTotal true})
     row-tree))
 
-(defn add-subtotal
-  "TODO"
+(defn- add-subtotal
   [row-item show-subs-by-col should-show-subtotal]
   (let [is-subtotal-enabled (first show-subs-by-col)
         rest-subs-by-col    (rest show-subs-by-col)
@@ -265,7 +294,7 @@
           [node (first subtotal)]
           [node])))))
 
-(defn add-subtotals
+(defn- add-subtotals
   [row-tree row-indexes settings col-settings]
   (if (:pivot.show_column_totals settings)
     (let [show-subs-by-col (map (fn [idx]
