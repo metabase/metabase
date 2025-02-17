@@ -1,3 +1,44 @@
+## [0.54.1-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.1-nightly...embedding-sdk-0.54.1-nightly) (2025-02-17)
+
+
+### Bug Fixes
+
+* **sdk:**  handle 'personal' for collectionId when creating dashboards and in the collection browser ([#53553](https://github.com/metabase/metabase/issues/53553)) ([d3f0a4b](https://github.com/metabase/metabase/commit/d3f0a4b1b2b27eff39381f9d26247d5278a912ac))
+* **sdk:** Add segmented button for chart settings ([#52076](https://github.com/metabase/metabase/issues/52076)) ([f18e43a](https://github.com/metabase/metabase/commit/f18e43a0f02e953cc7c7ffebcddd912c281f4cad))
+* **sdk:** add theme change transition to the root element ([#52427](https://github.com/metabase/metabase/issues/52427)) ([af09494](https://github.com/metabase/metabase/commit/af094941c884db522f46d6f2007b2e1014f2219f))
+* **sdk:** better scope for SCOPED_CSS_RESET to fix transparent ([#53443](https://github.com/metabase/metabase/issues/53443)) ([c03a49a](https://github.com/metabase/metabase/commit/c03a49a87c5cccaed51b2f7f84c9734dab75e2d9))
+* **sdk:** Clean up and enhance `InteractiveQuestion` docs ([#53283](https://github.com/metabase/metabase/issues/53283)) ([9a55442](https://github.com/metabase/metabase/commit/9a554425e202f32996270871a5adc70a96011fc4))
+* **sdk:** dashboard not found when switching dashboards in cli ([#53452](https://github.com/metabase/metabase/issues/53452)) ([9d12421](https://github.com/metabase/metabase/commit/9d12421e41e911d35fc20fd43980a1a1e7754c38))
+* **sdk:** disable dashboard card click behavior and prevent url formatting ([#51290](https://github.com/metabase/metabase/issues/51290)) ([ea4ee80](https://github.com/metabase/metabase/commit/ea4ee806aa4a9f488de4361008e7f2206e50340f))
+* **sdk:** echarts tooltip is cut off below the viewport height ([#52310](https://github.com/metabase/metabase/issues/52310)) ([88141a8](https://github.com/metabase/metabase/commit/88141a8fca9009506c98658b39f8d537f8f31b9d))
+* **sdk:** echarts tooltip is cut off below the viewport height ([#52822](https://github.com/metabase/metabase/issues/52822)) ([faa7c73](https://github.com/metabase/metabase/commit/faa7c736d060c3f167b6f2e73638b00d4742ca0c))
+* **sdk:** filterout @types/react from the generated package.json ([#53747](https://github.com/metabase/metabase/issues/53747)) ([1e1a8ff](https://github.com/metabase/metabase/commit/1e1a8ffa0e24bbff3e990d1465bb97ca4e1ceb71))
+* **sdk:** fix data picker crash by using mantine popover ([#52096](https://github.com/metabase/metabase/issues/52096)) ([6ef8258](https://github.com/metabase/metabase/commit/6ef825835aa194547b606aa3c149fdda0d9418c9))
+* **sdk:** fix minWidth console error in dashboard grid ([#52880](https://github.com/metabase/metabase/issues/52880)) ([f442920](https://github.com/metabase/metabase/commit/f442920bb872b35bd6d922e1f28416e4e332b8e5))
+* **sdk:** Fix nextJS compatibility layer missing components ([#52672](https://github.com/metabase/metabase/issues/52672)) ([a904c1e](https://github.com/metabase/metabase/commit/a904c1e5be990708ee9ce2e95679bd75b46c0ef1))
+* **sdk:** Fix question not found error showing briefly after navigating from dashboards ([#53284](https://github.com/metabase/metabase/issues/53284)) ([924e2ec](https://github.com/metabase/metabase/commit/924e2ecd3d6fee73082d245c2f356457c3f672cb))
+* **sdk:** fix save question form's cancel button height ([#52504](https://github.com/metabase/metabase/issues/52504)) ([e3cdbbf](https://github.com/metabase/metabase/commit/e3cdbbf7a8ac5f18a016e16781784ad7d25899eb))
+* **sdk:** make headers in generated cli components responsive ([#53455](https://github.com/metabase/metabase/issues/53455)) ([cf4f46e](https://github.com/metabase/metabase/commit/cf4f46e5c65b5492b06d2f0960fa1b40f4bf3f7b))
+* **sdk:** remove error about stageIndex prop being passed to dom element ([#53165](https://github.com/metabase/metabase/issues/53165)) ([61a58ed](https://github.com/metabase/metabase/commit/61a58edaf9442a634fb2b210de4eb7e9969fb83e))
+* **sdk:** Remove ExplicitSize findDOMNode console errors ([#52253](https://github.com/metabase/metabase/issues/52253)) ([70d4582](https://github.com/metabase/metabase/commit/70d4582f677a1d129e1c9bf0073a46a79e0d9f08))
+* **sdk:** remove unsafe lifecycle errors from DashboardGrid ([#53213](https://github.com/metabase/metabase/issues/53213)) ([29bcb43](https://github.com/metabase/metabase/commit/29bcb43082eb7b997638a613de18404112483ea5))
+* **sdk:** remove unsafe lifecycle errors from Visualization ([#52885](https://github.com/metabase/metabase/issues/52885)) ([cb82663](https://github.com/metabase/metabase/commit/cb8266362c921c8e05145eba8f52791a615d6522))
+* **sdk:** Standardize SDK components errors with different ID formats ([#49714](https://github.com/metabase/metabase/issues/49714)) ([3527c91](https://github.com/metabase/metabase/commit/3527c911d7556a068581c5240f2d6f6f2c338bb5)), closes [metabase#51969](https://github.com/metabase/issues/51969)
+
+
+### Features
+
+* **sdk:** abort cli with message when react version is unsupported ([#53656](https://github.com/metabase/metabase/issues/53656)) ([8a651a2](https://github.com/metabase/metabase/commit/8a651a248b3c72063a453686421e55bf6f859826))
+* **sdk:** add Next.js compatibility to embedding cli ([#50281](https://github.com/metabase/metabase/issues/50281)) ([b0900d8](https://github.com/metabase/metabase/commit/b0900d88f0fb62900749113591902d1437198cf9))
+* **sdk:** Add option to remove dashboard footer ([#52555](https://github.com/metabase/metabase/issues/52555)) ([cd20934](https://github.com/metabase/metabase/commit/cd209344c6175fbd8bb9b4b5a9ac5565d96f420e))
+* **sdk:** add the instance url to the cli's login json file ([#53469](https://github.com/metabase/metabase/issues/53469)) ([8aa6ee0](https://github.com/metabase/metabase/commit/8aa6ee0ed71a055453fc7eee455979c80fa4f810))
+* **sdk:** apply theming to interactive question modules ([#52513](https://github.com/metabase/metabase/issues/52513)) ([a2794d6](https://github.com/metabase/metabase/commit/a2794d6ae23755cc72dec4fb4ba943b5556fa5f5))
+* **sdk:** granular documentation links in usage problem banner ([#52257](https://github.com/metabase/metabase/issues/52257)) ([3bcf2d5](https://github.com/metabase/metabase/commit/3bcf2d5989490a0316ca8b7d83e4c9724cff33a3))
+* **sdk:** pro license setup in cli defaults to false ([#53655](https://github.com/metabase/metabase/issues/53655)) ([af7227e](https://github.com/metabase/metabase/commit/af7227e8d94eb0675654b63e2c009e30e748622a))
+* **sdk:** show clarification messages upon running the cli ([#53471](https://github.com/metabase/metabase/issues/53471)) ([e81a4d3](https://github.com/metabase/metabase/commit/e81a4d38083c08ca126ae08fc48a983c6f96af2f))
+
+
+
 ## [0.53.1-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.4-nightly...embedding-sdk-0.53.1-nightly) (2025-01-13)
 
 
