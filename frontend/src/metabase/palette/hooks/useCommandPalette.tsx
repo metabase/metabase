@@ -124,8 +124,7 @@ export const useCommandPalette = ({
     showDocsAction,
   ]);
 
-  const metabotActions =
-    PLUGIN_METABOT.useMetabotPalletteActions(debouncedSearchText);
+  const metabotActions = PLUGIN_METABOT.useMetabotPalletteActions(trimmedQuery);
   useRegisterActions(metabotActions, [metabotActions]);
 
   const searchResultActions = useMemo<PaletteAction[]>(() => {
