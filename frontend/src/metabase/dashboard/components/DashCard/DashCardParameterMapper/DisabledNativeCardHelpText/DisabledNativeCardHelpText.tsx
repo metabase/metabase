@@ -16,7 +16,7 @@ import {
   NativeCardIcon,
   NativeCardLink,
   NativeCardText,
-} from "./DisabledNativeCardHelpText.styled";
+} from "./DisabledNativeCardHelpTextComponents";
 
 interface DisabledNativeCardHelpTextProps {
   question: Question;
