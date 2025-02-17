@@ -75,6 +75,13 @@ export function HelpText({
     [onToggle],
   );
 
+  const handleContentMouseDown = useCallback(
+    (evt: React.MouseEvent<HTMLDivElement>) => {
+      evt.stopPropagation();
+    },
+    [],
+  );
+
   if (!helpText || !clause || !isSupported) {
     return null;
   }
@@ -122,7 +129,11 @@ export function HelpText({
       </Flex>
 
       {open && (
-        <Box className={S.info} data-testid="expression-helper">
+        <Box
+          className={S.info}
+          data-testid="expression-helper"
+          onMouseDown={handleContentMouseDown}
+        >
           <Box>{description}</Box>
 
           {args != null && (
