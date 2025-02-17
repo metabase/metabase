@@ -170,7 +170,7 @@
      version-info
      version-info-last-checked})
 
-(defn- defsetting* [node setting-name docstring options-list]
+(defn- defsetting-lint [node setting-name docstring options-list]
   (let [anon-binding (common/with-macro-meta (hooks/token-node '_) node)
         ;; (defn my-setting [] ...)
         getter-node (-> (list
@@ -178,7 +178,8 @@
                          setting-name
                          (hooks/string-node "Docstring.")
                          (hooks/vector-node []))
-                        hooks/list-node)
+                        hooks/list-node
+                        (with-meta (meta node)))
         ;; (defn my-setting! [_x] ...)
         setter-node (-> (list
                          (hooks/token-node 'defn)
@@ -188,6 +189,7 @@
                          (hooks/string-node "Docstring.")
                          (hooks/vector-node [(hooks/token-node '_value-or-nil)]))
                         hooks/list-node
+                        (with-meta (meta node))
                         common/add-lsp-ignore-unused-public-var-metadata)]
 
     (when (nil? (second (drop-while (comp not #{[:k :export?]} first) options-list)))
