@@ -518,6 +518,77 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
+  describe("color series", () => {
+    it("should allow drag and drop", () => {
+      const testQuery = {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      };
+
+      H.visitQuestionAdhoc({
+        dataset_query: testQuery,
+        display: "line",
+      });
+
+      H.openVizSettingsSidebar();
+
+      // making sure the grabber icon is there
+      cy.findAllByTestId("chart-setting-select")
+        .then($elements => {
+          for (const element of $elements) {
+            if (element.value === "Sum of Total") {
+              return cy.wrap(element);
+            }
+          }
+        })
+        .closest("[data-testid=chartsettings-field-picker]")
+        .icon("grabber");
+
+      cy.log("Drag and drop the first y-axis field to the last position");
+      cy.findAllByTestId("chart-setting-select").then(initial => {
+        H.dragField(0, 1);
+
+        cy.findAllByTestId("chart-setting-select").should(content => {
+          expect(content[0].value).to.eq(initial[0].value); // Created At: Month
+          expect(content[1].value).to.eq(initial[2].value); // Sum of Total
+          expect(content[2].value).to.eq(initial[1].value); // Count
+        });
+      });
+    });
+
+    it("should allow changing a series' color - #53735", () => {
+      H.visitQuestionAdhoc({
+        dataset_query: testQuery,
+        display: "line",
+      });
+
+      H.openVizSettingsSidebar();
+      H.openSeriesSettings("Count");
+
+      H.popover().within(() => {
+        cy.findByTestId("color-selector-button").button().click();
+      });
+
+      H.popover()
+        .should("have.length", 2)
+        .last()
+        .within(() => {
+          cy.findByLabelText("#EF8C8C").realClick();
+        });
+
+      cy.button("Done").click();
+
+      H.cartesianChartCircleWithColor("#EF8C8C");
+    });
+  });
+
   describe("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {
     const RENAMED_FIRST_SERIES = "Foo";
     const RENAMED_SECOND_SERIES = "Bar";
