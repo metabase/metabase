@@ -1,6 +1,7 @@
 import type { Deferred } from "metabase/lib/promise";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
+import type * as Lib from "metabase-lib";
 import type {
   Card,
   DashboardId,
@@ -50,6 +51,9 @@ export interface QueryBuilderUIControls {
   modal: QueryModalType | null;
   modalContext: TimelineEventId | null;
   dataReferenceStack: null;
+
+  dirtyAddedFilters: Filter[];
+  dirtyRemovedFilters: Filter[];
 }
 
 export interface QueryBuilderLoadingControls {
@@ -91,3 +95,5 @@ export interface QueryBuilderState {
     serializedCard: string;
   } | null;
 }
+
+type Filter = Lib.Clause | Lib.SegmentMetadata;

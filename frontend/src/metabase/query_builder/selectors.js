@@ -487,6 +487,7 @@ export const getIsResultDirty = createSelector(
     getLastRunParameterValues,
     getNextRunParameterValues,
     getTableMetadata,
+    getUiControls,
   ],
   (
     question,
@@ -495,13 +496,19 @@ export const getIsResultDirty = createSelector(
     lastParameters,
     nextParameters,
     tableMetadata,
+    uiControls,
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
     const isEditable =
       question && Lib.queryDisplayInfo(question.query()).isEditable;
 
+    const { dirtyAddedFilters, dirtyRemovedFilters } = uiControls;
+    const hasDirtyFilters =
+      (dirtyAddedFilters?.length ?? 0) + (dirtyRemovedFilters?.length ?? 0) > 0;
+
     return (
       haveParametersChanged ||
+      hasDirtyFilters ||
       (isEditable &&
         !areQueriesEquivalent({
           originalQuestion,

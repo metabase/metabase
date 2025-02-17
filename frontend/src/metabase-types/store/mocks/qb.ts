@@ -32,6 +32,9 @@ export const createMockQueryBuilderUIControlsState = (
   showSidebarTitle: false,
   modal: null,
   modalContext: null,
+
+  dirtyAddedFilters: [],
+  dirtyRemovedFilters: [],
   dataReferenceStack: null,
   ...opts,
 });

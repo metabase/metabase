@@ -1,9 +1,11 @@
 import cx from "classnames";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { type Dispatch, type SetStateAction, useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -113,8 +115,42 @@ export function ViewTitleHeader({
   ] = useToggle(!question?.isSaved());
 
   const previousQuestion = usePrevious(question);
-  const [dirtyAddedFilters, setDirtyAddedFilters] = useState<Filter[]>([]);
-  const [dirtyRemovedFilters, setDirtyRemovedFilters] = useState<Filter[]>([]);
+  const dirtyAddedFilters = useSelector(
+    state => state.qb.uiControls.dirtyAddedFilters,
+  );
+  const dirtyRemovedFilters = useSelector(
+    state => state.qb.uiControls.dirtyRemovedFilters,
+  );
+
+  const dispatch = useDispatch();
+
+  const setDirtyAddedFilters = (
+    newDirtyAddedFilters: Dispatch<SetStateAction<Filter[]>>,
+  ) => {
+    if (typeof newDirtyAddedFilters === "function") {
+      dispatch(
+        setUIControls({
+          dirtyAddedFilters: newDirtyAddedFilters(dirtyAddedFilters),
+        }),
+      );
+    } else {
+      dispatch(setUIControls({ dirtyAddedFilters: newDirtyAddedFilters }));
+    }
+  };
+
+  const setDirtyRemovedFilters = (
+    newDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>,
+  ) => {
+    if (typeof newDirtyRemovedFilters === "function") {
+      dispatch(
+        setUIControls({
+          dirtyRemovedFilters: newDirtyRemovedFilters(dirtyRemovedFilters),
+        }),
+      );
+    } else {
+      dispatch(setUIControls({ dirtyRemovedFilters: newDirtyRemovedFilters }));
+    }
+  };
 
   const query = question.query();
   const previousQuery = usePrevious(query);
