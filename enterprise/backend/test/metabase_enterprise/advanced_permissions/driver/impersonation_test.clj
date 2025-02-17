@@ -18,7 +18,8 @@
 
 (deftest ^:parallel connection-impersonation-role-test
   (testing "Returns nil when no impersonations are in effect"
-    (is (nil? (@#'impersonation/connection-impersonation-role (mt/db))))))
+    (mt/with-test-user :rasta
+      (is (nil? (@#'impersonation/connection-impersonation-role (mt/db)))))))
 
 (deftest connection-impersonation-role-test-2
   (testing "Correctly fetches the impersonation when one is in effect"
@@ -73,7 +74,7 @@
 (deftest connection-impersonation-role-test-8
   (testing "Throws an exception if impersonation should be enforced, but the user's attribute is not a single string"
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                 :attributes     {"impersonation_attr" "impersonation_role"}}
+                                                 :attributes     {"impersonation_attr" ["one" "two" "three"]}}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Connection impersonation attribute is invalid: role must be a single non-empty string."
@@ -82,7 +83,7 @@
 (deftest connection-impersonation-role-test-9
   (testing "Throws an exception if sandboxing policies are also defined for the current user on the DB"
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                 :attributes     {"impersonation_attr" ["one" "two" "three"]}}
+                                                 :attributes     {"impersonation_attr" "impersonation_role"}}
       (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)}}}
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo

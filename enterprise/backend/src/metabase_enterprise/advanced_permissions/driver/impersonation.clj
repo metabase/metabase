@@ -61,7 +61,7 @@
                (enforce-impersonations? db-or-id conn-impersonations group-ids))
       conn-impersonations)))
 
-(defn connection-impersonation-role
+(defn- connection-impersonation-role
   "Fetches the database role that should be used for the current user, if connection impersonation is in effect.
   Returns `nil` if connection impersonation should not be used for the current user. Throws an exception if multiple
   conflicting connection impersonation policies are found, or the role is not a single string."
