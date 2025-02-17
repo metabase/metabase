@@ -7,7 +7,6 @@
    [metabase.api.cache]
    [metabase.api.card]
    [metabase.api.cards]
-   [metabase.api.cloud-migration]
    [metabase.api.collection]
    [metabase.api.dashboard]
    [metabase.api.database]
@@ -18,7 +17,6 @@
    [metabase.api.geojson]
    [metabase.api.google]
    [metabase.api.ldap]
-   [metabase.api.login-history]
    [metabase.api.macros :as api.macros]
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
@@ -27,7 +25,6 @@
    [metabase.api.preview-embed]
    [metabase.api.public]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.session]
    [metabase.api.setting]
    [metabase.api.slack]
    [metabase.api.table]
@@ -38,13 +35,16 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.bookmarks.api]
    [metabase.channel.api]
+   [metabase.cloud-migration.api]
    [metabase.config :as config]
    [metabase.indexed-entities.api]
+   [metabase.login-history.api]
    [metabase.permissions.api]
    [metabase.pulse.api]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
+   [metabase.session.api]
    [metabase.setup.api]
    [metabase.sync.api]
    [metabase.tiles.api]
@@ -59,7 +59,6 @@
          metabase.api.cache/keep-me
          metabase.api.card/keep-me
          metabase.api.cards/keep-me
-         metabase.api.cloud-migration/keep-me
          metabase.api.collection/keep-me
          metabase.api.dashboard/keep-me
          metabase.api.database/keep-me
@@ -69,7 +68,6 @@
          metabase.api.geojson/keep-me
          metabase.api.google/keep-me
          metabase.api.ldap/keep-me
-         metabase.api.login-history/keep-me
          metabase.api.native-query-snippet/keep-me
          metabase.api.persist/keep-me
          metabase.api.preview-embed/keep-me
@@ -82,7 +80,9 @@
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
+         metabase.cloud-migration.api/keep-me
          metabase.indexed-entities.api/keep-me
+         metabase.login-history.api/keep-me
          metabase.permissions.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
@@ -119,6 +119,8 @@
 (defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (->handler handler)))
 (defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (->handler handler)))
 
+(declare routes)
+
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!
 ;;; !!                  DO NOT ADD `metabase.api.*` NAMESPACES THAT CONTAIN ENDPOINTS                 !!
@@ -138,19 +140,19 @@
    "/card"                 (+auth 'metabase.api.card)
    "/cards"                (+auth 'metabase.api.cards)
    "/channel"              (+auth metabase.channel.api/channel-routes)
-   "/cloud-migration"      (+auth 'metabase.api.cloud-migration)
+   "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.api.collection)
    "/dashboard"            (+auth 'metabase.api.dashboard)
    "/database"             (+auth 'metabase.api.database)
    "/dataset"              'metabase.api.dataset
-   "/docs"                 metabase.api.docs/routes
+   "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions 'metabase.api.embed)
    "/field"                (+auth 'metabase.api.field)
    "/geojson"              'metabase.api.geojson
    "/google"               (+auth 'metabase.api.google)
    "/ldap"                 (+auth 'metabase.api.ldap)
-   "/login-history"        (+auth 'metabase.api.login-history)
+   "/login-history"        (+auth 'metabase.login-history.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
@@ -163,7 +165,7 @@
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
-   "/session"              metabase.api.session/routes
+   "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.api.setting)
    "/setup"                'metabase.setup.api
    "/slack"                (+auth 'metabase.api.slack)
