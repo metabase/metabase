@@ -55,8 +55,8 @@
                              :db_id database-id
                              :active true
                              :visibility_type nil
-                             :id [:not-in used-ids]
-                             {:limit max-schema-candidate-tables})))
+                             (cond-> {:limit max-schema-candidate-tables}
+                               (seq used-ids) (assoc :where [:not-in :id used-ids])))))
 
 (defn- used-tables
   [{:keys [database] :as query}]
