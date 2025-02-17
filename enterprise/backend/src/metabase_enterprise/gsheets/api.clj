@@ -244,7 +244,7 @@
               (sync-complete? {:status status :last-dwh-sync last-dwh-sync :last-gdrive-conn-sync last-gdrive-conn-sync})
               (u/prog1 (assoc (gsheets) :status "complete")
                 (gsheets! <>)
-                (snowplow/track-event! ::snowplow/simple_event
+                (snowplow/track-event! :snowplow/simple_event
                                        {:event "sheets_connected" :event_detail "success"}))
 
               (when-let [upload-time (:folder-upload-time (gsheets))]
@@ -281,7 +281,7 @@
   [] :- ::gsheets
   (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
     (when-not (some? attached-dwh)
-      (snowplow/track-event! ::snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
+      (snowplow/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
       (reset-gsheets-status!)
       (error-response-in-body (tru "No attached dwh found.")))
     (handle-get-folder attached-dwh)))
@@ -289,7 +289,7 @@
 (api.macros/defendpoint :delete "/folder"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []
-  (snowplow/track-event! ::snowplow/simple_event {:event "sheets_disconnected"})
+  (snowplow/track-event! :snowplow/simple_event {:event "sheets_disconnected"})
   (reset-gsheets-status!))
 
 (def ^{:arglists '([request respond raise])} routes
