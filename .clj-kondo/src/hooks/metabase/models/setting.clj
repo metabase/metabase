@@ -3,6 +3,7 @@
    [clj-kondo.hooks-api :as hooks]
    [hooks.common :as common]))
 
+;;; TODO -- move this into
 (def ^:private ignored-implicit-export?
   '#{active-users-count
      admin-email
@@ -195,16 +196,19 @@
                                    :message "Setting definition must provide an explicit value for :export? indicating whether the setting should be exported or not with serialization."
                                    :type :metabase/defsetting-must-specify-export))))
 
-    (-> (list
-         (hooks/token-node 'let)
-         ;; include description and the options map so they can get validated as well.
-         (hooks/vector-node
-          [anon-binding docstring
-           anon-binding (hooks/map-node options-list)])
-         getter-node
-         setter-node)
-        hooks/list-node
-        (with-meta (meta node)))))
+    {:node (-> (hooks/list-node
+                (list
+                 (hooks/token-node 'let)
+                 ;; include description and the options map so they can get validated as well.
+                 (hooks/vector-node
+                  [anon-binding docstring
+                   anon-binding (hooks/map-node options-list)])
+                 (hooks/reg-keyword! (-> (hooks/keyword-node (keyword (hooks/sexpr setting-name)))
+                                         (with-meta (meta setting-name)))
+                                     'metabase.models.setting/defsetting)
+                 getter-node
+                 setter-node))
+               (with-meta (meta node)))}))
 
 (defn defsetting
   "Rewrite a [[metabase.models.defsetting]] form like
@@ -219,11 +223,11 @@
       (defn my-setting! \"Docstring.\" [_value-or-nil]))
 
   for linting purposes."
-  [x]
-  (letfn [(update-node [node]
-            (let [[setting-name docstring & options] (rest (:children node))]
-              (defsetting* node setting-name docstring options)))]
-    (update x :node update-node)))
+  [{:keys [node], :as context}]
+  (let [[setting-name docstring & options] (rest (:children node))]
+    (merge
+     context
+     (defsetting-lint node setting-name docstring options))))
 
 (defn define-multi-setting
   "Rewrite a [[metabase.models.define-multi-setting]] form like
@@ -238,8 +242,51 @@
       (defn my-setting! \"Docstring.\" [_value-or-nil]))
 
   for linting purposes."
-  [x]
+  [{:keys [node], :as context}]
+  (let [[setting-name docstring thunk & options] (rest (:children node))]
+    (merge
+     context
+     (defsetting-lint node setting-name docstring (concat options [(hooks/token-node :multi-thunk) thunk])))))
+
+(defn define-multi-setting-impl
+  [context]
   (letfn [(update-node [node]
-            (let [[setting-name docstring thunk & options] (rest (:children node))]
-              (defsetting* node setting-name docstring (concat options [(hooks/token-node :multi-thunk) thunk]))))]
-    (update x :node update-node)))
+            (let [[_define-multi-setting-impl setting-name & more] (:children node)]
+              (-> (hooks/list-node
+                   (list*
+                    (hooks/token-node 'do)
+                    ;; For a qualified setting name like `oss-namespace/setting`, then leave the symbol as is, so the
+                    ;; usage of that namespace/var gets recorded. Otherwise for an unqualified name convert it to a
+                    ;; keyword so we don't get unresolved var errors.
+                    (if (and (hooks/token-node? setting-name)
+                             (qualified-symbol? (hooks/sexpr setting-name)))
+                      setting-name
+                      (-> (hooks/keyword-node (keyword (hooks/sexpr setting-name)))
+                          (with-meta (meta setting-name))))
+                    more))
+                  (with-meta (meta node)))))]
+    (update context :node update-node)))
+
+(comment
+  (defn- defsetting* [form]
+    (hooks/sexpr
+     (:node
+      (defsetting
+        {:node
+         (hooks/parse-string
+          (with-out-str
+            #_{:clj-kondo/ignore [:unresolved-namespace]}
+            (clojure.pprint/pprint
+             form)))}))))
+
+  (defn x []
+    (defsetting*
+      '(defsetting active-users-count
+         (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
+         :visibility :admin
+         :type       :integer
+         :default    0
+         :getter     (fn []
+                       (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
+                         0
+                         (cached-active-users-count)))))))
