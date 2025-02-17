@@ -38,9 +38,10 @@
   3. [[metabase.query-processor.interface/absolute-max-results]] (a constant, non-nil backstop value)"
   [query]
   (when-not (disable-max-results? query)
-    (cond-> (or (mbql.u/query->max-rows-limit query)
-                (public-settings/download-row-limit)
-                qp.i/absolute-max-results)
+    (cond-> (or
+             (min (or (mbql.u/query->max-rows-limit query) ##Inf)
+                  (or (public-settings/download-row-limit) ##Inf))
+             qp.i/absolute-max-results)
       (xlsx-export? query)
       (min qp.i/absolute-max-results))))
 
