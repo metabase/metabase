@@ -13,7 +13,7 @@
 (derive :metabase/event ::notification)
 
 (def ^:private supported-topics #{:event/user-invited
-                                  :event/alert-create
+                                  :event/notification-create
                                   :event/slack-token-invalid})
 
 (def ^:private hydrate-transformer

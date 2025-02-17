@@ -70,18 +70,18 @@
            :active        true
            :payload_type  :notification/system-event
            :subscriptions [{:type       :notification-subscription/system-event
-                            :event_name :event/alert-create}]
+                            :event_name :event/notification-create}]
            :handlers      [{:active       true
                             :channel_type :channel/email
                             :channel_id   nil
-                            :template     {:name         "Alert Created Email template"
+                            :template     {:name         "Notification Card Created Confirmation"
                                            :channel_type "channel/email"
                                            :details      {:type "email/handlebars-resource"
                                                           :subject "You set up an alert"
-                                                          :path "metabase/channel/email/alert_new_confirmation.hbs"
+                                                          :path "metabase/channel/email/notification_card_new_confirmation.hbs"
                                                           :recipient-type "cc"}}
                             :recipients  [{:type    :notification-recipient/template
-                                           :details {:pattern "{{payload.event_info.user.email}}"}}]}]}
+                                           :details {:pattern "{{payload.event_info.object.creator.email}}"}}]}]}
 
           ;; slack token invalid
           {:internal_id   "system-event/slack-token-error"

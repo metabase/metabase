@@ -128,18 +128,62 @@
                                                                :user_id (mt/user->id :crowberto)}
                                                               {:type    :notification-recipient/raw-value
                                                                :details {:value "ngoc@metabase.com"}}]}]}]
-            (let [[email] (notification.tu/with-mock-inbox-email!
-                            (with-send-messages-sync!
-                              (mt/user-http-request :crowberto :post 200 "notification" notification)))
+            (let [[added-email confirmation-email] (sort-by :subject
+                                                            (notification.tu/with-mock-inbox-email!
+                                                              (with-send-messages-sync!
+                                                                (mt/user-http-request :crowberto :post 200 "notification" notification))))
                   a-card-url (format "<a href=\"https://testmb.com/question/%d\">My Card</a>." card-id)]
               (testing (format "send email with %s condition" send_condition)
-                (is (=? {:bcc     #{"rasta@metabase.com" "ngoc@metabase.com" "crowberto@metabase.com"}
-                         :subject "Crowberto Corv added you to an alert"
-                         :body    [{a-card-url true
-                                    expected_text true}]}
-                        (mt/summarize-multipart-single-email email
-                                                             (re-pattern a-card-url)
-                                                             (re-pattern expected_text))))))))))))
+                (testing "recipients will get you were added to a card email"
+                  (is (=? {:bcc     #{"rasta@metabase.com" "ngoc@metabase.com"}
+                           :subject "Crowberto Corv added you to an alert"
+                           :body    [{a-card-url true
+                                      expected_text true}]}
+                          (mt/summarize-multipart-single-email added-email
+                                                               (re-pattern a-card-url)
+                                                               (re-pattern expected_text)))))
+                (testing "creator will get confirmation email"
+                  (is (=? {:to      #{"crowberto@metabase.com"}
+                           :subject "You set up an alert"
+                           :body    [{a-card-url true
+                                      expected_text true}]}
+                          (mt/summarize-multipart-single-email confirmation-email
+                                                               (re-pattern a-card-url)
+                                                               (re-pattern expected_text)))))))))))))
+
+(deftest create-notification-audit-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [notification {:payload_type  "notification/card"
+                            :active        true
+                            :payload       {:card_id card-id}
+                            :subscriptions [{:type          "notification-subscription/cron"
+                                             :cron_schedule "0 0 0 * * ?"}]
+                            :handlers      [{:channel_type "channel/email"
+                                             :recipients   [{:type    "notification-recipient/user"
+                                                             :user_id  (mt/user->id :rasta)}]}]}]
+          (testing "creating a notification publishes an event/notification-create event"
+            (let [created-notification (mt/user-http-request :crowberto :post 200 "notification" notification)]
+              (is (=? {:topic :notification-create
+                       :user_id (mt/user->id :crowberto)
+                       :model "Notification"
+                       :model_id (:id created-notification)
+                       :details {:id            (:id created-notification)
+                                 :active        true
+                                 :creator_id    (mt/user->id :crowberto)
+                                 :payload_id    (mt/malli=? int?)
+                                 :payload_type  "notification/card"
+                                 :subscriptions [{:notification_id (:id created-notification)
+                                                  :type "notification-subscription/cron"
+                                                  :event_name nil
+                                                  :cron_schedule "0 0 0 * * ?"}]
+                                 :handlers [{:recipients [{:id (mt/malli=? int?)
+                                                           :type "notification-recipient/user"
+                                                           :user_id (mt/user->id :rasta)
+                                                           :permissions_group_id nil
+                                                           :details nil}]}]}}
+                      (mt/latest-audit-log-entry))))))))))
 
 (deftest create-notification-audit-test
   (mt/with-model-cleanup [:model/Notification]

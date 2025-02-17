@@ -160,15 +160,15 @@
                                                    :alert-props {:alert_condition "goal"
                                                                  :alert_above_goal false
                                                                  :alert_first_only true}}]]
-            (testing (format "testing %s condition" alert-props)
-              (let [alert-id (create-alert! alert-props card-id [{:channel_type "email"
-                                                                  :recipients  [{:user_id (mt/user->id :rasta)}]}])
-                    notification (first (migrate-alert! (#'task/scheduler) alert-id))]
-                (is (=? {:payload_type :notification/card
-                         :payload      (merge {:card_id card-id} expected)
-                         :active       true
-                         :creator_id   (mt/user->id :crowberto)}
-                        notification))))))))))
+           (testing (format "testing %s condition" alert-props)
+             (let [alert-id (create-alert! alert-props card-id [{:channel_type "email"
+                                                                 :recipients  [{:user_id (mt/user->id :rasta)}]}])
+                   notification (first (migrate-alert! alert-id))]
+               (is (=? {:payload_type :notification/card
+                        :payload      (merge {:card_id card-id} expected)
+                        :active       true
+                        :creator_id   (mt/user->id :crowberto)}
+                       notification))))))))))
 
 (defn- bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
