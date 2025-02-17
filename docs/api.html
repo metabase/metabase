@@ -1,5 +1,7 @@
 ---
 layout: docs-api
+title: Metabase API documentation
+description: The official API documentation for Metabase.
 redirect_from:
 - /docs/latest/api-documentation
 - /docs/latest/api/action
@@ -63,11 +65,7 @@ redirect_from:
 
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>Metabase API doc</title>
-    <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400;1,700&display=swap" rel="stylesheet" />
-  </head>
+    {% include head.html %}
   <style>
     :root {
       --scalar-font: 'Lato', sans-serif;
@@ -328,7 +326,7 @@ redirect_from:
         "type" : "object",
         "properties" : {
           "min_duration_ms" : {
-            "description" : "value must be an integer greater than zero.",
+            "description" : "value must be an integer greater or equal to than zero.",
             "type" : "integer",
             "minimum" : 0
           },
@@ -416,6 +414,9 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.util.cron~1ScheduleMap"
           }
         }
+      },
+      "metabase.tiles.api/field-id-or-name" : {
+        "type" : "string"
       },
       "metabase.timeline.api.timeline/include" : {
         "type" : "string",
@@ -1278,8 +1279,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "query",
           "name" : "show",
@@ -1299,7 +1299,7 @@ redirect_from:
     "/api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}" : {
       "get" : {
         "summary" : "GET /api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}",
-        "description" : "Return an automagic dashboard analyzing cell in  automagic dashboard for entity `entity`\n   defined by\n   query `cell-query`.",
+        "description" : "Return an automagic dashboard analyzing cell in automagic dashboard for entity `entity` defined by query\n  `cell-query`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "entity",
@@ -1307,8 +1307,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1322,7 +1321,7 @@ redirect_from:
           "name" : "cell-query",
           "required" : true,
           "schema" : { },
-          "description" : "value couldn't be parsed as base64 encoded JSON"
+          "description" : "form-encoded base-64-encoded JSON"
         }, {
           "in" : "query",
           "name" : "show",
@@ -1352,8 +1351,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1367,7 +1365,7 @@ redirect_from:
           "name" : "cell-query",
           "required" : true,
           "schema" : { },
-          "description" : "value couldn't be parsed as base64 encoded JSON"
+          "description" : "form-encoded base-64-encoded JSON"
         }, {
           "in" : "path",
           "name" : "comparison-entity",
@@ -1398,7 +1396,7 @@ redirect_from:
     "/api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}/rule/{prefix}/{dashboard-template}" : {
       "get" : {
         "summary" : "GET /api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}/rule/{prefix}/{dashboard-template}",
-        "description" : "Return an automagic dashboard analyzing cell in question  with id `id` defined by\n   query `cell-query` using dashboard-template `dashboard-template`.",
+        "description" : "Return an automagic dashboard analyzing cell in question with id `id` defined by query `cell-query` using\n  dashboard-template `dashboard-template`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "entity",
@@ -1406,8 +1404,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1420,8 +1417,7 @@ redirect_from:
           "in" : "path",
           "name" : "prefix",
           "required" : true,
-          "schema" : { },
-          "description" : "invalid value for prefix"
+          "schema" : { }
         }, {
           "in" : "path",
           "name" : "dashboard-template",
@@ -1433,7 +1429,7 @@ redirect_from:
           "name" : "cell-query",
           "required" : true,
           "schema" : { },
-          "description" : "value couldn't be parsed as base64 encoded JSON"
+          "description" : "form-encoded base-64-encoded JSON"
         }, {
           "in" : "query",
           "name" : "show",
@@ -1463,8 +1459,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1477,8 +1472,7 @@ redirect_from:
           "in" : "path",
           "name" : "prefix",
           "required" : true,
-          "schema" : { },
-          "description" : "invalid value for prefix"
+          "schema" : { }
         }, {
           "in" : "path",
           "name" : "dashboard-template",
@@ -1490,7 +1484,7 @@ redirect_from:
           "name" : "cell-query",
           "required" : true,
           "schema" : { },
-          "description" : "value couldn't be parsed as base64 encoded JSON"
+          "description" : "form-encoded base-64-encoded JSON"
         }, {
           "in" : "path",
           "name" : "comparison-entity",
@@ -1521,7 +1515,7 @@ redirect_from:
     "/api/automagic-dashboards/{entity}/{entity-id-or-query}/compare/{comparison-entity}/{comparison-entity-id-or-query}" : {
       "get" : {
         "summary" : "GET /api/automagic-dashboards/{entity}/{entity-id-or-query}/compare/{comparison-entity}/{comparison-entity-id-or-query}",
-        "description" : "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity\n   `comparison-entity` with id `comparison-entity-id-or-query.`",
+        "description" : "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity `comparison-entity`\n  with id `comparison-entity-id-or-query.`",
         "parameters" : [ {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1537,8 +1531,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "comparison-entity",
@@ -1577,8 +1570,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         } ],
         "tags" : [ "/api/automagic-dashboards" ]
       }
@@ -1594,8 +1586,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1608,8 +1599,7 @@ redirect_from:
           "in" : "path",
           "name" : "prefix",
           "required" : true,
-          "schema" : { },
-          "description" : "invalid value for prefix"
+          "schema" : { }
         }, {
           "in" : "path",
           "name" : "dashboard-template",
@@ -1637,7 +1627,7 @@ redirect_from:
     "/api/automagic-dashboards/{entity}/{entity-id-or-query}/rule/{prefix}/{dashboard-template}/compare/{comparison-entity}/{comparison-entity-id-or-query}" : {
       "get" : {
         "summary" : "GET /api/automagic-dashboards/{entity}/{entity-id-or-query}/rule/{prefix}/{dashboard-template}/compare/{comparison-entity}/{comparison-entity-id-or-query}",
-        "description" : "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;\n   compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`.",
+        "description" : "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template\n  `dashboard-template`; compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "entity",
@@ -1645,8 +1635,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1659,8 +1648,7 @@ redirect_from:
           "in" : "path",
           "name" : "prefix",
           "required" : true,
-          "schema" : { },
-          "description" : "invalid value for prefix"
+          "schema" : { }
         }, {
           "in" : "path",
           "name" : "dashboard-template",
@@ -1841,7 +1829,7 @@ redirect_from:
                     "enum" : [ "root", "database", "dashboard", "question" ]
                   },
                   "model_id" : {
-                    "description" : "value must be an integer greater than zero.",
+                    "description" : "value must be an integer greater or equal to than zero.",
                     "type" : "integer",
                     "minimum" : 0
                   },
@@ -1873,7 +1861,7 @@ redirect_from:
                   "model_id" : {
                     "type" : "array",
                     "items" : {
-                      "description" : "value must be an integer greater than zero.",
+                      "description" : "value must be an integer greater or equal to than zero.",
                       "type" : "integer",
                       "minimum" : 0
                     }
@@ -1906,7 +1894,7 @@ redirect_from:
           "schema" : {
             "type" : "array",
             "items" : {
-              "description" : "value must be an integer greater than zero.",
+              "description" : "value must be an integer greater or equal to than zero.",
               "type" : "integer",
               "minimum" : 0
             }
@@ -1919,7 +1907,7 @@ redirect_from:
           "schema" : {
             "type" : "array",
             "items" : {
-              "description" : "value must be an integer greater than zero.",
+              "description" : "value must be an integer greater or equal to than zero.",
               "type" : "integer",
               "minimum" : 0
             }
@@ -1932,7 +1920,7 @@ redirect_from:
           "schema" : {
             "type" : "array",
             "items" : {
-              "description" : "value must be an integer greater than zero.",
+              "description" : "value must be an integer greater or equal to than zero.",
               "type" : "integer",
               "minimum" : 0
             }
@@ -2285,23 +2273,6 @@ redirect_from:
         "tags" : [ "/api/card" ]
       }
     },
-    "/api/card/{card-id}/persist" : {
-      "post" : {
-        "summary" : "POST /api/card/{card-id}/persist",
-        "description" : "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this\n  query in place of the model's query.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "card-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/card" ]
-      }
-    },
     "/api/card/{card-id}/public_link" : {
       "post" : {
         "summary" : "POST /api/card/{card-id}/public_link",
@@ -2424,40 +2395,6 @@ redirect_from:
             }
           }
         },
-        "tags" : [ "/api/card" ]
-      }
-    },
-    "/api/card/{card-id}/refresh" : {
-      "post" : {
-        "summary" : "POST /api/card/{card-id}/refresh",
-        "description" : "Refresh the persisted model caching `card-id`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "card-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/card" ]
-      }
-    },
-    "/api/card/{card-id}/unpersist" : {
-      "post" : {
-        "summary" : "POST /api/card/{card-id}/unpersist",
-        "description" : "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's\n  query rather than the saved version of the query.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "card-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
         "tags" : [ "/api/card" ]
       }
     },
@@ -3635,7 +3572,7 @@ redirect_from:
             "items" : {
               "description" : "value must be an integer greater than zero.",
               "type" : "integer",
-              "minimum" : 0
+              "minimum" : 1
             }
           }
         }, {
@@ -3647,7 +3584,7 @@ redirect_from:
             "items" : {
               "description" : "value must be an integer greater than zero.",
               "type" : "integer",
-              "minimum" : 0
+              "minimum" : 1
             }
           }
         } ],
@@ -4244,7 +4181,7 @@ redirect_from:
                       "type" : "object",
                       "properties" : {
                         "col" : {
-                          "description" : "value must be an integer greater than zero.",
+                          "description" : "value must be an integer greater or equal to than zero.",
                           "type" : "integer",
                           "minimum" : 0
                         },
@@ -4266,7 +4203,7 @@ redirect_from:
                           }
                         },
                         "row" : {
-                          "description" : "value must be an integer greater than zero.",
+                          "description" : "value must be an integer greater or equal to than zero.",
                           "type" : "integer",
                           "minimum" : 0
                         },
@@ -4328,7 +4265,7 @@ redirect_from:
                       "type" : "object",
                       "properties" : {
                         "col" : {
-                          "description" : "value must be an integer greater than zero.",
+                          "description" : "value must be an integer greater or equal to than zero.",
                           "type" : "integer",
                           "minimum" : 0
                         },
@@ -4350,7 +4287,7 @@ redirect_from:
                           }
                         },
                         "row" : {
-                          "description" : "value must be an integer greater than zero.",
+                          "description" : "value must be an integer greater or equal to than zero.",
                           "type" : "integer",
                           "minimum" : 0
                         },
@@ -4481,57 +4418,6 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/dashboard/{id}/related",
         "description" : "Return related entities.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/dashboard" ]
-      }
-    },
-    "/api/dashboard/{id}/revert" : {
-      "post" : {
-        "summary" : "POST /api/dashboard/{id}/revert",
-        "description" : "Revert a Dashboard to a prior `Revision`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "revision_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  }
-                },
-                "required" : [ "revision_id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/dashboard" ]
-      }
-    },
-    "/api/dashboard/{id}/revisions" : {
-      "get" : {
-        "summary" : "GET /api/dashboard/{id}/revisions",
-        "description" : "Fetch `Revisions` for Dashboard with ID.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -4987,23 +4873,6 @@ redirect_from:
         "tags" : [ "/api/database" ]
       }
     },
-    "/api/database/{id}/persist" : {
-      "post" : {
-        "summary" : "POST /api/database/{id}/persist",
-        "description" : "Attempt to enable model persistence for a database. If already enabled returns a generic 204.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/database" ]
-      }
-    },
     "/api/database/{id}/rescan_values" : {
       "post" : {
         "summary" : "POST /api/database/{id}/rescan_values",
@@ -5141,23 +5010,6 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/database/{id}/syncable_schemas",
         "description" : "Returns a list of all syncable schemas found for the database `id`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/database" ]
-      }
-    },
-    "/api/database/{id}/unpersist" : {
-      "post" : {
-        "summary" : "POST /api/database/{id}/unpersist",
-        "description" : "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -8356,6 +8208,91 @@ redirect_from:
         "tags" : [ "/api/persist" ]
       }
     },
+    "/api/persist/card/{card-id}/persist" : {
+      "post" : {
+        "summary" : "POST /api/persist/card/{card-id}/persist",
+        "description" : "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this\n  query in place of the model's query.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/persist" ]
+      }
+    },
+    "/api/persist/card/{card-id}/refresh" : {
+      "post" : {
+        "summary" : "POST /api/persist/card/{card-id}/refresh",
+        "description" : "Refresh the persisted model caching `card-id`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/persist" ]
+      }
+    },
+    "/api/persist/card/{card-id}/unpersist" : {
+      "post" : {
+        "summary" : "POST /api/persist/card/{card-id}/unpersist",
+        "description" : "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's\n  query rather than the saved version of the query.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/persist" ]
+      }
+    },
+    "/api/persist/database/{id}/persist" : {
+      "post" : {
+        "summary" : "POST /api/persist/database/{id}/persist",
+        "description" : "Attempt to enable model persistence for a database. If already enabled returns a generic 204.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/persist" ]
+      }
+    },
+    "/api/persist/database/{id}/unpersist" : {
+      "post" : {
+        "summary" : "POST /api/persist/database/{id}/unpersist",
+        "description" : "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/persist" ]
+      }
+    },
     "/api/persist/disable" : {
       "post" : {
         "summary" : "POST /api/persist/disable",
@@ -9746,7 +9683,7 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "card", "dashboard" ]
+            "enum" : [ "card", "dashboard", "segment" ]
           }
         } ],
         "tags" : [ "/api/revision" ]
@@ -9765,7 +9702,7 @@ redirect_from:
                 "properties" : {
                   "entity" : {
                     "type" : "string",
-                    "enum" : [ "card", "dashboard" ]
+                    "enum" : [ "card", "dashboard", "segment" ]
                   },
                   "id" : {
                     "description" : "value must be an integer greater than zero.",
@@ -9783,6 +9720,31 @@ redirect_from:
             }
           }
         },
+        "tags" : [ "/api/revision" ]
+      }
+    },
+    "/api/revision/{entity}/{id}" : {
+      "get" : {
+        "summary" : "GET /api/revision/{entity}/{id}",
+        "description" : "Fetch `Revisions` for an object with ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "entity",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "card", "dashboard", "segment" ]
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
         "tags" : [ "/api/revision" ]
       }
     },
@@ -10138,57 +10100,6 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/segment/{id}/related",
         "description" : "Return related entities.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/segment" ]
-      }
-    },
-    "/api/segment/{id}/revert" : {
-      "post" : {
-        "summary" : "POST /api/segment/{id}/revert",
-        "description" : "Revert a `Segement` to a prior `Revision`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "revision_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  }
-                },
-                "required" : [ "revision_id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/segment" ]
-      }
-    },
-    "/api/segment/{id}/revisions" : {
-      "get" : {
-        "summary" : "GET /api/segment/{id}/revisions",
-        "description" : "Fetch `Revisions` for `Segment` with ID.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -10994,14 +10905,14 @@ redirect_from:
           "name" : "lat-field",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api~1field-id-or-name"
           }
         }, {
           "in" : "path",
           "name" : "lon-field",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api~1field-id-or-name"
           }
         }, {
           "in" : "query",
