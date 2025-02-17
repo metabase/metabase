@@ -49,7 +49,6 @@
      metabase.actions.models/insert!
      metabase.analytics.snowplow-test/fake-track-event-impl!
      metabase.analytics.snowplow/track-event-impl!
-     metabase.api.public-test/add-card-to-dashboard!
      metabase.channel.email-test/reset-inbox!
      metabase.channel.email/send-email!
      metabase.cmd.dump-to-h2/dump-to-h2!
@@ -66,12 +65,15 @@
      metabase.driver.sql-jdbc.execute/execute-statement!
      metabase.indexed-entities.models.model-index/add-values!
      metabase.indexed-entities.task.index-values/job-init!
+     metabase.model-persistence.models.persisted-info/ready-database!
+     metabase.model-persistence.task.persist-refresh/job-init!
+     metabase.model-persistence.task.persist-refresh/refresh-tables!
+     metabase.model-persistence.task.persist-refresh/schedule-persistence-for-database!
      metabase.models.collection.graph-test/clear-graph-revisions!
      metabase.models.collection.graph-test/do-with-n-temp-users-with-personal-collections!
      metabase.models.field-values/create-or-update-full-field-values!
      metabase.models.moderation-review/create-review!
      metabase.models.on-demand-test/add-dashcard-with-parameter-mapping!
-     metabase.models.persisted-info/ready-database!
      metabase.models.setting-test/test-user-local-allowed-setting!
      metabase.models.setting-test/test-user-local-only-setting!
      metabase.models.setting.cache/restore-cache!
@@ -88,6 +90,7 @@
      metabase.permissions.models.permissions/update-data-perms-graph!
      metabase.permissions.models.permissions/update-group-permissions!
      metabase.permissions.test-util/with-restored-perms!
+     metabase.public-sharing.api-test/add-card-to-dashboard!
      metabase.pulse.send/send-notifications!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.streaming.interface/begin!
@@ -95,20 +98,18 @@
      metabase.query-processor.streaming.interface/write-row!
      metabase.sample-data/try-to-extract-sample-database!
      metabase.setup.core/create-token!
+     metabase.sso.ldap-test-util/start-ldap-server!
      metabase.sync.core/sync-database!
      metabase.sync.sync-metadata.fields.sync-metadata/update-field-metadata-if-needed!
      metabase.sync.sync-metadata/sync-db-metadata!
      metabase.sync.util-test/sync-database!
      metabase.sync.util/store-sync-summary!
-     metabase.task.persist-refresh/job-init!
-     metabase.task.persist-refresh/refresh-tables!
-     metabase.task.persist-refresh/schedule-persistence-for-database!
      metabase.task/delete-task!
      metabase.test.data.bigquery-cloud-sdk/execute!
+     metabase.test.data.impl.get-or-create/set-test-db-permissions!
      metabase.test.data.impl/copy-db-tables-and-fields!
      metabase.test.data.impl/get-or-create-database!
      metabase.test.data.impl/get-or-create-default-dataset!
-     metabase.test.data.impl.get-or-create/set-test-db-permissions!
      metabase.test.data.interface/create-db!
      metabase.test.data.interface/destroy-db!
      metabase.test.data.oracle/create-user!
@@ -117,7 +118,6 @@
      metabase.test.data.users/clear-cached-session-tokens!
      metabase.test.initialize/do-initialization!
      metabase.test.initialize/initialize-if-needed!
-     metabase.test.integrations.ldap/start-ldap-server!
      metabase.test.util.log/ensure-unique-logger!
      metabase.test.util.log/set-ns-log-level!
      metabase.test.util/do-with-temp-env-var-value!
