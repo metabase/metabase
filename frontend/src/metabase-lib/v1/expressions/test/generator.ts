@@ -32,7 +32,7 @@ export function generateExpression(
   const listOf =
     <T>(n: number, generators: Generator<T>[]) =>
     () =>
-      [...Array(n)].map(_ => oneOf(generators)());
+      [...Array(n)].map(() => oneOf(generators)());
 
   const zero = () => 0;
   const one = () => 1;
