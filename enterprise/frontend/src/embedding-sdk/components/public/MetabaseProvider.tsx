@@ -140,8 +140,6 @@ export const MetabaseProvider = memo(function MetabaseProvider(
     storeRef.current = getSdkStore();
   }
 
-  // PLEASE CI RUN THE TESTS FOR THE SDK
-
   return (
     <MetabaseReduxProvider store={storeRef.current}>
       <MetabaseProviderInternal store={storeRef.current} {...props} />
