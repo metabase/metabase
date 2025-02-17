@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.api.util-test :as advanced-perms.api.tu]
    [metabase-enterprise.advanced-permissions.driver.impersonation :as impersonation]
+   [metabase-enterprise.test :as met]
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
@@ -72,11 +73,21 @@
 (deftest connection-impersonation-role-test-8
   (testing "Throws an exception if impersonation should be enforced, but the user's attribute is not a single string"
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                 :attributes     {"impersonation_attr" ["one" "two" "three"]}}
+                                                 :attributes     {"impersonation_attr" "impersonation_role"}}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Connection impersonation attribute is invalid: role must be a single non-empty string."
            (@#'impersonation/connection-impersonation-role (mt/db)))))))
+
+(deftest connection-impersonation-role-test-9
+  (testing "Throws an exception if sandboxing policies are also defined for the current user on the DB"
+    (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                 :attributes     {"impersonation_attr" ["one" "two" "three"]}}
+      (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)}}}
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Conflicting sandboxing and impersonation policies found."
+             (@#'impersonation/connection-impersonation-role (mt/db))))))))
 
 (deftest conn-impersonation-test-postgres
   (mt/test-driver :postgres

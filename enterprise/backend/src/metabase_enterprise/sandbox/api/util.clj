@@ -14,22 +14,19 @@
   "Takes all the group-ids a user belongs to and a sandbox, and determines whether the sandbox should be enforced for the user.
   This is done by checking whether any *other* group provides `:unrestricted` access to the sandboxed table (without
   its own sandbox). If so, we don't enforce the sandbox."
-  [user-group-ids group-id->sandboxes {:as _sandbox :keys [table_id] {:keys [db_id]} :table}]
+  [{:as _sandbox :keys [table_id] {:keys [db_id]} :table} user-group-ids group-id->sandboxes group-id->impersonations]
   ;; If any *other* non-sandboxed groups the user is in provide unrestricted view-data access to the table, we don't
   ;; enforce the sandbox.
-  (let [groups-to-exclude
-        ;; Don't check permissions of other groups which also define sandboxes on the relevant table. The fact that
-        ;; there is a conflict between sandboxes will cause a QP error later on when trying to run queries, so this
-        ;; isn't a valid sandboxing state anyway.
-        (reduce-kv (fn [excluded-group-ids group-id sandboxes]
-                     (if (some #(= (:table_id %) table_id) sandboxes)
-                       (conj excluded-group-ids group-id)
-                       excluded-group-ids))
-                   #{}
-                   group-id->sandboxes)
+  (let [sandboxed-groups (into #{} (for [[group-id sandboxes] group-id->sandboxes
+                                         :when (some #(= (:table_id %) table_id) sandboxes)]
+                                     group-id))
+        impersonated-groups (into #{} (for [[group-id impersonations] group-id->impersonations
+                                            :when (some #(= (:db_id %) db_id) impersonations)]
+                                        group-id))
+        groups-to-exclude (set/union sandboxed-groups impersonated-groups)
         groups-to-check (set/difference user-group-ids groups-to-exclude)]
     (if (seq groups-to-check)
-      (not (data-perms/groups-have-permission-for-table? (set/difference user-group-ids groups-to-exclude)
+      (not (data-perms/groups-have-permission-for-table? groups-to-check
                                                          :perms/view-data
                                                          :unrestricted
                                                          db_id
@@ -54,13 +51,18 @@
                                               :where [:and
                                                       [:= :pgm.user_id user-id]]})
                                   :table)
+
+        impersonations-with-group-ids (t2/select :model/ConnectionImpersonation
+                                                 :group_id [:in user-group-ids])
+        group-id->impersonations (->> impersonations-with-group-ids
+                                      (group-by :group_id))
         group-id->sandboxes (->> sandboxes-with-group-ids
                                  (group-by :group_id)
                                  (m/map-vals (fn [sandboxes]
                                                (->> sandboxes
                                                     (filter :table_id)
                                                     (into #{})))))]
-    (filter #(enforce-sandbox? user-group-ids group-id->sandboxes %)
+    (filter #(enforce-sandbox? % user-group-ids group-id->sandboxes group-id->impersonations)
             (reduce set/union #{} (vals group-id->sandboxes)))))
 
 (defn enforced-sandboxes-for-tables
@@ -69,6 +71,20 @@
   [table-ids]
   (let [enforced-sandboxes-for-user @data-perms/*sandboxes-for-user*]
     (filter #((set table-ids) (:table_id %)) enforced-sandboxes-for-user)))
+
+(defn sandboxed-user-for-db?
+  "Returns true if the currently logged in user has any enforced sandboxes for the provided database. Throws an
+  exception if no current user is bound."
+  [database-id]
+  (when-not *is-superuser?*
+    (if *current-user-id*
+      (let [sandboxes (t2/hydrate (seq @data-perms/*sandboxes-for-user*) :table)]
+        (some #(= (get-in % [:table :db_id]) database-id)
+              sandboxes))
+     ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
+     ;; returning `false` for users who should actually be sandboxes.
+      (throw (ex-info (str (tru "No current user found"))
+                      {:status-code 403})))))
 
 (defenterprise sandboxed-user?
   "Returns true if the currently logged in user has any enforced sandboxes. Throws an exception if no current user is

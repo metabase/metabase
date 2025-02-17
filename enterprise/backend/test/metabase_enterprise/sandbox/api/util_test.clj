@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.api.util-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.advanced-permissions.api.util-test :as advanced-perms.api.tu]
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
    [metabase-enterprise.test :as met]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -38,7 +39,7 @@
         (mt/with-full-data-perms-for-all-users!
           (is (not (mt.api.u/sandboxed-user?)))))))
 
-  (testing "If a user is in another group with another sandbox defined on the table, the user should be considered sandbox"
+  (testing "If a user is in another group with another sandbox defined on the table, the user should be considered sandboxed"
     ;; This (conflicting sandboxes) is an invalid state for the QP but `enforce-sandbox?` should return true in order
     ;; to fail closed
     (mt/with-temp [:model/User user {}]
@@ -46,8 +47,21 @@
         (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
           (is (mt.api.u/sandboxed-user?))))))
 
+  (testing "If a user is in another group with an impersonation policy defined on the table, the user should be considered sandboxed"
+    ;; Similar to above, this is also an unsupported configuration for querying, but we want to treat this user as
+    ;; sandboxed
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/PermissionsGroup {group-id :id} {}
+                   :model/PermissionsGroupMembership _ {:user_id user-id
+                                                        :group_id group-id}]
+      (met/with-gtaps-for-user! user-id {:gtaps {:venues {}}}
+        (mt/with-temp [:model/ConnectionImpersonation _ {:db_id (mt/id)
+                                                         :group_id group-id
+                                                         :attribute "test-attribute"}]
+          (is (mt.api.u/sandboxed-user?))))))
+
   (testing "If a user is in two groups with conflicting sandboxes, *and* a third group that grants full access to the table,
-           neither sandbox is enforced"
+            neither sandbox is enforced"
     (mt/with-temp [:model/User user {}]
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
         (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
