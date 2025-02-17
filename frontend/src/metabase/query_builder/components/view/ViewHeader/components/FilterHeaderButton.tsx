@@ -96,10 +96,10 @@ export function FilterHeaderButton({
             rightSection={
               shouldShowFilterPanelExpander ? (
                 <Badge
-                  bg="color-filter"
+                  bg="#EEEEFF"
                   color="text"
                   style={{ cursor: "pointer" }}
-                  px="sm"
+                  px={6}
                 >
                   {items.length}
                 </Badge>
