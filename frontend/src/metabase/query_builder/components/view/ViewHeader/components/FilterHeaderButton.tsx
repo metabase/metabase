@@ -116,6 +116,7 @@ export function FilterHeaderButton({
           <FilterPicker
             query={query}
             stageIndex={-1} // TODO
+            withCustomExpression={false}
             onSelect={handleAddFilter}
           />
         </Popover.Dropdown>

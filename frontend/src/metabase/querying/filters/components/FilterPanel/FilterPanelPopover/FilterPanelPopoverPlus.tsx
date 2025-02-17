@@ -54,6 +54,7 @@ export function FilterPanelPopoverPlus({
           query={query}
           stageIndex={stageIndex}
           filter={undefined}
+          withCustomExpression={false}
           onSelect={handleAddFilter}
         />
       </Popover.Dropdown>
