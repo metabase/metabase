@@ -25,13 +25,7 @@ describe("scenarios > embedding-sdk > create-dashboard modal", () => {
     });
 
     it("should create a dashboard in the personal collection when initialCollectionId is 'personal' and not think that 'personal' is a numeric id", () => {
-      let personalCollectionId: number;
-
-      cy.intercept("GET", "/api/user/current", req => {
-        req.continue(res => {
-          personalCollectionId = res.body.personal_collection_id;
-        });
-      }).as("getCurrentUser");
+      cy.intercept("GET", "/api/user/current").as("getCurrentUser");
 
       mountSdkContent(
         <CreateDashboardModal initialCollectionId={"personal"} />,
@@ -39,32 +33,34 @@ describe("scenarios > embedding-sdk > create-dashboard modal", () => {
 
       fillAndSubmitForm();
 
-      cy.wait("@createDashboard").then(interception => {
-        expect(interception.request.body.collection_id).to.equal(
-          personalCollectionId,
-        );
+      cy.wait("@getCurrentUser").then(({ response }) => {
+        const personalCollectionId = response?.body.personal_collection_id;
+
+        cy.wait("@createDashboard").then(interception => {
+          expect(interception.request.body.collection_id).to.equal(
+            personalCollectionId,
+          );
+        });
       });
 
       cy.get("@personalCollectionSpy").should("not.have.been.called");
     });
 
     it("should use the personal collection by default if no initialCollectionId is provided", () => {
-      let personalCollectionId: number;
-
-      cy.intercept("GET", "/api/user/current", req => {
-        req.continue(res => {
-          personalCollectionId = res.body.personal_collection_id;
-        });
-      }).as("getCurrentUser");
+      cy.intercept("GET", "/api/user/current").as("getCurrentUser");
 
       mountSdkContent(<CreateDashboardModal />);
 
       fillAndSubmitForm();
 
-      cy.wait("@createDashboard").then(interception => {
-        expect(interception.request.body.collection_id).to.equal(
-          personalCollectionId,
-        );
+      cy.wait("@getCurrentUser").then(({ response }) => {
+        const personalCollectionId = response?.body.personal_collection_id;
+
+        cy.wait("@createDashboard").then(interception => {
+          expect(interception.request.body.collection_id).to.equal(
+            personalCollectionId,
+          );
+        });
       });
 
       cy.get("@personalCollectionSpy").should("not.have.been.called");
