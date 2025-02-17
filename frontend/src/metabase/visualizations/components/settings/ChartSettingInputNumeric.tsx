@@ -1,5 +1,4 @@
 import { type ChangeEvent, useState } from "react";
-import _ from "underscore";
 
 import { TextInput } from "metabase/ui";
 

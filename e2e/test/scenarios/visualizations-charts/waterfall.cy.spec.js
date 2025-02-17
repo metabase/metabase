@@ -466,7 +466,7 @@ describe("scenarios > visualizations > waterfall", () => {
       H.echartsContainer().get("text").contains("Total").should("exist");
     });
 
-    it("should allow toggling of value labels", { tags: "@flaky" }, () => {
+    it("should allow toggling of value labels", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 

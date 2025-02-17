@@ -5,12 +5,10 @@
 
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
-   [metabase.events.alerts-deleted-on-card-save]
    [metabase.events.audit-log]
    [metabase.events.driver-notifications]
    [metabase.events.last-login]
    [metabase.events.notification]
-   [metabase.events.persisted-info]
    [metabase.events.schema]
    [metabase.events.slack]
    [metabase.events.view-log]))
