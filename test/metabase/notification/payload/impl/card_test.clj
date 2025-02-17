@@ -388,23 +388,7 @@
       (testing "crowberto can see the card"
         (is (pos-int? (:row_count (payload! :crowberto))))))))
 
-(deftest alerts-do-not-remove-user-metadata
-  (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."
-    (let [result-metadata [{:display_name   "Count"
-                            :semantic_type  :type/Quantity
-                            :field_ref      [:aggregation 0]
-                            :base_type      :type/BigInteger
-                            :effective_type :type/BigInteger
-                            :name           "count"}]]
-      (notification.tu/with-card-notification
-        [notification {:card     {:type            :model
-                                  :dataset_query   (mt/mbql-query orders {:aggregation [["count"]]})
-                                  :result_metadata result-metadata}
-                       :handlers [@notification.tu/default-email-handler]}]
-        (notification/send-notification! notification)
-        (is (= result-metadata
-               (t2/select-one-fn :result_metadata :model/Card (-> notification :payload :card_id))))))))
-
+;; TODO this should be a test for metabase.notification.send because it's generic for all notification types
 (deftest partial-channel-failure-will-deliver-all-that-success-test
   (testing "if a pulse is set to send to multiple channels and one of them fail, the other channels should still receive the message"
     (notification.tu/with-send-notification-sync

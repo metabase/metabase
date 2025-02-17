@@ -112,12 +112,12 @@
                                                                "goal_above"
                                                                "goal_below")
                                                              "has_result")
-                                           :created_at     :%now
-                                           :updated_at     :%now}
+                                           :created_at     (:created_at pulse)
+                                           :updated_at     (:updated_at pulse)}
                             :active       (not (:archived pulse))
                             :creator_id   (:creator_id pulse)
-                            :created_at   :%now
-                            :updated_at   :%now}
+                            :created_at   (:created_at pulse)
+                            :updated_at   (:updated_at pulse)}
              pc            (first pcs)
              subscriptions [{:type          "notification-subscription/cron"
                              :cron_schedule (schedule-map->cron-string pc)

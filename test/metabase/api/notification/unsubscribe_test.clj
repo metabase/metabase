@@ -71,8 +71,8 @@
               (is (not (t2/exists? :model/NotificationRecipient :notification_handler_id handler-id)))
               (is (= {:topic    :notification-unsubscribe-ex
                       :user_id  nil
-                      :model    "Notification"
-                      :model_id nil
+                      :model    "NotificationHandler"
+                      :model_id handler-id
                       :details  {:email "test@metabase.com"}}
                      (mt/latest-audit-log-entry :notification-unsubscribe-ex))))))))))
 
@@ -98,8 +98,8 @@
                       (t2/select :model/NotificationRecipient :notification_handler_id handler-id)))
               (is (= {:topic    :notification-unsubscribe-undo-ex
                       :user_id  nil
-                      :model    "Notification"
-                      :model_id nil
+                      :model    "NotificationHandler"
+                      :model_id handler-id
                       :details  {:email "test@metabase.com"}}
                      (mt/latest-audit-log-entry :notification-unsubscribe-undo-ex)))))
 
