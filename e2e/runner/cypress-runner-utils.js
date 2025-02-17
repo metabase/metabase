@@ -1,11 +1,11 @@
-const { exec } = require("child_process");
+const { exec, execSync } = require("child_process");
 
 const arg = require("arg");
 const chalk = require("chalk");
 const cypress = require("cypress");
 
 function printBold(message) {
-  console.log(chalk.bold(message));
+  console.log(`\n${chalk.bold(chalk.magenta(message))}\n`);
 }
 
 function printYellow(message) {
@@ -56,11 +56,45 @@ async function parseArguments(args) {
   return await cypress.cli.parseRunArguments(cliArgs);
 }
 
+function shell(command, { quiet = false } = {}) {
+  const output = execSync(command, { stdio: quiet ? "pipe" : "inherit" });
+  return output?.toString()?.trim();
+}
+
+function stringToBoolean(value) {
+  if (value === "true" || value === "false") {
+    return value === "true";
+  }
+  return value;
+}
+
+function booleanToString(value) {
+  if (typeof value === "boolean") {
+    return String(value);
+  }
+  return value;
+}
+
+function booleanify(map) {
+  return Object.fromEntries(
+    Object.entries(map).map(([key, value]) => [key, stringToBoolean(value)]),
+  );
+}
+
+function unBooleanify(map) {
+  return Object.fromEntries(
+    Object.entries(map).map(([key, value]) => [key, booleanToString(value)]),
+  );
+}
+
 module.exports = {
   printBold,
   printYellow,
   printCyan,
   executeYarnCommand,
   parseArguments,
+  booleanify,
+  unBooleanify,
+  shell,
   args,
 };
