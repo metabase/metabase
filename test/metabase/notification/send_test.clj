@@ -4,6 +4,7 @@
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
@@ -156,8 +157,8 @@
                  [{:channel_type notification.tu/test-channel-type
                    :channel_id   (:id chn)
                    :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
-          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [& _]
-                                                                    (throw (Exception. "test-exception")))]
+          (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _]
+                                                                                  (throw (Exception. "test-exception")))]
             (is (thrown? Exception (notification.send/send-notification-sync! n)))
             (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/send-error
                                                             {:payload-type "notification/testing"})))))))))

@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.models.interface :as mi]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
@@ -131,6 +132,7 @@
                        (:handlers body)))]
     (when (card-notification? notification)
       (send-you-were-added-card-notification-email! notification))
+    (events/publish-event! :event/notification-create {:object notification :user-id api/*current-user-id*})
     notification))
 
 (defn- notify-notification-updates!
@@ -170,7 +172,10 @@
     (models.notification/update-notification! existing-notification body)
     (when (card-notification? existing-notification)
       (notify-notification-updates! body existing-notification))
-    (get-notification id)))
+    (u/prog1 (get-notification id)
+      (events/publish-event! :event/notification-update {:object          <>
+                                                         :previous-object existing-notification
+                                                         :user-id         api/*current-user-id*}))))
 
 (api.macros/defendpoint :post "/:id/send"
   "Send a notification by id."
@@ -217,7 +222,9 @@
         (u/ignore-exceptions
           (messages/send-you-unsubscribed-notification-card-email!
            (update <> :payload t2/hydrate :card)
-           [(:email @api/*current-user*)]))))))
+           [(:email @api/*current-user*)])))
+      (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
+                                                              :user-id api/*current-user-id*}))))
 
 (api.macros/defendpoint :post "/:id/unsubscribe"
   "Unsubscribe current user from a notification."

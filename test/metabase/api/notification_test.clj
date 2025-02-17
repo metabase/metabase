@@ -141,6 +141,40 @@
                                                              (re-pattern a-card-url)
                                                              (re-pattern expected_text))))))))))))
 
+(deftest create-notification-audit-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [notification {:payload_type  "notification/card"
+                            :active        true
+                            :payload       {:card_id card-id}
+                            :subscriptions [{:type          "notification-subscription/cron"
+                                             :cron_schedule "0 0 0 * * ?"}]
+                            :handlers      [{:channel_type "channel/email"
+                                             :recipients   [{:type    "notification-recipient/user"
+                                                             :user_id  (mt/user->id :rasta)}]}]}]
+          (testing "creating a notification publishes an event/notification-create event"
+            (let [created-notification (mt/user-http-request :crowberto :post 200 "notification" notification)]
+              (is (=? {:topic :notification-create
+                       :user_id (mt/user->id :crowberto)
+                       :model "Notification"
+                       :model_id (:id created-notification)
+                       :details {:id            (:id created-notification)
+                                 :active        true
+                                 :creator_id    (mt/user->id :crowberto)
+                                 :payload_id    (mt/malli=? int?)
+                                 :payload_type  "notification/card"
+                                 :subscriptions [{:notification_id (:id created-notification)
+                                                  :type "notification-subscription/cron"
+                                                  :event_name nil
+                                                  :cron_schedule "0 0 0 * * ?"}]
+                                 :handlers [{:recipients [{:id (mt/malli=? int?)
+                                                           :type "notification-recipient/user"
+                                                           :user_id (mt/user->id :rasta)
+                                                           :permissions_group_id nil
+                                                           :details nil}]}]}}
+                      (mt/latest-audit-log-entry))))))))))
+
 (deftest create-notification-error-test
   (testing "require auth"
     (is (= "Unauthenticated" (mt/client :post 401 "notification"))))
@@ -228,6 +262,36 @@
                                      :user_id (mt/user->id :rasta)}]}
                     (->> (update-notification (assoc @notification :handlers new-handlers))
                          :handlers (m/find-first #(= "channel/slack" (:channel_type %))))))))))))
+
+(deftest update-notification-audit-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-premium-features #{:audit-app}
+      (notification.tu/with-card-notification
+        [notification {:notification {:creator_id (mt/user->id :rasta)}
+                       :handlers     [{:channel_type "channel/email"
+                                       :recipients   [{:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :lucky)}]}]}]
+        (mt/user-http-request
+         :crowberto :put 200
+         (format "notification/%d" (:id notification))
+         (assoc notification :active false
+                :subscriptions [{:id            -1
+                                 :notification_id (:id notification)
+                                 :type          "notification-subscription/cron"
+                                 :cron_schedule "0 0 0 * * ?"}]))
+        (testing "updating a notification publishes an event/notification-update event"
+          (is (= {:topic :notification-update
+                  :user_id (mt/user->id :crowberto)
+                  :model "Notification"
+                  :model_id (:id notification)
+                  :details {:previous {:subscriptions []
+                                       :active true}
+                            :new      {:subscriptions [{:notification_id (:id notification)
+                                                        :type "notification-subscription/cron"
+                                                        :event_name nil
+                                                        :cron_schedule "0 0 0 * * ?"}]
+                                       :active false}}}
+                 (mt/latest-audit-log-entry))))))))
 
 (deftest update-notification-error-test
   (testing "require auth"
@@ -822,6 +886,23 @@
                       (mt/summarize-multipart-single-email email
                                                            #"You’re no longer receiving alerts about"
                                                            (re-pattern a-href)))))))))))
+
+(deftest unsubscribe-notification-audit-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-premium-features #{:audit-app}
+      (notification.tu/with-card-notification
+        [notification {:notification {:creator_id (mt/user->id :rasta)}
+                       :handlers     [{:channel_type "channel/email"
+                                       :recipients   [{:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :lucky)}]}]}]
+        (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" (:id notification)))
+        (testing "unsubscribing from a notification publishes an event/notification-unsubscribe event"
+          (is (= {:topic    :notification-unsubscribe
+                  :user_id  (mt/user->id :lucky)
+                  :model    "Notification"
+                  :model_id (:id notification)
+                  :details  {}}
+                 (mt/latest-audit-log-entry))))))))
 
 (deftest notify-notification-updates-email-test
   (testing "notify-notification-updates! sends appropriate emails based on notification changes"

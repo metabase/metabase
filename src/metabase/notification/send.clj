@@ -150,23 +150,27 @@
               (do
                 (log/debugf "[Notification %d] Found %d handlers" id (count handlers))
                 (doseq [handler handlers]
-                  (let [channel-type (:channel_type handler)
-                        messages     (channel/render-notification
-                                      channel-type
-                                      notification-payload
-                                      (:template handler)
-                                      (:recipients handler))]
-                    (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
-                                id (count messages)
-                                (handler->channel-name handler)
-                                (-> handler :template :id))
-                    (doseq [message messages]
-                      (log/infof "[Notification %d] Sending message to channel %s"
-                                 id (:channel_type handler))
-                      (channel-send-retrying! id payload_type handler message))))
-                (do-after-notification-sent notification-info notification-payload)
-                (log/infof "[Notification %d] Sent successfully" id))
+                  (try
+                    (let [channel-type (:channel_type handler)
+                          messages     (channel/render-notification
+                                        channel-type
+                                        notification-payload
+                                        (:template handler)
+                                        (:recipients handler))]
+                      (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
+                                  id (count messages)
+                                  (handler->channel-name handler)
+                                  (-> handler :template :id))
+                      (doseq [message messages]
+                        (log/infof "[Notification %d] Sending message to channel %s"
+                                   id (:channel_type handler))
+                        (channel-send-retrying! id payload_type handler message)))
+                    (catch Exception e
+                      (log/warnf e "[Notification %d] Error sending to channel %s"
+                                 id (handler->channel-name handler))))))
               (log/infof "[Notification %d] Skipping" id))
+            (do-after-notification-sent notification-info notification-payload)
+            (log/infof "[Notification %d] Sent successfully" id)
             (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
       (catch Exception e
         (log/errorf e "[Notification %d] Failed to send" id)

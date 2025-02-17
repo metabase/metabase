@@ -56,7 +56,8 @@
       (if matching-recipient
         (t2/delete! :model/NotificationRecipient (:id matching-recipient))
         (throw (ex-info (tru "Email doesn''t exist.") {:status-code 400})))))
-  (events/publish-event! :event/notification-unsubscribe-ex {:object {:email email}})
+  (events/publish-event! :event/notification-unsubscribe-ex {:details {:email email}
+                                                             :object {:id notification-handler-id}})
   {:status :success :title (notification-name-by-handler-id notification-handler-id)})
 
 (api.macros/defendpoint :post "/undo"
@@ -78,5 +79,6 @@
                                                   :details                 {:value email}
                                                   :notification_handler_id notification-handler-id})
         (throw (ex-info (tru "Email already exist.") {:status-code 400})))))
-  (events/publish-event! :event/notification-unsubscribe-undo-ex {:object {:email email}})
+  (events/publish-event! :event/notification-unsubscribe-undo-ex {:details {:email email}
+                                                                  :object {:id notification-handler-id}})
   {:status :success :title (notification-name-by-handler-id notification-handler-id)})
