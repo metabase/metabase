@@ -14,7 +14,7 @@ import {
   getMappingOptionByTarget,
 } from "metabase/parameters/utils/mapping-options";
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
-import { Flex, Icon, Text, Transition } from "metabase/ui";
+import { Box, Flex, Icon, Text, Transition } from "metabase/ui";
 import { getMobileHeight } from "metabase/visualizations/shared/utils/sizes";
 import type Question from "metabase-lib/v1/Question";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
@@ -27,12 +27,8 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import {
-  CardLabel,
-  Container,
-  Warning,
-} from "./DashCardCardParameterMapper.styled";
 import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";
+import S from "./DashCardParameterMapper.module.css";
 
 const mapStateToProps = (
   state: State,
@@ -95,8 +91,19 @@ export function DashCardCardParameterMapper({
     isRecentlyAutoConnected && !!selectedMappingOption;
 
   return (
-    <Container isSmall={!isMobile && dashcard.size_y < 2}>
-      {hasSeries && <CardLabel>{card.name}</CardLabel>}
+    <Flex
+      direction="column"
+      align="center"
+      w="100%"
+      p="xs"
+      pos="relative"
+      my={!isMobile && dashcard.size_y < 2 ? "0" : "0.5rem"}
+    >
+      {hasSeries && (
+        <Box maw="100px" mb="sm" fz="0.83em" className={S.CardLabel}>
+          {card.name}
+        </Box>
+      )}
       <DashCardCardParameterMapperContent
         isNative={isNative}
         isDisabled={isDisabled}
@@ -142,13 +149,13 @@ export function DashCardCardParameterMapper({
         }}
       </Transition>
       {target && isParameterVariableTarget(target) && (
-        <Warning>
+        <span className={S.Warning}>
           {editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
             ? t`Native question variables do not support dropdown lists or search box filters, and can't limit values for linked filters.`
             : t`Native question variables only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
-        </Warning>
+        </span>
       )}
-    </Container>
+    </Flex>
   );
 }
 
