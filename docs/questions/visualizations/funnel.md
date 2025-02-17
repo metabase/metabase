@@ -44,9 +44,9 @@ If your (original, unaggregated) data already contains a field with the the step
 
 ![A query in the query builder used to build a funnel chart](../images/build-a-funnel-query.png)
 
-But often the data for the different stages of the funnel comes from different tables, or you might need to use different filters or aggregation rules for each step. In this case, you can create separate questions for each step, and then use SQL to combine them.
+If data for the different stages of the funnel comes from different tables, or if you need to use different filters or aggregation rules for each stage, you can create separate questions for each stage, and then combine them with a SQL query.
 
-For example, you can create 3 separate [query builder](../query-builder/editor.md) questions, each returning the counts for `Leads`, `Qualification`, and `Proposal` stages. Then you can write a [SQL query](../native-editor/writing-sql.md) that [references those questions](../native-editor/referencing-saved-questions-in-queries.md) and uses `UNION` to combine the results into a single table with the funnel-appropriate shape
+For example: you could create three separate [query builder](../query-builder/editor.md) questions, each returning the counts for `Leads`, `Qualification`, and `Proposal` stages. Then you'd write a [SQL query](../native-editor/writing-sql.md) that [references those questions](../native-editor/referencing-saved-questions-in-queries.md) and uses `UNION` to return results in the right shape to build a funnel chart.
 
 ```sql
 -- example of a query that retrieves results of questions and combines them with UNION
@@ -63,7 +63,7 @@ SELECT 'Prospects' as stage, * from {{#122-prospects}}
 
 ## How to read a funnel chart
 
-Funnel charts in Metabase show the value of the metric for each step, and how the metric at this step compares to the value at the _first_ step. The metric on the first step is displayed to the left of the chart.
+Funnel charts show the value of the metric for each stage, and how the metric compares to the value at the _first_ stage. The first stage's metric is displayed to the left of the chart.
 
 ![Funnel chart with a tooltip](../images/read-a-funnel.png)
 
@@ -79,9 +79,9 @@ To open chart settings, click on the **Gear** icon in the bottom left.
 
 If you have more than two columns in your query results, you can select which columns should be used for the funnel steps and the measure in the **Data** tab.
 
-You can reorder funnel steps by dragging the cards with steps, or hide the step by clicking on the **Eye** icon on the step card.
+You can reorder funnel stages by dragging and dropping, or hide a stage by clicking on the **Eye** icon on the stage card.
 
-To edit the formatting of the measure, click on **Three dots** next to the measure name. The formatting will only apply to the _metric itself_, but not to the percentage values. In particular, selecting “Style: Percent” in the measure format options will only change how Metabase formats the metric - for example, `17` will be formatted as `1700%`.
+To edit the formatting of the metric, click on **Three dots** next to the metric. The formatting will only apply to the _metric itself_, but _not_ to the percentage values that compare each stage's metric to the first stage (which currently you can't format).
 
 ## Limitations and alternatives
 
