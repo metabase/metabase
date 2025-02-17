@@ -235,7 +235,7 @@ Props:
 | ------------ | -------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | name         | `string`                         | (required) Dashboard title                                                                                  |
 | description  | `string \| null`                 | Optional dashboard description                                                                              |
-| collectionId | `number \| 'root' \| 'personal'` | Collection where to create a new dashboard. You can use predefined system values like `root` or `personal`. |
+| collectionId | `number \| 'root' \| 'personal'` | Collection in which to create a new dashboard. You can use predefined system values like `root` or `personal`. |
 
 ### Component
 
@@ -253,6 +253,6 @@ Supported component props:
 
 | Prop          | Type                             | Description                                                                                     |
 | ------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
-| collectionId? | `number \| 'root' \| 'personal'` | Initial collection field value. You can use predefined system values like `root` or `personal`. |
+| collectionId? | `number \| 'root' \| 'personal'` | Initial collection in which to create a dashboard. You can use predefined system values like `root` or `personal`. |
 | onCreate      | `(dashboard: Dashboard) => void` | Handler to react on dashboard creation.                                                         |
 | onClose       | `() => void`                     | Handler to close modal component                                                                |
