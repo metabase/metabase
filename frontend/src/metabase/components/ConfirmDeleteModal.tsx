@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ConfirmationModal } from "metabase/components/ConfirmContent";
+import { ConfirmationModal } from "metabase/components/ConfirmationModal";
 import type { ModalProps } from "metabase/components/Modal/Modal";
 
 interface ConfirmDeleteModalProps extends ModalProps {

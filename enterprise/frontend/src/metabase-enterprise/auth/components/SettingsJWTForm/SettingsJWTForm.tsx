@@ -102,13 +102,7 @@ export const SettingsJWTForm = ({
           <FormSection title={"Server Settings"}>
             <Stack spacing="md">
               <FormTextInput {...fields["jwt-identity-provider-uri"]} />
-              <FormSecretKey
-                {...fields["jwt-shared-secret"]}
-                confirmation={{
-                  header: t`Regenerate JWT signing key?`,
-                  dialog: t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`,
-                }}
-              />
+              <FormSecretKey {...fields["jwt-shared-secret"]} />
             </Stack>
           </FormSection>
           <FormSection

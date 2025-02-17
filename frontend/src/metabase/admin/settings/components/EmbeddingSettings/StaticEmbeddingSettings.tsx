@@ -64,10 +64,6 @@ export function StaticEmbeddingSettings({
               key={isStaticEmbeddingEnabled.toString()}
               onChange={handleChangeEmbeddingSecretKey}
               setting={embeddingSecretKeySetting}
-              confirmation={{
-                header: t`Regenerate embedding key?`,
-                dialog: t`This will cause existing embeds to stop working until they are updated with the new key.`,
-              }}
             />
           </SetByEnvVarWrapper>
         </Box>

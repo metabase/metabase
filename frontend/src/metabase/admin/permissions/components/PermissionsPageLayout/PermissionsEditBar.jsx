@@ -1,8 +1,9 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
+import { useState } from "react";
 import { t } from "ttag";
 
-import Confirm from "metabase/components/Confirm";
+import { ConfirmationModal } from "metabase/components/ConfirmationModal";
 import EditBar from "metabase/components/EditBar";
 import Button from "metabase/core/components/Button";
 
@@ -16,16 +17,16 @@ const propTypes = {
 };
 
 export function PermissionsEditBar({ diff, isDirty, onCancel, onSave }) {
+  const [saveModalIsOpen, setSaveModelIsOpen] = useState(false);
   const saveButton = (
-    <Confirm
-      title={t`Save permissions?`}
-      action={onSave}
-      content={diff ? <PermissionsConfirm diff={diff} /> : null}
-      triggerClasses={cx({ disabled: !isDirty })}
-      key="save"
+    <Button
+      primary
+      small
+      onClick={() => setSaveModelIsOpen(true)}
+      className={cx({ disabled: !isDirty })}
     >
-      <Button primary small>{t`Save changes`}</Button>
-    </Confirm>
+      {t`Save changes`}
+    </Button>
   );
 
   const cancelButton = (
@@ -33,11 +34,24 @@ export function PermissionsEditBar({ diff, isDirty, onCancel, onSave }) {
   );
 
   return (
-    <EditBar
-      admin
-      title={t`You've made changes to permissions.`}
-      buttons={[cancelButton, saveButton]}
-    />
+    <>
+      <EditBar
+        admin
+        title={t`You've made changes to permissions.`}
+        buttons={[cancelButton, saveButton]}
+      />
+      <ConfirmationModal
+        key="save"
+        opened={saveModalIsOpen}
+        title={t`Save permissions?`}
+        content={diff ? <PermissionsConfirm diff={diff} /> : null}
+        onConfirm={() => {
+          onSave();
+          setSaveModelIsOpen(false);
+        }}
+        onClose={() => setSaveModelIsOpen(false)}
+      />
+    </>
   );
 }
 

@@ -9,7 +9,7 @@ import type {
   GroupIds,
   UserGroupsType,
 } from "metabase/admin/types";
-import Confirm from "metabase/components/Confirm";
+import { ConfirmationModal } from "metabase/components/ConfirmationModal";
 import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
@@ -46,6 +46,8 @@ const MappingRow = ({
   onChange,
   onDeleteMapping,
 }: MappingRowProps) => {
+  const [showDeleteGroupMappingModal, setShowDeleteGroupMappingModal] =
+    useState(false);
   const [showDeleteMappingModal, setShowDeleteMappingModal] = useState(false);
 
   // Mappings may receive group ids even from the back-end
@@ -55,12 +57,12 @@ const MappingRow = ({
     _.findWhere(groups, { id: id }),
   );
 
-  const handleShowDeleteMappingModal = () => {
-    setShowDeleteMappingModal(true);
+  const handleShowDeleteGroupMappingModal = () => {
+    setShowDeleteGroupMappingModal(true);
   };
 
-  const handleHideDeleteMappingModal = () => {
-    setShowDeleteMappingModal(false);
+  const handleHideDeleteGroupMappingModal = () => {
+    setShowDeleteGroupMappingModal(false);
   };
 
   const handleConfirmDeleteMapping = (
@@ -123,13 +125,9 @@ const MappingRow = ({
     selectedGroupIdsFromGroupsThatExist.length === 1 &&
     isAdminGroup(firstGroupInMapping);
 
-  const shouldUseDeleteMappingModal =
+  const shouldUseDeleteGroupMappingModal =
     selectedGroupIdsFromGroupsThatExist.length > 0 &&
     !isMappingLinkedOnlyToAdminGroup;
-
-  const onDelete = shouldUseDeleteMappingModal
-    ? () => handleShowDeleteMappingModal()
-    : () => onDeleteMapping({ name });
 
   return (
     <>
@@ -144,21 +142,30 @@ const MappingRow = ({
         </td>
         <td className={AdminS.TableActions}>
           <div className={cx(CS.floatRight, CS.mr1)}>
-            {shouldUseDeleteMappingModal ? (
-              <DeleteButton onDelete={onDelete} />
-            ) : (
-              <Confirm action={onDelete} title={t`Delete this mapping?`}>
-                <DeleteButton />
-              </Confirm>
-            )}
+            <DeleteButton
+              onDelete={() =>
+                shouldUseDeleteGroupMappingModal
+                  ? handleShowDeleteGroupMappingModal()
+                  : setShowDeleteMappingModal(true)
+              }
+            />
           </div>
         </td>
       </tr>
-      {showDeleteMappingModal && (
+      <ConfirmationModal
+        opened={showDeleteMappingModal}
+        title={t`Delete this mapping?`}
+        onClose={() => setShowDeleteMappingModal(false)}
+        onConfirm={() => {
+          onDeleteMapping({ name });
+          setShowDeleteMappingModal(false);
+        }}
+      />
+      {showDeleteGroupMappingModal && (
         <DeleteGroupMappingModal
           name={name}
           groupIds={selectedGroupIds}
-          onHide={handleHideDeleteMappingModal}
+          onHide={handleHideDeleteGroupMappingModal}
           onConfirm={handleConfirmDeleteMapping}
         />
       )}

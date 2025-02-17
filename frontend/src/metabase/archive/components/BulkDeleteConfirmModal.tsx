@@ -1,6 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { ConfirmationModal } from "metabase/components/ConfirmContent";
+import { ConfirmationModal } from "metabase/components/ConfirmationModal";
 
 interface BulkDeleteConfirmModalProps {
   selectedItemCount: number;

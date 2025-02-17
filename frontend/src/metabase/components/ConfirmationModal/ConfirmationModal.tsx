@@ -27,7 +27,7 @@ export const ConfirmationModal = ({
   confirmButtonText = t`Yes`,
   confirmButtonPrimary = false,
 }: ConfirmContentProps) => (
-  <Modal.Root opened={Boolean(opened)} onClose={onClose} size="35rem">
+  <Modal.Root opened={Boolean(opened)} onClose={onClose}>
     <Modal.Overlay />
     <Modal.Content data-testid={dataTestId}>
       <Modal.Header p="2.5rem 3rem" mb="sm">

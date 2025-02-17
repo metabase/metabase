@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ConfirmationModal } from "metabase/components/ConfirmContent/ConfirmationModal";
+import { ConfirmationModal } from "metabase/components/ConfirmationModal/ConfirmationModal";
 
 interface Props {
   onConfirm?: () => void;

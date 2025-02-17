@@ -1,7 +1,7 @@
 import type { ChangeEvent, ChangeEventHandler } from "react";
 import { t } from "ttag";
 
-import { ConfirmationModal } from "metabase/components/ConfirmContent";
+import { ConfirmationModal } from "metabase/components/ConfirmationModal";
 import CopyWidget from "metabase/components/CopyWidget";
 import Button from "metabase/core/components/Button";
 import FormField from "metabase/core/components/FormField";
