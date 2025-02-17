@@ -40,12 +40,7 @@ export function FilterPanelPopoverPlus({
       onChange={setIsOpened}
     >
       <Popover.Target>
-        <FilterPill
-          h={24}
-          w={24}
-          p={6}
-          onClick={() => setIsOpened(isOpened => !isOpened)}
-        >
+        <FilterPill h={24} onClick={() => setIsOpened(isOpened => !isOpened)}>
           <Icon name="add2" size={12} />
         </FilterPill>
       </Popover.Target>
