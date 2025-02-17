@@ -827,7 +827,7 @@ describe("issue 18207", () => {
   });
 });
 
-describe("issues 11914, 18978, 18977, 23857", { tags: "@flaky" }, () => {
+describe("issues 11914, 18978, 18977, 23857", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
