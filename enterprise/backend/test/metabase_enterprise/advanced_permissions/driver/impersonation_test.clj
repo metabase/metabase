@@ -82,9 +82,9 @@
 
 (deftest connection-impersonation-role-test-9
   (testing "Throws an exception if sandboxing policies are also defined for the current user on the DB"
-    (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                 :attributes     {"impersonation_attr" "impersonation_role"}}
-      (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)}}}
+    (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)}}}
+      (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                   :attributes     {"impersonation_attr" "impersonation_role"}}
         (mt/with-test-user :rasta
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
