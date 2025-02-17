@@ -5,6 +5,7 @@ import * as Lib from "metabase-lib";
 
 import S from "./FilterPanel.module.css";
 import { FilterPanelPopover } from "./FilterPanelPopover";
+import { FilterPanelPopoverPlus } from "./FilterPanelPopover/FilterPanelPopoverPlus";
 import { getFilterItems } from "./utils";
 
 type Filter = Lib.Clause | Lib.SegmentMetadata;
@@ -69,6 +70,16 @@ export function FilterPanel({
           setDirtyRemovedFilters={setDirtyRemovedFilters}
         />
       ))}
+
+      <FilterPanelPopoverPlus
+        query={query}
+        stageIndex={-1}
+        onChange={handleChange}
+        dirtyAddedFilters={dirtyAddedFilters}
+        dirtyRemovedFilters={dirtyRemovedFilters}
+        setDirtyAddedFilters={setDirtyAddedFilters}
+        setDirtyRemovedFilters={setDirtyRemovedFilters}
+      />
     </Flex>
   );
 }

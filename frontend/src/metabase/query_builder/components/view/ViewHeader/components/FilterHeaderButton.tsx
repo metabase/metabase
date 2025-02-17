@@ -69,7 +69,7 @@ export function FilterHeaderButton({
         onExpand?.();
       }
     } else {
-      setIsDropdownOpen(true);
+      setIsDropdownOpen(isOpen => !isOpen);
 
       dirtyRemovedFilters;
     }

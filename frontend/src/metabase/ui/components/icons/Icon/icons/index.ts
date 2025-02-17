@@ -5,6 +5,8 @@ import one_million_component from "./1m.svg?component";
 import one_million_source from "./1m.svg?source";
 import add_component from "./add.svg?component";
 import add_source from "./add.svg?source";
+import add2_component from "./add2.svg?component";
+import add2_source from "./add2.svg?source";
 import add_column_component from "./add_column.svg?component";
 import add_column_source from "./add_column.svg?source";
 import add_data_component from "./add_data.svg?component";
@@ -414,6 +416,10 @@ export const Icons = {
   add: {
     component: add_component,
     source: add_source,
+  },
+  add2: {
+    component: add2_component,
+    source: add2_source,
   },
   add_column: {
     component: add_column_component,
