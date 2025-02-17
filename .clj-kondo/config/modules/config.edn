@@ -594,7 +594,7 @@
            metabase-enterprise.advanced-permissions.api.util
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
-   :uses #{api audit driver lib models permissions premium-features query-processor util}}
+   :uses #{api audit driver lib models permissions premium-features query-processor util enterprise/sandbox}}
 
   enterprise/airgap
   {:api  #{}

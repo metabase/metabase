@@ -85,10 +85,11 @@
     (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                  :attributes     {"impersonation_attr" "impersonation_role"}}
       (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)}}}
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Conflicting sandboxing and impersonation policies found."
-             (@#'impersonation/connection-impersonation-role (mt/db))))))))
+        (mt/with-test-user :rasta
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Conflicting sandboxing and impersonation policies found."
+               (@#'impersonation/connection-impersonation-role (mt/db)))))))))
 
 (deftest conn-impersonation-test-postgres
   (mt/test-driver :postgres
