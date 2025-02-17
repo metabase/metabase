@@ -9,20 +9,10 @@ const IGNORED_PACKAGES = [
   "react-dom",
   "@types/react",
   "@types/react-dom",
-  "@types/react-router#",
-  "@types/redux-auth-wrapper",
-  "@visx/axis",
-  "@visx/clip-path",
-  "@visx/grid",
-  "@visx/group",
-  "@visx/shape",
-  "@visx/text",
-  "formik",
-  "react-beautiful-dnd",
 ];
 const SDK_DIST_DIR = path.resolve("./resources/embedding-sdk");
 
-function filterOuDependencies(object) {
+function filterOutReactDependencies(object) {
   const result = {};
 
   Object.entries(object).forEach(([packageName, version]) => {
@@ -61,8 +51,10 @@ function generateSdkPackage() {
 
   const mergedContent = {
     ...sdkPackageTemplateJsonContent,
-    dependencies: filterOuDependencies(mainPackageJsonContent.dependencies),
-    resolutions: filterOuDependencies(mainPackageJsonContent.resolutions),
+    dependencies: filterOutReactDependencies(
+      mainPackageJsonContent.dependencies,
+    ),
+    resolutions: filterOutReactDependencies(mainPackageJsonContent.resolutions),
     version: maybeCommitHash
       ? `${sdkPackageTemplateJsonContent.version}-${todayDate}-${maybeCommitHash}`
       : sdkPackageTemplateJsonContent.version,
