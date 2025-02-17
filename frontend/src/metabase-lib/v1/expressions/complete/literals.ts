@@ -1,5 +1,4 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
-import _ from "underscore";
 
 import { isFieldReference, isIdentifier, tokenAtPos } from "./util";
 

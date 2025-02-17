@@ -1,5 +1,4 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
-import _ from "underscore";
 
 // eslint-disable-next-line no-restricted-imports
 import { getColumnIcon } from "metabase/common/utils/columns";
