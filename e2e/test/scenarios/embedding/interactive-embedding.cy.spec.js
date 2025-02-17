@@ -408,7 +408,7 @@ describe("scenarios > embedding > full app", () => {
             "assert that even after selecting a data source from one database, the data picker still shows the other data sources database",
           );
           cy.findByTestId("data-step-cell").click();
-          H.popover().findAllByRole("button").should("have.length", 13);
+          H.popover().findAllByRole("link").should("have.length", 13);
 
           cy.log("close the data picker popover");
           cy.findByTestId("data-step-cell").click();
@@ -417,7 +417,7 @@ describe("scenarios > embedding > full app", () => {
             "assert that the data sources should be filtered by the selected database from the starting data source.",
           );
           H.getNotebookStep("data").button("Join data").click();
-          H.popover().findAllByRole("button").should("have.length", 8);
+          H.popover().findAllByRole("link").should("have.length", 8);
           selectDataSource("Accounts");
 
           verifyTableSelected({
@@ -610,7 +610,7 @@ describe("scenarios > embedding > full app", () => {
         };
         H.createQuestion(cardDetails);
         startNewEmbeddingQuestion();
-        H.popover().button(cardDetails.name).click();
+        H.popover().findByRole("link", { name: cardDetails.name }).click();
         verifyCardSelected({
           cardName: cardDetails.name,
           collectionName: "Our analytics",
@@ -1666,7 +1666,7 @@ const sideNav = () => {
 };
 
 const selectDataSource = dataSource => {
-  H.popover().button(dataSource).click();
+  H.popover().findByRole("link", { name: dataSource }).click();
 };
 
 /**
@@ -1674,5 +1674,5 @@ const selectDataSource = dataSource => {
  * @param {string} dataSource  When using with QA database, the first option would be the table from the QA database.
  */
 const selectFirstDataSource = dataSource => {
-  H.popover().findAllByRole("button", { name: dataSource }).first().click();
+  H.popover().findAllByRole("link", { name: dataSource }).first().click();
 };

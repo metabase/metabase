@@ -47,8 +47,8 @@ export function SimpleDataPickerView({
 
   const displayOptions = options.filter(filterSearch);
   return (
-    <Paper
-      component={Flex}
+    <Flex
+      component={Paper}
       w={CONTAINER_WIDTH}
       p="sm"
       mih="200px"
@@ -58,7 +58,7 @@ export function SimpleDataPickerView({
         <TextInput
           data-autofocus
           type="search"
-          icon={<Icon name="search" size={16} aria-hidden />}
+          leftSection={<Icon name="search" size={16} aria-hidden />}
           mb="sm"
           placeholder={t`Search…`}
           onChange={e => setSearchText(e.target.value ?? "")}
@@ -74,7 +74,6 @@ export function SimpleDataPickerView({
       )}
       <Flex direction="column" justify="center" style={{ flex: 1 }}>
         {displayOptions.length >= 1 ? (
-          // @ts-expect-error - I think the typing for ScrollArea.Autosize is wrong. This might be fixed in Mantine 7 */}
           <ScrollArea.Autosize mah={TEN_OPTIONS_HEIGHT} type="auto" mb="auto">
             {displayOptions.map(option => {
               const isSelected = selectedEntity === option.id;
@@ -85,7 +84,7 @@ export function SimpleDataPickerView({
                 <NavLink
                   key={option.id}
                   active={selectedEntity === option.id}
-                  icon={
+                  leftSection={
                     <Icon
                       color={`var(${iconColor})`}
                       name="table"
@@ -103,7 +102,7 @@ export function SimpleDataPickerView({
           <EmptyState message={t`Nothing here`} />
         )}
       </Flex>
-    </Paper>
+    </Flex>
   );
 }
 

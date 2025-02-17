@@ -13,6 +13,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { createMockModelResult } from "metabase/browse/models/test-utils";
 import { METAKEY } from "metabase/lib/browser";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -38,7 +39,6 @@ import type { NotebookStep } from "../../types";
 import { NotebookProvider } from "../Notebook/context";
 
 import { DataStep } from "./DataStep";
-import { createMockModelResult } from "metabase/browse/models/test-utils";
 
 const createQueryWithFields = (columnNames: string[]) => {
   const query = createQuery();
