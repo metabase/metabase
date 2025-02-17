@@ -86,6 +86,7 @@ function CompletionItem({
   const ref = useRef<HTMLLIElement>(null);
   const handleMouseDown = useCallback(
     (evt: React.MouseEvent<HTMLLIElement>) => {
+      evt.stopPropagation();
       evt.preventDefault();
       onCompletionClick(index);
     },
