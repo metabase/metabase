@@ -96,7 +96,7 @@ export const ChartSettingFieldPicker = ({
         onChange={onChange}
         icon={
           showDragHandle || (showColorPicker && seriesKey) ? (
-            <Group noWrap spacing="sm" p="xs" ml="sm">
+            <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
               {showDragHandle && (
                 <GrabberHandle
                   name="grabber"
@@ -124,7 +124,16 @@ export const ChartSettingFieldPicker = ({
         iconWidth="auto"
         rightSectionWidth="auto"
         rightSection={
-          <Group noWrap spacing="sm" p="xs" mr="sm">
+          <Group
+            wrap="nowrap"
+            gap="sm"
+            p="xs"
+            mr="sm"
+            miw={
+              [!disabled, !!menuWidgetInfo, !!onRemove].filter(Boolean).length *
+              42
+            }
+          >
             {!disabled && (
               <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
                 <Icon name="chevrondown" />
@@ -166,9 +175,9 @@ export const ChartSettingFieldPicker = ({
             },
             border: "none",
             width: "100%",
-          },
-          rightSection: {
-            pointerEvents: "none",
+            color: "var(--mb-color-text-primary)",
+            cursor: "pointer",
+            pointerEvents: "unset",
           },
         }}
       />
