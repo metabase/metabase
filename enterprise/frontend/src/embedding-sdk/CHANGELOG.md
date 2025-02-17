@@ -1,3 +1,25 @@
+## [0.53.4](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.3...embedding-sdk-0.53.4) (2025-02-17)
+
+
+### Bug Fixes
+
+* **sdk:**  handle 'personal' for collectionId when creating dashboards and in the collection browser ([#53553](https://github.com/metabase/metabase/issues/53553)) ([#53836](https://github.com/metabase/metabase/issues/53836)) ([9642e41](https://github.com/metabase/metabase/commit/9642e41078172b2ab8e416f49acaf2ac77b5dbb4))
+* **sdk:** better scope for SCOPED_CSS_RESET to fix transparent ([#53443](https://github.com/metabase/metabase/issues/53443)) ([#53462](https://github.com/metabase/metabase/issues/53462)) ([5c43cdd](https://github.com/metabase/metabase/commit/5c43cdda9cc9abadb0039de8e6373e413d5cdb24))
+* **sdk:** Clean up and enhance `InteractiveQuestion` docs ([#53283](https://github.com/metabase/metabase/issues/53283)) ([#53420](https://github.com/metabase/metabase/issues/53420)) ([9b6e0fb](https://github.com/metabase/metabase/commit/9b6e0fb82f93e24e0d050fe8a832a4caa5dd53c3))
+* **sdk:** dashboard not found when switching dashboards in cli ([#53452](https://github.com/metabase/metabase/issues/53452)) ([#53467](https://github.com/metabase/metabase/issues/53467)) ([48a9de8](https://github.com/metabase/metabase/commit/48a9de8ae229b1cd89681fa1611a981933196231))
+* **sdk:** filterout @types/react from the generated package.json ([#53747](https://github.com/metabase/metabase/issues/53747)) ([#53773](https://github.com/metabase/metabase/issues/53773)) ([950c605](https://github.com/metabase/metabase/commit/950c60564f0570ea72fbde15fa9a477e7f87ef46))
+* **sdk:** Fix question not found error showing briefly after navigating from dashboards ([#53284](https://github.com/metabase/metabase/issues/53284)) ([#53366](https://github.com/metabase/metabase/issues/53366)) ([46787ca](https://github.com/metabase/metabase/commit/46787cade65355665f53c103b3e44b6323ced866))
+* **sdk:** make headers in generated cli components responsive ([#53455](https://github.com/metabase/metabase/issues/53455)) ([#53457](https://github.com/metabase/metabase/issues/53457)) ([b4a61a9](https://github.com/metabase/metabase/commit/b4a61a9ff7434e0bb5b80c79d98a301c447265fb))
+
+
+### Features
+
+* **sdk:** abort cli with message when react version is unsupported ([#53656](https://github.com/metabase/metabase/issues/53656)) ([#53674](https://github.com/metabase/metabase/issues/53674)) ([6e9ab88](https://github.com/metabase/metabase/commit/6e9ab88eea58200cb2eed780b9ce5ef65736148e))
+* **sdk:** add the instance url to the cli's login json file ([#53469](https://github.com/metabase/metabase/issues/53469)) ([#53677](https://github.com/metabase/metabase/issues/53677)) ([e8e9fff](https://github.com/metabase/metabase/commit/e8e9fffba935e346822e8afc713894cd518d8727))
+* **sdk:** show clarification messages upon running the cli ([#53471](https://github.com/metabase/metabase/issues/53471)) ([#53514](https://github.com/metabase/metabase/issues/53514)) ([440914e](https://github.com/metabase/metabase/commit/440914eb58efc3e855d785edf9996eabb2899f75))
+
+
+
 ## [0.53.3](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.2...embedding-sdk-0.53.3) (2025-02-08)
 
 
