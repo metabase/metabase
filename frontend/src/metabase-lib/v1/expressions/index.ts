@@ -2,7 +2,14 @@ export * from "./config";
 
 import { FK_SYMBOL } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
-import type { Expression } from "metabase-types/api";
+import type {
+  CallExpression,
+  CaseOrIfExpression,
+  CaseOrIfOperator,
+  Expression,
+  FieldReference,
+  OffsetExpression,
+} from "metabase-types/api";
 
 import {
   EDITOR_FK_SYMBOLS,
@@ -199,10 +206,10 @@ export function getDisplayNameWithSeparator(
 // STRING LITERALS
 
 export function formatStringLiteral(
-  mbqlString: string,
+  node: string,
   { quotes = EDITOR_QUOTES }: Record<string, any> = {},
 ) {
-  return quoteString(mbqlString, quotes.literalQuoteDefault);
+  return quoteString(node, quotes.literalQuoteDefault);
 }
 
 const DOUBLE_QUOTE = '"';
@@ -288,23 +295,23 @@ export function isExpression(expr: unknown): expr is Expression {
   );
 }
 
-export function isLiteral(expr: unknown): boolean {
+export function isLiteral(expr: unknown): expr is string | number | boolean {
   return isStringLiteral(expr) || isNumberLiteral(expr);
 }
 
-export function isStringLiteral(expr: unknown): boolean {
+export function isStringLiteral(expr: unknown): expr is string {
   return typeof expr === "string";
 }
 
-export function isBooleanLiteral(expr: unknown): boolean {
+export function isBooleanLiteral(expr: unknown): expr is boolean {
   return typeof expr === "boolean";
 }
 
-export function isNumberLiteral(expr: unknown): boolean {
+export function isNumberLiteral(expr: unknown): expr is number {
   return typeof expr === "number";
 }
 
-export function isOperator(expr: unknown): boolean {
+export function isOperator(expr: unknown): expr is CallExpression {
   return (
     Array.isArray(expr) &&
     OPERATORS.has(expr[0]) &&
@@ -312,11 +319,11 @@ export function isOperator(expr: unknown): boolean {
   );
 }
 
-export function isOptionsObject(obj: unknown): boolean {
+export function isOptionsObject(obj: unknown): obj is object {
   return obj ? Object.getPrototypeOf(obj) === Object.prototype : false;
 }
 
-export function isFunction(expr: unknown): boolean {
+export function isFunction(expr: unknown): expr is CallExpression {
   return (
     Array.isArray(expr) &&
     FUNCTIONS.has(expr[0]) &&
@@ -324,7 +331,7 @@ export function isFunction(expr: unknown): boolean {
   );
 }
 
-export function isDimension(expr: unknown): boolean {
+export function isDimension(expr: unknown): expr is FieldReference {
   return (
     Array.isArray(expr) && (expr[0] === "field" || expr[0] === "expression")
   );
@@ -342,14 +349,16 @@ export function isSegment(expr: unknown): boolean {
   );
 }
 
-export function isCaseOrIfOperator(operator: string) {
+export function isCaseOrIfOperator(
+  operator: string,
+): operator is CaseOrIfOperator {
   return operator === "case" || operator === "if";
 }
 
-export function isCaseOrIf(expr: unknown): boolean {
+export function isCaseOrIf(expr: unknown): expr is CaseOrIfExpression {
   return Array.isArray(expr) && isCaseOrIfOperator(expr[0]); // && _.all(expr.slice(1), isValidArg)
 }
 
-export function isOffset(expr: unknown): boolean {
+export function isOffset(expr: unknown): expr is OffsetExpression {
   return Array.isArray(expr) && expr[0] === "offset";
 }
