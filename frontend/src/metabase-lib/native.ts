@@ -27,13 +27,6 @@ export function templateTags(query: Query): TemplateTags {
   return ML.template_tags(query);
 }
 
-export function extractTemplateTags(
-  queryText: string,
-  existingTags?: TemplateTags,
-): TemplateTags {
-  return ML.extract_template_tags(queryText, existingTags);
-}
-
 export function hasWritePermission(query: Query): boolean {
   return ML.has_write_permission(query);
 }
@@ -46,7 +39,7 @@ export function withDifferentDatabase(
   return ML.with_different_database(query, databaseId, metadata);
 }
 
-export function engine(query: Query): string {
+export function engine(query: Query): string | null {
   return ML.engine(query);
 }
 

@@ -7,7 +7,7 @@ import Question from "metabase-lib/v1/Question";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import SavedQuestionHeaderButton from "./SavedQuestionHeaderButton";
+import { SavedQuestionHeaderButton } from "./SavedQuestionHeaderButton";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -42,11 +42,22 @@ describe("SavedQuestionHeaderButton", () => {
   it("calls onSave on input blur", async () => {
     const { onSave } = setup({ question });
 
-    const title = screen.getByTestId("saved-question-header-title");
-    await userEvent.type(title, "1");
-    title.blur();
+    const titleInput = screen.getByTestId("saved-question-header-title");
+    await userEvent.type(titleInput, "1");
+    titleInput.blur();
 
     expect(onSave).toHaveBeenCalled();
+  });
+
+  it("should prevent names with more than 254 characters", async () => {
+    const { onSave } = setup({ question });
+
+    const titleInput = screen.getByTestId("saved-question-header-title");
+    await userEvent.clear(titleInput);
+    await userEvent.paste("A".repeat(300));
+    titleInput.blur();
+
+    expect(onSave).toHaveBeenCalledWith("A".repeat(254));
   });
 
   describe("when the question does not have a latest moderation review", () => {

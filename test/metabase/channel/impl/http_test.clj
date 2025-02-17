@@ -6,8 +6,8 @@
    [compojure.core :as compojure]
    [compojure.route :as compojure.route]
    [metabase.channel.core :as channel]
+   [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.pulse.send :as pulse.send]
    [metabase.server.handler :as server.handler]
    [metabase.server.middleware.json :as mw.json]
    [metabase.test :as mt]
@@ -58,7 +58,7 @@
   (let [handler        (as-> route+handlers routes+handlers
                          (mapv :route routes+handlers)
                          (conj routes+handlers (compojure.route/not-found {:status-code 404 :body "Not found."}))
-                         (apply compojure/routes routes+handlers))
+                         (apply #_{:clj-kondo/ignore [:discouraged-var]} compojure/routes routes+handlers))
         ^Server server (jetty/run-jetty (apply-middleware handler middlewares) {:port 0 :join? false})]
     (try
       (f (str "http://localhost:" (.. server getURI getPort)))
@@ -321,37 +321,29 @@
                                     :page 1}})
              (first @requests))))))
 
-(deftest ^:parallel alert-http-channel-e2e-test
+(deftest alert-http-channel-e2e-test
   (let [received-message (atom nil)
         receive-route    (make-route :post "/test_http_channel"
                                      (fn [res]
                                        (reset! received-message res)
                                        {:status 200}))]
-    (notification.tu/with-send-notification-sync
-      (with-server [url [receive-route]]
-        (mt/with-temp
-          [:model/Card         {card-id :id
-                                :as card}     {:dataset_query (mt/mbql-query checkins {:aggregation [:count]})}
-           :model/Pulse        {pulse-id :id
-                                :as pulse}    {:alert_condition "rows"}
-           :model/PulseCard    _              {:pulse_id        pulse-id
-                                               :card_id         card-id
-                                               :position        0}
-           :model/Channel      {chn-id :id}  {:type    :channel/http
-                                              :details {:url         (str url (:path receive-route))
-                                                        :auth-method "none"}}
-           :model/PulseChannel _             {:pulse_id     pulse-id
-                                              :channel_type "http"
-                                              :channel_id   chn-id}]
-          (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
+    (with-server [url [receive-route]]
+      (mt/with-temp [:model/Channel      {chn-id :id}  {:type    :channel/http
+                                                        :details {:url         (str url (:path receive-route))
+                                                                  :auth-method "none"}}]
+        (notification.tu/with-card-notification
+          [notification {:card     {:dataset_query (mt/mbql-query checkins {:aggregation [:count]})}
+                         :handlers [{:channel_type :channel/http
+                                     :channel_id chn-id}]}]
+          (notification/send-notification! (t2/select-one :model/Notification (:id notification)) :notification/sync? true)
           (is (=? {:body {:type               "alert"
-                          :alert_id           pulse-id
+                          :alert_id           (-> notification :payload :id)
                           :alert_creator_id   (mt/malli=? int?)
-                          :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id pulse))
+                          :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
                           :data               {:type          "question"
-                                               :question_id   card-id
-                                               :question_name (:name card)
-                                               :question_url  (mt/malli=? [:fn #(str/ends-with? % (str card-id))])
+                                               :question_id   (-> notification :payload :card_id)
+                                               :question_name (-> notification :payload :card :name)
+                                               :question_url  (mt/malli=? [:fn #(str/ends-with? % (-> notification :payload :card_id str))])
                                                :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
                                                :raw_data      {:cols ["count"] :rows [[1000]]}}
                           :sent_at            (mt/malli=? :any)}}

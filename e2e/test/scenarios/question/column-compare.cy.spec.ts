@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { FieldReference, StructuredQuery } from "metabase-types/api";
@@ -291,6 +291,7 @@ describe.skip("scenarios > question", () => {
         );
 
         H.openNotebook();
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.getNotebookStep("summarize")
           .findAllByTestId("aggregate-step")
           .last()
@@ -329,6 +330,7 @@ describe.skip("scenarios > question", () => {
         );
 
         H.openNotebook();
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.getNotebookStep("summarize")
           .findAllByTestId("aggregate-step")
           .last()
@@ -345,6 +347,7 @@ describe.skip("scenarios > question", () => {
           cy.findByLabelText("Unit").click();
         });
 
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.popover().last().findByText("Weeks").click();
 
         H.popover().within(() => {
@@ -1081,6 +1084,7 @@ describe.skip("scenarios > question", () => {
         );
 
         H.openNotebook();
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.getNotebookStep("summarize")
           .findAllByTestId("aggregate-step")
           .last()
@@ -1097,6 +1101,7 @@ describe.skip("scenarios > question", () => {
           cy.findByLabelText("Unit").click();
         });
 
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.popover().last().findByText("Week").click();
 
         H.popover().within(() => {
@@ -1913,6 +1918,7 @@ function verifyPlusButtonText(options: CheckTextOpts) {
 
 function verifyNotebookText(options: CheckTextOpts) {
   H.openNotebook();
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.getNotebookStep("summarize")
     .findAllByTestId("aggregate-step")
     .last()

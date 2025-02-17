@@ -79,24 +79,34 @@
   only return 2 points, switch the unit to `:minute`."
   4)
 
-(def ^:private unit->next-unit
+(def ^:private unit->next-unit-datetime
   "E.g. the next unit after `:hour` is `:minute`."
   (let [units [:minute :hour :day :week :month :quarter :year]]
+    (zipmap units (cons nil units))))
+
+(def ^:private unit->next-unit-date
+  "E.g. the next unit after `:week` is `:day`."
+  (let [units [:day :week :month :quarter :year]]
     (zipmap units (cons nil units))))
 
 (mu/defn- temporal-filter-find-best-breakout-unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
   "If the current breakout `unit` will not return at least [[temporal-filter-min-num-points]], find the largest unit
   that will."
-  [unit  :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
-   start :- ::lib.schema.literal/temporal
-   end   :- ::lib.schema.literal/temporal]
-  (loop [unit unit]
-    (let [num-points      (u.time/unit-diff unit start end)
-          too-few-points? (< num-points temporal-filter-min-num-points)]
-      (if-let [next-largest-unit (when too-few-points?
-                                   (unit->next-unit unit))]
-        (recur next-largest-unit)
-        unit))))
+  [unit        :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
+   start       :- ::lib.schema.literal/temporal
+   end         :- ::lib.schema.literal/temporal
+   column-type :- :keyword]
+  (let [next-unit (if (= column-type :type/Date)
+                    unit->next-unit-date
+                    ;; should catch :type/DateTime and :type/DateTimeWithTZ
+                    unit->next-unit-datetime)]
+    (loop [unit unit]
+      (let [num-points      (u.time/unit-diff unit start end)
+            too-few-points? (< num-points temporal-filter-min-num-points)]
+        (if-let [next-largest-unit (when too-few-points?
+                                     (next-unit unit))]
+          (recur next-largest-unit)
+          unit)))))
 
 (mu/defn- temporal-filter-update-breakouts :- ::lib.schema/query
   "Update the first breakout against `column` so it uses `new-unit` rather than the original unit (if any); remove all
@@ -177,7 +187,7 @@
              start         (u.time/truncate (u.time/add start unit 1) unit)
              end           (u.time/truncate end unit)
              ;; update the breakout unit if appropriate.
-             breakout-unit (temporal-filter-find-best-breakout-unit unit start end)
+             breakout-unit (temporal-filter-find-best-breakout-unit unit start end (:effective-type temporal-column))
              query         (if (= unit breakout-unit)
                              query
                              (temporal-filter-update-breakouts query stage-number temporal-column breakout-unit))]

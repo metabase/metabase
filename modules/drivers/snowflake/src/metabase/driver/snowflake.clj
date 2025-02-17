@@ -103,11 +103,12 @@
     :as   details}]
   (if password
     details
-    (let [private-key-file (secret/value-as-file! :snowflake details "private-key")]
+    (if-let [private-key-file (secret/value-as-file! :snowflake details "private-key")]
       (-> details
           (secret/clean-secret-properties-from-details :snowflake)
           (handle-conn-uri user account private-key-file)
-          (assoc :private_key_file private-key-file)))))
+          (assoc :private_key_file private-key-file))
+      (secret/clean-secret-properties-from-details details :snowflake))))
 
 (defn- quote-name
   [raw-name]
@@ -135,6 +136,50 @@
       (-> spec
           (update :connection-uri sql-jdbc.common/conn-str-with-additional-opts :url role-opts-str)))
     spec))
+
+(defmethod driver/db-details-to-test-and-migrate :snowflake
+  [_ {:keys [password private-key-id private-key-value private-key-path use-password private-key-options] :as details}]
+  (when-not (= 1 (count (remove nil? [password private-key-id private-key-value private-key-path])))
+    (let [password-details (when password
+                             (-> details
+                                 ;; Setting private-key-value to nil will delete the secret
+                                 (assoc :use-password true :private-key-value nil)
+                                 (dissoc :private-key-id :private-key-value :private-key-path :private-key-options)
+                                 ;; Add meta for testing
+                                 (with-meta {:auth :password})))
+          private-key-path-details (when private-key-path
+                                     (-> details
+                                         (assoc :use-password false :private-key-options "local")
+                                         (dissoc :password :private-key-value)
+                                         (with-meta {:auth :private-key-path})))
+          private-key-value-details (when private-key-value
+                                      (-> details
+                                          (assoc :use-password false :private-key-options "uploaded")
+                                          (dissoc :password :private-key-path)
+                                          (with-meta {:auth :private-key-value})))
+          private-key-id-details (when private-key-id
+                                   (-> details
+                                       (assoc :use-password false)
+                                       (dissoc :password :private-key-value :private-key-path :private-key-options)
+                                       (with-meta {:auth :private-key-id})))]
+      (cond-> []
+        (and use-password password-details)
+        (conj password-details)
+
+        (and (= "local" private-key-options) private-key-path-details)
+        (conj private-key-path-details)
+
+        private-key-value-details
+        (conj private-key-value-details)
+
+        (and (not= "local" private-key-options) private-key-path-details)
+        (conj private-key-path-details)
+
+        private-key-id-details
+        (conj private-key-id-details)
+
+        (and (not use-password) password-details)
+        (conj password-details)))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
@@ -688,10 +733,18 @@
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
-  (if-not (str/blank? (-> database :details :regionid))
-    (-> (update-in database [:details :account] #(str/join "." [% (-> database :details :regionid)]))
+  (cond-> database
+    (not (str/blank? (-> database :details :regionid)))
+    (-> (update-in [:details :account] #(str/join "." [% (-> database :details :regionid)]))
         (m/dissoc-in [:details :regionid]))
-    database))
+
+    (and
+     (not (contains? (:details database) :use-password))
+     (get-in database [:details :password])
+     (nil? (get-in database [:details :private-key-id]))
+     (nil? (get-in database [:details :private-key-path]))
+     (nil? (get-in database [:details :private-key-value])))
+    (assoc-in [:details :use-password] true)))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
 ;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're

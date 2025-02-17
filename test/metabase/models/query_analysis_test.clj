@@ -7,6 +7,10 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [query-analysis-enabled true]
+                        (thunk))))
+
 (def ^:private query-table-keys
   [:card_id :schema :table :table_id])
 

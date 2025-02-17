@@ -14,12 +14,16 @@ import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
 import { Sortable } from "metabase/core/components/Sortable";
-import { uuid } from "metabase/lib/uuid";
 import { Stack } from "metabase/ui";
-import type { DatasetColumn, SmartScalarComparison } from "metabase-types/api";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  DatasetColumn,
+  RawSeries,
+  SmartScalarComparison,
+} from "metabase-types/api";
 
-import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
+import { getDefaultComparison } from "../utils";
 
 import { ComparisonPicker } from "./ComparisonPicker";
 import {
@@ -33,12 +37,16 @@ type SmartScalarComparisonWidgetProps = {
   comparableColumns: DatasetColumn[];
   value: SmartScalarComparison[];
   maxComparisons: number;
+  series: RawSeries;
+  settings: ComputedVisualizationSettings;
 };
 
 export function SmartScalarComparisonWidget({
   value,
   maxComparisons,
   onChange,
+  series,
+  settings,
   ...props
 }: SmartScalarComparisonWidgetProps) {
   const pointerSensor = useSensor(PointerSensor, {
@@ -54,9 +62,9 @@ export function SmartScalarComparisonWidget({
   const hasNewComparison = count - previousCount === 1;
 
   const handleAddComparison = useCallback(() => {
-    const comparison = { id: uuid(), type: COMPARISON_TYPES.PREVIOUS_PERIOD };
+    const comparison = getDefaultComparison(series, settings)[0];
     onChange([...value, comparison]);
-  }, [value, onChange]);
+  }, [series, settings, onChange, value]);
 
   const handleChangeComparison = useCallback(
     (comparison: SmartScalarComparison) => {

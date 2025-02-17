@@ -5,6 +5,7 @@ import {
   createMockDashboardCard,
   createMockNativeDatasetQuery,
   createMockParameter,
+  createMockStructuredDatasetQuery,
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
@@ -22,7 +23,10 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { getParameterMappingOptions } from "./mapping-options";
+import {
+  getMappingOptionByTarget,
+  getParameterMappingOptions,
+} from "./mapping-options";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -471,6 +475,168 @@ describe("parameters/utils/mapping-options", () => {
     it("should return empty array if link URL is undefined", () => {
       const options = getLinkOptions(undefined);
       expect(options).toEqual([]);
+    });
+  });
+});
+
+describe("getMappingOptionByTarget", () => {
+  describe("virtual dashcard", () => {
+    it("should find mapping option", () => {
+      const mappingOption = {
+        name: "param",
+        icon: "string",
+        isForeign: false,
+        target: ["text-tag", "param"],
+      };
+      const target = ["text-tag", "param"];
+
+      expect(getMappingOptionByTarget([mappingOption], target)).toBe(
+        mappingOption,
+      );
+    });
+
+    it("should return undefined if option is not found", () => {
+      const mappingOption = {
+        name: "param",
+        icon: "string",
+        isForeign: false,
+        target: ["text-tag", "param"],
+      };
+      const target = ["text-tag", "param2"];
+
+      expect(getMappingOptionByTarget([mappingOption], target)).toBe(undefined);
+    });
+  });
+
+  describe("native dashcard", () => {
+    it("should find mapping option", () => {
+      const mappingOption = {
+        name: "Source",
+        icon: "string",
+        isForeign: false,
+        target: ["variable", ["template-tag", "source"]],
+      };
+      const target = ["variable", ["template-tag", "source"]];
+
+      expect(getMappingOptionByTarget([mappingOption], target)).toBe(
+        mappingOption,
+      );
+    });
+
+    it("should return undefined if option is not found", () => {
+      const mappingOption = {
+        name: "Source",
+        icon: "string",
+        isForeign: false,
+        target: ["variable", ["template-tag", "source"]],
+      };
+      const target = ["variable", ["template-tag", "source1"]];
+
+      expect(getMappingOptionByTarget([mappingOption], target)).toBe(undefined);
+    });
+  });
+
+  describe("structured dashcard", () => {
+    let question;
+
+    beforeEach(() => {
+      const card = createMockCard({
+        dataset_query: createMockStructuredDatasetQuery({
+          query: {
+            "source-table": 2,
+          },
+        }),
+      });
+      const database = createSampleDatabase();
+      const metadata = createMockMetadata({
+        questions: [card],
+        databases: [database],
+      });
+
+      question = new Question(card, metadata);
+    });
+
+    it("should find mapping option", () => {
+      const mappingOption = {
+        sectionName: "User",
+        name: "Name",
+        icon: "string",
+        target: [
+          "dimension",
+          [
+            "field",
+            1,
+            {
+              "base-type": "type/Text",
+            },
+          ],
+        ],
+        isForeign: true,
+      };
+
+      const target = [
+        "dimension",
+        [
+          "field",
+          1,
+          {
+            "base-type": "type/Text",
+          },
+        ],
+      ];
+
+      expect(getMappingOptionByTarget([mappingOption], target, question)).toBe(
+        mappingOption,
+      );
+    });
+
+    it("should return undefined if option is not found", () => {
+      const card = createMockCard({
+        dataset_query: createMockStructuredDatasetQuery({
+          query: {
+            "source-table": 2,
+          },
+        }),
+      });
+      const database = createSampleDatabase();
+      const metadata = createMockMetadata({
+        questions: [card],
+        databases: [database],
+      });
+
+      const question = new Question(card, metadata);
+
+      const mappingOption = {
+        sectionName: "User",
+        name: "Name",
+        icon: "string",
+        target: [
+          "dimension",
+          [
+            "field",
+            1,
+            {
+              "base-type": "type/Text",
+            },
+          ],
+        ],
+        isForeign: true,
+      };
+
+      const target = [
+        "dimension",
+        [
+          "field",
+          2,
+          {
+            "base-type": "type/Text",
+          },
+        ],
+      ];
+
+      expect(getMappingOptionByTarget([mappingOption], target, question)).toBe(
+        undefined,
+      );
     });
   });
 });

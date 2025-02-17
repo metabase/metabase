@@ -4,11 +4,15 @@ title: MariaDB
 
 # MariaDB
 
-> We recommend using MariaDB version 10.4 or higher.
+> This page covers connecting to MariaDB as a _data warehouse_. For using MariaDB as Metabase's _application database_, see [Configuring the Metabase application database](../../installation-and-operation/configuring-application-database.md).
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
 MariaDB shares a driver with MySQL, so select the **MySQL** driver.
+
+## Supported versions
+
+Metabase supports the oldest supported version of Maria DB through the latest stable version. See [MariaDB Server releases](https://mariadb.com/kb/en/mariadb-server-release-dates/).
 
 ## Settings
 
@@ -52,7 +56,7 @@ You can append options to the connection string that Metabase uses to connect to
 
 ### Re-run queries for simple explorations
 
-Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/editor.md#grouping-your-metrics) or filter selections.
+Turn this option **OFF** if people want to click **Run** (the play button) before applying any [summarize](../../questions/query-builder/summarizing-and-grouping.md)) or [filter](../../questions/query-builder/filters.md) selections.
 
 By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 

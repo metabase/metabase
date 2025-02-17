@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -117,7 +117,7 @@ describe("scenarios > search", () => {
     });
 
     it("should render a preview of markdown descriptions", () => {
-      cy.createQuestion({
+      H.createQuestion({
         name: "Description Test",
         query: { "source-table": ORDERS_ID },
         description: `![alt](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg)
@@ -148,8 +148,8 @@ describe("scenarios > search", () => {
         .should("not.exist");
     });
 
-    it("should not overflow container if results contain descriptions with large unborken strings", () => {
-      cy.createQuestion({
+    it("should not overflow container if results contain descriptions with large unbroken strings", () => {
+      H.createQuestion({
         name: "Description Test",
         query: { "source-table": ORDERS_ID },
         description:
@@ -291,10 +291,10 @@ describe("issue 28788", () => {
       },
     };
 
-    cy.createCollection({
+    H.createCollection({
       name: `Collection-${LONG_STRING}`,
     }).then(({ body: collection }) => {
-      cy.createQuestion({
+      H.createQuestion({
         ...questionDetails,
         collection_id: collection.id,
       });

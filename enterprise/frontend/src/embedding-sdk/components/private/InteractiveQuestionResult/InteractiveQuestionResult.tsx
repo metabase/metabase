@@ -19,11 +19,11 @@ import {
   Stack,
 } from "metabase/ui";
 
+import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
-} from "../../public/FlexibleSizeComponent";
-import { InteractiveQuestion } from "../../public/InteractiveQuestion";
+} from "../FlexibleSizeComponent";
 import { shouldShowSaveButton } from "../InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
@@ -89,10 +89,12 @@ export const InteractiveQuestionResult = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Stack className={InteractiveQuestionS.TopBar} spacing="sm" p="md">
-        <Group position="apart" align="flex-end">
-          <Group spacing="xs">
-            <InteractiveQuestion.BackButton />
+      <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+        <Group justify="space-between" align="flex-end">
+          <Group gap="xs">
+            <Box mr="sm">
+              <InteractiveQuestion.BackButton />
+            </Box>
             <ResultTitle title={title} withResetButton={withResetButton} />
           </Group>
           {showSaveButton && (
@@ -100,12 +102,13 @@ export const InteractiveQuestionResult = ({
           )}
         </Group>
         <Group
-          position="apart"
+          justify="space-between"
           p="sm"
-          bg="var(--mb-color-background-disabled)"
+          bg="var(--mb-color-bg-sdk-question-toolbar)"
           style={{ borderRadius: "0.5rem" }}
+          data-testid="interactive-question-result-toolbar"
         >
-          <Group spacing="xs">
+          <Group gap="xs">
             {isEditorOpen ? (
               <PopoverBackButton
                 onClick={toggleEditor}

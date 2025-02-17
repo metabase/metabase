@@ -13,17 +13,17 @@
    [metabase.models.collection-test :as collection-test]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.graph-test :as graph.test]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.revision :as revision]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (java.time ZoneId ZonedDateTime)))
+   (java.time ZonedDateTime ZoneId)))
 
 (set! *warn-on-reflection* true)
 
@@ -1523,6 +1523,49 @@
                     keys
                     (into #{}))))))))
 
+(deftest dashboard-question-candidates-can-be-paginated
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+
+                   :model/Card {card-1-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-1-id}
+
+                   :model/Card {card-2-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-2-id}
+
+                   :model/Card {card-3-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-3-id}]
+      (let [fetch (fn [& {:keys [limit offset] :or {limit 10 offset 0}}]
+                    (let [resp (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                     :limit limit :offset offset)]
+                      (is (= 3 (:total resp)))
+                      (->> resp :data (map :id))))]
+        (testing "Selecting everything"
+          (is (= [card-3-id card-2-id card-1-id]
+                 (fetch))))
+        (testing "Selecting the first one"
+          (is (= [card-3-id]
+                 (fetch :limit 1))))
+        (testing "The second two"
+          (is (= [card-2-id card-1-id]
+                 (fetch :limit 2 :offset 1))))
+        (testing "The first two"
+          (is (= [card-3-id card-2-id]
+                 (fetch :limit 2 :offset 0))))
+        (testing "Only limit, no offset"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                     :limit 2)]
+            (is (= [card-3-id card-2-id]
+                   (map :id data)))))
+        (testing "Only offset, no limit"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                     :offset 1)]
+            (is (= [card-2-id card-1-id]
+                   (map :id data)))))
+        (testing "Zero limit"
+          (is (= [] (fetch :limit 0))))))))
+
 (deftest dashboard-question-candidates-card-is-in-two-dashboards-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card is in two dashboards"
@@ -1619,6 +1662,16 @@
                     :data
                     (map :id)
                     (into #{}))))))))
+
+(deftest get-dashboard-question-candidates-excludes-existing-dashboard-questions
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (testing "Existing DQs are excluded"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                     :model/Card {card-id :id} {:dashboard_id dash-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (= {:data [] :total 0}
+               (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))))))))
 
 (deftest get-root-dashboard-question-candidates-single-dashboard-card
   (testing "GET /api/collection/root/dashboard-question-candidates"
@@ -1739,6 +1792,48 @@
                                  (map :id)
                                  set)
                             card-id)))))))
+
+(deftest root-dashboard-question-candidates-can-be-paginated
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
+
+                   :model/Card {card-1-id :id} {:collection_id nil}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-1-id}
+
+                   :model/Card {card-2-id :id} {:collection_id nil}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-2-id}
+
+                   :model/Card {card-3-id :id} {:collection_id nil}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-3-id}]
+      (let [fetch (fn [& {:keys [limit offset] :or {limit 10 offset 0}}]
+                    (let [resp (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                     :limit limit :offset offset)]
+                      (is (= 3 (:total resp)))
+                      (->> resp :data (map :id))))]
+        (testing "Selecting everything"
+          (is (= [card-3-id card-2-id card-1-id]
+                 (fetch))))
+        (testing "Selecting the first one"
+          (is (= [card-3-id]
+                 (fetch :limit 1))))
+        (testing "The second two"
+          (is (= [card-2-id card-1-id]
+                 (fetch :limit 2 :offset 1))))
+        (testing "The first two"
+          (is (= [card-3-id card-2-id]
+                 (fetch :limit 2 :offset 0))))
+        (testing "Only limit, no offset"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                     :limit 2)]
+            (is (= [card-3-id card-2-id]
+                   (map :id data)))))
+        (testing "Only offset, no limit"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                     :offset 1)]
+            (is (= [card-2-id card-1-id]
+                   (map :id data)))))
+        (testing "Zero limit"
+          (is (= [] (fetch :limit 0))))))))
 
 (deftest post-move-dashboard-question-candidates-success
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
@@ -1890,7 +1985,8 @@
       (with-some-children-of-collection! nil
         ;; `:total` should be at least 4 items based on `with-some-children-of-collection`. Might be a bit more if
         ;; other stuff was created
-        (is (<= 4 (:total (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1"))))))))
+        (is (=? {:total #(>= % 4)}
+                (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1")))))))
 
 (deftest fetch-root-items-permissions-test
   (testing "GET /api/collection/root/items"
@@ -1900,7 +1996,11 @@
              (with-some-children-of-collection! nil
                (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                    remove-non-personal-collections
-                   mt/boolean-ids-and-timestamps))))
+                   mt/boolean-ids-and-timestamps)))))))
+
+(deftest fetch-root-items-permissions-test-2
+  (testing "GET /api/collection/root/items"
+    (testing "we don't let you see stuff you wouldn't otherwise be allowed to see"
       (testing "...but if they have read perms for the Root Collection they should get to see them"
         (with-some-children-of-collection! nil
           (mt/with-temp [:model/PermissionsGroup           group {}
@@ -2392,96 +2492,6 @@
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)})))))))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                          GET /api/collection/root|:id/timelines                                                |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- timelines-request
-  [collection include-events?]
-  (if include-events?
-    (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/timelines") :include "events")
-    (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/timelines"))))
-
-(defn- timeline-names [timelines]
-  (->> timelines (map :name) set))
-
-(defn- event-names [timelines]
-  (->> timelines (mapcat :events) (map :name) set))
-
-(deftest timelines-test
-  (testing "GET /api/collection/root|id/timelines"
-    (mt/with-temp [:model/Collection coll-a {:name "Collection A"}
-                   :model/Collection coll-b {:name "Collection B"}
-                   :model/Collection coll-c {:name "Collection C"}
-                   :model/Timeline tl-a      {:name          "Timeline A"
-                                              :collection_id (u/the-id coll-a)}
-                   :model/Timeline tl-b      {:name          "Timeline B"
-                                              :collection_id (u/the-id coll-b)}
-                   :model/Timeline _tl-b-old {:name          "Timeline B-old"
-                                              :collection_id (u/the-id coll-b)
-                                              :archived      true}
-                   :model/Timeline _tl-c     {:name          "Timeline C"
-                                              :collection_id (u/the-id coll-c)}
-                   :model/TimelineEvent _event-aa {:name        "event-aa"
-                                                   :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _event-ab {:name        "event-ab"
-                                                   :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _event-ba {:name        "event-ba"
-                                                   :timeline_id (u/the-id tl-b)}
-                   :model/TimelineEvent _event-bb {:name        "event-bb"
-                                                   :timeline_id (u/the-id tl-b)
-                                                   :archived    true}]
-      (testing "Timelines in the collection of the card are returned"
-        (is (= #{"Timeline A"}
-               (timeline-names (timelines-request coll-a false)))))
-      (testing "Timelines in the collection have a hydrated `:collection` key"
-        (is (= #{(u/the-id coll-a)}
-               (->> (timelines-request coll-a false)
-                    (map #(get-in % [:collection :id]))
-                    set))))
-      (testing "check that `:can_write` key is hydrated"
-        (is (every?
-             #(contains? % :can_write)
-             (map :collection (timelines-request coll-a false)))))
-      (testing "Only un-archived timelines in the collection of the card are returned"
-        (is (= #{"Timeline B"}
-               (timeline-names (timelines-request coll-b false)))))
-      (testing "Timelines have events when `include=events` is passed"
-        (is (= #{"event-aa" "event-ab"}
-               (event-names (timelines-request coll-a true)))))
-      (testing "Timelines have only un-archived events when `include=events` is passed"
-        (is (= #{"event-ba"}
-               (event-names (timelines-request coll-b true)))))
-      (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
-        (is (= '()
-               (->> (timelines-request coll-c true) first :events)))))))
-
-(deftest timelines-permissions-test
-  (testing "GET /api/collection/id/timelines"
-    (mt/with-temp [:model/Collection coll-a {:name "Collection A"}
-                   :model/Timeline tl-a      {:name          "Timeline A"
-                                              :collection_id (u/the-id coll-a)}
-                   :model/TimelineEvent _event-aa {:name        "event-aa"
-                                                   :timeline_id (u/the-id tl-a)}]
-      (testing "You can't query a collection's timelines if you don't have perms on it."
-        (perms/revoke-collection-permissions! (perms-group/all-users) coll-a)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id coll-a) "/timelines") :include "events"))))
-      (testing "If we grant perms, then we can read the timelines"
-        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-a)
-        (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id coll-a) "/timelines") :include "events"))))
-  (testing "GET /api/collection/root/timelines"
-    (mt/with-temp [:model/Timeline tl-a      {:name          "Timeline A"
-                                              :collection_id nil}
-                   :model/TimelineEvent _event-aa {:name        "event-aa"
-                                                   :timeline_id (u/the-id tl-a)}]
-      (testing "You can't query a collection's timelines if you don't have perms on it."
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "collection/root/timelines" :include "events")))))
-      (testing "If we grant perms, then we can read the timelines"
-        (mt/user-http-request :rasta :get 200 "collection/root/timelines" :include "events")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |

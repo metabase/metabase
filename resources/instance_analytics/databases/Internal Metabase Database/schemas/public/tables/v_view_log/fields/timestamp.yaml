@@ -37,5 +37,6 @@ serdes/meta:
   model: Table
 - id: timestamp
   model: Field
-database_indexed: null
+database_indexed: false
 database_partitioned: null
+entity_id: H07rG7wgZ6ocycUgH93C3

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -22,7 +22,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
       sectionId: "string",
     };
 
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "18113 Source",
       native: {
         query: "select * from products limit 5",
@@ -41,7 +41,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
         parameters: [filter],
       };
 
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: nestedQuestion,
         dashboardDetails,
       }).then(({ body: { dashboard_id } }) => {
@@ -68,7 +68,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
 
     // Add multiple values (metabase#18113)
     H.filterWidget().click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       H.fieldValuesInput().type("Gizmo,Gadget").blur();
     });
 
@@ -112,12 +112,12 @@ describe("scenarios > dashboard > filters > nested questions", () => {
       query: { "source-table": PRODUCTS_ID },
     };
 
-    cy.createQuestion(baseQuestion).then(({ body: { id: baseQuestionId } }) => {
+    H.createQuestion(baseQuestion).then(({ body: { id: baseQuestionId } }) => {
       const questionDetails = {
         query: { "source-table": `card__${baseQuestionId}` },
       };
 
-      cy.createQuestionAndDashboard({ questionDetails }).then(
+      H.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id } }) => {
           H.visitDashboard(dashboard_id);
         },

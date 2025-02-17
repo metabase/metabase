@@ -120,6 +120,7 @@
  [lib.common
   external-op]
  [lib.convert
+  ->legacy-MBQL
   ->pMBQL]
  [lib.database
   database-id]
@@ -288,6 +289,7 @@
  [lib.native
   engine
   extract-template-tags
+  has-template-tag-variables?
   has-write-permission
   native-extras
   native-query
@@ -312,6 +314,7 @@
   can-preview
   can-run
   can-save
+  check-overwrite
   preview-query
   query
   stage-count

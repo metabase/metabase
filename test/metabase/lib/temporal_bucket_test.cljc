@@ -211,14 +211,14 @@
 
 (deftest ^:parallel option-raw-temporal-bucket-test
   (let [option (m/find-first #(= (:unit %) :month)
-                             (lib.temporal-bucket/available-temporal-buckets lib.tu/venues-query (meta/field-metadata :checkins :date)))]
+                             (lib.temporal-bucket/available-temporal-buckets (lib.tu/venues-query) (meta/field-metadata :checkins :date)))]
     (is (=? {:lib/type :option/temporal-bucketing}
             option))
     (is (= :month
            (lib.temporal-bucket/raw-temporal-bucket option)))))
 
 (deftest ^:parallel short-name-display-info-test
-  (let [query lib.tu/venues-query]
+  (let [query (lib.tu/venues-query)]
     (is (= {"minute"          false
             "hour"            false
             "day"             false

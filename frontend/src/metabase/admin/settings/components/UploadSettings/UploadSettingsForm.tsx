@@ -7,7 +7,7 @@ import { updateSettings } from "metabase/admin/settings/settings";
 import { skipToken, useListSyncableDatabaseSchemasQuery } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Alert from "metabase/core/components/Alert";
 import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
@@ -305,7 +305,7 @@ const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
           multiline
           maw="30rem"
         >
-          <Text span underline weight={700}>{t`Additional terms apply.`}</Text>
+          <Text span td="underline" fw={700}>{t`Additional terms apply.`}</Text>
         </Tooltip>
       )}
     </Alert>

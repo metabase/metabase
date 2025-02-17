@@ -1,30 +1,27 @@
 (ns metabase-enterprise.advanced-permissions.api.impersonation
   (:require
-   [compojure.core :refer [GET]]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Fetch a list of all Impersonation policies currently in effect, or a single policy if both `group_id` and `db_id`
   are provided."
-  [group_id db_id]
-  {group_id [:maybe ms/PositiveInt]
-   db_id    [:maybe ms/PositiveInt]}
+  [_route-params
+   {:keys [group_id db_id]} :- [:map
+                                [:group_id {:optional true} [:maybe ms/PositiveInt]]
+                                [:db_id    {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (if (and group_id db_id)
     (t2/select-one :model/ConnectionImpersonation :group_id group_id :db_id db_id)
     (t2/select :model/ConnectionImpersonation {:order-by [[:id :asc]]})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/:id"
+(api.macros/defendpoint :delete "/:id"
   "Delete a Connection Impersonation entry."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/ConnectionImpersonation :id id))
   (t2/delete! :model/ConnectionImpersonation :id id)
   api/generic-204-no-content)
-
-(api/define-routes)

@@ -11,7 +11,7 @@ import { canExploreResults } from "metabase/query_builder/components/view/ViewHe
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { QuestionSharingMenu } from "metabase/sharing/components/SharingMenu";
-import { Box, Button, Divider, Flex, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -136,7 +136,9 @@ export function ViewTitleHeaderRightSide({
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
   const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
-  const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
+  const disabledSaveTooltip = isSaveDisabled
+    ? getDisabledSaveTooltip(isEditable)
+    : undefined;
 
   return (
     <Flex
@@ -185,9 +187,6 @@ export function ViewTitleHeaderRightSide({
         question,
         queryBuilderMode,
       }) && <ToggleNativeQueryPreview question={question} />}
-      {queryBuilderMode !== "notebook" && (
-        <Divider orientation="vertical" my="xs" />
-      )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
         <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
@@ -225,7 +224,11 @@ export function ViewTitleHeaderRightSide({
         />
       )}
       {hasSaveButton && (
-        <Tooltip label={disabledSaveTooltip} disabled={canSave} position="left">
+        <Tooltip
+          disabled={!disabledSaveTooltip}
+          label={disabledSaveTooltip}
+          position="left"
+        >
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"
