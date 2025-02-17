@@ -1,8 +1,7 @@
 (ns metabase-enterprise.sandbox.api.util-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.api.util-test :as advanced-perms.api.tu]
-   [metabase-enterprise.sandbox.api.util :as sandbox.api.u]
+   [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase-enterprise.test :as met]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
@@ -21,23 +20,23 @@
 
         ;; subsequent calls should still use the cache, and not hit the DB at all
         (t2/with-call-count [call-count]
-          (is (sandbox.api.u/sandboxed-user?))
+          (is (sandbox.api.util/sandboxed-user?))
           (is (zero? (call-count)))
 
-          (is (= 1 (count (sandbox.api.u/enforced-sandboxes-for-tables [(mt/id :venues)]))))
+          (is (= 1 (count (sandbox.api.util/enforced-sandboxes-for-tables [(mt/id :venues)]))))
           (is (zero? (call-count))))))))
 
 (deftest enforce-sandbox?-test
   (testing "If a user is in a single group with a sandbox, the sandbox should be enforced"
     (mt/with-temp [:model/User user {}]
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
-        (is (sandbox.api.u/sandboxed-user?)))))
+        (is (sandbox.api.util/sandboxed-user?)))))
 
   (testing "If a user is in another group with view data access, the sandbox should not be enforced"
     (mt/with-temp [:model/User user {}]
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
         (mt/with-full-data-perms-for-all-users!
-          (is (not (sandbox.api.u/sandboxed-user?)))))))
+          (is (not (sandbox.api.util/sandboxed-user?)))))))
 
   (testing "If a user is in another group with another sandbox defined on the table, the user should be considered sandboxed"
     ;; This (conflicting sandboxes) is an invalid state for the QP but `enforce-sandbox?` should return true in order
@@ -45,7 +44,7 @@
     (mt/with-temp [:model/User user {}]
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
         (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
-          (is (sandbox.api.u/sandboxed-user?))))))
+          (is (sandbox.api.util/sandboxed-user?))))))
 
   (testing "If a user is in another group with an impersonation policy defined on the table, the user should be considered sandboxed"
     ;; Similar to above, this is also an unsupported configuration for querying, but we want to treat this user as
@@ -58,7 +57,7 @@
         (mt/with-temp [:model/ConnectionImpersonation _ {:db_id (mt/id)
                                                          :group_id group-id
                                                          :attribute "test-attribute"}]
-          (is (sandbox.api.u/sandboxed-user?))))))
+          (is (sandbox.api.util/sandboxed-user?))))))
 
   (testing "If a user is in two groups with conflicting sandboxes, *and* a third group that grants full access to the table,
             neither sandbox is enforced"
@@ -66,12 +65,12 @@
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
         (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
           (mt/with-full-data-perms-for-all-users!
-            (is (not (sandbox.api.u/sandboxed-user?)))))))))
+            (is (not (sandbox.api.util/sandboxed-user?)))))))))
 
 (defn- has-segmented-perms-when-segmented-db-exists?! [user-kw]
   (testing "User is sandboxed when they are not in any other groups that provide unrestricted access"
     (met/with-gtaps-for-user! user-kw {:gtaps {:venues {}}}
-      (sandbox.api.u/sandboxed-user?))))
+      (sandbox.api.util/sandboxed-user?))))
 
 (deftest never-segment-admins-test
   (testing "Admins should not be classified as segmented users -- enterprise #147"
