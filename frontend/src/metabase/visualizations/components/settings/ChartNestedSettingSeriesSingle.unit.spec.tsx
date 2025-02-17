@@ -84,7 +84,7 @@ const setup = () => {
 };
 
 describe("ChartNestedSettingSeriesSingle", () => {
-  it("should render", async () => {
+  it("should render the `Show values for this series` switch (metabase#53248)", async () => {
     setup();
 
     const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
