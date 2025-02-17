@@ -10,12 +10,12 @@ title: API changelog
 
   - The majority of `/api/alert` endpoints have been removed in favor of the new `/api/notification` endpoints. For backward compatibility, these endpoints will remain available until the next release:
     - `GET /api/alert`
-    - `GET /api/alert/:id` 
+    - `GET /api/alert/:id`
     - `DELETE /api/alert/:id/subscription`
 
   - Developers should migrate to using the `/api/notification` endpoints. For reference:
     - An overview of the new notification system can be found at `src/metabase/notification/README.md`
-    - [Notification API documentation](../api/notification)
+    - Notification API documentation at `{{YOUR_URL}}/api/docs/#tag/apinotification`
     - Interactive API documentation available at `/api/docs` endpoint
 
 ## Metabase 0.52.0
