@@ -56,7 +56,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
     H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
-      .should("contain", "lower(⟨text⟩)");
+      .should("contain", "lower(text)");
 
     H.CustomExpressionEditor.helpText()
       .should("be.visible")
@@ -79,9 +79,9 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   });
 
   it("should always show the help text popover on top of the custom expression widget (metabase#52711)", () => {
-    cy.viewport(1200, 900);
+    cy.viewport(1200, 1000);
     addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "concat", blur: false });
+    H.enterCustomColumnDetails({ formula: "concat(", blur: false });
 
     H.CustomExpressionEditor.helpText().within(() => {
       cy.findByText(

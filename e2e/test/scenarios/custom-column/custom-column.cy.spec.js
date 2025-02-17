@@ -1097,14 +1097,14 @@ describe("scenarios > question > custom column > help text", () => {
     H.enterCustomColumnDetails({ formula: "lower(", blur: false });
     H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
-      .should("contain", "lower(⟨text⟩)");
+      .should("contain", "lower(text)");
   });
 
   it("should appear after a field reference", () => {
     H.enterCustomColumnDetails({ formula: "lower([Category]", blur: false });
     H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
-      .should("contain", "lower(⟨text⟩)");
+      .should("contain", "lower(text)");
   });
 
   it("should not appear while outside a function", () => {
@@ -1139,7 +1139,7 @@ describe("scenarios > question > custom column > help text", () => {
   });
 
   it("should not disappear when clicked on (metabase#17548)", () => {
-    H.enterCustomColumnDetails({ formula: "rou{enter}", blur: false });
+    H.enterCustomColumnDetails({ formula: "round(", blur: false });
 
     H.CustomExpressionEditor.helpText()
       .should("be.visible")

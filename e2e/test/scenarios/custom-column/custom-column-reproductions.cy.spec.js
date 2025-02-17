@@ -1289,6 +1289,7 @@ describe("issue 50925", () => {
       .type("{leftarrow}".repeat(9))
       .type(" [Pr", { focus: false });
 
+    cy.wait(300);
     H.CustomExpressionEditor.completions().should("be.visible");
     H.CustomExpressionEditor.get().realPress("Enter", { pressDelay: 10 });
 

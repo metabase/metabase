@@ -711,7 +711,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
       { string: "> quan", field: "Quantity" },
     ]);
 
-    cy.get(".ace_text-input").blur();
+    H.CustomExpressionEditor.blur();
     cy.button("Done").click();
 
     H.getNotebookStep("filter").findByText("Discount is greater than Quantity");
@@ -727,9 +727,10 @@ describe("issue 17963", { tags: "@mongo" }, () => {
 
 function typeAndSelect(arr) {
   arr.forEach(({ string, field }) => {
-    cy.get(".ace_text-input").type(string);
+    H.CustomExpressionEditor.type(string);
 
-    H.popover().contains(field).click();
+    cy.wait(300);
+    H.CustomExpressionEditor.completion(field).click();
   });
 }
 
