@@ -69,7 +69,7 @@
   (when (and database-or-id (not api/*is-superuser?*))
     (let [conn-impersonations  (enforced-impersonations-for-db database-or-id)
           role-attributes      (set (map :attribute conn-impersonations))
-          conflicting-sandbox? (sandbox.api.util/sandboxed-user-for-db? (u/id database-or-id))]
+          conflicting-sandbox? (when api/*current-user-id* (sandbox.api.util/sandboxed-user-for-db? (u/id database-or-id)))]
       (when conflicting-sandbox?
         (throw (ex-info (tru "Conflicting sandboxing and impersonation policies found.")
                         {:user-id api/*current-user-id*
