@@ -13,7 +13,7 @@ import {
 } from "metabase/dashboard/utils";
 import { useDispatch } from "metabase/lib/redux";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { Box, Flex, Icon, Tooltip, Transition } from "metabase/ui";
+import { Box, Flex, Icon, Title, Tooltip, Transition } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
@@ -23,8 +23,8 @@ import type {
   ParameterTarget,
 } from "metabase-types/api";
 
-import { Header, TextCardDefault } from "./DashCardCardParameterMapper.styled";
 import { DashCardCardParameterMapperButton } from "./DashCardCardParameterMapperButton";
+import S from "./DashCardParameterMapper.module.css";
 import { DisabledNativeCardHelpText } from "./DisabledNativeCardHelpText";
 
 interface DashCardCardParameterMapperContentProps {
@@ -111,19 +111,19 @@ export const DashCardCardParameterMapperContent = ({
 
   if (isVirtual && isDisabled) {
     return showVirtualDashCardInfoText(dashcard, isMobile) ? (
-      <TextCardDefault>
+      <Flex className={S.TextCardDefault}>
         <Icon name="info" size={12} className={CS.pr1} />
         {mappingInfoText}
-      </TextCardDefault>
+      </Flex>
     ) : (
-      <TextCardDefault aria-label={mappingInfoText}>
+      <Flex className={S.TextCardDefault} aria-label={mappingInfoText}>
         <Icon
           name="info"
           size={16}
           className={CS.textDarkHover}
           tooltip={mappingInfoText}
         />
-      </TextCardDefault>
+      </Flex>
     );
   }
 
@@ -142,9 +142,9 @@ export const DashCardCardParameterMapperContent = ({
   return (
     <>
       {headerContent && (
-        <Header>
+        <Title order={4} w="100%" mb="sm" ta="center" className={S.Header}>
           <Ellipsified>{headerContent}</Ellipsified>
-        </Header>
+        </Title>
       )}
       <Flex align="center" justify="center" gap="xs" pos="relative">
         <DashCardCardParameterMapperButton
