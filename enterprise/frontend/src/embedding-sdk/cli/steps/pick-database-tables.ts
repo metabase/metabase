@@ -1,6 +1,5 @@
 import { checkbox } from "@inquirer/prompts";
 import ora from "ora";
-import _ from "underscore";
 
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import type { Table, TableId } from "metabase-types/api";
@@ -99,9 +98,9 @@ export const pickDatabaseTables: CliStepMethod = async state => {
   } else {
     // The user does not know about the sample database's structure,
     // so we pick a couple tables for them.
-    chosenTableIds = _.filter(tablesWithoutMetadata, item =>
-      _.contains(SAMPLE_DATABASE_SELECTED_TABLES, item.name),
-    ).map(table => table.id);
+    chosenTableIds = tablesWithoutMetadata
+      .filter(item => SAMPLE_DATABASE_SELECTED_TABLES.includes(item.name))
+      .map(table => table.id);
   }
 
   spinner.start("Fetching table metadata...");
