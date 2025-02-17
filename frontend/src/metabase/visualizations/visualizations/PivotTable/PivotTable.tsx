@@ -330,7 +330,11 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       leftHeaderWidth,
     ]);
 
-    if (pivoted === null || !leftHeaderWidths || columnsChanged) {
+    if (
+      pivoted === null ||
+      !leftHeaderWidths ||
+      (leftHeaderWidths?.length && columnsChanged)
+    ) {
       return null;
     }
 
