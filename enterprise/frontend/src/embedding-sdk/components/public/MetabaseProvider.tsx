@@ -109,8 +109,6 @@ export const MetabaseProviderInternal = ({
     store.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
   }, [store, authConfig.metabaseInstanceUrl]);
 
-  // PLEASE CI RUN THE TESTS FOR THE SDK
-
   return (
     <SdkContextProvider>
       <EmotionCacheProvider>
