@@ -11,6 +11,9 @@
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
    [metabase.query-processor.streaming.common :as streaming.common]
+   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.pivot.core :as pivot]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf :refer [run!]])
@@ -107,7 +110,11 @@
      :row-paths      (ordered-map/ordered-map)
      ;; A nested tree of ordered maps & sets, representing all combinations of column values in the data
      :col-paths      (ordered-map/ordered-map)
-     :measure-values (zipmap pivot-measures (repeat (sorted-set)))}))
+     :measure-values (zipmap pivot-measures (repeat (sorted-set)))
+
+     ;; New data shape
+     :data2         {}
+     :settings      {}}))
 
 (defn- add-to-path-tree
   "Assocs a list of values in a path tree, which should consist of a hierarchy of ordered-maps, with leaf values stored in
@@ -476,6 +483,42 @@
               (persistent! res))))))
     row))
 
+;; TODO: Better way to manage column settings similar to the FE?
+(defn- merge-column-settings
+  "Correlates column viz settings with columns by name in order to produce column settings closer
+  to what the FE gets."
+  [cols settings]
+  (let [col-settings (::mb.viz/column-settings settings)]
+    (map
+     (fn [col]
+       (merge
+        {:column col}
+        (get col-settings {::mb.viz/column-name (:name col)})))
+     cols)))
+
+(defn- column-split->indexes
+  [column-split columns-without-pivot-group]
+  (letfn [(find-index [col-name]
+            (u/index-of (fn [col] (= (:name col) col-name))
+                        columns-without-pivot-group))]
+    (into {}
+          (map (fn [[k column-names]]
+                 [k (->> column-names
+                         (map find-index)
+                         (filter some?))])
+               column-split))))
+
+(defn- build-pivot-output-2
+  [{:keys [data2 settings] :as _pivot} _ordered-formatters]
+  (let [{:keys [pivot-data columns]} (pivot/split-pivot-data data2)
+        column-split (:pivot_table.column_split settings)
+        indexes (column-split->indexes column-split columns)
+        row-indexes (:rows indexes)
+        col-indexes (:columns indexes)
+        val-indexes (:values indexes)
+        col-settings (merge-column-settings columns settings)]
+    (pivot/build-pivot-trees pivot-data columns row-indexes col-indexes val-indexes settings col-settings)))
+
 (defn build-pivot-output
   "Arrange and format the aggregated `pivot` data."
   [pivot ordered-formatters]
@@ -492,6 +535,7 @@
                 column-titles
                 row-totals?
                 col-totals?]}   config
+        _ (build-pivot-output-2 pivot ordered-formatters)
         row-formatters          (mapv #(get ordered-formatters %) pivot-rows)
         col-formatters          (mapv #(get ordered-formatters %) pivot-cols)
         sorted-row-paths        (sort-path-tree row-paths pivot-rows column-sort-order)

@@ -106,7 +106,12 @@
           ;; If exporting pivoted, init the pivot data structure
           ;; Otherwise, just store the pivot-grouping key index
           (when (and pivot? pivot-export-options)
-            (reset! pivot-data (qp.pivot.postprocess/init-pivot opts)))
+            (reset! pivot-data
+                    (assoc
+                     (qp.pivot.postprocess/init-pivot opts)
+                     :settings viz-settings
+                     :data2 {:cols ordered-cols
+                             :rows []})))
           (when pivot-grouping-key
             (swap! pivot-data assoc :pivot-grouping pivot-grouping-key))
 
@@ -127,11 +132,15 @@
               {:keys [pivot-grouping]} (or (:config @pivot-data) @pivot-data)
               group                    (get ordered-row pivot-grouping)]
           (if (and (contains? @pivot-data :config) (public-settings/enable-pivoted-exports))
-            ;; if we're processing a pivot result, we don't write it out yet, just aggregate it
-            ;; so that we can post process the data in finish!
-            (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))
-              (swap! pivot-data (fn [pivot-data] (qp.pivot.postprocess/add-row pivot-data ordered-row))))
+            (do
+              ;; NEW PATH
+              (swap! pivot-data (fn [pivot-data] (update-in pivot-data [:data2 :rows] conj ordered-row)))
 
+              ;; if we're processing a pivot result, we don't write it out yet, just aggregate it
+              ;; so that we can post process the data in finish!
+              (if (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))
+                (swap! pivot-data (fn [pivot-data] (qp.pivot.postprocess/add-row pivot-data ordered-row)))
+                (swap! pivot-data (fn [pivot-data] (update pivot-data :rows conj ordered-row)))))
             (if group
               (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))
                 (let [formatted-row (->> (perf/mapv (fn [formatter r]

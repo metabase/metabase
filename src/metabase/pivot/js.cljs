@@ -33,20 +33,21 @@
 
 (defn ^:export build-pivot-trees
   "TODO"
-  [rows cols col-indexes row-indexes val-indexes col-settings collapsed-subtotals]
-  (let [cols (js->clj cols)
-        col-indexes (js->clj col-indexes)
+  [pivot-data cols row-indexes col-indexes val-indexes settings col-settings]
+  (let [pivot-data (js->clj pivot-data)
+        cols (js->clj cols)
         row-indexes (js->clj row-indexes)
+        col-indexes (js->clj col-indexes)
         val-indexes (js->clj val-indexes)
+        settings (js->clj settings :keywordize-keys true)
         col-settings (js->clj col-settings :keywordize-keys true)
-        collapsed-subtotals (js->clj collapsed-subtotals)
-        trees (pivot/build-pivot-trees rows
+        trees (pivot/build-pivot-trees pivot-data
                                        cols
                                        row-indexes
                                        col-indexes
                                        val-indexes
-                                       col-settings
-                                       collapsed-subtotals)]
+                                       settings
+                                       col-settings)]
     #js {:rowTree (-> trees :row-tree postprocess-tree)
          :colTree (-> trees :col-tree postprocess-tree)
          :valuesByKey (-> trees :values-by-key clj->js)}))
