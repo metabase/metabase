@@ -747,9 +747,9 @@
       {:clause [:not-null tax], :name "Tax is not empty"}])))
 
 (deftest ^:parallel bigint-frontend-filter-display-names-test
-  (let [id       (meta/field-metadata :orders :id)
-        value1    "9223372036854775808"
-        value2    "9223372036854775809"]
+  (let [id     (meta/field-metadata :orders :id)
+        value1  "9223372036854775808"
+        value2 "9223372036854775809"]
     (check-display-names
      [{:clause [:= id value1], :name (format "ID is %" value1)}]
      [{:clause [:!= id value1], :name (format "ID is not equal to %s" value1)}]
