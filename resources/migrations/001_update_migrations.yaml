@@ -10270,6 +10270,21 @@ databaseChangeLog:
                   remarks: URL to a picture of the user that is automatically managed
 
   - changeSet:
+      id: v52.2025-02-18T21:32:12
+      author: nvoxland
+      comment: Add "show_picture" setting for avatar pictures
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: show_picture
+                  type: boolean
+                  valueBoolean: true
+                  defaultValueBoolean: true
+                  remarks: Should the user's picture be shown if available
+
+  - changeSet:
       id: v53.2024-12-02T16:21:15
       author: noahmoss
       comment: Add cache_config.refresh_automatically column
