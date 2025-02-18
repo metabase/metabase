@@ -9,7 +9,7 @@ import TransitionS from "metabase/css/core/transitions.module.css";
 import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
-} from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+} from "metabase/dashboard/components/Dashboard/DashboardComponents";
 import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
 import {
   DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID,
