@@ -11,9 +11,11 @@ jobs:
 
     steps:
       # First, checkout the repository
-      - uses: actions/checkout@v4
-      - name: Run privacy reporter script
+      - name: checkout repo
+        uses: actions/checkout@v4
+      - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      - name: Run privacy reporter script
         id: script
         run: |
           clojure -X:dev:drivers:build:build-dev:build-test metabase.private-things-test/privacy-report
