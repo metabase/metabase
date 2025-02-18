@@ -1,5 +1,5 @@
 import { useDroppable } from "@dnd-kit/core";
-import { type ReactNode, forwardRef, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -15,6 +15,8 @@ import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
+
+import { WellBox } from "./WellBox";
 
 export function PieVerticalWell() {
   return (
@@ -113,38 +115,3 @@ function PieDimensionWell() {
     </Box>
   );
 }
-
-interface WellBoxProps {
-  isHighlighted: boolean;
-  isOver: boolean;
-  children: ReactNode;
-}
-
-const WellBox = forwardRef<HTMLDivElement, WellBoxProps>(function WellBox(
-  { children, isHighlighted, isOver },
-  ref,
-) {
-  const borderColor = isHighlighted
-    ? "var(--mb-color-brand)"
-    : "var(--mb-color-border)";
-  return (
-    <Box
-      bg={isHighlighted ? "var(--mb-color-brand-light)" : "bg-light"}
-      p="sm"
-      mih="120px"
-      w="300px"
-      style={{
-        borderRadius: "var(--default-border-radius)",
-        border: `1px solid ${borderColor}`,
-        transform: isHighlighted ? "scale(1.025)" : "scale(1)",
-        transition:
-          "transform 0.2s ease-in-out 0.2s, border-color 0.2s ease-in-out 0.2s, background 0.2s ease-in-out 0.2s",
-        outline:
-          isOver && isHighlighted ? "1px solid var(--mb-color-brand)" : "none",
-      }}
-      ref={ref}
-    >
-      {children}
-    </Box>
-  );
-});

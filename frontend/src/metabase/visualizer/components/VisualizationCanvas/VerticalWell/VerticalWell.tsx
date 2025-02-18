@@ -3,6 +3,7 @@ import type { VisualizationDisplay } from "metabase-types/api";
 
 import { CartesianVerticalWell } from "./CartesianVerticalWell";
 import { FunnelVerticalWell } from "./FunnelVerticalWell";
+import { MapVerticalWell } from "./MapVerticalWell";
 import { PieVerticalWell } from "./PieVerticalWell";
 import { PivotVerticalWell } from "./PivotVerticalWell";
 
@@ -14,14 +15,17 @@ export function VerticalWell({ display }: VerticalWellProps) {
   if (isCartesianChart(display)) {
     return <CartesianVerticalWell />;
   }
-  if (display === "funnel") {
-    return <FunnelVerticalWell />;
+
+  switch (display) {
+    case "funnel":
+      return <FunnelVerticalWell />;
+    case "pie":
+      return <PieVerticalWell />;
+    case "pivot":
+      return <PivotVerticalWell />;
+    case "map":
+      return <MapVerticalWell />;
   }
-  if (display === "pie") {
-    return <PieVerticalWell />;
-  }
-  if (display === "pivot") {
-    return <PivotVerticalWell />;
-  }
+
   return null;
 }

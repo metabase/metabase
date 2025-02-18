@@ -158,7 +158,7 @@ export const VisualizerPage = ({ location, router }: WithRouterProps) => {
                 />
               </Flex>
             )}
-            <Box h="90%">
+            <Box h="100%">
               <VisualizationCanvas />
             </Box>
           </Box>
