@@ -1,10 +1,11 @@
 (ns metabase.pivot.core
   (:require
+   #?(:clj [metabase.util.i18n :as i18n])
    #?(:clj [metabase.util.json :as json])
+   #?(:cljs [metabase.util.i18n :as i18n])
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
-   [metabase.util :as u]
-   [metabase.util.i18n :as i18n])
+   [metabase.util :as u])
   (:import
    #?(:clj (java.text Collator))))
 
@@ -274,7 +275,8 @@
         rest-subs-by-col    (rest show-subs-by-col)
         has-subtotal        (and is-subtotal-enabled should-show-subtotal)
         subtotal            (if has-subtotal
-                              [{:value (i18n/tru "Totals for {0}" (:value row-item))
+                              [{:value #?(:clj (i18n/tru "Totals for {0}" (:value row-item))
+                                          :cljs (i18n/js-i18n "Totals for {0}" (:value row-item)))
                                 :rawValue (:rawValue row-item)
                                 :span 1
                                 :isSubtotal true
