@@ -657,11 +657,12 @@
   uploading a CSV file."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _
-   body :- [:sequential map?]]
+   body :- [:or map? [:sequential map?]]]
   (api/let-404 [table (t2/select-one :model/Table :id id)]
     (api/check-403 (mi/can-write? table))
-    (let [database (table/database table)]
-      (upload/update-from-json database table body))))
+    (let [database (table/database table)
+          rows (cond-> body (map? body) vector)]
+      (upload/update-from-json database table rows))))
 
 (api.macros/defendpoint :post "/:id/replace-csv"
   "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have
