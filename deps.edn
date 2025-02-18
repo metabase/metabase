@@ -250,7 +250,6 @@
     com.github.clojure-lsp/clojure-lsp                                          ; We all know what LSP does.
     {:mvn/version "2025.01.22-23.28.23"}
 
-    {:mvn/version "0.3.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     djblue/portal                {:mvn/version "0.58.5"}                    ; ui for inspecting values
