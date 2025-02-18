@@ -748,7 +748,7 @@
 
 (deftest ^:parallel bigint-frontend-filter-display-names-test
   (let [id     (meta/field-metadata :orders :id)
-        value1  "9223372036854775808"
+        value1 "9223372036854775808"
         value2 "9223372036854775809"]
     (check-display-names
      [{:clause [:= id value1], :name (format "ID is %" value1)}]
