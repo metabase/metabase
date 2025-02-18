@@ -16,7 +16,7 @@ jobs:
       - name: Run privacy reporter script
         id: script
         run: |
-          clojure -X:dev:drivers:build:build-dev:build-test metabase.private-things-test/privacy-report 2>/dev/null
+          clojure -X:dev:drivers:build:build-dev:build-test metabase.private-things-test/privacy-report
           cat privacy_report.txt > $GITHUB_OUTPUT
 
       # Post the comment using github-script
