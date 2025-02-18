@@ -29,26 +29,29 @@ jobs:
       - name: Run Antq
         run: >-
           clojure -M:antq --upgrade --force --skip=github-action
-      - name: Create Git Commit
+      - name: Determine Branch Name
+        id: branch_name
+        run: |
+          current_date=$(date '+%Y-%m-%d')
+          branch="auto-update-backend-deps-$current_date"
+          echo "branch=$branch" >> $GITHUB_OUTPUT
+      - name: Set up Git
         run: |
           git config --global user.email "metabase-bot@metabase.com"
           git config --global user.name "Metabase bot"
-
+      - name: Create Branch
+        run: |
+          git checkout -b "${{ steps.branch_name.outputs.branch }}"
+      - name: Create Git Commit
+        run: |
           git add deps.edn modules
           git commit -m "Update backend dependencies" --no-verify
-      - name: Create Git Branch
-        id: create_branch
-        run: |
-          COMMIT_HASH=$(git rev-parse HEAD)
-          BRANCH="update-backend-dependencies-$COMMIT_HASH"
-          git checkout -b "$BRANCH"
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
       - name: Create Pull Request
         id: create_pull_request
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          BRANCH="${{ steps.create_branch.outputs.branch }}"
+          BRANCH="${{ steps.branch_name.outputs.branch }}"
           TITLE="Update Backend Dependencies"
           DESCRIPTION="Update backend dependencies"
           PR_URL=$(gh pr create --base master --head "$BRANCH" --label "no-backport" --title "$TITLE" --body "$DESCRIPTION")
