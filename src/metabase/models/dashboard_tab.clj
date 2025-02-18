@@ -39,7 +39,7 @@
                               (update-vals #(sort dashboard-card/dashcard-comparator %)))
         tabs              (sort-by :position tabs)]
     (for [{:keys [id] :as tab} tabs]
-      (assoc tab :cards (get tab-id->dashcards id)))))
+      (assoc tab :cards (get tab-id->dashcards id [])))))
 
 (defmethod mi/perms-objects-set :model/DashboardTab
   [dashtab read-or-write]
