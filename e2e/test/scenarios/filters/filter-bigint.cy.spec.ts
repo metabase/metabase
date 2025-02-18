@@ -47,7 +47,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
   beforeEach(() => {
     H.restore();
-    cy.signInAsNormalUser();
+    cy.signInAsAdmin();
   });
 
   it("mbql query + query builder", () => {
@@ -110,7 +110,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         .click();
     }
 
-    function testFilterSet({
+    function testFilters({
       sourceQuestionDetails,
       minValue,
       maxValue,
@@ -205,14 +205,14 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     }
 
     cy.log("BIGINT");
-    testFilterSet({
+    testFilters({
       sourceQuestionDetails: bigIntQuestionDetails,
       minValue: minBigIntValue,
       maxValue: maxBigIntValue,
     });
 
     cy.log("DECIMAL");
-    testFilterSet({
+    testFilters({
       sourceQuestionDetails: decimalQuestionDetails,
       minValue: negativeDecimalValue,
       maxValue: positiveDecimalValue,
@@ -228,7 +228,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       H.restore("postgres-writable");
       H.resetTestTable({ type: dialect, table: bigIntPkTableName });
       H.resetTestTable({ type: dialect, table: decimalPkTableName });
-      cy.signInAsAdmin();
       H.resyncDatabase({ dbId: WRITABLE_DB_ID });
     }
 
@@ -316,6 +315,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
                       ],
                     },
                   });
+                  cy.wrap(dashboard.id).as("dashboardId");
                   H.visitDashboard(dashboard.id);
                 },
               );
@@ -420,6 +420,10 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       const dashboardDetails: DashboardDetails = {
         name: "Dashboard",
         parameters,
+        enable_embedding: true,
+        embedding_params: Object.fromEntries(
+          parameters.map(parameter => [parameter.slug, "enabled"]),
+        ),
       };
 
       const getTargetQuestionDetails = (
@@ -457,7 +461,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
                       ),
                     },
                   });
-                  H.visitDashboard(dashboard.id);
+                  cy.wrap(dashboard.id).as("dashboardId");
                 },
               );
             },
@@ -476,12 +480,14 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       filterDisplayName,
       filterArgsDisplayName,
       filteredRowCount,
+      withDrillThru,
     }: {
       parameterName: string;
       setParameterValue: () => void;
       filterDisplayName: string;
       filterArgsDisplayName: string;
       filteredRowCount: number;
+      withDrillThru: boolean;
     }) {
       cy.log("add a filter");
       H.getDashboardCard()
@@ -499,32 +505,28 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         .findByTestId("scalar-value")
         .should("have.text", String(filteredRowCount));
 
-      cy.log("drill-thru");
-      H.getDashboardCard().findByText("MBQL").click();
-      H.queryBuilderFiltersPanel().findByText(filterDisplayName);
-      H.queryBuilderMain()
-        .findByTestId("scalar-value")
-        .should("have.text", String(filteredRowCount));
+      if (withDrillThru) {
+        cy.log("drill-thru");
+        H.getDashboardCard().findByText("MBQL").click();
+        H.queryBuilderFiltersPanel().findByText(filterDisplayName);
+        H.queryBuilderMain()
+          .findByTestId("scalar-value")
+          .should("have.text", String(filteredRowCount));
+        H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
+      }
 
-      cy.log("cleanup");
-      H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
       findFilterWidget(parameterName).icon("close").click();
     }
 
-    function testFilterSet({
-      sourceQuestionDetails,
-      baseType,
+    function testFilters({
       minValue,
       maxValue,
+      withDrillThru,
     }: {
-      sourceQuestionDetails: NativeQuestionDetails;
-      baseType: string;
       minValue: string;
       maxValue: string;
+      withDrillThru: boolean;
     }) {
-      cy.log("setup");
-      setupDashboard({ sourceQuestionDetails, baseType });
-
       cy.log("number/= parameter");
       testFilter({
         parameterName: "Equal to",
@@ -533,6 +535,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is equal to ${maxValue}`,
         filterArgsDisplayName: maxValue,
         filteredRowCount: 1,
+        withDrillThru,
       });
 
       cy.log("number/!= parameter");
@@ -543,6 +546,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is not equal to ${minValue}`,
         filterArgsDisplayName: minValue,
         filteredRowCount: 2,
+        withDrillThru,
       });
 
       cy.log("number/>= parameter");
@@ -553,6 +557,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is greater than or equal to ${minValue}`,
         filterArgsDisplayName: minValue,
         filteredRowCount: 3,
+        withDrillThru,
       });
 
       cy.log("number/<= parameter");
@@ -563,6 +568,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is less than or equal to ${maxValue}`,
         filterArgsDisplayName: maxValue,
         filteredRowCount: 3,
+        withDrillThru,
       });
 
       cy.log("number/between parameter - min value");
@@ -575,6 +581,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is between ${minValue} and 0`,
         filterArgsDisplayName: "2 selections",
         filteredRowCount: 2,
+        withDrillThru,
       });
 
       cy.log("number/between parameter - max value");
@@ -587,6 +594,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is between 0 and ${maxValue}`,
         filterArgsDisplayName: "2 selections",
         filteredRowCount: 2,
+        withDrillThru,
       });
 
       cy.log("number/between parameter - min and max values");
@@ -599,22 +607,49 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is ${minValue} – ${maxValue}`,
         filterArgsDisplayName: "2 selections",
         filteredRowCount: 3,
+        withDrillThru,
       });
     }
 
-    testFilterSet({
+    function testBigIntFilters({ withDrillThru }: { withDrillThru: boolean }) {
+      testFilters({
+        minValue: minBigIntValue,
+        maxValue: maxBigIntValue,
+        withDrillThru,
+      });
+    }
+
+    function testDecimalFilters({ withDrillThru }: { withDrillThru: boolean }) {
+      testFilters({
+        minValue: negativeDecimalValue,
+        maxValue: positiveDecimalValue,
+        withDrillThru,
+      });
+    }
+
+    cy.log("BIGINT");
+    setupDashboard({
       sourceQuestionDetails: bigIntQuestionDetails,
       baseType: "type/BigInteger",
-      minValue: minBigIntValue,
-      maxValue: maxBigIntValue,
     });
+    visitRegularDashboard();
+    testBigIntFilters({ withDrillThru: true });
+    visitPublicDashboard();
+    testBigIntFilters({ withDrillThru: false });
+    visitEmbeddedDashboard();
+    testBigIntFilters({ withDrillThru: false });
 
-    testFilterSet({
+    cy.log("DECIMAL");
+    setupDashboard({
       sourceQuestionDetails: decimalQuestionDetails,
       baseType: "type/Decimal",
-      minValue: negativeDecimalValue,
-      maxValue: positiveDecimalValue,
     });
+    visitRegularDashboard();
+    testDecimalFilters({ withDrillThru: true });
+    visitPublicDashboard();
+    testDecimalFilters({ withDrillThru: false });
+    visitEmbeddedDashboard();
+    testDecimalFilters({ withDrillThru: false });
   });
 
   it("native query + variable + query builder", () => {
@@ -783,3 +818,24 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     testFilter({ value: positiveDecimalValue });
   });
 });
+
+function visitRegularDashboard() {
+  H.visitDashboard("@dashboardId");
+}
+
+function visitPublicDashboard() {
+  cy.get("@dashboardId").then(dashboardId => {
+    H.visitPublicDashboard(Number(dashboardId));
+  });
+}
+
+function visitEmbeddedDashboard() {
+  cy.get("@dashboardId").then(dashboardId => {
+    const payload = {
+      resource: { dashboard: Number(dashboardId) },
+      params: {},
+    };
+
+    H.visitEmbeddedPage(payload);
+  });
+}
