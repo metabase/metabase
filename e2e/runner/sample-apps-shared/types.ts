@@ -14,7 +14,6 @@ export type SampleAppSetupConfig = {
     loggerPrefix: string;
   }) => void;
   startCommand: string[];
-  beforeSetup?: (metadata: { appName: string; subAppName?: string }) => void;
 };
 
 export type SampleAppSetupConfigs<
