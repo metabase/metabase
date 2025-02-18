@@ -9,10 +9,6 @@
   min-height: 2.5rem;
   line-height: 2.5rem;
   box-sizing: border-box;
-
-  & + ul {
-    height: calc(100% - 5rem);
-  }
 }
 
 .toggle {
@@ -52,11 +48,6 @@
 
   &:last-child {
     height: calc(100% - 2.5rem);
-  }
-
-  & + ul {
-    height: calc(50% - 2.5rem);
-    flex-grow: 0;
   }
 }
 

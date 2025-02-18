@@ -4,6 +4,7 @@ import {
 } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
+import cx from "classnames";
 import { type MouseEvent, useCallback, useEffect, useRef } from "react";
 
 import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
@@ -20,11 +21,13 @@ export function Listbox({
   view,
   query,
   stageIndex,
+  className,
 }: {
   state: EditorState;
   view: EditorView;
   query: Lib.Query;
   stageIndex: number;
+  className?: string;
 }) {
   const { options, selectedOption } = useCompletions(state);
 
@@ -48,7 +51,7 @@ export function Listbox({
 
   return (
     <>
-      <ul role="listbox" className={S.listbox}>
+      <ul role="listbox" className={cx(S.listbox, className)}>
         <DelayGroup>
           {options.map((completion, index) => (
             <CompletionItem

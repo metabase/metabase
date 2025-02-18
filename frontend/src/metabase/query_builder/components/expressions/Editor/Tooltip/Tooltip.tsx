@@ -1,6 +1,7 @@
 import { currentCompletions } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
+import cx from "classnames";
 import {
   type RefObject,
   useCallback,
@@ -107,6 +108,10 @@ export function Tooltip({
               view={view}
               query={query}
               stageIndex={stageIndex}
+              className={cx(
+                enclosingFn && S.hasHelpText,
+                enclosingFn && isHelpTextOpen && S.isHelpTextOpen,
+              )}
             />
           )}
         </div>

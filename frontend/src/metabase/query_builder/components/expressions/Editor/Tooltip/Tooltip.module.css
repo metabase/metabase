@@ -14,3 +14,12 @@
     display: none;
   }
 }
+
+.hasHelpText {
+  height: calc(100% - 5rem);
+}
+
+.isHelpTextOpen {
+  height: calc(50% - 2.5rem);
+  flex-grow: 0;
+}
