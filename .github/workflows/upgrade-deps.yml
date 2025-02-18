@@ -28,7 +28,7 @@ jobs:
           m2-cache-key: 'update-be-deps'
       - name: Run Antq
         run: >-
-          clojure -M:antq --upgrade --force --skip=github-actions
+          clojure -M:antq --upgrade --force --skip=github-action
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@25575a12f382fb9c68692ffce1174138b61417d7
         id: create_pull_request
