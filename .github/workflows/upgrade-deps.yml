@@ -34,7 +34,7 @@ jobs:
       - name: Determine Branch Name
         id: branch_name
         run: |
-          current_date=$(date '+%Y-%m-%d')
+          current_date=$(date '+%Y-%m-%d-%H-%M')
           branch="auto-update-backend-deps-$current_date"
           echo "branch=$branch" >> $GITHUB_OUTPUT
       - name: Set up Git
