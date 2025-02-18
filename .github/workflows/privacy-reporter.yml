@@ -20,9 +20,9 @@ jobs:
         id: script
         run: |
           clojure -X:dev:drivers:build:build-dev:build-test metabase.private-things-test/privacy-report
-          echo 'MULTILINE_CONTENT<<EOF' >> $GITHUB_ENV
+          echo 'MULTILINE_CONTENT<<EOF\n' >> $GITHUB_ENV
           cat privacy_report.txt >> $GITHUB_ENV
-          echo 'EOF' >> $GITHUB_ENV
+          echo '\nEOF' >> $GITHUB_ENV
 
       # Post the comment using github-script
       - name: Post comment
