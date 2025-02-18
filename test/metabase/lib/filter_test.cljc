@@ -748,16 +748,18 @@
 
 (deftest ^:parallel bigint-frontend-filter-display-names-test
   (let [id     (meta/field-metadata :orders :id)
-        value1 "9223372036854775808"
-        value2 "9223372036854775809"]
+        pos-value "9223372036854775808"
+        neg-value "-9223372036854775809"]
     (check-display-names
-     [{:clause [:= id value1], :name (format "ID is %" value1)}]
-     [{:clause [:!= id value1], :name (format "ID is not equal to %s" value1)}]
-     [{:clause [:> id value1], :name (format "ID is greater than %s" value1)}]
-     [{:clause [:>= id value1], :name (format "ID is greater than or equal to %s" value1)}]
-     [{:clause [:< id value1], :name (format "ID is less than %s" value1)}]
-     [{:clause [:<= id value1], :name (format "ID is less than or equal to %s" value1)}]
-     [{:clause [:between id value1 value2], :name (format "ID is between %s and %" value1 value2)}])))
+     [{:clause [:= id pos-value], :name (format "ID is %s" pos-value)}
+      {:clause [:!= id pos-value], :name (format "ID is not %s" pos-value)}
+      {:clause [:> id pos-value], :name (format "ID is greater than %s" pos-value)}
+      {:clause [:>= id pos-value], :name (format "ID is greater than or equal to %s" pos-value)}
+      {:clause [:< id pos-value], :name (format "ID is less than %s" pos-value)}
+      {:clause [:<= id pos-value], :name (format "ID is less than or equal to %s" pos-value)}
+      {:clause [:between id 0 pos-value], :name (format "ID is between 0 and %s" pos-value)}
+      {:clause [:between id neg-value 0], :name (format "ID is between %s and 0" neg-value)}
+      {:clause [:between id neg-value pos-value], :name (format "ID is %s – %s" neg-value pos-value)}])))
 
 (deftest ^:parallel relative-datetime-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]
