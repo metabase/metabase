@@ -2,7 +2,6 @@ name: Privacy Checker PR Reporter
 
 on:
   pull_request:
-    types: [opened, synchronize]
 
 jobs:
   comment:
