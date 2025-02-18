@@ -1,22 +1,22 @@
-import styled from "@emotion/styled";
+.textInput {
+  border-radius: rem(8px);
+}
 
-import { Modal } from "metabase/ui";
-
-export const ModalContent = styled(Modal.Content)`
+.modalContent {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-`;
+}
 
-export const ModalBody = styled(Modal.Body)`
+.modalBody {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-`;
+}
 
-export const SinglePickerView = styled.div`
+.singlePickerView {
   border-top: 1px solid var(--mb-color-border);
   flex-grow: 1;
   height: 0;
-`;
+}
