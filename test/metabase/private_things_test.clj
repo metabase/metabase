@@ -61,11 +61,12 @@
 (defn privacy-report
   "Writes privacy report into a file, then "
   [& _args]
-  (when-let [ttsbp (seq (things-that-should-be-private))]
-    (->> ttsbp
-         (into ["# Things that should be private but aren't:"])
-         (str/join "\n")
-         (spit "privacy_report.txt"))))
+  (when-let [ttsbp #{"a" "b"}]
+    (spit "privacy_report.txt"
+          (str (->> ttsbp
+                    (into ["# Things that should be private but aren't:"])
+                    (str/join "\n"))
+               "\n"))))
 
 (deftest ^:parallel things-not-used-elsewhere-should-be-private-test
   (testing (str/join \newline ["This var is only used in the namespace it is declared in. Make it private, so"
