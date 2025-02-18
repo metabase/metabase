@@ -69,7 +69,7 @@ export const ParametersSettings = ({
               <h3>
                 {parameter.name}
                 {parameter.required && (
-                  <Text color="error" span>
+                  <Text color="error" component="span">
                     &nbsp;*
                   </Text>
                 )}

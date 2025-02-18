@@ -163,6 +163,12 @@ test/metabase/lib @metabase/core-backend-querying
 src/metabase/logger @metabase/devexp
 test/metabase/logger @metabase/devexp
 
+src/metabase/login_history @metabase/core-backend-admin-webapp
+test/metabase/login_history @metabase/core-backend-admin-webapp
+
+src/metabase/model_persistence @metabase/core-backend-querying
+test/metabase/model_persistence @metabase/core-backend-querying
+
 src/metabase/models @metabase/devexp
 test/metabase/models @metabase/devexp
 
@@ -183,6 +189,9 @@ test/metabase/premium_features @metabase/core-backend-admin-webapp
 
 src/metabase/public_settings @metabase/core-backend-admin-webapp
 test/metabase/public_settings @metabase/core-backend-admin-webapp
+
+src/metabase/public_sharing @metabase/core-backend-admin-webapp
+test/metabase/public_sharing @metabase/core-backend-admin-webapp
 
 src/metabase/pulse @metabase/core-workflows
 test/metabase/pulse @metabase/core-workflows
@@ -216,6 +225,9 @@ test/metabase/session @metabase/core-backend-admin-webapp
 
 src/metabase/setup @metabase/core-backend-admin-webapp
 test/metabase/setup @metabase/core-backend-admin-webapp
+
+src/metabase/sso @metabase/core-backend-admin-webapp
+test/metabase/sso @metabase/core-backend-admin-webapp
 
 src/metabase/sync @metabase/drivers
 test/metabase/sync @metabase/drivers

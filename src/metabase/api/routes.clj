@@ -15,16 +15,11 @@
    [metabase.api.embed]
    [metabase.api.field]
    [metabase.api.geojson]
-   [metabase.api.google]
-   [metabase.api.ldap]
-   [metabase.api.login-history]
    [metabase.api.macros :as api.macros]
    [metabase.api.native-query-snippet]
    [metabase.api.open-api :as open-api]
-   [metabase.api.persist]
    [metabase.api.premium-features]
    [metabase.api.preview-embed]
-   [metabase.api.public]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.setting]
    [metabase.api.slack]
@@ -39,13 +34,17 @@
    [metabase.cloud-migration.api]
    [metabase.config :as config]
    [metabase.indexed-entities.api]
+   [metabase.login-history.api]
+   [metabase.model-persistence.api]
    [metabase.permissions.api]
+   [metabase.public-sharing.api]
    [metabase.pulse.api]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
    [metabase.session.api]
    [metabase.setup.api]
+   [metabase.sso.api]
    [metabase.sync.api]
    [metabase.tiles.api]
    [metabase.timeline.api]
@@ -66,13 +65,8 @@
          metabase.api.embed/keep-me
          metabase.api.field/keep-me
          metabase.api.geojson/keep-me
-         metabase.api.google/keep-me
-         metabase.api.ldap/keep-me
-         metabase.api.login-history/keep-me
          metabase.api.native-query-snippet/keep-me
-         metabase.api.persist/keep-me
          metabase.api.preview-embed/keep-me
-         metabase.api.public/keep-me
          metabase.api.setting/keep-me
          metabase.api.slack/keep-me
          metabase.api.table/keep-me
@@ -83,7 +77,10 @@
          metabase.bookmarks.api/keep-me
          metabase.cloud-migration.api/keep-me
          metabase.indexed-entities.api/keep-me
+         metabase.login-history.api/keep-me
+         metabase.model-persistence.api/keep-me
          metabase.permissions.api/keep-me
+         metabase.public-sharing.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
          metabase.setup.api/keep-me
@@ -150,17 +147,17 @@
    "/embed"                (+message-only-exceptions 'metabase.api.embed)
    "/field"                (+auth 'metabase.api.field)
    "/geojson"              'metabase.api.geojson
-   "/google"               (+auth 'metabase.api.google)
-   "/ldap"                 (+auth 'metabase.api.ldap)
-   "/login-history"        (+auth 'metabase.api.login-history)
+   "/google"               (+auth metabase.sso.api/google-auth-routes)
+   "/ldap"                 (+auth metabase.sso.api/ldap-routes)
+   "/login-history"        (+auth 'metabase.login-history.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.permissions.api)
-   "/persist"              (+auth 'metabase.api.persist)
+   "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.api.premium-features/routes)
    "/preview_embed"        (+auth 'metabase.api.preview-embed)
-   "/public"               (+public-exceptions 'metabase.api.public)
+   "/public"               (+public-exceptions 'metabase.public-sharing.api)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)

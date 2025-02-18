@@ -1,7 +1,7 @@
 (ns metabase.setup.api
   (:require
    [java-time.api :as t]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
@@ -10,9 +10,9 @@
    [metabase.db :as mdb]
    [metabase.embed.settings :as embed.settings]
    [metabase.events :as events]
-   [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models.interface :as mi]
+   [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
@@ -80,10 +80,10 @@
                                        :invite_method "email"
                                        :sso_source    (:sso_source <>))
                                 :details {:invitor (select-keys invitor [:email :first_name])}})
-        (snowplow/track-event! ::snowplow/invite
-                               {:event           :invite-sent
-                                :invited-user-id (u/the-id <>)
-                                :source          "setup"})))))
+        (analytics/track-event! :snowplow/invite
+                                {:event           :invite-sent
+                                 :invited-user-id (u/the-id <>)
+                                 :source          "setup"})))))
 
 (defn- setup-set-settings! [{:keys [email site-name site-locale]}]
   ;; set a couple preferences
@@ -186,7 +186,7 @@
                 :app-origin  (boolean (embed.settings/embedding-app-origins-interactive))}
    :configured {:email (email/email-configured?)
                 :slack (slack/slack-configured?)
-                :sso   (google/google-auth-enabled)}
+                :sso   (setting/get :google-auth-enabled)}
    :counts     {:user  (t2/count :model/User {:where (mi/exclude-internal-content-hsql :model/User)})
                 :card  (t2/count :model/Card {:where (mi/exclude-internal-content-hsql :model/Card)})
                 :table (val (ffirst (t2/query {:select [:%count.*]

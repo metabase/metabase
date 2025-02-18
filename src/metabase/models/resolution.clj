@@ -43,7 +43,7 @@
     :model/ImplicitAction                    metabase.actions.models
     :model/LegacyMetric                      metabase.models.legacy-metric
     :model/LegacyMetricImportantField        metabase.models.legacy-metric-important-field
-    :model/LoginHistory                      metabase.models.login-history
+    :model/LoginHistory                      metabase.login-history.models.login-history
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.models.moderation-review
@@ -57,7 +57,7 @@
     :model/PermissionsGroup                  metabase.permissions.models.permissions-group
     :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
     :model/PermissionsRevision               metabase.permissions.models.permissions-revision
-    :model/PersistedInfo                     metabase.models.persisted-info
+    :model/PersistedInfo                     metabase.model-persistence.models.persisted-info
     :model/Pulse                             metabase.pulse.models.pulse
     :model/PulseCard                         metabase.pulse.models.pulse-card
     :model/PulseChannel                      metabase.pulse.models.pulse-channel

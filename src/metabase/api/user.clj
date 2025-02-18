@@ -3,14 +3,12 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.ldap :as api.ldap]
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.events :as events]
-   [metabase.integrations.google :as google]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.setting :refer [defsetting]]
@@ -20,6 +18,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
+   [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -384,10 +383,10 @@
                                  @api/*current-user*
                                  false))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
-      (snowplow/track-event! ::snowplow/invite
-                             {:event           :invite-sent
-                              :invited-user-id new-user-id
-                              :source          "admin"})
+      (analytics/track-event! :snowplow/invite
+                              {:event           :invite-sent
+                               :invited-user-id new-user-id
+                               :source          "admin"})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
 
@@ -484,8 +483,8 @@
                ;; if the user orignally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
                ;; (see metabase#3323)
                :sso_source   (case (:sso_source existing-user)
-                               :google (when (google/google-auth-enabled) :google)
-                               :ldap   (when (api.ldap/ldap-enabled) :ldap)
+                               :google (when (sso/google-auth-enabled) :google)
+                               :ldap   (when (sso/ldap-enabled) :ldap)
                                (:sso_source existing-user))})
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))

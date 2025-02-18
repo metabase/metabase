@@ -216,7 +216,7 @@
                                  [:base-type  ::lib.schema.common/base-type]]]]]])
 
 (mr/def ::persisted-info
-  "Persisted Info = Cached Table (?). See [[metabase.models.persisted-info]]"
+  "Persisted Info = Cached Table (?). See [[metabase.model-persistence.models.persisted-info]]"
   [:map
    [:active     :boolean]
    [:state      ::lib.schema.common/non-blank-string]
@@ -258,7 +258,7 @@
    ;; particular Table (unless they are against MongoDB)... for MBQL queries it should be populated however.
    [:table-id        {:optional true} [:maybe ::lib.schema.id/table]]
    ;;
-   ;; PERSISTED INFO: This comes from the [[metabase.models.persisted-info]] model.
+   ;; PERSISTED INFO: This comes from the [[metabase.model-persistence.models.persisted-info]] model.
    ;;
    [:lib/persisted-info {:optional true} [:maybe [:ref ::persisted-info]]]])
 
@@ -294,7 +294,7 @@
    ;; particular Table (unless they are against MongoDB)... for MBQL queries it should be populated however.
    [:table-id        {:optional true} [:maybe ::lib.schema.id/table]]
    ;;
-   ;; PERSISTED INFO: This comes from the [[metabase.models.persisted-info]] model.
+   ;; PERSISTED INFO: This comes from the [[metabase.model-persistence.models.persisted-info]] model.
    ;;
    [:lib/persisted-info {:optional true} [:maybe [:ref ::persisted-info]]]
    [:metabase.lib.join/join-alias {:optional true} ::lib.schema.common/non-blank-string]])
