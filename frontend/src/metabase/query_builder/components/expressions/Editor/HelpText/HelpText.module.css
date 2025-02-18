@@ -33,6 +33,7 @@
   color: var(--mb-base-color-dubloon-50);
   font-family: var(--mb-default-monospace-font-family);
   font-size: 0.75rem;
+  line-height: 1.6;
 
   &.active {
     background-color: var(--mb-base-color-dubloon-10);
