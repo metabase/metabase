@@ -533,7 +533,9 @@
       (let [{session-uuid :id, :as session} (session/create-session! :password user (request/device-info request))
             response                        {:success    true
                                              :session_id (str session-uuid)}]
-        (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
+        (request/set-session-cookies request response session
+                                     {:request-time  (t/zoned-date-time (t/zone-id "GMT"))
+                                      :set-permanent false})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |

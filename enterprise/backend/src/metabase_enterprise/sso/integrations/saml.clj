@@ -224,7 +224,9 @@
                           :user-attributes attrs
                           :device-info     (request/device-info request)})
           response      (response/redirect (or continue-url (public-settings/site-url)))]
-      (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
+      (request/set-session-cookies request response session
+                                   {:request-time (t/zoned-date-time (t/zone-id "GMT"))
+                                    :set-permanent true}))))
 
 (def ^:private saml2-success-status "urn:oasis:names:tc:SAML:2.0:status:Success")
 
