@@ -3,7 +3,7 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]))
 
-(defn- select-sso-backend 
+(defn- select-sso-backend
   [req]
   (if (contains? (:params req) :jwt)
     :jwt
