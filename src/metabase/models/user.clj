@@ -177,7 +177,7 @@
 (defn add-common-name
   "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.
   The key will only be added if `user` contains the required keys to derive it correctly."
-  [{:keys [first_name last_name email], :as user}]
+  [{:keys [first_name last_name email auto_picture_url], :as user}]
   ;; This logic is replicated in SQL in [[metabase-enterprise.query-reference-validation.api]]. If the below logic changes,
   ;; please update the EE ns as well.
   (let [common-name (if (or first_name last_name)
@@ -189,13 +189,20 @@
            common-name)
       (assoc :common_name common-name))))
 
+(defn- add-picture-url
+  [{:keys [auto_picture_url], :as user}]
+  (let [picture-url auto_picture_url]
+      (assoc user :picture_url picture-url)))
+
 (t2/define-after-select :model/User
   [user]
-  (add-common-name user))
+  (-> user
+      add-common-name
+      add-picture-url))
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :auto_picture_url])
 
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
@@ -321,7 +328,8 @@
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
    [:locale           {:optional true} [:maybe ms/KeywordOrString]]
-   [:type             {:optional true} [:maybe ms/KeywordOrString]]])
+   [:type             {:optional true} [:maybe ms/KeywordOrString]]
+   [:auto_picture_url {:optional true} [:maybe ms/NonBlankString]]])
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"

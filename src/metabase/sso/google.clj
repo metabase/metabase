@@ -63,26 +63,29 @@
 
 (defn- maybe-update-google-user!
   "Update google user if the first or list name changed."
-  [user first-name last-name]
+  [user first-name last-name google_picture_url]
   (when (or (not= first-name (:first_name user))
-            (not= last-name (:last_name user)))
+            (not= last-name (:last_name user))
+            (not= google_picture_url (:auto_picture_url user)))
     (t2/update! :model/User (:id user) {:first_name first-name
-                                        :last_name  last-name}))
-  (assoc user :first_name first-name :last_name last-name))
+                                        :last_name  last-name
+                                        :auto_picture_url google_picture_url}))
+  (assoc user :first_name first-name :last_name last-name :auto_picture_url google_picture_url))
 
 (mu/defn- google-auth-fetch-or-create-user! :- (ms/InstanceOf :model/User)
-  [first-name last-name email]
-  (let [existing-user (t2/select-one [:model/User :id :email :last_login :first_name :last_name] :%lower.email (u/lower-case-en email))]
+  [first-name last-name email google_picture_url]
+  (let [existing-user (t2/select-one [:model/User :id :email :last_login :first_name :last_name :auto_picture_url] :%lower.email (u/lower-case-en email))]
     (if existing-user
-      (maybe-update-google-user! existing-user first-name last-name)
+      (maybe-update-google-user! existing-user first-name last-name google_picture_url)
       (google-auth-create-new-user! {:first_name first-name
                                      :last_name  last-name
-                                     :email      email}))))
+                                     :email      email
+                                     :auto_picture_url google_picture_url}))))
 
 (defn do-google-auth
   "Call to Google to perform an authentication"
   [{{:keys [token]} :body, :as _request}]
   (let [token-info-response                    (http/post (format google-auth-token-info-url token))
-        {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
+        {:keys [given_name family_name email picture]} (google-auth-token-info token-info-response)]
     (log/infof "Successfully authenticated Google Sign-In token for: %s %s" given_name family_name)
-    (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))))
+    (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email picture))))
