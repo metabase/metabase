@@ -1,24 +1,16 @@
 import {
   type ColumnSizingState,
-  type Table,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import type React from "react";
-import {
-  type MouseEventHandler,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUpdateEffect } from "react-use";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 
-import type { TableProps, TableRefs } from "../Table";
+import type { TableProps } from "../Table";
 import { getDataColumn } from "../columns/data-column";
 import { getRowIdColumn } from "../columns/row-id-column";
 import {
@@ -26,73 +18,13 @@ import {
   ROW_ID_COLUMN_ID,
   TRUNCATE_LONG_CELL_WIDTH,
 } from "../constants";
-import type {
-  BodyCellVariant,
-  CellAlign,
-  CellFormatter,
-  ExpandedColumnsState,
-  RowIdVariant,
-} from "../types";
+import type { ExpandedColumnsState, TableOptions } from "../types";
 
 import { useTableCellsMeasure } from "./use-cell-measure";
 import { useColumnResizeObserver } from "./use-column-resize-observer";
-import {
-  type ColumnsReordering,
-  useColumnsReordering,
-} from "./use-columns-reordering";
+import { useColumnsReordering } from "./use-columns-reordering";
 import { useMeasureColumnWidths } from "./use-measure-column-widths";
-import { type VirtualGrid, useVirtualGrid } from "./use-virtual-grid";
-
-export interface ColumnOptions<TRow, TValue> {
-  id: string;
-  name: string;
-  accessorFn: (row: TRow) => TValue;
-  cellVariant: BodyCellVariant;
-  align?: CellAlign;
-  wrap?: boolean;
-  sortDirection?: "asc" | "desc";
-  enableResizing: boolean;
-  getBackgroundColor: (value: TValue, rowIndex: number) => string;
-  formatter?: CellFormatter<TValue>;
-  // Needed for minibar variant
-  getColumnExtent: () => [number, number];
-}
-
-export interface TableOptions<TData, TValue> {
-  data: TData[];
-  columnOrder?: string[];
-  columnSizing?: ColumnSizingState;
-  defaultRowHeight?: number;
-  rowIdColumn?: RowIdVariant;
-  truncateLongCellWidth?: number;
-  columnsOptions: ColumnOptions<TData, TValue>[];
-  onColumnResize?: (columnSizing: ColumnSizingState) => void;
-  onColumnReorder?: (columnNames: string[]) => void;
-}
-
-export interface TableInstance<TData> {
-  table: Table<TData>;
-  refs: TableRefs;
-  virtualGrid: VirtualGrid;
-  measureRoot: React.ReactNode;
-  columnsReordering: ColumnsReordering;
-  measureColumnWidths: (updateCurrent?: boolean, truncate?: boolean) => void;
-  renderHeaderDecorator?: (
-    columnId: string,
-    isDragging: boolean,
-    children: React.ReactNode,
-  ) => React.ReactNode;
-  onBodyCellClick?: (
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-    rowIndex: number,
-    columnId: string,
-  ) => void;
-  onHeaderCellClick?: (
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-    columnId: string,
-  ) => void;
-  onAddColumnClick?: MouseEventHandler<HTMLButtonElement>;
-}
+import { useVirtualGrid } from "./use-virtual-grid";
 
 const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
   _.uniq(
@@ -288,7 +220,6 @@ export const useTableInstance = <TData, TValue>({
         handleUpdateColumnExpanded(columnName);
       }
 
-      virtualGrid.measureGrid();
       onColumnResize?.(newColumnSizing);
     },
     [

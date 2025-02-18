@@ -1,36 +1,41 @@
-import type React from "react";
-import { memo } from "react";
+import cx from "classnames";
+import React, { forwardRef, memo } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/ui";
 
-import type { CellAlign } from "../types";
+import type { HeaderCellBaseProps, HeaderCellVariant } from "../types";
 
 import { BaseCell } from "./BaseCell";
 import S from "./HeaderCell.module.css";
 
-export type HeaderCellProps = {
-  align?: CellAlign;
-  name?: React.ReactNode;
-  sort?: "asc" | "desc";
-};
+export interface HeaderCellProps extends HeaderCellBaseProps {
+  variant?: HeaderCellVariant;
+}
 
 export const HeaderCell = memo(function HeaderCell({
   name,
   align,
   sort,
+  variant = "light",
+  onClick,
 }: HeaderCellProps) {
   return (
-    <BaseCell
-      className={S.root}
-      align={align}
-      role="columnheader"
-      data-testid="header-cell"
-    >
+    <HeaderCellWrapper variant={variant} align={align}>
+      <HeaderCellPill name={name} sort={sort} onClick={onClick} />
+    </HeaderCellWrapper>
+  );
+});
+
+export const HeaderCellPill = forwardRef<HTMLDivElement, HeaderCellBaseProps>(
+  function HeaderCellPill({ name, sort, onClick }: HeaderCellBaseProps, ref) {
+    return (
       <div
+        ref={ref}
         data-grid-header-cell-content
         className={S.content}
         data-testid="cell-data"
+        onClick={onClick}
       >
         {sort != null ? (
           <Icon
@@ -41,6 +46,30 @@ export const HeaderCell = memo(function HeaderCell({
         ) : null}
         <Ellipsified tooltip={name}>{name}</Ellipsified>
       </div>
+    );
+  },
+);
+
+export interface HeaderCellWrapperProp extends HeaderCellProps {
+  children: React.ReactNode;
+}
+
+export const HeaderCellWrapper = ({
+  variant,
+  align,
+  children,
+}: HeaderCellWrapperProp) => {
+  return (
+    <BaseCell
+      className={cx(S.root, {
+        [S.light]: variant === "light",
+        [S.outline]: variant === "outline",
+      })}
+      align={align}
+      role="columnheader"
+      data-testid="header-cell"
+    >
+      {children}
     </BaseCell>
   );
-});
+};

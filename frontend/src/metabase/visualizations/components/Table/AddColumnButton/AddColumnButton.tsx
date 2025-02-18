@@ -18,8 +18,8 @@ export const AddColumnButton = memo(function AddColumnButton({
     <div className={cx(S.root, { [S.sticky]: isOverflowing })}>
       <Button
         variant="outline"
-        compact
-        leftIcon={<Icon name="add" />}
+        size="compact-md"
+        leftSection={<Icon name="add" />}
         title={t`Add column`}
         aria-label={t`Add column`}
         onClick={onClick}

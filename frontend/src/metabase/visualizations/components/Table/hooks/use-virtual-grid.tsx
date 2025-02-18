@@ -81,10 +81,6 @@ export const useVirtualGrid = <TData,>({
     columnVirtualizer.measure();
   }, [rowVirtualizer, columnVirtualizer]);
 
-  useLayoutEffect(() => {
-    measureGrid();
-  }, [measureRowHeight, measureGrid]);
-
   return {
     virtualColumns,
     virtualRows,

@@ -93,7 +93,7 @@ class Table extends Component<TableProps, TableState> {
       title: t`Show row index`,
       inline: true,
       widget: "toggle",
-      default: true, // TODO: should be false by default
+      default: false,
     },
     "table.pivot": {
       section: t`Columns`,

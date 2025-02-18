@@ -1,33 +1,18 @@
 import cx from "classnames";
 import type React from "react";
-import {
-  type HTMLAttributes,
-  type MouseEventHandler,
-  memo,
-  useCallback,
-} from "react";
+import { type MouseEventHandler, memo, useCallback } from "react";
 
 import CS from "metabase/css/core/index.css";
 
 import { ExpandButton } from "../Table.styled";
-import type { CellAlign, CellFormatter } from "../types";
+import type { BodyCellBaseProps } from "../types";
 
 import { BaseCell } from "./BaseCell";
 import S from "./BodyCell.module.css";
 
-export type BodyCellProps<TValue> = {
-  columnId: string;
-  value: TValue;
-  formatter?: CellFormatter<TValue>;
-  backgroundColor?: string;
-  align?: CellAlign;
+export interface BodyCellProps<TValue> extends BodyCellBaseProps<TValue> {
   variant?: "text" | "pill";
-  wrap?: boolean;
-  canExpand?: boolean;
-  onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
-  onExpand?: (id: string, formattedValue: React.ReactNode) => void;
-  contentAttributes?: HTMLAttributes<HTMLDivElement>;
-};
+}
 
 export const BodyCell = memo(function BodyCell<TValue>({
   value,
@@ -37,7 +22,6 @@ export const BodyCell = memo(function BodyCell<TValue>({
   variant = "text",
   wrap = false,
   canExpand = false,
-  contentAttributes,
   columnId,
   onClick,
   onExpand,
@@ -63,6 +47,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
       })}
       backgroundColor={backgroundColor}
       role="gridcell"
+      onClick={onClick}
     >
       {formattedValue != null ? (
         <div
@@ -70,7 +55,6 @@ export const BodyCell = memo(function BodyCell<TValue>({
           className={cx(S.content, {
             [S.noWrap]: !wrap,
           })}
-          {...contentAttributes}
           data-testid="cell-data"
         >
           {formattedValue}

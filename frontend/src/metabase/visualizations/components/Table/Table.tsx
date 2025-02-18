@@ -5,23 +5,14 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { flexRender } from "@tanstack/react-table";
-import {
-  type Ref,
-  type RefObject,
-  forwardRef,
-  useCallback,
-  useMemo,
-} from "react";
+import { type Ref, forwardRef, useCallback, useMemo } from "react";
 
 import { AddColumnButton } from "metabase/visualizations/components/Table/AddColumnButton";
 
 import { SortableHeader } from "./SortableHeader";
 import S from "./Table.module.css";
-import type { TableInstance } from "./hooks/use-table-instance";
-
-export interface TableRefs {
-  gridRef: RefObject<HTMLDivElement>;
-}
+import { HEADER_HEIGHT } from "./constants";
+import { TableInstance } from "./types";
 
 export type TableProps<TData> = TableInstance<TData>;
 
@@ -32,8 +23,6 @@ export const Table = forwardRef(function Table<TData>(
     virtualGrid,
     measureRoot,
     columnsReordering,
-
-    renderHeaderDecorator,
     onBodyCellClick,
     onHeaderCellClick,
     onAddColumnClick,
@@ -95,7 +84,11 @@ export const Table = forwardRef(function Table<TData>(
         >
           <div className={S.headerContainer}>
             {table.getHeaderGroups().map(headerGroup => (
-              <div key={headerGroup.id} className={S.row}>
+              <div
+                key={headerGroup.id}
+                className={S.row}
+                style={{ height: `${HEADER_HEIGHT}px` }}
+              >
                 {virtualPaddingLeft ? (
                   <div style={{ width: virtualPaddingLeft }} />
                 ) : null}
@@ -121,7 +114,6 @@ export const Table = forwardRef(function Table<TData>(
                       >
                         <SortableHeader
                           header={header}
-                          renderHeaderDecorator={renderHeaderDecorator}
                           onClick={onHeaderCellClick}
                           isResizing={isResizing}
                         >

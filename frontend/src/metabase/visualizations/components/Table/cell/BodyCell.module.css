@@ -8,6 +8,7 @@
   align-items: center;
   padding: 8px 12px;
   border-bottom: 1px solid var(--mb-color-border-alpha-30);
+  cursor: pointer;
 }
 
 .content {

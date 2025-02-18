@@ -3,9 +3,10 @@
   align-items: center;
   justify-content: center;
   z-index: 5;
-  background-color: white;
-  width: 37px;
-  height: 37px;
+  background-color: var(--mb-color-bg-white);
+  width: 36px;
+  height: 36px;
+  box-sizing: content-box;
 }
 
 .sticky {

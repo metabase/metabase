@@ -1,12 +1,11 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { alpha, color } from "metabase/lib/colors";
 
-import type { CellAlign, CellFormatter } from "../types";
+import type { CellAlign, CellFormatter } from "../../Table";
 
-import { BaseCell } from "./BaseCell";
+import { BaseCell } from "../../Table";
 import S from "./MiniBarCell.module.css";
 
 const BAR_HEIGHT = 8;

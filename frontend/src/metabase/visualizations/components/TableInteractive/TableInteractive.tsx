@@ -1,4 +1,4 @@
-import type { ColumnSizingState } from "@tanstack/react-table";
+import type { CellContext, ColumnSizingState } from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
 import {
@@ -12,7 +12,6 @@ import {
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { formatValue } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
@@ -22,13 +21,13 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import {
-  type ColumnOptions,
   Table,
   useTableInstance,
 } from "metabase/visualizations/components/Table";
 import { ROW_ID_COLUMN_ID } from "metabase/visualizations/components/Table/constants";
 import type {
   BodyCellVariant,
+  ColumnOptions,
   RowIdVariant,
 } from "metabase/visualizations/components/Table/types";
 import { cachedFormatter } from "metabase/visualizations/echarts/cartesian/utils/formatter";
@@ -47,7 +46,6 @@ import type { OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
-  ColumnSettings,
   DatasetColumn,
   RowValue,
   RowValues,
@@ -56,15 +54,10 @@ import type {
 
 import S from "./TableInteractive.module.css";
 import { useObjectDetail } from "./hooks/use-object-detail";
+import { MiniBarCell } from "./cells/MiniBarCell";
+import { HeaderCellWithColumnInfo } from "./cells/HeaderCellWithColumnInfo";
 
-const getBodyCellVariant = (
-  column: DatasetColumn,
-  settings: ColumnSettings,
-): BodyCellVariant => {
-  if (settings["show_mini_bar"]) {
-    return "minibar";
-  }
-
+const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
   if (isPill) {
     return "pill";
@@ -291,18 +284,18 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const columnSettings = settings.column?.(col) ?? {};
 
       const wrap = Boolean(columnSettings["text_wrapping"]);
-      const cellVariant = getBodyCellVariant(col, columnSettings);
+      const isMinibar = columnSettings["show_mini_bar"];
+      const cellVariant = getBodyCellVariant(col);
+      const headerVariant = mode != null ? "light" : "outline";
       const getBackgroundColor = (value: RowValue, rowIndex: number) =>
         settings["table._cell_background_getter"]?.(value, rowIndex, col.name);
 
       const formatter = columnFormatters[columnIndex];
-      const calculateColumnExtent = () =>
-        getColumnExtent(cols, rows, columnIndex);
       const columnName = getColumnTitle(columnIndex);
 
       let align;
       let id;
-      let sortDirection;
+      let sortDirection: "asc" | "desc" | undefined;
       if (isPivoted) {
         align = columnIndex === 0 ? "right" : columnSettings["text_align"];
         id = `${col.name}:${columnIndex}`;
@@ -312,21 +305,60 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         sortDirection = getColumnSortDirection(columnIndex);
       }
 
-      return {
+      const options: ColumnOptions<RowValues, RowValue> = {
         id,
         name: columnName,
         accessorFn: (row: RowValues) => row[columnIndex],
         cellVariant,
+        header: () => {
+          return (
+            <HeaderCellWithColumnInfo
+              infoPopoversDisabled={!hasMetadataPopovers || clicked != null}
+              timezone={data.requested_timezone}
+              question={question}
+              column={col}
+              name={columnName}
+              align={align}
+              sort={sortDirection}
+              variant={headerVariant}
+              // FIXME: provide onclick
+              // onClick
+            />
+          );
+        },
         align,
         wrap,
         sortDirection,
         enableResizing: true,
         getBackgroundColor,
         formatter,
-        getColumnExtent: calculateColumnExtent,
       };
+
+      if (isMinibar) {
+        options.cell = ({
+          getValue,
+          row,
+        }: CellContext<RowValues, RowValue>) => {
+          const value = getValue();
+          const backgroundColor = getBackgroundColor(value, row?.index);
+          const columnExtent = getColumnExtent(cols, rows, columnIndex);
+
+          return (
+            <MiniBarCell
+              align={align}
+              backgroundColor={backgroundColor}
+              value={value}
+              formatter={formatter}
+              extent={columnExtent}
+            />
+          );
+        };
+      }
+
+      return options;
     });
   }, [
+    mode,
     cols,
     columnFormatters,
     getColumnSortDirection,
@@ -335,49 +367,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     rows,
     settings,
   ]);
-
-  const renderHeaderDecorator = useCallback(
-    (columnId: string, isDragging: boolean, children: React.ReactNode) => {
-      if (!hasMetadataPopovers || clicked) {
-        return children;
-      }
-
-      if (isPivoted) {
-        columnId = getColumnIdFromPivotedColumnId(columnId);
-      }
-
-      const query = question?.query();
-      const stageIndex = -1;
-
-      const column = cols.find(col => col.name === columnId);
-      if (!column) {
-        return children;
-      }
-
-      return (
-        <QueryColumnInfoPopover
-          position="bottom-start"
-          query={query}
-          stageIndex={-1}
-          column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
-          timezone={data.results_timezone}
-          disabled={isDragging}
-          openDelay={500}
-          showFingerprintInfo
-        >
-          <div style={{ width: "100%", height: "100%" }}>{children}</div>
-        </QueryColumnInfoPopover>
-      );
-    },
-    [
-      clicked,
-      cols,
-      data.results_timezone,
-      hasMetadataPopovers,
-      isPivoted,
-      question,
-    ],
-  );
 
   const handleColumnResize = useCallback(
     (columnSizing: ColumnSizingState) => {
@@ -447,7 +436,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     >
       <Table
         {...tableProps}
-        renderHeaderDecorator={renderHeaderDecorator}
         onBodyCellClick={handleBodyCellClick}
         onHeaderCellClick={handleHeaderCellClick}
         onAddColumnClick={handleAddColumnButtonClick}

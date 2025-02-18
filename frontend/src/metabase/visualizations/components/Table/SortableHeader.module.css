@@ -1,4 +1,4 @@
-.headerCell {
+.root {
   display: flex;
   align-items: center;
   height: 36px;
@@ -11,14 +11,22 @@
   outline: none;
 }
 
+.bordered {
+  box-shadow:
+    inset 1px 0 0 var(--mb-color-border),
+    inset -1px 0 0 var(--mb-color-border);
+}
+
+.root:hover {
+  box-shadow:
+    inset 1px 0 0 var(--mb-color-border),
+    inset -1px 0 0 var(--mb-color-border);
+}
+
 .headerContent {
   width: 100%;
   height: 100%;
   outline: none;
-}
-
-.headerContent:hover {
-  cursor: grab;
 }
 
 .resizeHandle {
@@ -26,21 +34,17 @@
   right: 0;
   top: 0;
   height: 100%;
-  width: 5px;
+  width: 4px;
   background: transparent;
   cursor: col-resize;
   user-select: none;
   touch-action: none;
   opacity: 0;
   transition: opacity 0.2s;
+  background: var(--mb-color-brand);
 }
 
 .resizeHandle:hover,
 .resizeHandle:active {
   opacity: 1;
-  background: var(--mb-color-brand);
-}
-
-.headerCell:last-child {
-  border-right: none;
 }

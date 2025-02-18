@@ -13,8 +13,7 @@ import { EmotionCacheProvider } from "metabase/styled-components/components/Emot
 import { ThemeProvider } from "metabase/ui";
 
 import { pickRowsToMeasure } from "../utils/measure";
-
-import type { ColumnOptions } from "./use-table-instance";
+import { ColumnOptions } from "../types";
 
 const EXTRA_COLUMN_SPACING = 14;
 
