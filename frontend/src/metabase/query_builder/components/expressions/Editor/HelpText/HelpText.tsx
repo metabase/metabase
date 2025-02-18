@@ -59,7 +59,7 @@ export function HelpText({
       ? getHelpText(enclosingFunction.name, database, reportTimezone)
       : null;
 
-  const clause = helpText && MBQL_CLAUSES[helpText?.name];
+  const clause = helpText && MBQL_CLAUSES[helpText.name];
   const isSupported = clause && database?.hasFeature(clause?.requiresFeature);
 
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
