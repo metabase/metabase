@@ -8,6 +8,4 @@
   (let [token (create-token)]
     (swap! active-tokens assoc token
            {:created (System/currentTimeMillis)})
-    ; (-> (response/redirect (str (sso-settings/jwt-identity-provider-uri) "?" "token=true"))
-    ;     (response/header "Access-Control-Allow-Credentials" "true"))
     (-> (response/response {:url (str (sso-settings/jwt-identity-provider-uri) "?" "token=true")}) (response/header "Access-Control-Allow-Credentials" "true"))))
