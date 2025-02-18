@@ -119,20 +119,11 @@
 (defn build-values-by-key
   "Replicate valuesByKey construction"
   [rows cols row-indexes col-indexes val-indexes]
-  (def rows rows)
-  (def cols cols)
-  (def row-indexes row-indexes)
-  (def col-indexes col-indexes)
-  (def val-indexes val-indexes)
   (let [col-and-row-indexes (concat col-indexes row-indexes)]
-    (def col-and-row-indexes col-and-row-indexes)
-    (def row (first rows))
     (reduce
      (fn [acc row]
        (let [value-key  (to-key (select-indexes row col-and-row-indexes))
-             _ (def value-key value-key)
              values     (select-indexes row val-indexes)
-             _ (def values values)
              ;; @tsp - this now assumes that cols is indexed the same as the row
              data       (map-indexed
                          (fn [index value]
