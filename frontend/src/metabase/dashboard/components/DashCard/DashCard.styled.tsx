@@ -43,13 +43,6 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
     shouldForceHiddenBackground && hiddenBackgroundStyle}
 `;
 
-export const VirtualDashCardOverlayRoot = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-`;
-
 export const VirtualDashCardOverlayText = styled.h4`
   color: var(--mb-color-text-medium);
   padding: 1rem;
