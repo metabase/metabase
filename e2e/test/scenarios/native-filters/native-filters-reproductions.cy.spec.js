@@ -700,7 +700,7 @@ describe("issue 16756", () => {
   });
 });
 
-describe("issue 17019", { tags: "@flaky" }, () => {
+describe("issue 17019", () => {
   const question = {
     name: "17019",
     native: {
@@ -967,41 +967,37 @@ describe("issue 29786", { tags: "@external" }, () => {
     cy.signInAsAdmin();
   });
 
-  it(
-    "should allow using field filters with null schema (metabase#29786)",
-    { tags: "@flaky" },
-    () => {
-      H.startNewNativeQuestion({
-        display: "table",
-        collection_id: COLLECTION_GROUP,
-        query: SQL_QUERY,
-      });
+  it("should allow using field filters with null schema (metabase#29786)", () => {
+    H.startNewNativeQuestion({
+      display: "table",
+      collection_id: COLLECTION_GROUP,
+      query: SQL_QUERY,
+    });
 
-      // type a space to trigger fields
-      cy.focused().type(" ");
+    // type a space to trigger fields
+    cy.focused().type(" ");
 
-      cy.findByTestId("tag-editor-variable-f1")
-        .findByTestId("variable-type-select")
-        .click();
-      SQLFilter.chooseType("Field Filter");
-      FieldFilter.mapTo({ table: "Products", field: "Category" });
+    cy.findByTestId("tag-editor-variable-f1")
+      .findByTestId("variable-type-select")
+      .click();
+    SQLFilter.chooseType("Field Filter");
+    FieldFilter.mapTo({ table: "Products", field: "Category" });
 
-      cy.findByTestId("tag-editor-variable-f2")
-        .findByTestId("variable-type-select")
-        .click();
-      SQLFilter.chooseType("Field Filter");
-      FieldFilter.mapTo({ table: "Products", field: "Vendor" });
+    cy.findByTestId("tag-editor-variable-f2")
+      .findByTestId("variable-type-select")
+      .click();
+    SQLFilter.chooseType("Field Filter");
+    FieldFilter.mapTo({ table: "Products", field: "Vendor" });
 
-      H.filterWidget().should("have.length", 2).first().click();
-      FieldFilter.selectFilterValueFromList("Widget");
-      H.filterWidget().should("have.length", 2).last().click();
-      FieldFilter.addWidgetStringFilter("Von-Gulgowski");
+    H.filterWidget().should("have.length", 2).first().click();
+    FieldFilter.selectFilterValueFromList("Widget");
+    H.filterWidget().should("have.length", 2).last().click();
+    FieldFilter.addWidgetStringFilter("Von-Gulgowski");
 
-      SQLFilter.runQuery();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("1087115303928").should("be.visible");
-    },
-  );
+    SQLFilter.runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("1087115303928").should("be.visible");
+  });
 });
 
 describe("issue 31606", { tags: "@external" }, () => {
