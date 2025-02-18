@@ -1,3 +1,5 @@
+import { pipeline } from "stream/promises";
+
 import type { IncomingMessage } from "http";
 import https from "https";
 import path from "path";
@@ -13,7 +15,7 @@ function getRootPath(appName: SampleAppName, subAppName?: string) {
   return `${E2E_TMP_FOLDER_PATH}/${[appName, subAppName].filter(Boolean).join("-")}`;
 }
 
-function downloadRepository({
+async function downloadRepository({
   appName,
   branch,
   loggerPrefix,
@@ -21,25 +23,25 @@ function downloadRepository({
   appName: SampleAppName;
   branch: string;
   loggerPrefix: string;
-}) {
+}): Promise<IncomingMessage> {
   const url = `https://codeload.github.com/metabase/${appName}/tar.gz/${branch}`;
 
   logWithPrefix(`Downloading tarball from: ${url}`, loggerPrefix);
 
-  return new Promise<IncomingMessage>((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     https
       .get(url, response => {
-        if (response.statusCode !== 200) {
+        if (response.statusCode === 200) {
+          resolve(response);
+        } else {
           reject(`Failed to download: HTTP status code ${response.statusCode}`);
         }
-
-        resolve(response);
       })
       .on("error", reject);
   });
 }
 
-function extractRepository({
+async function extractRepository({
   response,
   destination,
   loggerPrefix,
@@ -47,25 +49,19 @@ function extractRepository({
   response: IncomingMessage;
   destination: string;
   loggerPrefix: string;
-}) {
+}): Promise<void> {
   logWithPrefix(`Extracting into: ${destination}`, loggerPrefix);
 
-  return new Promise<void>((resolve, reject) => {
-    response
-      .pipe(
-        tar.x({
-          // Remove the top-level folder with repo/branch name
-          strip: 1,
-          C: destination,
-        }),
-      )
-      .on("finish", () => {
-        logWithPrefix("Extraction complete!", loggerPrefix);
+  await pipeline(
+    response,
+    tar.x({
+      // Remove the top-level folder (repo/branch) when extracting
+      strip: 1,
+      C: destination,
+    }),
+  );
 
-        resolve();
-      })
-      .on("error", reject);
-  });
+  logWithPrefix("Extraction complete!", loggerPrefix);
 }
 
 export async function fetchApp({
