@@ -31,6 +31,9 @@ jobs:
           clojure -M:antq --upgrade --force --skip=github-action
       - name: Create Git Commit
         run: |
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase bot"
+
           git add deps.edn modules
           git commit -m "Update backend dependencies" --no-verify
       # - name: Create Git Branch
