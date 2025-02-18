@@ -62,7 +62,6 @@ runs:
           };
 
           const extraDrivers = {
-            firebolt: getDriverUrl('firebolt'),
             starburst: getDriverUrl('starburst'),
             clickhouse: getDriverUrl('clickhouse'),
             materialize: getDriverUrl('materialize'),
@@ -71,11 +70,6 @@ runs:
           console.log(extraDrivers);
 
           return extraDrivers;
-    - name: Download Firebolt driver
-      run: |
-        curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).firebolt }}
-      working-directory: modules
-      shell: bash
     - name: Download Starburst driver
       run: |
         curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).starburst }}
