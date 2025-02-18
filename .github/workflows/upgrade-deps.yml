@@ -22,6 +22,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        ref: master
+      - name: Copy deps.edn from auto-upgrade-backend-deps-job branch
+        run: >-
+          git checkout auto-upgrade-backend-deps-job -- deps.edn
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
@@ -33,7 +37,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           title: Update backend dependencies
-          branch: master
+          branch: auto-update-backend-deps
           branch-suffix: timestamp
           delete-branch: true
           add-paths: |
