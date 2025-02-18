@@ -23,9 +23,12 @@ import {
   getQueryResults,
   getQuestion,
   getTimeoutId,
+  getUiControls,
 } from "../selectors";
 
 import { updateUrl } from "./navigation";
+import { navigateToNewCardInsideQB, updateQuestion } from "./core";
+import { setUIControls } from "./ui";
 
 export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
 const setDocumentTitle = createAction(SET_DOCUMENT_TITLE);
@@ -117,6 +120,38 @@ export const runQuestionQuery = ({
   overrideWithQuestion?: Question | null;
 } = {}) => {
   return async (dispatch: Dispatch, getState: GetState) => {
+    const { dirtyAddedFilters, dirtyRemovedFilters } =
+      getUiControls(getState());
+
+    if (dirtyAddedFilters.length > 0) {
+      const question = getQuestion(getState());
+
+      if (!question) {
+        return;
+      }
+
+      const query = dirtyAddedFilters.reduce((query, asd) => {
+        return Lib.filter(query, asd.stageIndex, asd.filter);
+      }, question.query());
+
+      await dispatch(
+        setUIControls({
+          dirtyAddedFilters: [],
+        }),
+      );
+
+      await dispatch(
+        updateQuestion(question.setQuery(query), {
+          run: true,
+          shouldStartAdHocQuestion: true,
+          shouldUpdateUrl: true,
+        }),
+      );
+
+      return;
+    }
+
+    /////////
     dispatch(loadStartUIControls());
 
     const question = overrideWithQuestion

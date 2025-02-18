@@ -70,7 +70,11 @@ interface ViewTitleHeaderRightSideProps {
   setDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>;
 }
 
-type Filter = Lib.Clause | Lib.SegmentMetadata;
+type Filter = {
+  id: number;
+  filter: Lib.Clause | Lib.SegmentMetadata;
+  stageIndex: number;
+};
 
 export function ViewTitleHeaderRightSide({
   question,

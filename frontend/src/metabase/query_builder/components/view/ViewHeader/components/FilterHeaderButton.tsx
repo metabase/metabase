@@ -11,6 +11,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
 
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
+import _ from "underscore";
 
 interface FilterHeaderButtonProps {
   className?: string;
@@ -26,7 +27,13 @@ interface FilterHeaderButtonProps {
   setDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>;
 }
 
-type Filter = Lib.Clause | Lib.SegmentMetadata;
+let ID = 0;
+
+type Filter = {
+  id: number;
+  filter: Lib.Clause | Lib.SegmentMetadata;
+  stageIndex: number;
+};
 
 export function FilterHeaderButton({
   className,
@@ -43,8 +50,21 @@ export function FilterHeaderButton({
 }: FilterHeaderButtonProps) {
   const label = isExpanded ? t`Hide filters` : t`Show filters`;
   const items = useMemo(() => {
-    const items = getFilterItems(query).filter(({ filter }) => {
-      return !dirtyRemovedFilters.includes(filter);
+    const items = getFilterItems(query).filter(filterItem => {
+      return !dirtyRemovedFilters.some(removedFilter => {
+        //hack
+        const a = Lib.displayInfo(
+          query,
+          removedFilter.stageIndex,
+          removedFilter.filter,
+        );
+        const b = Lib.displayInfo(
+          query,
+          filterItem.stageIndex,
+          filterItem.filter,
+        );
+        return _.isEqual(a, b);
+      });
     });
 
     const dirtyAddedFilterItems = dirtyAddedFilters.map(filter => ({
@@ -75,8 +95,14 @@ export function FilterHeaderButton({
     }
   };
 
-  const handleAddFilter = (filter: Filter) => {
-    setDirtyAddedFilters(filters => [...filters, filter]);
+  const handleAddFilter = (filter: Lib.Filterable) => {
+    const stageIndex = -1; // TODO
+    const item = {
+      stageIndex,
+      filter,
+      id: ID++,
+    };
+    setDirtyAddedFilters(filters => [...filters, item]);
     setIsDropdownOpen(false);
     onExpand?.();
   };

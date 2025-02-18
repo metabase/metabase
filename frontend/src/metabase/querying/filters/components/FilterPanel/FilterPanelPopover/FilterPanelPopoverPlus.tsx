@@ -6,6 +6,8 @@ import type * as Lib from "metabase-lib";
 import { FilterPicker } from "../../FilterPicker";
 import { FilterPill } from "../FilterPill";
 
+let ID = 1000000;
+
 interface FilterPanelPopoverProps {
   query: Lib.Query;
   stageIndex: number;
@@ -16,8 +18,10 @@ interface FilterPanelPopoverProps {
   setDirtyAddedFilters: Dispatch<SetStateAction<Filter[]>>;
   setDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>;
 }
-
-type Filter = Lib.Clause | Lib.SegmentMetadata;
+type Filter = {
+  filter: Lib.Clause | Lib.SegmentMetadata;
+  stageIndex: number;
+};
 
 export function FilterPanelPopoverPlus({
   query,
@@ -28,7 +32,13 @@ export function FilterPanelPopoverPlus({
   const [isOpened, setIsOpened] = useState(false);
 
   const handleAddFilter = (filter: Filter) => {
-    setDirtyAddedFilters(filters => [...filters, filter]);
+    const stageIndex = -1; // TODO
+    const item = {
+      stageIndex,
+      filter,
+      id: ID++,
+    };
+    setDirtyAddedFilters(filters => [...filters, item]);
     setIsOpened(false);
   };
 

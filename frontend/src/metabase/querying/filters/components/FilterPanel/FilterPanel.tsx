@@ -8,7 +8,11 @@ import { FilterPanelPopover } from "./FilterPanelPopover";
 import { FilterPanelPopoverPlus } from "./FilterPanelPopover/FilterPanelPopoverPlus";
 import { getFilterItems } from "./utils";
 
-type Filter = Lib.Clause | Lib.SegmentMetadata;
+type Filter = {
+  id: number;
+  filter: Lib.Clause | Lib.SegmentMetadata;
+  stageIndex: number;
+};
 
 interface FilterPanelProps {
   query: Lib.Query;
@@ -31,12 +35,7 @@ export function FilterPanel({
   const items = useMemo(() => {
     const items = getFilterItems(query);
 
-    const dirtyAddedFilterItems = dirtyAddedFilters.map(filter => ({
-      filter,
-      stageIndex: -1,
-    }));
-
-    return [...items, ...dirtyAddedFilterItems];
+    return [...items, ...dirtyAddedFilters];
   }, [query, dirtyAddedFilters]);
 
   const handleChange = (query: Lib.Query) => {

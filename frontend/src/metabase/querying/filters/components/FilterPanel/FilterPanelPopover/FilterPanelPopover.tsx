@@ -1,4 +1,5 @@
 import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
+import _ from "underscore";
 
 import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -18,7 +19,11 @@ interface FilterPanelPopoverProps {
   setDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>;
 }
 
-type Filter = Lib.Clause | Lib.SegmentMetadata;
+type Filter = {
+  id: number;
+  filter: Lib.Clause | Lib.SegmentMetadata;
+  stageIndex: number;
+};
 
 export function FilterPanelPopover({
   query,
@@ -45,11 +50,16 @@ export function FilterPanelPopover({
     if (isClauseInQuery) {
       // onChange(Lib.removeClause(query, stageIndex, filter));
       setDirtyRemovedFilters(filters => {
-        return [...filters, filter];
+        return [...filters, { stageIndex, filter }];
       });
     } else {
       setDirtyAddedFilters(filters =>
-        filters.filter(entry => entry !== filter),
+        filters.filter(entry => {
+          //hack
+          const a = Lib.displayInfo(query, entry.stageIndex, entry.filter);
+          const b = Lib.displayInfo(query, stageIndex, filter);
+          return !_.isEqual(a, b);
+        }),
       );
     }
     setIsOpened(false);

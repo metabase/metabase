@@ -95,5 +95,8 @@ export interface QueryBuilderState {
     serializedCard: string;
   } | null;
 }
-
-type Filter = Lib.Clause | Lib.SegmentMetadata;
+type Filter = {
+  id: number;
+  filter: Lib.Clause | Lib.SegmentMetadata;
+  stageIndex: number;
+};

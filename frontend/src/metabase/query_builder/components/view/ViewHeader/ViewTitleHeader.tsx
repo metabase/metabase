@@ -76,7 +76,11 @@ interface ViewTitleHeaderProps {
   style?: React.CSSProperties;
 }
 
-type Filter = Lib.Clause | Lib.SegmentMetadata;
+type Filter = {
+  id: number;
+  filter: Lib.Clause | Lib.SegmentMetadata;
+  stageIndex: number;
+}
 
 export function ViewTitleHeader({
   question,

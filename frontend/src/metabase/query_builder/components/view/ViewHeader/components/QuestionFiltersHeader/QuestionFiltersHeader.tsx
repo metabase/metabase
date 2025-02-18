@@ -16,7 +16,11 @@ interface FilterHeaderProps {
   setDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>;
 }
 
-type Filter = Lib.Clause | Lib.SegmentMetadata;
+type Filter = {
+  id: number;
+  filter: Lib.Clause | Lib.SegmentMetadata;
+  stageIndex: number;
+};
 
 export function QuestionFiltersHeader({
   question,
