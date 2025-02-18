@@ -326,6 +326,9 @@ function DashCardInner({
             [S.isEmbeddingSdk]: isEmbeddingSdk,
           },
         )}
+        style={theme => ({
+          "--slow-card-border-color": theme.fn.themeColor("accent4"),
+        })}
         ref={cardRootRef}
       >
         {isEditingDashboardLayout && (

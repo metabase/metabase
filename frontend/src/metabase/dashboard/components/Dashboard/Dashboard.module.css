@@ -60,10 +60,14 @@
   &.shouldMakeDashboardHeaderStickyAfterScrolling {
     overflow-y: auto;
 
-    /* Makes sure it doesn't use all the height, so the actual content height could be used in embedding #37437 */
     &.notEmpty {
-      align-self: flex-start;
+      align-self: initial;
     }
+  }
+
+  /* Makes sure it doesn't use all the height, so the actual content height could be used in embedding #37437 */
+  &.notEmpty {
+    align-self: flex-start;
   }
 
   padding-bottom: 40px;
