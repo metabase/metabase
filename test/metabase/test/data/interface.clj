@@ -904,7 +904,7 @@
   [_driver]
   "select array_construct('a', 'b', 'c')")
 
-(doseq [driver [:postgres :athena]]
+(doseq [driver [:postgres :athena :oracle]]
   (defmethod driver/database-supports? [driver :test/array-aggregation]
     [_driver _feature _database]
     true))
@@ -926,6 +926,14 @@
    group by category_id
    order by 1 asc
    limit 2;")
+
+(defmethod agg-venues-by-category-id :oracle
+  [_driver]
+  "select \"category_id\", cast(collect(\"name\") AS sys.odcivarchar2list)
+   from \"mb_test\".\"test_data_venues\"
+   group by \"category_id\"
+   order by \"category_id\" asc
+   fetch first 2 rows only")
 
 (defmethod agg-venues-by-category-id :athena
   [_driver]

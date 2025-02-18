@@ -21,7 +21,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection DatabaseMetaData Date ResultSet ResultSetMetaData Time Timestamp Types)
+   (java.sql Connection DatabaseMetaData Date ResultSet Time Timestamp Types)
    (java.time OffsetDateTime ZonedDateTime)
    [java.util UUID]))
 
@@ -136,10 +136,6 @@
             s))))
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
-
-(defmethod sql-jdbc.execute/read-column-thunk [:athena Types/ARRAY]
-  [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
-  (fn [] (vec (.getArray ^java.sql.Array (.getObject rs i)))))
 
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
   [driver [_ expr]]

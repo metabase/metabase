@@ -290,10 +290,6 @@
 
 (defmethod sql-jdbc.execute/set-timezone-sql :vertica [_] "SET TIME ZONE TO %s;")
 
-(defmethod sql-jdbc.execute/read-column-thunk [:vertica Types/ARRAY]
-  [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
-  (fn [] (vec (.getArray ^java.sql.Array (.getObject rs i)))))
-
 (defmethod sql-jdbc.execute/read-column-thunk [:vertica Types/TIME]
   [_driver ^ResultSet rs _rsmeta ^Long i]
   (fn read-time []

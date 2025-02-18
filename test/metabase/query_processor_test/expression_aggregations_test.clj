@@ -362,9 +362,10 @@
   (testing "An aggregated array column should be returned in a readable format"
     (mt/test-drivers (mt/normal-drivers-with-feature :test/array-aggregation)
       (mt/dataset test-data
-        (is (= [["The Gorbals" "The Misfit Restaurant + Bar" "Marlowe" "Yamashiro Hollywood" "Musso & Frank Grill" "Pacific Dining Car" "Chez Jay" "Rush Street"]
+        (is (= [["Chez Jay" "Marlowe" "Musso & Frank Grill" "Pacific Dining Car" "Rush Street" "The Gorbals" "The Misfit Restaurant + Bar" "Yamashiro Hollywood"]
                 ["Greenblatt's Delicatessen & Fine Wine Shop" "Handy Market"]]
                (->> (mt/native-query {:query (tx/agg-venues-by-category-id driver/*driver*)})
                     mt/process-query
                     mt/rows
-                    (map second))))))))
+                    (map second)
+                    (map sort))))))))
