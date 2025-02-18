@@ -25,20 +25,20 @@ import {
   isStringLiteral,
 } from "./index";
 
-export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
+export { EDITOR_QUOTES } from "./config";
 
-type Options = {
+export type FormatOptions = {
   startRule: string;
   [key: string]: any;
 } & {
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex: number | undefined;
+  expressionIndex?: number | undefined;
 };
 
 // convert a MBQL expression back into an expression string
 // It is hard to provide correct types here, so we have to use any
-export function format(mbql: any, options: Options): string {
+export function format(mbql: any, options: FormatOptions): string {
   if (mbql == null || _.isEqual(mbql, [])) {
     return "";
   } else if (isNumberLiteral(mbql)) {
@@ -75,7 +75,7 @@ function formatNumberLiteral(mbql: unknown) {
   return JSON.stringify(mbql);
 }
 
-function formatDimension(fieldRef: FieldReference, options: Options) {
+function formatDimension(fieldRef: FieldReference, options: FormatOptions) {
   const { query, stageIndex, expressionIndex } = options;
 
   if (!query) {
@@ -99,7 +99,7 @@ function formatDimension(fieldRef: FieldReference, options: Options) {
     : "";
 }
 
-function formatMetric([, metricId]: FieldReference, options: Options) {
+function formatMetric([, metricId]: FieldReference, options: FormatOptions) {
   const { query, stageIndex } = options;
 
   if (!query) {
@@ -121,7 +121,7 @@ function formatMetric([, metricId]: FieldReference, options: Options) {
   return formatMetricName(displayInfo.displayName, options);
 }
 
-function formatSegment([, segmentId]: FieldReference, options: Options) {
+function formatSegment([, segmentId]: FieldReference, options: FormatOptions) {
   const { stageIndex, query } = options;
 
   if (!query) {
@@ -163,7 +163,10 @@ function formatFunctionOptions(fnOptions: Record<string, any>) {
   }
 }
 
-function formatFunction([fn, ...operands]: any[], formatOptions: Options) {
+function formatFunction(
+  [fn, ...operands]: any[],
+  formatOptions: FormatOptions,
+) {
   const args = operands.filter(arg => !isOptionsObject(arg));
   const options = operands.find(isOptionsObject);
   if (options) {
@@ -179,7 +182,7 @@ function formatFunction([fn, ...operands]: any[], formatOptions: Options) {
     : `${formattedName}(${formattedArgs.join(", ")})`;
 }
 
-function formatOperator([op, ...operands]: any[], options: Options) {
+function formatOperator([op, ...operands]: any[], options: FormatOptions) {
   const args = operands.filter(arg => !isOptionsObject(arg));
   const formattedOperator = getExpressionName(op) || op;
   const formattedArgs = args.map((arg, index) => {
@@ -213,7 +216,7 @@ function formatOperator([op, ...operands]: any[], options: Options) {
 
 function formatCaseOrIf(
   [operator, clauses, caseOptions = {}]: any[],
-  options: Options,
+  options: FormatOptions,
 ) {
   const formattedName = getExpressionName(operator);
   const formattedClauses = clauses
@@ -229,7 +232,7 @@ function formatCaseOrIf(
   return `${formattedName}(${formattedClauses}${defaultExpression})`;
 }
 
-function formatOffset([_tag, _opts, expr, n]: any[], options: Options) {
+function formatOffset([_tag, _opts, expr, n]: any[], options: FormatOptions) {
   const formattedName = getExpressionName("offset");
   const formattedExpr = format(expr, options);
 
@@ -251,7 +254,7 @@ function isNegativeFilter(expr: Filter) {
   return typeof NEGATIVE_FILTERS[fn] === "string" && args.length >= 1;
 }
 
-function formatNegativeFilter(mbql: Filter, options: Options) {
+function formatNegativeFilter(mbql: Filter, options: FormatOptions) {
   const [fn, ...args] = mbql;
   const baseFn = NEGATIVE_FILTERS[fn];
   return "NOT " + format([baseFn, ...args], options);

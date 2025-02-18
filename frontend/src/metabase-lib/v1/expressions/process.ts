@@ -1,6 +1,7 @@
 import { c, t } from "ttag";
 
 import * as Lib from "metabase-lib";
+import type { Expression } from "metabase-types/api";
 
 import { adjustBooleans, parse } from "./recursive-parser";
 import { resolve } from "./resolver";
@@ -11,10 +12,15 @@ export function processSource(options: {
   source: string;
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex: number | undefined;
   startRule: string;
+  expressionIndex?: number | undefined;
   name?: string;
-}) {
+}): {
+  source: string;
+  expression: Expression | null;
+  expressionClause: Lib.ExpressionClause | null;
+  compileError: Error | null;
+} {
   const resolveMBQLField = (kind: string, name: string) => {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
@@ -57,7 +63,7 @@ export function processSource(options: {
 
   let expression = null;
   let expressionClause = null;
-  let compileError;
+  let compileError = null;
   try {
     const parsed = parse(source);
     expression = adjustBooleans(
@@ -74,7 +80,11 @@ export function processSource(options: {
     }
   } catch (e) {
     console.warn("compile error", e);
-    compileError = e;
+    if (e instanceof Error) {
+      compileError = e;
+    } else {
+      compileError = new Error(t`Unknown error`);
+    }
   }
 
   return {

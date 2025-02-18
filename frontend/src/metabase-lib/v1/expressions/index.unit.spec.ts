@@ -1,9 +1,9 @@
-import { quoteString, unquoteString } from "metabase-lib/v1/expressions";
+import { quoteString, unquoteString } from ".";
 
-describe("metabase-lib/v1/expressions", () => {
+describe("expressions", () => {
   // double- and single-quote
-  const dq = str => quoteString(str, '"');
-  const sq = str => quoteString(str, "'");
+  const dq = (str: string) => quoteString(str, '"');
+  const sq = (str: string) => quoteString(str, "'");
 
   describe("quoteString", () => {
     it("should enclose a string literal with double quotes", () => {
@@ -56,7 +56,7 @@ describe("metabase-lib/v1/expressions", () => {
     });
 
     it("should perform faithful round-trip operations with double-quoted strings", () => {
-      const rt = str => unquoteString(quoteString(str, "'"));
+      const rt = (str: string) => unquoteString(quoteString(str, "'"));
       expect(rt("A")).toEqual("A");
       expect(rt("PQ")).toEqual("PQ");
       expect(rt("XYZ")).toEqual("XYZ");

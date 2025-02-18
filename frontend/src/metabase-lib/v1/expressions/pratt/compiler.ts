@@ -25,11 +25,17 @@ import {
 import type { Node, NodeType } from "./types";
 import { CompileError, assert } from "./types";
 
+export type CaseOptions = { default?: Expr };
+export type ExprOptions = object;
+
 export type Expr =
   | number
   | string
   | boolean
-  | ([string, ...Expr[]] & { node?: Node });
+  | ["case" | "if", [Expr, Expr][]]
+  | ["case" | "if", [Expr, Expr][], CaseOptions]
+  | ([string, ...Expr[]] & { node?: Node })
+  | ([string, ...Expr[], ExprOptions] & { node?: Node });
 type CompilerPass = (expr: Expr) => Expr;
 
 interface Options {

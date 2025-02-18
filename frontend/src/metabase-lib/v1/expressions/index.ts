@@ -129,7 +129,7 @@ export function parseDimension(
   options: {
     query: Lib.Query;
     stageIndex: number;
-    expressionIndex: number | undefined;
+    expressionIndex?: number | undefined;
     startRule: string;
   },
 ) {
@@ -153,7 +153,7 @@ function getAvailableDimensions({
 }: {
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex: number | undefined;
+  expressionIndex?: number | undefined;
   startRule: string;
 }) {
   const results = Lib.expressionableColumns(

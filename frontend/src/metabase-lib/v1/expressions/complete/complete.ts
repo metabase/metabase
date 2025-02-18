@@ -1,5 +1,4 @@
 import { autocompletion } from "@codemirror/autocomplete";
-import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import type { SuggestArgs } from "metabase-lib/v1/expressions/suggest";

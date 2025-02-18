@@ -1,11 +1,11 @@
-import { parse } from "metabase-lib/v1/expressions/recursive-parser";
-import { resolve } from "metabase-lib/v1/expressions/resolver";
+import { parse } from "./recursive-parser";
+import { resolve } from "./resolver";
 
-describe("metabase-lib/v1/expressions/recursive-parser", () => {
-  const mockResolve = (kind, name) => [kind, name];
-  const process = (source, type) =>
+describe("recursive-parser", () => {
+  const mockResolve = (kind: string, name: string) => [kind, name];
+  const process = (source: string, type?: string) =>
     resolve({ expression: parse(source), type, fn: mockResolve });
-  const filter = expr => process(expr, "boolean");
+  const filter = (expr: any) => process(expr, "boolean");
 
   // handy references
   const X = ["segment", "X"];
@@ -217,14 +217,14 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
   });
 
   it("should detect aggregation functions with no argument", () => {
-    const mockResolve = (kind, name) => {
+    const mockResolve = (kind: string, name: string) => {
       if ("ABC".indexOf(name) >= 0) {
         return [kind, name];
       }
       throw new ReferenceError(`Unknown ["${kind}", "${name}"]`);
     };
     const type = "aggregation";
-    const aggregation = expr =>
+    const aggregation = (expr: string) =>
       resolve({ expression: parse(expr), type, fn: mockResolve });
 
     // sanity check first
@@ -243,7 +243,7 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
 
   it("should handle aggregation with another function", () => {
     const type = "aggregation";
-    const aggregation = expr =>
+    const aggregation = (expr: string) =>
       resolve({ expression: parse(expr), type, fn: mockResolve });
 
     const A = ["dimension", "A"];
@@ -257,14 +257,14 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
   });
 
   it("should prioritize existing metrics over functions", () => {
-    const mockResolve = (kind, name) => {
+    const mockResolve = (kind: string, name: string) => {
       if (name === "Count" || "ABC".indexOf(name) >= 0) {
         return [kind, name];
       }
       throw new ReferenceError(`Unknown ["${kind}", "${name}"]`);
     };
     const type = "aggregation";
-    const aggregation = expr =>
+    const aggregation = (expr: string) =>
       resolve({ expression: parse(expr), type, fn: mockResolve });
 
     // sanity check first
