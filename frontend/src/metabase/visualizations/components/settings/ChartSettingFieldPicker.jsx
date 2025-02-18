@@ -179,6 +179,9 @@ export const ChartSettingFieldPicker = ({
             cursor: "pointer",
             pointerEvents: "unset",
           },
+          rightSection: {
+            pointerEvents: "none",
+          },
         }}
       />
     </ChartSettingFieldPickerRoot>
