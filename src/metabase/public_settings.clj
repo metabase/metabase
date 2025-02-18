@@ -45,7 +45,9 @@
     (binding [config/*disable-setting-cache* true]
       (application-name))))
 
-(defn- google-auth-enabled? []
+(defn google-auth-enabled?
+  "Is Google Auth (OIDC not SAML) enabled?"
+  []
   (boolean (setting/get :google-auth-enabled)))
 
 (defn ldap-enabled?
