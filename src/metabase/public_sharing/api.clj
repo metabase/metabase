@@ -1,4 +1,4 @@
-(ns metabase.api.public
+(ns metabase.public-sharing.api
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
    [medley.core :as m]
