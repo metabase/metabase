@@ -1,3 +1,14 @@
+## [0.53.5](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.4...embedding-sdk-0.53.5) (2025-02-18)
+
+
+### Features
+
+* **sdk:** add Next.js compatibility to embedding cli ([#50281](https://github.com/metabase/metabase/issues/50281)) ([#53691](https://github.com/metabase/metabase/issues/53691)) ([f263931](https://github.com/metabase/metabase/commit/f26393179e0e8789fdf93f7b71a1154961947b01))
+* **sdk:** asks whether to add a db right before adding db connection in the cli ([#53680](https://github.com/metabase/metabase/issues/53680)) ([#53856](https://github.com/metabase/metabase/issues/53856)) ([f8a5ef2](https://github.com/metabase/metabase/commit/f8a5ef2417cdd2403acb3d429598e0d8e7598401))
+* **sdk:** pro license setup in cli defaults to false ([#53655](https://github.com/metabase/metabase/issues/53655)) ([#53685](https://github.com/metabase/metabase/issues/53685)) ([4bb6b28](https://github.com/metabase/metabase/commit/4bb6b28e54c79973a49c0bf080ece569e6940318))
+
+
+
 ## [0.53.4](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.3...embedding-sdk-0.53.4) (2025-02-17)
 
 
