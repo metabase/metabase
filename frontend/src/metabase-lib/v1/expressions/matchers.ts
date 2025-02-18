@@ -1,10 +1,15 @@
+import type { CallOptions } from "use-debounce";
+
 import type {
+  BooleanLiteral,
   CallExpression,
   CaseOrIfExpression,
   CaseOrIfOperator,
   Expression,
   FieldReference,
+  NumericLiteral,
   OffsetExpression,
+  StringLiteral,
 } from "metabase-types/api";
 
 import { FUNCTIONS, OPERATORS } from "./config";
@@ -15,26 +20,29 @@ export function isExpression(expr: unknown): expr is Expression {
     isOperator(expr) ||
     isFunction(expr) ||
     isDimension(expr) ||
-    isBooleanLiteral(expr) ||
     isMetric(expr) ||
     isSegment(expr) ||
     isCaseOrIf(expr)
   );
 }
 
-export function isLiteral(expr: unknown): expr is string | number | boolean {
-  return isStringLiteral(expr) || isNumberLiteral(expr);
+export function isLiteral(
+  expr: unknown,
+): expr is StringLiteral | NumericLiteral | BooleanLiteral {
+  return (
+    isStringLiteral(expr) || isNumberLiteral(expr) || isBooleanLiteral(expr)
+  );
 }
 
-export function isStringLiteral(expr: unknown): expr is string {
+export function isStringLiteral(expr: unknown): expr is StringLiteral {
   return typeof expr === "string";
 }
 
-export function isBooleanLiteral(expr: unknown): expr is boolean {
+export function isBooleanLiteral(expr: unknown): expr is BooleanLiteral {
   return typeof expr === "boolean";
 }
 
-export function isNumberLiteral(expr: unknown): expr is number {
+export function isNumberLiteral(expr: unknown): expr is NumericLiteral {
   return typeof expr === "number";
 }
 
@@ -46,7 +54,7 @@ export function isOperator(expr: unknown): expr is CallExpression {
   );
 }
 
-export function isOptionsObject(obj: unknown): obj is object {
+export function isOptionsObject(obj: unknown): obj is CallOptions {
   return obj ? Object.getPrototypeOf(obj) === Object.prototype : false;
 }
 
