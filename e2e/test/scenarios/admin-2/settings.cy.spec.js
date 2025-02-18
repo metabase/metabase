@@ -448,8 +448,8 @@ describe.skip(
         cy.findByText("Saved");
 
         // Run the query and save the question
-        H.startNewNativeQuestion().as("editor");
-        cy.get("@editor").type(nativeQuery);
+        H.startNewNativeQuestion();
+        H.NativeEditor.type(nativeQuery);
         H.runNativeQuery();
 
         getCellText().then(res => {
