@@ -16,7 +16,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { HelpText } from "../HelpText";
 import { Listbox } from "../Listbox";
-import { enclosingFunction } from "../util";
+import { enclosingFunction } from "../utils";
 
 import S from "./Tooltip.module.css";
 
