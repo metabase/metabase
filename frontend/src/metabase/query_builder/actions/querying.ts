@@ -26,8 +26,8 @@ import {
   getUiControls,
 } from "../selectors";
 
+import { updateQuestion } from "./core";
 import { updateUrl } from "./navigation";
-import { navigateToNewCardInsideQB, updateQuestion } from "./core";
 import { setUIControls } from "./ui";
 
 export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
@@ -123,20 +123,25 @@ export const runQuestionQuery = ({
     const { dirtyAddedFilters, dirtyRemovedFilters } =
       getUiControls(getState());
 
-    if (dirtyAddedFilters.length > 0) {
+    if (dirtyAddedFilters.length + dirtyRemovedFilters?.length > 0) {
       const question = getQuestion(getState());
 
       if (!question) {
         return;
       }
 
-      const query = dirtyAddedFilters.reduce((query, asd) => {
+      const query1 = dirtyAddedFilters.reduce((query, asd) => {
         return Lib.filter(query, asd.stageIndex, asd.filter);
       }, question.query());
+
+      const query = dirtyRemovedFilters.reduce((query, asd) => {
+        return Lib.removeClause(query, asd.stageIndex, asd.filter);
+      }, query1);
 
       await dispatch(
         setUIControls({
           dirtyAddedFilters: [],
+          dirtyRemovedFilters: [],
         }),
       );
 

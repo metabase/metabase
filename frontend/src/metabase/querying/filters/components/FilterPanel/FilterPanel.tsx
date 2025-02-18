@@ -1,4 +1,5 @@
 import { type Dispatch, type SetStateAction, useMemo } from "react";
+import _ from "underscore";
 
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -33,10 +34,20 @@ export function FilterPanel({
   setDirtyRemovedFilters,
 }: FilterPanelProps) {
   const items = useMemo(() => {
-    const items = getFilterItems(query);
-
+    const items = getFilterItems(query).filter(item => {
+      return !dirtyRemovedFilters.some(removedFilter => {
+        //hack
+        const a = Lib.displayInfo(
+          query,
+          removedFilter.stageIndex,
+          removedFilter.filter,
+        );
+        const b = Lib.displayInfo(query, item.stageIndex, item.filter);
+        return _.isEqual(a, b);
+      });
+    });
     return [...items, ...dirtyAddedFilters];
-  }, [query, dirtyAddedFilters]);
+  }, [query, dirtyAddedFilters, dirtyRemovedFilters]);
 
   const handleChange = (query: Lib.Query) => {
     onChange(Lib.dropEmptyStages(query));

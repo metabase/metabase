@@ -46,7 +46,7 @@ export function FilterPanelPopover({
   };
 
   const handleRemove = () => {
-    const isClauseInQuery = false; // TODO
+    const isClauseInQuery = true; // TODO
     if (isClauseInQuery) {
       // onChange(Lib.removeClause(query, stageIndex, filter));
       setDirtyRemovedFilters(filters => {
