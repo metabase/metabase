@@ -4,6 +4,7 @@ export enum UploadMode {
   append = "append",
   create = "create",
   replace = "replace",
+  json = "json",
 }
 
 export type FileUpload = {

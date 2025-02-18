@@ -18,6 +18,8 @@ import { UploadMode } from "metabase-types/store/upload";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 
+import { JsonUploadPopover } from "./JsonUploadPopover";
+
 const HEADER_ICON_SIZE = 16;
 
 interface Props {
@@ -147,6 +149,12 @@ export const QuestionActions = ({
                   >
                     {t`Replace all data in this model`}
                   </Menu.Item>
+                  <Menu.Item
+                    leftSection={<Icon name="webhook" />}
+                    onClick={() => setUploadMode(UploadMode.json)}
+                  >
+                    {t`Append data via api`}
+                  </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
             </Box>
@@ -160,6 +168,11 @@ export const QuestionActions = ({
           onSetQueryBuilderMode={onSetQueryBuilderMode}
         />
       )}
+      <JsonUploadPopover
+        question={question}
+        isOpen={uploadMode === UploadMode.json}
+        onClose={() => setUploadMode(UploadMode.append)}
+      />
     </>
   );
 };
