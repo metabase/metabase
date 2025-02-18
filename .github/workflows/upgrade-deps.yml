@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   bump-deps:
+    name: Open PR to Bump Backend Deps
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -40,5 +41,5 @@ jobs:
             modules/**/deps.edn
           commit-message: >-
             Update backend dependencies
-          team-reviewers: |
-            metabase/backend-developers
+          # team-reviewers: |
+          #   metabase/backend-developers
