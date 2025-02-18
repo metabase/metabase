@@ -14,7 +14,8 @@
    [metabase.lib.test-util.matrix :as matrix]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.number :as u.number]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -744,6 +745,19 @@
       {:clause [:<= tax 1], :name "Tax is less than or equal to 1"}
       {:clause [:is-null tax], :name "Tax is empty"}
       {:clause [:not-null tax], :name "Tax is not empty"}])))
+
+(deftest ^:parallel bigint-frontend-filter-display-names-test
+  (let [id       (meta/field-metadata :orders :id)
+        value1    "9223372036854775808"
+        value2    "9223372036854775809"]
+    (check-display-names
+     [{:clause [:= id value1], :name (format "ID is %" value1)}]
+     [{:clause [:!= id value1], :name (format "ID is not equal to %s" value1)}]
+     [{:clause [:> id value1], :name (format "ID is greater than %s" value1)}]
+     [{:clause [:>= id value1], :name (format "ID is greater than or equal to %s" value1)}]
+     [{:clause [:< id value1], :name (format "ID is less than %s" value1)}]
+     [{:clause [:<= id value1], :name (format "ID is less than or equal to %s" value1)}]
+     [{:clause [:between id value1 value2], :name (format "ID is between %s and %" value1 value2)}])))
 
 (deftest ^:parallel relative-datetime-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]
