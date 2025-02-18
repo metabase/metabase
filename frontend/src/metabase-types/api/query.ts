@@ -179,7 +179,7 @@ type CommonAggregation =
   | MaxAgg
   | OffsetAgg;
 
-type MetricAgg = ["metric", CardId];
+export type MetricAgg = ["metric", CardId];
 
 type InlineExpressionAgg = [
   "aggregation-options",
@@ -277,7 +277,7 @@ type TimeIntervalFilterOptions = {
   "include-current"?: boolean;
 };
 
-type SegmentFilter = ["segment", SegmentId];
+export type SegmentFilter = ["segment", SegmentId];
 
 type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc" | "desc", FieldReference];

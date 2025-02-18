@@ -7,8 +7,10 @@ import type {
   CaseOrIfOperator,
   Expression,
   FieldReference,
+  MetricAgg,
   NumericLiteral,
   OffsetExpression,
+  SegmentFilter,
   StringLiteral,
 } from "metabase-types/api";
 
@@ -72,13 +74,13 @@ export function isDimension(expr: unknown): expr is FieldReference {
   );
 }
 
-export function isMetric(expr: unknown): boolean {
+export function isMetric(expr: unknown): expr is MetricAgg {
   return (
     Array.isArray(expr) && expr[0] === "metric" && typeof expr[1] === "number"
   );
 }
 
-export function isSegment(expr: unknown): boolean {
+export function isSegment(expr: unknown): expr is SegmentFilter {
   return (
     Array.isArray(expr) && expr[0] === "segment" && typeof expr[1] === "number"
   );
