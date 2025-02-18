@@ -27,10 +27,10 @@ jobs:
         with:
           m2-cache-key: 'update-be-deps'
       - name: Run Antq
-        run: |
-          clojure -M:antq --upgrade --force
+        run: >-
+          clojure -M:antq --upgrade --force --skip=github-actions
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@25575a12f382fb9c68692ffce1174138b61417d7
         with:
           title: Update backend dependencies
           base: master
@@ -42,7 +42,5 @@ jobs:
             modules/**/deps.edn
           commit-message: >-
             Update backend dependencies
-          reviewers: |
-            metabase/backend-developers
           # team-reviewers: |
           #   metabase/backend-developers
