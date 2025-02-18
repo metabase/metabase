@@ -24,7 +24,7 @@ jobs:
           echo 'MULTILINE_CONTENT<<EOF'
           cat privacy_report.txt
           echo EOF
-          } >> $GITHUB_ENV
+          } >> "$GITHUB_ENV"
 
       # Post the comment using github-script
       - name: Post comment
