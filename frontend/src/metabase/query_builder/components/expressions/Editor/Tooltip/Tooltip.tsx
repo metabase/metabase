@@ -77,7 +77,8 @@ export function Tooltip({
       position="bottom-start"
       returnFocus
       closeOnEscape
-      middlewares={{ shift: false, flip: false }}
+      middlewares={{ shift: false, flip: false, size: true }}
+      floatingStrategy="fixed"
       positionDependencies={[
         doc,
         state.selection.main.head,
