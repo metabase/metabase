@@ -13,7 +13,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [ring.util.response :as response])
   (:import
    (java.net URLEncoder)))
@@ -130,13 +129,11 @@
      (ex-info (tru "SDK Embedding is disabled. Enable it in the Embedding settings.")
               {:status      "error-embedding-sdk-disabled"
                :status-code 402}))
-
-    (-> (response/response
-         {:status :ok
-          :id     (:id session)
-          :exp    (:exp jwt-data)
-          :iat    (:iat jwt-data)})
-        (response/header "Access-Control-Allow-Credentials" "true"))))
+    (response/response
+     {:status :ok
+      :id     (:id session)
+      :exp    (:exp jwt-data)
+      :iat    (:iat jwt-data)})))
 
 (defn ^:private redirect-to-idp
   [idp redirect]
