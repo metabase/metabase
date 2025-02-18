@@ -261,6 +261,7 @@
                                            :sso_source :google}]
           (let [my-url "abcdefghij"]
             (mt/with-temporary-setting-values [site-url my-url
+                                               google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
                                                google-auth-enabled true]
               (mt/with-fake-inbox
                 (mt/user-http-request g-user :post 204 "session/forgot_password"
@@ -275,7 +276,9 @@
                                            :sso_source :google}]
           (let [my-url "abcdefghij"]
             (mt/with-temporary-setting-values [site-url my-url
+                                               google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
                                                google-auth-enabled false]
+
               (mt/with-fake-inbox
                 (mt/user-http-request g-user :post 204 "session/forgot_password"
                                       {:email (:email g-user)})
