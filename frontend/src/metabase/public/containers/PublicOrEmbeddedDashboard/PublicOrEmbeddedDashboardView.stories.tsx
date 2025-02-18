@@ -71,8 +71,16 @@ function ReduxDecorator(Story: StoryFn) {
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
 function WaitForResizeToStopDecorator(Story: StoryFn) {
   const asyncCallback = createAsyncCallback();
+
   useEffect(() => {
-    setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
+    const timeoutId = setTimeout(
+      asyncCallback,
+      TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING,
+    );
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [asyncCallback]);
 
   return <Story />;
