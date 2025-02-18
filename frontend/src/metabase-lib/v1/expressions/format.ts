@@ -1,17 +1,13 @@
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
-import type { FieldReference, Filter } from "metabase-types/api";
+import type {
+  FieldReference,
+  MetricAgg,
+  SegmentFilter,
+} from "metabase-types/api";
 
 import {
-  EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
-  MBQL_CLAUSES,
-  OPERATOR_PRECEDENCE,
-  formatDimensionName,
-  formatMetricName,
-  formatSegmentName,
-  formatStringLiteral,
-  getExpressionName,
   isBooleanLiteral,
   isCaseOrIf,
   isDimension,
@@ -23,6 +19,17 @@ import {
   isOptionsObject,
   isSegment,
   isStringLiteral,
+} from "./matchers";
+
+import {
+  EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
+  MBQL_CLAUSES,
+  OPERATOR_PRECEDENCE,
+  formatDimensionName,
+  formatMetricName,
+  formatSegmentName,
+  formatStringLiteral,
+  getExpressionName,
 } from "./index";
 
 export { EDITOR_QUOTES } from "./config";
@@ -99,7 +106,7 @@ function formatDimension(fieldRef: FieldReference, options: FormatOptions) {
     : "";
 }
 
-function formatMetric([, metricId]: FieldReference, options: FormatOptions) {
+function formatMetric([, metricId]: MetricAgg, options: FormatOptions) {
   const { query, stageIndex } = options;
 
   if (!query) {
@@ -121,7 +128,7 @@ function formatMetric([, metricId]: FieldReference, options: FormatOptions) {
   return formatMetricName(displayInfo.displayName, options);
 }
 
-function formatSegment([, segmentId]: FieldReference, options: FormatOptions) {
+function formatSegment([, segmentId]: SegmentFilter, options: FormatOptions) {
   const { stageIndex, query } = options;
 
   if (!query) {
