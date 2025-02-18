@@ -69,7 +69,6 @@ jobs:
           PR_NUMBER=${PR_URL##*/}
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
       - name: Enable Pull Request Auto-Merge
-        if: ${{ steps.create_pull_request.outputs.pull-request-number }}
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
           pull-request-number: ${{ steps.create_pull_request.outputs.pr_number }}
