@@ -1,6 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
 
-import { tokenFeatureObserver } from "metabase/embedding-sdk/utils/token-features-observer";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { SessionApi, SettingsApi } from "metabase/services";
@@ -16,7 +15,6 @@ export const refreshSiteSettings = createAsyncThunk(
       headers: locale ? { "X-Metabase-Locale": locale } : {},
     });
     MetabaseSettings.setAll(settings);
-    tokenFeatureObserver.notifyAndRemoveListeners();
     return settings;
   },
 );
