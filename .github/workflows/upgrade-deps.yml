@@ -43,7 +43,9 @@ jobs:
           git config --global user.name "Metabase bot"
       - name: Create Branch
         run: |
+          git stash
           git checkout master
+          git stash pop
           git checkout -b "${{ steps.branch_name.outputs.branch }}"
       - name: Create Git Commit
         run: |
