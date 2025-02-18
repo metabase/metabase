@@ -117,9 +117,10 @@ export type ReferenceOptionsKeys =
 
 type ExpressionName = string;
 
-type StringLiteral = string;
-type NumericLiteral = number;
-type DatetimeLiteral = string;
+export type StringLiteral = string;
+export type NumericLiteral = number;
+export type BooleanLiteral = boolean;
+export type DatetimeLiteral = string;
 
 type Value = null | boolean | StringLiteral | NumericLiteral | DatetimeLiteral;
 type OrderableValue = NumericLiteral | DatetimeLiteral;
@@ -365,17 +366,33 @@ export type ExpressionClause = {
 export type Expression =
   | NumericLiteral
   | StringLiteral
-  | boolean
-  | [ExpressionOperator, ExpressionOperand]
-  | [ExpressionOperator, ExpressionOperand, ExpressionOperand]
-  | ["offset", OffsetOptions, ExpressionOperand, NumericLiteral]
-  | [
-      ExpressionOperator,
-      ExpressionOperand,
-      ExpressionOperand,
-      ExpressionOperand,
-    ]
+  | BooleanLiteral
+  | OffsetExpression
+  | CaseOrIfExpression
+  | CallExpression
   | ConcreteFieldReference;
+
+export type CallOptions = { [key: string]: unknown };
+export type CallExpression =
+  | [ExpressionOperator, ...ExpressionOperand[]]
+  | [ExpressionOperator, ...ExpressionOperand[], CallOptions];
+
+export type CaseOperator = "case";
+export type IfOperator = "if";
+export type CaseOrIfOperator = CaseOperator | IfOperator;
+
+export type CaseOptions = { default?: Expression };
+
+export type CaseOrIfExpression =
+  | [CaseOrIfOperator, [Expression, Expression][]]
+  | [CaseOrIfOperator, [Expression, Expression][], CaseOptions];
+
+export type OffsetExpression = [
+  "offset",
+  OffsetOptions,
+  ExpressionOperand,
+  NumericLiteral,
+];
 
 type ExpressionOperator = string;
 type ExpressionOperand =
