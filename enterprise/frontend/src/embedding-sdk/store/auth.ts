@@ -158,13 +158,11 @@ const safeStringify = (value: unknown) => {
 export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn =
   async url => {
     const urlWithParams = new URL(url);
-    urlWithParams.searchParams.set("token", "true");
 
     const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
 
     const fetchParams: RequestInit = {
       method: "GET",
-      credentials: "include",
       headers: {
         // eslint-disable-next-line no-literal-metabase-strings -- header name
         "X-Metabase-Client": "embedding-sdk-react",
