@@ -48,7 +48,7 @@ export function getPermissionRowPermissions(item) {
     .find("tbody > tr")
     .contains(item)
     .closest("tr")
-    .findAllByTestId("permissions-select");
+    .asdf("permissions-select");
 }
 
 export function assertPermissionTable(rows) {
