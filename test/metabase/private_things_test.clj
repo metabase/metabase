@@ -58,6 +58,16 @@
                   symb)))
         (symb->external-usages)))
 
+(defn privacy-report
+  "Writes privacy report into a file, then "
+  [& _args]
+  (let [ttsbp (things-that-should-be-private)]
+    (spit "privacy_report.txt"
+          (str "message="
+               (str/join "\n"
+                         (into ["Things that should be private:"]
+                               ttsbp))))))
+
 (deftest ^:parallel things-not-used-elsewhere-should-be-private-test
   (testing (str/join \newline ["This var is only used in the namespace it is declared in. Make it private, so"
                                "Kondo can detect if it is unused, and so we have an easier time refactoring it"
