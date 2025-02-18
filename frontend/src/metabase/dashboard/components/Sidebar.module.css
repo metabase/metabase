@@ -1,0 +1,15 @@
+.SidebarAside {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--mb-color-border);
+  background: var(--mb-color-bg-white);
+}
+
+.ChildrenContainer {
+  flex: auto;
+  overflow-y: auto;
+}
+
+.ButtonContainer {
+  border-top: 1px solid var(--mb-color-border);
+}
