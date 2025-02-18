@@ -747,19 +747,19 @@
       {:clause [:not-null tax], :name "Tax is not empty"}])))
 
 (deftest ^:parallel bigint-frontend-filter-display-names-test
-  (let [id     (meta/field-metadata :orders :id)
+  (let [id        (meta/field-metadata :orders :id)
         pos-value "9223372036854775808"
         neg-value "-9223372036854775809"]
     (check-display-names
-     [{:clause [:= id pos-value], :name (format "ID is %s" pos-value)}
-      {:clause [:!= id pos-value], :name (format "ID is not %s" pos-value)}
-      {:clause [:> id pos-value], :name (format "ID is greater than %s" pos-value)}
-      {:clause [:>= id pos-value], :name (format "ID is greater than or equal to %s" pos-value)}
-      {:clause [:< id pos-value], :name (format "ID is less than %s" pos-value)}
-      {:clause [:<= id pos-value], :name (format "ID is less than or equal to %s" pos-value)}
-      {:clause [:between id 0 pos-value], :name (format "ID is between 0 and %s" pos-value)}
-      {:clause [:between id neg-value 0], :name (format "ID is between %s and 0" neg-value)}
-      {:clause [:between id neg-value pos-value], :name (format "ID is %s – %s" neg-value pos-value)}])))
+     [{:clause [:= id pos-value], :name (str "ID is " pos-value)}
+      {:clause [:!= id pos-value], :name (str "ID is not " pos-value)}
+      {:clause [:> id pos-value], :name (str "ID is greater than " pos-value)}
+      {:clause [:>= id pos-value], :name (str "ID is greater than or equal to " pos-value)}
+      {:clause [:< id pos-value], :name (str "ID is less than " pos-value)}
+      {:clause [:<= id pos-value], :name (str "ID is less than or equal to " pos-value)}
+      {:clause [:between id 0 pos-value], :name (str "ID is between 0 and " pos-value)}
+      {:clause [:between id neg-value 0], :name (str "ID is between " neg-value " and 0")}
+      {:clause [:between id neg-value pos-value], :name (str "ID is " neg-value " – " pos-value)}])))
 
 (deftest ^:parallel relative-datetime-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]
