@@ -33,7 +33,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           title: Update backend dependencies
-          branch: auto-update-backend-deps
+          branch: master
           branch-suffix: timestamp
           delete-branch: true
           add-paths: |
