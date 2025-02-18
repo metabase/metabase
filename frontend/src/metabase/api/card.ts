@@ -162,7 +162,7 @@ export const cardApi = Api.injectEndpoints({
       persistModel: builder.mutation<void, CardId>({
         query: id => ({
           method: "POST",
-          url: `/api/card/${id}/persist`,
+          url: `/api/persist/card/${id}/persist`,
         }),
         async onQueryStarted(id, { dispatch, queryFulfilled }) {
           await queryFulfilled;
@@ -181,7 +181,7 @@ export const cardApi = Api.injectEndpoints({
       unpersistModel: builder.mutation<void, CardId>({
         query: id => ({
           method: "POST",
-          url: `/api/card/${id}/unpersist`,
+          url: `/api/persist/card/${id}/unpersist`,
         }),
         invalidatesTags: (_, error, id) =>
           invalidateTags(error, [
@@ -193,7 +193,7 @@ export const cardApi = Api.injectEndpoints({
       refreshModelCache: builder.mutation<void, CardId>({
         query: id => ({
           method: "POST",
-          url: `/api/card/${id}/refresh`,
+          url: `/api/persist/card/${id}/refresh`,
         }),
         async onQueryStarted(id, { dispatch, queryFulfilled }) {
           await queryFulfilled;

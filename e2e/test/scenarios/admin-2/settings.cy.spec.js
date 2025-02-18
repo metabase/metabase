@@ -1,5 +1,4 @@
 const { H } = cy;
-const { IS_ENTERPRISE } = Cypress.env();
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -275,24 +274,6 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     cy.findByText(/Site URL/i);
   });
 
-  it(
-    "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
-    { tags: "@OSS" },
-    () => {
-      IS_ENTERPRISE && H.setTokenFeatures("all");
-
-      const lastItem = !IS_ENTERPRISE ? "Cloud" : "Appearance";
-
-      cy.visit("/admin/settings/setup");
-      cy.findByTestId("admin-list-settings-items").within(() => {
-        cy.findAllByTestId("settings-sidebar-link").as("settingsOptions");
-        cy.get("@settingsOptions").first().contains("Setup");
-        // eslint-disable-next-line no-unsafe-element-filtering
-        cy.get("@settingsOptions").last().contains(lastItem);
-      });
-    },
-  );
-
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
   it.skip("should hide self-hosted settings when running Metabase Cloud", () => {
     H.setupMetabaseCloud();
@@ -467,8 +448,8 @@ describe.skip(
         cy.findByText("Saved");
 
         // Run the query and save the question
-        H.startNewNativeQuestion().as("editor");
-        cy.get("@editor").type(nativeQuery);
+        H.startNewNativeQuestion();
+        H.NativeEditor.type(nativeQuery);
         H.runNativeQuery();
 
         getCellText().then(res => {
@@ -527,13 +508,16 @@ describe("Cloud settings section", () => {
   it("should prompt us to migrate to cloud if we are not hosted", () => {
     H.setTokenFeatures("all");
     cy.visit("/admin");
-    cy.findByTestId("admin-list-settings-items").findByText("Cloud").click();
-
+    cy.findAllByTestId("settings-sidebar-link")
+      .filter(":contains(Cloud)")
+      .should("have.descendants", ".Icon-gem")
+      .click();
     cy.location("pathname").should("contain", "/admin/settings/cloud");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Migrate to Cloud/i).should("exist");
-    cy.button("Get started").should("exist");
+    cy.findByRole("heading", { name: "Migrate to Metabase Cloud" }).should(
+      "exist",
+    );
+    cy.button("Try for free").should("exist");
   });
 });
 

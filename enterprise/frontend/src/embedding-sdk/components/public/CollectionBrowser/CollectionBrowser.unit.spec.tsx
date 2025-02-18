@@ -91,14 +91,17 @@ async function setup({
 
   const state = setupSdkState();
 
-  renderWithSDKProviders(<CollectionBrowserInner {...props} />, {
-    sdkProviderProps: {
-      authConfig: createMockAuthProviderUriConfig({
-        authProviderUri: "http://TEST_URI/sso/metabase",
-      }),
+  renderWithSDKProviders(
+    <CollectionBrowserInner collectionId="root" {...props} />,
+    {
+      sdkProviderProps: {
+        authConfig: createMockAuthProviderUriConfig({
+          authProviderUri: "http://TEST_URI/sso/metabase",
+        }),
+      },
+      storeInitialState: state,
     },
-    storeInitialState: state,
-  });
+  );
 
   expect(await screen.findByTestId("collection-table")).toBeInTheDocument();
 

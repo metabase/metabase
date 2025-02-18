@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import { Button, Flex, Icon, Loader, Modal, Text } from "metabase/ui";
 import type { GetCollectionDashboardQuestionCandidatesResult } from "metabase-types/api";
@@ -57,8 +56,11 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
       data-testid="move-questions-into-dashboard-modal"
       size="64rem"
     >
-      <Modal.Overlay />
-      <Modal.Content className={S.modal}>
+      <Modal.Content
+        classNames={{
+          content: S.modal,
+        }}
+      >
         <Modal.Header
           px="2.5rem"
           pt="2rem"
@@ -151,7 +153,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
                 variant="filled"
                 onClick={onConfirm}
                 disabled={ctaDisabled}
-                color={mutationError ? "error" : "primary"}
+                color={mutationError ? "error" : "brand"}
               >
                 {t`Move these questions`}
               </Button>

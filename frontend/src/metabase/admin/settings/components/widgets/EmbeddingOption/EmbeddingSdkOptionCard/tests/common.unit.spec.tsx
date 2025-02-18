@@ -16,7 +16,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
 
     expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
     expect(screen.getByText("Pro and Enterprise")).toBeInTheDocument();
-    expect(screen.getByText("Beta")).toBeInTheDocument();
+    expect(screen.queryByText("Beta")).not.toBeInTheDocument();
   });
 
   it("should show 'Try it out' button", async () => {
@@ -31,7 +31,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
       isEmbeddingSdkEnabled: false,
     });
 
-    const toggle = screen.getByRole("checkbox", { name: "Disabled" });
+    const toggle = screen.getByRole("switch", { name: "Disabled" });
     await userEvent.click(toggle);
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -43,7 +43,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
       isEmbeddingSdkEnabled: false,
     });
 
-    const toggle = screen.getByRole("checkbox", { name: "Disabled" });
+    const toggle = screen.getByRole("switch", { name: "Disabled" });
     await userEvent.click(toggle);
 
     expect(updateSetting).toHaveBeenCalledWith(
@@ -58,7 +58,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
       isEmbeddingSdkEnabled: true,
     });
 
-    const toggle = screen.getByRole("checkbox", { name: "Enabled" });
+    const toggle = screen.getByRole("switch", { name: "Enabled" });
     await userEvent.click(toggle);
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

@@ -19,13 +19,13 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn- to-numeric :- number?
-  "Returns either a double or a long. Possible to use the edn reader but we would then have to worry about biginters
-  or arbitrary maps/stuff being read. Error messages would be more confusing EOF while reading instead of a more
-  sensical number format exception."
+  "Returns long, biginteger, or double. Possible to use the edn reader but we would then have to worry about arbitrary
+  maps/stuff being read. Error messages would be more confusing EOF while reading instead of a more sensical number
+  format exception."
   [s]
   (if (re-find #"\." s)
     (Double/parseDouble s)
-    (Long/parseLong s)))
+    (or (parse-long s) (biginteger s))))
 
 (defn- field-type
   [field-clause]

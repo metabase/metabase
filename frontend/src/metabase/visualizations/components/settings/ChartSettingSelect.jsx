@@ -3,6 +3,10 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { Select, Stack } from "metabase/ui";
+import {
+  decodeWidgetValue,
+  encodeWidgetValue,
+} from "metabase/visualizations/lib/settings/widgets";
 
 export const ChartSettingSelect = ({
   // Use null if value is undefined. If we pass undefined, Select will create an
@@ -16,14 +20,17 @@ export const ChartSettingSelect = ({
   placeholderNoOptions,
   id,
   searchProp,
-  footer,
   icon,
   iconWidth,
   pl,
   pr,
+  leftSection,
   rightSection,
+  rightSectionWidth,
   styles,
   w,
+  footer,
+  defaultDropdownOpened,
 }) => {
   const disabled =
     options.length === 0 ||
@@ -31,13 +38,13 @@ export const ChartSettingSelect = ({
 
   const data = options.map(({ name, value }) => ({
     label: name,
-    value,
+    value: encodeWidgetValue(value) || "",
   }));
 
   const dropdownComponent =
     footer &&
     (({ children }) => (
-      <Stack p={0} w="100%" spacing={0}>
+      <Stack p={0} w="100%" gap={0}>
         {children}
         {footer}
       </Stack>
@@ -51,19 +58,26 @@ export const ChartSettingSelect = ({
       data={data}
       dropdownComponent={dropdownComponent}
       disabled={disabled}
-      value={value}
-      onChange={onChange}
+      value={encodeWidgetValue(value)}
+      //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
+      onChange={v => onChange(decodeWidgetValue(v))}
       placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
       initiallyOpened={isInitiallyOpen}
       searchable={!!searchProp}
-      rightSectionWidth="10px"
+      rightSectionWidth={rightSectionWidth ?? "10px"}
+      comboboxProps={{
+        withinPortal: false,
+        floatingStrategy: "fixed",
+      }}
       icon={icon}
       iconWidth={iconWidth}
       pl={pl}
       pr={pr}
+      leftSection={leftSection}
       rightSection={rightSection}
       styles={styles}
       w={w}
+      defaultDropdownOpened={defaultDropdownOpened}
     />
   );
 };
