@@ -242,7 +242,27 @@
                       :labels [:engine]})
    (prometheus/gauge :metabase-search/engine-active
                      {:description "Whether a given engine is active. This does NOT mean that it is the default."
-                      :labels [:engine]})])
+                      :labels [:engine]})
+   ;; notification metrics
+   (prometheus/counter :metabase-notification/send-ok
+                       {:description "Number of successful notification sends."
+                        :labels [:payload-type]})
+   (prometheus/counter :metabase-notification/send-error
+                       {:description "Number of errors when sending notifications."
+                        :labels [:payload-type]})
+   (prometheus/histogram :metabase-notification/send-duration-ms
+                         {:description "Duration of notification sends in milliseconds."
+                          :labels [:payload-type]
+                          ;; 1ms -> 10minutes
+                          :buckets [1 10 50 100 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-notification/channel-send-ok
+                       {:description "Number of successful channel sends."
+                        :labels [:payload-type :channel-type]})
+   (prometheus/counter :metabase-notification/channel-send-error
+                       {:description "Number of errors when sending channel notifications."
+                        :labels [:payload-type :channel-type]})
+   (prometheus/gauge :metabase-notification/concurrent-tasks
+                     {:description "Number of concurrent notification sends."})])
 
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."
