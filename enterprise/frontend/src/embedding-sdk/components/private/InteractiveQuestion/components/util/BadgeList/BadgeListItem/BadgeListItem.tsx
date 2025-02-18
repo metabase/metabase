@@ -1,12 +1,11 @@
 import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Badge, Icon } from "metabase/ui";
+import { ActionIcon, Badge, type BadgeProps, Icon } from "metabase/ui";
 
 import S from "./BadgeListItem.module.css";
 
-type BadgeListItemRootProps = React.ComponentProps<typeof Badge> &
-  HTMLAttributes<HTMLDivElement>;
+type BadgeListItemRootProps = BadgeProps & HTMLAttributes<HTMLDivElement>;
 
 interface BadgeListItemProps extends BadgeListItemRootProps {
   onRemoveItem?: () => void;
