@@ -755,6 +755,33 @@
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
     (model-persistence/invalidate! {:card_id [:in model-ids]})))
 
+(defn update-from-json
+  [database table rows]
+  (let [driver         (driver.u/database->driver database)
+        name->field    (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
+        column-names   (-> rows first keys)]
+    (letfn [(no-unknown-columns! [rows]
+              (let [names (keys name->field)
+                    used  (into #{auto-pk-column-name}
+                                (comp (mapcat keys) (map name))
+                                rows)]
+                (when-let [unrecognized (seq (remove (set names) used))]
+                  (throw (ex-info "Upload keys do not match table columns"
+                                  {:uploaded used :table-names names :unrecognized unrecognized})))))
+            (all-same-keys! [rows]
+              (let [columns (-> rows first keys)]
+                (when-not (every? (comp (partial = columns) keys) rows)
+                  (throw (ex-info "Not all rows have the same columns" {:face ":("})))))]
+      (no-unknown-columns! rows)
+      (all-same-keys! rows))
+    (driver/insert-into! driver
+                         (:id database)
+                         (table-identifier table)
+                         column-names
+                         (for [row rows]
+                           (for [col column-names]
+                             (get row col))))))
+
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try
     (let [parse (infer-parser filename file)]

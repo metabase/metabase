@@ -360,6 +360,7 @@
         decoded ((decoder schema) params)]
     (when-not (mr/validate schema decoded)
       (throw (ex-info (format "Invalid %s" (case params-type
+                                             :request "request parameters"
                                              :route "route parameters"
                                              :query "query parameters"
                                              :body  "body"))

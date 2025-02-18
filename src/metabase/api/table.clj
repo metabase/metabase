@@ -637,7 +637,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body
+   body
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
                                                  [:map
@@ -645,10 +645,23 @@
                                                    [:map
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
-  (update-csv! {:table-id id
-                :filename (get-in multipart-params ["file" :filename])
-                :file     (get-in multipart-params ["file" :tempfile])
-                :action   ::upload/append}))
+  (api/let-404 [table (t2/select-one :model/Table :id id)]
+    (api/check-403 (mi/can-write? table))
+    (update-csv! {:table-id id
+                  :filename (get-in multipart-params ["file" :filename])
+                  :file     (get-in multipart-params ["file" :tempfile])
+                  :action   ::upload/append})))
+
+(api.macros/defendpoint :post "/:id/append-json"
+  "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by
+  uploading a CSV file."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _
+   body :- [:sequential map?]]
+  (api/let-404 [table (t2/select-one :model/Table :id id)]
+    (api/check-403 (mi/can-write? table))
+    (let [database (table/database table)]
+      (upload/update-from-json database table body))))
 
 (api.macros/defendpoint :post "/:id/replace-csv"
   "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have
