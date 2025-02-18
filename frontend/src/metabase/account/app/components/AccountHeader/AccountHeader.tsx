@@ -1,15 +1,16 @@
 import type { Path } from "history";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import Radio from "metabase/core/components/Radio";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import { Avatar, Box, Button, Flex, Icon, Indicator, Modal } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
+import S from "./AccountHeader.module.css";
 import {
   AccountHeaderRoot,
-  HeaderAvatar,
   HeaderSection,
   HeaderSubtitle,
   HeaderTitle,
@@ -26,6 +27,7 @@ export const AccountHeader = ({
   path,
   onChangeLocation,
 }: AccountHeaderProps) => {
+  const [modalOpen, setModalOpen] = useState(false);
   const hasPasswordChange = useMemo(
     () => PLUGIN_IS_PASSWORD_USER.every(predicate => predicate(user)),
     [user],
@@ -48,7 +50,27 @@ export const AccountHeader = ({
   return (
     <AccountHeaderRoot data-testid="account-header">
       <HeaderSection>
-        <HeaderAvatar user={user} />
+        {/* <HeaderAvatar user={user} /> */}
+        <Indicator
+          label={<Icon name="pencil" />}
+          size={30}
+          offset={12}
+          color="brand"
+          classNames={{
+            root: S.HoverTarget,
+            indicator: S.ShowOnHover,
+          }}
+        >
+          <Avatar
+            mb="1rem"
+            src={user.src}
+            name={userFullName ?? undefined}
+            color="brand"
+            variant="filled"
+            size="xl"
+            onClick={() => setModalOpen(true)}
+          />
+        </Indicator>
         {userFullName && <HeaderTitle>{userFullName}</HeaderTitle>}
         <HeaderSubtitle>{user.email}</HeaderSubtitle>
       </HeaderSection>
@@ -58,6 +80,45 @@ export const AccountHeader = ({
         options={tabs}
         onChange={onChangeLocation}
       />
+      <Modal
+        opened={modalOpen}
+        onClose={() => setModalOpen(false)}
+        withCloseButton={false}
+      >
+        <Box>
+          <Box
+            bg="bg-medium"
+            pos="absolute"
+            w="100%"
+            h="125px"
+            top={0}
+            left={0}
+          />
+          <Flex direction="column" align="center" pt="lg">
+            <Box
+              bg="bg-medium"
+              p="sm"
+              style={{ borderRadius: "100%" }}
+              mb="1rem"
+            >
+              <Avatar
+                src={user.src}
+                name={userFullName ?? undefined}
+                color="brand"
+                variant="filled"
+                size="7.5rem"
+              />
+            </Box>
+            <Button variant="subtle" mb="1rem">
+              Upload new image
+            </Button>
+            <Flex gap="1rem">
+              <Button>Remove Image</Button>
+              <Button>Use Initials</Button>
+            </Flex>
+          </Flex>
+        </Box>
+      </Modal>
     </AccountHeaderRoot>
   );
 };

@@ -34,7 +34,10 @@ export const clearCurrentUser = createAction(
 export const currentUser = createReducer<User | null>(null, builder => {
   builder
     .addCase(clearCurrentUser, () => null)
-    .addCase(refreshCurrentUser.fulfilled, (state, action) => action.payload)
+    .addCase(refreshCurrentUser.fulfilled, (state, action) => ({
+      src: "https://avatars.githubusercontent.com/u/39564493?v=4?s=400",
+      ...action.payload,
+    }))
     .addCase(CLOSE_QB_NEWB_MODAL, state => {
       if (state) {
         state.is_qbnewb = false;

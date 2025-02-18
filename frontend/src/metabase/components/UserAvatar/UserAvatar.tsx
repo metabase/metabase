@@ -16,6 +16,7 @@ interface User {
   last_name: string | null;
   common_name: string;
   email?: string;
+  src?: string;
 }
 
 interface Group {
@@ -27,7 +28,11 @@ export default function UserAvatar({
   user,
   ...props
 }: UserAvatarProps | GroupProps) {
-  return <StyledAvatar {...props}>{userInitials(user) || "?"}</StyledAvatar>;
+  return (
+    <StyledAvatar {...props} src={user.src}>
+      {!user.src ? userInitials(user) || "?" : null}
+    </StyledAvatar>
+  );
 }
 
 export function Avatar({ children, ...props }: { children: string }) {

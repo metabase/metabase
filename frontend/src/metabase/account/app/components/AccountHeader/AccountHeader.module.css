@@ -1,0 +1,12 @@
+.HoverTarget {
+  &:hover {
+    .ShowOnHover {
+      opacity: 1;
+    }
+  }
+}
+
+.ShowOnHover {
+  opacity: 0;
+  transition: opacity 100ms ease;
+}

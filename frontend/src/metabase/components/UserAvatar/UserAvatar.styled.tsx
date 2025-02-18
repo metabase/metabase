@@ -7,6 +7,7 @@ export interface AvatarProps {
   height?: string[];
   width?: string[];
   bg?: string;
+  src?: string;
 }
 
 export const Avatar = styled.div<AvatarProps>`
@@ -21,4 +22,6 @@ export const Avatar = styled.div<AvatarProps>`
   line-height: 1;
   background-color: ${({ bg = color("brand") }) => bg};
   flex-shrink: 0;
+  ${({ src }) =>
+    src ? `background-image: url(${src}); background-size: cover;` : ""}
 `;
