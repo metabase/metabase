@@ -81,6 +81,7 @@
 
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
+  :deprecated "0.54.0"
   :default "metabase_files"
   :encryption :no
   :visibility :settings-manager
@@ -347,24 +348,6 @@
    (ms/InstanceOfClass (Class/forName "[B"))
    [:fn not-empty]])
 
-(mu/defn join-channel!
-  "Given a channel ID, calls Slack API `conversations.join` endpoint to join the channel as the Metabase Slack app.
-  This must be done before uploading a file to the channel, if using a Slack app integration."
-  [channel-id :- ms/NonBlankString]
-  (POST "conversations.join" {:form-params {:channel channel-id}}))
-
-(defn- maybe-lookup-id
-  "Slack requires the slack app to be in the channel that we post all of our attachments to. Slack changed (around June
-  2022 #23229) the \"conversations.join\" api to require the internal slack id rather than the common name. This makes
-  a lot of sense to ensure we continue to operate despite channel renames. Attempt to look up the channel-id in the
-  list of channels to obtain the internal id. Fallback to using the current channel-id."
-  [channel-id cached-channels]
-  (let [name->id    (into {} (comp (filter (comp #{"channel"} :type))
-                                   (map (juxt :name :id)))
-                          (:channels cached-channels))
-        channel-id' (get name->id channel-id channel-id)]
-    channel-id'))
-
 (defn- poll
   "Returns `(thunk)` if the result satisfies the `done?` predicate within the timeout and nil otherwise."
   [{:keys [thunk done? timeout-ms ^long interval-ms]}]
@@ -384,34 +367,26 @@
 (defn complete!
   "Completes the file upload to a Slack channel by calling the `files.completeUploadExternal` endpoint, and polls the
    same endpoint until the file is uploaded to the channel. Returns the URL of the uploaded file."
-  [& {:keys [channel-id file-id filename]}]
+  [& {:keys [file-id filename]}]
   (let [complete! (fn []
                     (POST "files.completeUploadExternal"
-                      {:query-params {:files      (json/encode [{:id file-id, :title filename}])
-                                      :channel_id channel-id}}))
-        complete-response (try
-                            (complete!)
-                            (catch Throwable e
-                              ;; If file upload fails with a "not_in_channel" error, we join the channel and try again.
-                              ;; This is expected to happen the first time a Slack subscription is sent.
-                              (if (= "not_in_channel" (:error-code (ex-data e)))
-                                (do (join-channel! channel-id)
-                                    (complete!))
-                                (throw (ex-info (ex-message e)
-                                                (assoc (ex-data e) :channel-id channel-id, :filename filename))))))
-        ;; Step 4: Poll the endpoint to confirm the file is uploaded to the channel
-        uploaded-to-channel? (fn [response]
-                               (boolean (some-> response :files first :shares not-empty)))
-        _ (when-not (or
-                     (uploaded-to-channel? complete-response)
-                     (u/poll {:thunk       complete!
-                              :done?       uploaded-to-channel?
-                              ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
-                              ;; If it takes more than 20 seconds, something else is wrong and we should abort.
-                              :timeout-ms  20000
-                              :interval-ms 500}))
-            (throw (ex-info "Timed out waiting to confirm the file was uploaded to a Slack channel."
-                            {:channel-id channel-id, :filename filename})))]
+                      {:query-params {:files (json/encode [{:id file-id, :title filename}])}}))
+        complete-response
+        (try
+          (complete!)
+          (catch Throwable e
+            (throw (ex-info (ex-message e) (assoc (ex-data e) :filename filename)))))
+        uploaded? (fn [file] (seq (:filetype file)))
+        thunk     (fn [] (:file (GET "files.info" {:file file-id})))
+        _ (when-not (or (uploaded? (first (:files complete-response)))
+                        (u/poll {:thunk thunk
+                                 :done? uploaded?
+                                 ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
+                                 ;; If it takes more than 20 seconds, something else is wrong and we should abort.
+                                 :timeout-ms 20000
+                                 :interval-ms 500}))
+            (throw (ex-info "Timed out waiting to confirm the file was uploaded to Slack."
+                            {:filename filename})))]
     (get-in complete-response [:files 0 :url_private])))
 
 (defn- get-upload-url! [filename file]
@@ -428,8 +403,7 @@
   "Calls Slack API `files.getUploadURLExternal` and `files.completeUploadExternal` endpoints to upload a file and returns
    the URL of the uploaded file."
   [file       :- NonEmptyByteArray
-   filename   :- ms/NonBlankString
-   channel-id :- ms/NonBlankString]
+   filename   :- ms/NonBlankString]
   {:pre [(slack-configured?)]}
   ;; TODO: we could make uploading files a lot faster by uploading the files in parallel.
   ;; Steps 1 and 2 can be done for all files in parallel, and step 3 can be done once at the end.
@@ -438,15 +412,15 @@
         ;; Step 2: Upload the file to the obtained upload URL
         _ (upload-file-to-url! upload_url file)
         ;; Step 3: Complete the upload using files.completeUploadExternal
-        file-url (complete! {:channel-id (maybe-lookup-id channel-id (slack-cached-channels-and-usernames))
-                             :file-id    file_id
+        file-url (complete! {:file-id    file_id
                              :filename   filename})]
     (u/prog1 {:url file-url
               :id file_id}
       (log/debug "Uploaded image" (:url <>)))))
 
 (mu/defn post-chat-message!
-  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. `attachments` can be either serialized JSON for notification attachments or a map containing blocks."
+  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. message-content if provided should be a map containing :blocks
+  e.g {:blocks [{:type \"section\", :text {:type \"plain_text\", :text \"Hello, world!\"}}"
   [channel-id  :- ms/NonBlankString
    text-or-nil :- [:maybe :string]
    & [message-content]]
@@ -455,14 +429,15 @@
                      :username    "MetaBot"
                      :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
                      :text        text-or-nil}
-        message-params (cond
-                        ;; If message-content contains :blocks key, it's a new-style message
-                         (:blocks message-content)
-                         {:blocks (json/encode (:blocks message-content))}
-                        ;; Otherwise treat it as notification attachments
-                         (seq message-content)
-                         {:attachments (json/encode message-content)}
-                         :else
-                         {})]
+
+        message-content
+        (if (sequential? message-content)
+          {:blocks (mapcat :blocks message-content)}
+          message-content)
+
+        message-params
+        (if (seq (:blocks message-content))
+          {:blocks (json/encode (:blocks message-content))}
+          {})]
     (POST "chat.postMessage"
       {:form-params (merge base-params message-params)})))

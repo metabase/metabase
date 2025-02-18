@@ -137,8 +137,7 @@
         (with-redefs [slack/upload-file! (constantly mock-file-info)
                       slack/post-chat-message! (constantly nil)
                       slack/channel-exists? (constantly true)]
-          (mt/with-temporary-setting-values [slack-files-channel "test-files"
-                                             slack-bug-report-channel "test-bugs"]
+          (mt/with-temporary-setting-values [slack-bug-report-channel "test-bugs"]
             (let [response (mt/user-http-request :crowberto :post 200 "slack/bug-report"
                                                  {:diagnosticInfo diagnostic-info})]
               (is (= expected-blocks (#'api.slack/create-slack-message-blocks diagnostic-info mock-file-info)))
@@ -150,8 +149,7 @@
         (with-redefs [slack/upload-file! (constantly mock-file-info)
                       slack/post-chat-message! (constantly nil)
                       slack/channel-exists? (constantly true)]
-          (mt/with-temporary-setting-values [slack-files-channel "test-files"
-                                             slack-bug-report-channel "test-bugs"]
+          (mt/with-temporary-setting-values [slack-bug-report-channel "test-bugs"]
             (let [anonymous-info (dissoc diagnostic-info :reporter)
                   anonymous-blocks (walk/postwalk
                                     (fn [m] (if (and (map? m) (= (:type m) "link") (str/starts-with? (:url m) "mailto:"))

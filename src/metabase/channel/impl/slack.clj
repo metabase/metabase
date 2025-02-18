@@ -70,19 +70,26 @@
 
   Nested `blocks` lists containing text cards are passed through unmodified."
   [attachments]
-  (letfn [(f [a] (select-keys a [:title :title_link :fallback]))]
-    (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
-              (conj processed (if (:blocks attachment-data)
-                                attachment-data
-                                (if (:render/text rendered-info)
-                                  (-> (f attachment-data)
-                                      (assoc :text (:render/text rendered-info)))
-                                  (let [image-bytes (channel.render/png-from-render-info rendered-info slack-width)
-                                        {:keys [url]} (slack/upload-file! image-bytes attachment-name channel-id)]
-                                    (-> (f attachment-data)
-                                        (assoc :image_url url)))))))
-            []
-            attachments)))
+  (reduce (fn [processed {:keys [title title_link attachment-name rendered-info] :as attachment-data}]
+            (conj processed (if (:blocks attachment-data)
+                              attachment-data
+                              (if (:render/text rendered-info)
+                                {:blocks [{:type "section"
+                                           :text {:type "mrkdwn"
+                                                  :text (format "<%s|%s>" title_link title)}}
+                                          {:type "section"
+                                           :text {:type "plain_text"
+                                                  :text (:render/text rendered-info)}}]}
+                                (let [image-bytes   (channel.render/png-from-render-info rendered-info slack-width)
+                                      {file-id :id} (slack/upload-file! image-bytes attachment-name)]
+                                  {:blocks [{:type "section"
+                                             :text {:type "mrkdwn"
+                                                    :text (format "<%s|%s>" title_link title)}}
+                                            {:type "image"
+                                             :slack_file {:id file-id}
+                                             :alt_text title}]})))))
+          []
+          attachments))
 
 (def ^:private SlackMessage
   [:map {:closed true}

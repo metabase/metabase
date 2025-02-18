@@ -155,12 +155,9 @@
                                          ;; TODO FIXME -- this should not use `camelCase` keys
                                          [:diagnosticInfo map?]]]
   (try
-    (let [files-channel (slack/files-channel)
-          bug-report-channel (slack/bug-report-channel)
+    (let [bug-report-channel (slack/bug-report-channel)
           file-content (.getBytes (json/encode diagnostic-info {:pretty true}))
-          file-info (slack/upload-file! file-content
-                                        "diagnostic-info.json"
-                                        files-channel)
+          file-info (slack/upload-file! file-content "diagnostic-info.json")
           blocks (create-slack-message-blocks diagnostic-info file-info)]
       (slack/post-chat-message!
        bug-report-channel
