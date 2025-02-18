@@ -477,6 +477,7 @@
            model-persistence
            models
            permissions
+           pivot
            premium-features
            public-settings
            request
