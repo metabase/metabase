@@ -60,10 +60,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           BRANCH="${{ steps.branch_name.outputs.branch }}"
-          git diff master "$BRANCH"
           TITLE="Update Backend Dependencies"
           DESCRIPTION="Update backend dependencies"
-          PR_URL=$(gh pr create --base master --head "$BRANCH" --label "no-backport" --title "$TITLE" --body "$DESCRIPTION")
+          PR_URL=$(gh pr create --base master --head "${BRANCH}" --label "no-backport" --title "${TITLE}" --body "${DESCRIPTION}")
           PR_NUMBER=${PR_URL##*/}
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
       - name: Enable Pull Request Auto-Merge
