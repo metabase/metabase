@@ -432,8 +432,7 @@
   (let [as-date (->date expr)]
     (cond-> as-date
       (h2x/is-of-type? expr "timestamp")   ->timestamp
-      (h2x/is-of-type? expr "datetime")    h2x/->datetime
-      (h2x/is-of-type? expr "datetime(3)") h2x/->datetime)))
+      (h2x/is-of-type? expr "datetime")    h2x/->datetime)))
 
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week

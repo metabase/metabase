@@ -10,7 +10,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -730,10 +729,8 @@
                                  (lib.metadata/field (qp.store/metadata-provider) id-or-name))
           allow-casting?       (and field-metadata
                                     (not (:qp/ignore-coercion options)))
-          ->db-type            (sql-jdbc.actions/base-type->sql-type-map driver)
           database-type        (or database-type
-                                   (:database-type field-metadata)
-                                   (some-> options :base-type ->db-type))
+                                   (:database-type field-metadata))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
                                           (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
