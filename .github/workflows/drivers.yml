@@ -884,7 +884,7 @@ jobs:
 
   be-tests-sqlserver:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
