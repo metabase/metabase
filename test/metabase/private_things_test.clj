@@ -65,7 +65,6 @@
     (->> ttsbp
          (into ["# Things that should be private but aren't:"])
          (str/join "\n")
-         str
          (spit "privacy_report.txt"))))
 
 (deftest ^:parallel things-not-used-elsewhere-should-be-private-test
