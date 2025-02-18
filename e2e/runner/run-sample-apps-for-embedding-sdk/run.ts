@@ -40,17 +40,9 @@ async function initSampleApp({
   setupConfig: SampleAppSetupConfig;
   embeddingSdkVersion: EmbeddingSdkVersion;
 }) {
-  const {
-    subAppName,
-    branch,
-    env,
-    startCommand,
-    beforeSetup,
-    additionalSetup,
-  } = setupConfig;
+  const { subAppName, branch, env, startCommand, additionalSetup } =
+    setupConfig;
   const loggerPrefix = [appName, subAppName].filter(Boolean).join("/");
-
-  beforeSetup?.({ appName, subAppName });
 
   const { rootPath, installationPath } = await fetchApp({
     appName,
