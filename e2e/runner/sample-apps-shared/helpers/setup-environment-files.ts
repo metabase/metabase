@@ -1,8 +1,8 @@
 import fs from "fs";
 
-import { findUpSync } from "find-up";
 import path from "path";
 
+import { findUp } from "./find-up";
 import { logWithPrefix } from "./log-with-prefix";
 
 type EnvFilePaths = {
@@ -21,8 +21,7 @@ function getEnvFilePaths({
   rootPath: string;
   installationPath: string;
 }): EnvFilePaths | null {
-  const exampleEnvFileFullPath = findUpSync(EXAMPLE_ENV_FILE_NAMES, {
-    type: "file",
+  const exampleEnvFileFullPath = findUp(EXAMPLE_ENV_FILE_NAMES, {
     cwd: installationPath,
     stopAt: rootPath,
   });
