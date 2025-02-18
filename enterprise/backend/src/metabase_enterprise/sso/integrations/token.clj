@@ -5,4 +5,4 @@
    [ring.util.response :as response]))
 
 (defmethod sso.i/sso-get :token [_]
-  (-> (response/response {:url (str (sso-settings/jwt-identity-provider-uri) "?" "token=true")}) (response/header "Access-Control-Allow-Credentials" "true")))
+  (response/response {:url (str (sso-settings/jwt-identity-provider-uri) "?" "token=true")}))
