@@ -13,7 +13,7 @@
     "\"alma\" llama" "\"\"\"alma\"\" llama\""))
 
 (deftest ^:parallel schema-sample-test
-  (mt/with-driver :h2
+  (mt/test-driver :h2
     (let [query {:database (mt/id)
                  :native {:query (str "SELECT * FROM x.orders1"
                                       " INNER JOIN products ON orders1.product_id = products.id"
@@ -45,6 +45,32 @@
                       "  NAME CHARACTER VARYING,\n"
                       "  LAST_LOGIN TIMESTAMP,\n"
                       "  PASSWORD CHARACTER VARYING\n"
+                      ");\n")
+                 normalize)
+             (-> (#'ai-sql-fixer.api/schema-sample query {:all-tables-limit 5})
+                 normalize))))))
+
+(deftest ^:parallel no-used-table-test
+  (mt/test-driver :postgres
+    (let [query {:database (mt/id)
+                 :native {:query "SELECT * FROM x.orders1"}}
+          normalize #(into #{} (str/split % #"(?<=;)\n"))]
+      (is (= (-> (str "CREATE TABLE public.orders (\n"
+                      "  id int4,\n"
+                      "  user_id int4,\n"
+                      "  product_id int4,\n"
+                      "  subtotal float8,\n"
+                      "  tax float8,\n"
+                      "  total float8,\n"
+                      "  discount float8,\n"
+                      "  created_at timestamptz,\n"
+                      "  quantity int4\n"
+                      ");\n"
+                      "CREATE TABLE public.users (\n"
+                      "  id int4,\n"
+                      "  name text,\n"
+                      "  last_login timestamp,\n"
+                      "  password text\n"
                       ");\n")
                  normalize)
              (-> (#'ai-sql-fixer.api/schema-sample query {:all-tables-limit 5})
