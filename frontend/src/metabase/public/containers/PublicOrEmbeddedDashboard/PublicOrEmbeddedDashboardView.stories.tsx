@@ -459,6 +459,10 @@ function ScrollDecorator(Story: StoryFn) {
         asyncCallback();
       }
     }, 100);
+
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [asyncCallback]);
 
   return <Story />;
