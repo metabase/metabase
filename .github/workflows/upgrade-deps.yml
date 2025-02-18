@@ -7,6 +7,10 @@ on:
     # weekly on Mondays
     - cron: '00 0 * * 1'
 
+  push:
+    branches:
+      - auto-upgrade-backend-deps-job
+
 permissions:
   contents: write
   pull-requests: write
