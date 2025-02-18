@@ -1,7 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
-import { type ComponentProps, useEffect } from "react";
+import { type ComponentProps, useEffect, useMemo } from "react";
 
 import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
@@ -70,9 +70,17 @@ function ReduxDecorator(Story: StoryFn) {
  */
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
 function WaitForResizeToStopDecorator(Story: StoryFn) {
-  const asyncCallback = createAsyncCallback();
+  const asyncCallback = useMemo(() => createAsyncCallback(), []);
+
   useEffect(() => {
-    setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
+    const timeoutId = setTimeout(
+      asyncCallback,
+      TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING,
+    );
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [asyncCallback]);
 
   return <Story />;
@@ -439,7 +447,7 @@ export const CardVisualizationsDarkTheme = {
 };
 
 function ScrollDecorator(Story: StoryFn) {
-  const asyncCallback = createAsyncCallback();
+  const asyncCallback = useMemo(() => createAsyncCallback(), []);
 
   useEffect(() => {
     const scrollContainer = document.querySelector("[data-testid=embed-frame]");
