@@ -23,7 +23,7 @@ function wrapPlaceholder(name: string) {
     return name;
   }
 
-  return `⟨${name}⟩`;
+  return name;
 }
 
 export type HelpTextProps = {
