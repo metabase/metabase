@@ -41,5 +41,7 @@ jobs:
             modules/**/deps.edn
           commit-message: >-
             Update backend dependencies
+          reviewers: |
+            metabase/backend-developers
           # team-reviewers: |
           #   metabase/backend-developers
