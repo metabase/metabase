@@ -60,6 +60,12 @@
 ;; - The context contains a stack of previous queries, so we can (with some probability) pop back up that stack to
 ;;   abandon a branch we've been exploring and try something else.
 
+(def sane-iterations-limit
+  "There are circumstances where only a single random query is needed. The [[random-queries-from]] is used to
+  generate sequence of queries of growing complexity. This constant is used to clamp number of operations in caller's
+  code. It's made up; subject to change with further development."
+  40)
+
 (defn- step-key [[op]]
   op)
 
@@ -332,6 +338,8 @@
 (add-step {:kind   :join
            :weight 30})
 
+(def ^:dynamic *available-card-ids* nil)
+
 (defmethod next-steps* :join [query _join]
   (let [stage-number        (choose-stage query)
         strategy            (gen.u/weighted-choice {:left-join  80
@@ -340,11 +348,15 @@
                                                     ;; TODO: Make the following driver dependent? Temporarily suppressed
                                                     ;;       as I test against h2
                                                     #_#_:full-join  5})
-        ;; TODO: Explicit joins against cards are possible, but we don't have cards yet.
-        condition-space     (for [table (lib.metadata/tables query)
-                                  :let [conditions (lib/suggested-join-conditions query stage-number table)]
-                                  :when (seq conditions)]
-                              [table conditions])]
+        ;; WIP: Cards: Does it make sense to generate reasonable conditions for cards? (same type columns; probably)
+        condition-space     (concat (for [table (lib.metadata/tables query)
+                                          :let [conditions (lib/suggested-join-conditions query stage-number table)]
+                                          :when (seq conditions)]
+                                      [table conditions])
+                                    ;; TODO: *available-card-ids* -> *available-cards*
+                                    (for [card (lib.metadata/bulk-metadata query :metadata/card *available-card-ids*)
+                                          :let [conditions [(lib/= (lib/+ 1 1) 2)]]]
+                                      [card conditions]))]
     (when-let [[target conditions] (and (seq condition-space)
                                         (tu.rng/rand-nth condition-space))]
       [:join stage-number target (tu.rng/rand-nth conditions) strategy])))
@@ -368,7 +380,9 @@
                      :fields     (if summaries?
                                    (symbol "nil #_\"key is not present.\"")
                                    :all)
-                     :stages     [{:source-table (:id target)}]
+                     :stages     [(fn [x] (and (map? x)
+                                               (= ((some-fn :source-table :source-card) x)
+                                                  (:id target))))]
                      :conditions [condition]}
                     (last after-joins)))))))))
 
@@ -611,3 +625,16 @@
       (println)
       (println)))
   (print-stats stats))
+
+;; misc ========================================================================
+
+(defn random-query
+  "Genereate single random query, card or table based."
+  [mp]
+  (let [tables (lib.metadata/tables mp)
+        ;; this is dummy -- one way or another I have to make mp call per new card
+        cards  (lib.metadata/bulk-metadata mp :metadata/card *available-card-ids*)]
+    (->  (random-queries-from (lib/query mp (tu.rng/rand-nth (concat tables cards)))
+                              (inc (tu.rng/rand-int sane-iterations-limit)))
+         last)))
+
