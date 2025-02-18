@@ -28,6 +28,10 @@ export function isExpression(expr: unknown): expr is Expression {
   );
 }
 
+export function isEmpty(expr: unknown): expr is [] {
+  return expr == null || (Array.isArray(expr) && expr.length === 0);
+}
+
 export function isLiteral(
   expr: unknown,
 ): expr is StringLiteral | NumericLiteral | BooleanLiteral {
