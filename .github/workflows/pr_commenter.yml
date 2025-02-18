@@ -1,0 +1,38 @@
+name: PR Comment Action
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      # First, checkout the repository
+      - uses: actions/checkout@v4
+
+      # Run your script that outputs "hi"
+      # Replace this with your actual script execution
+      - name: Run script
+        id: script
+        run: |
+          echo "message=hello there!" >> $GITHUB_OUTPUT
+
+      # Post the comment using github-script
+      - name: Post comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = process.env.SCRIPT_OUTPUT;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: message
+            });
+        env:
+          SCRIPT_OUTPUT: ${{ steps.script.outputs.message }}
