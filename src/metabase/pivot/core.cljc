@@ -153,11 +153,21 @@
 (defn- compare-fn
   [sort-order]
   (let [locale-compare
-        #?(:clj
-           (let [collator (Collator/getInstance)]
-             (fn [a b] (.compare collator (str a) (str b))))
-           :cljs
-           (fn [a b] (.localeCompare (str a) (str b))))]
+        (fn [a b]
+          (cond
+            (= a b)
+            0
+
+            (string? a)
+            #?(:clj
+               ;; TODO: make this a singleton collator?
+               (let [collator (Collator/getInstance)]
+                 (.compare collator (str a) (str b)))
+               :cljs
+               (.localeCompare (str a) (str b)))
+
+            :else
+            (compare a b)))]
     (case (keyword sort-order)
       :ascending  locale-compare
       :descending #(locale-compare %2 %1)
@@ -264,7 +274,7 @@
         rest-subs-by-col    (rest show-subs-by-col)
         has-subtotal        (and is-subtotal-enabled should-show-subtotal)
         subtotal            (if has-subtotal
-                              [{:value (str "Totals for " (:value row-item))
+                              [{:value (i18n/tru "Totals for {0}" (:value row-item))
                                 :rawValue (:rawValue row-item)
                                 :span 1
                                 :isSubtotal true
@@ -305,7 +315,7 @@
   [column]
   (or (:display_name (:remapped_to_column column))
       (:display_name column)
-      "(empty)"))
+      (i18n/tru "(empty)")))
 
 (defn- update-node
   [node leaf-nodes]
