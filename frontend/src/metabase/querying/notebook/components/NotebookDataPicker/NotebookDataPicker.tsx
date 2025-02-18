@@ -7,11 +7,11 @@ import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/DataPicker";
-import { SimpleDataPicker } from "metabase/embedding-sdk/components/SimpleDataPicker";
 import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getIsEmbedded, getIsEmbeddingSdk } from "metabase/selectors/embed";
@@ -243,7 +243,7 @@ function EmbeddingDataPicker({
   const shouldUseSimpleDataPicker = Number(dataSourceCountData?.total) < 100;
   if (shouldUseSimpleDataPicker) {
     return (
-      <SimpleDataPicker
+      <PLUGIN_EMBEDDING_SDK.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
         selectedEntity={pickerInfo?.tableId}
         isInitiallyOpen={!table}
