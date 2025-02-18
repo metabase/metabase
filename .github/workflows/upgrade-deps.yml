@@ -42,6 +42,8 @@ jobs:
       #     git checkout -B "update-backend-dependencies-$COMMIT_HASH"
       - name: Create Pull Request
         id: create_pull_request
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           PR_URL=$(gh pr create --base master --head HEAD --label "no-backport" --title "Update Backend Dependencies" --body "Update backend dependencies")
           PR_NUMBER=${PR_URL##*/}
