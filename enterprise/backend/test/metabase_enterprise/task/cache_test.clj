@@ -524,6 +524,7 @@
                 (is (= result (mt/rows original-result)))
                 (let [original-cache-entry (most-recent-cache-entry)]
                   (try
+                    (is (= 1 (:schedule-refreshed (@#'task.cache/refresh-cache-configs!))))
                     (@#'task.cache/refresh-cache-configs!)
                     (let [refreshed-cache-entry (most-recent-cache-entry)
                           cached-result (run-query-for-card-id card-id parameters)]
@@ -556,7 +557,7 @@
                 (is (= result (mt/rows original-result)))
                 (let [original-cache-entry (most-recent-cache-entry)]
                   (try
-                    (@#'task.cache/refresh-cache-configs!)
+                    (is (= 1 (:schedule-refreshed (@#'task.cache/refresh-cache-configs!))))
                     (let [refreshed-cache-entry (most-recent-cache-entry)
                           cached-result (run-query-for-dashcard card-id dashboard-id dashcard-id parameters)]
                       (is (t/before? (:updated_at original-cache-entry) (:updated_at refreshed-cache-entry)))
@@ -581,15 +582,15 @@
                                                  :config {:unit "hours" :duration 1}}]
               ;; Run card once to populate cache
               (let [original-result (run-query-for-card-id card-id parameters)]
-                (def original-result original-result)
                 (is (= result (mt/rows original-result)))
                 ;; Run again to register a cache hit
                 (is (= result (mt/rows (run-query-for-card-id card-id parameters))))
                 (let [original-cache-entry (most-recent-cache-entry)]
                   (try
+                    (is (= 0 (:duration-refreshed (@#'task.cache/refresh-cache-configs!))))
                     ;; Manually expire the existing cache entry. Now the cache should be refreshable
                     (expire-cache-entry! original-cache-entry)
-                    (@#'task.cache/refresh-cache-configs!)
+                    (is (= 1 (:duration-refreshed (@#'task.cache/refresh-cache-configs!))))
                     (let [refreshed-cache-entry (most-recent-cache-entry)
                           cached-result (run-query-for-card-id card-id parameters)]
                       (compare-query-results original-result cached-result)
@@ -622,9 +623,10 @@
                 (is (= result (mt/rows (run-query-for-dashcard card-id dashboard-id dashcard-id parameters))))
                 (let [original-cache-entry (most-recent-cache-entry)]
                   (try
+                    (is (= 0 (:duration-refreshed (@#'task.cache/refresh-cache-configs!))))
                     ;; Manually expire the existing cache entry. Now the cache should be refreshable
                     (expire-cache-entry! original-cache-entry)
-                    (@#'task.cache/refresh-cache-configs!)
+                    (is (= 1 (:duration-refreshed (@#'task.cache/refresh-cache-configs!))))
                     (let [refreshed-cache-entry (most-recent-cache-entry)
                           cached-result (run-query-for-dashcard card-id dashboard-id dashcard-id parameters)]
                       (is (t/before? (:updated_at original-cache-entry) (:updated_at refreshed-cache-entry)))

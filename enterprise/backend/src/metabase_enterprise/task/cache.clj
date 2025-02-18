@@ -8,7 +8,6 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task :as task]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -150,8 +149,10 @@
   (t2/delete! :model/QueryCache :query_hash [:in (map :cache-hash queries)]))
 
 (defn- maybe-refresh-duration-caches!
+  "Detects caches with strategy=duration that are eligible for refreshing, and returns a count of the refresh jobs that
+  were generated (i.e. the number of different cards refreshed, with each card potentially having multiple queries)."
   []
-  (when-let [queries (seq (duration-queries-to-rerun))]
+  (if-let [queries (seq (duration-queries-to-rerun))]
     (let [refresh-defs (->> queries
                             (group-by (juxt :card-id :dashboard-id))
                             (map (fn [[[card-id dashboard-id] queries]]
@@ -162,7 +163,9 @@
       (clear-caches-for-queries! queries)
       (if *run-cache-refresh-async*
         (submit-refresh-task-async! task)
-        (task)))))
+        (task))
+      (count refresh-defs))
+    0))
 
 (defn- scheduled-base-query-to-rerun-honeysql
   "HoneySQL query for finding the the base query definition we should run for a card ID (i.e. the unparameterized
@@ -272,19 +275,28 @@
   :feature :none
   []
   (let [now (t/offset-date-time)
-        invalidated-count
-        (count
-         (for [{:keys [id config refresh_automatically] :as cache-config} (select-ready-to-run :schedule)]
-           (u/prog1 (t2/update! :model/CacheConfig
-                                {:id id}
-                                {:next_run_at    (calc-next-run (:schedule config) now)
-                                 :invalidated_at now})
-             (when (and (premium-features/enable-preemptive-caching?)
-                        refresh_automatically)
-               (refresh-schedule-cache! cache-config)))))]
-    (when (premium-features/enable-preemptive-caching?)
-      (maybe-refresh-duration-caches!))
-    invalidated-count))
+        schedule-caches-to-invalidate (select-ready-to-run :schedule)
+        schedule-refresh-count
+        (reduce
+         (fn [refreshed-count {:keys [id config refresh_automatically] :as cache-config}]
+           (t2/update! :model/CacheConfig
+                       {:id id}
+                       {:next_run_at    (calc-next-run (:schedule config) now)
+                        :invalidated_at now})
+           (if (and (premium-features/enable-preemptive-caching?) refresh_automatically)
+             (do
+               (refresh-schedule-cache! cache-config)
+               (inc refreshed-count))
+             refreshed-count))
+         0
+         schedule-caches-to-invalidate)
+        duration-refresh-count
+        (if (premium-features/enable-preemptive-caching?)
+          (maybe-refresh-duration-caches!)
+          0)]
+    {:schedule-invalidated (count schedule-caches-to-invalidate)
+     :schedule-refreshed   schedule-refresh-count
+     :duration-refreshed   duration-refresh-count}))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc                                   "Refresh 'schedule' caches"}

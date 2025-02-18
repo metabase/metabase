@@ -43,14 +43,12 @@ describe(
         });
       });
 
-      function visitCachedQuestion(questionId: string) {
-        cy.then(function () {
+      function runPreemptiveCachingTest(questionId: string) {
+        function visitCachedQuestion(questionId: string) {
           cy.log("Visiting the question");
           visitQuestion(questionId);
-        });
-      }
+        }
 
-      function runPreemptiveCachingTest(questionId: string) {
         visitCachedQuestion(questionId);
         cy.findByTestId("visualization-root").findByText("Amorous Aardvarks");
         openSidebarCacheStrategyForm("question");

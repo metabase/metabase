@@ -7,7 +7,7 @@ import {
   sampleDashboard,
   sampleDatabase,
   sampleDurationStrategy,
-  sampleNativeQuestion as sampleQuestion,
+  sampleQuestion,
 } from "./helpers/constants";
 import {
   advanceServerClockBy,
