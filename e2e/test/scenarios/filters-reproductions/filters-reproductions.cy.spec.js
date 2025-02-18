@@ -529,7 +529,7 @@ describe("issue 45410", () => {
     H.filter({ mode: "notebook" });
     H.clauseStepPopover().within(() => {
       cy.findByText("Email").click();
-      cy.findByPlaceholderText("Search by Email")
+      cy.findByPlaceholderText("Search the list")
         .type("abc@example.com,abc2@example.com")
         .blur();
       cy.findByText("abc2@example.com")
@@ -925,9 +925,7 @@ describe("issue 31340", () => {
     H.popover().findByText("Filter by this column").click();
     H.selectFilterOperator("Is");
     H.popover().within(() => {
-      cy.findByPlaceholderText(`Search by ${LONG_COLUMN_NAME}`).type(
-        "nonexistingvalue",
-      );
+      cy.findByPlaceholderText("Search the list").type("nonexistingvalue");
       cy.wait("@search");
     });
   });
@@ -1031,7 +1029,7 @@ describe("metabase#32985", () => {
 
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByPlaceholderText("Search by Email").type("foo");
+      cy.findByPlaceholderText("Search the list").type("foo");
     });
   });
 });
@@ -1569,11 +1567,11 @@ describe("issue 49642", () => {
     H.filterWidget().click();
     H.popover().within(() => {
       cy.findByText("Zackery Bailey").should("not.exist");
-      cy.findByPlaceholderText("Search by Name").type("Zackery");
+      cy.findByPlaceholderText("Search the list").type("Zackery");
       cy.findByText("Zackery Bailey").should("be.visible");
       cy.findByText("Zackery Kuhn").should("be.visible").click();
 
-      cy.findByPlaceholderText("Search by Name").should(
+      cy.findByPlaceholderText("Search the list").should(
         "have.value",
         "Zackery Kuhn",
       );

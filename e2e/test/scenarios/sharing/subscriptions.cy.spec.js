@@ -775,7 +775,7 @@ function addParametersToDashboard() {
   // add default value to the above filter
   cy.findByText("No default").click();
   H.popover().within(() => {
-    cy.findByPlaceholderText("Search this list").type("Corbin");
+    cy.findByPlaceholderText("Search the list").type("Corbin");
   });
 
   H.popover().findByText("Corbin Mertz").click();
