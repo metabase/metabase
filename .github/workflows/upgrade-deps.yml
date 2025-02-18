@@ -36,16 +36,22 @@ jobs:
 
           git add deps.edn modules
           git commit -m "Update backend dependencies" --no-verify
-      # - name: Create Git Branch
-      #   run: |
-      #     COMMIT_HASH=$(git rev-parse HEAD)
-      #     git checkout -B "update-backend-dependencies-$COMMIT_HASH"
+      - name: Create Git Branch
+        id: create_branch
+        run: |
+          COMMIT_HASH=$(git rev-parse HEAD)
+          BRANCH="update-backend-dependencies-$COMMIT_HASH"
+          git checkout -b "$BRANCH"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
       - name: Create Pull Request
         id: create_pull_request
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          PR_URL=$(gh pr create --base master --head HEAD --label "no-backport" --title "Update Backend Dependencies" --body "Update backend dependencies")
+          BRANCH="${{ steps.create_branch.outputs.branch }}"
+          TITLE="Update Backend Dependencies"
+          DESCRIPTION="Update backend dependencies"
+          PR_URL=$(gh pr create --base master --head "$BRANCH" --label "no-backport" --title "$TITLE" --body "$DESCRIPTION")
           PR_NUMBER=${PR_URL##*/}
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
       - name: Enable Pull Request Auto-Merge
