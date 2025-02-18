@@ -35,7 +35,7 @@
   (try
     (sso.i/sso-get request)
     (catch Throwable e
-      (log/error #_e "Error returning SSO entry point" e)
+      (log/error #_e "Error returning SSO entry point")
       (throw e))))
 
 (mu/defn- sso-error-page
