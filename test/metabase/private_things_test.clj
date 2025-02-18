@@ -61,7 +61,7 @@
 (defn privacy-report
   "Writes privacy report into a file, then "
   [& _args]
-  (when-let [ttsbp #{"a" "b"}]
+  (when-let [ttsbp (things-that-should-be-private)]
     (spit "privacy_report.txt"
           (str (->> ttsbp
                     (into ["# Things that should be private but aren't:"])
