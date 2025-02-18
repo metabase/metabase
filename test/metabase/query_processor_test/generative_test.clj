@@ -12,6 +12,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.gentest :as gentest]
+   [metabase.test.util.generators.jvm :as tu.gen.jvm]
    [metabase.test.util.random :as tu.rng]
    [metabase.util.log :as log]))
 
@@ -19,14 +20,21 @@
 
 (comment
   (alter-var-root #_:clj-kondo/ignore #'environ.core/env assoc
-                  :mb-gentest-run "true"))
+                  :mb-gentest-run "true")
+  
+  #_:clj-kondo/ignore
+  (select-keys environ.core/env (filter #(re-find #"mb-gentest" (name %))
+                                        (keys environ.core/env)))
+  )
 
+;; into card test
 (deftest query-execution-test
   (when (config/config-bool :mb-gentest-run)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
       ;; TODO: 1. Limit override for repl
       (gentest/with-gentest
         {:gentest.default-limit/seconds 5}
+        #_{:gentest.default-limit/iterations 1}
         [base-query (lib/query mp (tu.rng/rand-nth (lib.metadata/tables mp)))
          limit (inc (tu.rng/rand-int 20))]
         (doseq [query (lib.tu.gen/random-queries-from base-query limit)]
@@ -49,3 +57,28 @@
                 (or (is (true? (apply (every-pred :name :base_type :display_name) (mt/cols result))))
                     (log/error (with-out-str #_:clj-kondo/ignore (pprint/pprint {:query query
                                                                                  :result result}))))))))))))
+
+(deftest query-execution-with-cards-test
+  (when (config/config-bool :mb-gentest-run)
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+      (gentest/with-gentest
+        {:gentest.default-limit/iterations 1}
+        []
+        (tu.gen.jvm/with-random-cards mp 6
+          ;; random query that probably contains a card join
+          (let [query (lib.tu.gen/random-query mp)
+                result @(def pro (qp/process-query (lib/query mp query)))]
+            (def qqq query)
+            @(def those-cards (toucan2.core/select-fn-vec :dataset_query :model/Card {:where [:in :id lib.tu.gen/*available-card-ids*]}))
+            (testing "Successful query execution"
+              (or (is (= :completed
+                         (:status result)))
+                  (log/error (with-out-str #_:clj-kondo/ignore (pprint/pprint {:query query
+                                                                               :result result})))))
+            (testing "At least one column returned"
+              (or (is (<= 1 (count (mt/cols result))))
+                  (log/error (with-out-str #_:clj-kondo/ignore (pprint/pprint {:query query
+                                                                               :result result}))))
+              (or (is (true? (apply (every-pred :name :base_type :display_name) (mt/cols result))))
+                  (log/error (with-out-str #_:clj-kondo/ignore (pprint/pprint {:query query
+                                                                               :result result})))))))))))
