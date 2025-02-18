@@ -58,7 +58,7 @@ const userName = checkNotNull(metadata.field(ORDERS.USER_ID))
 
 const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
 
-const query = createQueryWithClauses({
+export const query = createQueryWithClauses({
   query: createQuery({ metadata }),
   expressions: [
     {

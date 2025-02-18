@@ -1,4 +1,4 @@
-import { dataForFormatting } from "./__support__/shared";
+import { dataForFormatting, query } from "./__support__/shared";
 import { format } from "./format";
 
 describe("format", () => {
@@ -6,7 +6,7 @@ describe("format", () => {
     const tests = cases.filter(([_res, mbql, _name]) => mbql != null);
 
     it.each(tests)(`should format %s`, (source: string, mbql: unknown) => {
-      expect(format(mbql, opts)).toEqual(source);
+      expect(format(mbql, { ...opts, query })).toEqual(source);
     });
   });
 });
