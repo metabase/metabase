@@ -124,9 +124,9 @@ export function ViewTitleHeader({
 
   const dispatch = useDispatch();
 
-  const setDirtyAddedFilters = (
-    newDirtyAddedFilters: Dispatch<SetStateAction<Filter[]>>,
-  ) => {
+  const setDirtyAddedFilters: Dispatch<
+    SetStateAction<Filter[]>
+  > = newDirtyAddedFilters => {
     if (typeof newDirtyAddedFilters === "function") {
       dispatch(
         setUIControls({
@@ -138,9 +138,9 @@ export function ViewTitleHeader({
     }
   };
 
-  const setDirtyRemovedFilters = (
-    newDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>,
-  ) => {
+  const setDirtyRemovedFilters: Dispatch<
+    SetStateAction<Filter[]>
+  > = newDirtyRemovedFilters => {
     if (typeof newDirtyRemovedFilters === "function") {
       dispatch(
         setUIControls({
@@ -155,17 +155,6 @@ export function ViewTitleHeader({
   const query = question.query();
   const previousQuery = usePrevious(query);
   const { isNative } = Lib.queryDisplayInfo(query);
-
-  const isQueryDirty =
-    dirtyAddedFilters.length + dirtyRemovedFilters.length > 0;
-
-  useEffect(() => {
-    if (isQueryDirty) {
-      // TODO mark dirty
-    } else {
-      // TODO mark clean
-    }
-  }, [isQueryDirty]);
 
   useEffect(() => {
     const isPreviousQuestionNative =
