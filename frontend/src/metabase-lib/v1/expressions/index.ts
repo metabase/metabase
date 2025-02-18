@@ -2,22 +2,10 @@ export * from "./config";
 
 import { FK_SYMBOL } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
-import type {
-  CallExpression,
-  CaseOrIfExpression,
-  CaseOrIfOperator,
-  Expression,
-  FieldReference,
-  OffsetExpression,
-} from "metabase-types/api";
 
-import {
-  EDITOR_FK_SYMBOLS,
-  EDITOR_QUOTES,
-  FUNCTIONS,
-  OPERATORS,
-  getMBQLName,
-} from "./config";
+import { EDITOR_FK_SYMBOLS, EDITOR_QUOTES, getMBQLName } from "./config";
+
+export * from "./matchers";
 
 // Return a copy with brackets (`[` and `]`) being escaped
 function escapeString(string: string) {
@@ -278,87 +266,4 @@ export function unquoteString(string: string) {
   } else {
     throw new Error("Unknown quoting: " + string);
   }
-}
-
-// move to query lib
-
-export function isExpression(expr: unknown): expr is Expression {
-  return (
-    isLiteral(expr) ||
-    isOperator(expr) ||
-    isFunction(expr) ||
-    isDimension(expr) ||
-    isBooleanLiteral(expr) ||
-    isMetric(expr) ||
-    isSegment(expr) ||
-    isCaseOrIf(expr)
-  );
-}
-
-export function isLiteral(expr: unknown): expr is string | number | boolean {
-  return isStringLiteral(expr) || isNumberLiteral(expr);
-}
-
-export function isStringLiteral(expr: unknown): expr is string {
-  return typeof expr === "string";
-}
-
-export function isBooleanLiteral(expr: unknown): expr is boolean {
-  return typeof expr === "boolean";
-}
-
-export function isNumberLiteral(expr: unknown): expr is number {
-  return typeof expr === "number";
-}
-
-export function isOperator(expr: unknown): expr is CallExpression {
-  return (
-    Array.isArray(expr) &&
-    OPERATORS.has(expr[0]) &&
-    expr.slice(1).every(arg => isExpression(arg) || isOptionsObject(arg))
-  );
-}
-
-export function isOptionsObject(obj: unknown): obj is object {
-  return obj ? Object.getPrototypeOf(obj) === Object.prototype : false;
-}
-
-export function isFunction(expr: unknown): expr is CallExpression {
-  return (
-    Array.isArray(expr) &&
-    FUNCTIONS.has(expr[0]) &&
-    expr.slice(1).every(arg => isExpression(arg) || isOptionsObject(arg))
-  );
-}
-
-export function isDimension(expr: unknown): expr is FieldReference {
-  return (
-    Array.isArray(expr) && (expr[0] === "field" || expr[0] === "expression")
-  );
-}
-
-export function isMetric(expr: unknown): boolean {
-  return (
-    Array.isArray(expr) && expr[0] === "metric" && typeof expr[1] === "number"
-  );
-}
-
-export function isSegment(expr: unknown): boolean {
-  return (
-    Array.isArray(expr) && expr[0] === "segment" && typeof expr[1] === "number"
-  );
-}
-
-export function isCaseOrIfOperator(
-  operator: string,
-): operator is CaseOrIfOperator {
-  return operator === "case" || operator === "if";
-}
-
-export function isCaseOrIf(expr: unknown): expr is CaseOrIfExpression {
-  return Array.isArray(expr) && isCaseOrIfOperator(expr[0]); // && _.all(expr.slice(1), isValidArg)
-}
-
-export function isOffset(expr: unknown): expr is OffsetExpression {
-  return Array.isArray(expr) && expr[0] === "offset";
 }
