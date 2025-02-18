@@ -18,7 +18,7 @@ jobs:
       - name: Run privacy reporter script
         id: script
         run: |
-          echo "hi" >> $GITHUB_OUTPUT
+          echo "message=hi" >> $GITHUB_OUTPUT
           # clojure -X:dev:drivers:build:build-dev:build-test metabase.private-things-test/privacy-report
           # echo "MULTILINE<<EOF" >> $GITHUB_OUTPUT
           # cat privacy_report.txt >> $GITHUB_OUTPUT
