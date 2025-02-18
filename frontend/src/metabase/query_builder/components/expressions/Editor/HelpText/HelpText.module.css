@@ -18,11 +18,12 @@
 .toggle {
   margin-left: auto;
   padding: 0 0.65rem;
+  display: flex;
+  align-items: center;
 }
 
 .chevron {
   color: var(--mb-color-text-secondary);
-  padding-top: 1px;
 
   &.open {
     transform: rotate(90deg);
