@@ -23,8 +23,11 @@ jobs:
           {
           echo 'MULTILINE_CONTENT<<EOF'
           cat privacy_report.txt
-          echo 'EOF'
+          echo '\nEOF'
           } >> $GITHUB_ENV
+
+      - name: check the multiline content:
+        run: echo $MULTILINE_CONTENT
 
       # Post the comment using github-script
       - name: Post comment
