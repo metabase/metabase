@@ -39,8 +39,8 @@ jobs:
           echo "branch=$branch" >> $GITHUB_OUTPUT
       - name: Set up Git
         run: |
-          git config --global user.email "metabase-bot@metabase.com"
-          git config --global user.name "Metabase bot"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Switch to Master
         if: ${{ github.ref_name != 'master' }}
         run: |
