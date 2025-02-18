@@ -1,11 +1,10 @@
 (ns metabase-enterprise.sso.api.interface
   (:require
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [ring.util.response :as response]))
+   [metabase.util.i18n :refer [tru]]))
 
-(defn- select-sso-backend [req]
+(defn- select-sso-backend 
+  [req]
   (if (contains? (:params req) :jwt)
     :jwt
     :saml))
