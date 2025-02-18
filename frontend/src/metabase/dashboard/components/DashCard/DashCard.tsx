@@ -386,6 +386,4 @@ function DashCardInner({
   );
 }
 
-export const DashCard = Object.assign(memo(DashCardInner), {
-  root: DashCardRoot,
-});
+export const DashCard = memo(DashCardInner);

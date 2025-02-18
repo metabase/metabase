@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { Query } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -23,6 +24,7 @@ import type {
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
+import { Flex } from "metabase/ui";
 import type {
   CardId,
   DashCardId,
@@ -50,12 +52,11 @@ import { DashboardGridConnected } from "../DashboardGrid";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
 
+import S from "./Dashboard.module.css";
 import {
   CardsContainer,
-  DashboardBody,
   DashboardHeaderContainer,
   DashboardLoadingAndErrorWrapper,
-  DashboardStyled,
   ParametersAndCardsContainer,
 } from "./Dashboard.styled";
 import {
@@ -403,7 +404,7 @@ function Dashboard(props: DashboardProps) {
           !dashboardHasCards || (dashboardHasCards && !tabHasCards);
 
         return (
-          <DashboardStyled>
+          <Flex direction="column" mih="100%" w="100%" flex="1 0 auto">
             {dashboard.archived && (
               <ArchivedEntityBanner
                 name={dashboard.name}
@@ -451,7 +452,15 @@ function Dashboard(props: DashboardProps) {
               />
             </DashboardHeaderContainer>
 
-            <DashboardBody isEditingOrSharing={isEditing || isSharing}>
+            <Flex
+              pos="relative"
+              flex="1 0 auto"
+              miw={0}
+              mih={0}
+              className={cx(S.DashboardBody, {
+                [S.isEditingOrSharing]: isEditing || isSharing,
+              })}
+            >
               <ParametersAndCardsContainer
                 id={DASHBOARD_PDF_EXPORT_ROOT_ID}
                 data-element-id="dashboard-parameters-and-cards"
@@ -526,8 +535,8 @@ function Dashboard(props: DashboardProps) {
                 selectedTabId={selectedTabId}
                 onCancel={() => setSharing(false)}
               />
-            </DashboardBody>
-          </DashboardStyled>
+            </Flex>
+          </Flex>
         );
       }}
     </DashboardLoadingAndErrorWrapper>

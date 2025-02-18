@@ -1,0 +1,15 @@
+.DashboardBody {
+  &.isEditingOrSharing {
+    flex-basis: 0;
+  }
+}
+
+.ParametersFixedWidthContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+
+  @media screen and (max-width: 40em) {
+    flex-direction: column;
+  }
+}

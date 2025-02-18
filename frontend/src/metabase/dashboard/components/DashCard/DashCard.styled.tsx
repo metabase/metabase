@@ -10,19 +10,8 @@ interface DashCardRootProps {
   shouldForceHiddenBackground: boolean;
 }
 
-const rootNightModeStyle = css`
-  border-color: var(--mb-color-bg-night);
-  background-color: var(--mb-color-bg-night);
-`;
-
 const getRootSlowCardStyle = (theme: Theme) => css`
   border-color: ${theme.fn.themeColor("accent4")};
-`;
-
-const rootTransparentBackgroundStyle = css`
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
 `;
 
 const hiddenBackgroundStyle = css`
@@ -34,16 +23,21 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
   background-color: var(--mb-color-bg-dashboard-card);
   scroll-margin: 6px 0;
 
-  ${({ isNightMode }) => isNightMode && rootNightModeStyle}
+  ${({ isNightMode }) =>
+    isNightMode &&
+    css`
+      border-color: var(--mb-color-bg-night);
+      background-color: var(--mb-color-bg-night);
+    `}
   ${({ isUsuallySlow, theme }) => isUsuallySlow && getRootSlowCardStyle(theme)}
   ${({ hasHiddenBackground }) =>
-    hasHiddenBackground && rootTransparentBackgroundStyle}
+    hasHiddenBackground &&
+    css`
+      border: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    `}
 
   ${({ shouldForceHiddenBackground }) =>
     shouldForceHiddenBackground && hiddenBackgroundStyle}
-`;
-
-export const VirtualDashCardOverlayText = styled.h4`
-  color: var(--mb-color-text-medium);
-  padding: 1rem;
 `;

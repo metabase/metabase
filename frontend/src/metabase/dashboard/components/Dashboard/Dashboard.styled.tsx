@@ -11,7 +11,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { isEmbeddingSdk } from "metabase/env";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
+import { space } from "metabase/styled-components/theme";
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
 interface DashboardLoadingAndErrorWrapperProps
@@ -48,28 +48,6 @@ export const DashboardLoadingAndErrorWrapper = styled(
     isFullHeight &&
     css`
       height: 100%;
-    `}
-`;
-
-export const DashboardStyled = styled.div`
-  display: flex;
-  flex: 1 0 auto;
-  flex-direction: column;
-  min-height: 100%;
-  width: 100%;
-`;
-
-export const DashboardBody = styled.div<{ isEditingOrSharing: boolean }>`
-  position: relative;
-  display: flex;
-  flex: 1 0 auto;
-  min-width: 0;
-  min-height: 0;
-
-  ${({ isEditingOrSharing }) =>
-    isEditingOrSharing &&
-    css`
-      flex-basis: 0;
     `}
 `;
 
@@ -194,7 +172,7 @@ export const ParametersFixedWidthContainer = styled(FixedWidthContainer)`
   flex-direction: row;
   align-items: flex-start;
 
-  ${breakpointMaxSmall} {
+  @media screen and (max-width: 40em) {
     flex-direction: column;
   }
 `;
