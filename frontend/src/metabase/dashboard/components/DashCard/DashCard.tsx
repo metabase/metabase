@@ -15,10 +15,12 @@ import {
   isDashcardLoading,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
+import { isEmbeddingSdk } from "metabase/env";
 import { color } from "metabase/lib/colors";
 import { useSelector, useStore } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { Box } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -35,7 +37,6 @@ import type {
 import type { StoreDashcard } from "metabase-types/store";
 
 import S from "./DashCard.module.css";
-import { DashCardRoot } from "./DashCard.styled";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
 import type {
@@ -303,11 +304,12 @@ function DashCardInner({
 
   return (
     <ErrorBoundary>
-      <DashCardRoot
+      <Box
         data-testid="dashcard"
         data-dashcard-key={dashcard.id}
         className={cx(
           S.DashboardCardRoot,
+          S.DashCardRoot,
           DashboardS.Card,
           EmbedFrameS.Card,
           CS.relative,
@@ -316,11 +318,14 @@ function DashCardInner({
           CS.flexColumn,
           CS.hoverParent,
           CS.hoverVisibility,
+          {
+            [S.hasHiddenBackground]: hasHiddenBackground,
+            [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
+            [S.isNightMode]: isNightMode,
+            [S.isUsuallySlow]: isSlow === "usually-slow",
+            [S.isEmbeddingSdk]: isEmbeddingSdk,
+          },
         )}
-        hasHiddenBackground={hasHiddenBackground}
-        shouldForceHiddenBackground={shouldForceHiddenBackground}
-        isNightMode={isNightMode}
-        isUsuallySlow={isSlow === "usually-slow"}
         ref={cardRootRef}
       >
         {isEditingDashboardLayout && (
@@ -381,7 +386,7 @@ function DashCardInner({
           onTogglePreviewing={handlePreviewToggle}
           downloadsEnabled={downloadsEnabled}
         />
-      </DashCardRoot>
+      </Box>
     </ErrorBoundary>
   );
 }

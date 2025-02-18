@@ -11,17 +11,18 @@ import {
   getParameters,
   getTabHiddenParameterSlugs,
 } from "metabase/dashboard/selectors";
+import { isEmbeddingSdk } from "metabase/env";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 import DashboardS from "../Dashboard/Dashboard.module.css";
-import {
-  FixedWidthContainer,
-  ParametersWidgetContainer,
-} from "../Dashboard/Dashboard.styled";
+import { FixedWidthContainer } from "../Dashboard/Dashboard.styled";
 import { DashboardParameterList } from "../DashboardParameterList";
+
+import S from "./DashboardParameterPanel.module.css";
 
 interface DashboardParameterPanelProps {
   isFullscreen: boolean;
@@ -59,10 +60,16 @@ export function DashboardParameterPanel({
   if (isEditing) {
     return (
       <span ref={parameterPanelRef}>
-        <ParametersWidgetContainer
-          allowSticky
-          isSticky
-          isNightMode={shouldRenderAsNightMode}
+        <FullWidthContainer
+          className={cx(
+            S.ParametersWidgetContainer,
+            S.allowSticky,
+            S.isSticky,
+            {
+              [S.isNightMode]: shouldRenderAsNightMode,
+              [S.isEmbeddingSdk]: isEmbeddingSdk,
+            },
+          )}
           data-testid="edit-dashboard-parameters-widget-container"
         >
           <FixedWidthContainer
@@ -71,20 +78,21 @@ export function DashboardParameterPanel({
           >
             <DashboardParameterList isFullscreen={isFullscreen} />
           </FixedWidthContainer>
-        </ParametersWidgetContainer>
+        </FullWidthContainer>
       </span>
     );
   }
 
   return (
     <span ref={parameterPanelRef}>
-      <ParametersWidgetContainer
-        className={cx({
+      <FullWidthContainer
+        className={cx(S.ParametersWidgetContainer, {
           [TransitionS.transitionThemeChange]: shouldApplyThemeChangeTransition,
+          [S.allowSticky]: allowSticky,
+          [S.isSticky]: isSticky,
+          [S.isNightMode]: shouldRenderAsNightMode,
+          [S.isEmbeddingSdk]: isEmbeddingSdk,
         })}
-        allowSticky={allowSticky}
-        isSticky={isSticky}
-        isNightMode={shouldRenderAsNightMode}
         data-testid="dashboard-parameters-widget-container"
       >
         <FixedWidthContainer
@@ -97,7 +105,7 @@ export function DashboardParameterPanel({
 
           <FilterApplyButton />
         </FixedWidthContainer>
-      </ParametersWidgetContainer>
+      </FullWidthContainer>
     </span>
   );
 }
