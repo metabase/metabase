@@ -132,11 +132,19 @@ function CompletionItem({
 function Footer() {
   return (
     <Box className={S.footer}>
-      <Icon name="arrow_up" className={S.key} />
-      <Icon name="arrow_down" className={S.key} />
+      <KeyIcon name="arrow_up" />
+      <KeyIcon name="arrow_down" />
       to navigate.
       <span />
-      <Icon name="enter_or_return" className={S.key} /> to select.
+      <KeyIcon name="enter_or_return" /> to select.
     </Box>
+  );
+}
+
+function KeyIcon({ name }: { name: string }) {
+  return (
+    <span className={S.key}>
+      <Icon name={name} width={12} height={12} />
+    </span>
   );
 }

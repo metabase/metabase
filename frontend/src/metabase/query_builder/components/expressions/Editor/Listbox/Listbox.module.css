@@ -48,10 +48,11 @@
 
 .key {
   padding: 6px;
+  display: inline-block;
   border-radius: 6px;
   background-color: var(--mb-base-color-orion-10);
-  height: 12px;
-  width: 12px;
+  height: 24px;
+  width: 24px;
   margin: 0 4px;
 
   & + .key {
