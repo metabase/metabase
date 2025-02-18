@@ -13,7 +13,7 @@
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :test-users-personal-collections))
+(use-fixtures :once (fixtures/initialize :test-users-personal-collections :notifications))
 
 (deftest get-notification-card-test
   (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel

@@ -185,7 +185,7 @@
         (let [alert-id (create-alert! alert card-id pcs)
               notification-id (:id (first (migrate-alert! (#'task/scheduler) alert-id)))
               entity-id       (format "notification_%s" notification-id)
-              card-entity-id (format "card_%s" card-id)]
+              card-entity-id  (format "card_%s" card-id)]
           (is (=? (map #(assoc %
                                :card_qualified_id card-entity-id
                                :card_id card-id
