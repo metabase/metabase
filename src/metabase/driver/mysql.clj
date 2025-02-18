@@ -382,12 +382,6 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str (h2x/->datetime expr))))
 
-(defn- ->timestamp [expr]
-  (if (h2x/is-of-type? expr "timestamp")
-    expr
-    (-> [:timestamp expr]
-        (h2x/with-database-type-info "timestamp"))))
-
 (defn- ->date [expr]
   (if (h2x/is-of-type? expr "date")
     expr
@@ -399,6 +393,11 @@
   [year-expr number-of-days]
   (-> [:makedate year-expr (sql.qp/inline-num number-of-days)]
       (h2x/with-database-type-info "date")))
+
+(defn- temporal-cast [type expr]
+  (if (= "timestamp" (u/lower-case-en type))
+    (h2x/maybe-cast "datetime" expr)
+    (h2x/maybe-cast type expr)))
 
 (defmethod sql.qp/date [:mysql :minute]
   [_driver _unit expr]
@@ -421,7 +420,10 @@
 (defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] [:dayofyear expr])
 (defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (h2x/month expr))
 (defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (h2x/quarter expr))
-(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (make-date (h2x/year expr) 1))
+
+(defmethod sql.qp/date [:mysql :year]
+  [_ _ expr]
+  (temporal-cast (h2x/database-type expr) (make-date (h2x/year expr) 1)))
 
 (defmethod sql.qp/date [:mysql :day-of-week]
   [driver _unit expr]
@@ -429,10 +431,7 @@
 
 (defmethod sql.qp/date [:mysql :day]
   [_ _ expr]
-  (let [as-date (->date expr)]
-    (cond-> as-date
-      (h2x/is-of-type? expr "timestamp")   ->timestamp
-      (h2x/is-of-type? expr "datetime")    h2x/->datetime)))
+  (temporal-cast (h2x/database-type expr) (->date expr)))
 
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week
@@ -441,25 +440,28 @@
                           (str-to-date "%X%V %W"
                                        (h2x/concat [:yearweek expr]
                                                    (h2x/literal " Sunday"))))]
-    (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)))
+    (temporal-cast (h2x/database-type expr)
+                   (sql.qp/adjust-start-of-week :mysql extract-week-fn expr))))
 
 (defmethod sql.qp/date [:mysql :week-of-year-iso] [_ _ expr] (h2x/week expr 3))
 
 (defmethod sql.qp/date [:mysql :month] [_ _ expr]
-  (str-to-date "%Y-%m-%d"
-               (h2x/concat (date-format "%Y-%m" expr)
-                           (h2x/literal "-01"))))
+  (temporal-cast (h2x/database-type expr)
+                 (str-to-date "%Y-%m-%d"
+                              (h2x/concat (date-format "%Y-%m" expr)
+                           (h2x/literal "-01")))))
 
 ;; Truncating to a quarter is trickier since there aren't any format strings.
 ;; See the explanation in the H2 driver, which does the same thing but with slightly different syntax.
 (defmethod sql.qp/date [:mysql :quarter] [_ _ expr]
-  (str-to-date "%Y-%m-%d"
-               (h2x/concat (h2x/year expr)
-                           (h2x/literal "-")
-                           (h2x/- (h2x/* (h2x/quarter expr)
-                                         3)
-                                  2)
-                           (h2x/literal "-01"))))
+  (temporal-cast (h2x/database-type expr)
+                 (str-to-date "%Y-%m-%d"
+                              (h2x/concat (h2x/year expr)
+                                          (h2x/literal "-")
+                                          (h2x/- (h2x/* (h2x/quarter expr)
+                                                        3)
+                                                 2)
+                                          (h2x/literal "-01")))))
 
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
