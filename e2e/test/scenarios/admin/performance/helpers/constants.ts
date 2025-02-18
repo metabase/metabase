@@ -33,7 +33,7 @@ export const sampleDoNotCacheStrategy: DoNotCacheStrategy = { type: "nocache" };
 /** In milliseconds */
 export const questionRuntime = 1000;
 
-export const sampleNativeQuestion: StrategyBearer & {
+export const sampleQuestion: StrategyBearer & {
   name: string;
 } & NativeQuestionDetails = {
   model: "question",
