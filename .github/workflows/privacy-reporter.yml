@@ -2,6 +2,7 @@ name: Privacy Checker PR Reporter
 
 on:
   pull_request:
+    types: [opened, synchronize]
 
 jobs:
   comment:
@@ -19,20 +20,20 @@ jobs:
         id: script
         run: |
           clojure -X:dev:drivers:build:build-dev:build-test metabase.private-things-test/privacy-report
-          cat privacy_report.txt > $GITHUB_OUTPUT
+          echo 'MULTILINE_CONTENT<<EOF' >> $GITHUB_ENV
+          cat privacy_report.txt >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
 
       # Post the comment using github-script
       - name: Post comment
         uses: actions/github-script@v7
+        env:
+          MULTILINE_CONTENT: ${{ env.MULTILINE_CONTENT }}
         with:
           script: |
-            const message = process.env.SCRIPT_OUTPUT;
-
             await github.rest.issues.createComment({
+              issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `message`
+              body: process.env.MULTILINE_CONTENT
             });
-        env:
-          SCRIPT_OUTPUT: ${{ steps.script.outputs.message }}
