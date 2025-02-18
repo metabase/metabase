@@ -122,7 +122,7 @@ const InlineActionSettings = ({
   };
 
   return (
-    <SidebarContent title={t`Action settings`} onClose={onClose}>
+    <SidebarContent title={t`Action settings`} onBack={onClose}>
       <ActionSettingsContent>
         {action && hasSharingPermission && (
           <FormField
