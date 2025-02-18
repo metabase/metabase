@@ -1,0 +1,42 @@
+name: Open PR to Bump Backend Deps
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    # weekly on Mondays
+    - cron: '00 0 * * 1'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump-deps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'update-be-deps'
+      - name: Run Antq
+        run: |
+          clojure -M:antq --upgrade --force
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          title: Update backend dependencies
+          branch: auto-update-backend-deps
+          branch-suffix: timestamp
+          delete-branch: true
+          add-paths: |
+            deps.edn
+            modules/**/deps.edn
+          commit-message: >-
+            Update backend dependencies
+          team-reviewers: |
+            metabase/backend-developers

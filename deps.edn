@@ -795,6 +795,12 @@
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.migrate"]}
 
+  ;; clojure -M:antq --upgrade
+  ;; clojure -M:antq --upgrade --force
+  :antq
+  {:replace-deps {com.github.liquidz/antq {:mvn/version "2.11.1264"}}
+   :main-opts    ["-m" "antq.core"]}
+
   ;; run tests against MLv2. Very fast since this is almost all ^:parallel
   :test/mlv2
   {:exec-args {:only ["test/metabase/lib"]}}
