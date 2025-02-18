@@ -1,0 +1,6 @@
+.DashboardGridContainer {
+  &.isFixedWidth {
+    margin: 0 auto;
+    max-width: var(--dashboard-fixed-width);
+  }
+}
