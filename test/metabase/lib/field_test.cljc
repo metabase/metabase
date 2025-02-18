@@ -10,6 +10,7 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -28,17 +29,6 @@
                       (binding [lib.card/*force-broken-card-refs* false]
                         (thunk))))
 
-(deftest ^:parallel field-from-results-metadata-test
-  (let [field-metadata (lib.metadata/stage-column (lib.tu/query-with-stage-metadata-from-card
-                                                   meta/metadata-provider
-                                                   (:venues (lib.tu/mock-cards)))
-                                                  "ID")]
-    (is (=? {:lib/type :metadata/column
-             :name     "ID"}
-            field-metadata))
-    (is (=? [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]
-            (lib/ref field-metadata)))))
-
 (defn- grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
      (case field
@@ -52,18 +42,21 @@
                      :name         "grandparent"
                      :display-name "Grandparent"
                      :id           (grandparent-parent-child-id :grandparent)
+                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}
         parent      {:lib/type     :metadata/column
                      :name         "parent"
                      :display-name "Parent"
                      :parent-id    (grandparent-parent-child-id :grandparent)
                      :id           (grandparent-parent-child-id :parent)
+                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}
         child       {:lib/type     :metadata/column
                      :name         "child"
                      :display-name "Child"
                      :parent-id    (grandparent-parent-child-id :parent)
                      :id           (grandparent-parent-child-id :child)
+                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}]
     (lib.tu/mock-metadata-provider
      {:database meta/database
@@ -1547,9 +1540,11 @@
           join-cols      [(-> (meta/field-metadata :products :category)
                               (assoc :lib/source :source/card
                                      :source-alias "Products")
+                              (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join))
                               (dissoc :id :table-id))]
           implicit-cols  (for [col (meta/fields :people)]
                            (-> (meta/field-metadata :people col)
+                               (update :ident lib.metadata.ident/implicitly-joined-ident (meta/ident :orders :user-id))
                                (assoc :lib/source :source/implicitly-joinable)))
           sorted         #(sort-by (juxt :name :join-alias :id :table-id) %)]
       (is (=? (sorted (concat order-cols join-cols))

@@ -5,11 +5,11 @@
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
    [metabase-enterprise.scim.api :as scim]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -110,10 +110,10 @@
   [thunk]
   (try
     (let [response (thunk)]
-      (prometheus/inc! :metabase-scim/response-ok)
+      (analytics/inc! :metabase-scim/response-ok)
       response)
     (catch Throwable e
-      (prometheus/inc! :metabase-scim/response-error)
+      (analytics/inc! :metabase-scim/response-error)
       (throw e))))
 
 (defmacro with-prometheus-counters

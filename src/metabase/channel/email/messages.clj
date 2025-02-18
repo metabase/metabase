@@ -14,8 +14,7 @@
    [metabase.driver :as driver]
    [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -121,7 +120,7 @@
   [email sso-source password-reset-url is-active?]
   {:pre [(u/email? email)
          ((some-fn string? nil?) password-reset-url)]}
-  (let [google-sso? (= "google" sso-source)
+  (let [google-sso? (= :google sso-source)
         message-body (channel.template/render
                       "metabase/channel/email/password_reset.hbs"
                       (merge (common-context)
@@ -141,7 +140,7 @@
 
 (mu/defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
-  login history information as returned by `metabase.models.login-history/human-friendly-infos`."
+  login history information as returned by [[metabase.login-history.models.login-history/human-friendly-infos]]."
   [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
   (let [user-info    (or (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
                          (throw (ex-info (tru "User {0} does not exist" user-id)
@@ -181,7 +180,7 @@
                                         mdb.query/query
                                         (mapv :user_id)))
         user-ids (filter
-                  #(data-perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
+                  #(perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
                   user-ids-with-monitoring)]
     (into
      []

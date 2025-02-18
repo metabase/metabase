@@ -170,7 +170,7 @@ class TableInteractive extends Component {
     );
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     // for measuring cells:
     this._div = document.createElement("div");
     this._div.className = cx(TableS.TableInteractive, "test-TableInteractive");
@@ -1437,8 +1437,8 @@ function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
     >
       <UIButton
         variant="outline"
-        compact
-        leftIcon={<Icon name="add" />}
+        size="compact-md"
+        leftSection={<Icon name="add" />}
         title={t`Add column`}
         aria-label={t`Add column`}
         onClick={onClick}

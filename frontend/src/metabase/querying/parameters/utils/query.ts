@@ -12,11 +12,11 @@ import type {
 import { isStructuredDimensionTarget } from "metabase-types/guards";
 
 import {
-  normalizeBooleanParameterValue,
-  normalizeDateParameterValue,
-  normalizeNumberParameterValue,
-  normalizeStringParameterValue,
-} from "./normalize";
+  deserializeBooleanParameterValue,
+  deserializeDateParameterValue,
+  deserializeNumberParameterValue,
+  deserializeStringParameterValue,
+} from "./parsing";
 
 const STRING_OPERATORS: Partial<
   Record<ParameterType, Lib.StringFilterOperator>
@@ -130,7 +130,7 @@ function getStringParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const values = normalizeStringParameterValue(value);
+  const values = deserializeStringParameterValue(value);
   if (values.length === 0) {
     return;
   }
@@ -149,7 +149,7 @@ function getNumberParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const values = normalizeNumberParameterValue(value);
+  const values = deserializeNumberParameterValue(value);
   if (values.length === 0) {
     return;
   }
@@ -158,8 +158,8 @@ function getNumberParameterFilterClause(
   return match({ operator, values })
     .with(
       { operator: P.union("=", "!=") },
-      { operator: P.union(">=", "<="), values: [P.number] },
-      { operator: "between", values: [P.number, P.number] },
+      { operator: P.union(">=", "<="), values: [P._] },
+      { operator: "between", values: [P._, P._] },
       () => Lib.numberFilterClause({ operator, column, values }),
     )
     .otherwise(() => undefined);
@@ -170,7 +170,7 @@ function getBooleanParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const values = normalizeBooleanParameterValue(value);
+  const values = deserializeBooleanParameterValue(value);
   if (values.length === 0) {
     return;
   }
@@ -183,7 +183,7 @@ function getDateParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const filter = normalizeDateParameterValue(value);
+  const filter = deserializeDateParameterValue(value);
   if (filter == null) {
     return;
   }

@@ -13,9 +13,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -83,7 +83,13 @@
     (is (= "100"
            (#'params.values/value-for-tag
             {:name "id", :id test-uuid, :display-name "ID", :type :text, :required true, :default "100"}
-            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}])))))
+            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
+
+  (testing "BigInteger value"
+    (is (= 9223372036854775808
+           (#'params.values/value-for-tag
+            {:name "id", :id test-uuid, :display-name "ID", :type :number}
+            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
 
 (defn- value-for-tag
   "Call the private function and de-recordize the field"

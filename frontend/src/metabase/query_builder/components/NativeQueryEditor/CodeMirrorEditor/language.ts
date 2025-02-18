@@ -3,10 +3,16 @@ import {
   MySQL,
   PLSQL,
   PostgreSQL,
+  SQLDialect,
   StandardSQL,
   sql,
 } from "@codemirror/lang-sql";
-import type { LanguageSupport } from "@codemirror/language";
+import {
+  type LanguageSupport,
+  indentService,
+  indentUnit,
+} from "@codemirror/language";
+import type { Extension } from "@uiw/react-codemirror";
 
 type Dialect = {
   spec: {
@@ -24,6 +30,7 @@ type Source = {
     words: string[];
     caseSensitive?: boolean;
   };
+  indentation: Extension[];
 };
 
 const engineToDialect = {
@@ -31,12 +38,19 @@ const engineToDialect = {
   mysql: MySQL,
   oracle: PLSQL,
   postgres: PostgreSQL,
+  h2: SQLDialect.define({
+    // @ts-expect-error: SQLDialect.dialect is an internal that is exposed
+    ...StandardSQL.dialect,
+    // @ts-expect-error: SQLDialect.dialect is an internal that is exposed
+    keywords: Object.keys(StandardSQL.dialect.words)
+      .join(" ")
+      .concat(" exclude"),
+  }),
   // TODO:
   // "presto-jdbc": "trino",
   // redshift: "redshift",
   // snowflake: "snowflake",
   // sparksql: "spark",
-  // h2: "h2",
 };
 
 const mongoKeywords = {
@@ -303,11 +317,13 @@ export function source(engine?: string | null): Source {
       return {
         keywords: mongoKeywords,
         language: json(),
+        indentation: jsonIndentation(),
       };
 
     case "druid":
       return {
         language: json(),
+        indentation: jsonIndentation(),
       };
 
     case "bigquery-cloud-sdk":
@@ -338,6 +354,7 @@ export function source(engine?: string | null): Source {
           caseSensitive: false,
           words: words.map(word => word.toUpperCase()),
         },
+        indentation: sqlIndentation(),
       };
     }
   }
@@ -348,10 +365,34 @@ type LanguageOptions = {
 };
 
 export function language({ engine }: LanguageOptions) {
-  const { language } = source(engine);
+  const { language, indentation } = source(engine);
   if (!language) {
     return [];
   }
 
-  return language;
+  return [language, indentation];
+}
+
+function sqlIndentation() {
+  return [
+    // set indentation to tab
+    indentUnit.of("\t"),
+
+    // persist the indentation from the previous line
+    indentService.of((context, pos) => {
+      const previousLine = context.lineAt(pos, -1);
+      const previousLineText = previousLine.text.replaceAll(
+        "\t",
+        " ".repeat(context.state.tabSize),
+      );
+      return previousLineText.match(/^(\s)*/)?.[0].length ?? 0;
+    }),
+  ];
+}
+
+function jsonIndentation() {
+  return [
+    // set two-space indentation
+    indentUnit.of("  "),
+  ];
 }

@@ -4,7 +4,7 @@
   If a notification is changed, it will be replaced with a new one."
   (:require
    [metabase.models.notification :as models.notification]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -101,7 +101,7 @@
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{context.admin_email}}" :is_optional true}}
                                            {:type                 :notification-recipient/group
-                                            :permissions_group_id (:id (perms-group/admin))}]}]}]))
+                                            :permissions_group_id (:id (perms/admin-group))}]}]}]))
 
 (defn- cleanup-notification!
   [internal-id existing-row]

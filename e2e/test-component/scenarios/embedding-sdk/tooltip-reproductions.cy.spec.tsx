@@ -2,16 +2,16 @@ import { InteractiveDashboard } from "@metabase/embedding-sdk-react";
 
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { describeEE } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
+import { isFixedPositionElementVisible } from "e2e/support/helpers/e2e-element-visibility-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
+describe("scenarios > embedding-sdk > tooltip-reproductions", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
@@ -35,14 +35,6 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
               col: 0,
               card_id: ordersQuestionId,
             },
-            {
-              id: 2,
-              size_x: 10,
-              size_y: 5,
-              row: 1,
-              col: 0,
-              card_id: ordersQuestionId,
-            },
           ],
         }),
       )
@@ -59,53 +51,60 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
     );
   });
 
-  // This is flaking on CI but not locally :()
-  it.skip("should render tooltips below the screen's height (metabase#51904)", () => {
-    cy.get("@dashboardId").then(dashboardId => {
-      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
-    });
+  it("should have the correct tooltip position and z-index (metabase#51904, metabase#52732)", () => {
+    const testCases = [
+      // should use the user-supplied z-index
+      { input: 1337, expected: 1337 },
 
-    H.getDashboardCard(0).within(() => {
-      H.chartPathWithFillColor("#509EE3").eq(0).realHover();
-    });
+      // should use the default z-index of 200
+      { input: undefined, expected: 200 },
+    ];
 
-    cy.findAllByTestId("echarts-tooltip")
-      .eq(0)
-      .should("exist")
-      .then($tooltip => {
-        const tooltipElement = $tooltip[0];
-        const visibleTopmostElement = getVisibleTopmostElement(tooltipElement);
-
-        // The tooltip is indeed visible if we clicked on a child of the tooltip.
-        // Using `.should("be.visible")` does not work here as Cypress incorrectly
-        // reports the tooltip is obscured by the bar chart even though it has a higher z-index.
-        const isTopmostElementChildOfTooltip = tooltipElement.contains(
-          visibleTopmostElement,
-        );
-
-        expect(isTopmostElementChildOfTooltip).to.equal(true);
+    testCases.forEach(zIndexTestCase => {
+      cy.get("@dashboardId").then(dashboardId => {
+        mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
+          sdkProviderProps: {
+            theme: {
+              components: { popover: { zIndex: zIndexTestCase.input } },
+            },
+          },
+        });
       });
+
+      H.getDashboardCard(0).within(() => {
+        H.chartPathWithFillColor("#509EE3").eq(0).realHover();
+      });
+
+      cy.findAllByTestId("echarts-tooltip")
+        .eq(0)
+        .should("exist")
+        .then($tooltip => {
+          const tooltipElement = $tooltip[0];
+
+          // a fixed-position tooltip should be visible
+          expect(isFixedPositionElementVisible(tooltipElement)).to.be.true;
+
+          const tooltipContainer = tooltipElement.closest(
+            ".echarts-tooltip-container",
+          );
+
+          // tooltip container should exist
+          expect(tooltipContainer).to.exist;
+
+          const tooltipContainerStyle = window.getComputedStyle(
+            tooltipContainer!,
+          );
+
+          // (metabase#51904): tooltip container must render above the fold in the Embedding SDK.
+          // ensures that we are using fixed-positioned tooltips.
+          expect(tooltipContainerStyle.position).to.equal("fixed");
+
+          // (metabase#52732): tooltip container must have the user-supplied z-index
+          // prevents the tooltip from being rendered below charts.
+          expect(Number(tooltipContainerStyle.zIndex)).to.equal(
+            zIndexTestCase.expected,
+          );
+        });
+    });
   });
 });
-
-/**
- * Get the topmost element that is visible and not obscured by other elements.
- **/
-function getVisibleTopmostElement(targetElement: HTMLElement) {
-  const targetElementRect = targetElement.getBoundingClientRect();
-  const originalPointerEvents = targetElement.style.pointerEvents;
-
-  // Temporarily enable pointer events for the target element so elementsFromPoint can see it.
-  targetElement.style.pointerEvents = "auto";
-
-  // Get all elements at the target element's center point
-  const elementsAtPoint = document.elementsFromPoint(
-    targetElementRect.left + targetElementRect.width / 2,
-    targetElementRect.top + targetElementRect.height / 2,
-  );
-
-  targetElement.style.pointerEvents = originalPointerEvents;
-
-  // The topmost element is the first element of elementsAtPoint.
-  return elementsAtPoint[0];
-}

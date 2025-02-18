@@ -4,9 +4,11 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase-enterprise.cache.strategies :as strategies]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task :as task]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -48,18 +50,24 @@
   definition contains a card-id, an optional dashboard-id, and a list of queries to rerun."
   [refresh-defs]
   (fn []
-    (doseq [{:keys [card-id dashboard-id queries]} refresh-defs
-            query queries]
-      (try
-        (qp/process-query
-         (qp/userland-query
-          (assoc-in query [:middleware :ignore-cached-results?] true)
-          {:executed-by  nil
-           :context      :cache-refresh
-           :card-id      card-id
-           :dashboard-id dashboard-id}))
-        (catch Exception e
-          (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e)))))))
+    (let [card-ids    (into #{} (map :card-id refresh-defs))
+          cards-by-id (t2/select-pk->fn identity :model/Card :id [:in card-ids])]
+      (doseq [{:keys [card-id dashboard-id queries]} refresh-defs]
+        ;; Annotate the query with its cache strategy in the format expected by the QP
+        (let [cache-strategy (strategies/cache-strategy (get cards-by-id card-id) dashboard-id)]
+          (doseq [query queries]
+            (try
+              (qp/process-query
+               (qp/userland-query
+                (-> query
+                    (assoc-in [:middleware :ignore-cached-results?] true)
+                    (assoc :cache-strategy cache-strategy))
+                {:executed-by  nil
+                 :context      :cache-refresh
+                 :card-id      card-id
+                 :dashboard-id dashboard-id}))
+              (catch Exception e
+                (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e))))))))))
 
 (defn- duration-ago
   [{:keys [duration unit]}]
@@ -75,6 +83,7 @@
           (let [rerun-cutoff (duration-ago config)]
             {:nest
              {:select   [[:q.query :query]
+                         [:qc.query_hash :cache-hash]
                          [:qe.card_id :card-id]
                          [:qe.dashboard_id :dashboard-id]
                          [[:count :q.query_hash] :count]]
@@ -100,8 +109,8 @@
                              ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
                             [:not= :qe.context (name :cache-refresh)]]
                            [:= :qe.parameterized false])]
-              :group-by [:q.query_hash :q.query :qe.card_id :qe.dashboard_id]}}))]
-    {:select [:u.query :u.card-id :u.dashboard-id :u.count]
+              :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}}))]
+    {:select [:u.query :u.cache-hash :u.card-id :u.dashboard-id :u.count]
      :from   [[{:union queries} :u]]}))
 
 (defn- select-parameterized-queries
@@ -125,6 +134,12 @@
             parameterized-queries (t2/select :model/Query (duration-queries-to-rerun-honeysql cache-configs true))]
         (concat base-queries (select-parameterized-queries parameterized-queries))))))
 
+(defn- clear-caches-for-queries!
+  "Deletes any existing cache entries for queries that we are about to re-run, so that subsequent tasks don't also try
+  to re-run them before the cache has been refreshed. "
+  [queries]
+  (t2/delete! :model/QueryCache :query_hash [:in (map :cache-hash queries)]))
+
 (defn- maybe-refresh-duration-caches!
   []
   (when-let [queries (seq (duration-queries-to-rerun))]
@@ -135,6 +150,7 @@
                                     :dashboard-id dashboard-id
                                     :queries (map :query queries)})))
           task         (refresh-task refresh-defs)]
+      (clear-caches-for-queries! queries)
       (if *run-cache-refresh-async*
         (submit-refresh-task-async! task)
         (task)))))
@@ -249,11 +265,10 @@
         invalidated-count
         (count
          (for [{:keys [id config refresh_automatically] :as cache-config} (select-ready-to-run :schedule)]
-           (do
-             (t2/update! :model/CacheConfig
-                         {:id id}
-                         {:next_run_at    (calc-next-run (:schedule config) now)
-                          :invalidated_at now})
+           (u/prog1 (t2/update! :model/CacheConfig
+                                {:id id}
+                                {:next_run_at    (calc-next-run (:schedule config) now)
+                                 :invalidated_at now})
              (when (and (premium-features/enable-preemptive-caching?)
                         refresh_automatically)
                (refresh-schedule-cache! cache-config)))))]

@@ -47,7 +47,7 @@ export type TokenFieldProps = {
   placeholder?: string | undefined;
   multi?: boolean;
   validateValue?: (value: any) => boolean;
-  parseFreeformValue?: (value: any) => any;
+  parseFreeformValue?: (value: string | undefined) => any;
   updateOnInputChange?: boolean;
   optionRenderer?: (option: any) => React.ReactNode;
   valueRenderer?: (value: any) => React.ReactNode;

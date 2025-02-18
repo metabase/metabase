@@ -1,10 +1,9 @@
-import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ProfileLink } from "metabase/nav/components/ProfileLink";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {

@@ -240,7 +240,7 @@ export const versionRequirements: Record<
   50: { java: 11, node: 18 },
   51: { java: 11, node: 18 },
   52: { java: 11, node: 18 },
-  53: { java: 21, node: 18 },
+  53: { java: 21, node: 22 },
 };
 
 export const getBuildRequirements = (version: string) => {
