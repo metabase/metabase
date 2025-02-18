@@ -346,7 +346,7 @@ describe("scenarios > browse > metrics", () => {
     });
   });
 
-  describe("verified metrics", { tags: "@flaky" }, () => {
+  describe("verified metrics", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
@@ -355,6 +355,8 @@ describe("scenarios > browse > metrics", () => {
     it("should not the verified metrics filter when there are no verified metrics", () => {
       createMetrics();
       cy.visit("/browse/metrics");
+
+      cy.findByLabelText("Table of metrics").should("be.visible");
 
       cy.findByLabelText("Filters").should("not.exist");
     });
