@@ -23,10 +23,7 @@ function disableAppApiRoutesCaching({
   );
 
   apiRouteFiles.forEach(file => {
-    const content = fs.readFileSync(file, "utf8");
-    const updated = `${content}\n${DYNAMIC_API_ROUTE_MARKER};`;
-
-    fs.writeFileSync(file, updated, "utf8");
+    fs.appendFileSync(file, DYNAMIC_API_ROUTE_MARKER, "utf8");
     logWithPrefix(`Updating cache settings in: ${file}`, loggerPrefix);
   });
 }
