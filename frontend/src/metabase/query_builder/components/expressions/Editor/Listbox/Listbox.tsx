@@ -7,7 +7,7 @@ import type { EditorView } from "@codemirror/view";
 import { type MouseEvent, useCallback, useEffect, useRef } from "react";
 
 import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import { Box, DelayGroup, Icon } from "metabase/ui";
+import { Box, DelayGroup, Icon, type IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Completion } from "metabase-lib/v1/expressions/complete";
 
@@ -141,7 +141,7 @@ function Footer() {
   );
 }
 
-function KeyIcon({ name }: { name: string }) {
+function KeyIcon({ name }: { name: IconName }) {
   return (
     <span className={S.key}>
       <Icon name={name} width={12} height={12} />
