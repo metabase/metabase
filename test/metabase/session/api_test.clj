@@ -533,8 +533,13 @@
                                                  "\"first_name\":\"test\","
                                                  "\"last_name\":\"user\","
                                                  "\"email\":\"test@metabase.com\"}")})]
-            (is (malli= SessionResponse
-                        (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
+            (testing "with throttling enabled"
+              (is (malli= SessionResponse
+                          (mt/client :post 200 "session/google_auth" {:token "foo"}))))
+            (testing "with throttling disabled"
+              (with-redefs [api.session/throttling-disabled? true]
+                (is (malli= SessionResponse
+                            (mt/client :post 200 "session/google_auth" {:token "foo"}))))))))
       (testing "Google auth throws exception for a disabled account"
         (mt/with-temp [:model/User _ {:email "test@metabase.com" :is_active false}]
           (with-redefs [http/post (constantly
