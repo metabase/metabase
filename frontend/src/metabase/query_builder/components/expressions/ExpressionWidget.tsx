@@ -1,4 +1,8 @@
-import type { ReactNode } from "react";
+import type {
+  ChangeEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  ReactNode,
+} from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -98,12 +102,9 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
     setError(null);
   }, []);
 
-  const handleNameChange = useCallback(
-    (evt: React.ChangeEvent<HTMLInputElement>) => {
-      setName(evt.target.value);
-    },
-    [],
-  );
+  const handleNameChange = useCallback((evt: ChangeEvent<HTMLInputElement>) => {
+    setName(evt.target.value);
+  }, []);
 
   const shortcuts = useMemo(
     () =>
@@ -154,7 +155,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   }, []);
 
   const handleKeyDown = useCallback(
-    (evt: React.KeyboardEvent<HTMLInputElement>) => {
+    (evt: ReactKeyboardEvent<HTMLInputElement>) => {
       if (evt.key === "Enter") {
         handleCommit(clause);
       }

@@ -4,7 +4,7 @@ import {
 } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
-import { useCallback, useEffect, useRef } from "react";
+import { type MouseEvent, useCallback, useEffect, useRef } from "react";
 
 import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import { Box, DelayGroup, Icon } from "metabase/ui";
@@ -85,7 +85,7 @@ function CompletionItem({
 }) {
   const ref = useRef<HTMLLIElement>(null);
   const handleMouseDown = useCallback(
-    (evt: React.MouseEvent<HTMLLIElement>) => {
+    (evt: MouseEvent<HTMLLIElement>) => {
       evt.stopPropagation();
       evt.preventDefault();
       onCompletionClick(index);

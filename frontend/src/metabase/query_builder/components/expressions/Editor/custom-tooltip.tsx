@@ -9,17 +9,25 @@ import {
   type ViewUpdate,
   showTooltip,
 } from "@codemirror/view";
-import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 
 type TooltipProps = {
   state: EditorState;
   view: EditorView;
-  tooltipRef: React.RefObject<HTMLDivElement>;
+  tooltipRef: RefObject<HTMLDivElement>;
 };
 
 type TooltipOptions = {
-  render: (props: TooltipProps) => React.ReactNode;
+  render: (props: TooltipProps) => ReactNode;
   getPosition: (state: EditorState) => number;
 };
 
@@ -33,7 +41,7 @@ type TooltipOptions = {
 export function useCustomTooltip({
   render,
   getPosition,
-}: TooltipOptions): [Extension[], React.ReactNode] {
+}: TooltipOptions): [Extension[], ReactNode] {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const element = useMemo(() => document.createElement("div"), []);
 
@@ -70,7 +78,7 @@ export function useCustomTooltip({
   );
 
   const handleKeyDown = useCallback(
-    function (evt: React.KeyboardEvent) {
+    function (evt: KeyboardEvent) {
       if (!update?.view) {
         return;
       }

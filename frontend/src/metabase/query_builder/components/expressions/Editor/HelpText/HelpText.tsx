@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { Fragment, useCallback } from "react";
+import { Fragment, type MouseEvent, useCallback } from "react";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
@@ -67,7 +67,7 @@ export function HelpText({
   );
 
   const handleMouseDown = useCallback(
-    (evt: React.MouseEvent<HTMLDivElement>) => {
+    (evt: MouseEvent<HTMLDivElement>) => {
       evt.stopPropagation();
       evt.preventDefault();
       onToggle?.();
@@ -76,7 +76,7 @@ export function HelpText({
   );
 
   const handleContentMouseDown = useCallback(
-    (evt: React.MouseEvent<HTMLDivElement>) => {
+    (evt: MouseEvent<HTMLDivElement>) => {
       evt.stopPropagation();
     },
     [],

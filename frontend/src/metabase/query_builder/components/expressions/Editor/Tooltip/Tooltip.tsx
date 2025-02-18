@@ -2,6 +2,7 @@ import { currentCompletions } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import {
+  type RefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -37,7 +38,7 @@ export function Tooltip({
   reportTimezone?: string;
 
   // from tooltip extension
-  tooltipRef: React.RefObject<HTMLDivElement>;
+  tooltipRef: RefObject<HTMLDivElement>;
   state: EditorState;
   view: EditorView;
 }) {
@@ -113,7 +114,7 @@ export function Tooltip({
   );
 }
 
-function usePopoverHeight(ref: React.RefObject<HTMLDivElement>) {
+function usePopoverHeight(ref: RefObject<HTMLDivElement>) {
   const [maxHeight, setMaxHeight] = useState(0);
   // We want to explicitly read the max height everytime we render
   // eslint-disable-next-line react-hooks/exhaustive-deps
