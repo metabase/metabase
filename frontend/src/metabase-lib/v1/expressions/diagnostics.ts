@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type { Expr, Node } from "metabase-lib/v1/expressions/pratt";
+import type { Node } from "metabase-lib/v1/expressions/pratt";
 import {
   ResolverError,
   compile,
@@ -10,6 +10,7 @@ import {
 } from "metabase-lib/v1/expressions/pratt";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Expression } from "metabase-types/api";
 
 import {
   adjustCaseOrIf,
@@ -106,7 +107,7 @@ export function diagnose({
   const database = getDatabase(query, metadata);
 
   // make a simple check on expression syntax correctness
-  let mbqlOrError: Expr | ErrorWithMessage;
+  let mbqlOrError: Expression | ErrorWithMessage;
   try {
     mbqlOrError = prattCompiler({
       source,
@@ -179,7 +180,7 @@ function prattCompiler({
   stageIndex: number;
   expressionIndex?: number | undefined;
   database?: Database | null;
-}): ErrorWithMessage | Expr {
+}): ErrorWithMessage | Expression {
   const tokens = lexify(source);
   const options = {
     source,

@@ -186,7 +186,7 @@ function formatOperator([op, ...operands]: any[], options: FormatOptions) {
   const args = operands.filter(arg => !isOptionsObject(arg));
   const formattedOperator = getExpressionName(op) || op;
   const formattedArgs = args.map((arg, index) => {
-    const argOp = isOperator(arg) && arg[0];
+    const argOp = isOperator(arg) ? arg[0] : -1;
     const isLowerPrecedence =
       isOperator(arg) && OPERATOR_PRECEDENCE[op] > OPERATOR_PRECEDENCE[argOp];
 
