@@ -14,8 +14,7 @@
    [metabase.lib.test-util.matrix :as matrix]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
-   [metabase.util.number :as u.number]))
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

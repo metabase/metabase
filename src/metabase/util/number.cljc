@@ -3,7 +3,6 @@
   Most of the implementations are in the split CLJ/CLJS files [[metabase.util.number.impl]]."
   (:refer-clojure :exclude [bigint integer?])
   (:require
-   [clojure.core :as core]
    [metabase.util.namespaces :as shared.ns]
    [metabase.util.number.impl :as internal]))
 
