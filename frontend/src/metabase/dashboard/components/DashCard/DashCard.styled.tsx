@@ -14,11 +14,6 @@ const getRootSlowCardStyle = (theme: Theme) => css`
   border-color: ${theme.fn.themeColor("accent4")};
 `;
 
-const hiddenBackgroundStyle = css`
-  background: ${getDashboardBodyBgColor(false)};
-  box-shadow: none !important;
-`;
-
 export const DashCardRoot = styled.div<DashCardRootProps>`
   background-color: var(--mb-color-bg-dashboard-card);
   scroll-margin: 6px 0;
@@ -39,5 +34,9 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
     `}
 
   ${({ shouldForceHiddenBackground }) =>
-    shouldForceHiddenBackground && hiddenBackgroundStyle}
+    shouldForceHiddenBackground &&
+    css`
+      background: ${getDashboardBodyBgColor(false)};
+      box-shadow: none !important;
+    `}
 `;

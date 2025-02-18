@@ -16,9 +16,9 @@ import { useSelector } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 
+import DashboardS from "../Dashboard/Dashboard.module.css";
 import {
   FixedWidthContainer,
-  ParametersFixedWidthContainer,
   ParametersWidgetContainer,
 } from "../Dashboard/Dashboard.styled";
 import { DashboardParameterList } from "../DashboardParameterList";
@@ -87,7 +87,8 @@ export function DashboardParameterPanel({
         isNightMode={shouldRenderAsNightMode}
         data-testid="dashboard-parameters-widget-container"
       >
-        <ParametersFixedWidthContainer
+        <FixedWidthContainer
+          className={DashboardS.ParametersFixedWidthContainer}
           id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
           isFixedWidth={dashboard?.width === "fixed"}
           data-testid="fixed-width-filters"
@@ -95,7 +96,7 @@ export function DashboardParameterPanel({
           <DashboardParameterList isFullscreen={isFullscreen} />
 
           <FilterApplyButton />
-        </ParametersFixedWidthContainer>
+        </FixedWidthContainer>
       </ParametersWidgetContainer>
     </span>
   );
