@@ -14,6 +14,7 @@ jobs:
       # First, checkout the repository
       - uses: actions/checkout@v4
       - name: Run privacy reporter script
+        uses: ./.github/actions/prepare-backend
         id: script
         run: |
           clojure -X:dev:drivers:build:build-dev:build-test metabase.private-things-test/privacy-report
