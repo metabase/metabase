@@ -31,6 +31,7 @@ jobs:
           clojure -M:antq --upgrade --force --skip=github-actions
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@25575a12f382fb9c68692ffce1174138b61417d7
+        id: create_pull_request
         with:
           title: Update backend dependencies
           base: master
@@ -44,3 +45,8 @@ jobs:
             Update backend dependencies
           # team-reviewers: |
           #   metabase/backend-developers
+      - name: Enable Pull Request Auto-Merge
+        if: ${{ steps.create_pull_request.outputs.pull-request-number }}
+        uses: peter-evans/enable-pull-request-automerge@15cc64bb1afa41657d1325a39ade0bc0fa2d55d4
+        with:
+          pull-request-number: ${{ steps.create_pull_request.outputs.pull-request-number }}
