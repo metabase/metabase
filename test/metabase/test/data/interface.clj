@@ -922,7 +922,7 @@
 (defmethod agg-venues-by-category-id :postgres
   [_driver]
   "select category_id, array_agg(name)
-   from venues
+   from public.venues
    group by category_id
    order by 1 asc
    limit 2;")

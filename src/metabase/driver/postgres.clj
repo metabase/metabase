@@ -961,6 +961,10 @@
   [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
   (fn [] (.getString rs i)))
 
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/ARRAY]
+  [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
+  (fn [] (vec (.getArray ^java.sql.Array (.getObject rs i)))))
+
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :postgres
   [_ ^ResultSet rs _ ^Integer i]
@@ -968,9 +972,6 @@
     (let [obj (.getObject rs i)]
       (cond (instance? org.postgresql.util.PGobject obj)
             (.getValue ^org.postgresql.util.PGobject obj)
-
-            (instance? org.postgresql.jdbc.PgArray obj)
-            (vec (.getArray ^org.postgresql.jdbc.PgArray obj)) ;; TODO -- we should probably be careful of very large arrays
 
             :else
             obj))))
