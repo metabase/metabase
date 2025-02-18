@@ -19,10 +19,10 @@ jobs:
       - name: Run privacy reporter script
         id: script
         run: |
-          clojure -X:dev:drivers:build:build-dev:build-test metabase.private-things-test/privacy-report
+          # clojure -X:dev:drivers:build:build-dev:build-test metabase.private-things-test/privacy-report
           {
           echo 'MULTILINE_CONTENT<<EOF'
-          cat privacy_report.txt
+          cat deps.edn
           echo EOF
           } >> "$GITHUB_ENV"
 
