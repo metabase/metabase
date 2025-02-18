@@ -29,25 +29,23 @@ jobs:
       - name: Run Antq
         run: >-
           clojure -M:antq --upgrade --force --skip=github-action
+      - name: Create Git Commit
+        run: |
+          git add deps.edn modules
+          git commit -m "Update backend dependencies" --no-verify
+      # - name: Create Git Branch
+      #   run: |
+      #     COMMIT_HASH=$(git rev-parse HEAD)
+      #     git checkout -B "update-backend-dependencies-$COMMIT_HASH"
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@25575a12f382fb9c68692ffce1174138b61417d7
         id: create_pull_request
-        with:
-          title: Update backend dependencies
-          base: master
-          branch: auto-update-backend-deps
-          branch-suffix: timestamp
-          delete-branch: true
-          add-paths: |
-            deps.edn
-            modules/**/deps.edn
-          commit-message: >-
-            Update backend dependencies
-          # team-reviewers: |
-          #   metabase/backend-developers
+        run: |
+          PR_URL=$(gh pr create --base master --head HEAD --label "no-backport" --title "Update Backend Dependencies" --body "Update backend dependencies")
+          PR_NUMBER=${PR_URL##*/}
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
       - name: Enable Pull Request Auto-Merge
         if: ${{ steps.create_pull_request.outputs.pull-request-number }}
-        uses: peter-evans/enable-pull-request-automerge@15cc64bb1afa41657d1325a39ade0bc0fa2d55d4
+        uses: peter-evans/enable-pull-request-automerge@v3
         with:
-          pull-request-number: ${{ steps.create_pull_request.outputs.pull-request-number }}
+          pull-request-number: ${{ steps.create_pull_request.outputs.pr_number }}
           merge-method: squash
