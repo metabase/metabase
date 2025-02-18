@@ -1,6 +1,7 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
+   [metabase.analytics.core :as analytics]
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
@@ -41,6 +42,28 @@
 
  [search.spec
   define-spec])
+
+(defmethod analytics/known-labels :metabase-search/index
+  [_]
+  (for [model (keys (search.spec/specifications))]
+    {:model model}))
+
+(defmethod analytics/known-labels :metabase-search/engine-default
+  [_]
+  (analytics/known-labels :metabase-search/engine-active))
+
+(defmethod analytics/known-labels :metabase-search/engine-active
+  [_]
+  (for [e (search.engine/known-engines)]
+    {:engine (name e)}))
+
+(defmethod analytics/initial-value :metabase-search/engine-default
+  [_ {:keys [engine]}]
+  (if (= engine (name (search.impl/default-engine))) 1 0))
+
+(defmethod analytics/initial-value :metabase-search/engine-active
+  [_ {:keys [engine]}]
+  (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
 
 (defn supports-index?
   "Does this instance support a search index, of any sort?"

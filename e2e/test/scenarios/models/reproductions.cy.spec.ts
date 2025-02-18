@@ -1,8 +1,9 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type { CardId, FieldReference } from "metabase-types/api";
@@ -39,6 +40,7 @@ describe("issue 29943", () => {
   }
 
   function getHeaderCell(columnIndex: number, name: string) {
+    // eslint-disable-next-line no-unsafe-element-filtering
     return cy
       .findAllByTestId("header-cell")
       .eq(columnIndex)
@@ -535,6 +537,7 @@ describe.skip("issue 40635", () => {
   }
 
   function assertTableHeader(index: number, name: string) {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 
@@ -854,7 +857,7 @@ describe("issue 45924", () => {
   });
 });
 
-H.describeEE("issue 43088", () => {
+describe("issue 43088", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -965,17 +968,8 @@ describe("issue 34574", () => {
       cy.log("Make sure we immediately render the proper markdown");
       cy.findByTestId("editable-text").get("textarea").should("not.exist");
       cy.findByTestId("editable-text").within(assertMarkdownPreview);
+      cy.findByLabelText("Close").click();
     });
-
-    cy.log(
-      "Make sure the markdown is properly preserved in the model details page",
-    );
-    // Let redux handle async actions so that they won't interfere with the action
-    // triggered by the next click. Test will flake without this due to wrong navigation.
-    cy.wait(1);
-    cy.findByRole("link", { name: "See more about this model" }).click();
-    cy.wait("@fks");
-    cy.findByLabelText("Description").within(assertMarkdownPreview);
 
     cy.log(
       "Make sure the description is present in the collection entry tooltip",
@@ -1204,6 +1198,7 @@ describe.skip("issues 28270, 33708", () => {
     H.tableHeaderClick("Title");
     H.popover().findByText("Filter by this column").click();
     H.popover().findByLabelText("Filter operator").click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Contains").click();
     H.popover().findByLabelText("Filter value").type("a,");
     H.popover().button("Add filter").click();
@@ -1359,6 +1354,68 @@ describe("issue 37300", () => {
       cy.findByText("Ean").should("be.visible");
 
       cy.findByText("No results!").should("be.visible");
+    });
+  });
+});
+
+describe("issue 51925", () => {
+  function setLinkDisplayType() {
+    cy.findByTestId("chart-settings-widget-view_as").findByText("Link").click();
+  }
+
+  function linkTextInput() {
+    return cy
+      .findByTestId("chart-settings-widget-link_text")
+      .findByRole("combobox");
+  }
+
+  function linkUrlInput() {
+    return cy
+      .findByTestId("chart-settings-widget-link_url")
+      .findByRole("combobox");
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it('should allow to set "Display as Link" options independently for each column (metabase#51925)', () => {
+    H.visitModel(ORDERS_MODEL_ID);
+    H.openQuestionActions("Edit metadata");
+    H.tableInteractive().findByText("User ID").click();
+    H.rightSidebar().within(() => {
+      setLinkDisplayType();
+      linkTextInput().type("User {{USER_ID}}", {
+        parseSpecialCharSequences: false,
+      });
+      linkUrlInput().type("https://example.com/{{USER_ID}}", {
+        parseSpecialCharSequences: false,
+      });
+    });
+    H.tableInteractive().findByText("Product ID").click();
+    H.rightSidebar().within(() => {
+      setLinkDisplayType();
+      linkTextInput().type("Product {{PRODUCT_ID}}", {
+        parseSpecialCharSequences: false,
+      });
+      linkUrlInput().type("https://example.com/{{PRODUCT_ID}}", {
+        parseSpecialCharSequences: false,
+      });
+    });
+    H.tableInteractive().findByText("User ID").click();
+    H.rightSidebar().within(() => {
+      linkTextInput().should("have.value", "User {{USER_ID}}");
+      linkUrlInput().should("have.value", "https://example.com/{{USER_ID}}");
+    });
+    H.saveMetadataChanges();
+    H.tableInteractive().within(() => {
+      cy.findAllByRole("link", { name: "User 1" })
+        .first()
+        .should("have.attr", "href", "https://example.com/1");
+      cy.findAllByRole("link", { name: "Product 6" })
+        .first()
+        .should("have.attr", "href", "https://example.com/6");
     });
   });
 });

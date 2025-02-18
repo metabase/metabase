@@ -4,13 +4,12 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
-   [compojure.core :refer [GET POST]]
    [metabase-enterprise.scim.api :as scim]
-   [metabase.analytics.prometheus :as prometheus]
-   [metabase.api.common :as api]
+   [metabase.analytics.core :as analytics]
+   [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -111,10 +110,10 @@
   [thunk]
   (try
     (let [response (thunk)]
-      (prometheus/inc! :metabase-scim/response-ok)
+      (analytics/inc! :metabase-scim/response-ok)
       response)
     (catch Throwable e
-      (prometheus/inc! :metabase-scim/response-error)
+      (analytics/inc! :metabase-scim/response-error)
       (throw e))))
 
 (defmacro with-prometheus-counters
@@ -200,13 +199,13 @@
       [:= :%lower.email (u/lower-case-en match)]
       (throw-scim-error 400 (format "Unsupported filter parameter: %s" filter-parameter)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/Users"
+(api.macros/defendpoint :get "/Users"
   "Fetch a list of users."
-  [:as {{start-index :startIndex c :count filter-param :filter} :params}]
-  {start-index  [:maybe ms/PositiveInt]
-   c            [:maybe ms/PositiveInt]
-   filter-param [:maybe ms/NonBlankString]}
+  [_route-params
+   {start-index :startIndex, c :count, filter-param :filter} :- [:map
+                                                                 [:startIndex {:optional true} [:maybe ms/PositiveInt]]
+                                                                 [:count      {:optional true} [:maybe ms/PositiveInt]]
+                                                                 [:filter     {:optional true} [:maybe ms/NonBlankString]]]]
   (with-prometheus-counters
     (let [limit          (or c default-pagination-limit)
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
@@ -229,21 +228,20 @@
                           :Resources    (map mb-user->scim hydrated-users)}]
       (scim-response result))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/Users/:id"
+(api.macros/defendpoint :get ["/Users/:id" :id #"[^/]+"]
   "Fetch a single user."
-  [id]
-  {id ms/NonBlankString}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-user-by-entity-id id)
         (t2/hydrate :scim_user_group_memberships)
         mb-user->scim)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/Users"
+(api.macros/defendpoint :post "/Users"
   "Create a single user."
-  [:as {scim-user :body}]
-  {scim-user SCIMUser}
+  [_route-params
+   _query-params
+   scim-user :- SCIMUser]
   (with-prometheus-counters
     (let [mb-user (scim-user->mb scim-user)
           email   (:email mb-user)]
@@ -256,11 +254,11 @@
                            mb-user->scim))]
         (scim-response new-user 201)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/Users/:id"
+(api.macros/defendpoint :put ["/Users/:id" :id #"[^/]+"]
   "Update a user."
-  [:as {scim-user :body {id :id} :params}]
-  {scim-user SCIMUser}
+  [{:keys [id]}
+   _query-params
+   scim-user :- SCIMUser]
   (with-prometheus-counters
     (let [updates      (scim-user->mb scim-user)
           email        (-> scim-user :emails first :value)
@@ -282,12 +280,12 @@
                                :status      400
                                :status-code 400})))))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PATCH "/Users/:id"
+(api.macros/defendpoint :patch ["/Users/:id" :id #"[^/]+"]
   "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches."
-  [:as {patch-ops :body {id :id} :params}]
-  {patch-ops UserPatch}
-  {id ms/NonBlankString}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]
+   _query-params
+   patch-ops :- UserPatch]
   (with-prometheus-counters
     (t2/with-transaction [_conn]
       (let [user    (get-user-by-entity-id id)
@@ -366,13 +364,14 @@
       (throw (ex-info "Unsupported filter parameter" {:filter      filter-parameter
                                                       :status-code 400})))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/Groups"
+(api.macros/defendpoint :get "/Groups"
   "Fetch a list of groups."
-  [:as {{start-index :startIndex c :count filter-param :filter} :params}]
-  {start-index  [:maybe ms/PositiveInt]
-   c            [:maybe ms/PositiveInt]
-   filter-param [:maybe ms/NonBlankString]}
+  [_route-params
+   {start-index :startIndex, c :count, filter-param :filter}
+   :- [:map
+       [:startIndex {:optional true} [:maybe ms/PositiveInt]]
+       [:count      {:optional true} [:maybe ms/PositiveInt]]
+       [:filter     {:optional true} [:maybe ms/NonBlankString]]]]
   (with-prometheus-counters
     (let [limit          (or c default-pagination-limit)
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
@@ -396,11 +395,10 @@
                           :Resources    (map mb-group->scim groups)}]
       (scim-response result))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/Groups/:id"
+(api.macros/defendpoint :get ["/Groups/:id" :id #"[^/]+"]
   "Fetch a single group."
-  [id]
-  {id ms/NonBlankString}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-group-by-entity-id id)
         (t2/hydrate :scim_group_members)
@@ -417,11 +415,11 @@
       (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
       (t2/insert! :model/PermissionsGroupMembership memberships))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/Groups"
+(api.macros/defendpoint :post "/Groups"
   "Create a single group, and populates it if necessary."
-  [:as {scim-group :body}]
-  {scim-group SCIMGroup}
+  [_route-params
+   _query-params
+   scim-group :- SCIMGroup]
   (with-prometheus-counters
     (let [group-name (:displayName scim-group)
           entity-ids (map :value (:members scim-group))]
@@ -436,11 +434,11 @@
               mb-group->scim
               (scim-response 201)))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/Groups/:id"
+(api.macros/defendpoint :put ["/Groups/:id" :id #"[^/]+"]
   "Update a group."
-  [:as {scim-group :body {id :id} :params}]
-  {scim-group SCIMGroup}
+  [{:keys [id]}
+   _query-params
+   scim-group :- SCIMGroup]
   (with-prometheus-counters
     (let [group-name (:displayName scim-group)
           entity-ids (map :value (:members scim-group))]
@@ -454,14 +452,11 @@
               mb-group->scim
               scim-response))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/Groups/:id"
+(api.macros/defendpoint :delete ["/Groups/:id" :id #"[^/]+"]
   "Delete a group."
-  [id]
-  {id ms/NonBlankString}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
       (t2/delete! :model/PermissionsGroup (u/the-id group))
       (scim-response nil 204))))
-
-(api/define-routes)

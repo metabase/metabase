@@ -10,6 +10,7 @@ export const TAG_TYPES = [
   "channel",
   "collection",
   "dashboard",
+  "dashboard-question-candidates",
   "database",
   "field",
   "field-values",

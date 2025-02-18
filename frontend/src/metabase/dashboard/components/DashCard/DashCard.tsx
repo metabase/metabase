@@ -17,10 +17,8 @@ import {
 } from "metabase/dashboard/utils";
 import { color } from "metabase/lib/colors";
 import { useSelector, useStore } from "metabase/lib/redux";
-import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -69,9 +67,11 @@ export interface DashCardProps {
   isXray?: boolean;
   withTitle?: boolean;
 
+  /** Bool if removing the dashcard will queue the card to be trashed on dashboard save */
+  isTrashedOnRemove: boolean;
+  onRemove: (dashcard: StoreDashcard) => void;
   onAddSeries: (dashcard: StoreDashcard) => void;
   onReplaceCard: (dashcard: StoreDashcard) => void;
-  onRemove: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
@@ -111,9 +111,10 @@ function DashCardInner({
   isEditingParameter,
   clickBehaviorSidebarDashcard,
   withTitle = true,
+  isTrashedOnRemove,
+  onRemove,
   onAddSeries,
   onReplaceCard,
-  onRemove,
   navigateToNewCardFromDashboard,
   markNewCardSeen,
   showClickBehaviorSidebar,
@@ -127,7 +128,6 @@ function DashCardInner({
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const store = useStore();
   const getHref = useCallback(
     () => getDashcardHref(store.getState(), dashcard.id),
@@ -200,7 +200,6 @@ function DashCardInner({
   );
 
   const isAction = isActionCard(mainCard);
-  const isEmbed = isEmbeddingSdk || isJWT(dashcard.dashboard_id);
 
   const { expectedDuration, isSlow } = useMemo(() => {
     const expectedDuration = Math.max(
@@ -341,6 +340,7 @@ function DashCardInner({
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
+            isTrashedOnRemove={isTrashedOnRemove}
           />
         )}
         <DashCardVisualization
@@ -356,7 +356,6 @@ function DashCardInner({
           error={error}
           getHref={navigateToNewCardFromDashboard ? getHref : undefined}
           isAction={isAction}
-          isEmbed={isEmbed}
           isXray={isXray}
           isEditing={isEditing}
           isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -21,7 +21,6 @@ describe("scenarios > notebook > data source", () => {
       "should display tables from the only existing database by default",
       { tags: "@OSS" },
       () => {
-        H.onlyOnOSS();
         cy.visit("/");
         cy.findByTestId("app-bar").findByText("New").click();
         H.popover().findByTextEnsureVisible("Question").click();
@@ -128,9 +127,9 @@ describe("scenarios > notebook > data source", () => {
         const schemaName = "Wild";
         const tableName = "Animals";
 
+        H.restore(`${dialect}-writable`);
         H.resetTestTable({ type: dialect, table: testTable1 });
         H.resetTestTable({ type: dialect, table: testTable2 });
-        H.restore(`${dialect}-writable`);
 
         cy.signInAsAdmin();
 
@@ -336,7 +335,6 @@ describe("scenarios > notebook > data source", () => {
 
 describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore("setup");
     cy.signInAsAdmin();
   });
@@ -384,8 +382,8 @@ describe("issue 28106", () => {
   beforeEach(() => {
     const dialect = "postgres";
 
-    H.resetTestTable({ type: dialect, table: "many_schemas" });
     H.restore(`${dialect}-writable`);
+    H.resetTestTable({ type: dialect, table: "many_schemas" });
     cy.signInAsAdmin();
 
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
@@ -412,7 +410,7 @@ describe("issue 28106", () => {
         scrollAllTheWayDown();
 
         // assert scrolling worked and the last item is visible
-        H.entityPickerModalItem(1, "Public").should("be.visible");
+        H.entityPickerModalItem(1, "Schema Z").should("be.visible");
 
         // simulate scrolling up using mouse wheel 3 times
         for (let i = 0; i < 3; ++i) {
@@ -421,7 +419,7 @@ describe("issue 28106", () => {
         }
 
         // assert first item does not exist - this means the list has not been scrolled to the top
-        cy.findByText("Domestic").should("not.exist");
+        cy.findByText("Schema A").should("not.exist");
         cy.get("@schemasList").should(([$element]) => {
           expect($element.scrollTop).to.be.greaterThan(0);
         });
@@ -450,7 +448,6 @@ describe("issue 28106", () => {
 // Needs to be OSS because EE will always have models due to instance analytics
 describe("issue 32252", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore("setup");
     cy.signInAsAdmin();
 

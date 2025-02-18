@@ -1,5 +1,11 @@
-import { H } from "e2e/support";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+const { H } = cy;
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_DASHBOARD_ID,
+  THIRD_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > navigation > navbar", () => {
   describe("Normal user", () => {
@@ -11,6 +17,38 @@ describe("scenarios > navigation > navbar", () => {
     it("should be open after logging in", () => {
       cy.visit("/");
       H.navigationSidebar().should("be.visible");
+    });
+
+    it("should highlight relevant entities when navigating", () => {
+      const questionName = "Bookmarked question";
+      H.createQuestion(
+        {
+          name: questionName,
+          collection_id: THIRD_COLLECTION_ID,
+          query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+        },
+        {
+          wrapId: true,
+        },
+      );
+
+      cy.get("@questionId").then(id => {
+        cy.request("POST", `/api/bookmark/card/${id}`);
+        H.visitQuestion(id);
+      });
+
+      H.openNavigationSidebar();
+      H.assertNavigationSidebarItemSelected(/Third collection/);
+      H.assertNavigationSidebarBookmarkSelected(questionName);
+
+      H.newButton().click();
+      H.popover()
+        .findByText(/SQL query/)
+        .click();
+
+      H.openNavigationSidebar();
+      H.assertNavigationSidebarItemSelected(/Third collection/, "false");
+      H.assertNavigationSidebarBookmarkSelected(questionName, "false");
     });
 
     it("should display error ui when data fetching fails", () => {
@@ -89,7 +127,7 @@ describe("scenarios > navigation > navbar", () => {
     });
   });
 
-  H.describeEE("EE", () => {
+  describe("EE", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();

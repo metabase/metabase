@@ -8,7 +8,7 @@ Metabase runs on the Java Virtual Machine (JVM), and depending on how it's confi
 
 ## Java version
 
-Metabase should be run on Java version 21.
+Metabase should be run on Java version 21 (older versions are unsupported).
 
 When searching for versions of Java, always use the latest minor version of the major version you're choosing. E.g., when choosing between Java 21.0.1 and Java 21.0.4, choose the latest version (in this case, 21.0.4).
 

@@ -1,24 +1,25 @@
 (ns metabase.setup.api
   (:require
-   [compojure.core :refer [GET POST]]
    [java-time.api :as t]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.embed.settings :as embed.settings]
    [metabase.events :as events]
-   [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.user :as user]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.session.models.session :as session]
    [metabase.setup.core :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -44,7 +45,7 @@
   to. This var is redef'd to false by certain tests to allow that."
   false)
 
-(defn- setup-create-user! [{:keys [email first-name last-name password]}]
+(defn- setup-create-user! [{:keys [email first-name last-name password device-info]}]
   (when (and (setup/has-user-setup)
              (not *allow-api-setup-after-first-user-is-created*))
     ;; many tests use /api/setup to setup multiple users, so *allow-api-setup-after-first-user-is-created* is
@@ -52,8 +53,7 @@
     (throw (ex-info
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
             {:status-code 403})))
-  (let [session-id (str (random-uuid))
-        new-user   (first (t2/insert-returning-instances! :model/User
+  (let [new-user   (first (t2/insert-returning-instances! :model/User
                                                           :email        email
                                                           :first_name   first-name
                                                           :last_name    last-name
@@ -63,18 +63,16 @@
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
-    (let [session (first (t2/insert-returning-instances! :model/Session
-                                                         :id      session-id
-                                                         :user_id user-id))]
+    (let [session (session/create-session! :password new-user device-info)]
       ;; return user ID, session ID, and the Session object itself
-      {:session-id session-id, :user-id user-id, :session session})))
+      {:session-id (:id session), :user-id user-id, :session session})))
 
 (defn- setup-maybe-create-and-invite-user! [{:keys [email] :as user}, invitor]
   (when email
     (if-not (email/email-configured?)
       (log/error "Could not invite user because email is not configured.")
       (u/prog1 (user/insert-new-user! user)
-        (user/set-permissions-groups! <> [(perms-group/all-users) (perms-group/admin)])
+        (user/set-permissions-groups! <> [(perms/all-users-group) (perms/admin-group)])
         (events/publish-event! :event/user-invited
                                {:object
                                 (assoc <>
@@ -82,10 +80,10 @@
                                        :invite_method "email"
                                        :sso_source    (:sso_source <>))
                                 :details {:invitor (select-keys invitor [:email :first_name])}})
-        (snowplow/track-event! ::snowplow/invite
-                               {:event           :invite-sent
-                                :invited-user-id (u/the-id <>)
-                                :source          "setup"})))))
+        (analytics/track-event! :snowplow/invite
+                                {:event           :invite-sent
+                                 :invited-user-id (u/the-id <>)
+                                 :source          "setup"})))))
 
 (defn- setup-set-settings! [{:keys [email site-name site-locale]}]
   ;; set a couple preferences
@@ -96,41 +94,46 @@
   ;; default to `true` the setting will set itself correctly whether a boolean or boolean string is specified
   (public-settings/anon-tracking-enabled! true))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
   returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
   set specific settings from the setup flow."
-  [:as {{:keys                                          [token]
-         {:keys [first_name last_name email password]}  :user
-         {invited_first_name :first_name,
-          invited_last_name  :last_name,
-          invited_email      :email}                    :invite
-         {:keys [site_name site_locale]} :prefs}
-        :body,
-        :as request}]
-  {token              SetupToken
-   first_name         [:maybe ms/NonBlankString]
-   last_name          [:maybe ms/NonBlankString]
-   email              ms/Email
-   password           ms/ValidPassword
-   invited_first_name [:maybe ms/NonBlankString]
-   invited_last_name  [:maybe ms/NonBlankString]
-   invited_email      [:maybe ms/Email]
-   site_name          ms/NonBlankString
-   site_locale        [:maybe ms/ValidLocale]}
+  [_route-params
+   _query-params
+   {{first-name :first_name, last-name :last_name, :keys [email password]} :user
+    {invited-first-name :first_name
+     invited-last-name  :last_name
+     invited-email      :email} :invite
+    {site-name :site_name
+     site-locale :site_locale} :prefs}
+   :- [:map
+       [:token SetupToken]
+       [:user [:map
+               [:email      ms/Email]
+               [:password   ms/ValidPassword]
+               [:first_name {:optional true} [:maybe ms/NonBlankString]]
+               [:last_name  {:optional true} [:maybe ms/NonBlankString]]]]
+       [:invite {:optional true} [:map
+                                  [:first_name {:optional true} [:maybe ms/NonBlankString]]
+                                  [:last_name  {:optional true} [:maybe ms/NonBlankString]]
+                                  [:email      {:optional true} [:maybe ms/Email]]]]
+       [:prefs [:map
+                [:site_name   ms/NonBlankString]
+                [:site_locale {:optional true} [:maybe ms/ValidLocale]]]]]
+   request]
   (letfn [(create! []
             (try
               (t2/with-transaction []
                 (let [user-info (setup-create-user! {:email email
-                                                     :first-name first_name
-                                                     :last-name last_name
-                                                     :password password})]
-                  (setup-maybe-create-and-invite-user! {:email invited_email,
-                                                        :first_name invited_first_name,
-                                                        :last_name invited_last_name}
-                                                       {:email email, :first_name first_name})
-                  (setup-set-settings! {:email email :site-name site_name :site-locale site_locale})
+                                                     :first-name first-name
+                                                     :last-name last-name
+                                                     :password password
+                                                     :device-info (request/device-info request)})]
+                  (setup-maybe-create-and-invite-user! {:email invited-email
+                                                        :first_name invited-first-name
+                                                        :last_name invited-last-name}
+                                                       {:email email, :first_name first-name})
+                  (setup-set-settings! {:email email :site-name site-name :site-locale site-locale})
                   user-info))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
@@ -143,7 +146,6 @@
       (events/publish-event! :event/user-login {:user-id user-id})
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))
-      (snowplow/track-event! ::snowplow/account {:event :new-user-created} user-id)
       ;; return response with session ID and set the cookie as well
       (request/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
@@ -184,7 +186,7 @@
                 :app-origin  (boolean (embed.settings/embedding-app-origins-interactive))}
    :configured {:email (email/email-configured?)
                 :slack (slack/slack-configured?)
-                :sso   (google/google-auth-enabled)}
+                :sso   (setting/get :google-auth-enabled)}
    :counts     {:user  (t2/count :model/User {:where (mi/exclude-internal-content-hsql :model/User)})
                 :card  (t2/count :model/Card {:where (mi/exclude-internal-content-hsql :model/Card)})
                 :table (val (ffirst (t2/query {:select [:%count.*]
@@ -304,8 +306,7 @@
   ([checklist-info]
    (annotate (checklist-items checklist-info))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/admin_checklist"
+(api.macros/defendpoint :get "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
   (validation/check-has-application-permission :setting)
@@ -313,14 +314,12 @@
 
 ;; User defaults endpoint
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/user_defaults"
+(api.macros/defendpoint :get "/user_defaults"
   "Returns object containing default user details for initial setup, if configured,
    and if the provided token value matches the token in the configuration value."
-  [token]
+  [_route-params
+   {:keys [token]}]
   (let [{config-token :token :as defaults} (config/mb-user-defaults)]
     (api/check-404 config-token)
     (api/check-403 (= token config-token))
     (dissoc defaults :token)))
-
-(api/define-routes)

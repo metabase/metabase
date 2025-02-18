@@ -2,7 +2,6 @@ import type { FocusEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
@@ -169,7 +168,7 @@ const OverviewTab = ({
   canWrite: boolean;
 }) => {
   return (
-    <Stack spacing="lg">
+    <Stack gap="lg">
       <SidesheetCard title={t`Description`} pb="md">
         <SidesheetEditableDescription
           description={dashboard.description}

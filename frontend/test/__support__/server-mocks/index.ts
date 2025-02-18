@@ -31,5 +31,6 @@ export * from "./setup";
 export * from "./store";
 export * from "./table";
 export * from "./timeline";
+export * from "./user-key-value";
 export * from "./user";
 export * from "./util";

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -16,7 +16,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
   describe("required tag", () => {
     beforeEach(() => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE {{filter}}",
       );
@@ -90,7 +90,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
   context("ID filter", () => {
     beforeEach(() => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion({ display: "table" });
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE {{filter}}",
       );
@@ -128,7 +128,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
   context("None", () => {
     beforeEach(() => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion({ display: "table" });
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM people WHERE {{filter}}",
       );
@@ -199,7 +199,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
     };
 
     it("should work despite it not showing up in the widget type list", () => {
-      cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+      H.createNativeQuestion(questionDetails, { visitQuestion: true });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 42 rows");
 

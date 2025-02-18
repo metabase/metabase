@@ -89,44 +89,6 @@
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
 (comment lib.core/keep-me)
 
-(defn- remove-undefined-properties
-  [obj]
-  (cond-> obj
-    (object? obj) (gobject/filter (fn [e _ _] (not (undefined? e))))))
-
-(defn- convert-js-template-tags [tags]
-  (-> tags
-      (gobject/map (fn [e _ _]
-                     (remove-undefined-properties e)))
-      js->clj
-      (update-vals #(-> %
-                        (update-keys keyword)
-                        (update :type keyword)))))
-
-(defn ^:export extract-template-tags
-  "Extract the template tags from a native query's text.
-
-  > **Code health:** Healthy
-
-  If the optional map of existing tags previously parsed is given, this will reuse the existing tags where
-  they match up with the new one (in particular, it will preserve the UUIDs).
-
-  Given the text of a native query, extract a possibly-empty set of template tag strings from it.
-
-  These look like mustache templates. For variables, we only allow alphanumeric characters, eg. `{{foo}}`.
-  For snippets they start with `snippet:`, eg. `{{ snippet: arbitrary text here }}`.
-  And for card references either `{{ #123 }}` or with the optional human label `{{ #123-card-title-slug }}`.
-
-  Invalid patterns are simply ignored, so something like `{{&foo!}}` is just disregarded.
-
-  Returns `::lib.schema.template-tags/template-tag-map`, a map of tag names (strings) to an object describing the tag,
-  converted to JS objects."
-  ([query-text] (extract-template-tags query-text {}))
-  ([query-text existing-tags]
-   (->> (convert-js-template-tags existing-tags)
-        (lib.core/extract-template-tags query-text)
-        clj->js)))
-
 (defn ^:export suggestedName
   "Return a nice description of a query.
 
@@ -1443,6 +1405,19 @@
                                    (u/qualified-name %)
                                    %))))
 
+(defn- legacy-ref->pMBQL [a-legacy-ref]
+  (-> a-legacy-ref
+      (js->clj :keywordize-keys true)
+      (update 0 keyword)
+      (->> (mbql.normalize/normalize-fragment nil))
+      lib.convert/->pMBQL))
+
+(defn- ref->legacy-ref
+  [a-ref]
+  (-> a-ref
+      lib.convert/->legacy-MBQL
+      normalize-legacy-ref))
+
 (defn ^:export legacy-ref
   "Given a column, metric or segment metadata from eg. [[fieldable-columns]] or [[available-segments]],
   return it as a legacy JSON field ref.
@@ -1455,16 +1430,8 @@
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
     (-> column
         lib.core/ref
-        lib.convert/->legacy-MBQL
-        normalize-legacy-ref
+        ref->legacy-ref
         clj->js)))
-
-(defn- legacy-ref->pMBQL [a-legacy-ref]
-  (-> a-legacy-ref
-      (js->clj :keywordize-keys true)
-      (update 0 keyword)
-      (->> (mbql.normalize/normalize-fragment nil))
-      lib.convert/->pMBQL))
 
 (defn- ->column-or-ref [column]
   (if-let [^js legacy-column (when (object? column) column)]
@@ -1861,12 +1828,40 @@
   [a-query inner-query]
   (lib.core/with-native-query a-query inner-query))
 
+(defn- remove-undefined-properties
+  [obj]
+  (cond-> obj
+    (object? obj) (gobject/filter (fn [e _ _] (not (undefined? e))))))
+
+(defn- template-tags-js->cljs
+  [tags]
+  (-> tags
+      (gobject/map (fn [e _ _]
+                     (remove-undefined-properties e)))
+      js->clj
+      (update-vals (fn [tag]
+                     (-> tag
+                         (update-keys keyword)
+                         (update :type keyword)
+                         (m/update-existing :widget-type #(some-> % keyword))
+                         (m/update-existing :dimension #(some-> % legacy-ref->pMBQL)))))))
+
+(defn- template-tags-cljs->js
+  [tags]
+  (-> tags
+      (update-vals (fn [tag]
+                     (-> tag
+                         (update :type name)
+                         (m/update-existing :widget-type #(some-> % u/qualified-name))
+                         (m/update-existing :dimension #(some-> % ref->legacy-ref)))))
+      (clj->js :keyword-fn u/qualified-name)))
+
 (defn ^:export with-template-tags
   "Updates the native first stage of `a-query`'s template tags to the provided `tags`.
 
   > **Code health:** Healthy"
   [a-query tags]
-  (lib.core/with-template-tags a-query (convert-js-template-tags tags)))
+  (lib.core/with-template-tags a-query (template-tags-js->cljs tags)))
 
 (defn ^:export raw-native-query
   "Returns the native query string for the native first stage of `a-query`.
@@ -1880,7 +1875,7 @@
 
   > **Code health:** Healthy"
   [a-query]
-  (clj->js (lib.core/template-tags a-query)))
+  (template-tags-cljs->js (lib.core/template-tags a-query)))
 
 (defn ^:export required-native-extras
   "Returns a JS array of the extra keys that are required for this database's native queries.
@@ -1909,10 +1904,8 @@
   Returns the updated query.
 
   > **Code health:** Healthy"
-  ([a-query database-id metadata]
-   (with-different-database a-query database-id metadata nil))
-  ([a-query database-id metadata native-extras]
-   (lib.core/with-different-database a-query (metadataProvider database-id metadata) (js->clj native-extras :keywordize-keys true))))
+  [a-query database-id metadata]
+  (lib.core/with-different-database a-query (metadataProvider database-id metadata)))
 
 (defn ^:export with-native-extras
   "Updates the values of the extras required for the DB to run `a-query`. The first stage must be a native type.
@@ -1938,7 +1931,7 @@
 
   > **Code health:** Healthy."
   [a-query]
-  (name (lib.core/engine a-query)))
+  (some-> (lib.core/engine a-query) name))
 
 ;; # Legacy Segments
 ;; Segments are a deprecated kind of reusable query fragments, roughly equivalent to a set of filter clauses.
@@ -2218,16 +2211,15 @@
   [column-extract-drill]
   (to-array (lib.core/extractions-for-drill column-extract-drill)))
 
-(defn ^:export pivot-types
-  "Returns a JS array of pivot types that are available in `a-drill-thru`, which must be a `pivot` drill-thru.
-
-  The list contains a subset of the strings `\"category\"`, `\"location\"` and `\"time\"`.
+(defn ^:export pivot-drill-details
+  "Returns a JS object with the details needed to render the complex UI for `pivot` drills.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [a-drill-thru]
-  (->> (lib.core/pivot-types a-drill-thru)
-       (map name)
-       to-array))
+  [{:keys [stage-number] :as a-drill-thru}]
+  #js {"stageIndex" stage-number
+       "pivotTypes" (->> (lib.core/pivot-types a-drill-thru)
+                         (map name)
+                         to-array)})
 
 (defn ^:export pivot-columns-for-type
   "Returns a JS array of pivotable columns for `a-drill-thru`, given the selected `pivot-type`.
@@ -2410,6 +2402,10 @@
   map. **Removes** any existing filters for either column.
 
   `bounds` is a JS object `{north: number, south: number, west: number, east: number}` giving the bounding rectangle.
+
+  This function expects that longitudes (west and east bounds) have been canonicalized into the range [-180, 180]. If
+  west > east, this indicates that the bounds cross the antimerdian, and so we must add two filter clauses, which are
+  ORed together. In such cases, the first clause covers the range [west, 180.0] and the second covers [-180.0, east].
 
   > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and

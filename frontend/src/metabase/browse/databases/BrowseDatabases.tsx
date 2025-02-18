@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useListDatabasesQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { getEngineLogo } from "metabase/databases/utils/engine";
 import { color } from "metabase/lib/colors";
@@ -16,6 +16,7 @@ import {
   Box,
   Group,
   Icon,
+  SimpleGrid,
   Stack,
   type StackProps,
   Text,
@@ -24,7 +25,6 @@ import {
 
 import {
   BrowseContainer,
-  BrowseGrid,
   BrowseMain,
   BrowseSection,
   CenteredEmptyState,
@@ -66,7 +66,7 @@ export const BrowseDatabases = () => {
       <BrowseDataHeader />
       <BrowseMain>
         <BrowseSection>
-          <BrowseGrid data-testid="database-browser">
+          <SimpleGrid data-testid="database-browser" cols={3}>
             {databases &&
               databases.length > 0 &&
               databases.map(database => (
@@ -76,7 +76,7 @@ export const BrowseDatabases = () => {
                     className={cx(CS.rounded, CS.bordered, DB.dbCard)}
                   >
                     <Icon name="database" color={color("accent2")} size={32} />
-                    <Title order={2} size="md" lh={1.2} color="inherit">
+                    <Title order={2} size="md" lh={1.2} c="inherit">
                       {database.name}
                     </Title>
                   </DatabaseCard>
@@ -88,13 +88,13 @@ export const BrowseDatabases = () => {
                 <DatabaseCard
                   className={cx(CS.rounded, CS.bordered, DB.addCard)}
                 >
-                  <Group spacing="xs">
+                  <Group gap="xs">
                     <CardImageWrapper database={"postgres"} />
                     <CardImageWrapper database={"mysql"} />
                     <CardImageWrapper database={"snowflake"} />
                   </Group>
                   <div>
-                    <Title order={2} size="md" lh={1.2} color="inherit">
+                    <Title order={2} size="md" lh={1.2} c="inherit">
                       {t`Add a database`}
                     </Title>
                     <Text
@@ -107,7 +107,7 @@ export const BrowseDatabases = () => {
                 </DatabaseCard>
               </Link>
             )}
-          </BrowseGrid>
+          </SimpleGrid>
         </BrowseSection>
       </BrowseMain>
     </BrowseContainer>

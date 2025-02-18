@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -13,7 +13,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("can see x-ray options when a custom column is present (#16680)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "16680",
         display: "line",
@@ -213,6 +213,7 @@ describe("scenarios > question > custom column", () => {
 
     // TODO: There isn't a single unique parent that can be used to scope this icon within
     // (a good candidate would be `.NotebookCell`)
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.icon("add")
       .last() // This is brittle.
       .click();
@@ -282,7 +283,7 @@ describe("scenarios > question > custom column", () => {
 
     cy.signInAsAdmin();
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13857",
         query: {
@@ -315,7 +316,7 @@ describe("scenarios > question > custom column", () => {
     const CC_NAME = "OneisOne";
     cy.signInAsAdmin();
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "14080",
         query: {
@@ -349,7 +350,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13634",
         query: {
@@ -378,7 +379,7 @@ describe("scenarios > question > custom column", () => {
   it("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
     const CC_NAME = "Double the fun";
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "14193",
         query: {
@@ -416,7 +417,7 @@ describe("scenarios > question > custom column", () => {
     // Uppercase is important for this reproduction on H2
     const CC_NAME = "CATEGORY";
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "14255",
         query: {
@@ -440,7 +441,7 @@ describe("scenarios > question > custom column", () => {
   it("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
     const CE_NAME = "Rounded price";
 
-    cy.createQuestion({
+    H.createQuestion({
       name: "14775",
       query: {
         "source-table": ORDERS_ID,
@@ -526,7 +527,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should handle brackets in the name of the custom column (metabase#15316)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "15316",
       query: {
         "source-table": ORDERS_ID,
@@ -713,17 +714,15 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("custom columns");
     H.getNotebookStep("data").button("Custom column").click();
-    H.popover()
-      .findByTestId("expression-editor")
-      .within(() => {
-        H.enterCustomColumnDetails({
-          formula: 'if([ID] = 1, "First", [ID] = 2, "Second", "Other")',
-          name: "If",
-        });
-        cy.button("Done").click();
+    H.clauseStepPopover().within(() => {
+      H.enterCustomColumnDetails({
+        formula: 'if([ID] = 1, "First", [ID] = 2, "Second", "Other")',
+        name: "If",
       });
+      cy.button("Done").click();
+    });
     H.getNotebookStep("expression").button("Filter").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("If").click();
       cy.findByPlaceholderText("Enter some text").type("Other");
       cy.button("Add filter").click();
@@ -736,15 +735,13 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("filters");
     H.getNotebookStep("data").button("Filter").click();
-    H.popover()
-      .first()
-      .within(() => {
-        cy.findByText("Custom Expression").click();
-        H.enterCustomColumnDetails({
-          formula: 'if([Category] = "Gadget", 1, [Category] = "Widget", 2) = 2',
-        });
-        cy.button("Done").click();
+    H.clauseStepPopover().within(() => {
+      cy.findByText("Custom Expression").click();
+      H.enterCustomColumnDetails({
+        formula: 'if([Category] = "Gadget", 1, [Category] = "Widget", 2) = 2',
       });
+      cy.button("Done").click();
+    });
     H.visualize();
     H.assertQueryBuilderRowCount(54);
     H.openNotebook();
@@ -755,7 +752,7 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("aggregations");
     H.getNotebookStep("data").button("Summarize").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("Custom Expression").click();
       H.enterCustomColumnDetails({
         formula: 'sum(if([Category] = "Gadget", 1, 2))',
@@ -772,17 +769,15 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("custom columns - in");
     H.getNotebookStep("data").button("Custom column").click();
-    H.popover()
-      .findByTestId("expression-editor")
-      .within(() => {
-        H.enterCustomColumnDetails({
-          formula: 'in("Gadget", [Vendor], [Category])',
-          name: "InColumn",
-        });
-        cy.button("Done").click();
+    H.clauseStepPopover().within(() => {
+      H.enterCustomColumnDetails({
+        formula: 'in("Gadget", [Vendor], [Category])',
+        name: "InColumn",
       });
+      cy.button("Done").click();
+    });
     H.getNotebookStep("expression").button("Filter").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("InColumn").click();
       cy.findByText("Add filter").click();
     });
@@ -792,15 +787,13 @@ describe("scenarios > question > custom column", () => {
     cy.log("custom columns - notIn");
     H.openNotebook();
     H.getNotebookStep("expression").findByText("InColumn").click();
-    H.popover()
-      .first()
-      .within(() => {
-        H.enterCustomColumnDetails({
-          formula: 'notIn("Gadget", [Vendor], [Category])',
-          name: "InColumn",
-        });
-        cy.button("Update").click();
+    H.clauseStepPopover().within(() => {
+      H.enterCustomColumnDetails({
+        formula: 'notIn("Gadget", [Vendor], [Category])',
+        name: "InColumn",
       });
+      cy.button("Update").click();
+    });
     H.visualize();
     H.assertQueryBuilderRowCount(147);
 
@@ -811,7 +804,7 @@ describe("scenarios > question > custom column", () => {
       .icon("close")
       .click();
     H.getNotebookStep("data").button("Filter").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("Custom Expression").click();
       H.enterCustomColumnDetails({ formula: "in([ID], 1, 2, 3)" });
       cy.button("Done").click();
@@ -820,7 +813,7 @@ describe("scenarios > question > custom column", () => {
     H.assertQueryBuilderRowCount(3);
     H.openNotebook();
     H.getNotebookStep("filter").findByText("ID is 3 selections").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("3").next("button").click();
       cy.button("Update filter").click();
     });
@@ -830,7 +823,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("filters - notIn");
     H.openNotebook();
     H.getNotebookStep("filter").findByText("ID is 2 selections").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByLabelText("Back").click();
       cy.findByText("Custom Expression").click();
       H.enterCustomColumnDetails({ formula: "notIn([ID], 1, 2, 3)" });
@@ -846,7 +839,7 @@ describe("scenarios > question > custom column", () => {
       .icon("close")
       .click();
     H.getNotebookStep("data").button("Summarize").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("Custom Expression").click();
       H.enterCustomColumnDetails({
         formula: "countIf(in([ID], 1, 2))",
@@ -860,7 +853,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("aggregations - notIn");
     H.openNotebook();
     H.getNotebookStep("summarize").findByText("CountIfIn").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       H.enterCustomColumnDetails({
         formula: "countIf(notIn([ID], 1, 2))",
         name: "CountIfIn",
@@ -872,145 +865,149 @@ describe("scenarios > question > custom column", () => {
   });
 });
 
-describe("scenarios > question > custom column > data type", () => {
-  function addCustomColumns(columns) {
-    cy.wrap(columns).each((column, index) => {
-      if (index) {
-        H.getNotebookStep("expression").icon("add").click();
-      } else {
-        cy.findByLabelText("Custom column").click();
-      }
+describe(
+  "scenarios > question > custom column > data type",
+  { tags: "@external" },
+  () => {
+    function addCustomColumns(columns) {
+      cy.wrap(columns).each((column, index) => {
+        if (index) {
+          H.getNotebookStep("expression").icon("add").click();
+        } else {
+          cy.findByLabelText("Custom column").click();
+        }
 
-      H.enterCustomColumnDetails(column);
-      cy.button("Done").click({ force: true });
-    });
-  }
+        H.enterCustomColumnDetails(column);
+        cy.button("Done").click({ force: true });
+      });
+    }
 
-  function openCustomColumnInTable(table) {
-    H.openTable({ table, mode: "notebook" });
-    cy.findByText("Custom column").click();
-  }
+    function openCustomColumnInTable(table) {
+      H.openTable({ table, mode: "notebook" });
+      cy.findByText("Custom column").click();
+    }
 
-  beforeEach(() => {
-    H.restore();
-    H.restore("postgres-12");
+    beforeEach(() => {
+      H.restore();
+      H.restore("postgres-12");
 
-    cy.signInAsAdmin();
-  });
-
-  it("should understand string functions (metabase#13217)", () => {
-    openCustomColumnInTable(PRODUCTS_ID);
-
-    H.enterCustomColumnDetails({
-      formula: "concat([Category], [Title])",
-      name: "CategoryTitle",
+      cy.signInAsAdmin();
     });
 
-    cy.button("Done").click();
+    it("should understand string functions (metabase#13217)", () => {
+      openCustomColumnInTable(PRODUCTS_ID);
 
-    H.filter({ mode: "notebook" });
+      H.enterCustomColumnDetails({
+        formula: "concat([Category], [Title])",
+        name: "CategoryTitle",
+      });
 
-    H.popover().within(() => {
-      cy.findByText("CategoryTitle").click();
-      cy.findByPlaceholderText("Enter a number").should("not.exist");
-      cy.findByPlaceholderText("Enter some text").should("be.visible");
+      cy.button("Done").click();
+
+      H.filter({ mode: "notebook" });
+
+      H.popover().within(() => {
+        cy.findByText("CategoryTitle").click();
+        cy.findByPlaceholderText("Enter a number").should("not.exist");
+        cy.findByPlaceholderText("Enter some text").should("be.visible");
+      });
     });
-  });
 
-  it("should understand date functions", () => {
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("Orders").click();
+    it("should understand date functions", () => {
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        cy.findByText("QA Postgres12").click();
+        cy.findByText("Orders").click();
+      });
+
+      addCustomColumns([
+        { name: "Year", formula: "year([Created At])" },
+        { name: "Quarter", formula: "quarter([Created At])" },
+        { name: "Month", formula: "month([Created At])" },
+        { name: "Week", formula: 'week([Created At], "iso")' },
+        { name: "Day", formula: "day([Created At])" },
+        { name: "Weekday", formula: "weekday([Created At])" },
+        { name: "Hour", formula: "hour([Created At])" },
+        { name: "Minute", formula: "minute([Created At])" },
+        { name: "Second", formula: "second([Created At])" },
+        {
+          name: "Datetime Add",
+          formula: 'datetimeAdd([Created At], 1, "month")',
+        },
+        {
+          name: "Datetime Subtract",
+          formula: 'datetimeSubtract([Created At], 1, "month")',
+        },
+        {
+          name: "ConvertTimezone 3 args",
+          formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh", "UTC")',
+        },
+        {
+          name: "ConvertTimezone 2 args",
+          formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh")',
+        },
+      ]);
+
+      H.visualize();
     });
 
-    addCustomColumns([
-      { name: "Year", formula: "year([Created At])" },
-      { name: "Quarter", formula: "quarter([Created At])" },
-      { name: "Month", formula: "month([Created At])" },
-      { name: "Week", formula: 'week([Created At], "iso")' },
-      { name: "Day", formula: "day([Created At])" },
-      { name: "Weekday", formula: "weekday([Created At])" },
-      { name: "Hour", formula: "hour([Created At])" },
-      { name: "Minute", formula: "minute([Created At])" },
-      { name: "Second", formula: "second([Created At])" },
-      {
-        name: "Datetime Add",
-        formula: 'datetimeAdd([Created At], 1, "month")',
-      },
-      {
-        name: "Datetime Subtract",
-        formula: 'datetimeSubtract([Created At], 1, "month")',
-      },
-      {
-        name: "ConvertTimezone 3 args",
-        formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh", "UTC")',
-      },
-      {
-        name: "ConvertTimezone 2 args",
-        formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh")',
-      },
-    ]);
+    it("should relay the type of a date field", () => {
+      openCustomColumnInTable(PEOPLE_ID);
 
-    H.visualize();
-  });
+      H.enterCustomColumnDetails({ formula: "[Birth Date]", name: "DoB" });
+      cy.button("Done").click();
 
-  it("should relay the type of a date field", () => {
-    openCustomColumnInTable(PEOPLE_ID);
-
-    H.enterCustomColumnDetails({ formula: "[Birth Date]", name: "DoB" });
-    cy.button("Done").click();
-
-    H.filter({ mode: "notebook" });
-    H.popover().within(() => {
-      cy.findByText("DoB").click();
-      cy.findByPlaceholderText("Enter a number").should("not.exist");
-      cy.findByText("Relative dates…").click();
-      cy.findByText("Previous").click();
-      cy.findByDisplayValue("days").should("be.visible");
+      H.filter({ mode: "notebook" });
+      H.popover().within(() => {
+        cy.findByText("DoB").click();
+        cy.findByPlaceholderText("Enter a number").should("not.exist");
+        cy.findByText("Relative dates…").click();
+        cy.findByText("Previous").click();
+        cy.findByDisplayValue("days").should("be.visible");
+      });
     });
-  });
 
-  it("should handle CASE (metabase#13122)", () => {
-    openCustomColumnInTable(ORDERS_ID);
+    it("should handle CASE (metabase#13122)", () => {
+      openCustomColumnInTable(ORDERS_ID);
 
-    H.enterCustomColumnDetails({
-      formula: "case([Discount] > 0, [Created At], [Product → Created At])",
-      name: "MiscDate",
+      H.enterCustomColumnDetails({
+        formula: "case([Discount] > 0, [Created At], [Product → Created At])",
+        name: "MiscDate",
+      });
+      cy.button("Done").click();
+
+      H.filter({ mode: "notebook" });
+      H.popover().within(() => {
+        cy.findByText("MiscDate").click();
+        cy.findByPlaceholderText("Enter a number").should("not.exist");
+
+        cy.findByText("Relative dates…").click();
+        cy.findByText("Previous").click();
+        cy.findByDisplayValue("days").should("be.visible");
+      });
     });
-    cy.button("Done").click();
 
-    H.filter({ mode: "notebook" });
-    H.popover().within(() => {
-      cy.findByText("MiscDate").click();
-      cy.findByPlaceholderText("Enter a number").should("not.exist");
+    it("should handle COALESCE", () => {
+      openCustomColumnInTable(ORDERS_ID);
 
-      cy.findByText("Relative dates…").click();
-      cy.findByText("Previous").click();
-      cy.findByDisplayValue("days").should("be.visible");
+      H.enterCustomColumnDetails({
+        formula: "COALESCE([Product → Created At], [Created At])",
+        name: "MiscDate",
+      });
+      cy.button("Done").click();
+
+      H.filter({ mode: "notebook" });
+      H.popover().within(() => {
+        cy.findByText("MiscDate").click();
+        cy.findByPlaceholderText("Enter a number").should("not.exist");
+        cy.findByText("Relative dates…").click();
+        cy.findByText("Previous").click();
+        cy.findByDisplayValue("days").should("be.visible");
+      });
     });
-  });
-
-  it("should handle COALESCE", () => {
-    openCustomColumnInTable(ORDERS_ID);
-
-    H.enterCustomColumnDetails({
-      formula: "COALESCE([Product → Created At], [Created At])",
-      name: "MiscDate",
-    });
-    cy.button("Done").click();
-
-    H.filter({ mode: "notebook" });
-    H.popover().within(() => {
-      cy.findByText("MiscDate").click();
-      cy.findByPlaceholderText("Enter a number").should("not.exist");
-      cy.findByText("Relative dates…").click();
-      cy.findByText("Previous").click();
-      cy.findByDisplayValue("days").should("be.visible");
-    });
-  });
-});
+  },
+);
 
 describe("scenarios > question > custom column > error feedback", () => {
   beforeEach(() => {

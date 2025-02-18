@@ -7,7 +7,7 @@ import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
@@ -866,7 +866,14 @@ export class UnconnectedDataSelector extends Component {
   };
 
   renderActiveStep() {
-    const { combineDatabaseSchemaSteps, hasNestedQueriesEnabled } = this.props;
+    const { steps, combineDatabaseSchemaSteps, hasNestedQueriesEnabled } =
+      this.props;
+    const hasNextStep = this.getNextStep() != null;
+    const hasPreviousStep = this.getPreviousStep() != null;
+    const hasBackButton =
+      hasPreviousStep &&
+      steps.includes(DATA_BUCKET_STEP) &&
+      this.hasUsableModelsOrMetrics();
 
     const props = {
       ...this.state,
@@ -880,8 +887,8 @@ export class UnconnectedDataSelector extends Component {
 
       // misc
       isLoading: this.state.isLoading,
-      hasNextStep: !!this.getNextStep(),
-      onBack: this.getPreviousStep() ? this.previousStep : null,
+      hasNextStep,
+      onBack: hasPreviousStep ? this.previousStep : null,
       hasFiltering: true,
       hasInitialFocus: !this.showTableSearch(),
     };
@@ -903,19 +910,13 @@ export class UnconnectedDataSelector extends Component {
         );
       case DATABASE_STEP:
         return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker
-            {...props}
-            hasBackButton={this.hasUsableModelsOrMetrics() && props.onBack}
-          />
+          <DatabaseSchemaPicker {...props} hasBackButton={hasBackButton} />
         ) : (
           <DatabasePicker {...props} />
         );
       case SCHEMA_STEP:
         return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker
-            {...props}
-            hasBackButton={this.hasUsableModelsOrMetrics() && props.onBack}
-          />
+          <DatabaseSchemaPicker {...props} hasBackButton={hasBackButton} />
         ) : (
           <SchemaPicker {...props} />
         );

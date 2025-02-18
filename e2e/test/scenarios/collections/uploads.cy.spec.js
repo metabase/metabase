@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -226,7 +226,7 @@ H.describeWithSnowplow(
   },
 );
 
-describe("permissions", () => {
+describe("permissions", { tags: "@external" }, () => {
   it("should not show you upload buttons if you are a sandboxed user", () => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
@@ -268,45 +268,41 @@ describe("permissions", () => {
     });
   });
 
-  it(
-    "should show you upload buttons if you have unrestricted access to the upload schema",
-    { tags: ["@external"] },
-    () => {
-      H.restore("postgres-12");
-      cy.signInAsAdmin();
+  it("should show you upload buttons if you have unrestricted access to the upload schema", () => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
 
-      H.setTokenFeatures("all");
-      H.enableUploads("postgres");
+    H.setTokenFeatures("all");
+    H.enableUploads("postgres");
 
-      cy.updatePermissionsGraph({
-        [ALL_USERS_GROUP]: {
-          [WRITABLE_DB_ID]: {
-            "view-data": "blocked",
-          },
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [WRITABLE_DB_ID]: {
+          "view-data": "blocked",
         },
-        [NOSQL_GROUP]: {
-          [WRITABLE_DB_ID]: {
-            "view-data": "unrestricted",
-            "create-queries": "query-builder",
-          },
+      },
+      [NOSQL_GROUP]: {
+        [WRITABLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
         },
-      });
+      },
+    });
 
-      cy.updateCollectionGraph({
-        [NOSQL_GROUP]: { root: "write" },
-      });
+    cy.updateCollectionGraph({
+      [NOSQL_GROUP]: { root: "write" },
+    });
 
-      cy.signIn("nosql");
-      cy.visit("/collection/root");
-      cy.findByTestId("collection-menu").within(() => {
-        cy.findByLabelText("Upload data").should("exist");
-        cy.findByRole("img", { name: /upload/i }).should("exist");
-      });
-    },
-  );
+    cy.signIn("nosql");
+    cy.visit("/collection/root");
+    cy.findByTestId("collection-menu").within(() => {
+      cy.findByLabelText("Upload data").should("exist");
+      cy.findByRole("img", { name: /upload/i }).should("exist");
+    });
+  });
 });
 
-describe("Upload Table Cleanup/Management", () => {
+describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/ee/upload-management/tables").as(
       "getUploadTables",
@@ -347,6 +343,7 @@ describe("Upload Table Cleanup/Management", () => {
 
       // multiple delete
       cy.findAllByRole("checkbox").first().click();
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByRole("checkbox").last().click();
     });
 
@@ -425,6 +422,7 @@ function uploadToExisting({
 
     cy.wait(uploadEndpoints[uploadMode]);
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByRole("status")
       .last()
       .findByText(/Data (added|replaced)/i, {

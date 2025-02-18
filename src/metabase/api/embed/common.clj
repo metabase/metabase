@@ -9,7 +9,6 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dashboard :as api.dashboard]
-   [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation :as eid-translation]
    [metabase.models.card :as card]
@@ -17,6 +16,7 @@
    [metabase.models.resolution :as models.resolution]
    [metabase.models.setting :refer [defsetting]]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.public-sharing.api :as api.public]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
@@ -128,7 +128,7 @@
                                         :dashboard-parameters parameters})))
             :value value}))))
 
-(defn parse-query-params
+(mu/defn parse-query-params :- :map
   "Parses parameter values from the query string in a backward compatible way.
 
   Before (v50 and below) we passed parameter values as separate query string parameters \"?param1=A&param2=B\". The
@@ -142,7 +142,8 @@
           (json/decode+kw parameters))
         (catch Throwable _
           nil))
-      query-params))
+      query-params
+      {}))
 
 (mu/defn normalize-query-params :- [:map-of :keyword :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our

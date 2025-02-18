@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useDndContext } from "@dnd-kit/core";
+import { useCallback, useLayoutEffect, useState } from "react";
 
 import { Popover } from "metabase/ui";
 
@@ -14,6 +15,7 @@ export function ClausePopover({
   renderPopover,
 }: ClausePopoverProps) {
   const [isOpen, setIsOpen] = useState(isInitiallyOpen);
+  const { active } = useDndContext();
 
   const handleOpen = useCallback(() => {
     setIsOpen(true);
@@ -23,16 +25,28 @@ export function ClausePopover({
     setIsOpen(false);
   }, []);
 
+  const handleChange = useCallback(() => {
+    setIsOpen(value => !value);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (active) {
+      setIsOpen(false);
+    }
+  }, [active]);
+
   return (
     <Popover
       opened={isOpen}
       position="bottom-start"
       offset={{ mainAxis: 4 }}
       trapFocus
-      onClose={handleClose}
+      onChange={handleChange}
     >
       <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
-      <Popover.Dropdown>{renderPopover(handleClose)}</Popover.Dropdown>
+      <Popover.Dropdown data-testid="clause-popover">
+        {renderPopover(handleClose)}
+      </Popover.Dropdown>
     </Popover>
   );
 }

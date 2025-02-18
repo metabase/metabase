@@ -23,6 +23,7 @@ export type EditableTextAttributes = Omit<
 export interface EditableTextProps extends EditableTextAttributes {
   initialValue?: string | null;
   placeholder?: string;
+  maxLength?: number;
   isEditing?: boolean;
   isOptional?: boolean;
   isMultiline?: boolean;
@@ -38,6 +39,7 @@ const EditableText = forwardRef(function EditableText(
   {
     initialValue,
     placeholder,
+    maxLength,
     isEditing = false,
     isOptional = false,
     isMultiline = false,
@@ -155,12 +157,15 @@ const EditableText = forwardRef(function EditableText(
           ref={inputRef}
           value={inputValue}
           placeholder={placeholder}
+          maxLength={maxLength}
           disabled={isDisabled}
           data-testid={dataTestId}
           onFocus={onFocus}
           onBlur={handleBlur}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          // This is used to stop sidesheets from closing when escape is pressed
+          data-mantine-stop-propagation
         />
       )}
     </Box>

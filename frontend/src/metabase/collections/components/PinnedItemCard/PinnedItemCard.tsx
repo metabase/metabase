@@ -11,7 +11,6 @@ import EventSandbox from "metabase/components/EventSandbox";
 import Tooltip from "metabase/core/components/Tooltip";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
-import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Flex, type IconName, Skeleton } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -121,7 +120,6 @@ function PinnedItemCard({
           <Header>
             <ItemIcon name={icon as unknown as IconName} />
             <ActionsContainer h={item ? undefined : "2rem"}>
-              {item?.model === "dataset" && <ModelDetailLink model={item} />}
               {hasActions && (
                 // This component is used within a `<Link>` component,
                 // so we must prevent events from triggering the activation of the link
