@@ -83,7 +83,13 @@
     (is (= "100"
            (#'params.values/value-for-tag
             {:name "id", :id test-uuid, :display-name "ID", :type :text, :required true, :default "100"}
-            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}])))))
+            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
+
+  (testing "BigInteger value"
+    (is (= 9223372036854775808
+           (#'params.values/value-for-tag
+            {:name "id", :id test-uuid, :display-name "ID", :type :number}
+            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
 
 (defn- value-for-tag
   "Call the private function and de-recordize the field"

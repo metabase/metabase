@@ -1,9 +1,9 @@
-(ns metabase.api.public
+(ns metabase.public-sharing.api
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
    [medley.core :as m]
    [metabase.actions.core :as actions]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -713,11 +713,11 @@
         ;; you're by definition allowed to run it without a perms check anyway
         (request/as-admin
           (let [action (api/check-404 (actions/select-action :public_uuid uuid :archived false))]
-            (snowplow/track-event! ::snowplow/action
-                                   {:event     :action-executed
-                                    :source    :public_form
-                                    :type      (:type action)
-                                    :action_id (:id action)})
+            (analytics/track-event! :snowplow/action
+                                    {:event     :action-executed
+                                     :source    :public_form
+                                     :type      (:type action)
+                                     :action_id (:id action)})
             ;; Undo middleware string->keyword coercion
             (actions/execute-action! action (update-keys parameters name))))))))
 

@@ -222,7 +222,7 @@ x.com")
   site-wide UUID that we use for the EE/premium features token feature check API calls. It works in fundamentally the
   same way as [[site-uuid]] but should only be used by the token check logic
   in [[metabase.premium-features.core/fetch-token-status]]. (`site-uuid` is used for anonymous
-  analytics/stats and if we sent it along with the premium features token check API request it would no longer be
+  analytics aka stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
   :encryption :when-encryption-key-set
   :visibility :internal
@@ -350,13 +350,6 @@ x.com")
   :visibility :authenticated
   :audit      :getter)
 
-(defsetting enable-public-sharing
-  (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :audit      :getter)
-
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type       :boolean
@@ -374,22 +367,6 @@ x.com")
   :type       :boolean
   :default    true
   :visibility :authenticated
-  :audit      :getter)
-
-(defsetting persisted-models-enabled
-  (deferred-tru "Allow persisting models into the source database.")
-  :type       :boolean
-  :default    false
-  :visibility :public
-  :export?    true
-  :audit      :getter)
-
-(defsetting persisted-model-refresh-cron-schedule
-  (deferred-tru "cron syntax string to schedule refreshing persisted models.")
-  :encryption :no
-  :type       :string
-  :default    "0 0 0/6 * * ? *"
-  :visibility :admin
   :audit      :getter)
 
 (def ^:private ^:const global-max-caching-kb
@@ -812,15 +789,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :default    false
   :export?    false)
-
-(defn remove-public-uuid-if-public-sharing-is-disabled
-  "If public sharing is *disabled* and `object` has a `:public_uuid`, remove it so people don't try to use it (since it
-  won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
-  [object]
-  (if (and (:public_uuid object)
-           (not (enable-public-sharing)))
-    (assoc object :public_uuid nil)
-    object))
 
 (defsetting available-fonts
   "Available fonts"

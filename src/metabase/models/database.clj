@@ -2,7 +2,7 @@
   (:require
    [clojure.core.match :refer [match]]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.db :as mdb]
@@ -14,7 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting :as setting]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ;; Trying to use metabase.search would cause a circular reference ;_;
@@ -23,7 +23,7 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -177,14 +177,14 @@
            (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
              (do
                (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
-               (prometheus/inc! :metabase-database/healthy {:driver engine} 1))
+               (analytics/inc! :metabase-database/healthy {:driver engine} 1))
              (do
                (log/warn (u/format-color :yellow "Health check: failure %s {:id %d}" (:name database) (:id database)))
-               (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))
+               (analytics/inc! :metabase-database/unhealthy {:driver engine} 1)))
            (catch Throwable e
              (do
                (log/error e (u/format-color :red "Health check: failure with error %s {:id %d}" (:name database) (:id database)))
-               (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))))))))
+               (analytics/inc! :metabase-database/unhealthy {:driver engine} 1)))))))))
 
 (defn check-health-and-schedule-tasks!
   "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
@@ -340,13 +340,6 @@
 (defmethod serdes/hash-fields :model/Database
   [_database]
   [:name :engine])
-
-(defsetting persist-models-enabled
-  (deferred-tru "Whether to enable models persistence for a specific Database.")
-  :default        false
-  :type           :boolean
-  :visibility     :public
-  :database-local :only)
 
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]
