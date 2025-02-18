@@ -29,8 +29,6 @@ jobs:
       # Post the comment using github-script
       - name: Post comment
         uses: actions/github-script@v7
-        env:
-          MULTILINE_CONTENT: ${{ env.MULTILINE_CONTENT }}
         with:
           script: |
             await github.rest.issues.createComment({
