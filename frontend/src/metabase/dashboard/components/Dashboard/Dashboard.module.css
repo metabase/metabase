@@ -1,4 +1,6 @@
 .DashboardBody {
+  flex: 1 0 auto;
+
   &.isEditingOrSharing {
     flex-basis: 0;
   }

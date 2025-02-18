@@ -454,7 +454,6 @@ function Dashboard(props: DashboardProps) {
 
             <Flex
               pos="relative"
-              flex="1 0 auto"
               miw={0}
               mih={0}
               className={cx(S.DashboardBody, {
