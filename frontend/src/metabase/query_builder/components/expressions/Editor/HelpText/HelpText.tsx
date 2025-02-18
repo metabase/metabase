@@ -102,7 +102,7 @@ export function HelpText({
             <>
               (
               {args.map(({ name }, index) => (
-                <span key={name}>
+                <span key={index}>
                   <span
                     className={cx(S.arg, {
                       [S.active]:
@@ -141,8 +141,8 @@ export function HelpText({
               className={S.arguments}
               data-testid="expression-helper-popover-arguments"
             >
-              {args.map(({ name, description }) => (
-                <Fragment key={name}>
+              {args.map(({ name, description }, index) => (
+                <Fragment key={index}>
                   <Box className={S.arg}>{wrapPlaceholder(name)}</Box>
                   <Box>{description}</Box>
                 </Fragment>
