@@ -22,6 +22,9 @@ module.exports = {
       },
     ],
     "no-empty": [1, { allowEmptyCatch: true }],
+    // Note: adding this rule to a eslint config file in a subfolder will remove
+    // *not* carry over the restricted imports from parent folders, you will
+    // need to copy them over
     "no-restricted-imports": [
       "error",
       {
