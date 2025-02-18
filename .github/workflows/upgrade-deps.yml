@@ -54,6 +54,9 @@ jobs:
         run: |
           git add deps.edn modules
           git commit -m "Update backend dependencies" --no-verify
+      - name: Push Branch to Origin
+        run: |
+          git push -u origin "${{ steps.branch_name.outputs.branch }}"
       - name: Create Pull Request
         id: create_pull_request
         env:
