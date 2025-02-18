@@ -37,12 +37,6 @@
   },
   "overrides": [
     {
-      "files": ["**/*.unit.spec.{js,jsx,ts,tsx}"],
-      "rules": {
-        "no-console": 0
-      }
-    },
-    {
       "files": ["**/*.stories.tsx"],
       "rules": {
         "import/no-default-export": 0,
