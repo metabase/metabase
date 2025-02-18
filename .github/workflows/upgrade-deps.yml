@@ -50,3 +50,4 @@ jobs:
         uses: peter-evans/enable-pull-request-automerge@15cc64bb1afa41657d1325a39ade0bc0fa2d55d4
         with:
           pull-request-number: ${{ steps.create_pull_request.outputs.pull-request-number }}
+          merge-method: squash
