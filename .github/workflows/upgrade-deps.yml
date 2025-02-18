@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: ${{ (github.ref_name == 'master' && '1') || '0' }}
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
@@ -41,11 +41,14 @@ jobs:
         run: |
           git config --global user.email "metabase-bot@metabase.com"
           git config --global user.name "Metabase bot"
-      - name: Create Branch
+      - name: Switch to Master
+        if: ${{ github.ref_name != 'master' }}
         run: |
           git stash
           git checkout master
           git stash pop
+      - name: Create Branch
+        run: |
           git checkout -b "${{ steps.branch_name.outputs.branch }}"
       - name: Create Git Commit
         run: |
@@ -57,6 +60,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           BRANCH="${{ steps.branch_name.outputs.branch }}"
+          git diff master "$BRANCH"
           TITLE="Update Backend Dependencies"
           DESCRIPTION="Update backend dependencies"
           PR_URL=$(gh pr create --base master --head "$BRANCH" --label "no-backport" --title "$TITLE" --body "$DESCRIPTION")
