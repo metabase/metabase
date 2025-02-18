@@ -1,8 +1,8 @@
-(ns metabase.test.persistence
+(ns metabase.model-persistence.test-util
   (:require
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.models.persisted-info :as persisted-info]
-   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.test.data :as data]
    [metabase.test.util :as tu]))
 

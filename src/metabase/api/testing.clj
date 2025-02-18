@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [java-time.clock]
-   [metabase.analytics.stats :as stats]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
@@ -190,5 +190,5 @@
 (api.macros/defendpoint :post "/stats"
   "Triggers a send of instance usage stats"
   []
-  (stats/phone-home-stats!)
+  (analytics/phone-home-stats!)
   {:success true})

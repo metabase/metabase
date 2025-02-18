@@ -98,7 +98,7 @@ export const ChartSettingFieldPicker = ({
         onChange={onChange}
         leftSection={
           hasLeftSection ? (
-            <Group wrap="nowrap" gap="sm" p="xs" ml="sm" align="start">
+            <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
               {showDragHandle && (
                 <GrabberHandle
                   name="grabber"
@@ -121,12 +121,20 @@ export const ChartSettingFieldPicker = ({
             </Group>
           ) : null
         }
-        leftSectionWidth="auto"
         placeholderNoOptions={t`No valid fields`}
         placeholder={t`Select a field`}
-        rightSectionWidth="auto"
+        rightSectionWidth="100px"
         rightSection={
-          <Group wrap="nowrap" gap="sm" p="xs" mr="sm">
+          <Group
+            wrap="nowrap"
+            gap="sm"
+            p="xs"
+            mr="sm"
+            miw={
+              [!disabled, !!menuWidgetInfo, !!onRemove].filter(Boolean).length *
+              42
+            }
+          >
             {!disabled && (
               <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
                 <Icon name="chevrondown" />
@@ -171,7 +179,7 @@ export const ChartSettingFieldPicker = ({
             border: "none",
             width: "100%",
             color: "var(--mb-color-text-primary)",
-            cursor: "inherit",
+            cursor: "pointer",
             pointerEvents: "unset",
           },
         }}

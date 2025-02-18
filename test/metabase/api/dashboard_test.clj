@@ -4748,7 +4748,7 @@
                                   (format "dashboard/%s/dashcard/%s/card/%s/query" dashboard-id dashcard-id card-id)))
           (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))
 
-;; This test is same as [[metabase.api.public-test/dashboard-param-values-param-fields-hydration-test]]
+;; This test is same as [[metabase.public-sharing.api-test/dashboard-param-values-param-fields-hydration-test]]
 ;; adjusted to run with NORMAL dashboard.
 (deftest ^:synchronized dashboard-param-values-param-fields-hydration-test
   (mt/with-temp

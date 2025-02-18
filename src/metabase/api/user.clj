@@ -3,7 +3,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
@@ -203,11 +203,10 @@
         clauses             (user-clauses status query group-id-clause include_deactivated)]
     {:data (cond-> (t2/select
                     (vec (cons :model/User (user-visible-columns)))
-                    (cond-> clauses
-                      (and (some? group_id) group-id-clause) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
-                      true             (sql.helpers/order-by [:%lower.first_name :asc]
-                                                             [:%lower.last_name :asc]
-                                                             [:id :asc])))
+                    (sql.helpers/order-by clauses
+                                          [:%lower.first_name :asc]
+                                          [:%lower.last_name :asc]
+                                          [:id :asc]))
              ;; For admins also include the IDs of Users' Personal Collections
              api/*is-superuser?*
              (t2/hydrate :personal_collection_id)
@@ -383,10 +382,10 @@
                                  @api/*current-user*
                                  false))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
-      (snowplow/track-event! ::snowplow/invite
-                             {:event           :invite-sent
-                              :invited-user-id new-user-id
-                              :source          "admin"})
+      (analytics/track-event! :snowplow/invite
+                              {:event           :invite-sent
+                               :invited-user-id new-user-id
+                               :source          "admin"})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
 

@@ -34,24 +34,21 @@
 {:metabase/modules
  {actions
   {:api  #{metabase.actions.api metabase.actions.core}
-   :uses #{analytics api driver legacy-mbql lib models query-processor search util}}
+   :uses #{analytics api driver legacy-mbql lib model-persistence models query-processor search util}}
 
   activity-feed
   {:api  #{metabase.activity-feed.api metabase.activity-feed.init}
    :uses #{api config db events models util}}
 
   analytics
-  {:api  #{metabase.analytics.prometheus
-           metabase.analytics.sdk
-           metabase.analytics.snowplow
-           metabase.analytics.stats}
+  {:api  #{metabase.analytics.core
+           metabase.analytics.prometheus
+           metabase.analytics.snowplow}
    :uses #{api
-           channel
            config
            db
            driver
            eid-translation
-           embed
            integrations
            models
            premium-features
@@ -64,10 +61,13 @@
 
   api
   {:api #{metabase.api.cache
+          metabase.api.card
           metabase.api.collection
           metabase.api.common
           metabase.api.common.validation
+          metabase.api.dashboard
           metabase.api.dataset
+          metabase.api.field
           metabase.api.macros
           metabase.api.open-api
           metabase.api.query-metadata
@@ -199,7 +199,7 @@
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
-   :uses #{api driver models notification premium-features public-settings util}}
+   :uses #{api driver models notification premium-features util}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -271,6 +271,12 @@
           metabase.login-history.init}
    :uses #{analytics api channel models request util}}
 
+  model-persistence
+  {:api #{metabase.model-persistence.api
+          metabase.model-persistence.core
+          metabase.model-persistence.init}
+   :uses #{api db driver events lib models premium-features public-settings query-processor request task util}}
+
   models
   {:api #{metabase.models.api-key
           metabase.models.application-permissions-revision
@@ -303,7 +309,6 @@
           metabase.models.params.custom-values
           metabase.models.params.field-values
           metabase.models.params.shared
-          metabase.models.persisted-info
           metabase.models.query
           metabase.models.query-analysis
           metabase.models.query.permissions
@@ -335,6 +340,7 @@
            plugins
            premium-features
            public-settings
+           public-sharing
            pulse
            query-analysis
            query-processor
@@ -380,6 +386,12 @@
   public-settings
   {:api  #{metabase.public-settings}
    :uses #{api config models premium-features util}}
+
+  public-sharing
+  {:api  #{metabase.public-sharing.api
+           metabase.public-sharing.core
+           metabase.public-sharing.init}
+   :uses #{actions analytics api db events lib models query-processor request util}}
 
   pulse
   {:api  #{metabase.pulse.api
@@ -440,6 +452,7 @@
            formatter
            legacy-mbql
            lib
+           model-persistence
            models
            permissions
            premium-features
@@ -481,8 +494,7 @@
           metabase.server.middleware.json
           metabase.server.middleware.session
           metabase.server.streaming-response}
-   :uses #{analytics api config core db driver embed models premium-features public-settings request util
-           enterprise/sso}}
+   :uses #{analytics api config core db driver models premium-features public-settings request util enterprise/sso}}
 
   session
   {:api  #{metabase.session.api metabase.session.init metabase.session.models.session}
@@ -526,8 +538,7 @@
   {:api #{metabase.task
           metabase.task.bootstrap
           metabase.task.init
-          metabase.task.notification
-          metabase.task.persist-refresh}
+          metabase.task.notification}
    :uses #{analytics
            channel
            config
@@ -558,7 +569,7 @@
 
   upload
   {:api  #{metabase.upload}
-   :uses #{analytics api driver events legacy-mbql lib models permissions public-settings sync util}}
+   :uses #{analytics api driver events legacy-mbql lib model-persistence models permissions public-settings sync util}}
 
   user-key-value
   {:api  #{metabase.user-key-value.api metabase.user-key-value.init}
@@ -583,7 +594,7 @@
            metabase-enterprise.advanced-permissions.api.util
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
-   :uses #{api audit driver lib models permissions premium-features query-processor util}}
+   :uses #{api audit driver lib models permissions premium-features query-processor util enterprise/sandbox}}
 
   enterprise/airgap
   {:api  #{}

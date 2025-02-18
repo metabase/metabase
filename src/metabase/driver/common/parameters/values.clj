@@ -30,7 +30,6 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.text NumberFormat)
    (java.util UUID)))
 
 (set! *warn-on-reflection* true)
@@ -292,9 +291,12 @@
 
 (mu/defn- parse-number :- number?
   "Parse a string like `1` or `2.0` into a valid number. Done mostly to keep people from passing in
-   things that aren't numbers, like SQL identifiers."
+  things that aren't numbers, like SQL identifiers. When the value is an integer outside the Long range, BigInteger
+  is returned."
   [s :- :string]
-  (.parse (NumberFormat/getInstance) ^String s))
+  (if (re-find #"\." s)
+    (Double/parseDouble s)
+    (or (parse-long s) (biginteger s))))
 
 (mu/defn- value->number :- [:or number? [:sequential {:min 1} number?]]
   "Parse a 'numeric' param value. Normally this returns an integer or floating-point number, but as a somewhat
