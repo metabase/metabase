@@ -26,9 +26,6 @@ jobs:
           echo '\nEOF'
           } >> $GITHUB_ENV
 
-      - name: check the multiline content:
-        run: echo $MULTILINE_CONTENT
-
       # Post the comment using github-script
       - name: Post comment
         uses: actions/github-script@v7
