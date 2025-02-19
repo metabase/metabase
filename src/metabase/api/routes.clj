@@ -3,6 +3,7 @@
    [compojure.route :as route]
    [metabase.actions.api]
    [metabase.activity-feed.api]
+   [metabase.alias.api]
    [metabase.api.api-key]
    [metabase.api.cache]
    [metabase.api.card]
@@ -130,6 +131,7 @@
   {"/action"               (+auth 'metabase.actions.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/alert"                (+auth metabase.pulse.api/alert-routes)
+   "/alias"                (+auth 'metabase.alias.api)
    "/api-key"              (+auth 'metabase.api.api-key)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
