@@ -1,7 +1,7 @@
-import { type Dispatch, type SetStateAction, useState } from "react";
+import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 
 import { Icon, Popover } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import { FilterPicker2 } from "../../FilterPicker2";
 import { FilterPill } from "../FilterPill";
@@ -24,10 +24,11 @@ type Filter = {
 };
 
 export function FilterPanelPopoverPlus({
-  query,
+  query: query2,
   setDirtyAddedFilters,
   // setDirtyRemovedFilters,
 }: FilterPanelPopoverProps) {
+  const query = useMemo(() => Lib.ensureFilterStage(query2), [query2]);
   const [isOpened, setIsOpened] = useState(false);
 
   const handleAddFilter = (filter: Filter, stageIndex: number) => {

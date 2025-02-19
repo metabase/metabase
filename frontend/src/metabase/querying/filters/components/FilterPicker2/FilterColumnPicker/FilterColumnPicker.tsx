@@ -70,7 +70,7 @@ export function FilterColumnPicker({
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
-  const query = useMemo(() => Lib.ensureFilterStage(query2), [query2]);
+  const query = useMemo(() => /* Lib.ensureFilterStage */(query2), [query2]);
   const sections = useMemo(() => {
     const sections = Lib.stageIndexes(query).flatMap(stageIndex => {
       const columns = Lib.filterableColumns(query, stageIndex);

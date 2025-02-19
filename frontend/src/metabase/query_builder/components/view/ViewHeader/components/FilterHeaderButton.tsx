@@ -12,6 +12,7 @@ import type { QueryBuilderMode } from "metabase-types/store";
 
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 import _ from "underscore";
+import { FilterPicker2 } from "metabase/querying/filters/components/FilterPicker2";
 
 interface FilterHeaderButtonProps {
   className?: string;
@@ -38,7 +39,7 @@ type Filter = {
 export function FilterHeaderButton({
   className,
   // onOpenModal,
-  query,
+  query: query2,
   isExpanded,
   onExpand,
   onCollapse,
@@ -48,6 +49,7 @@ export function FilterHeaderButton({
   setDirtyAddedFilters,
   // setDirtyRemovedFilters,
 }: FilterHeaderButtonProps) {
+  const query = useMemo(() => Lib.ensureFilterStage(query2), [query2]);
   const label = isExpanded ? t`Hide filters` : t`Show filters`;
   const items = useMemo(() => {
     const items = getFilterItems(query).filter(filterItem => {
@@ -95,8 +97,7 @@ export function FilterHeaderButton({
     }
   };
 
-  const handleAddFilter = (filter: Lib.Filterable) => {
-    const stageIndex = -1; // TODO
+  const handleAddFilter = (filter: Lib.Filterable, stageIndex: number) => {
     const item = {
       stageIndex,
       filter,
@@ -139,9 +140,8 @@ export function FilterHeaderButton({
           </Button>
         </Popover.Target>
         <Popover.Dropdown data-testid="filter-picker-dropdown">
-          <FilterPicker
+          <FilterPicker2
             query={query}
-            stageIndex={-1} // TODO
             withCustomExpression={false}
             onSelect={handleAddFilter}
           />

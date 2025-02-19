@@ -132,11 +132,13 @@ export const runQuestionQuery = ({
 
       const query1 = dirtyAddedFilters.reduce((query, asd) => {
         return Lib.filter(query, asd.stageIndex, asd.filter);
-      }, question.query());
+      }, Lib.ensureFilterStage(question.query()));
 
-      const query = dirtyRemovedFilters.reduce((query, asd) => {
-        return Lib.removeClause(query, asd.stageIndex, asd.filter);
-      }, query1);
+      const query = Lib.dropEmptyStages(
+        dirtyRemovedFilters.reduce((query, asd) => {
+          return Lib.removeClause(query, asd.stageIndex, asd.filter);
+        }, query1),
+      );
 
       await dispatch(
         setUIControls({

@@ -25,7 +25,7 @@ interface FilterPanelProps {
 }
 
 export function FilterPanel({
-  query,
+  query: query2,
   onChange,
 
   dirtyAddedFilters,
@@ -33,6 +33,7 @@ export function FilterPanel({
   setDirtyAddedFilters,
   setDirtyRemovedFilters,
 }: FilterPanelProps) {
+  const query = useMemo(() => Lib.ensureFilterStage(query2), [query2]);
   const items = useMemo(() => {
     const items = getFilterItems(query).filter(item => {
       return !dirtyRemovedFilters.some(removedFilter => {
