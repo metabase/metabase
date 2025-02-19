@@ -193,8 +193,10 @@ export function resolve({
       }
     }
     if (multiple) {
+      const argCount = operands.filter(arg => !isOptionsObject(arg)).length;
       const minArgCount = args.length;
-      if (operands.length < minArgCount) {
+
+      if (argCount < minArgCount) {
         throw new ResolverError(
           ngettext(
             msgid`Function ${displayName} expects at least ${minArgCount} argument`,
