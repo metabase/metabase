@@ -629,24 +629,26 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     }
 
     cy.log("BIGINT");
+    cy.signInAsAdmin();
     setupDashboard({
       sourceQuestionDetails: bigIntQuestionDetails,
       baseType: "type/BigInteger",
     });
-    visitRegularDashboard();
     cy.signInAsNormalUser();
+    visitRegularDashboard();
     testBigIntFilters({ withDrillThru: true });
-    cy.signInAsAdmin();
     visitPublicDashboard();
     testBigIntFilters({ withDrillThru: false });
     visitEmbeddedDashboard();
     testBigIntFilters({ withDrillThru: false });
 
     cy.log("DECIMAL");
+    cy.signInAsAdmin();
     setupDashboard({
       sourceQuestionDetails: decimalQuestionDetails,
       baseType: "type/Decimal",
     });
+    cy.signInAsNormalUser();
     visitRegularDashboard();
     testDecimalFilters({ withDrillThru: true });
     visitPublicDashboard();
@@ -827,6 +829,7 @@ function visitRegularDashboard() {
 }
 
 function visitPublicDashboard() {
+  cy.signInAsAdmin();
   cy.get("@dashboardId").then(dashboardId => {
     H.visitPublicDashboard(Number(dashboardId));
   });
