@@ -20,7 +20,7 @@ const Template: StoryFn<typeof Skeleton> = args => {
 };
 
 export default {
-  title: "Core/Skeleton",
+  title: "Components/Feedback/Skeleton",
   component: Skeleton,
   args,
   render: Template,
