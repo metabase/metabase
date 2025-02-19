@@ -130,7 +130,7 @@ export function NumberInputWidget({
               return options.filter(item =>
                 Boolean(
                   search !== "" &&
-                  item.label?.toLowerCase().startsWith(search.toLowerCase()),
+                    item.label?.toLowerCase().startsWith(search.toLowerCase()),
                 ),
               );
             }}
