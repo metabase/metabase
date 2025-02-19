@@ -1,5 +1,6 @@
 (ns metabase.cloud-migration.settings
   (:require
+   [clojure.string :as str]
    [metabase.config :as config]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -59,7 +60,9 @@
   ;; Use a known version on staging when there's no real version.
   ;; This will cause the restore to fail on cloud unless you also set `migration-dump-file` to
   ;; a dump from that version, but it lets you test everything else up to that point works.
-  :default    (when (= (config/mb-version-info :tag) "vLOCAL_DEV") "v0.50.0-RC1")
+  :default    (when (-> (config/mb-version-info :tag)
+                        (#(or (= % "vLOCAL_DEV") (str/ends-with? % "-SNAPSHOT"))))
+                "v0.52.0-RC1")
   :doc        false
   :export?    false)
 
