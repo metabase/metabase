@@ -32,6 +32,7 @@ const parameters = {
         "Viz",
         "*",
         "Patterns",
+        "App",
       ],
     },
   },

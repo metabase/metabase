@@ -44,7 +44,7 @@ registerVisualization(SmartScalar);
 registerVisualization(BarChart);
 
 export default {
-  title: "embed/PublicOrEmbeddedQuestionView",
+  title: "App/Embed/PublicOrEmbeddedQuestionView",
   component: PublicOrEmbeddedQuestionView,
   decorators: [
     ReduxDecorator,
