@@ -3,6 +3,7 @@
   (:require
    [clojure.java.shell :as sh]
    [clojure.string :as str]
+   [dev.deps-graph :as deps-graph]
    [metabase.util.json :as json]
    [metabase.util.jvm :as jvm]))
 
@@ -11,7 +12,7 @@
         :autoSync true
         :rough true
         ;; allow click:
-        :securityLevel="loose"
+        :securityLevel= "loose"
         :panZoom true
         :code chart-text
         :pan {:x 100 :y 100}}
@@ -24,7 +25,12 @@
 
 (comment
 
-  ;; todo figure out click
-  (open-mermaid-live! "flowchart \n A --> B")
+  (open-mermaid-live!
+   (str "flowchart LR\n"
+        (str/join "\n")
+        (filter #(str/contains? % "api")
+                (str/split-lines
+                 (with-out-str (deps-graph/module-dependencies-mermaid))))))
 
-  )
+  ;; todo figure out click
+  (open-mermaid-live! "flowchart \n A --> B"))
