@@ -21,6 +21,79 @@ import SidebarStyles from "./DashboardInfoSidebar.module.css";
 
 const initSqlJs = window.initSqlJs;
 
+function download({ filename, blob }: { filename: string; blob: Blob }) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url); // cleanup
+}
+
+const openInJupyter = (notebookName: string, jupyterToken: string) => {
+  const jupyterUrl = `http://localhost:8888/lab/tree/${notebookName}`;
+  const tokenParam = jupyterToken ? `?token=${jupyterToken}` : "";
+  window.open(jupyterUrl + tokenParam, "_blank");
+};
+
+const generateNotebookContent = ({ dbPath }: { dbPath: string }) => {
+  const notebook = {
+    cells: [
+      {
+        cell_type: "code",
+        execution_count: null,
+        metadata: {},
+        outputs: [],
+        source: [
+          "import sqlite3\n",
+          "import pandas as pd\n",
+          "\n",
+          "# Connect to the database\n",
+          `print(f'Connecting to database: {repr("${dbPath}")}')\n`,
+          `conn = sqlite3.connect('${dbPath}')\n`,
+          "\n",
+          "# List all tables\n",
+          "cursor = conn.cursor()\n",
+          "cursor.execute(\"SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%';\")\n",
+          "tables = [row[0] for row in cursor.fetchall()]\n",
+          "\n",
+          "print('\\nAvailable tables:')\n",
+          "for table in tables:\n",
+          '    cursor.execute(f"SELECT COUNT(*) FROM {table}")\n',
+          "    count = cursor.fetchone()[0]\n",
+          '    print(f"- {table} ({count} rows)")\n',
+          "\n",
+          "if tables:\n",
+          "    print('\\nFirst table preview:')\n",
+          "    first_table = tables[0]\n",
+          "    \n",
+          "    # Get schema\n",
+          "    cursor.execute(f\"SELECT sql FROM sqlite_schema WHERE type='table' AND name=?\", (first_table,))\n",
+          "    schema = cursor.fetchone()[0]\n",
+          "    print(f'\\nSchema:\\n{schema}')\n",
+          "    \n",
+          "    # Get data preview\n",
+          "    df = pd.read_sql_query(f'SELECT * FROM {first_table} LIMIT 5', conn)\n",
+          "    display(df)\n",
+          "else:\n",
+          "    print('No tables found in database')\n",
+        ],
+      },
+    ],
+    metadata: {
+      kernelspec: {
+        display_name: "Python 3",
+        language: "python",
+        name: "python3",
+      },
+    },
+    nbformat: 4,
+    nbformat_minor: 4,
+  };
+
+  return JSON.stringify(notebook, null, 2);
+};
+
 const sqlFriendlyName = (str: string) =>
   snake_case(str.replace(/[^a-zA-Z\s]/g, ""));
 
@@ -81,18 +154,19 @@ const SqliteGenerator = ({ dashboard }: { dashboard: Dashboard }) => {
 
     // Export the database as a Uint8Array
     const binaryArray = db.export();
-
-    // Create and download the file
-    const blob = new Blob([binaryArray], { type: "application/x-sqlite3" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const niceDashName = sqlFriendlyName(dashboard.name);
-    a.download = `${niceDashName}_${new Date().getTime()}.db`;
-    a.click();
-
-    // Cleanup
-    URL.revokeObjectURL(url);
+    const sqliteFilename = `${sqlFriendlyName(dashboard.name)}_${new Date().getTime()}.db`;
+    download({
+      filename: sqliteFilename,
+      blob: new Blob([binaryArray], { type: "application/x-sqlite3" }),
+    });
+    download({
+      filename: "analyze_sqlite.ipynb",
+      blob: new Blob([generateNotebookContent({ dbPath: sqliteFilename })], {
+        type: "application/json",
+      }),
+    });
+    // NOTE: delete this if you don't want it
+    openInJupyter("analyze_sqlite.ipynb", "");
     db.close();
   };
 
