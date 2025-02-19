@@ -20,13 +20,15 @@ import {
   EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
   MBQL_CLAUSES,
   OPERATOR_PRECEDENCE,
+  getExpressionName,
+} from "../config";
+import {
   formatDimensionName,
   formatMetricName,
   formatSegmentName,
-  formatStringLiteral,
-  getExpressionName,
-} from "..";
+} from "../identifier";
 import { isFunction, isOperator, isOptionsObject } from "../matchers";
+import { formatStringLiteral } from "../string";
 
 import { pathMatchers as check } from "./utils";
 
