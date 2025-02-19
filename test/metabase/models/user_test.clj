@@ -601,3 +601,20 @@
       (t2/update! :model/User user-id {:is_active true})
       (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
         (is (nil? deactivated-at))))))
+
+(deftest add-picture-url
+  (testing "Sets picture if available"
+    (is (= {:auto_picture_url "http://example.com/avatar"
+            :show_picture     true :id 4 :picture_url "http://example.com/avatar"}
+          (user/add-picture-url {:auto_picture_url "http://example.com/avatar" :show_picture true :id 4}))))
+  (testing "Null picture if not available"
+    (is (= {:auto_picture_url nil
+            :show_picture     true :id 4 :picture_url nil}
+          (user/add-picture-url {:auto_picture_url nil :show_picture true :id 4}))))
+  (testing "Null picture if not show_picture"
+    (is (= {:auto_picture_url "http://example.com/avatar"
+            :show_picture     false :id 4 :picture_url nil}
+          (user/add-picture-url {:auto_picture_url "http://example.com/avatar" :show_picture false :id 4}))))
+  (is (= {:auto_picture_url nil
+          :show_picture     false :id 4 :picture_url nil}
+        (user/add-picture-url {:auto_picture_url nil :show_picture false :id 4}))))

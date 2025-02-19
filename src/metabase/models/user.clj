@@ -191,11 +191,10 @@
 
 (defn add-picture-url
   [{:keys [auto_picture_url show_picture], :as user}]
-  (when (boolean show_picture)
-    (let [picture-url auto_picture_url]
-      (if picture-url
-        (assoc user :picture_url picture-url)
-        (assoc user :picture_url nil)))
+  (if (boolean show_picture)
+    (if (boolean auto_picture_url)
+      (assoc user :picture_url auto_picture_url)
+      (assoc user :picture_url nil))
     (assoc user :picture_url nil)))
 
 (t2/define-after-select :model/User

@@ -161,7 +161,7 @@
       (merge (revision-description-info model prev-revision revision))
       ;; add revision user details
       (t2/hydrate :user)
-      (update :user select-keys [:id :first_name :last_name :common_name])
+      (update :user select-keys [:id :first_name :last_name :common_name :picture_url])
       ;; Filter out irrelevant info
       (dissoc :model :model_id :user_id :object)))
 
