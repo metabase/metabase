@@ -33,6 +33,7 @@ const parameters = {
         "*",
         "Patterns",
         "App",
+        "Deprecated",
       ],
     },
   },

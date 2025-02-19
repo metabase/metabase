@@ -4,7 +4,7 @@ import type { StoryFn } from "@storybook/react";
 import Toggle from "./Toggle";
 
 export default {
-  title: "Core/Toggle",
+  title: "Deprecated/Components/Toggle",
   component: Toggle,
 };
 
