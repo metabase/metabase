@@ -192,7 +192,7 @@
   Try to avoid using this, we would like to remove this in the near future."
   {:deprecated "0.48.0"}
   [mlv2-metadata]
-  (let [model (case (:lib/type mlv2-metadata)
+  (let [model (case (:lib/type #p mlv2-metadata)
                 :metadata/database :model/Database
                 :metadata/table    :model/Table
                 :metadata/column   :model/Field)]
