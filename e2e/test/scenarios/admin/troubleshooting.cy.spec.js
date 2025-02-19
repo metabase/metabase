@@ -311,7 +311,7 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
   });
 });
 
-describe("admin > tools", { tags: "@smoke" }, () => {
+describe("admin > tools", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
