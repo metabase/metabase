@@ -30,7 +30,7 @@ export const useValidatedEntityId = <
   type: TEntity;
   id: BaseEntityId | string | number | null | undefined;
 }):
-  | { id: TReturnedId | undefined; isLoading: false; isError: false }
+  | { id: TReturnedId; isLoading: false; isError: false }
   | {
       id: null;
       isLoading: true;
