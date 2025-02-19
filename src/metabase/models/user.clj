@@ -191,17 +191,19 @@
 
 (defn- add-picture-url
   [{:keys [auto_picture_url show_picture], :as user}]
-  (if show_picture
+  (if (boolean show_picture)
     (let [picture-url auto_picture_url]
       (if picture-url
-        (assoc user :picture_url picture-url)))
+        (assoc user :picture_url picture-url)
+        user))
     (assoc user :picture_url nil)))
 
 (t2/define-after-select :model/User
   [user]
   (-> user
       add-common-name
-      add-picture-url))
+      add-picture-url
+    ))
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
