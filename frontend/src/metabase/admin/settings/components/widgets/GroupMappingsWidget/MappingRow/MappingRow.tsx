@@ -48,7 +48,21 @@ const MappingRow = ({
 }: MappingRowProps) => {
   const [showDeleteGroupMappingModal, setShowDeleteGroupMappingModal] =
     useState(false);
-  const [showDeleteMappingModal, setShowDeleteMappingModal] = useState(false);
+  const handleOpenDeleteGroupMappingModal = () => {
+    setShowDeleteGroupMappingModal(true);
+  };
+  const handleCloseDeleteGroupMappingModal = () => {
+    setShowDeleteGroupMappingModal(false);
+  };
+
+  const [deleteMappingModalIsOpen, setShowDeleteMappingModalIsOpen] =
+    useState(false);
+  const handleOpenDeleteMappingModal = () => {
+    setShowDeleteMappingModalIsOpen(true);
+  };
+  const handleCloseDeleteMappingModal = () => {
+    setShowDeleteMappingModalIsOpen(false);
+  };
 
   // Mappings may receive group ids even from the back-end
   // if the groups themselves have been deleted.
@@ -56,14 +70,6 @@ const MappingRow = ({
   const selectedGroupIdsFromGroupsThatExist = selectedGroupIds.filter(id =>
     _.findWhere(groups, { id: id }),
   );
-
-  const handleShowDeleteGroupMappingModal = () => {
-    setShowDeleteGroupMappingModal(true);
-  };
-
-  const handleHideDeleteGroupMappingModal = () => {
-    setShowDeleteGroupMappingModal(false);
-  };
 
   const handleConfirmDeleteMapping = (
     whatToDoAboutGroups: DeleteMappingModalValueType,
@@ -145,27 +151,27 @@ const MappingRow = ({
             <DeleteButton
               onDelete={() =>
                 shouldUseDeleteGroupMappingModal
-                  ? handleShowDeleteGroupMappingModal()
-                  : setShowDeleteMappingModal(true)
+                  ? handleOpenDeleteGroupMappingModal()
+                  : handleOpenDeleteMappingModal()
               }
             />
           </div>
         </td>
       </tr>
       <ConfirmationModal
-        opened={showDeleteMappingModal}
+        opened={deleteMappingModalIsOpen}
         title={t`Delete this mapping?`}
-        onClose={() => setShowDeleteMappingModal(false)}
+        onClose={handleCloseDeleteMappingModal}
         onConfirm={() => {
           onDeleteMapping({ name });
-          setShowDeleteMappingModal(false);
+          handleCloseDeleteMappingModal();
         }}
       />
       {showDeleteGroupMappingModal && (
         <DeleteGroupMappingModal
           name={name}
           groupIds={selectedGroupIds}
-          onHide={handleHideDeleteGroupMappingModal}
+          onHide={handleCloseDeleteGroupMappingModal}
           onConfirm={handleConfirmDeleteMapping}
         />
       )}

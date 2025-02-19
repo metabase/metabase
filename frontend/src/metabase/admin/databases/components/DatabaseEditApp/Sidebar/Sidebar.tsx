@@ -91,8 +91,9 @@ const DatabaseEditAppSidebar = ({
     deleteDatabaseModal.current.close();
   }, []);
 
-  const [discardSavedFieldsModalIsOpen, setDiscardSavedFieldsModalIsOpen] =
-    useState(false);
+  const [discardModalIsOpen, setDiscardModalIsOpen] = useState(false);
+  const handleOpenDiscardModal = () => setDiscardModalIsOpen(true);
+  const handleCloseDiscardModal = () => setDiscardModalIsOpen(false);
 
   return (
     <SidebarRoot>
@@ -151,17 +152,17 @@ const DatabaseEditAppSidebar = ({
                 <Button
                   variant="filled"
                   color="danger"
-                  onClick={() => setDiscardSavedFieldsModalIsOpen(true)}
+                  onClick={handleOpenDiscardModal}
                 >
                   {t`Discard saved field values`}
                 </Button>
                 <ConfirmationModal
-                  opened={discardSavedFieldsModalIsOpen}
+                  opened={discardModalIsOpen}
                   title={t`Discard saved field values`}
-                  onClose={() => setDiscardSavedFieldsModalIsOpen(false)}
+                  onClose={handleCloseDiscardModal}
                   onConfirm={() => {
                     discardDatabaseFieldValues(database.id);
-                    setDiscardSavedFieldsModalIsOpen(false);
+                    handleCloseDiscardModal();
                   }}
                 />
               </SidebarGroup.ListItem>

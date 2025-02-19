@@ -27,6 +27,10 @@ const SecretKeyWidget = ({
 
   const [regenerateTokenModalIsOpen, setRegenerateTokenModalIsOpen] =
     useState(false);
+  const handleOpenRegenerateTokenModal = () =>
+    setRegenerateTokenModalIsOpen(true);
+  const handleCloseRegenerateTokenModal = () =>
+    setRegenerateTokenModalIsOpen(false);
 
   return (
     <SecretKeyWidgetRoot>
@@ -35,7 +39,7 @@ const SecretKeyWidget = ({
         <>
           <Button
             variant="filled"
-            onClick={() => setRegenerateTokenModalIsOpen(true)}
+            onClick={handleOpenRegenerateTokenModal}
             ml="1rem"
             h="100%"
           >{t`Regenerate key`}</Button>
@@ -45,9 +49,9 @@ const SecretKeyWidget = ({
             content={t`This will cause existing embeds to stop working until they are updated with the new key.`}
             onConfirm={() => {
               generateToken();
-              setRegenerateTokenModalIsOpen(false);
+              handleCloseRegenerateTokenModal();
             }}
-            onClose={() => setRegenerateTokenModalIsOpen(false)}
+            onClose={handleCloseRegenerateTokenModal}
           />
         </>
       ) : (

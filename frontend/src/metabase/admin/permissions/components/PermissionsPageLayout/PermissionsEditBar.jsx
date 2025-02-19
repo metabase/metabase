@@ -17,12 +17,15 @@ const propTypes = {
 };
 
 export function PermissionsEditBar({ diff, isDirty, onCancel, onSave }) {
-  const [saveModalIsOpen, setSaveModelIsOpen] = useState(false);
+  const [saveModalIsOpen, setSaveModalIsOpen] = useState(false);
+  const handleOpenSaveModal = () => setSaveModalIsOpen(true);
+  const handleCloseSaveModal = () => setSaveModalIsOpen(false);
+
   const saveButton = (
     <Button
       primary
       small
-      onClick={() => setSaveModelIsOpen(true)}
+      onClick={handleOpenSaveModal}
       className={cx({ disabled: !isDirty })}
     >
       {t`Save changes`}
@@ -47,9 +50,9 @@ export function PermissionsEditBar({ diff, isDirty, onCancel, onSave }) {
         content={diff ? <PermissionsConfirm diff={diff} /> : null}
         onConfirm={() => {
           onSave();
-          setSaveModelIsOpen(false);
+          handleCloseSaveModal();
         }}
-        onClose={() => setSaveModelIsOpen(false)}
+        onClose={handleCloseSaveModal}
       />
     </>
   );
