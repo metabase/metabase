@@ -242,10 +242,7 @@
   []
   {:popular_items (get-popular-items-model-and-id)})
 
-(api.macros/defendpoint :get "/model/:type/:id/view-history"
-  "Return who has viewed this card."
-  [{:keys [type id]} :- [:map
-                         [:id ms/PositiveInt]]]
+(defn- view-history [model_id model_type]
   (map #(-> %
           user/add-picture-url
           user/add-common-name)
@@ -253,7 +250,25 @@
       {:select   [:user_id :first_name :last_name :email :auto_picture_url :show_picture [:%max.timestamp :latest_timestamp] [:%count.* :view_count]]
        :from     [[:view_log :l]]
        :join     [[:core_user :u] [:= :u.id :l.user_id]]
-       :where    [:and [:= :model_id id] [:= :model type]]
+       :where    [:and [:= :model_id model_id] [:= :model model_type]]
        :group-by [:user_id :first_name :last_name :email :auto_picture_url :show_picture]
-       :order-by [[:latest_timestamp :desc]]})))
+       :order-by [[:latest_timestamp :desc]]}))
+  )
 
+(api.macros/defendpoint :get "/card/:id/view-history"
+  "Return who has viewed this card."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (view-history id "card"))
+
+(api.macros/defendpoint :get "/dashboard/:id/view-history"
+  "Return who has viewed this dashboard."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (view-history id "dashboard"))
+
+(api.macros/defendpoint :get "/collection/:id/view-history"
+  "Return who has viewed this collection."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (view-history id "collection"))
