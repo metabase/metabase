@@ -34,7 +34,7 @@
   border-radius: 2px;
 
   &.active {
-    background-color: var(--mb-color-syntax-parameters-active,);
+    background-color: var(--mb-color-syntax-parameters-active);
   }
 }
 
