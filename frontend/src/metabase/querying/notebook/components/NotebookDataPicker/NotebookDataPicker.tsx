@@ -231,7 +231,8 @@ function EmbeddingDataPicker({
     return null;
   }
 
-  const shouldUseSimpleDataPicker = Number(dataSourceCountData?.total) < 100;
+  const shouldUseSimpleDataPicker =
+    dataSourceCountData != null && dataSourceCountData.total < 100;
   if (shouldUseSimpleDataPicker) {
     return (
       <PLUGIN_EMBEDDING_SDK.SimpleDataPicker
