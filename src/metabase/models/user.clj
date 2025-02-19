@@ -189,13 +189,13 @@
            common-name)
       (assoc :common_name common-name))))
 
-(defn- add-picture-url
+(defn add-picture-url
   [{:keys [auto_picture_url show_picture], :as user}]
-  (if (boolean show_picture)
+  (when (boolean show_picture)
     (let [picture-url auto_picture_url]
       (if picture-url
         (assoc user :picture_url picture-url)
-        user))
+        (assoc user :picture_url nil)))
     (assoc user :picture_url nil)))
 
 (t2/define-after-select :model/User

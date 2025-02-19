@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
+   [metabase.models.user :as user]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -240,3 +241,20 @@
   archived, deleted, etc it can usually still get 5. "
   []
   {:popular_items (get-popular-items-model-and-id)})
+
+(api.macros/defendpoint :get "/model/:id/view-history"
+  "Return who has viewed this card."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (map
+    #(-> %
+       user/add-picture-url
+       user/add-common-name)
+    (t2/select :model/ViewLog
+      {:select   [:user_id :first_name :last_name :email :auto_picture_url :show_picture [:%max.timestamp :latest_timestamp] [:%count.* :view_count]]
+       :from     [[:view_log :l]]
+       :join     [[:core_user :u] [:= :u.id :l.user_id]]
+       :where    [:= :model_id id]
+       :group-by [:user_id :first_name :last_name :email :auto_picture_url :show_picture]
+       :order-by [[:latest_timestamp :desc]]})))
+
