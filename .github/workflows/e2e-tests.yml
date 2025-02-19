@@ -148,8 +148,8 @@ jobs:
 
   e2e-tests-result:
     needs:
-     - e2e-tests
-     - flaky-e2e-tests
+      - e2e-tests
+      - flaky-e2e-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: e2e-tests-result
@@ -175,8 +175,8 @@ jobs:
 
   pr-env:
     needs: [build]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env')
+    # if: |
+    #   !cancelled() &&
+    #   contains(github.event.pull_request.labels.*.name, 'PR-Env')
     uses: ./.github/workflows/pr-env.yml
     secrets: inherit
