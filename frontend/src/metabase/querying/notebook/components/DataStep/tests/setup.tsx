@@ -38,20 +38,18 @@ export const setup = ({
 
   const updateQuery = jest.fn();
   setupDatabasesEndpoints([createSampleDatabase()]);
-  setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
 
   // In embedding SDK we call a different endpoint because we use a different data picker (metabase#52889)
   if (isEmbeddingSdk) {
-    setupSearchEndpoints(
-      [
-        createMockModelResult({
-          id: 0,
-          name: "Products",
-        }),
-      ],
-      { overwriteRoutes: true },
-    );
+    setupSearchEndpoints([
+      createMockModelResult({
+        id: 0,
+        name: "Products",
+      }),
+    ]);
+  } else {
+    setupSearchEndpoints([]);
   }
 
   const storeInitialState = createMockState({
