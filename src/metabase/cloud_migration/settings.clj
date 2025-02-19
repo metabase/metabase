@@ -53,6 +53,12 @@
   :doc        false
   :export?    false)
 
+(defn- is-invalid-mb-version?
+  "These variations are not valid Metabase versions that can be found in production. They are mostly used for local
+   development, or as fallback values if a :tag is missing altogether."
+  [version]
+  (or (= version "vLOCAL_DEV") (= version "vUNKNOWN") (str/ends-with? version "-SNAPSHOT")))
+
 (defsetting migration-dump-version
   (deferred-tru "Custom dump version for migrations.")
   :encryption :no
@@ -60,10 +66,7 @@
   ;; Use a known version on staging when there's no real version.
   ;; This will cause the restore to fail on cloud unless you also set `migration-dump-file` to
   ;; a dump from that version, but it lets you test everything else up to that point works.
-  :default    (when (-> (config/mb-version-info :tag)
-                        (#(or (= % "vLOCAL_DEV")
-                              (= % "vUNKNOWN")
-                              (str/ends-with? % "-SNAPSHOT"))))
+  :default    (when (is-invalid-mb-version? (config/mb-version-info :tag))
                 "v0.53.3")
   :doc        false
   :export?    false)
