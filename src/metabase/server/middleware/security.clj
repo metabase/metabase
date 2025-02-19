@@ -119,6 +119,8 @@
                                  ["'self'"
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
+                                  "https://cdnjs.cloudflare.com"
+                                  "https://sql.js.org"
                                   (when (public-settings/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading
@@ -156,6 +158,8 @@
                                  "https://accounts.google.com"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
+                                 "https://cdnjs.cloudflare.com"
+                                  "https://sql.js.org"
                                  ;; Snowplow analytics
                                  (when (public-settings/anon-tracking-enabled)
                                    (setting/get-value-of-type :string :snowplow-url))

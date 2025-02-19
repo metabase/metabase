@@ -1,5 +1,7 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+const initSqlJs = window.initSqlJs;
 import { c, t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
@@ -14,6 +16,56 @@ import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import SidebarStyles from "./DashboardInfoSidebar.module.css";
+
+const SqliteGenerator = () => {
+
+  const handleClick = async () => {
+      // if (!sql) return;
+
+        // Initialize SQL.js
+  const SQL = await initSqlJs({
+    // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
+    // You can omit locateFile completely when running in node
+    locateFile: file => `https://sql.js.org/dist/${file}`
+    });
+
+
+
+    // Create a new database
+    const db = new SQL.Database();
+
+    // Create a simple table with some data
+    db.run(`
+      CREATE TABLE test (id INTEGER, name TEXT);
+      INSERT INTO test VALUES (1, 'Alice');
+      INSERT INTO test VALUES (2, 'Bob');
+    `);
+
+    // Export the database as a Uint8Array
+    const binaryArray = db.export();
+
+    // Create and download the file
+    const blob = new Blob([binaryArray], { type: 'application/x-sqlite3' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'database.db';
+    a.click();
+
+    // Cleanup
+    URL.revokeObjectURL(url);
+    db.close();
+  };
+
+  return (
+    <button
+      className="bg-blue-500 text-white px-4 py-2 rounded"
+      onClick={handleClick}
+    >
+      Download SQLite Database
+    </button>
+  );
+};
 
 export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
   const lastEditInfo = dashboard["last-edit-info"];
@@ -52,6 +104,17 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
                 />
               )} by ${getUserName(lastEditInfo)}`}
             </Text>
+          </Flex>
+        )}
+      </SidesheetCardSection>
+      <SidesheetCardSection title={t`Download Sqlite`}>
+        {creator && (
+          <Flex gap="sm" align="top">
+            <FixedSizeIcon name="ai" className={SidebarStyles.IconMargin} />
+            <Text>
+                Download this data as sqlite
+            </Text>
+            <SqliteGenerator />
           </Flex>
         )}
       </SidesheetCardSection>
