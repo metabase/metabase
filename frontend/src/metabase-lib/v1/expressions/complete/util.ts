@@ -65,6 +65,10 @@ function getSnippet(helpText: HelpText) {
     ?.filter(arg => arg.name !== "…")
     ?.map(arg => "${" + arg.name + "}")
     .join(", ");
+
+  if (!args || args.length < 1) {
+    return `${helpText.structure}`;
+  }
   return `${helpText.structure}(${args})`;
 }
 
