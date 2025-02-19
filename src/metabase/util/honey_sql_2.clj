@@ -341,7 +341,8 @@
 (mu/defn maybe-cast :- TypedExpression
   "Cast `expr` to `sql-type`, unless `expr` is typed and already of that type. Returns a typed HoneySQL form."
   [sql-type expr]
-  (if (is-of-type? expr sql-type)
+  (if (or (nil? sql-type)
+          (is-of-type? expr sql-type))
     expr
     (cast sql-type expr)))
 

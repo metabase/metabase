@@ -73,7 +73,7 @@ export function tokenize(expression: string) {
 
     if (node.type.name === "Number") {
       const value = expression.slice(node.from, node.to).toLowerCase();
-      const [_, exponent, ...rest] = value.split("e");
+      const [, exponent, ...rest] = value.split("e");
       if (typeof exponent === "string" && !exponent.match(/[0-9]$/)) {
         error(node, t`Missing exponent`);
       } else if (rest.length > 0) {

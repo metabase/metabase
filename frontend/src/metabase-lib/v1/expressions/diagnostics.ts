@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type { Expr, Node } from "metabase-lib/v1/expressions/pratt";
+import type { Node } from "metabase-lib/v1/expressions/pratt";
 import {
   ResolverError,
   compile,
@@ -10,7 +10,10 @@ import {
 } from "metabase-lib/v1/expressions/pratt";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Expression } from "metabase-types/api";
 
+import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { parseDimension, parseMetric, parseSegment } from "./identifier";
 import {
   adjustCaseOrIf,
   adjustMultiArgOptions,
@@ -21,14 +24,6 @@ import {
 import { resolve } from "./resolver";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, Token } from "./types";
-
-import {
-  MBQL_CLAUSES,
-  getMBQLName,
-  parseDimension,
-  parseMetric,
-  parseSegment,
-} from "./index";
 
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
 export function countMatchingParentheses(tokens: Token[]) {
@@ -56,7 +51,7 @@ export function diagnose({
   stageIndex: number;
   name?: string | null;
   metadata?: Metadata;
-  expressionIndex: number | undefined;
+  expressionIndex?: number | undefined;
 }): ErrorWithMessage | null {
   if (!source || source.length === 0) {
     return null;
@@ -106,7 +101,7 @@ export function diagnose({
   const database = getDatabase(query, metadata);
 
   // make a simple check on expression syntax correctness
-  let mbqlOrError: Expr | ErrorWithMessage;
+  let mbqlOrError: Expression | ErrorWithMessage;
   try {
     mbqlOrError = prattCompiler({
       source,
@@ -177,9 +172,9 @@ function prattCompiler({
   name: string | null;
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex: number | undefined;
+  expressionIndex?: number | undefined;
   database?: Database | null;
-}): ErrorWithMessage | Expr {
+}): ErrorWithMessage | Expression {
   const tokens = lexify(source);
   const options = {
     source,

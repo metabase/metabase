@@ -1,5 +1,4 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
-import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";

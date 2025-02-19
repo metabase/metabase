@@ -3,10 +3,9 @@ import { c, t } from "ttag";
 import * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 
+import { parseDimension, parseMetric, parseSegment } from "./identifier";
 import { adjustBooleans, parse } from "./recursive-parser";
 import { resolve } from "./resolver";
-
-import { parseDimension, parseMetric, parseSegment } from "./index";
 
 export function processSource(options: {
   source: string;

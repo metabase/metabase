@@ -14,6 +14,8 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import type { FormatOptions } from "../format";
+
 const SEGMENT_ID = 1;
 
 const metadata = createMockMetadata({
@@ -309,7 +311,7 @@ const expression = [
     ],
     "should handle endsWith with multiple arguments and non-empty options",
   ],
-];
+] as const;
 
 const aggregation = [
   ["Count", ["count"], "aggregation with no arguments"],
@@ -355,7 +357,7 @@ const aggregation = [
   ["Count([Total])", undefined, "invalid count arguments"],
   ["SumIf([Total] > 50, [Total])", undefined, "invalid sum-where arguments"],
   ["Count + Share((", undefined, "invalid share"],
-];
+] as const;
 
 const filter = [
   ["[Total] < 10", ["<", total, 10], "filter operator"],
@@ -400,13 +402,20 @@ const filter = [
   ],
   ["notnull([Tax])", ["not-null", tax], "not null"],
   ["notempty([Total])", ["not-empty", total], "not empty"],
-];
+] as const;
 
-export const dataForFormatting = [
-  ["expression", expression, { startRule: "expression", query, stageIndex }],
-  ["aggregation", aggregation, { startRule: "aggregation", query, stageIndex }],
-  ["filter", filter, { startRule: "boolean", query, stageIndex }],
-];
+type TestCase = readonly [string, unknown, string];
+
+export const dataForFormatting: [string, readonly TestCase[], FormatOptions][] =
+  [
+    ["expression", expression, { startRule: "expression", query, stageIndex }],
+    [
+      "aggregation",
+      aggregation,
+      { startRule: "aggregation", query, stageIndex },
+    ],
+    ["filter", filter, { startRule: "boolean", query, stageIndex }],
+  ] as const;
 
 /**
  * @type {import("metabase-lib/v1/metadata/Table").default}
