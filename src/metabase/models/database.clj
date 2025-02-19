@@ -175,15 +175,23 @@
    - cleans-up ambiguous legacy, db-details"
   [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
+    (log/info (u/format-color :cyan "Health check: queueing %s {:id %d}" (:name database) (:id database)))
     (sync.concurrent/submit-task
      (fn []
        (let [details (maybe-test-and-migrate-details! database)]
          (try
+           (log/info (u/format-color :cyan "Health check: checking %s {:id %d}" (:name database) (:id database)))
            (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
-             (prometheus/inc! :metabase-database/healthy {:driver engine} 1)
-             (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1))
-           (catch Throwable _
-             (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1))))))))
+             (do
+               (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
+               (prometheus/inc! :metabase-database/healthy {:driver engine} 1))
+             (do
+               (log/warn (u/format-color :yellow "Health check: failure %s {:id %d}" (:name database) (:id database)))
+               (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))
+           (catch Throwable e
+             (do
+               (log/error e (u/format-color :red "Health check: failure with error %s {:id %d}" (:name database) (:id database)))
+               (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))))))))
 
 (defn check-health-and-schedule-tasks!
   "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
