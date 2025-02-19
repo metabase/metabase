@@ -1,3 +1,27 @@
+## [0.52.11](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.10...embedding-sdk-0.52.11) (2025-02-18)
+
+
+### Bug Fixes
+
+* **sdk:**  handle 'personal' for collectionId when creating dashboards and in the collection browser ([#53837](https://github.com/metabase/metabase/issues/53837)) ([f4d1550](https://github.com/metabase/metabase/commit/f4d15509f671bda94335c14fe873262e5e51dcb3)), closes [#53553](https://github.com/metabase/metabase/issues/53553)
+* **sdk:** better scope for SCOPED_CSS_RESET to fix transparent ([#53443](https://github.com/metabase/metabase/issues/53443)) ([#53463](https://github.com/metabase/metabase/issues/53463)) ([603e09b](https://github.com/metabase/metabase/commit/603e09b3b9ca1200c02c3abfa6e263c73a7414b7))
+* **sdk:** Clean up and enhance `InteractiveQuestion` docs ([#53283](https://github.com/metabase/metabase/issues/53283)) ([#53470](https://github.com/metabase/metabase/issues/53470)) ([ec408e0](https://github.com/metabase/metabase/commit/ec408e0bc8280a9de07e5940aefd2c9f918088fb))
+* **sdk:** dashboard not found when switching dashboards in cli ([#53452](https://github.com/metabase/metabase/issues/53452)) ([#53468](https://github.com/metabase/metabase/issues/53468)) ([da06fcb](https://github.com/metabase/metabase/commit/da06fcb5d3e41b9da9843be4999080e9e2d5d917))
+* **sdk:** filterout @types/react from the generated package.json ([#53747](https://github.com/metabase/metabase/issues/53747)) ([#53774](https://github.com/metabase/metabase/issues/53774)) ([a20b48d](https://github.com/metabase/metabase/commit/a20b48d5fe503476fc5473912d5b3157a33a8c4c))
+* **sdk:** make headers in generated cli components responsive ([#53455](https://github.com/metabase/metabase/issues/53455)) ([#53458](https://github.com/metabase/metabase/issues/53458)) ([e5d6e00](https://github.com/metabase/metabase/commit/e5d6e000c61cd31122649f3b842cda8c7f3c2d51))
+
+
+### Features
+
+* **sdk:** abort cli with message when react version is unsupported ([#53656](https://github.com/metabase/metabase/issues/53656)) ([#53675](https://github.com/metabase/metabase/issues/53675)) ([faabae2](https://github.com/metabase/metabase/commit/faabae24205ded2a364ca7e88a6c3cac11b7f4f4))
+* **sdk:** add Next.js compatibility to embedding cli ([#50281](https://github.com/metabase/metabase/issues/50281)) ([#53692](https://github.com/metabase/metabase/issues/53692)) ([50dac90](https://github.com/metabase/metabase/commit/50dac909e0009394e0117a7668b4ed02847ea8e0))
+* **sdk:** add the instance url to the cli's login json file ([#53469](https://github.com/metabase/metabase/issues/53469)) ([#53678](https://github.com/metabase/metabase/issues/53678)) ([ae3fcb1](https://github.com/metabase/metabase/commit/ae3fcb108ee9ca78935ffd8457a3e62217822532))
+* **sdk:** asks whether to add a db right before adding db connection in the cli ([#53680](https://github.com/metabase/metabase/issues/53680)) ([#53857](https://github.com/metabase/metabase/issues/53857)) ([8b716ed](https://github.com/metabase/metabase/commit/8b716ed4bf7de63c0ab1c5a58430bcbf56c2da0e))
+* **sdk:** pro license setup in cli defaults to false ([#53655](https://github.com/metabase/metabase/issues/53655)) ([#53686](https://github.com/metabase/metabase/issues/53686)) ([fb98fa2](https://github.com/metabase/metabase/commit/fb98fa2d1883e423b6cb1d80273dbf72f77d6665))
+* **sdk:** show clarification messages upon running the cli ([#53471](https://github.com/metabase/metabase/issues/53471)) ([#53658](https://github.com/metabase/metabase/issues/53658)) ([577133f](https://github.com/metabase/metabase/commit/577133f26a9d29f1629469da17484018c3fc6fca))
+
+
+
 ## [0.52.10](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.9...embedding-sdk-0.52.10) (2025-02-08)
 
 
