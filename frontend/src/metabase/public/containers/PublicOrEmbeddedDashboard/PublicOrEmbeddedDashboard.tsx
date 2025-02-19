@@ -77,7 +77,7 @@ type PublicOrEmbeddedDashboardProps = OwnProps &
   Omit<EmbedDisplayParams, "font"> &
   Pick<EmbeddingAdditionalHashOptions, "locale">;
 
-const initializeData = async ({
+export const initializeData = async ({
   dashboardId,
   shouldReload,
   parameterQueryParams,

@@ -21,6 +21,7 @@ import {
 import { AddLinkOrEmbedButton } from "../buttons/AddLinkOrEmbedButton";
 
 import type { DashboardActionButton, DashboardActionKey } from "./types";
+import { DashboardStartPresentationButton } from "../buttons/DashboardStartPresentationButton";
 
 export const DASHBOARD_ACTION = {
   ADD_QUESTION: "ADD_QUESTION",
@@ -41,6 +42,7 @@ export const DASHBOARD_ACTION = {
   DASHBOARD_INFO: "DASHBOARD_INFO",
   DASHBOARD_ACTION_MENU: "DASHBOARD_ACTION_MENU",
   FULLSCREEN_ANALYTICS_DASHBOARD: "FULLSCREEN_ANALYTICS_DASHBOARD",
+  ENTER_PRESENTATION_MODE: "ENTER_PRESENTATION_MODE",
 } as const;
 
 export const dashboardActionButtons: Record<
@@ -168,6 +170,10 @@ export const dashboardActionButtons: Record<
       />
     ),
     enabled: ({ isAnalyticsDashboard = false }) => isAnalyticsDashboard,
+  },
+  [DASHBOARD_ACTION.ENTER_PRESENTATION_MODE]: {
+    component: DashboardStartPresentationButton,
+    enabled: ({ isEditing }) => !isEditing,
   },
 
   //   UTILITY

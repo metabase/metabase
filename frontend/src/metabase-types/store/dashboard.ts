@@ -123,4 +123,8 @@ export interface DashboardState {
   tabDeletions: Record<TabDeletionId, TabDeletion>;
 
   theme: DisplayTheme;
+
+  dashboardPresentation: {
+    isPresenting: boolean;
+  };
 }

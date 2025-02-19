@@ -19607,6 +19607,11 @@ tinyglobby@^0.2.0:
     fdir "^6.4.2"
     picomatch "^4.0.2"
 
+tinykeys@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/tinykeys/-/tinykeys-3.0.0.tgz#528e59749f4d5f1e9d994f343fddca9eb1b608f8"
+  integrity sha512-nazawuGv5zx6MuDfDY0rmfXjuOGhD5XU2z0GLURQ1nzl0RUe9OuCJq+0u8xxJZINHe+mr7nw8PWYYZ9WhMFujw==
+
 tinyrainbow@^1.2.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/tinyrainbow/-/tinyrainbow-1.2.0.tgz#5c57d2fc0fb3d1afd78465c33ca885d04f02abb5"

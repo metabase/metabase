@@ -40,6 +40,8 @@ import {
   SET_SIDEBAR,
   SHOW_ADD_PARAMETER_POPOVER,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
+  START_PRESENTATION,
+  STOP_PRESENTATION,
   addCardToDash,
   addDashcardIdsToLoadingQueue,
   addManyCardsToDash,
@@ -158,6 +160,23 @@ export const editingDashboard = handleActions(
     [RESET]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
   },
   INITIAL_DASHBOARD_STATE.editingDashboard,
+);
+
+export const dashboardPresentation = createReducer(
+  INITIAL_DASHBOARD_STATE.dashboardPresentation,
+  builder => {
+    builder.addCase(RESET, () => INITIAL_DASHBOARD_STATE.dashboardPresentation);
+    builder.addCase(
+      INITIALIZE,
+      () => INITIAL_DASHBOARD_STATE.dashboardPresentation,
+    );
+    builder.addCase(START_PRESENTATION, state => {
+      state.isPresenting = true;
+    });
+    builder.addCase(STOP_PRESENTATION, state => {
+      state.isPresenting = false;
+    });
+  },
 );
 
 export const loadingControls = createReducer(

@@ -1,6 +1,6 @@
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import type { DashCardId } from "metabase-types/api";
+import type { DashCardId, DashboardId } from "metabase-types/api";
 import type {
   DashboardSidebarName,
   Dispatch,
@@ -10,6 +10,7 @@ import type {
 import { getSidebar } from "../selectors";
 
 import { closeAutoApplyFiltersToast } from "./parameters";
+import { push } from "react-router-redux";
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const setSidebar = createAction(SET_SIDEBAR);
@@ -54,5 +55,21 @@ export const closeDashboard = createThunkAction(
   CLOSE_DASHBOARD,
   () => dispatch => {
     dispatch(closeAutoApplyFiltersToast());
+  },
+);
+
+export const START_PRESENTATION = "metabase/dashboard/START_PRESENTATION";
+export const startPresentation = createThunkAction(
+  START_PRESENTATION,
+  (dashboardId: DashboardId) => dispatch => {
+    dispatch(push(`/dashboard/${dashboardId}/present`));
+  },
+);
+
+export const STOP_PRESENTATION = "metabase/dashboard/STOP_PRESENTATION ";
+export const stopPresentation = createThunkAction(
+  START_PRESENTATION,
+  (dashboardId: DashboardId) => dispatch => {
+    dispatch(push(`/dashboard/${dashboardId}`));
   },
 );

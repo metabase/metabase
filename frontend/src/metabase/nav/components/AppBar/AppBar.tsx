@@ -25,8 +25,14 @@ export interface AppBarProps {
   onLogout: () => void;
 }
 
-const AppBar = (props: AppBarProps): JSX.Element => {
+const AppBar = (props: AppBarProps): JSX.Element | null => {
   const isSmallScreen = useIsSmallScreen();
+
+  const isPresenting = window.location.pathname.includes("present");
+
+  if (isPresenting) {
+    return null;
+  }
 
   return (
     <AppBarRoot

@@ -1,0 +1,37 @@
+.presentation {
+  padding: 5rem;
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  width: 100%;
+}
+
+.presentationControls {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 2rem;
+  z-index: 1;
+}
+
+.slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+  padding: 5rem;
+}
+
+.slideInner {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.slideControls {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 1.5rem;
+}

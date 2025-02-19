@@ -26,6 +26,7 @@ import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/containers/Unsubscribe";
 import { UserCollectionList } from "metabase/containers/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
+import { DashboardPresentation } from "metabase/dashboard/containers/DashboardPresentation";
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
@@ -195,6 +196,12 @@ export const getRoutes = store => {
             })}
           />
 
+          <Route
+            path="dashboard/:slug/present"
+            component={DashboardPresentation}
+          >
+            <Route path=":slideIndex" component={DashboardPresentation} />
+          </Route>
           <Route
             path="dashboard/:slug"
             title={t`Dashboard`}
