@@ -62,7 +62,7 @@
   ;; a dump from that version, but it lets you test everything else up to that point works.
   :default    (when (-> (config/mb-version-info :tag)
                         (#(or (= % "vLOCAL_DEV") (str/ends-with? % "-SNAPSHOT"))))
-                "v0.52.0-RC1")
+                "v0.53.3")
   :doc        false
   :export?    false)
 
