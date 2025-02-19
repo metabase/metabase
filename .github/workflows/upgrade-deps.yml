@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   bump-deps:
-    name: Open PR to Bump Backend Deps
+    name: Open PRs to Bump Backend Deps
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -28,48 +28,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: 'update-be-deps'
-      - name: Run Antq
-        run: >-
-          clojure -M:antq --upgrade --force --skip=github-action
-      - name: Determine Branch Name
-        id: branch_name
-        run: |
-          current_date=$(date '+%Y-%m-%d-%H-%M')
-          branch="auto-update-backend-deps-$current_date"
-          echo "branch=$branch" >> $GITHUB_OUTPUT
-      - name: Set up Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Switch to Master
-        if: ${{ github.ref_name != 'master' }}
-        run: |
-          git stash
-          git checkout master
-          git stash pop
-      - name: Create Branch
-        run: |
-          git checkout -b "${{ steps.branch_name.outputs.branch }}"
-      - name: Create Git Commit
-        run: |
-          git add deps.edn modules
-          git commit -m "Update backend dependencies" --no-verify
-      - name: Push Branch to Origin
-        run: |
-          git push -u origin "${{ steps.branch_name.outputs.branch }}"
-      - name: Create Pull Request
-        id: create_pull_request
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          BRANCH="${{ steps.branch_name.outputs.branch }}"
-          TITLE="Update Backend Dependencies"
-          DESCRIPTION="Update backend dependencies"
-          PR_URL=$(gh pr create --base master --head "${BRANCH}" --label "no-backport" --title "${TITLE}" --body "${DESCRIPTION}")
-          PR_NUMBER=${PR_URL##*/}
-          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-      - name: Enable Pull Request Auto-Merge
-        uses: peter-evans/enable-pull-request-automerge@v3
+      - name: Open PRs to Upgrade Backend Deps
+        uses: ./.github/actions/upgrade-backend-deps
         with:
-          pull-request-number: ${{ steps.create_pull_request.outputs.pr_number }}
-          merge-method: squash
+          github-token: ${{ github.token }}
