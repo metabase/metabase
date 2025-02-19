@@ -798,7 +798,6 @@
                             "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
                 (jdbc/execute! spec stmt)))))))))
 
-
 (deftest ^:parallel temporal-column-with-binning-keeps-type
   (mt/test-driver :mysql
     (let [mp (mt/metadata-provider)]

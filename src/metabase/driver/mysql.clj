@@ -431,7 +431,6 @@
     (->> (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)
          (temporal-cast (h2x/database-type expr)))))
 
-
 (defmethod sql.qp/date [:mysql :week-of-year-iso] [_ _ expr] (h2x/week expr 3))
 
 (defmethod sql.qp/date [:mysql :month]
