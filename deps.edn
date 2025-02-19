@@ -850,7 +850,19 @@
           {com.nextjournal/beholder     {:mvn/version "1.0.2"} ;; watcher
            io.github.tonsky/clj-reload {:mvn/version "0.7.1"}} ;; reloader
           :extra-paths "dev/src/watch"
-          :main-opts ["-m" "watch.watcher"]}}}
+          :main-opts ["-m" "watch.watcher"]}
+
+  ;;
+  ;; DB configs -- start DBs with ./bin/mage.sh start-db <db> <version>
+  :db/postgres-oldest
+  {:jvm-opts
+   ["-Dmb.db.type=postgres"
+    "-Dmb.db.connection.uri=jdbc:postgresql://localhost:5432/metabase?user=metabase&password=password"]}
+
+  :db/postgres-latest
+  {:jvm-opts
+   ["-Dmb.db.type=postgres"
+    "-Dmb.db.connection.uri=jdbc:postgresql://localhost:5433/metabase?user=metabase&password=password"]}}}
 
 
 

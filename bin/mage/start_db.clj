@@ -56,12 +56,12 @@
   (shell/sh* {:quiet? true} "docker" "rm" image-name))
 
 (defmulti ^:private start-db!
-  {:arglists '([database version port])}
-  (fn [database _version _port]
+  {:arglists '([database version resolved-version port])}
+  (fn [database _version _resolved-version _port]
     (keyword database)))
 
 (defmethod start-db! :postgres
-  [_database version port]
+  [_database version resolved-version port]
   (let [image-name "mb-postgres-db"]
     (kill-existing! image-name)
     (shell/sh "docker" "run"
@@ -74,8 +74,14 @@
               "-e" "PGDATA=/var/lib/postgresql/data"
               ;; "-v" "${DATA_DIR}:/var/lib/postgresql/data:Z"
               "--name" image-name
-              (str "postgres:" version))
-    (printf "Started Postgres %s on port %s\n" version port)))
+              (str "postgres:" resolved-version))
+    (printf "Started Postgres %s on port %s\n" version port)
+    (println)
+    (when-let [deps-edn-alias (condp = version
+                                :oldest :db/postgres-oldest
+                                :latest :db/postgres-latest)]
+      (printf "Use the %s alias in deps.edn to use this DB.\n"
+              deps-edn-alias))))
 
 (defn usage []
   (println "Usage:")
@@ -90,14 +96,14 @@
       (println "  " (name version)))))
 
 (defn- start-db* [db version]
-  (let [db      (keyword db)
-        version (cond-> version
-                  (string? version) keyword)
-        port    (get-in ports [db version])
-        version (resolve-version db version)]
+  (let [db               (keyword db)
+        version          (cond-> version
+                           (string? version) keyword)
+        port             (get-in ports [db version])
+        resolved-version (resolve-version db version)]
     (assert (integer? port)
             (format "Invalid port: %s" (pr-str port)))
-    (start-db! db version port)))
+    (start-db! db version resolved-version port)))
 
 (defn start-db [{:keys [args]}]
   (if-not (= (count args) 2)
