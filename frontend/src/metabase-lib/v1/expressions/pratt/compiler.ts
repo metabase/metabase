@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import type { Expression } from "metabase-types/api";
 
-import { unescapeString } from "../index";
+import { unescapeString } from "../string";
 
 import {
   ADD,

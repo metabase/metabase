@@ -27,12 +27,12 @@ import {
   isSegment,
   isStringLiteral,
 } from "./matchers";
+import { formatStringLiteral } from "./string";
 
 import {
   formatDimensionName,
   formatMetricName,
   formatSegmentName,
-  formatStringLiteral,
 } from "./index";
 
 export type FormatOptions = {

@@ -1,4 +1,4 @@
-import { quoteString, unquoteString } from ".";
+import { quoteString, unquoteString } from "./string";
 
 describe("expressions", () => {
   // double- and single-quote
