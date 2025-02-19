@@ -21,6 +21,9 @@ import SidebarStyles from "./DashboardInfoSidebar.module.css";
 
 const initSqlJs = window.initSqlJs;
 
+const sqlFriendlyName = (str: string) =>
+  snake_case(str.replace(/[^a-zA-Z\s]/g, ""));
+
 const SqliteGenerator = ({ dashboard }: { dashboard: Dashboard }) => {
   const dashboardData = useSelector(getDashcardDataMap);
 
@@ -34,7 +37,9 @@ const SqliteGenerator = ({ dashboard }: { dashboard: Dashboard }) => {
         const relatedCard = dashboard.dashcards.find(
           dc => dc.card.id === parseInt(cardId, 10),
         )?.card;
-        const tableName = snake_case(relatedCard?.name ?? `table_${index}`);
+        const tableName = sqlFriendlyName(
+          relatedCard?.name ?? `table_${index}`,
+        );
 
         const columns = result.data.cols.map(col => {
           const sqliteType = match(col.base_type)
@@ -44,7 +49,7 @@ const SqliteGenerator = ({ dashboard }: { dashboard: Dashboard }) => {
             .with("type/Integer", () => "INTEGER")
             .with("type/BigInteger", () => "INTEGER")
             .otherwise(() => "TEXT");
-          return `"${col.display_name}" ${sqliteType}`;
+          return `"${sqlFriendlyName(col.display_name)}" ${sqliteType}`;
         });
 
         const table = `CREATE TABLE ${tableName} (${columns.join(", ")});`;
@@ -82,7 +87,7 @@ const SqliteGenerator = ({ dashboard }: { dashboard: Dashboard }) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const niceDashName = snake_case(dashboard.name.toLowerCase());
+    const niceDashName = sqlFriendlyName(dashboard.name);
     a.download = `${niceDashName}_${new Date().getTime()}.db`;
     a.click();
 
