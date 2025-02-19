@@ -10575,6 +10575,26 @@ databaseChangeLog:
                     nullable: true
                     unique: true
 
+  - changeSet:
+      id: v54.2025-02-19T09:09:27
+      author: dpsutton
+      comment: Add `alias` column to report_dashboard
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: report_database
+              columnName: alias
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: alias
+                  type: ${text.type}
+                  remarks: alias to reference the dashboard
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
