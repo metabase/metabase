@@ -126,7 +126,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       testFilter({
         filterOperator: "Equal to",
         setFilterValue: () => cy.findByLabelText("Filter value").type(maxValue),
-        filterDisplayName: `NUMBER is equal to "${maxValue}"`,
+        filterDisplayName: `NUMBER is equal to ${maxValue}`,
         filteredRowCount: 1,
       });
 
@@ -134,7 +134,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       testFilter({
         filterOperator: "Not equal to",
         setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
-        filterDisplayName: `NUMBER is not equal to "${minValue}"`,
+        filterDisplayName: `NUMBER is not equal to ${minValue}`,
         filteredRowCount: 2,
       });
 
@@ -142,7 +142,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       testFilter({
         filterOperator: "Greater than",
         setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
-        filterDisplayName: `NUMBER is greater than "${minValue}"`,
+        filterDisplayName: `NUMBER is greater than ${minValue}`,
         filteredRowCount: 2,
       });
 
@@ -150,7 +150,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       testFilter({
         filterOperator: "Greater than or equal to",
         setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
-        filterDisplayName: `NUMBER is greater than or equal to "${minValue}"`,
+        filterDisplayName: `NUMBER is greater than or equal to ${minValue}`,
         filteredRowCount: 3,
       });
 
@@ -158,7 +158,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       testFilter({
         filterOperator: "Less than",
         setFilterValue: () => cy.findByLabelText("Filter value").type(maxValue),
-        filterDisplayName: `NUMBER is less than "${maxValue}"`,
+        filterDisplayName: `NUMBER is less than ${maxValue}`,
         filteredRowCount: 2,
       });
 
@@ -166,7 +166,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       testFilter({
         filterOperator: "Less than or equal to",
         setFilterValue: () => cy.findByLabelText("Filter value").type(maxValue),
-        filterDisplayName: `NUMBER is less than or equal to "${maxValue}"`,
+        filterDisplayName: `NUMBER is less than or equal to ${maxValue}`,
         filteredRowCount: 3,
       });
 
@@ -177,7 +177,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
           cy.findByPlaceholderText("Min").type(minValue);
           cy.findByPlaceholderText("Max").type("0");
         },
-        filterDisplayName: `NUMBER is between "${minValue}" and 0`,
+        filterDisplayName: `NUMBER is between ${minValue} and 0`,
         filteredRowCount: 2,
       });
 
@@ -188,7 +188,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
           cy.findByPlaceholderText("Min").type("0");
           cy.findByPlaceholderText("Max").type(maxValue);
         },
-        filterDisplayName: `NUMBER is between 0 and "${maxValue}"`,
+        filterDisplayName: `NUMBER is between 0 and ${maxValue}`,
         filteredRowCount: 2,
       });
 
@@ -530,7 +530,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         parameterName: "Equal to",
         setParameterValue: () =>
           cy.findByPlaceholderText("Enter a number").type(maxValue),
-        filterDisplayName: `NUMBER is equal to "${maxValue}"`,
+        filterDisplayName: `NUMBER is equal to ${maxValue}`,
         filterArgsDisplayName: maxValue,
         filteredRowCount: 1,
       });
@@ -540,7 +540,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         parameterName: "Not equal to",
         setParameterValue: () =>
           cy.findByPlaceholderText("Enter a number").type(minValue),
-        filterDisplayName: `NUMBER is not equal to "${minValue}"`,
+        filterDisplayName: `NUMBER is not equal to ${minValue}`,
         filterArgsDisplayName: minValue,
         filteredRowCount: 2,
       });
@@ -550,7 +550,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         parameterName: "Greater than or equal to",
         setParameterValue: () =>
           cy.findByPlaceholderText("Enter a number").type(minValue),
-        filterDisplayName: `NUMBER is greater than or equal to "${minValue}"`,
+        filterDisplayName: `NUMBER is greater than or equal to ${minValue}`,
         filterArgsDisplayName: minValue,
         filteredRowCount: 3,
       });
@@ -560,7 +560,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         parameterName: "Less than or equal to",
         setParameterValue: () =>
           cy.findByPlaceholderText("Enter a number").type(maxValue),
-        filterDisplayName: `NUMBER is less than or equal to "${maxValue}"`,
+        filterDisplayName: `NUMBER is less than or equal to ${maxValue}`,
         filterArgsDisplayName: maxValue,
         filteredRowCount: 3,
       });
@@ -572,7 +572,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
           cy.findAllByPlaceholderText("Enter a number").eq(0).type(minValue);
           cy.findAllByPlaceholderText("Enter a number").eq(1).type("0");
         },
-        filterDisplayName: `NUMBER is between "${minValue}" and 0`,
+        filterDisplayName: `NUMBER is between ${minValue} and 0`,
         filterArgsDisplayName: "2 selections",
         filteredRowCount: 2,
       });
@@ -584,7 +584,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
           cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
           cy.findAllByPlaceholderText("Enter a number").eq(1).type(maxValue);
         },
-        filterDisplayName: `NUMBER is between 0 and "${maxValue}"`,
+        filterDisplayName: `NUMBER is between 0 and ${maxValue}`,
         filterArgsDisplayName: "2 selections",
         filteredRowCount: 2,
       });
