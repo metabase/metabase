@@ -7,8 +7,8 @@
    [metabase.server.protocols :as server.protocols]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [ring.adapter.jetty :as ring-jetty]
-   [ring.util.jakarta.servlet :as servlet])
+   [ring.adapter.jetty9 :as ring-jetty]
+   [ring.adapter.jetty9.common :as jetty-common])
   (:import
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
@@ -64,7 +64,7 @@
     (handle [_ ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]
       (let [^AsyncContext context (doto (.startAsync request)
                                     (.setTimeout timeout))
-            request-map           (servlet/build-request-map request)
+            request-map           (jetty-common/build-request-map request)
             raise                 (fn raise [^Throwable e]
                                     (log/error e "Unexpected exception in endpoint")
                                     (try

@@ -1,7 +1,7 @@
 (ns metabase.server.protocols
   (:require
    [potemkin.types :as p.types]
-   [ring.util.jakarta.servlet :as servlet]))
+   [ring.adapter.jetty9.common :as jetty-common]))
 
 (p.types/defprotocol+ Respond
   "Protocol for converting API endpoint responses to something Jetty can handle."
@@ -21,8 +21,8 @@
 (extend-protocol Respond
   nil
   (respond [_ {:keys [async-context response response-map]}]
-    (servlet/update-servlet-response response async-context response-map))
+    (jetty-common/update-response response async-context response-map))
 
   Object
   (respond [_ {:keys [async-context response response-map]}]
-    (servlet/update-servlet-response response async-context response-map)))
+    (jetty-common/update-response response async-context response-map)))

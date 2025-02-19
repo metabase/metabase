@@ -10,7 +10,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
-   [ring.adapter.jetty :as ring-jetty])
+   [ring.adapter.jetty9 :as ring-jetty])
   (:import
    (org.eclipse.jetty.server Server)))
 

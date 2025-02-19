@@ -11,7 +11,7 @@
    [metabase.util.log :as log]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [ring.util.jakarta.servlet :as servlet]
+   [ring.adapter.jetty9.common :as jetty-common]
    [ring.util.response :as response])
   (:import
    (jakarta.servlet AsyncContext)
@@ -231,7 +231,7 @@
                                    ;; of the subsequent requests that come through the reused connection (see #46071).
                                    "Connection" "close")
                       gzip? (assoc "Content-Encoding" "gzip"))]
-        (#'servlet/set-headers response headers)
+        (jetty-common/set-headers! response headers)
         (let [output-stream-delay (output-stream-delay gzip? response)
               delay-os            (delay-output-stream output-stream-delay)]
           (start-async-cancel-loop! request finished-chan canceled-chan)
