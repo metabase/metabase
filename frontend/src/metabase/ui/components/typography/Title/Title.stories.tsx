@@ -36,7 +36,7 @@ const SizeTemplate = (args: TitleProps) => (
 );
 
 export default {
-  title: "Typography/Title",
+  title: "Design System/Typography/Title",
   component: Title,
   args,
   argTypes,
