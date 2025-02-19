@@ -48,6 +48,7 @@
    :last-edited-at      :timestamp
    :last-editor-id      :pk
    :last-viewed-at      :timestamp
+   :model-index-id      :pk
    :name                :text
    :native-query        nil
    :official-collection :boolean
@@ -72,6 +73,7 @@
          :dashboard-id
          :dashboardcard-count
          :last-viewed-at
+         :model-index-id
          :pinned
          :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count
