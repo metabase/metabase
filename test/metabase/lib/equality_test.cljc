@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
@@ -340,13 +341,15 @@
 (deftest ^:parallel find-matching-column-self-join-test
   (testing "find-matching-column with a self join"
     (let [query     (lib.tu/query-with-self-join)
+          [join]    (lib/joins query)
           cols      (for [col (meta/fields :orders)]
                       (meta/field-metadata :orders col))
           table-col #(assoc % :lib/source :source/table-defaults)
-          join-col  #(merge %
-                            {:lib/source                   :source/joins
-                             :metabase.lib.join/join-alias "Orders"
-                             :lib/desired-column-alias     (str "Orders__" (:name %))})
+          join-col  #(-> %
+                         (merge {:lib/source                   :source/joins
+                                 :metabase.lib.join/join-alias "Orders"
+                                 :lib/desired-column-alias     (str "Orders__" (:name %))})
+                         (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
           sorted    #(sort-by (juxt :position :source-alias) %)
           visible   (lib/visible-columns query)]
       (is (=? (sorted (concat (map table-col cols)

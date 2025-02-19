@@ -126,7 +126,9 @@ describe("[EE, with token] embedding settings", () => {
             name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
-        expect(withinEmbeddingSdkCard.getByText("Beta")).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.queryByText("Beta"),
+        ).not.toBeInTheDocument();
         expect(
           withinEmbeddingSdkCard.getByText(
             /Interactive embedding with full, granular control./,
@@ -357,7 +359,9 @@ describe("[EE, with token] embedding settings", () => {
             name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
-        expect(withinEmbeddingSdkCard.getByText("Beta")).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.queryByText("Beta"),
+        ).not.toBeInTheDocument();
         expect(
           withinEmbeddingSdkCard.getByText(
             /Interactive embedding with full, granular control./,
