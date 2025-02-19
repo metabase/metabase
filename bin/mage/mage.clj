@@ -7,6 +7,7 @@
    [format :as format]
    [kondo :as kondo]
    [splash :as splash]
+   [start-db]
    [util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -40,6 +41,7 @@
    {:cmds ["format"] :fn format/format}
    {:cmds ["kondo"] :fn kondo/kondo}
    {:cmds ["kondo-updated"] :fn kondo/kondo-updated}
+   {:cmds ["start-db"] :fn start-db/start-db}
    {:cmds ["help"] :fn help}
    {:cmds [] :fn help}])
 

@@ -88,4 +88,5 @@
   (let [{:keys [exit out err], :as response} (apply sh* args)]
     (if (zero? exit)
       (concat out err)
-      (throw (ex-info (str/join "\n" (concat out err)) response)))))
+      (throw (ex-info (str "Error running command: " (str/join "\n" (concat out err)))
+                      (assoc response :cmd args))))))
