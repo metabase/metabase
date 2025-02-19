@@ -11,7 +11,7 @@
   (:import
    (java.time Instant)
    (java.util Date)
-   (org.quartz DisallowConcurrentExecution)))
+   (org.quartz DisallowConcurrentExecution JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -71,7 +71,7 @@
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
 
-(defn- update-index! [ctx]
+(defn- update-index! [^JobExecutionContext ctx]
   (when (search/supports-index?)
     (log/info "Starting Realtime Search Index Update worker")
     (task/rerun-on-error ctx

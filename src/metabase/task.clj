@@ -311,7 +311,7 @@
   "Retry the current Job if an exception is thrown by the enclosed code."
   {:style/indent 1}
   [^JobExecutionContext ctx & body]
-  `(let [msg# (str (-> ~ctx .getJobDetail .getKey .getName) " failed, but we will try it again.")]
+  `(let [msg# (str (.getName (.getKey (.getJobDetail ~ctx))) " failed, but we will try it again.")]
      (try
        ~@body
        (catch Exception e#
