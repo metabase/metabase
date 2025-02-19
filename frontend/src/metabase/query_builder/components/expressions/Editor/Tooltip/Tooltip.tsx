@@ -66,11 +66,14 @@ export function Tooltip({
       setIsHelpTextOpen(false);
       return;
     }
+  }, [canShowBoth, enclosingFn, completions.length]);
+
+  useEffect(() => {
     if (!canShowBoth && completions.length === 0) {
       setIsHelpTextOpen(true);
       return;
     }
-  }, [canShowBoth, enclosingFn, completions.length]);
+  }, [canShowBoth, completions.length]);
 
   return (
     <Popover
