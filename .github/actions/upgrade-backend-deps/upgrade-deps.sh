@@ -20,7 +20,6 @@ echo "::endgroup::"
 
 # Parse the output of antq into a list of upgrades, and remove any failed fetches
 UPGRADES=$(echo ${UPGRADE_LIST} | sed '/Failed to fetch/d' | sed '/Unable to fetch/d' | sed '/Logging initialized/d' | sort -u)
-UPDATE_TIME=$(date +"%Y-%m-%d-%H-%M-%S")
 
 echo "::group::Upgrades"
 echo ${UPGRADES}
