@@ -1,7 +1,6 @@
 (ns i18n.create-artifacts.backend-test
   (:require
    [clojure.edn :as edn]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [i18n.create-artifacts.backend :as backend]
    [i18n.create-artifacts.test-common :as test-common]))
