@@ -117,6 +117,7 @@ function RadioContainer({
               variant="subtle"
               p={0}
               size="compact-md"
+              h="100%"
             >
               <Box
                 component="span"
