@@ -58,6 +58,9 @@ export const activityApi = Api.injectEndpoints({
           ]),
       },
     ),
+    listPresence: builder.query({
+      query: ({ model, id }) => `/api/activity/${model}/${id}/view-history`,
+    }),
   }),
 });
 
@@ -65,4 +68,5 @@ export const {
   useListRecentsQuery,
   useListPopularItemsQuery,
   useLogRecentItemMutation,
+  useListPresenceQuery,
 } = activityApi;

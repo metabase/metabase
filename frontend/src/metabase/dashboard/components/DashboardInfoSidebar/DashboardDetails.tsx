@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { c, t } from "ttag";
 
-import { skipToken, useGetUserQuery } from "metabase/api";
+import { skipToken, useGetUserQuery, useListPresenceQuery } from "metabase/api";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
 import Link from "metabase/core/components/Link";
@@ -15,7 +15,7 @@ import type { Dashboard } from "metabase-types/api";
 
 import SidebarStyles from "./DashboardInfoSidebar.module.css";
 import { UserAvatar } from "metabase/components/UserAvatar";
-import { Pill } from "@mantine/core";
+import { Avatar, Pill } from "@mantine/core";
 import { getRelativeTime, getRelativeTimeAbbreviated } from "metabase/lib/time";
 
 export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
@@ -24,20 +24,18 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
 
   // we don't hydrate creator user info on the dashboard object
   const { data: creator } = useGetUserQuery(dashboard.creator_id ?? skipToken);
+  const { data: views } = useListPresenceQuery({
+    id: dashboard.id,
+    model: "dashboard",
+  });
+
+  console.log(views);
 
   return (
     <>
       <SidesheetCardSection title={t`Created by`}>
         {creator && (
           <Flex gap="sm" align="center">
-            {/* <FixedSizeIcon name="ai" className={SidebarStyles.IconMargin} />
-            <Text>
-              {c(
-                "Describes when a dashboard was created. {0} is a date/time and {1} is a person's name",
-              ).jt`${(
-                <DateTime unit="day" value={createdAt} key="date" />
-              )} by ${getUserName(creator)}`}
-            </Text> */}
             <UserAvatar user={creator} />
             <Flex direction="column" justify="center">
               <Flex gap="0.5rem">
@@ -97,6 +95,15 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
           </Flex>
         </SidesheetCardSection>
       )}
+      <SidesheetCardSection title={t`Knowledgable folks`}>
+        {views && (
+          <Avatar.Group>
+            {views.map((view, index) => (
+              <UserAvatar mayor={index === 0} user={view} size="sm" />
+            ))}
+          </Avatar.Group>
+        )}
+      </SidesheetCardSection>
       <SharingDisplay dashboard={dashboard} />
     </>
   );

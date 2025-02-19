@@ -23,12 +23,12 @@ export function UserAvatar({
   ...props
 }: UserAvatarProps | GroupProps) {
   return (
-    <Box>
+    <Box pos="relative">
       <Avatar {...props} src={user.picture_url}>
         {userInitials(user)}
       </Avatar>
       {mayor && (
-        <Flex pos="absolute" top={-15} justify="center" w="100%">
+        <Flex pos="absolute" top={-15} justify="center" left={0} right={0}>
           <Icon name="crown" size={32} color="gold" />
         </Flex>
       )}
