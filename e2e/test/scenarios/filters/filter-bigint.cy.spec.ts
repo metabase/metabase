@@ -961,7 +961,6 @@ function visitEmbeddedQuestion() {
       resource: { question: Number(questionId) },
       params: {},
     };
-
     H.visitEmbeddedPage(payload);
   });
 }
@@ -979,7 +978,6 @@ function visitEmbeddedDashboard() {
       resource: { dashboard: Number(dashboardId) },
       params: {},
     };
-
     H.visitEmbeddedPage(payload);
   });
 }
