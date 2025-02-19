@@ -87,6 +87,16 @@
    :default      true
    :mbql         {:strategy :default}})
 
+(mu/defn with-preserved-binning :- ::lib.schema.metadata/column
+  "Copy existing [[binning]] from `old-column` to `new-column`.
+
+  If `old-column` has no [[binning]], return `new-column` unmodified."
+  [old-column :- ::lib.schema.metadata/column
+   new-column :- ::lib.schema.metadata/column]
+  (if-let [old-binning (binning old-column)]
+    (with-binning new-column old-binning)
+    new-column))
+
 (defn- with-binning-option-type [m]
   (assoc m :lib/type :option/binning))
 

@@ -1,9 +1,17 @@
 (ns metabase.lib.drill-thru.common
   (:require
+   [medley.core :as m]
+   [metabase.lib.binning :as lib.binning]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.underlying :as lib.underlying]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.util :as lib.util]
+   [metabase.util.malli :as mu]))
 
 (defn mbql-stage?
   "Is this query stage an MBQL stage?"
@@ -59,3 +67,20 @@
   (when (lib.underlying/strictly-underlying-aggregation? query column)
     (not-empty (filterv #(lib.underlying/breakout-sourced? query (:column %))
                         row))))
+
+(mu/defn breakout->filterable-column :- ::lib.schema.metadata/column
+  "Given a breakout sourced column, find the matching column in filterable-columns.
+
+  In addition, preserve any existing binning or temporal bucketing on `column`."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column       :- ::lib.schema.metadata/column]
+  (if (not= :source/breakouts (:lib/source column))
+    column
+    (let [filterable-columns (lib.filter/filterable-columns query stage-number)
+          underlying-unit    (::lib.underlying/temporal-unit column)
+          matching-column    (some->> (lib.equality/find-matching-column query stage-number column filterable-columns)
+                                      (lib.binning/with-preserved-binning column)
+                                      (lib.temporal-bucket/with-preserved-temporal-bucket column)
+                                      (#(m/assoc-some % ::lib.underlying/temporal-unit underlying-unit)))]
+      (or matching-column column))))

@@ -120,7 +120,8 @@
    stage-number :- :int
    column       :- ::lib.schema.metadata/column
    value        :- :any]
-  (let [filter-clauses (or (when (lib.binning/binning column)
+  (let [column         (lib.drill-thru.common/breakout->filterable-column query stage-number column)
+        filter-clauses (or (when (lib.binning/binning column)
                              (let [unbinned-column (lib.binning/with-binning column nil)]
                                (if (some? value)
                                  (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width query column value)]

@@ -7,6 +7,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -156,6 +157,16 @@
   (when-let [unit (raw-temporal-bucket x)]
     {:lib/type :option/temporal-bucketing
      :unit     unit}))
+
+(mu/defn with-preserved-temporal-bucket :- ::lib.schema.metadata/column
+  "Copy existing [[temporal-bucket]] from `old-column` to `new-column`.
+
+  If `old-column` has no [[temporal-bucket]], return `new-column` unmodified."
+  [old-column :- ::lib.schema.metadata/column
+   new-column :- ::lib.schema.metadata/column]
+  (if-let [old-bucket (temporal-bucket old-column)]
+    (with-temporal-bucket new-column old-bucket)
+    new-column))
 
 (def ^:private hidden-bucketing-options
   "Options that are technically legal in MBQL, but that should be hidden in the UI."
