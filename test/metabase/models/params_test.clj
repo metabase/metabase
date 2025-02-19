@@ -2,9 +2,9 @@
   "Tests for the utility functions for dealing with parameters in `metabase.models.params`."
   (:require
    [clojure.test :refer :all]
-   [metabase.api.public-test :as public-test]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.params :as params]
+   [metabase.public-sharing.api-test :as public-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

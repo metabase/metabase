@@ -2,7 +2,6 @@ import { InteractiveDashboard } from "@metabase/embedding-sdk-react";
 
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { describeEE } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -12,7 +11,7 @@ import { isFixedPositionElementVisible } from "e2e/support/helpers/e2e-element-v
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
+describe("scenarios > embedding-sdk > tooltip-reproductions", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
@@ -64,7 +63,11 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
     testCases.forEach(zIndexTestCase => {
       cy.get("@dashboardId").then(dashboardId => {
         mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
-          theme: { components: { popover: { zIndex: zIndexTestCase.input } } },
+          sdkProviderProps: {
+            theme: {
+              components: { popover: { zIndex: zIndexTestCase.input } },
+            },
+          },
         });
       });
 

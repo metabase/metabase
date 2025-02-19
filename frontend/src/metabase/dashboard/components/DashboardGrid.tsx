@@ -22,7 +22,6 @@ import {
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import {
-  DEFAULT_CARD_SIZE,
   GRID_ASPECT_RATIO,
   GRID_BREAKPOINTS,
   GRID_COLUMNS,
@@ -32,7 +31,6 @@ import {
 import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
-import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
@@ -63,6 +61,12 @@ import {
   trashDashboardQuestion,
   undoRemoveCardFromDashboard,
 } from "../actions";
+import {
+  getInitialCardSizes,
+  getLayoutForDashCard,
+  getLayouts,
+  getVisibleCards,
+} from "../grid-utils";
 import { getDashcardDataMap } from "../selectors";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
@@ -72,7 +76,6 @@ import {
   DashboardGridContainer,
 } from "./DashboardGrid.styled";
 import { GridLayout } from "./grid/GridLayout";
-import { generateMobileLayout } from "./grid/utils";
 
 type GridBreakpoint = "desktop" | "mobile";
 
@@ -100,7 +103,15 @@ interface DashboardGridState {
   isDragging: boolean;
   isAnimationPaused: boolean;
   dashcardCountByCardId: Record<CardId, number>;
+  _lastProps?: LastProps;
 }
+
+/** Props from the previous render to use for comparison in getDerivedStateFromProps */
+type LastProps = {
+  dashboard: Dashboard;
+  isEditing: boolean;
+  selectedTabId: DashboardTabId | null;
+};
 
 const mapStateToProps = (state: State) => ({
   dashcardData: getDashcardDataMap(state),
@@ -175,17 +186,30 @@ class DashboardGridInner extends Component<
       props.dashcardData,
     );
 
+    const initialCardSizes = getInitialCardSizes(
+      props.dashboard.dashcards,
+      this.state?.initialCardSizes,
+    );
+
     this.state = {
       visibleCardIds,
       dashcardCountByCardId: this.getDashcardCountByCardId(
         props.dashboard.dashcards,
       ),
-      initialCardSizes: this.getInitialCardSizes(props.dashboard.dashcards),
-      layouts: this.getLayouts(props.dashboard.dashcards),
+      initialCardSizes,
+      layouts: getLayouts(
+        props.dashboard.dashcards,
+        this.state?.initialCardSizes,
+      ),
       addSeriesModalDashCard: null,
       replaceCardModalDashCard: null,
       isDragging: false,
       isAnimationPaused: true,
+      _lastProps: {
+        dashboard: props.dashboard,
+        isEditing: props.isEditing,
+        selectedTabId: props.selectedTabId,
+      },
     };
   }
 
@@ -221,47 +245,58 @@ class DashboardGridInner extends Component<
     }
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: DashboardGridProps) {
+  static getDerivedStateFromProps(
+    nextProps: DashboardGridProps,
+    state: DashboardGridState,
+  ): Partial<DashboardGridState> {
     const { dashboard, dashcardData, isEditing, selectedTabId } = nextProps;
+    const lastProps = state._lastProps;
 
     const visibleCardIds = !isEditing
       ? getVisibleCardIds(
           dashboard.dashcards,
           dashcardData,
-          this.state.visibleCardIds,
+          state.visibleCardIds,
         )
       : new Set(dashboard.dashcards.map(card => card.id));
 
-    const cards = this.getVisibleCards(
+    const visibleCards = getVisibleCards(
       dashboard.dashcards,
       visibleCardIds,
       isEditing,
       selectedTabId,
     );
 
-    if (!isEditing || !_.isEqual(this.getVisibleCards(), cards)) {
-      this.setState({
-        initialCardSizes: this.getInitialCardSizes(cards),
-      });
-    }
+    const lastVisibleCards = lastProps?.dashboard?.dashcards
+      ? getVisibleCards(
+          lastProps.dashboard.dashcards,
+          state.visibleCardIds,
+          lastProps.isEditing,
+          lastProps.selectedTabId,
+        )
+      : [];
 
-    this.setState({
+    const hasVisibleDashcardsChanged = !_.isEqual(
+      visibleCards,
+      lastVisibleCards,
+    );
+
+    const initialCardSizes =
+      !isEditing || hasVisibleDashcardsChanged
+        ? getInitialCardSizes(visibleCards, state.initialCardSizes)
+        : state.initialCardSizes;
+
+    return {
       visibleCardIds,
-      layouts: this.getLayouts(cards),
-    });
+      initialCardSizes,
+      layouts: getLayouts(visibleCards, state.initialCardSizes),
+      _lastProps: {
+        dashboard,
+        isEditing,
+        selectedTabId,
+      },
+    };
   }
-
-  getInitialCardSizes = (cards: BaseDashboardCard[]) => {
-    return cards
-      .map(card => this.getLayoutForDashCard(card))
-      .reduce((acc, dashcardLayout) => {
-        const dashcardId = dashcardLayout.i;
-        return {
-          ...acc,
-          [dashcardId]: _.pick(dashcardLayout, ["w", "h"]),
-        };
-      }, {});
-  };
 
   onLayoutChange = ({
     layout,
@@ -312,46 +347,7 @@ class DashboardGridInner extends Component<
   };
 
   getLayoutForDashCard = (dashcard: BaseDashboardCard) => {
-    const visualization = getVisualizationRaw([{ card: dashcard.card }]);
-    const initialSize = DEFAULT_CARD_SIZE;
-    const minSize = visualization?.minSize || DEFAULT_CARD_SIZE;
-
-    let minW, minH;
-    if (this.state?.initialCardSizes) {
-      minW = Math.min(
-        this.state?.initialCardSizes[dashcard.id]?.w,
-        minSize.width,
-      );
-      minH = Math.min(
-        this.state?.initialCardSizes[dashcard.id]?.h,
-        minSize.height,
-      );
-    } else {
-      minW = minSize.width;
-      minH = minSize.height;
-    }
-
-    const w = dashcard.size_x || initialSize.width;
-    const h = dashcard.size_y || initialSize.height;
-
-    if (w < minW) {
-      minW = w;
-    }
-
-    if (h < minH) {
-      minH = h;
-    }
-
-    return {
-      i: String(dashcard.id),
-      x: dashcard.col || 0,
-      y: dashcard.row || 0,
-      w,
-      h,
-      dashcard: dashcard,
-      minW,
-      minH,
-    };
+    return getLayoutForDashCard(dashcard, this.state?.initialCardSizes);
   };
 
   getVisibleCards = (
@@ -360,16 +356,7 @@ class DashboardGridInner extends Component<
     isEditing = this.props.isEditing,
     selectedTabId = this.props.selectedTabId,
   ) => {
-    const tabCards = cards.filter(
-      card =>
-        !selectedTabId ||
-        card.dashboard_tab_id === selectedTabId ||
-        card.dashboard_tab_id === null,
-    );
-
-    return isEditing
-      ? tabCards
-      : tabCards.filter(card => visibleCardIds.has(card.id));
+    return getVisibleCards(cards, visibleCardIds, isEditing, selectedTabId);
   };
 
   getDashcardCountByCardId = (cards: BaseDashboardCard[]) =>
@@ -382,12 +369,6 @@ class DashboardGridInner extends Component<
         this.state.dashcardCountByCardId[dc.card_id] <= 1,
     );
   };
-
-  getLayouts(cards: BaseDashboardCard[]) {
-    const desktop = cards.map(this.getLayoutForDashCard);
-    const mobile = generateMobileLayout(desktop);
-    return { desktop, mobile };
-  }
 
   getRowHeight() {
     const { width } = this.props;
@@ -408,6 +389,7 @@ class DashboardGridInner extends Component<
   renderAddSeriesModal() {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
     const { addSeriesModalDashCard } = this.state;
+
     const isOpen =
       !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
     return (

@@ -78,17 +78,11 @@ function SearchApp({ location }) {
   }, [data, dispatch]);
 
   return (
-    <SearchMain
-      direction="column"
-      gap="2rem"
-      p="1.5rem 1rem"
-      m="auto"
-      data-testid="search-app"
-    >
-      <Text size="xl" weight={700}>
+    <SearchMain direction="column" gap="2rem" m="auto" data-testid="search-app">
+      <Text size="xl" fw={700}>
         {jt`Results for "${searchText}"`}
       </Text>
-      <SearchBody direction="column" justify="center">
+      <SearchBody justify="center">
         <SearchControls pb="lg">
           <SearchSidebar value={searchFilters} onChange={onFilterChange} />
         </SearchControls>

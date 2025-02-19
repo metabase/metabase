@@ -564,7 +564,7 @@ describe("useReferencedCardCompletion", () => {
     }
 
     const complete = completer(() =>
-      useReferencedCardCompletion({ referencedQuestionIds: cardIds }),
+      useReferencedCardCompletion({ referencedCardIds: cardIds }),
     );
 
     return { complete, url };

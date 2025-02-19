@@ -1,3 +1,5 @@
+import { popover } from "./e2e-ui-elements-helpers";
+
 function nativeEditor() {
   cy.findAllByTestId("loading-indicator").should("not.exist");
   return cy.get("[data-testid=native-query-editor] .cm-content");
@@ -33,6 +35,15 @@ function nativeEditorSelectAll() {
 function clearNativeEditor() {
   nativeEditorSelectAll();
   cy.realPress(["Backspace"]);
+}
+
+export function nativeEditorDataSource() {
+  return cy.findAllByTestId("gui-builder-data").first();
+}
+
+export function selectNativeEditorDataSource(name: string) {
+  nativeEditorDataSource().click();
+  popover().findByText(name).click();
 }
 
 type TypeOptions = {
@@ -89,11 +100,11 @@ function nativeEditorType(
 
       case "{home}":
       case "{movetostart}":
-        return cy.realPress(["Control", "A"]);
+        return cy.realPress(["Home"]);
 
       case "{end}":
       case "{movetoend}":
-        return cy.realPress(["Control", "E"]);
+        return cy.realPress(["End"]);
 
       case "{backspace}":
         return cy.realPress(["Backspace"]);

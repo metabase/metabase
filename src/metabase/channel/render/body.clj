@@ -9,17 +9,16 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.formatter :as formatter]
-   [metabase.models.timeline-event :as timeline-event]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as common]
+   [metabase.timeline.core :as timeline]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -64,9 +63,8 @@
 
 (defn show-in-table?
   "Should this column be shown in a rendered table in a Pulse?"
-  [{:keys [semantic_type visibility_type] :as _column}]
-  (and (not (isa? semantic_type :type/Description))
-       (not (contains? #{:details-only :retired :sensitive} visibility_type))))
+  [{:keys [visibility_type] :as _column}]
+  (not (contains? #{:details-only :retired :sensitive} visibility_type)))
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
@@ -169,6 +167,7 @@
     card
     {:keys [cols rows viz-settings], :as _data}
     {:keys [bar-column] :as data-attributes}]
+
    (let [remapping-lookup (create-remapping-lookup cols)]
      (cons
       (query-results->header-row remapping-lookup card cols bar-column)
@@ -242,11 +241,12 @@
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
+        filtered-cols               (filter show-in-table? ordered-cols)
         table-body                  [:div
                                      (table/render-table
                                       (js.color/make-color-selector unordered-data viz-settings)
-                                      {:cols-for-color-lookup (mapv :name ordered-cols)
-                                       :col-names             (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
+                                      {:cols-for-color-lookup (mapv :name filtered-cols)
+                                       :col-names             (common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
                                       (prep-for-html-rendering timezone-id card data))
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments
@@ -366,19 +366,10 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(defn dashcard-timeline-events
-  "Look for a timeline and corresponding events associated with this dashcard."
-  [{{:keys [collection_id] :as _card} :card}]
-  (let [timelines (t2/select :model/Timeline
-                             :collection_id collection_id
-                             :archived false)]
-    (->> (t2/hydrate timelines :creator [:collection :can_write])
-         (map #(timeline-event/include-events-singular % {:events/all? true})))))
-
 (defn- add-dashcard-timeline-events
   "If there's a timeline associated with this card, add its events in."
   [card-with-data]
-  (if-some [timeline-events (seq (dashcard-timeline-events card-with-data))]
+  (if-some [timeline-events (seq (timeline/dashcard-timeline-events card-with-data))]
     (assoc card-with-data :timeline_events timeline-events)
     card-with-data))
 

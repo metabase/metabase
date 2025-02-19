@@ -48,7 +48,7 @@ const HookTemplate: StoryFn<
   const props: CreateDashboardValues = {
     name: "Test",
     description: null,
-    collectionId: null,
+    collectionId: "root",
   };
 
   const handleDashboardCreate = async () => {

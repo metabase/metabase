@@ -14,13 +14,13 @@
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.models.collection :as collection]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
-   [metabase.models.timeline-event :as timeline-event]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -35,6 +35,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log]
+   [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -1578,12 +1579,12 @@
   registry and web-server."
   [[port system] & body]
   `(let [~system ^metabase.analytics.prometheus.PrometheusSystem
-         (#'metabase.analytics.prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
+         (#'prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
          server#  ^Server (.web-server ~system)
          ~port   (.. server# getURI getPort)]
-     (with-redefs [metabase.analytics.prometheus/system ~system]
+     (with-redefs [prometheus/system ~system]
        (try ~@body
-            (finally (metabase.analytics.prometheus/stop-web-server ~system))))))
+            (finally (prometheus/stop-web-server ~system))))))
 
 (defn metric-value
   "Return the value of `metric` in `system`'s registry."
@@ -1595,5 +1596,5 @@
            (registry/get
             {:name      (name metric)
              :namespace (namespace metric)}
-            labels)
+            (#'prometheus/qualified-vals labels))
            ops/read-value)))

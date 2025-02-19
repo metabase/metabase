@@ -243,7 +243,7 @@
 
 (deftest get-users-api-group-id-test
   (testing "GET /api/user?group_id=:group_id"
-    (testing "should sort by admins -> group managers -> normal users when filter by group_id"
+    (testing "should sort by first name for all users in group"
       (mt/with-temp [:model/User                       user-a {:first_name "A"
                                                                :last_name  "A"}
                      :model/User                       user-b {:first_name "B"
@@ -261,9 +261,9 @@
                      :model/PermissionsGroupMembership _      {:user_id          (:id user-c)
                                                                :group_id         (:id group)
                                                                :is_group_manager false}]
-        (is (=? {:data [{:first_name "C"}
+        (is (=? {:data [{:first_name "A"}
                         {:first_name "B"}
-                        {:first_name "A"}]}
+                        {:first_name "C"}]}
                 (mt/user-http-request :crowberto :get 200 (format "/user?limit=25&offset=0&group_id=%d" (:id group)))))))))
 
 (deftest get-user-api-test
