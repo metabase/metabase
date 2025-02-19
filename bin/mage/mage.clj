@@ -3,7 +3,7 @@
   (:require [babashka.cli :as cli]
             [babashka.nrepl.server :as nrepl.server]
             [clojure.string :as str]
-            [indent :as indent]
+            [format :as format]
             [splash :as splash]
             [util :as u]))
 
@@ -27,11 +27,14 @@
 (defn print-path! [& _m]
   (println (str "export PATH=$PATH:" (u/sh! "pwd"))))
 
+;; TODOs:
+;; - kondo for a file / dir
+
 (def table
   [{:cmds ["add-to-path"] :fn print-path!}
    {:cmds ["nrepl"] :fn mage-nrepl}
-   {:cmds ["indent"] :fn indent/indent}
-   {:cmds ["indent" "help"] :fn indent/help}
+   {:cmds ["format"] :fn format/format}
+   {:cmds ["format" "help"] :fn format/help}
    {:cmds ["help"] :fn help}
    {:cmds [] :fn help}])
 

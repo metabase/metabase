@@ -1,4 +1,4 @@
-(ns indent
+(ns format
   (:require [clojure.set :as set]
             [clojure.string :as str]
             [util :as u]))
@@ -9,10 +9,9 @@
        (map #(str/split % #"\t"))
        (mapv second)))
 
-(defn indent
-  "Indents the changed files in the previous commit."
+(defn format
+  "Formats the changed files in the previous commit."
   [m]
-  (prn ["indent got:" m])
   (try
     (let [files-to-format (staged-files)]
       (if (seq files-to-format)
