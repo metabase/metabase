@@ -1,11 +1,11 @@
 import { CollectionBrowser } from "@metabase/embedding-sdk-react";
 
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/component-testing-sdk";
+import { mountSdkContent } from "e2e/support/helpers/component-testing-sdk/component-embedding-sdk-helpers";
 import {
+  getSdkRoot,
   mockAuthProviderAndJwtSignIn,
-  mountSdkContent,
-} from "e2e/support/helpers/component-testing-sdk/component-embedding-sdk-helpers";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 describe("scenarios > embedding-sdk > collection browser", () => {
   describe("personal collection", () => {
