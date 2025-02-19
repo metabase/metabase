@@ -22,8 +22,8 @@ export const saveDomImageStyles = css`
     }
 
     .${DashboardS.FixedWidthContainer} {
-      legend: {
-        top: "-9px";
+      legend {
+        top: -9px;
       }
     }
 
