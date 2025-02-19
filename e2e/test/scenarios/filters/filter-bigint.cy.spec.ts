@@ -14,6 +14,8 @@ import type {
 const { H } = cy;
 
 describe("scenarios > filters > bigint (metabase#5816)", () => {
+  const bigIntPkTableName = "bigint_pk_table";
+  const decimalPkTableName = "decimal_pk_table";
   const minBigIntValue = "-9223372036854775808";
   const maxBigIntValue = "9223372036854775807";
   const negativeDecimalValue = "-9223372036854775809";
@@ -50,7 +52,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     cy.signInAsAdmin();
   });
 
-  it("mbql query + query builder", () => {
+  it("query builder + mbql query", () => {
     function setupQuestion({
       sourceQuestionDetails,
     }: {
@@ -219,10 +221,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     });
   });
 
-  it("mbql query + dashboards + id parameters", { tags: "external" }, () => {
-    const bigIntPkTableName = "bigint_pk_table";
-    const decimalPkTableName = "decimal_pk_table";
-
+  it("dashboards + mbql query + id parameters", { tags: "external" }, () => {
     function setupTables() {
       const dialect = "postgres";
       H.restore("postgres-writable");
@@ -378,7 +377,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     testDecimalFilters();
   });
 
-  it("mbql query + dashboards + number parameters", () => {
+  it("dashboards + mbql query + number parameters", () => {
     function setupDashboard({
       sourceQuestionDetails,
       baseType,
@@ -668,7 +667,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     testDecimalFilters();
   });
 
-  it("native query + variable + query builder", () => {
+  it("query builder+ native query + variables", () => {
     function setupQuestion({
       sourceQuestionDetails,
     }: {
@@ -776,7 +775,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     testDecimalFilter();
   });
 
-  it("native query + variable + dashboards", () => {
+  it("dashboards + native query + variables", () => {
     function setupDashboard({
       sourceQuestionDetails,
     }: {
@@ -918,6 +917,128 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     visitEmbeddedDashboard();
     testDecimalFilter();
   });
+
+  it(
+    "query builder + native query + field filters",
+    { tags: "@external" },
+    () => {
+      function setupTables() {
+        const dialect = "postgres";
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: dialect, table: bigIntPkTableName });
+        H.resetTestTable({ type: dialect, table: decimalPkTableName });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      }
+
+      function setupQuestion({
+        tableName,
+        baseType,
+      }: {
+        tableName: string;
+        baseType: string;
+      }) {
+        getTableId(tableName).then(tableId => {
+          getFieldId(tableId, "id").then(fieldId => {
+            const parameterDetails: Parameter = {
+              id: "0dcd2f82-2e7d-4989-9362-5c94744a6585",
+              name: "ID",
+              slug: "id",
+              type: "id",
+              target: ["dimension", ["template-tag", "id"]],
+            };
+
+            const questionDetails: NativeQuestionDetails = {
+              name: "SQL",
+              display: "scalar",
+              database: WRITABLE_DB_ID,
+              native: {
+                query: `SELECT COUNT(*) FROM ${tableName} WHERE {{id}}`,
+                "template-tags": {
+                  id: {
+                    id: parameterDetails.id,
+                    name: "id",
+                    "display-name": "ID",
+                    type: "dimension",
+                    dimension: ["field", fieldId, { "base-type": baseType }],
+                    "widget-type": "id",
+                  },
+                },
+              },
+              parameters: [parameterDetails],
+              enable_embedding: true,
+              embedding_params: {
+                [parameterDetails.slug]: "enabled",
+              },
+            };
+            H.createNativeQuestion(questionDetails, { wrapId: true });
+          });
+        });
+      }
+
+      function testFilter({
+        value,
+        withRunButton,
+      }: {
+        value: string;
+        withRunButton?: boolean;
+      }) {
+        cy.log("add a filter");
+        cy.findByTestId("scalar-value").should("have.text", "3");
+        H.filterWidget().click();
+        H.popover().within(() => {
+          cy.findByPlaceholderText("Enter an ID").type(value);
+          cy.button("Add filter").click();
+        });
+        if (withRunButton) {
+          cy.findAllByTestId("run-button").first().click();
+        }
+        cy.findByTestId("scalar-value").should("have.text", "1");
+      }
+
+      function testBitIntFilter({
+        withRunButton,
+      }: { withRunButton?: boolean } = {}) {
+        testFilter({ value: maxBigIntValue, withRunButton });
+      }
+
+      function testDecimalFilter({
+        withRunButton,
+      }: { withRunButton?: boolean } = {}) {
+        testFilter({ value: negativeDecimalValue, withRunButton });
+      }
+
+      cy.log("create tables");
+      setupTables();
+
+      cy.log("BIGINT");
+      cy.signInAsAdmin();
+      setupQuestion({
+        tableName: bigIntPkTableName,
+        baseType: "type/BigInteger",
+      });
+      cy.signInAsNormalUser();
+      H.visitQuestion("@questionId");
+      testBitIntFilter({ withRunButton: true });
+      visitPublicQuestion();
+      testBitIntFilter();
+      visitEmbeddedQuestion();
+      testBitIntFilter();
+
+      cy.log("DECIMAL");
+      cy.signInAsAdmin();
+      setupQuestion({
+        tableName: decimalPkTableName,
+        baseType: "type/Decimal",
+      });
+      cy.signInAsNormalUser();
+      H.visitQuestion("@questionId");
+      testDecimalFilter({ withRunButton: true });
+      visitPublicQuestion();
+      testDecimalFilter();
+      visitEmbeddedQuestion();
+      testDecimalFilter();
+    },
+  );
 });
 
 function getTableId(tableName: string) {
