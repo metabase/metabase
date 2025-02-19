@@ -47,7 +47,7 @@ export function setWidgetStringFilter(value) {
 
 export function selectFilterValueFromList(
   value,
-  { addFilter = true, buttonLabel = "Add filter", search = true } = {},
+  { addFilter = true, buttonLabel = "Add filter", search = false } = {},
 ) {
   popover().within(() => {
     if (search) {
@@ -71,7 +71,7 @@ export function selectFilterValueFromList(
 export function applyFilterByType(
   filter,
   value,
-  { buttonLabel = "Add filter", search = true } = {},
+  { buttonLabel = "Add filter", search = false } = {},
 ) {
   if (["Is", "Is not"].includes(filter)) {
     selectFilterValueFromList(value, { buttonLabel, search });
