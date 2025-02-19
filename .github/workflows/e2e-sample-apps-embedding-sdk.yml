@@ -86,7 +86,7 @@ jobs:
         id: build-sample-app-compatibility-data
         with:
           script: | # js
-            const ref = process.env.GITHUB_BASE_REF || process.env.GITHUB_REF || "";
+            const ref = '${{ github.base_ref || github.ref }}';
             const branchName = ref.replace(/^refs\/heads\//, "");
 
             const isMainBranchRef = branchName === 'master';
