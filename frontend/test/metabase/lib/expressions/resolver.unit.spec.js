@@ -170,6 +170,21 @@ describe("metabase-lib/v1/expressions/resolve", () => {
       it("should allow substring with index=1", () => {
         expect(() => expr(["substring", "foo", 1, 1])).not.toThrow();
       });
+
+      it.each(["contains", "does-not-contain", "starts-with", "ends-with"])(
+        "should reject multi-arg function calls with not enough arguments",
+        tag => {
+          expect(() => expr([tag])).toThrow();
+          expect(() => expr([tag, A])).toThrow();
+          expect(() => expr([tag, A, { "case-sensitive": true }])).toThrow();
+          expect(() => expr([tag, A, "abc"])).not.toThrow();
+          expect(() => expr([tag, A, B])).not.toThrow();
+          expect(() => expr([tag, A, B, C])).not.toThrow();
+          expect(() =>
+            expr([tag, A, B, { "case-sensitive": true }]),
+          ).not.toThrow();
+        },
+      );
     });
 
     describe("datetime functions", () => {
