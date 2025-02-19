@@ -22,7 +22,11 @@ const STRING_UNESCAPE: Record<string, string> = {
 
 export function formatStringLiteral(
   node: string,
-  { quotes = EDITOR_QUOTES }: Record<string, any> = {},
+  {
+    quotes = EDITOR_QUOTES,
+  }: {
+    quotes?: { literalQuoteDefault: string };
+  } = {},
 ) {
   return quoteString(node, quotes.literalQuoteDefault);
 }
