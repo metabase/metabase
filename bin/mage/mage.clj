@@ -12,10 +12,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn help [m]
-  (println splash/screen)
-  (println "Protip: to add mage to your path, run:")
-  (println "  ./mage add-to-path >> ~/.bashrc")
-  (println "  source ~/.bashrc"))
+  (println splash/screen))
 
 (defn mage-nrepl
   "Starts the babashka nrepl server for mage development."
@@ -25,7 +22,10 @@
   (deref (promise)))
 
 (defn print-path! [& _m]
-  (println (str "export PATH=$PATH:" (u/sh! "pwd"))))
+  (println "Protip: to add mage to your path, run either of :")
+  (println (str "  export PATH=$PATH:" (u/sh! "pwd") "/bin >> ~/.bashrc && source ~/.bashrc"))
+  (println (str "  export PATH=$PATH:" (u/sh! "pwd") "/bin >> ~/.zshrc && source ~/.zshrc"))
+  (println "Then you can use 'mage.sh' directly from the terminal."))
 
 ;; TODOs:
 ;; - kondo for a file / dir
@@ -34,7 +34,6 @@
   [{:cmds ["add-to-path"] :fn print-path!}
    {:cmds ["nrepl"] :fn mage-nrepl}
    {:cmds ["format"] :fn format/format}
-   {:cmds ["format" "help"] :fn format/help}
    {:cmds ["help"] :fn help}
    {:cmds [] :fn help}])
 
@@ -42,4 +41,5 @@
   (cli/dispatch table args {:coerce {:depth :long}}))
 
 (when (= *file* (System/getProperty "babashka.file"))
+  ;; (prn "cli" *command-line-args*)
   (apply -main *command-line-args*))
