@@ -1,5 +1,6 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
@@ -105,6 +106,30 @@ export const runDirtyQuestionQuery =
     return dispatch(runQuestionQuery());
   };
 
+function findFilter(
+  query: Lib.Query,
+  { filter, stageIndex }: { filter: Lib.FilterClause; stageIndex: number },
+): Lib.FilterClause {
+  const stageIndexes = Lib.stageIndexes(query);
+  const filters = stageIndexes.flatMap(stageIndex => {
+    const filters = Lib.filters(query, stageIndex);
+    return filters.map(filter => ({ filter, stageIndex }));
+  });
+
+  const a = Lib.displayInfo(query, stageIndex, filter);
+
+  for (const f of filters) {
+    //hack
+    const b = Lib.displayInfo(query, f.stageIndex, f.filter);
+
+    if (_.isEqual(a, b)) {
+      return f.filter;
+    }
+  }
+
+  return filter;
+}
+
 /**
  * Queries the result for the currently active question or alternatively for the card question provided in `overrideWithQuestion`.
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
@@ -131,12 +156,16 @@ export const runQuestionQuery = ({
       }
 
       const query1 = dirtyAddedFilters.reduce((query, asd) => {
-        return Lib.filter(query, asd.stageIndex, asd.filter);
+        const filter = findFilter(query, asd);
+
+        return Lib.filter(query, asd.stageIndex, filter);
       }, Lib.ensureFilterStage(question.query()));
 
       const query = Lib.dropEmptyStages(
         dirtyRemovedFilters.reduce((query, asd) => {
-          return Lib.removeClause(query, asd.stageIndex, asd.filter);
+          const filter = findFilter(query, asd);
+
+          return Lib.removeClause(query, asd.stageIndex, filter);
         }, query1),
       );
 
