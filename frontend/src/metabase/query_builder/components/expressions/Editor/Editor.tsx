@@ -13,6 +13,7 @@ import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 import { format } from "metabase-lib/v1/expressions/format";
 import { processSource } from "metabase-lib/v1/expressions/process";
+import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
@@ -260,7 +261,16 @@ function useExpression<S extends StartRule = "expression">({
 function getTooltipPosition(state: EditorState) {
   const pos = state.selection.main.head;
   const source = state.doc.toString();
-  const token = tokenAtPos(source, pos);
+  let token = tokenAtPos(source, pos);
+  if (
+    pos > 0 &&
+    token &&
+    token.type === TOKEN.Operator &&
+    (token.op === "," || token.op === "(")
+  ) {
+    // when we're `,` or `(`, return the previous token instead
+    token = tokenAtPos(source, pos - 1);
+  }
 
   return token?.start ?? pos;
 }
