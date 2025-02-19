@@ -56,8 +56,10 @@ export const InteractiveQuestionResult = ({
     isSaveEnabled,
     saveToCollectionId,
     isCardIdError,
-    isCreatingQuestionFromScratch,
   } = useInteractiveQuestionContext();
+
+  const isCreatingQuestionFromScratch =
+    originalId === undefined && !question?.isSaved();
 
   const [isEditorOpen, { close: closeEditor, toggle: toggleEditor }] =
     useDisclosure(isCreatingQuestionFromScratch);

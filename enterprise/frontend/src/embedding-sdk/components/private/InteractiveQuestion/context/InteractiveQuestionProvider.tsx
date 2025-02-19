@@ -153,8 +153,6 @@ export const InteractiveQuestionProvider = ({
     isSaveEnabled,
     saveToCollectionId,
     isCardIdError,
-    isCreatingQuestionFromScratch:
-      initialQuestionId === undefined && !question?.isSaved(),
   };
 
   useEffect(() => {
