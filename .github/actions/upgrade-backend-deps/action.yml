@@ -1,4 +1,4 @@
-name: Create Backport PR
+name: Create Backend Dep Bump PRs
 
 inputs:
   github-token:
