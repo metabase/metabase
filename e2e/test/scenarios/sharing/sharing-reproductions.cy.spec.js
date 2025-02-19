@@ -935,9 +935,10 @@ describe("issue 17547", () => {
     H.openSharingMenu("Edit alerts");
     H.modal().findByText("Check daily at 9:00 AM").should("be.visible").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("PM").click();
-    cy.button("Save changes").click();
+    H.modal().within(() => {
+      cy.findByText("PM").click();
+      cy.button("Save changes").click();
+    });
 
     cy.wait("@alertQuery");
 
