@@ -138,64 +138,64 @@ describe("scenarios > alert", () => {
       cy.findByText(/Created by you/).should("be.visible");
     });
   });
-});
 
-H.describeEE(
-  "scenarios > sharing > approved domains (EE)",
-  { tags: "@external" },
-  () => {
-    const allowedDomain = "metabase.test";
-    const deniedDomain = "metabase.example";
-    const deniedEmail = `mailer@${deniedDomain}`;
-    const subscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
-    const alertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
+  describe(
+    "scenarios > sharing > approved domains (EE)",
+    { tags: "@external" },
+    () => {
+      const allowedDomain = "metabase.test";
+      const deniedDomain = "metabase.example";
+      const deniedEmail = `mailer@${deniedDomain}`;
+      const subscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
+      const alertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
 
-    function addEmailRecipient(email) {
-      cy.findByRole("textbox").click().type(`${email}`).blur();
-    }
+      function addEmailRecipient(email) {
+        cy.findByRole("textbox").click().type(`${email}`).blur();
+      }
 
-    function setAllowedDomains() {
-      H.updateSetting("subscription-allowed-domains", allowedDomain);
-    }
+      function setAllowedDomains() {
+        H.updateSetting("subscription-allowed-domains", allowedDomain);
+      }
 
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.setTokenFeatures("all");
-      H.setupSMTP();
-      setAllowedDomains();
-    });
+      beforeEach(() => {
+        H.restore();
+        cy.signInAsAdmin();
+        H.setTokenFeatures("all");
+        H.setupSMTP();
+        setAllowedDomains();
+      });
 
-    it("should validate approved email domains for a question alert", () => {
-      H.visitQuestion(ORDERS_QUESTION_ID);
+      it("should validate approved email domains for a question alert", () => {
+        H.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.openSharingMenu("Create an alert");
+        H.openSharingMenu("Create an alert");
 
-      H.modal().within(() => {
-        cy.findByText("New alert").should("be.visible");
+        H.modal().within(() => {
+          cy.findByText("New alert").should("be.visible");
 
-        cy.findByTestId("token-field").within(() => {
-          addEmailRecipient(deniedEmail);
+          cy.findByTestId("token-field").within(() => {
+            addEmailRecipient(deniedEmail);
+          });
+
+          cy.findByText(alertError);
+          cy.button("Done").should("be.disabled");
         });
-
-        cy.findByText(alertError);
-        cy.button("Done").should("be.disabled");
       });
-    });
 
-    it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openSharingMenu("Subscriptions");
+      it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        H.openSharingMenu("Subscriptions");
 
-      H.sidebar().within(() => {
-        cy.findByText("Email it").click();
-        addEmailRecipient(deniedEmail);
+        H.sidebar().within(() => {
+          cy.findByText("Email it").click();
+          addEmailRecipient(deniedEmail);
 
-        // Reproduces metabase#17977
-        cy.button("Send email now").should("be.disabled");
-        cy.button("Done").should("be.disabled");
-        cy.findByText(subscriptionError);
+          // Reproduces metabase#17977
+          cy.button("Send email now").should("be.disabled");
+          cy.button("Done").should("be.disabled");
+          cy.findByText(subscriptionError);
+        });
       });
-    });
-  },
-);
+    },
+  );
+});
