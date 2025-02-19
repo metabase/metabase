@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Flex, HoverCard, Icon, Stack, Switch, Text } from "metabase/ui";
 
-import { SettingRequiredLabel } from "./RequiredParamToggle.styled";
+import S from "./RequiredParamToggle.module.css";
 
 interface RequiredParamToggleProps {
   disabled?: boolean;
@@ -26,7 +26,7 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
         onChange={event => onChange(event.currentTarget.checked)}
       />
       <div>
-        <SettingRequiredLabel htmlFor={id}>
+        <label className={S.SettingRequiredLabel} htmlFor={id}>
           {t`Always require a value`}
           {disabled && (
             <HoverCard position="top-end" shadow="xs">
@@ -40,7 +40,7 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
               </HoverCard.Dropdown>
             </HoverCard>
           )}
-        </SettingRequiredLabel>
+        </label>
 
         <Text
           mt="sm"
