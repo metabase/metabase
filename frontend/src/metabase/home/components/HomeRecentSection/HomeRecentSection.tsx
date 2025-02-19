@@ -36,6 +36,7 @@ export const HomeRecentSection = () => {
             title={getName(item)}
             icon={getIcon(item)}
             url={Urls.modelToUrl(item) ?? ""}
+            preview={item}
           />
         ))}
         {hasHelpCard && <HomeHelpCard />}

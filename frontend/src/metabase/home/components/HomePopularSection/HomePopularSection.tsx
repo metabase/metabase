@@ -35,6 +35,7 @@ export const HomePopularSection = (): JSX.Element => {
             title={getName(item)}
             icon={getIcon(item)}
             url={Urls.modelToUrl(item) ?? ""}
+            preview={item}
           />
         ))}
         <HomeHelpCard />

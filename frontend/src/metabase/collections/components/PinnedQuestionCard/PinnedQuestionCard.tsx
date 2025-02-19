@@ -12,7 +12,7 @@ import {
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
-import type { IconName } from "metabase/ui";
+import { Box, CloseButton, type IconName } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -25,16 +25,32 @@ import {
 } from "./PinnedQuestionCard.styled";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
 
-export interface PinnedQuestionCardProps {
+export type PinnedQuestionCardProps = {
   item: CollectionItem;
-  collection: Collection;
   databases?: Database[];
   bookmarks?: Bookmark[];
-  onCopy: (items: CollectionItem[]) => void;
-  onMove: (items: CollectionItem[]) => void;
   onCreateBookmark?: CreateBookmark;
   onDeleteBookmark?: DeleteBookmark;
-}
+  withBorder?: boolean;
+  withCloseButton?: boolean;
+} & ( // If there's no action menu, we can skip certain props
+  | {
+      withActionMenu: false;
+      collection?: never;
+      onCopy?: never;
+      onMove?: never;
+    }
+  | {
+      withActionMenu: true;
+      collection: Collection;
+      onCopy: (items: CollectionItem[]) => void;
+      onMove: (items: CollectionItem[]) => void;
+    }
+) &
+  (
+    | { withCloseButton: true; onClose?: () => void }
+    | { withCloseButton: false; onClose?: never }
+  );
 
 const PinnedQuestionCard = ({
   item,
@@ -45,10 +61,14 @@ const PinnedQuestionCard = ({
   onMove,
   onCreateBookmark,
   onDeleteBookmark,
+  withActionMenu = true,
+  withBorder = true,
+  withCloseButton = false,
+  onClose,
 }: PinnedQuestionCardProps): JSX.Element => {
   const isPreview = isPreviewShown(item);
 
-  const actionMenu = (
+  const actionMenu = withActionMenu ? (
     // This component is used within a `<Link>` component,
     // so we must prevent events from triggering the activation of the link
     <EventSandbox preventDefault sandboxedEvents={["onClick"]}>
@@ -63,7 +83,7 @@ const PinnedQuestionCard = ({
         deleteBookmark={onDeleteBookmark}
       />
     </EventSandbox>
-  );
+  ) : null;
 
   const positionedActionMenu = (
     <CardActionMenuContainer>{actionMenu}</CardActionMenuContainer>
@@ -76,10 +96,32 @@ const PinnedQuestionCard = ({
 
   return (
     <CardRoot
-      to={item.getUrl()}
+      to={item.getUrl?.()}
       isPreview={isPreview}
       className={cx(CS.hoverParent, CS.hoverVisibility)}
+      withBorder={withBorder}
     >
+      {withCloseButton && (
+        <EventSandbox preventDefault sandboxedEvents={["onClick"]}>
+          <Box pos="absolute" right=".5rem" top=".5rem">
+            <a
+              onClick={e => {
+                onClose?.();
+                e.stopPropagation();
+                e.preventDefault();
+              }}
+            >
+              <CloseButton
+                style={{
+                  // HACK: Apply color correctly via Mantine
+                  color: "#495057",
+                  backgroundColor: "rgba(255, 255, 255, .8)",
+                }}
+              />
+            </a>
+          </Box>
+        </EventSandbox>
+      )}
       {!isPreview && positionedActionMenu}
       {isPreview ? (
         <PinnedQuestionLoader id={item.id}>
@@ -109,7 +151,7 @@ const PinnedQuestionCard = ({
           description={
             item.description || DEFAULT_DESCRIPTION[item.model] || ""
           }
-          icon={item.getIcon() as unknown as { name: IconName }}
+          icon={item.getIcon?.() as unknown as { name: IconName }}
           tooltip={getSkeletonTooltip(item)}
         />
       )}

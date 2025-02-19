@@ -13,6 +13,7 @@ import { RawMaybeLink } from "../Badge/Badge.styled";
 
 import type { ResponsiveProps } from "./utils";
 import { getContainerQuery } from "./utils";
+import { Link_MaybeWithPreview } from "metabase/core/components/Link/Link_MaybeWithPreview";
 
 export const Table = styled.table<{ isInDragLayer?: boolean }>`
   background-color: var(--mb-color-bg-white);
@@ -95,7 +96,7 @@ export const ItemButton = styled(Text)<
   TextProps & HTMLAttributes<HTMLDivElement>
 >(itemLinkStyle);
 
-export const ItemLink = styled(Link)(itemLinkStyle);
+export const ItemLink = styled(Link_MaybeWithPreview)(itemLinkStyle);
 
 export const MaybeItemLink = styled(RawMaybeLink)(itemLinkStyle);
 

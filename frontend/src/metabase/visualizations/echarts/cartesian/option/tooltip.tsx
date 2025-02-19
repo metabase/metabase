@@ -12,6 +12,7 @@ import {
   TIMELINE_EVENT_SERIES_ID,
 } from "../constants/dataset";
 import type { BaseCartesianChartModel, DataKey } from "../model/types";
+import { Portal } from "metabase/ui";
 
 interface ChartItemTooltip {
   dataIndex: number;
@@ -44,7 +45,11 @@ const ChartItemTooltip = ({
     return null;
   }
 
-  return <EChartsTooltip {...tooltipModel} />;
+  return (
+    <Portal>
+      <EChartsTooltip {...tooltipModel} />
+    </Portal>
+  );
 };
 
 export const getTooltipOption = (
