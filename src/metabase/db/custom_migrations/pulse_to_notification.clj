@@ -153,6 +153,7 @@
 (defn migrate-alerts!
   "Migrate alerts from `pulse` to `notification`."
   []
+  #_{:clj-kondo/ignore [:unresolved-symbol]}
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (run! #(alert->notification! scheduler %)
           (t2/reducible-query {:select [:*]

@@ -531,6 +531,7 @@
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
   metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
+  metabase.db.custom-migrations.util/with-temp-scheduler!                               clojure.core/fn
   metabase.db.liquibase/with-liquibase                                                  clojure.core/let
   metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                        clojure.core/let
   metabase.driver.mongo.connection/with-mongo-client                                    clojure.core/let
@@ -633,7 +634,6 @@
    metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
    metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
-   metabase.db.custom-migrations.util/with-temp-scheduler!                                                                   hooks.common/with-one-binding
    metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.driver.oracle-test/with-temp-user                                                                                hooks.common/let-one-with-optional-value

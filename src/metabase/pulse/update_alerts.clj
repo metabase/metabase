@@ -62,7 +62,9 @@
                                   :notifications card-notifications})))
 
 ;;; TODO -- consider whether this should be triggered indirectly by an event e.g. `:event/card-update`
-(defn delete-alerts-if-needed! [& {:keys [old-card new-card actor]}]
+(defn delete-alerts-if-needed!
+  "Delete alerts if the card has been changed in a way that invalidates the alert"
+  [& {:keys [old-card new-card actor]}]
   (cond
     (card-archived? old-card new-card)
     (delete-alert-and-notify! :event/card-update.notification-deleted.card-archived actor new-card)

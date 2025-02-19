@@ -6,8 +6,8 @@
   (:require
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.models.audit-log :as audit-log]
    [metabase.channel.models.channel :as models.channel]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.permissions.core :as perms]
@@ -489,7 +489,6 @@
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
   [notification-or-notifications]
-  (def notification-or-notifications notification-or-notifications)
   (t2/hydrate notification-or-notifications
               :creator
               :payload

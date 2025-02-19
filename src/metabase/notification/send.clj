@@ -4,7 +4,6 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
    [metabase.config :as config]
-   [metabase.events :as events]
    [metabase.models.notification :as models.notification]
    [metabase.models.setting :as setting]
    [metabase.models.task-history :as task-history]

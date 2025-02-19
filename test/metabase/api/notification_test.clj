@@ -185,40 +185,6 @@
                                                            :details nil}]}]}}
                       (mt/latest-audit-log-entry))))))))))
 
-(deftest create-notification-audit-test
-  (mt/with-model-cleanup [:model/Notification]
-    (mt/with-premium-features #{:audit-app}
-      (mt/with-temp [:model/Card {card-id :id} {}]
-        (let [notification {:payload_type  "notification/card"
-                            :active        true
-                            :payload       {:card_id card-id}
-                            :subscriptions [{:type          "notification-subscription/cron"
-                                             :cron_schedule "0 0 0 * * ?"}]
-                            :handlers      [{:channel_type "channel/email"
-                                             :recipients   [{:type    "notification-recipient/user"
-                                                             :user_id  (mt/user->id :rasta)}]}]}]
-          (testing "creating a notification publishes an event/notification-create event"
-            (let [created-notification (mt/user-http-request :crowberto :post 200 "notification" notification)]
-              (is (=? {:topic :notification-create
-                       :user_id (mt/user->id :crowberto)
-                       :model "Notification"
-                       :model_id (:id created-notification)
-                       :details {:id            (:id created-notification)
-                                 :active        true
-                                 :creator_id    (mt/user->id :crowberto)
-                                 :payload_id    (mt/malli=? int?)
-                                 :payload_type  "notification/card"
-                                 :subscriptions [{:notification_id (:id created-notification)
-                                                  :type "notification-subscription/cron"
-                                                  :event_name nil
-                                                  :cron_schedule "0 0 0 * * ?"}]
-                                 :handlers [{:recipients [{:id (mt/malli=? int?)
-                                                           :type "notification-recipient/user"
-                                                           :user_id (mt/user->id :rasta)
-                                                           :permissions_group_id nil
-                                                           :details nil}]}]}}
-                      (mt/latest-audit-log-entry))))))))))
-
 (deftest create-notification-error-test
   (testing "require auth"
     (is (= "Unauthenticated" (mt/client :post 401 "notification"))))
@@ -453,44 +419,7 @@
       (testing "other than that no one can view"
         (get-notification :lucky 403)))))
 
-(deftest create-card-notification-permissions-test
-  (mt/with-model-cleanup [:model/Notification]
-    (mt/with-user-in-groups [group {:name "test notification perm"}
-                             user  [group]]
-      (mt/with-temp
-        [:model/Card {card-id :id} {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))}]
-        (let [create-notification! (fn [user-or-id expected-status]
-                                     (mt/user-http-request user-or-id :post expected-status "notification"
-                                                           {:payload_type "notification/card"
-                                                            :creator_id   (mt/user->id :rasta)
-                                                            :payload      {:card_id card-id}}))]
-          (mt/with-premium-features #{}
-            (testing "admin can create"
-              (create-notification! :crowberto 200))
-
-            (testing "users who can view the card can create"
-              (create-notification! :rasta 200))
-
-            (testing "normal users can't create"
-              (create-notification! (:id user) 403))
-
-            (mt/when-ee-evailable
-             (testing "users with subscription permissions"
-               (perms/grant-application-permissions! group :subscription)
-
-               (testing "without advanced-permissions enabled"
-                 (testing "cannot create notifications"
-                   (create-notification! (:id user) 403)))
-
-               (mt/with-premium-features #{:advanced-permissions}
-                 (testing "with advanced-permissions enabled"
-                   (testing "cannot create if they cannot read the card"
-                     (create-notification! (:id user) 403))
-
-                   (testing "can create if they can read the card"
-                     (create-notification! (mt/user->id :rasta) 200))))))))))))
-
-(defmacro with-disabled-subscriptions-permissions
+(defmacro ^:private with-disabled-subscriptions-permissions!
   [& body]
   `(try
      (perms/revoke-application-permissions! (perms/all-users-group) :subscription)
@@ -501,7 +430,7 @@
 (deftest create-card-notification-permissions-test
   (mt/with-model-cleanup [:model/Notification]
     (binding [collection/*allow-deleting-personal-collections* true]
-      (with-disabled-subscriptions-permissions
+      (with-disabled-subscriptions-permissions!
         (mt/with-user-in-groups [group {:name "test notification perm"}
                                  user  [group]]
           (mt/with-temp
@@ -572,7 +501,7 @@
 
             (mt/when-ee-evailable
              ;; change notification's creator to user for easy of testing
-             (with-disabled-subscriptions-permissions
+             (with-disabled-subscriptions-permissions!
                (try
                  (change-notification-creator (:id user))
                  (move-card-collection (:id user))
@@ -644,7 +573,7 @@
                 (create-notification! :rasta 403))
 
               (mt/when-ee-evailable
-               (with-disabled-subscriptions-permissions
+               (with-disabled-subscriptions-permissions!
                  (mt/with-premium-features #{:advanced-permissions}
                    (testing "when advanced subscription permissions is enabled and users can read the card"
                      (testing "can't send if don't have subscription permissions"

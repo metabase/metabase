@@ -45,7 +45,7 @@
 (defn validate-spec!
   "Check whether a given spec is valid"
   [spec]
-  (when-let [info (mc/explain ::Spec spec)]
+  (when-let [info (mr/explain ::Spec spec)]
     (throw (ex-info (str "Invalid spec for " (:model spec) ": " (me/humanize info)) info))))
 
 (defmacro define-spec
