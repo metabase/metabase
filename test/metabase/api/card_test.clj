@@ -3619,12 +3619,26 @@
 (deftest dashboard-internal-card-creation
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Collection {other-coll-id :id} {}
-                 :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/DashboardTab {dt1-id :id} {:dashboard_id dash-id}
+                 :model/DashboardTab {dt2-id :id} {:dashboard_id dash-id}]
     (testing "We can create a dashboard internal card"
       (let [card-id (:id (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
                                                                                   :dashboard_id dash-id)))]
         (testing "We autoplace a dashboard card for the new question"
-          (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))
+          (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+    (testing "We can create a dashboard internal card on a particular tab"
+      (let [card-on-1st-tab-id (:id (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
+                                                                                             :dashboard_id dash-id
+                                                                                             :dashboard_tab_id dt1-id)))
+            card-on-2nd-tab-id (:id (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
+                                                                                             :dashboard_id dash-id
+                                                                                             :dashboard_tab_id dt2-id)))]
+        (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-on-1st-tab-id :dashboard_tab_id dt1-id))
+        (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-on-2nd-tab-id :dashboard_tab_id dt2-id))))
+    (testing "We can't specify a tab ID without specifying a dashboard"
+      (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
+                                                               :dashboard_tab_id dt1-id)))
     (testing "We can't create a dashboard internal card with a collection_id different that its dashboard's"
       (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
                                                                :dashboard_id dash-id
@@ -3693,7 +3707,21 @@
       (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dash-id)
 
       (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
-      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id)))))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id))))
+  (testing "even when the card was on a tab before, it gets autoplaced to the first tab"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardTab {first-tab-id :id} {:dashboard_id dash-id}
+                   :model/DashboardTab {dt-id :id} {:dashboard_id dash-id}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id}]
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id dash-id})
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id))
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true})
+      (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dash-id)
+
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id first-tab-id :card_id card-id)))))
 
 (deftest move-question-to-collection-test
   (testing "We can move a dashboard question to a collection"
@@ -3708,6 +3736,65 @@
                                                                            :dashboard_id  nil})))
       (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
       (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+
+(deftest move-question-to-dashboard-can-choose-tab-test
+  (testing "We can move a question to a dashboard, choosing a particular tab"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardTab {dt1-id :id} {:dashboard_id dash-id}
+                   :model/DashboardTab {dt2-id :id} {:dashboard_id dash-id}
+                   :model/Card {card-1-id :id} {:collection_id coll-id}
+                   :model/Card {card-2-id :id} {:collection_id coll-id}]
+      (mt/user-http-request :rasta :put 200 (str "card/" card-1-id) {:dashboard_id dash-id
+                                                                     :dashboard_tab_id dt1-id})
+      (mt/user-http-request :rasta :put 200 (str "card/" card-2-id) {:dashboard_id dash-id
+                                                                     :dashboard_tab_id dt2-id})
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-1-id :dashboard_tab_id dt1-id))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-2-id :dashboard_tab_id dt2-id)))))
+
+(deftest moving-archived-question-to-dashboard-can-specify-tab-test
+  (testing "We can unarchive a question and move it to a specific dashboard tab"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardTab {dt1-id :id} {:dashboard_id dash-id}
+                   :model/DashboardTab {dt2-id :id} {:dashboard_id dash-id}
+                   :model/Card {card-1-id :id} {:collection_id coll-id :archived true}
+                   :model/Card {card-2-id :id} {:collection_id coll-id :archived true}]
+      (mt/user-http-request :rasta :put 200 (str "card/" card-1-id)
+                            {:dashboard_id dash-id
+                             :dashboard_tab_id dt1-id})
+      (mt/user-http-request :rasta :put 200 (str "card/" card-2-id)
+                            {:dashboard_id dash-id
+                             :dashboard_tab_id dt2-id})
+      (is (false? (:archived (t2/select-one :model/Card :id card-1-id))))
+      (is (false? (:archived (t2/select-one :model/Card :id card-2-id))))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-1-id :dashboard_tab_id dt1-id))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-2-id :dashboard_tab_id dt2-id)))))
+
+(deftest moving-archived-dqs-can-specify-tab-test
+  (testing "We can specify a dashboard_tab_id when unarchiving a question that's already a DQ"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardTab {dt1-id :id} {:dashboard_id dash-id}
+                   :model/DashboardTab {dt2-id :id} {:dashboard_id dash-id}
+                   :model/Card {card-1-id :id} {:collection_id coll-id
+                                                :archived true
+                                                :dashboard_id dash-id}
+                   :model/Card {card-2-id :id} {:collection_id coll-id
+                                                :archived true
+                                                :dashboard_id dash-id}]
+      ;; Unarchive DQs and specify their tabs
+      (mt/user-http-request :rasta :put 200 (str "card/" card-1-id)
+                            {:dashboard_tab_id dt1-id
+                             :archived false})
+      (mt/user-http-request :rasta :put 200 (str "card/" card-2-id)
+                            {:dashboard_tab_id dt2-id
+                             :archived false})
+      ;; Verify cards are unarchived and associated with correct tabs
+      (is (false? (:archived (t2/select-one :model/Card :id card-1-id))))
+      (is (false? (:archived (t2/select-one :model/Card :id card-2-id))))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-1-id :dashboard_tab_id dt1-id))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-2-id :dashboard_tab_id dt2-id)))))
 
 (deftest move-question-to-collection-remove-reference-test
   (testing "We can move a dashboard question to a collection and remove the old reference to it"
