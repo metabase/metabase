@@ -227,15 +227,17 @@ export function DashboardHeaderView({
             </HeaderFixedWidthContainer>
           </HeaderRow>
         )}
-        <HeaderRow>
-          <HeaderFixedWidthContainer
-            data-testid="fixed-width-dashboard-tabs"
-            isNavBarOpen={isNavBarOpen}
-            isFixedWidth={dashboard?.width === "fixed"}
-          >
-            <DashboardTabs dashboardId={dashboard.id} isEditing={isEditing} />
-          </HeaderFixedWidthContainer>
-        </HeaderRow>
+        {!dashboard.is_presentational && (
+          <HeaderRow>
+            <HeaderFixedWidthContainer
+              data-testid="fixed-width-dashboard-tabs"
+              isNavBarOpen={isNavBarOpen}
+              isFixedWidth={dashboard?.width === "fixed"}
+            >
+              <DashboardTabs dashboardId={dashboard.id} isEditing={isEditing} />
+            </HeaderFixedWidthContainer>
+          </HeaderRow>
+        )}
       </HeaderContainer>
     </div>
   );

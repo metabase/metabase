@@ -62,6 +62,8 @@ import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
+import { DashboardSlideNav } from "./DashboardSlideNav";
+import { Flex } from "metabase/ui";
 
 export type DashboardProps = {
   children?: ReactNode;
@@ -462,32 +464,39 @@ function Dashboard(props: DashboardProps) {
                 }
               >
                 <DashboardParameterPanel isFullscreen={isFullscreen} />
+
                 {isEmpty ? (
                   renderEmptyStates()
                 ) : (
-                  <CardsContainer data-element-id="dashboard-cards-container">
-                    <DashboardGridConnected
-                      clickBehaviorSidebarDashcard={
-                        props.clickBehaviorSidebarDashcard
-                      }
-                      isNightMode={shouldRenderAsNightMode}
-                      isFullscreen={props.isFullscreen}
-                      isEditingParameter={props.isEditingParameter}
-                      isEditing={props.isEditing}
-                      dashboard={dashboard}
-                      slowCards={props.slowCards}
-                      navigateToNewCardFromDashboard={
-                        props.navigateToNewCardFromDashboard
-                      }
-                      selectedTabId={selectedTabId}
-                      onEditingChange={handleSetEditing}
-                      downloadsEnabled={downloadsEnabled}
-                      autoScrollToDashcardId={autoScrollToDashcardId}
-                      reportAutoScrolledToDashcard={
-                        reportAutoScrolledToDashcard
-                      }
-                    />
-                  </CardsContainer>
+                  <Flex>
+                    {dashboard.is_presentational && (
+                      <DashboardSlideNav dashboard={dashboard} />
+                    )}
+
+                    <CardsContainer data-element-id="dashboard-cards-container">
+                      <DashboardGridConnected
+                        clickBehaviorSidebarDashcard={
+                          props.clickBehaviorSidebarDashcard
+                        }
+                        isNightMode={shouldRenderAsNightMode}
+                        isFullscreen={props.isFullscreen}
+                        isEditingParameter={props.isEditingParameter}
+                        isEditing={props.isEditing}
+                        dashboard={dashboard}
+                        slowCards={props.slowCards}
+                        navigateToNewCardFromDashboard={
+                          props.navigateToNewCardFromDashboard
+                        }
+                        selectedTabId={selectedTabId}
+                        onEditingChange={handleSetEditing}
+                        downloadsEnabled={downloadsEnabled}
+                        autoScrollToDashcardId={autoScrollToDashcardId}
+                        reportAutoScrolledToDashcard={
+                          reportAutoScrolledToDashcard
+                        }
+                      />
+                    </CardsContainer>
+                  </Flex>
                 )}
               </ParametersAndCardsContainer>
 

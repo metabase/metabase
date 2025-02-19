@@ -14,6 +14,7 @@ import { Dashboard, DashboardTab } from "metabase-types/api";
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import {
+  getClickBehaviorSidebarDashcard,
   getIsNavigatingBackToDashboard,
   getParameterValues,
   getParameters,
@@ -28,10 +29,14 @@ import {
   stopPresentation,
 } from "../actions";
 import { tinykeys } from "tinykeys";
-import { DashboardGridConnected } from "../components/DashboardGrid";
+import {
+  DashboardGridConnected,
+  DashboardGridKindaConnected,
+} from "../components/DashboardGrid";
 import { initializeData } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import { usePrevious } from "react-use";
 import _ from "underscore";
+import { argv0 } from "process";
 
 const SlideControls = ({
   slideNumber,
@@ -65,20 +70,24 @@ const PresentationControls = ({ dashboard }: { dashboard: Dashboard }) => (
   </Box>
 );
 
-const Slide = ({
+export const Slide = ({
   dashboard,
   tab,
+  width,
 }: {
   dashboard: Dashboard;
   tab: DashboardTab;
+  width?: number;
 }) => {
+  const DashGrid = width ? DashboardGridKindaConnected : DashboardGridConnected;
+
   return (
     <Box className={S.slide}>
       <Box className={S.slideInner}>
         <Box is="h2" style={{ fontWeight: 900, fontSize: "3rem" }} mb="md">
           {tab.name}
         </Box>
-        <DashboardGridConnected
+        <DashGrid
           clickBehaviorSidebarDashcard={null}
           isNightMode={false}
           isFullscreen
@@ -92,13 +101,16 @@ const Slide = ({
           downloadsEnabled={false}
           autoScrollToDashcardId={undefined}
           reportAutoScrolledToDashcard={() => {}}
+          width={width}
         />
       </Box>
     </Box>
   );
 };
 
-const TitleSlide: React.FC<{ dashboard: Dashboard }> = ({ dashboard }) => {
+export const TitleSlide: React.FC<{ dashboard: Dashboard }> = ({
+  dashboard,
+}) => {
   const currentUser = useSelector(getCurrentUser);
   const presentationTime = moment().format("MM/DD/YYYY");
 
@@ -146,13 +158,18 @@ const PresentationInner = ({
   } = useGetDashboardQuery(dashboardId ? { id: dashboardId } : skipToken);
   const dispatch = useDispatch();
 
-  const { parameterValues, isNavigatingBackToDashboard, selectedTabId } =
-    useSelector(state => ({
-      parameters: getParameters(state),
-      isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
-      parameterValues: getParameterValues(state),
-      selectedTabId: getSelectedTabId(state),
-    }));
+  const {
+    parameterValues,
+    isNavigatingBackToDashboard,
+    selectedTabId,
+    clickBehaviorSidebarDashcard,
+  } = useSelector(state => ({
+    parameters: getParameters(state),
+    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
+    parameterValues: getParameterValues(state),
+    selectedTabId: getSelectedTabId(state),
+    clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
+  }));
 
   const tabCount = dashboard?.tabs?.length ?? 0;
   const tabs = dashboard?.tabs;
@@ -288,7 +305,11 @@ const PresentationInner = ({
       {slideIndex === 0 ? (
         <TitleSlide dashboard={dashboard} />
       ) : (
-        <Slide dashboard={dashboard} tab={tab} />
+        <Slide
+          dashboard={dashboard}
+          tab={tab}
+          clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
+        />
       )}
 
       <SlideControls

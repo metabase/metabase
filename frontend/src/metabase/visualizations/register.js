@@ -55,5 +55,5 @@ export default function () {
   registerVisualization(Text);
   registerVisualization(IFrameViz);
 
-  setDefaultVisualization(Table);
+  setDefaultVisualization(Heading);
 }

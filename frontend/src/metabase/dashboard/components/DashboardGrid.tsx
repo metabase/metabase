@@ -704,3 +704,7 @@ export const DashboardGridConnected = _.compose(
   ExplicitSize(),
   connector,
 )(DashboardGrid) as ComponentType<OwnProps>;
+
+export const DashboardGridKindaConnected = _.compose(connector)(
+  DashboardGrid,
+) as ComponentType<OwnProps>;

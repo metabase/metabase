@@ -1,0 +1,9 @@
+.slidePreview > div {
+  transform: scale(0.15);
+  transform-origin: top left;
+}
+
+.slidePreview > div {
+  width: calc(1600px - 5rem);
+  height: calc(900px - 5rem);
+}
