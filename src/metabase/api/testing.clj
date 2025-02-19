@@ -10,6 +10,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.util.date-2 :as u.date]
@@ -192,3 +193,13 @@
   []
   (analytics/phone-home-stats!)
   {:success true})
+
+(defenterprise refresh-cache-configs!
+  "Manually triggers the preemptive caching refresh job on EE. No-op on OSS."
+  metabase-enterprise.task.cache
+  [])
+
+(api.macros/defendpoint :post "/refresh-caches"
+  "Manually triggers the cache refresh task, if Enterprise code is available."
+  []
+  (refresh-cache-configs!))
