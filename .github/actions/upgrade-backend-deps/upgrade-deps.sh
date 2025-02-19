@@ -25,6 +25,9 @@ echo "::group::Upgrades"
 echo ${UPGRADES}
 echo "::endgroup::"
 
+# Make sure we're on master
+git checkout master
+
 # Iterate over all upgrades
 for upgrade in $UPGRADES; do
 
