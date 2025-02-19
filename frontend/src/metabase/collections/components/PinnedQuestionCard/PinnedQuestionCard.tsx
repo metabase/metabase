@@ -12,8 +12,7 @@ import {
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
-import { getIcon } from "metabase/entities/questions";
-import { Box, CloseButton, type IconName, type IconProps } from "metabase/ui";
+import { Box, CloseButton, type IconName } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -95,13 +94,9 @@ const PinnedQuestionCard = ({
     metric: t`A metric`,
   };
 
-  if (!item.getIcon) {
-    item.getIcon = () => getIcon(item) as IconProps;
-  }
-
   return (
     <CardRoot
-      to={item.getUrl()}
+      to={item.getUrl?.()}
       isPreview={isPreview}
       className={cx(CS.hoverParent, CS.hoverVisibility)}
       withBorder={withBorder}
@@ -120,6 +115,7 @@ const PinnedQuestionCard = ({
                 style={{
                   // HACK: Apply color correctly via Mantine
                   color: "#495057",
+                  backgroundColor: "rgba(255, 255, 255, .8)",
                 }}
               />
             </a>
@@ -155,7 +151,7 @@ const PinnedQuestionCard = ({
           description={
             item.description || DEFAULT_DESCRIPTION[item.model] || ""
           }
-          icon={item.getIcon() as unknown as { name: IconName }}
+          icon={item.getIcon?.() as unknown as { name: IconName }}
           tooltip={getSkeletonTooltip(item)}
         />
       )}
