@@ -1,3 +1,5 @@
+import type { Expression } from "metabase-types/api";
+
 import { getMBQLName } from "../config";
 import {
   adjustCaseOrIf,
@@ -10,7 +12,7 @@ import {
 import { resolve } from "../resolver";
 import { generateExpression } from "../test/generator";
 
-import { type Expr, lexify, compile as newCompile, parse } from ".";
+import { lexify, compile as newCompile, parse } from ".";
 
 type Type = "expression" | "boolean";
 
@@ -44,7 +46,7 @@ export function compile(source: string, type: Type, opts: Opts = {}) {
   );
 }
 
-export function mockResolve(_kind: any, name: string): Expr {
+export function mockResolve(_kind: any, name: string): Expression {
   return ["dimension", name];
 }
 

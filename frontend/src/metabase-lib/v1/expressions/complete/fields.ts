@@ -4,7 +4,7 @@ import type { CompletionContext } from "@codemirror/autocomplete";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
 
-import { formatIdentifier } from "..";
+import { formatIdentifier } from "../identifier";
 
 import type { CompletionResult } from "./types";
 import { content, fuzzyMatcher, tokenAtPos } from "./util";

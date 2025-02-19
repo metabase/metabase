@@ -2,7 +2,7 @@ import type { CompletionContext } from "@codemirror/autocomplete";
 
 import * as Lib from "metabase-lib";
 
-import { formatIdentifier } from "..";
+import { formatIdentifier } from "../identifier";
 
 import { content, fuzzyMatcher, tokenAtPos } from "./util";
 

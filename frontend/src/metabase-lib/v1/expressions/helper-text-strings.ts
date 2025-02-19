@@ -7,7 +7,9 @@ import type {
 } from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 
-import { formatIdentifier, formatStringLiteral } from "./";
+import { formatStringLiteral } from "./string";
+
+import { formatIdentifier } from "./";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,

@@ -1,17 +1,25 @@
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
-import type { FieldReference, Filter } from "metabase-types/api";
+import type {
+  CallExpression,
+  FieldReference,
+  MetricAgg,
+  SegmentFilter,
+} from "metabase-types/api";
 
 import {
   EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
   MBQL_CLAUSES,
   OPERATOR_PRECEDENCE,
+  getExpressionName,
+} from "./config";
+import {
   formatDimensionName,
   formatMetricName,
   formatSegmentName,
-  formatStringLiteral,
-  getExpressionName,
+} from "./identifier";
+import {
   isBooleanLiteral,
   isCaseOrIf,
   isDimension,
@@ -23,9 +31,8 @@ import {
   isOptionsObject,
   isSegment,
   isStringLiteral,
-} from "./index";
-
-export { EDITOR_QUOTES } from "./config";
+} from "./matchers";
+import { formatStringLiteral } from "./string";
 
 export type FormatOptions = {
   startRule: string;
@@ -99,7 +106,7 @@ function formatDimension(fieldRef: FieldReference, options: FormatOptions) {
     : "";
 }
 
-function formatMetric([, metricId]: FieldReference, options: FormatOptions) {
+function formatMetric([, metricId]: MetricAgg, options: FormatOptions) {
   const { query, stageIndex } = options;
 
   if (!query) {
@@ -121,7 +128,7 @@ function formatMetric([, metricId]: FieldReference, options: FormatOptions) {
   return formatMetricName(displayInfo.displayName, options);
 }
 
-function formatSegment([, segmentId]: FieldReference, options: FormatOptions) {
+function formatSegment([, segmentId]: SegmentFilter, options: FormatOptions) {
   const { stageIndex, query } = options;
 
   if (!query) {
@@ -186,7 +193,7 @@ function formatOperator([op, ...operands]: any[], options: FormatOptions) {
   const args = operands.filter(arg => !isOptionsObject(arg));
   const formattedOperator = getExpressionName(op) || op;
   const formattedArgs = args.map((arg, index) => {
-    const argOp = isOperator(arg) && arg[0];
+    const argOp = isOperator(arg) ? arg[0] : -1;
     const isLowerPrecedence =
       isOperator(arg) && OPERATOR_PRECEDENCE[op] > OPERATOR_PRECEDENCE[argOp];
 
@@ -245,7 +252,7 @@ const NEGATIVE_FILTERS: Record<string, string> = {
   "not-null": "is-null",
 };
 
-function isNegativeFilter(expr: Filter) {
+function isNegativeFilter(expr: CallExpression) {
   if (!Array.isArray(expr)) {
     return false;
   }
@@ -254,7 +261,7 @@ function isNegativeFilter(expr: Filter) {
   return typeof NEGATIVE_FILTERS[fn] === "string" && args.length >= 1;
 }
 
-function formatNegativeFilter(mbql: Filter, options: FormatOptions) {
+function formatNegativeFilter(mbql: CallExpression, options: FormatOptions) {
   const [fn, ...args] = mbql;
   const baseFn = NEGATIVE_FILTERS[fn];
   return "NOT " + format([baseFn, ...args], options);

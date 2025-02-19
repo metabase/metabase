@@ -1,11 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
+import type { CaseOptions, Expression } from "metabase-types/api";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import type { CaseOptions, Expr } from "./pratt";
 import { resolve } from "./resolver";
 
 describe("resolve", () => {
-  function collect(expression: Expr, startRule = "expression") {
+  function collect(expression: Expression, startRule = "expression") {
     const dimensions: string[] = [];
     const segments: string[] = [];
     const metrics: string[] = [];
@@ -33,18 +33,18 @@ describe("resolve", () => {
   }
 
   // handy references
-  const A: Expr = ["dimension", "A"];
-  const B: Expr = ["dimension", "B"];
-  const C: Expr = ["dimension", "C"];
-  const P: Expr = ["dimension", "P"];
-  const Q: Expr = ["dimension", "Q"];
-  const R: Expr = ["dimension", "R"];
-  const S: Expr = ["dimension", "S"];
-  const X: Expr = ["segment", "X"];
-  const Y: Expr = ["dimension", "Y"];
+  const A: Expression = ["dimension", "A"];
+  const B: Expression = ["dimension", "B"];
+  const C: Expression = ["dimension", "C"];
+  const P: Expression = ["dimension", "P"];
+  const Q: Expression = ["dimension", "Q"];
+  const R: Expression = ["dimension", "R"];
+  const S: Expression = ["dimension", "S"];
+  const X: Expression = ["segment", "X"];
+  const Y: Expression = ["dimension", "Y"];
 
   describe("for filters", () => {
-    const filter = (expr: Expr) => collect(expr, "boolean");
+    const filter = (expr: Expression) => collect(expr, "boolean");
 
     it("should resolve segments correctly", () => {
       expect(filter(A).segments).toEqual(["A"]);
@@ -121,7 +121,7 @@ describe("resolve", () => {
   });
 
   describe("for expressions (for custom columns)", () => {
-    const expr = (expr: Expr) => collect(expr, "expression");
+    const expr = (expr: Expression) => collect(expr, "expression");
 
     it("should resolve segments correctly", () => {
       expect(expr(["trim", A]).segments).toEqual([]);
@@ -236,7 +236,7 @@ describe("resolve", () => {
   });
 
   describe("for aggregations", () => {
-    const aggregation = (expr: Expr) => collect(expr, "aggregation");
+    const aggregation = (expr: Expression) => collect(expr, "aggregation");
 
     it("should resolve dimensions correctly", () => {
       expect(aggregation(A).dimensions).toEqual([]);
@@ -270,7 +270,7 @@ describe("resolve", () => {
   });
 
   describe("for CASE expressions", () => {
-    const expr = (expr: Expr) => collect(expr, "expression");
+    const expr = (expr: Expression) => collect(expr, "expression");
 
     it("should handle CASE with two arguments", () => {
       // CASE(A,B)
@@ -287,16 +287,16 @@ describe("resolve", () => {
 
     it("should handle CASE with four arguments", () => {
       // CASE(A, B, P, Q)
-      const ab: [Expr, Expr] = [A, B];
-      const pq: [Expr, Expr] = [P, Q];
+      const ab: [Expression, Expression] = [A, B];
+      const pq: [Expression, Expression] = [P, Q];
       expect(expr(["case", [ab, pq]]).segments).toEqual(["A", "P"]);
       expect(expr(["case", [ab, pq]]).dimensions).toEqual(["B", "Q"]);
     });
 
     it("should handle CASE with five arguments", () => {
       // CASE(A, B, P, Q, R)
-      const ab: [Expr, Expr] = [A, B];
-      const pq: [Expr, Expr] = [P, Q];
+      const ab: [Expression, Expression] = [A, B];
+      const pq: [Expression, Expression] = [P, Q];
       const opt: CaseOptions = { default: R };
       expect(expr(["case", [ab, pq], opt]).segments).toEqual(["A", "P"]);
       expect(expr(["case", [ab, pq], opt]).dimensions).toEqual(["B", "Q", "R"]);
