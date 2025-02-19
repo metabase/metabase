@@ -7,10 +7,7 @@ import { isActionDashCard } from "metabase/actions/utils";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import {
-  FieldLabel,
-  FieldLabelContainer,
-} from "metabase/core/components/FormField/FormField.styled";
+import FormField from "metabase/core/components/FormField/FormField";
 import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import { closeSidebar } from "metabase/dashboard/actions";
@@ -99,9 +96,9 @@ export function ActionSidebar({
             />
           </Form>
         </FormProvider>
-        <FieldLabelContainer orientation="vertical" hasDescription={false}>
-          <FieldLabel hasError={false}>{t`Action`}</FieldLabel>
-        </FieldLabelContainer>
+        <FormField.LabelContainer orientation="vertical" hasDescription={false}>
+          <FormField.Label hasError={false}>{t`Action`}</FormField.Label>
+        </FormField.LabelContainer>
 
         <ModalWithTrigger
           ref={actionSettingsModalRef}
