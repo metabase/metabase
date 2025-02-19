@@ -1,7 +1,7 @@
 (ns metabase.util.number.impl
   "CLJ implementation of the number utilities.
   See [[metabase.util.number]] for the public interface."
-  (:refer-clojure :exclude [bigint])
+  (:refer-clojure :exclude [bigint integer?])
   (:require
    [clojure.core :as core]))
 
@@ -14,3 +14,8 @@
   "Checks if the passed value is a BigInt instance."
   [x]
   (instance? clojure.lang.BigInt x))
+
+(defn integer?
+  "Checks if the passed value is an integer. [[clojure.core/integer?]] does not take BigInt into account on CLJS."
+  [x]
+  (core/integer? x))
