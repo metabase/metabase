@@ -30,6 +30,7 @@ export function FilterPanelPopover({
   stageIndex,
   filter,
   onChange,
+  dirtyAddedFilters,
   setDirtyAddedFilters,
   setDirtyRemovedFilters,
 }: FilterPanelPopoverProps) {
@@ -46,7 +47,13 @@ export function FilterPanelPopover({
   };
 
   const handleRemove = () => {
-    const isClauseInQuery = true; // TODO
+    const isClauseInQuery = !dirtyAddedFilters.some(entry => {
+      //hack
+      const a = Lib.displayInfo(query, entry.stageIndex, entry.filter);
+      const b = Lib.displayInfo(query, stageIndex, filter);
+      return _.isEqual(a, b);
+    });
+
     if (isClauseInQuery) {
       // onChange(Lib.removeClause(query, stageIndex, filter));
       setDirtyRemovedFilters(filters => {
