@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import UserAvatar from "metabase/components/UserAvatar";
+import { UserAvatar } from "metabase/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import Typeahead from "metabase/hoc/Typeahead";
 import { color } from "metabase/lib/colors";

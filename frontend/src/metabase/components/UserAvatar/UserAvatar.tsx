@@ -1,22 +1,15 @@
 import { isEmail } from "metabase/lib/email";
-
-import type { AvatarProps } from "./UserAvatar.styled";
-import { Avatar as StyledAvatar } from "./UserAvatar.styled";
+import { Avatar, type AvatarProps, Box, Flex, Icon } from "metabase/ui";
+import type { User } from "metabase-types/api";
 
 interface UserAvatarProps extends AvatarProps {
   user: User;
+  mayor?: boolean;
 }
 
 interface GroupProps {
   user: Group;
-}
-
-interface User {
-  first_name: string | null;
-  last_name: string | null;
-  common_name: string;
-  email?: string;
-  src?: string;
+  mayor?: boolean;
 }
 
 interface Group {
@@ -24,19 +17,23 @@ interface Group {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function UserAvatar({
+export function UserAvatar({
   user,
+  mayor = false,
   ...props
 }: UserAvatarProps | GroupProps) {
   return (
-    <StyledAvatar {...props} src={user.src}>
-      {!user.src ? userInitials(user) || "?" : null}
-    </StyledAvatar>
+    <Box>
+      <Avatar {...props} src={user.picture_url}>
+        {userInitials(user)}
+      </Avatar>
+      {mayor && (
+        <Flex pos="absolute" top={-15} justify="center" w="100%">
+          <Icon name="crown" size={32} color="gold" />
+        </Flex>
+      )}
+    </Box>
   );
-}
-
-export function Avatar({ children, ...props }: { children: string }) {
-  return <StyledAvatar {...props}>{initial(children) ?? "?"}</StyledAvatar>;
 }
 
 function initial(name?: string | null) {

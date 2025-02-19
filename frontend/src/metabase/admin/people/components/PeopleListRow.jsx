@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import UserAvatar from "metabase/components/UserAvatar";
+import { UserAvatar } from "metabase/components/UserAvatar";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";

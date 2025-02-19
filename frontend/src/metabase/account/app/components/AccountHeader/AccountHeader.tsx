@@ -2,10 +2,11 @@ import type { Path } from "history";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { UserAvatar } from "metabase/components/UserAvatar";
 import Radio from "metabase/core/components/Radio";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
-import { Avatar, Box, Button, Flex, Icon, Indicator, Modal } from "metabase/ui";
+import { Box, Button, Flex, Icon, Indicator, Modal } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
 import S from "./AccountHeader.module.css";
@@ -61,13 +62,14 @@ export const AccountHeader = ({
             indicator: S.ShowOnHover,
           }}
         >
-          <Avatar
+          <UserAvatar
             mb="1rem"
-            src={user.src}
+            user={user}
             name={userFullName ?? undefined}
             color="brand"
             variant="filled"
             size="xl"
+            mayor
             onClick={() => setModalOpen(true)}
           />
         </Indicator>
@@ -101,8 +103,8 @@ export const AccountHeader = ({
               style={{ borderRadius: "100%" }}
               mb="1rem"
             >
-              <Avatar
-                src={user.src}
+              <UserAvatar
+                user={user}
                 name={userFullName ?? undefined}
                 color="brand"
                 variant="filled"

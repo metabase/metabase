@@ -12,7 +12,7 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import UserAvatar from "metabase/components/UserAvatar";
+import { UserAvatar } from "metabase/components/UserAvatar";
 import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";

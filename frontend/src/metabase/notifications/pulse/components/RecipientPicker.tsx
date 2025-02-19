@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import TokenField from "metabase/components/TokenField";
-import UserAvatar from "metabase/components/UserAvatar";
+import { UserAvatar } from "metabase/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import { isEmail } from "metabase/lib/email";
 import { recipientIsValid } from "metabase/lib/pulse";
