@@ -58,7 +58,7 @@ for upgrade in $UPGRADES; do
     # Commit the dependency update, and link to the diff
     git add deps.edn modules
     git commit -m ${TITLE} -m ${BODY} --no-verify
-    git push -u $BRANCH_NAME
+    git push -u origin $BRANCH_NAME
 
     # Open the PR
     echo "Opening pull request for" $DEP_NAME
