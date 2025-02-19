@@ -23,6 +23,7 @@ export const EditDashboardButton = ({
       tooltipLabel={t`Edit dashboard`}
       visibleOnSmallScreen={false}
       key="edit"
+      disabled={!dashboard}
       aria-label={t`Edit dashboard`}
       icon="pencil"
       onClick={onBeginEditing}
