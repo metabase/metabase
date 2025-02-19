@@ -597,7 +597,7 @@
   (get-object-of-class-thunk rs i java.time.LocalDateTime))
 
 (defmethod read-column-thunk [:sql-jdbc Types/ARRAY]
-  [_ rs _ i]
+  [_driver ^java.sql.ResultSet rs _rsmeta ^Integer i]
   (fn [] (vec (.getArray ^java.sql.Array (.getObject rs i)))))
 
 (defmethod read-column-thunk [:sql-jdbc Types/TIMESTAMP_WITH_TIMEZONE]
