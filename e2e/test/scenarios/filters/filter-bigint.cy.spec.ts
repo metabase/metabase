@@ -231,34 +231,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       H.resyncDatabase({ dbId: WRITABLE_DB_ID });
     }
 
-    function getTableId(tableName: string) {
-      return cy
-        .request("GET", "/api/table")
-        .then(({ body: tables }: { body: Table[] }) => {
-          const table = tables.find(table => table.name === tableName);
-          if (!table) {
-            throw new TypeError(`Table with name ${tableName} cannot be found`);
-          }
-          return table.id;
-        });
-    }
-
-    function getFieldId(tableId: TableId, fieldName: string) {
-      return cy
-        .request("GET", `/api/table/${tableId}/query_metadata`)
-        .then(({ body: table }: { body: Table }) => {
-          const fields = table.fields ?? [];
-          const field = fields.find(field => field.name === fieldName);
-          if (!field) {
-            throw new TypeError(`Field with name ${fieldName} cannot be found`);
-          }
-          if (typeof field.id !== "number") {
-            throw new TypeError("Unexpected non-integer field id.");
-          }
-          return field.id;
-        });
-    }
-
     function setupDashboard({
       tableName,
       baseType,
@@ -947,6 +919,34 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     testDecimalFilter();
   });
 });
+
+function getTableId(tableName: string) {
+  return cy
+    .request("GET", "/api/table")
+    .then(({ body: tables }: { body: Table[] }) => {
+      const table = tables.find(table => table.name === tableName);
+      if (!table) {
+        throw new TypeError(`Table with name ${tableName} cannot be found`);
+      }
+      return table.id;
+    });
+}
+
+function getFieldId(tableId: TableId, fieldName: string) {
+  return cy
+    .request("GET", `/api/table/${tableId}/query_metadata`)
+    .then(({ body: table }: { body: Table }) => {
+      const fields = table.fields ?? [];
+      const field = fields.find(field => field.name === fieldName);
+      if (!field) {
+        throw new TypeError(`Field with name ${fieldName} cannot be found`);
+      }
+      if (typeof field.id !== "number") {
+        throw new TypeError("Unexpected non-integer field id.");
+      }
+      return field.id;
+    });
+}
 
 function visitPublicQuestion() {
   cy.signInAsAdmin();
