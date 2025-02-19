@@ -10582,11 +10582,31 @@ databaseChangeLog:
       preConditions:
         - not:
           - columnExists:
-              tableName: report_database
+              tableName: report_dashboard
               columnName: alias
       changes:
         - addColumn:
             tableName: report_dashboard
+            columns:
+              - column:
+                  name: alias
+                  type: ${text.type}
+                  remarks: alias to reference the dashboard
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-02-19T09:11:27
+      author: dpsutton
+      comment: Add `alias` column to report_card
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: alias
+      changes:
+        - addColumn:
+            tableName: report_card
             columns:
               - column:
                   name: alias
