@@ -24,6 +24,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: ${{ (github.ref_name == 'master' && '1') || '0' }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
@@ -31,4 +32,4 @@ jobs:
       - name: Open PRs to Upgrade Backend Deps
         uses: ./.github/actions/upgrade-backend-deps
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
