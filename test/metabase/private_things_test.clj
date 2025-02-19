@@ -58,6 +58,7 @@
                   symb)))
         (symb->external-usages)))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- privacy-report
   "Writes privacy report into a file, which is used by the privacy-reporter.yml github action."
   [& _args]
@@ -66,7 +67,7 @@
           (str (->> ttsbp
                     (take 10)
                     (map (fn [ns-name] (str "- `" ns-name "`")))
-                    (into ["# Top 10 things to make private:"])
+                    (into ["# 🚫🔒 Top 10 things to make private:"])
                     (str/join "\n"))
                "\n"))))
 
