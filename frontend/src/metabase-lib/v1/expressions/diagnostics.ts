@@ -12,6 +12,8 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 
+import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { parseDimension, parseMetric, parseSegment } from "./identifier";
 import {
   adjustCaseOrIf,
   adjustMultiArgOptions,
@@ -22,14 +24,6 @@ import {
 import { resolve } from "./resolver";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, Token } from "./types";
-
-import {
-  MBQL_CLAUSES,
-  getMBQLName,
-  parseDimension,
-  parseMetric,
-  parseSegment,
-} from "./index";
 
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
 export function countMatchingParentheses(tokens: Token[]) {

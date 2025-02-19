@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import { MBQL_CLAUSES, getMBQLName } from "./config";
 import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
+import { unescapeString } from "./string";
 import { OPERATOR as OP, TOKEN, tokenize } from "./tokenizer";
-
-import { MBQL_CLAUSES, getMBQLName, unescapeString } from "./index";
 
 const COMPARISON_OPS = [
   OP.Equal,
