@@ -1,4 +1,4 @@
-import { highlight } from "./util";
+import { highlight } from "./utils";
 
 // By default css modules dont return classes in unit tests.
 // Since we need the classnames for this test, we mock the module.
