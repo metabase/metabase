@@ -220,15 +220,6 @@ function EmbeddingDataPicker({
   const databaseId = Lib.databaseID(query);
   const tableInfo =
     table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
-  /**
-   * We try to blur the line between models and tables for embedding users.
-   * this property will change the way icons are displayed in the data picker trigger,
-   * so we need to remove it. Treating it as a table.
-   */
-  const tableInfoWithTableIcon = tableInfo && {
-    ...tableInfo,
-    isModel: false,
-  };
   const pickerInfo = table != null ? Lib.pickerInfo(query, table) : undefined;
   const { data: card } = useGetCardQuery(
     pickerInfo?.cardId != null ? { id: pickerInfo.cardId } : skipToken,
@@ -249,7 +240,13 @@ function EmbeddingDataPicker({
         isInitiallyOpen={!table}
         triggerElement={
           <DataPickerTarget
-            tableInfo={tableInfoWithTableIcon}
+            /**
+             * We try to blur the line between models and tables for embedding users.
+             * this property will change the way icons are displayed in the data picker trigger,
+             * so we need to remove it. Treating it as a table.
+             */
+            getTableIcon={() => "table"}
+            tableInfo={tableInfo}
             placeholder={placeholder}
             isDisabled={isDisabled}
           />
@@ -285,6 +282,7 @@ type DataPickerTargetProps = {
   isDisabled?: boolean;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onAuxClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  getTableIcon?: (tableInfo: Lib.TableDisplayInfo) => IconName;
 };
 
 const DataPickerTarget = forwardRef(function DataPickerTarget(
@@ -294,6 +292,7 @@ const DataPickerTarget = forwardRef(function DataPickerTarget(
     isDisabled,
     onClick,
     onAuxClick,
+    getTableIcon = defaultGetTableIcon,
   }: DataPickerTargetProps,
   ref: Ref<HTMLButtonElement>,
 ) {
@@ -318,7 +317,7 @@ const DataPickerTarget = forwardRef(function DataPickerTarget(
   );
 });
 
-function getTableIcon(tableInfo: Lib.TableDisplayInfo): IconName {
+function defaultGetTableIcon(tableInfo: Lib.TableDisplayInfo): IconName {
   switch (true) {
     case tableInfo.isQuestion:
       return "table2";
