@@ -132,7 +132,14 @@ export function FormCreator({
       <SidebarContent>
         <FormContainer>
           {onClose && (
-            <Flex justify="flex-end" mt="1.5rem" mb="-3rem">
+            /* We want to avoid absolute positioning, so we use margin with z-index since 
+               it's covered by the next element with padding */
+            <Flex
+              justify="flex-end"
+              mt="1.5rem"
+              mb="-3rem"
+              style={{ zIndex: 1 }}
+            >
               <UnstyledButton onClick={onClose}>
                 <Icon name="close" size={18} />
               </UnstyledButton>
