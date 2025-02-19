@@ -1838,6 +1838,7 @@
       (with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card source-card {:dataset_query (mt/native-query
                                                                  {:query "SELECT CAST('9223372036854775808' AS DECIMAL) as NUMBER UNION ALL
+                                                                          SELECT CAST('0' AS DECIMAL) as NUMBER UNION ALL
                                                                           SELECT CAST('-9223372036854775809' as DECIMAL) as NUMBER"})}
                        :model/Card target-card {:dataset_query {:database (mt/id)
                                                                 :type     :query
@@ -1852,8 +1853,11 @@
                                                                             :card_id      (u/the-id target-card)
                                                                             :target       [:dimension [:field "NUMBER" {:base-type :type/Decimal}]]}]}]
           (is (=? {:status "completed"
+                   :data   {:rows [[3]]}}
+                  (client/client :get 202 (dashcard-url dashcard))))
+          (is (=? {:status "completed"
                    :data   {:rows [[2]]}}
-                  (client/client :get 202 (dashcard-url dashcard)))))))))
+                  (client/client :get 202 (dashcard-url dashcard {:params {:number ["-9223372036854775809", 0]}})))))))))
 
 (deftest format-export-middleware-test
   (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
