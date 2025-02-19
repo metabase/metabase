@@ -28,9 +28,12 @@ const updateQuestion = async (options: UpdateQuestionOptions) => {
   await onSave(updatedQuestion.setId(originalQuestion.id()));
 };
 
-export const createQuestion = async (options: CreateQuestionOptions) => {
-  const { details, question, onCreate, saveToCollectionId } = options;
-
+export const createQuestion = async ({
+  details,
+  question,
+  onCreate,
+  saveToCollectionId,
+}: CreateQuestionOptions) => {
   if (details.saveType !== "create") {
     return;
   }
@@ -56,16 +59,14 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
   return onCreate(newQuestion, { dashboardTabId: details.tab_id || undefined });
 };
 
-export async function submitQuestion(options: SubmitQuestionOptions) {
-  const {
-    originalQuestion,
-    details,
-    question,
-    onSave,
-    onCreate,
-    saveToCollectionId,
-  } = options;
-
+export async function submitQuestion({
+  originalQuestion,
+  details,
+  question,
+  onSave,
+  onCreate,
+  saveToCollectionId,
+}: SubmitQuestionOptions) {
   if (details.saveType === "overwrite" && originalQuestion) {
     await updateQuestion({
       originalQuestion,

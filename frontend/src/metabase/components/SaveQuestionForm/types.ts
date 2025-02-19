@@ -58,6 +58,6 @@ export type CreateQuestionOptions = {
 } & Pick<SaveQuestionProps, "saveToCollectionId">;
 
 export type SubmitQuestionOptions = CreateQuestionOptions & {
-  originalQuestion: Question | null;
+  originalQuestion?: Question | null;
   onSave: (question: Question) => Promise<void>;
 };
