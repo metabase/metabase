@@ -9,6 +9,12 @@ import type {
 } from "metabase-types/api";
 
 import {
+  EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
+  MBQL_CLAUSES,
+  OPERATOR_PRECEDENCE,
+  getExpressionName,
+} from "./config";
+import {
   isBooleanLiteral,
   isCaseOrIf,
   isDimension,
@@ -23,17 +29,11 @@ import {
 } from "./matchers";
 
 import {
-  EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
-  MBQL_CLAUSES,
-  OPERATOR_PRECEDENCE,
   formatDimensionName,
   formatMetricName,
   formatSegmentName,
   formatStringLiteral,
-  getExpressionName,
 } from "./index";
-
-export { EDITOR_QUOTES } from "./config";
 
 export type FormatOptions = {
   startRule: string;

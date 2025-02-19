@@ -1,11 +1,10 @@
-export * from "./config";
-
 import { FK_SYMBOL } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
 
 import { EDITOR_FK_SYMBOLS, EDITOR_QUOTES, getMBQLName } from "./config";
 
 export * from "./matchers";
+export * from "./config";
 
 // Return a copy with brackets (`[` and `]`) being escaped
 function escapeString(string: string) {
