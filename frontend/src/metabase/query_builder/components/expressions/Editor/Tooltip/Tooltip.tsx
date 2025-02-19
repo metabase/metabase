@@ -75,6 +75,13 @@ export function Tooltip({
     }
   }, [canShowBoth, completions.length]);
 
+  // HACK: The mantine Popover `positionDependencies` doesn't work with
+  // here for some reason. We need to rerender the tooltip whenever it renders
+  const [flipFlop, setFlipFlop] = useState(false);
+  useEffect(() => {
+    setFlipFlop(value => !value);
+  }, [doc, state.selection.main.head, completions.length]);
+
   return (
     <Popover
       opened
@@ -83,11 +90,7 @@ export function Tooltip({
       closeOnEscape
       middlewares={{ shift: false, flip: false, size: true }}
       floatingStrategy="fixed"
-      positionDependencies={[
-        doc,
-        state.selection.main.head,
-        completions.length,
-      ]}
+      positionDependencies={[flipFlop]}
     >
       <Popover.Target>
         <div />
