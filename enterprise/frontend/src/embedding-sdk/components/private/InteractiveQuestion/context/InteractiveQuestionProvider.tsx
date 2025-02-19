@@ -131,9 +131,7 @@ export const InteractiveQuestionProvider = ({
 
   const questionContext: InteractiveQuestionContextType = {
     originalId: initialQuestionId,
-    isQuestionLoading:
-      isQuestionLoading ||
-      (initialQuestionId !== undefined && isLoadingValidatedId),
+    isQuestionLoading: isQuestionLoading || isLoadingValidatedId,
     isQueryRunning,
     resetQuestion: loadAndQueryQuestion,
     onReset: loadAndQueryQuestion,
