@@ -667,7 +667,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     testDecimalFilters();
   });
 
-  it("query builder+ native query + variables", () => {
+  it("query builder + native query + variables", () => {
     function setupQuestion({
       sourceQuestionDetails,
     }: {
