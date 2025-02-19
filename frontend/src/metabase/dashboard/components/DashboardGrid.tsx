@@ -31,6 +31,7 @@ import {
 import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
+import { Flex } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
@@ -72,10 +73,9 @@ import { getDashcardDataMap } from "../selectors";
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
 import DashCardS from "./DashCard/DashCard.module.css";
-import {
-  DashboardCardContainer,
-  DashboardGridContainer,
-} from "./DashboardGrid.styled";
+import { FIXED_WIDTH } from "./Dashboard/Dashboard.styled";
+import S from "./DashboardGrid.module.css";
+import { DashboardCardContainer } from "./DashboardGrid.styled";
 import { GridLayout } from "./grid/GridLayout";
 
 type GridBreakpoint = "desktop" | "mobile";
@@ -663,15 +663,22 @@ class DashboardGridInner extends Component<
   render() {
     const { dashboard, width, forwardedRef } = this.props;
     return (
-      <DashboardGridContainer
+      <Flex
+        align="center"
+        justify="center"
+        className={cx(S.DashboardGridContainer, {
+          [S.isFixedWidth]: dashboard?.width === "fixed",
+        })}
         ref={forwardedRef}
         data-testid="dashboard-grid"
-        isFixedWidth={dashboard?.width === "fixed"}
+        style={{
+          "--dashboard-fixed-width": FIXED_WIDTH,
+        }}
       >
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderAddSeriesModal()}
         {this.renderReplaceCardModal()}
-      </DashboardGridContainer>
+      </Flex>
     );
   }
 }
