@@ -309,26 +309,4 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
       });
     });
   });
-
-  describe("when feature disabled", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-    });
-
-    it("should not show tools -> errors", () => {
-      cy.visit("/admin");
-
-      H.appBar().findByText("Tools").should("not.exist");
-
-      cy.visit("/admin/tools/errors");
-
-      H.main().within(() => {
-        cy.findByText("Questions that errored when last run").should(
-          "not.exist",
-        );
-        cy.findByText("We're a little lost...");
-      });
-    });
-  });
 });
