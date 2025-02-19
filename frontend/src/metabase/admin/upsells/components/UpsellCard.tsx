@@ -2,7 +2,10 @@ import cx from "classnames";
 import { useMount } from "react-use";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
+
+import { UPGRADE_URL } from "../constants";
 
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
@@ -10,17 +13,7 @@ import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
-export type UpsellCardProps = {
-  title: string;
-  buttonText: string;
-  buttonLink: string;
-  campaign: string;
-  source: string;
-  illustrationSrc?: string;
-  children: React.ReactNode;
-  large?: boolean;
-  style?: React.CSSProperties;
-} & (
+type CardWidthProps =
   | {
       maxWidth?: never;
       fullWidth?: boolean;
@@ -28,8 +21,29 @@ export type UpsellCardProps = {
   | {
       maxWidth?: number;
       fullWidth?: never;
+    };
+
+type CardLinkProps =
+  | {
+      buttonLink: string;
+      internalLink?: never;
     }
-);
+  | {
+      internalLink: string;
+      buttonLink?: never;
+    };
+
+export type UpsellCardProps = {
+  title: string;
+  buttonText: string;
+  campaign: string;
+  source: string;
+  illustrationSrc?: string;
+  children: React.ReactNode;
+  large?: boolean;
+  style?: React.CSSProperties;
+} & CardWidthProps &
+  CardLinkProps;
 
 export const _UpsellCard: React.FC<UpsellCardProps> = ({
   title,
@@ -38,6 +52,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   campaign,
   source,
   illustrationSrc,
+  internalLink,
   children,
   fullWidth,
   maxWidth,
@@ -45,7 +60,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   ...props
 }: UpsellCardProps) => {
   const url = useUpsellLink({
-    url: buttonLink,
+    url: buttonLink ?? UPGRADE_URL,
     campaign,
     source,
   });
@@ -81,15 +96,24 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
           <Text lh="1rem" px="1rem">
             {children}
           </Text>
-          <Box
-            component={ExternalLink}
-            onClickCapture={() => trackUpsellClicked({ source, campaign })}
-            href={url}
-            className={S.UpsellCTALink}
-            mx="md"
-            mb="lg"
-          >
-            {buttonText}
+          <Box mx="md" mb="lg">
+            {buttonLink ? (
+              <ExternalLink
+                onClickCapture={() => trackUpsellClicked({ source, campaign })}
+                href={url}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </ExternalLink>
+            ) : (
+              <Link
+                onClickCapture={() => trackUpsellClicked({ source, campaign })}
+                to={internalLink as string}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </Link>
+            )}
           </Box>
         </Stack>
       </Stack>
