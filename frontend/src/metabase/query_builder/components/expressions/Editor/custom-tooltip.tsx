@@ -11,6 +11,7 @@ import {
 } from "@codemirror/view";
 import {
   type KeyboardEvent,
+  type FocusEvent as ReactFocusEvent,
   type ReactNode,
   type RefObject,
   useCallback,
@@ -49,28 +50,29 @@ export function useCustomTooltip({
   const [hasFocus, setHasFocus] = useState(false);
 
   const handleFocus = useCallback(() => setHasFocus(true), []);
-  const handleBlur = useCallback(() => setHasFocus(false), []);
+  const handleBlur = useCallback((evt: FocusEvent | ReactFocusEvent) => {
+    // Ignore blur events when they target the tooltip element
+    // el is null switching tabs
+    const el = evt.relatedTarget as HTMLElement | null;
+
+    if (
+      el === null ||
+      tooltipRef.current === el ||
+      tooltipRef.current?.contains(el) ||
+      el?.contains(tooltipRef.current)
+    ) {
+      return;
+    }
+
+    setHasFocus(false);
+  }, []);
 
   const extensions = useMemo(
     () => [
       tooltip(element, getPosition),
       EditorView.domEventHandlers({
         focus: handleFocus,
-        blur(evt) {
-          evt.preventDefault();
-          evt.stopPropagation();
-
-          const el = evt.relatedTarget as HTMLElement | null;
-          if (
-            tooltipRef.current === el ||
-            tooltipRef.current?.contains(el) ||
-            el?.contains(tooltipRef.current)
-          ) {
-            return;
-          }
-
-          handleBlur();
-        },
+        blur: handleBlur,
       }),
       EditorView.updateListener.of(update => setUpdate(update)),
     ],
