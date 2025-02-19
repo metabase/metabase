@@ -1,3 +1,4 @@
+import type { EditorState } from "@codemirror/state";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
@@ -7,9 +8,12 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
+import type { Shortcut } from "metabase-lib/v1/expressions/complete";
+import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 import { format } from "metabase-lib/v1/expressions/format";
 import { processSource } from "metabase-lib/v1/expressions/process";
+import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
@@ -17,6 +21,8 @@ import type { Expression } from "metabase-types/api";
 import type { ClauseType, StartRule } from "../types";
 
 import S from "./Editor.module.css";
+import { Tooltip } from "./Tooltip";
+import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
 
 type EditorProps<S extends StartRule> = {
@@ -34,7 +40,10 @@ type EditorProps<S extends StartRule> = {
   onChange: (clause: ClauseType<S> | null) => void;
   onCommit: (clause: ClauseType<S> | null) => void;
   onError: (error: ErrorWithMessage | null) => void;
+  shortcuts?: Shortcut[];
 };
+
+const DEFAULT_SHORTCUTS: Shortcut[] = [];
 
 export function Editor<S extends StartRule = "expression">(
   props: EditorProps<S>,
@@ -49,6 +58,7 @@ export function Editor<S extends StartRule = "expression">(
     readOnly,
     error,
     reportTimezone,
+    shortcuts = DEFAULT_SHORTCUTS,
   } = props;
 
   const ref = useRef<ReactCodeMirrorRef>(null);
@@ -56,6 +66,19 @@ export function Editor<S extends StartRule = "expression">(
 
   const { source, onSourceChange, onChange, onCommit, hasChanges } =
     useExpression({ ...props, metadata });
+
+  const [customTooltip, portal] = useCustomTooltip({
+    getPosition: getTooltipPosition,
+    render: props => (
+      <Tooltip
+        query={query}
+        stageIndex={stageIndex}
+        metadata={metadata}
+        reportTimezone={reportTimezone}
+        {...props}
+      />
+    ),
+  });
 
   const extensions = useExtensions({
     startRule,
@@ -66,6 +89,8 @@ export function Editor<S extends StartRule = "expression">(
     onCommit,
     reportTimezone,
     metadata,
+    extensions: [customTooltip],
+    shortcuts,
   });
 
   const handleBlur = useCallback(() => {
@@ -92,6 +117,7 @@ export function Editor<S extends StartRule = "expression">(
         />
       </div>
       {error && hasChanges && <Box className={S.error}>{error.message}</Box>}
+      {portal}
     </>
   );
 }
@@ -230,4 +256,21 @@ function useExpression<S extends StartRule = "expression">({
     onCommit: handleCommit,
     hasChanges,
   };
+}
+
+function getTooltipPosition(state: EditorState) {
+  const pos = state.selection.main.head;
+  const source = state.doc.toString();
+  let token = tokenAtPos(source, pos);
+  if (
+    pos > 0 &&
+    token &&
+    token.type === TOKEN.Operator &&
+    (token.op === "," || token.op === "(")
+  ) {
+    // when we're `,` or `(`, return the previous token instead
+    token = tokenAtPos(source, pos - 1);
+  }
+
+  return token?.start ?? pos;
 }

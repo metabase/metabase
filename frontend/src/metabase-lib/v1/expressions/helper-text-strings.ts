@@ -1217,3 +1217,8 @@ export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
     ? `questions/query-builder/expressions/${docsPage}`
     : "questions/query-builder/expressions";
 };
+
+export const getFunctionByStructure = (structure: string) =>
+  HELPER_TEXT_STRINGS.find(
+    h => h.structure.toLowerCase() === structure.toLowerCase(),
+  )?.name;

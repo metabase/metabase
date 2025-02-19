@@ -1,11 +1,4 @@
-import { createMockMetadata } from "__support__/metadata";
-import { screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
-import {
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { screen } from "@testing-library/react";
 
 import type { SetupOpts } from "./setup";
 import { setup as baseSetup } from "./setup";
@@ -15,14 +8,12 @@ async function setup(opts: SetupOpts) {
 }
 
 describe("ExpressionEditorHelpText (EE without token)", () => {
-  const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
-  const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
-
   describe("Metabase links", () => {
-    const helpText = getHelpText("concat", database, "UTC");
-
     it("should show a help link when `show-metabase-links: true`", async () => {
-      await setup({ helpText, showMetabaseLinks: true });
+      await setup({
+        enclosingFunction: { name: "concat" },
+        showMetabaseLinks: true,
+      });
 
       expect(
         screen.getByRole("img", { name: "reference icon" }),
@@ -31,7 +22,10 @@ describe("ExpressionEditorHelpText (EE without token)", () => {
     });
 
     it("should show a help link when `show-metabase-links: false`", async () => {
-      await setup({ helpText, showMetabaseLinks: false });
+      await setup({
+        enclosingFunction: { name: "concat" },
+        showMetabaseLinks: false,
+      });
 
       expect(
         screen.getByRole("img", { name: "reference icon" }),

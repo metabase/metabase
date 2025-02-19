@@ -1,47 +1,43 @@
-import { createMockMetadata } from "__support__/metadata";
-import { getBrokenUpTextMatcher, screen, within } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
-import {
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { screen, within } from "@testing-library/react";
+
+import { getBrokenUpTextMatcher } from "__support__/ui";
 
 import { setup } from "./setup";
 
-describe("ExpressionEditorHelpText (OSS)", () => {
-  const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
-  const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
-
+describe("HelpText (OSS)", () => {
   it("should render expression function info, example and documentation link", async () => {
-    await setup({ helpText: getHelpText("datetime-diff", database, "UTC") });
+    await setup({
+      enclosingFunction: {
+        name: "concat",
+      },
+    });
 
     expect(
-      screen.getByText('datetimeDiff([Created At], [Shipped At], "month")'),
+      screen.getByText('concat([Last Name], ", ", [First Name])'),
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(
-        getBrokenUpTextMatcher("datetimeDiff(datetime1, datetime2, unit)"),
-      ),
+      screen.getByText(getBrokenUpTextMatcher("concat(value1, value2, …)")),
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(
-        "Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.",
-      ),
+      screen.getByText("Combine two or more strings of text together."),
     ).toBeInTheDocument();
 
     const link = screen.getByRole("link");
     expect(link).toBeInTheDocument();
     expect(link).toHaveProperty(
       "href",
-      "https://www.metabase.com/docs/latest/questions/query-builder/expressions/datetimediff.html",
+      "https://www.metabase.com/docs/latest/questions/query-builder/expressions/concat.html",
     );
   });
 
   it("should handle expression function without arguments", async () => {
-    await setup({ helpText: getHelpText("cum-count", database, "UTC") });
+    await setup({
+      enclosingFunction: {
+        name: "cum-count",
+      },
+    });
 
     expect(screen.getAllByText("CumulativeCount")).toHaveLength(2);
 
@@ -58,24 +54,33 @@ describe("ExpressionEditorHelpText (OSS)", () => {
   });
 
   it("should render function arguments", async () => {
-    const helpText = getHelpText("concat", database, "UTC");
-    await setup({ helpText });
+    const { helpText } = await setup({
+      enclosingFunction: {
+        name: "concat",
+      },
+    });
 
     const argumentsBlock = screen.getByTestId(
       "expression-helper-popover-arguments",
     );
 
     helpText?.args?.forEach(({ name, description }) => {
-      expect(within(argumentsBlock).getByText(name)).toBeInTheDocument();
+      const expectedName = name === "…" ? "…" : name;
+      expect(
+        within(argumentsBlock).getByText(expectedName),
+      ).toBeInTheDocument();
       expect(within(argumentsBlock).getByText(description)).toBeInTheDocument();
     });
   });
 
   describe("Metabase links", () => {
-    const helpText = getHelpText("concat", database, "UTC");
-
     it("should show a help link when `show-metabase-links: true`", async () => {
-      await setup({ helpText, showMetabaseLinks: true });
+      await setup({
+        enclosingFunction: {
+          name: "concat",
+        },
+        showMetabaseLinks: true,
+      });
 
       expect(
         screen.getByRole("img", { name: "reference icon" }),
@@ -84,7 +89,12 @@ describe("ExpressionEditorHelpText (OSS)", () => {
     });
 
     it("should show a help link when `show-metabase-links: false`", async () => {
-      await setup({ helpText, showMetabaseLinks: false });
+      await setup({
+        enclosingFunction: {
+          name: "concat",
+        },
+        showMetabaseLinks: false,
+      });
 
       expect(
         screen.getByRole("img", { name: "reference icon" }),

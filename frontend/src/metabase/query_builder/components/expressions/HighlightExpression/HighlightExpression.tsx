@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import S from "./HighlightExpression.module.css";
-import { highlight } from "./util";
+import { highlight } from "./utils";
 
 type HighlightExpressionProps = {
   expression: string;
