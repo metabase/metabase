@@ -318,7 +318,7 @@ describe("admin > tools", { tags: "@smoke" }, () => {
     H.setTokenFeatures("all");
   });
 
-  it("should show either the erroring questions or the upsell (based on the `audit_app` feature flad)", () => {
+  it("should show either the erroring questions or the upsell (based on the `audit_app` feature flag)", () => {
     cy.log(
       "Enable model persistence in order to have multiple tabs/routes in tools",
     );
@@ -345,7 +345,7 @@ describe("admin > tools", { tags: "@smoke" }, () => {
     H.deleteToken();
     cy.visit("/admin/tools");
 
-    cy.log("Redirects to the erroring question again");
+    cy.log("Redirects to the erroring questions again");
     cy.findByRole("heading", {
       name: "Troubleshoot faster",
     }).should("be.visible");
