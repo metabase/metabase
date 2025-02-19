@@ -174,7 +174,7 @@ export function FormCreator({
   });
 
   return (
-    <SidebarContent title={t`Action parameters`}>
+    <SidebarContent title={t`Action parameters`} onClose={onClose}>
       <FormContainer>
         <Description />
         {showWarning && (
