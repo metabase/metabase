@@ -1,4 +1,4 @@
-(ns shell
+(ns mage.shell
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str])
@@ -9,7 +9,7 @@
 
 (def ^String project-root-directory
   "Root directory of the Metabase repo."
-  (.. (java.io.File. (.toURI (io/resource "util.clj"))) ; this file
+  (.. (java.io.File. (.toURI (io/resource "mage/shell.clj"))) ; this file
       getParentFile ; /Users/camsaul/metabase/bin/mage
       getParentFile ; /Users/camsaul/metabase/bin
       getParentFile ; /Users/camsaul/metabase

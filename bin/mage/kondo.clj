@@ -1,8 +1,8 @@
-(ns kondo
+(ns mage.kondo
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [shell]))
+   [mage.shell :as shell]))
 
 (set! *warn-on-reflection* true)
 
@@ -50,9 +50,7 @@
   [args]
   (copy-configs-if-needed!)
   (clear-cache!)
-  (let [command           (if (empty? args)
-                            ["-M:kondo:kondo/all"]
-                            (list* "-M:kondo" args))
+  (let [command           (if (empty? args) ["-M:kondo:kondo/all"] (list* "-M:kondo" args))
         {exit-code :exit} (apply shell/sh* "clojure" command)]
     (System/exit exit-code)))
 
@@ -63,9 +61,8 @@
     ./bin/mage.sh kondo # run Kondo against everything
 
     ./bin/mage.sh kondo --lint src/metabase/my_file.clj # run against a specific file"
-  [_m]
-  (let [[_cmd & args] *command-line-args*]
-    (kondo* args)))
+  [cli-args]
+  (kondo* cli-args))
 
 (defn- updated-files
   "Sequence of filenames that have changes in Git relative to `diff-target`."
@@ -95,6 +92,5 @@
 
     # run Kondo on files with changes relative to master
     ./bin/mage.sh kondo-updated master"
-  [_m]
-  (let [[_cmd diff-target] *command-line-args*]
-    (kondo-updated* diff-target)))
+  [cli-args]
+  (kondo-updated* (first cli-args)))

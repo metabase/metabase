@@ -5,16 +5,18 @@
    [bask.colors :as c]
    [clojure.string :as str]
    [clojure.tools.cli :refer [parse-opts]]
-   [selmer.parser :refer [<<]]
    [table.core :as t]))
 
-(defn tbl [x]
+(set! *warn-on-reflection* true)
+
+(defn tbl
   "Prints a table in unicode 3d style."
+  [x]
   (t/table x
            :fields [:short :long :msg :default :options :id :prompt]
            :style :unicode-3d))
 
-(defn- ->cli-tools-option [{:keys [msg short long id default parse-fn update-fn validate] :as opt}]
+(defn- ->cli-tools-option [{:keys [msg short long id default parse-fn update-fn validate] :as _opt}]
   (vec (concat [short long msg]
                (when id [:id id])
                (when default [:default default])
@@ -22,7 +24,7 @@
                (when update-fn [:update-fn update-fn])
                (when validate [:validate validate]))))
 
-(defn- check-print-help [args current-task options]
+(defn- check-print-help [current-task options args]
   (when (or (get (set args) "-h") (get (set args) "--help"))
     (println (c/green (str "  " (:doc current-task))))
     (doseq [opt options]
@@ -42,11 +44,12 @@
         (println "\n" cmd "\n -" (c/magenta effect))))
     (System/exit 0)))
 
-(defn try-eval [maybe-code-str]
-  (try (eval maybe-code-str)
+(defn- try-eval [maybe-code-str]
+  (try #_:clj-kondo/ignore
+   (eval maybe-code-str)
        (catch Exception _ ::nope)))
 
-(defn ->ask [{:keys [id title prompt choices] :as _option}]
+(defn- ->ask [{:keys [id title prompt choices] :as _option}]
   {:id id
    :msg title
    :type prompt
@@ -55,7 +58,7 @@
               (not= ::nope (try-eval choices)) (try-eval choices)
               :else choices)})
 
-(defn install-if-needed! [program install-fn]
+(defn- install-if-needed! [program install-fn]
   (letfn [(can-run? [program] (= 0 (:exit (try
                                             (shell {:out nil} (str "command -v " program))
                                             (catch Exception _ {:exit 1})))))]
@@ -64,7 +67,7 @@
       (install-fn)
       (println (str program " should be installed now. Thanks!")))))
 
-(defn ask-unknown! [cli-options all-options]
+(defn- ask-unknown! [cli-options all-options]
   (let [answered-ids (set (keys cli-options))
         unanswered (remove #(or (nil? (:prompt %)) (answered-ids (:id %))) all-options)
         to-ask (mapv ->ask unanswered)]
@@ -77,17 +80,17 @@
 (defn- menu-cli
   "Gets required cli options through a menu when not provided by users."
   [current-task opts args]
-  (check-print-help args current-task opts)
+  (check-print-help current-task opts args)
   (let [options (mapv ->cli-tools-option opts)
         {:keys [error summary arguments] parsed-opts :options} (try (parse-opts args options)
                                                                     (catch Throwable _t {:error "parse-opts threw."}))
         _ (when error (println "WARNING:" "args, " args  "options," options " | " error "|" summary))
-        required-opts (filter :prompt options)
+        required-opts (filter :required opts)
         missing-opts (remove (fn [req-opt] (contains? parsed-opts (:id req-opt))) required-opts)
         missing-and-unaskable (remove #(-> % :options seq) missing-opts)
         missing-and-askable (filter #(-> % :options seq) missing-opts)
         _ (when (seq missing-and-unaskable)
-            (println (c/red "Missing required option(s) without a menu-selectable value!"))
+            (println (c/red "Missing required option(s):"))
             (tbl options)
             (System/exit 1))
         asked-opts (into {} (for [hybrid-option missing-and-askable]
@@ -97,16 +100,10 @@
     ;; (println out)
     out))
 
-(defn add-parsing-for-multi [option]
+(defn- add-parsing-for-multi [option]
   (if (= :multi (:prompt option))
     (assoc option :parse-fn #(str/split % #","))
     option))
-
-(def Task
-  [:map
-   [:doc :string]
-   [:requires {:optional true} :any]
-   [:options {:optional true} [:sequential [:map]]]])
 
 (defn menu!
   "Options have keys that map to clojure.tools.cli options via [[->cli-tools-option]].

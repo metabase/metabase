@@ -7,26 +7,54 @@
          table/table    {:mvn/version "0.5.0"}}
  :tasks {:requires [[clojure.string :as str]
                     [bask.colors :as c]
-                    [mage.format :as format]
-                    [mage.util :as u]
-                    [mage.cli :as cli]]
+                    [mage.kondo :as kondo]
+                    [mage.cli :as cli]
+                    [mage.util :as u]]
 
-         cljfmt-staged {:doc      "Runs cljfmt on staged files"
-                        :examples [["bb cljfmt-staged" "Format staged files"]]
-                        :task     (do
-                                    (prn "?")
-                                    (cli/menu! (current-task)) (format/staged))}
+         cljfmt-staged
+         {:doc      "Runs cljfmt on staged files"
+          :requires [[mage.format :as format]]
+          :examples [["bb cljfmt-staged" "Format staged files"]]
+          :task     (do (cli/menu! (current-task)) (format/staged))}
 
-         cljfmt-all {:doc      "Runs cljfmt on all (clojure) files"
-                     :requires [[mage.format :as format]]
-                     :examples [["bb cljfmt-all" "Format all files"]]
-                     :task     (do (cli/menu! (current-task)) (format/all))}
+         cljfmt-file
+         {:doc      "Runs cljfmt on the given files/directories"
+          :requires [[mage.format :as format]]
+          :examples [["bb format-file src/metabase/events.clj" "Format events.clj"]
+                     ["bb format-file src" "Format all files in src"]]
+          :task     (format/files (:args (cli/menu! (current-task))))}
 
-         cljfmt-file {:doc      "Runs cljfmt on the given files/directories"
-                      :requires [[mage.format :as format]]
-                      :examples [["bb format-file src/metabase/events.clj" "Format events.clj"]
-                                 ["bb format-file src" "Format all files in src"]]
-                      :task     (format/files (:args (cli/menu! (current-task))))}
+         cljfmt-all
+         {:doc      "Runs cljfmt on all (clojure) files"
+          :requires [[mage.format :as format]]
+          :examples [["bb cljfmt-all" "Format all files"]]
+          :task     (do (cli/menu! (current-task)) (format/all))}
+
+
+         kondo
+         {:doc "Runs Kondo against a file, directory, or everything we usually lint."
+          :examples [["bb kondo" "run Kondo against everything we usually lint"]
+                     ["bb kondo --lint src/metabase/db.clj" "run Kondo against a file"]
+                     ["bb kondo --lint src/metabase/api/macros" "run Kondo against a directory"]]
+
+          :requires [[mage.kondo :as kondo]]
+          :task (do (cli/menu! (current-task))
+                    (kondo/kondo *command-line-args*))}
+
+         kondo-updated
+         {:doc "Runs kondo against files that have been changed relative to a Git ref (default `HEAD`)"
+          :examples [["bb kondo-updated" "run Kondo on files with changes relative to HEAD"]
+                     ["bb kondo-updated master" "run Kondo on files with changes relative to master"]]
+          :task (do (cli/menu! (current-task))
+                    (kondo/kondo-updated *command-line-args*))}
+
+         start-db
+         {:doc "Start a db on a default port in docker"
+          :requires [[mage.start-db :as start-db]]
+          :examples [["bb start-db postgres latest" "start the latest postgres db we support"]
+                     ["bb start-db mysql oldest" "start the oldest mysql db we support"]]
+          :task (do (cli/menu! (current-task))
+                    (start-db/start-db *command-line-args*))}
 
          watch-ci
          {:doc  "Prints the command to watch your CI build for a specific branch."
@@ -34,21 +62,14 @@
                  (str/join "\n" ["To watch your branch, cd to metabase, switch to your branch, and run:"
                                  "" (c/green "gh pr checks --watch --required && say done") ""]))}
 
-         -install-autotab
+         install-autotab
          {:doc      "Prints shell code to autocomplete tasks using bb.
                         Note: for fish shell please make sure ~/.config/fish/completions exists."
-          :examples [["bb install-autotab --shell bash >> ~/.bashrc" "Bash ^"]
-                     ["bb install-autotab --shell zsh >> ~/.zshrc" "Zsh ^"]
-                     ["bb install-autotab --shell fish >> ~/.config/fish/completions/bb.fish" "Fish ^"]]
-          :options  [{:id      :shell-type
-                      :long    "--shell SHELL"
-                      :title   "What kind of shell?"
-                      :choices ["zsh" "bash" "fish"]
-                      :prompt  :select}]
-          :task     (let [{:keys [shell-type] :as x} (cli/menu! (current-task))]
-                      (println "\nPlease add this to your shell's rc file:")
-                      (println (str "\n# --- bb autocomplete follows ---\n"
-                                    (slurp (str "./bin/mage/" shell-type "_completion.sh")))))}
+          :examples [["bb install-autotab" "Shows a link to instructions to make autocomplete work."]]
+          :task     (do
+                      (cli/menu! (current-task))
+                      (println "\nPlease follow these instructions:")
+                      (println "  https://book.babashka.org/#_terminal_tab_completion"))}
 
          nrepl
          {:doc      "Starts the babashka nrepl server for bb tasks development."

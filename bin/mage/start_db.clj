@@ -1,18 +1,16 @@
-(ns start-db
+(ns mage.start-db
   (:require
+   #_:clj-kondo/ignore
    [babashka.http-client :as http]
    [cheshire.core :as json]
-   [shell]))
+   [mage.shell :as shell]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private ports
-  {:mariadb  {:oldest 3306
-              :latest 3307}
-   :mysql    {:oldest 3308
-              :latest 3309}
-   :postgres {:oldest 5432
-              :latest 5433}})
+  {:mariadb  {:oldest 3306 :latest 3307}
+   :mysql    {:oldest 3308 :latest 3309}
+   :postgres {:oldest 5432 :latest 5433}})
 
 (def ^:private eol-urls
   {:postgres "https://endoflife.date/api/postgresql.json"})
@@ -83,10 +81,10 @@
       (printf "Use the %s alias in deps.edn to use this DB.\n"
               deps-edn-alias))))
 
-(defn usage []
+(defn- usage []
   (println "Usage:")
   (println)
-  (println "  ./bin/mage.sh start-db <db> <version>")
+  (println "  bb start-db <db> <version>")
   (println)
   (println "Available DBs:")
   (println)
@@ -105,7 +103,9 @@
             (format "Invalid port: %s" (pr-str port)))
     (start-db! db version resolved-version port)))
 
-(defn start-db [{:keys [args]}]
-  (if-not (= (count args) 2)
+(defn start-db
+  "Starts a db: type + version"
+  [cli-args]
+  (if-not (= (count cli-args) 2)
     (usage)
-    (start-db* (first args) (second args))))
+    (start-db* (first cli-args) (second cli-args))))
