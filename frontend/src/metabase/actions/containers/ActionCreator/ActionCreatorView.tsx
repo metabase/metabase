@@ -18,7 +18,6 @@ import {
 } from "metabase/actions/containers/ActionCreator/InlineDataReference";
 import Button from "metabase/core/components/Button";
 import { isNotNull } from "metabase/lib/types";
-import { Icon, UnstyledButton } from "metabase/ui";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
 import InlineActionSettings, {
@@ -127,29 +126,24 @@ export default function ActionCreatorView({
               formSettings={formSettings}
               isEditable={isEditable && canChangeFieldSettings}
               onChange={onChangeFormSettings}
+              onClose={onCloseModal}
             />
           ) : activeSideView === "dataReference" ? (
-            <DataReferenceInline onBack={closeSideView} />
+            <DataReferenceInline
+              onClose={onCloseModal}
+              onBack={closeSideView}
+            />
           ) : activeSideView === "actionSettings" ? (
             <InlineActionSettings
               action={action}
               formSettings={formSettings}
               isEditable={isEditable}
               onChangeFormSettings={onChangeFormSettings}
-              onClose={closeSideView}
+              onClose={onCloseModal}
+              onBack={closeSideView}
             />
           ) : null}
         </ModalRight>
-
-        <UnstyledButton
-          pos="absolute"
-          right="1.5rem"
-          top="1.5rem"
-          style={{ zIndex: 5 }}
-          onClick={onCloseModal}
-        >
-          <Icon name="close" size="18px" />
-        </UnstyledButton>
       </ActionCreatorBodyContainer>
     </ModalRoot>
   );
