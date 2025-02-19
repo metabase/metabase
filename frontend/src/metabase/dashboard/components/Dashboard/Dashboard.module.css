@@ -72,3 +72,10 @@
     margin-top: 8px;
   }
 }
+
+.FixedWidthContainer {
+  &.isFixedWidth {
+    margin: 0 auto;
+    max-width: var(--dashboard-fixed-width);
+  }
+}

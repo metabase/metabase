@@ -1,5 +1,3 @@
-import { css } from "@emotion/react";
-import styled from "@emotion/styled";
 import cx from "classnames";
 
 import {
@@ -9,7 +7,7 @@ import {
 import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
-import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import { Box, type BoxProps } from "metabase/ui";
 
 import S from "./Dashboard.module.css";
 
@@ -47,21 +45,27 @@ export const DashboardLoadingAndErrorWrapper = ({
 };
 
 export const FIXED_WIDTH = "1048px";
-export const FixedWidthContainer = styled.div<{
-  isFixedWidth: boolean;
-}>`
-  width: 100%;
+export const FixedWidthContainer = (
+  props: BoxProps & {
+    isFixedWidth: boolean;
+    children: React.ReactNode;
+    id?: string;
+  },
+) => {
+  const { isFixedWidth, className, ...rest } = props;
 
-  ${({ isFixedWidth }) =>
-    isFixedWidth &&
-    css`
-      margin: 0 auto;
-      max-width: ${FIXED_WIDTH};
-    `}
-
-  .${SAVING_DOM_IMAGE_CLASS} & {
-    legend {
-      top: -9px;
-    }
-  }
-`;
+  return (
+    <Box
+      w="100%"
+      className={cx(
+        S.FixedWidthContainer,
+        { [S.isFixedWidth]: isFixedWidth },
+        className,
+      )}
+      style={{
+        "--dashboard-fixed-width": FIXED_WIDTH,
+      }}
+      {...rest}
+    />
+  );
+};

@@ -19,7 +19,7 @@ import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 import DashboardS from "../Dashboard/Dashboard.module.css";
-import { FixedWidthContainer } from "../Dashboard/Dashboard.styled";
+import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
 import { DashboardParameterList } from "../DashboardParameterList";
 
 import S from "./DashboardParameterPanel.module.css";

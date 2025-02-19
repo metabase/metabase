@@ -54,7 +54,7 @@ import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
 
 import S from "./Dashboard.module.css";
-import { DashboardLoadingAndErrorWrapper } from "./Dashboard.styled";
+import { DashboardLoadingAndErrorWrapper } from "./DashboardComponents";
 import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
