@@ -43,6 +43,7 @@ export interface BaseBucketPickerPopoverProps {
   className?: string;
   classNames?: {
     root?: string;
+    triggerButton?: string;
     chevronDown?: string;
   };
 }
@@ -122,7 +123,7 @@ function _BaseBucketPickerPopover({
     >
       <Popover.Target>
         <TriggerButton
-          className={cx(classNames.root, className)}
+          className={cx(classNames.root, classNames.triggerButton, className)}
           aria-label={triggerLabel}
           data-testid="dimension-list-item-binning"
           onClick={event => {
