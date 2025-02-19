@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
 import Radio from "metabase/core/components/Radio";
+import { Stack } from "metabase/ui";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
   getComputedSettings,
@@ -18,7 +19,6 @@ import type { Widget } from "../types";
 
 import {
   ChartSettingsListContainer,
-  ChartSettingsMenu,
   SectionContainer,
 } from "./BaseChartSettings.styled";
 import { useChartSettingsSections } from "./hooks";
@@ -33,6 +33,7 @@ export const BaseChartSettings = ({
   widgets,
   chartSettings,
   transformedSeries,
+  ...stackProps
 }: BaseChartSettingsProps) => {
   const {
     chartSettingCurrentSection,
@@ -188,7 +189,7 @@ export const BaseChartSettings = ({
 
   return (
     <>
-      <ChartSettingsMenu data-testid="chartsettings-sidebar">
+      <Stack data-testid="chartsettings-sidebar" gap={0} {...stackProps}>
         {showSectionPicker && (
           <SectionContainer>
             <Radio
@@ -208,7 +209,7 @@ export const BaseChartSettings = ({
             extraWidgetProps={extraWidgetProps}
           />
         </ChartSettingsListContainer>
-      </ChartSettingsMenu>
+      </Stack>
       <ChartSettingsWidgetPopover
         anchor={popoverRef as HTMLElement}
         widgets={[styleWidget, formattingWidget].filter(
