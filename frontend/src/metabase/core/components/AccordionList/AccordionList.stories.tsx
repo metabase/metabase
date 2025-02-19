@@ -12,7 +12,7 @@ const SECTIONS = [
 ];
 
 export default {
-  title: "Core/AccordionList",
+  title: "Components/Ask Before Using/AccordionList",
   component: AccordionList,
 };
 

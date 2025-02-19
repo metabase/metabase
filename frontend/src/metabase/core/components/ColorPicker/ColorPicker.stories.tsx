@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 import ColorPicker from "./ColorPicker";
 
 export default {
-  title: "Core/ColorPicker",
+  title: "Components/ColorPicker",
   component: ColorPicker,
 };
 

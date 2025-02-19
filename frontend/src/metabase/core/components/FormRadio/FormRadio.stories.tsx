@@ -11,7 +11,7 @@ const TEST_OPTIONS = [
 ];
 
 export default {
-  title: "Core/FormRadio",
+  title: "Components/Ask Before Using/FormRadio",
   component: FormRadio,
 };
 

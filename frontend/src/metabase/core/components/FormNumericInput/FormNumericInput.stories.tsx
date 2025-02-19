@@ -5,7 +5,7 @@ import { Form, FormProvider } from "metabase/forms";
 import FormNumericInput from "./FormNumericInput";
 
 export default {
-  title: "Core/FormNumericInput",
+  title: "Components/Ask Before Using/FormNumericInput",
   component: FormNumericInput,
 };
 
