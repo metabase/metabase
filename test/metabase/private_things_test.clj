@@ -58,13 +58,15 @@
                   symb)))
         (symb->external-usages)))
 
-(defn privacy-report
-  "Writes privacy report into a file, then "
+(defn- privacy-report
+  "Writes privacy report into a file, which is used by the privacy-reporter.yml github action."
   [& _args]
   (when-let [ttsbp (things-that-should-be-private)]
     (spit "privacy_report.txt"
           (str (->> ttsbp
-                    (into ["# Things that should be private but aren't:"])
+                    (take 10)
+                    (map (fn [ns-name] (str "- `" ns-name "`")))
+                    (into ["# Top 10 things to make private:"])
                     (str/join "\n"))
                "\n"))))
 
