@@ -1,6 +1,6 @@
 import type { MouseEventHandler } from "react";
 
-import { Center, Icon, type IconName, Menu, Title } from "metabase/ui";
+import { Center, Icon, type IconName, Menu } from "metabase/ui";
 
 type CommonNotificationsMenuItemProps = {
   iconName: IconName;
@@ -24,9 +24,7 @@ export const CommonNotificationsMenuItem = ({
       }
       onClick={onClick}
     >
-      <Title order={4} c="inherit">
-        {title}
-      </Title>
+      {title}
     </Menu.Item>
   );
 };

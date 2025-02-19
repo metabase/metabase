@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from "__support__/ui";
-
 import type { DashboardAlertListItem } from "metabase/account/notifications/types";
 import type { Channel } from "metabase-types/api";
 import {

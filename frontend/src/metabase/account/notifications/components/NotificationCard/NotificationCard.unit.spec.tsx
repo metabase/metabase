@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 
+import { renderWithTheme } from "__support__/ui";
 import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
 import type { Notification } from "metabase-types/api";
 import {
@@ -25,7 +26,7 @@ describe("NotificationCard", () => {
     const alert = getQuestionAlertItem();
     const user = createMockUser();
 
-    render(
+    renderWithTheme(
       <NotificationCard
         listItem={alert}
         user={user}
@@ -48,7 +49,7 @@ describe("NotificationCard", () => {
     });
     const user = createMockUser();
 
-    render(
+    renderWithTheme(
       <NotificationCard
         listItem={alert}
         user={user}
@@ -72,7 +73,7 @@ describe("NotificationCard", () => {
     });
     const user = createMockUser();
 
-    render(
+    renderWithTheme(
       <NotificationCard
         listItem={alert}
         user={user}
@@ -95,7 +96,7 @@ describe("NotificationCard", () => {
     });
     const user = createMockUser();
 
-    render(
+    renderWithTheme(
       <NotificationCard
         listItem={alert}
         user={user}
@@ -116,7 +117,7 @@ describe("NotificationCard", () => {
     });
     const user = createMockUser({ id: 2 });
 
-    render(
+    renderWithTheme(
       <NotificationCard
         listItem={alert}
         user={user}
@@ -150,7 +151,7 @@ describe("NotificationCard", () => {
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
 
-    render(
+    renderWithTheme(
       <NotificationCard
         listItem={alert}
         user={user}
@@ -188,7 +189,7 @@ describe("NotificationCard", () => {
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
 
-    render(
+    renderWithTheme(
       <NotificationCard
         listItem={alert}
         user={creator}
@@ -209,7 +210,7 @@ describe("NotificationCard", () => {
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
 
-    render(
+    renderWithTheme(
       <NotificationCard
         listItem={alert}
         user={creator}
@@ -228,7 +229,7 @@ describe("NotificationCard", () => {
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
 
-    render(
+    renderWithTheme(
       <NotificationCard
         listItem={alert}
         user={creator}
@@ -261,7 +262,7 @@ describe("NotificationCard", () => {
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
 
-    render(
+    renderWithTheme(
       <NotificationCard
         listItem={alert}
         user={creator}

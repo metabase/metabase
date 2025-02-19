@@ -17,19 +17,19 @@ export const ChannelSettingsBlock = ({
   onRemoveChannel,
 }: ChannelSettingsBlockProps): JSX.Element => {
   return (
-    <Stack spacing="0.75rem" w="100%" data-testid="channel-block">
-      <Group position="apart" align="center">
-        <Group spacing="xs" align="center">
+    <Stack gap="0.75rem" w="100%" data-testid="channel-block">
+      <Group justify="space-between" align="center">
+        <Group gap="xs" align="center">
           <Icon name={iconName} />
           <Text className={CS.textShortLineHeight}>{title}</Text>
         </Group>
 
         <Button
           data-testid="remove-channel-button"
-          leftIcon={<Icon name="close" />}
+          leftSection={<Icon name="close" />}
           color="text-dark"
           variant="subtle"
-          compact
+          size="compact-md"
           onClick={onRemoveChannel}
         />
       </Group>

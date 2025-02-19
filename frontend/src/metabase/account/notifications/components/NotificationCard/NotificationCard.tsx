@@ -64,7 +64,7 @@ export const NotificationCard = ({
         </Link>
         <NotificationDescription>
           <NotificationMessage>
-            <Group spacing="0.75rem" align="center" c="text-medium">
+            <Group gap="0.75rem" align="center" c="text-medium">
               {enabledChannelsMap["channel/email"] && <Icon name="mail" />}
               {enabledChannelsMap["channel/slack"] && (
                 <Icon name="slack" size={14} />
@@ -72,7 +72,7 @@ export const NotificationCard = ({
               {enabledChannelsMap["channel/http"] && (
                 <Icon name="webhook" size={16} />
               )}
-              <Group spacing="0.25rem" align="center" c="text-medium">
+              <Group gap="0.25rem" align="center" c="text-medium">
                 {subscription && (
                   <span>{formatNotificationSchedule(subscription)}</span>
                 )}

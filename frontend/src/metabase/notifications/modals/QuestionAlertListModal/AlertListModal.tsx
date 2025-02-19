@@ -68,7 +68,7 @@ export const AlertListModal = ({
           <Modal.CloseButton />
         </Modal.Header>
         <Modal.Body p="2rem">
-          <Stack spacing="1rem" mb="2rem">
+          <Stack gap="1rem" mb="2rem">
             {sortedQuestionAlerts.map(alert => {
               const canEditAlert =
                 isAdmin ||

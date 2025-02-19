@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 
+import { renderWithTheme } from "__support__/ui";
 import { createMockAlert, createMockUser } from "metabase-types/api/mocks";
 
 import { NotificationList } from "./NotificationList";
@@ -10,7 +11,7 @@ describe("NotificationList", () => {
   it("should render items", () => {
     const pulse = createMockAlert({ name: "Pulse" });
 
-    render(
+    renderWithTheme(
       <NotificationList
         listItems={[{ item: pulse, type: "pulse" }]}
         user={mockUser}
@@ -25,7 +26,7 @@ describe("NotificationList", () => {
   });
 
   it("should render empty state when there are no items", () => {
-    render(
+    renderWithTheme(
       <NotificationList
         listItems={[]}
         user={mockUser}

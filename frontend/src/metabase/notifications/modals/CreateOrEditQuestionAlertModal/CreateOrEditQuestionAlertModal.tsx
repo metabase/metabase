@@ -261,7 +261,7 @@ export const CreateOrEditQuestionAlertModal = ({
           <Modal.CloseButton />
         </Modal.Header>
         <Modal.Body p="2.5rem">
-          <Stack spacing="2.5rem">
+          <Stack gap="2.5rem">
             <AlertModalSettingsBlock
               title={t`What do you want to be alerted about?`}
             >

@@ -204,9 +204,10 @@ const expectButtonInHeader = async ({
       `${DASHBOARD_EXPECTED_DATA_MAP[action].icon} icon`,
     ),
   );
+
   const { tooltip } = DASHBOARD_EXPECTED_DATA_MAP[action];
   if (tooltip) {
-    expect(screen.getByText(tooltip)).toBeInTheDocument();
+    expect(await screen.findByText(tooltip)).toBeInTheDocument();
   }
 };
 
@@ -249,7 +250,7 @@ const expectButtonsToExistInHeader = async ({
 
     const { tooltip } = DASHBOARD_EXPECTED_DATA_MAP[action];
     if (tooltip) {
-      expect(screen.getByText(tooltip)).toBeInTheDocument();
+      expect(await screen.findByText(tooltip)).toBeInTheDocument();
     }
   }
 };
