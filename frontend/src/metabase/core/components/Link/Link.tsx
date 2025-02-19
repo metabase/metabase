@@ -2,6 +2,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 
 import { LinkRoot } from "./Link.styled";
 import type { LinkProps } from "./types";
+import { Link_MaybeWithPreviewProps } from "./Link_MaybeWithPreview";
 
 const Link = ({
   to,
@@ -10,7 +11,7 @@ const Link = ({
   tooltip,
   variant,
   ...props
-}: LinkProps): JSX.Element => {
+}: Link_MaybeWithPreviewProps): JSX.Element => {
   const link = (
     <LinkRoot
       {...props}
@@ -31,7 +32,8 @@ const Link = ({
         }
       : tooltip;
 
-  return tooltip ? (
+  // disable tooltips for now since they visually conflict with HoverCard
+  return false && tooltip ? (
     <Tooltip {...tooltipProps}>
       <span>{link}</span>
     </Tooltip>
