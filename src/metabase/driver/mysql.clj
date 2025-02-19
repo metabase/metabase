@@ -421,10 +421,6 @@
 (defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (h2x/month expr))
 (defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (h2x/quarter expr))
 
-(defmethod sql.qp/date [:mysql :year]
-  [_ _ expr]
-  (temporal-cast (h2x/database-type expr) (make-date (h2x/year expr) 1)))
-
 (defmethod sql.qp/date [:mysql :day-of-week]
   [driver _unit expr]
   (sql.qp/adjust-day-of-week driver [:dayofweek expr]))
@@ -462,6 +458,10 @@
                                                         3)
                                                  2)
                                           (h2x/literal "-01")))))
+
+(defmethod sql.qp/date [:mysql :year]
+  [_ _ expr]
+  (temporal-cast (h2x/database-type expr) (make-date (h2x/year expr) 1)))
 
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
