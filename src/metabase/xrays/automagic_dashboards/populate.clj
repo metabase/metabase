@@ -379,10 +379,10 @@
          (assoc :parameters parameters)
          (cond->
           (not skip-titles?)
-          (add-text-card {:width                  grid-width
-                          :height                 group-heading-height
-                          :text                   (format "# %s" (:name dashboard))
-                          :visualization-settings {:dashcard.background false
-                                                   :text.align_vertical :bottom}}
-                         [offset 0]))
+           (add-text-card {:width                  grid-width
+                           :height                 group-heading-height
+                           :text                   (format "# %s" (:name dashboard))
+                           :visualization-settings {:dashcard.background false
+                                                    :text.align_vertical :bottom}}
+                          [offset 0]))
          (update :dashcards concat cards)))))

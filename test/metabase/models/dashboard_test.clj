@@ -140,7 +140,7 @@
 
   (testing "Adding a card_id creates a new ParameterCard"
     (mt/with-temp [:model/Card      {card-id :id}      {}
-                             :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
+                   :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
       (is (nil? (t2/select-one :model/ParameterCard :card_id card-id)))
       (t2/update! :model/Dashboard dashboard-id {:parameters [(merge default-parameter
                                                                      {:values_source_type    "card"
