@@ -14,6 +14,9 @@ import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import SidebarStyles from "./DashboardInfoSidebar.module.css";
+import { UserAvatar } from "metabase/components/UserAvatar";
+import { Pill } from "@mantine/core";
+import { getRelativeTime, getRelativeTimeAbbreviated } from "metabase/lib/time";
 
 export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
   const lastEditInfo = dashboard["last-edit-info"];
@@ -24,21 +27,38 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
 
   return (
     <>
-      <SidesheetCardSection title={t`Creator and last editor`}>
+      <SidesheetCardSection title={t`Created by`}>
         {creator && (
-          <Flex gap="sm" align="top">
-            <FixedSizeIcon name="ai" className={SidebarStyles.IconMargin} />
+          <Flex gap="sm" align="center">
+            {/* <FixedSizeIcon name="ai" className={SidebarStyles.IconMargin} />
             <Text>
               {c(
                 "Describes when a dashboard was created. {0} is a date/time and {1} is a person's name",
               ).jt`${(
                 <DateTime unit="day" value={createdAt} key="date" />
               )} by ${getUserName(creator)}`}
-            </Text>
+            </Text> */}
+            <UserAvatar user={creator} />
+            <Flex direction="column" justify="center">
+              <Flex gap="0.5rem">
+                <Text fw="bold">{`${creator.first_name} ${creator.last_name?.[0]}`}</Text>{" "}
+                {creator.is_superuser && (
+                  <Pill
+                    size="sm"
+                    c="var(--mb-base-color-octopus-80)"
+                    bg="var(--mb-base-color-octopus-20)"
+                  >
+                    Admin
+                  </Pill>
+                )}
+              </Flex>
+              <Text>{creator.email}</Text>
+            </Flex>
+            <Text>{getRelativeTimeAbbreviated(createdAt)}</Text>
           </Flex>
         )}
 
-        {lastEditInfo && (
+        {/* {lastEditInfo && (
           <Flex gap="sm" align="top">
             <FixedSizeIcon name="pencil" className={SidebarStyles.IconMargin} />
             <Text>
@@ -53,7 +73,7 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
               )} by ${getUserName(lastEditInfo)}`}
             </Text>
           </Flex>
-        )}
+        )} */}
       </SidesheetCardSection>
       {dashboard.collection && (
         <SidesheetCardSection

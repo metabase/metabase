@@ -17,6 +17,7 @@ import {
   TimelineEvent,
   Timestamp,
 } from "./Timeline.styled";
+import { UserAvatar } from "metabase/components/UserAvatar";
 
 interface TimelineProps {
   events: RevisionOrModerationEvent[];
@@ -43,7 +44,8 @@ export function Timeline({
         return (
           <TimelineEvent key={revision?.id ?? `${title}-${timestamp}`}>
             {isNotLastEvent && <Border />}
-            <EventIcon icon={icon} />
+            {/* <EventIcon icon={icon} /> */}
+            <UserAvatar user={revision?.user} size="md" />
             <EventBody>
               <EventHeader>
                 <span>{title}</span>
