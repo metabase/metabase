@@ -83,7 +83,6 @@ export function FilterPanel({
 
       <FilterPanelPopoverPlus
         query={query}
-        stageIndex={-1}
         onChange={handleChange}
         dirtyAddedFilters={dirtyAddedFilters}
         dirtyRemovedFilters={dirtyRemovedFilters}

@@ -3,14 +3,13 @@ import { type Dispatch, type SetStateAction, useState } from "react";
 import { Icon, Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import { FilterPicker } from "../../FilterPicker";
+import { FilterPicker2 } from "../../FilterPicker2";
 import { FilterPill } from "../FilterPill";
 
 let ID = 1000000;
 
 interface FilterPanelPopoverProps {
   query: Lib.Query;
-  stageIndex: number;
   onChange: (query: Lib.Query) => void;
 
   dirtyAddedFilters: Filter[];
@@ -18,6 +17,7 @@ interface FilterPanelPopoverProps {
   setDirtyAddedFilters: Dispatch<SetStateAction<Filter[]>>;
   setDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>;
 }
+
 type Filter = {
   filter: Lib.Clause | Lib.SegmentMetadata;
   stageIndex: number;
@@ -25,14 +25,12 @@ type Filter = {
 
 export function FilterPanelPopoverPlus({
   query,
-  stageIndex,
   setDirtyAddedFilters,
   // setDirtyRemovedFilters,
 }: FilterPanelPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
 
-  const handleAddFilter = (filter: Filter) => {
-    const stageIndex = -1; // TODO
+  const handleAddFilter = (filter: Filter, stageIndex: number) => {
     const item = {
       stageIndex,
       filter,
@@ -60,9 +58,8 @@ export function FilterPanelPopoverPlus({
         </FilterPill>
       </Popover.Target>
       <Popover.Dropdown data-testid="filter-picker-dropdown">
-        <FilterPicker
+        <FilterPicker2
           query={query}
-          stageIndex={stageIndex}
           filter={undefined}
           withCustomExpression={false}
           onSelect={handleAddFilter}
