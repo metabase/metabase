@@ -135,7 +135,7 @@ export function FilterColumnPicker({
 
         return {
           name:
-            limit.isLimited && stageIndex === realStageCount
+            limit.isLimited && stageIndex === max
               ? t`Result columns`
               : getGroupName(groupInfo, stageIndex),
           stageIndex,
