@@ -446,6 +446,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         target: ["dimension", ["field", "NUMBER", { "base-type": baseType }]],
       });
 
+      cy.signInAsAdmin();
       H.createNativeQuestion(sourceQuestionDetails).then(
         ({ body: sourceCard }) => {
           H.createQuestion(getTargetQuestionDetails(sourceCard.id)).then(
@@ -633,7 +634,9 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       baseType: "type/BigInteger",
     });
     visitRegularDashboard();
+    cy.signInAsNormalUser();
     testBigIntFilters({ withDrillThru: true });
+    cy.signInAsAdmin();
     visitPublicDashboard();
     testBigIntFilters({ withDrillThru: false });
     visitEmbeddedDashboard();
