@@ -95,6 +95,8 @@ export interface DashCardProps {
   autoScroll: boolean;
   /** Callback to execute when the dashcard has auto-scrolled to itself */
   reportAutoScrolledToDashcard: () => void;
+
+  className?: string;
 }
 
 function DashCardInner({
@@ -126,6 +128,7 @@ function DashCardInner({
   downloadsEnabled,
   autoScroll,
   reportAutoScrolledToDashcard,
+  className,
 }: DashCardProps) {
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
@@ -325,10 +328,19 @@ function DashCardInner({
             [S.isUsuallySlow]: isSlow === "usually-slow",
             [S.isEmbeddingSdk]: isEmbeddingSdk,
           },
+          className,
         )}
-        style={theme => ({
-          "--slow-card-border-color": theme.fn.themeColor("accent4"),
-        })}
+        style={theme => {
+          const { border } = theme.other.dashboard.card;
+
+          return {
+            "--slow-card-border-color": theme.fn.themeColor("accent4"),
+            ...(border && { border }),
+            ...(!border && {
+              boxShadow: "0 1px 3px var(--mb-color-shadow)",
+            }),
+          };
+        }}
         ref={cardRootRef}
       >
         {isEditingDashboardLayout && (

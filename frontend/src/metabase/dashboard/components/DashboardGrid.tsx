@@ -31,7 +31,7 @@ import {
 import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
@@ -73,9 +73,8 @@ import { getDashcardDataMap } from "../selectors";
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
 import DashCardS from "./DashCard/DashCard.module.css";
-import { FIXED_WIDTH } from "./Dashboard/Dashboard.styled";
+import { FIXED_WIDTH } from "./Dashboard/DashboardComponents";
 import S from "./DashboardGrid.module.css";
-import { DashboardCardContainer } from "./DashboardGrid.styled";
 import { GridLayout } from "./grid/GridLayout";
 
 type GridBreakpoint = "desktop" | "mobile";
@@ -537,6 +536,7 @@ class DashboardGridInner extends Component<
   ) {
     return (
       <DashCard
+        className={S.Card}
         dashcard={dashcard}
         slowCards={this.props.slowCards}
         gridItemWidth={gridItemWidth}
@@ -604,18 +604,19 @@ class DashboardGridInner extends Component<
     );
 
     return (
-      <DashboardCardContainer
+      <Box
         key={String(dc.id)}
         data-testid="dashcard-container"
         className={cx(
           DashboardS.DashCard,
           EmbedFrameS.DashCard,
           LegendS.DashCard,
+          S.DashboardCardContainer,
           {
             [DashboardS.BrandColorResizeHandle]: shouldChangeResizeHandle,
+            [S.isAnimationDisabled]: this.state.isAnimationPaused,
           },
         )}
-        isAnimationDisabled={this.state.isAnimationPaused}
       >
         {this.renderDashCard(dc, {
           isMobile: breakpoint === "mobile",
@@ -625,7 +626,7 @@ class DashboardGridInner extends Component<
           shouldAutoScrollTo,
           reportAutoScrolledToDashcard,
         })}
-      </DashboardCardContainer>
+      </Box>
     );
   };
 

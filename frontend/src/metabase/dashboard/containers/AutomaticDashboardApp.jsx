@@ -28,7 +28,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Title } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
+import { FixedWidthContainer } from "../components/Dashboard/DashboardComponents";
 import { useDashboardUrlQuery } from "../hooks/use-dashboard-url-query";
 
 import S from "./AutomaticDashboardApp.module.css";

@@ -42,7 +42,7 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import { Box, Flex } from "metabase/ui";
 import type { Collection, Dashboard } from "metabase-types/api";
 
-import { FixedWidthContainer } from "../Dashboard/Dashboard.styled";
+import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
 import { SIDEBAR_WIDTH } from "../Sidebar";
 
 import S from "./DashboardHeaderView.module.css";
