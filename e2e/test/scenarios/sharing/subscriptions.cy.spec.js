@@ -523,7 +523,9 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         H.popover().within(() => {
           cy.findByText("Corbin Mertz").click();
-          H.fieldValuesInput().type("Sallie");
+          cy.findByPlaceholderText("Search the list").type(
+            "Sallie Flatley{enter}",
+          );
           cy.findByText("Sallie Flatley").click();
         });
         H.popover().button("Update filter").click();
@@ -638,9 +640,11 @@ describe("scenarios > dashboard > subscriptions", () => {
           .findByText("Corbin Mertz")
           .click();
 
-        H.removeFieldValuesValue(0, ":eq(1)");
         H.popover().within(() => {
-          H.fieldValuesInput().type("Sallie");
+          cy.findByText("Corbin Mertz").click();
+          cy.findByPlaceholderText("Search the list").type(
+            "Sallie Flatley{enter}",
+          );
           cy.findByText("Sallie Flatley").click();
         });
         H.popover().button("Update filter").click();
