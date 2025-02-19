@@ -1,8 +1,8 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
 
 describe("issue 11727", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
@@ -50,18 +50,14 @@ describe("issue 16584", () => {
     // - the issue is unrelated to using a date filter, using a text filter works too
     // - the issue is unrelated to whether or not the parameter is required or if default value is set
     // - the space at the end of the query is not needed to reproduce this issue
-    H.startNewNativeQuestion()
-      .type(
-        "SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 1",
-        {
-          parseSpecialCharSequences: false,
-          delay: 0,
-        },
-      )
-      .type("{selectAll}");
+    H.startNewNativeQuestion();
+    H.NativeEditor.type(
+      "SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 1",
+    ).type("{selectAll}");
 
     cy.findByPlaceholderText("Country").type("NL", { delay: 0 });
 
+    H.NativeEditor.selectAll();
     H.runNativeQuery();
 
     cy.findByTestId("query-visualization-root")
@@ -126,20 +122,21 @@ describe("issue 33327", () => {
     cy.findByTestId("scalar-value").should("have.text", "1");
 
     cy.findByTestId("visibility-toggler").click();
-    H.focusNativeEditor().should("contain", query).type("{leftarrow}--");
+    H.NativeEditor.get().should("contain", query);
+    H.NativeEditor.type("{leftarrow}--");
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    H.nativeEditor().should("be.visible").and("contain", "SELECT --1");
+    H.NativeEditor.get().should("be.visible").and("contain", "SELECT --1");
     getRunQueryButton().click();
     cy.wait("@dataset");
 
     cy.findByTestId("visualization-root").icon("warning").should("be.visible");
     cy.findByTestId("scalar-value").should("not.exist");
 
-    H.focusNativeEditor()
-      .should("contain", "SELECT --1")
-      .type("{leftarrow}{backspace}{backspace}")
-      .should("contain", query);
+    H.NativeEditor.get().should("contain", "SELECT --1");
+    H.NativeEditor.type("{leftarrow}{backspace}{backspace}");
+
+    H.NativeEditor.get().should("contain", query);
 
     getRunQueryButton().click();
     cy.wait("@dataset");
@@ -172,12 +169,88 @@ describe("issue 49454", () => {
     });
   });
 
-  it("should be possible to use metrics in native queries (metabase#49454)", () => {
-    H.startNewNativeQuestion().type("select * from {{ #test");
+  it("should be possible to use metrics in native queries (metabase#49454, metabase#51035)", () => {
+    H.startNewNativeQuestion();
 
-    H.nativeEditorCompletions().within(() => {
-      cy.findByText("-question-49454").should("be.visible");
-      cy.findByText("-metric-49454").should("be.visible");
+    cy.log("should not show empty tooltip (metabase#51035)");
+    cy.button("Save").realHover();
+    H.tooltip().should("not.exist");
+
+    H.NativeEditor.type("select * from {{ #test");
+
+    H.NativeEditor.completions().within(() => {
+      H.NativeEditor.completion("-question-49454").should("be.visible");
+      H.NativeEditor.completion("-metric-49454").should("be.visible");
     });
+  });
+});
+
+describe("issue 48712", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not reset the suggestions when the query is edited (metabase#48712)", () => {
+    H.startNewNativeQuestion();
+
+    H.NativeEditor.type("pro");
+    H.NativeEditor.completion("PRODUCTS").should("be.visible");
+
+    H.NativeEditor.type("{backspace}{backspace}{backspace}");
+    H.NativeEditor.type("select * from pro");
+
+    H.NativeEditor.completion("PRODUCTS").should("be.visible");
+
+    H.NativeEditor.type("{nextcompletion}", { focus: false });
+    H.NativeEditor.completion("PROCEDURE").should("have.attr", "aria-selected");
+
+    // wait for all completions to finish
+    cy.wait(1000);
+    H.NativeEditor.completion("PROCEDURE").should("have.attr", "aria-selected");
+  });
+});
+
+describe("issue 53194", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    Object.values(REVIEWS).forEach(fieldId => {
+      cy.request("PUT", `/api/field/${fieldId}`, {
+        visibility_type: "sensitive",
+      });
+    });
+  });
+
+  it("should not enter an infinite loop when browsing table fields (metabase#53194)", () => {
+    H.startNewNativeQuestion();
+    cy.icon("reference").click();
+
+    cy.findByTestId("sidebar-content").within(() => {
+      cy.findByText("REVIEWS").click(); // the infinite loop used to start with this action
+      cy.findByText("ID").should("not.exist");
+      cy.findByText("ORDERS").should("not.exist");
+
+      cy.findByTestId("sidebar-header-title").click(); // if app is frozen, Cypress won't be able to execute this
+      cy.findByText("ID").should("not.exist");
+      cy.findByText("REVIEWS").should("be.visible");
+
+      cy.findByText("ORDERS").click();
+      cy.findByText("ID").should("be.visible");
+    });
+  });
+});
+
+describe("issue 53299", { tags: ["@mongo"] }, () => {
+  beforeEach(() => {
+    H.restore("mongo-5");
+    cy.signInAsAdmin();
+  });
+
+  it("should be possible to switch to mongodb when editing an sql question (metabase#53299)", () => {
+    H.startNewNativeQuestion();
+
+    H.selectNativeEditorDataSource("QA Mongo");
+    H.nativeEditorDataSource().should("contain", "QA Mongo");
   });
 });

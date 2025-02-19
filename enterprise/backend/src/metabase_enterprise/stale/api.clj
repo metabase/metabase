@@ -4,7 +4,7 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.stale :as stale]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.collection :as api.collection]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -163,10 +163,8 @@
                           :total_stale_items_found total
                           ;; convert before-date to a date-time string before sending it.
                           :cutoff_date             (format "%sT00:00:00Z" (str before-date))}]
-    (snowplow/track-event! ::snowplow/cleanup snowplow-payload)
+    (analytics/track-event! :snowplow/cleanup snowplow-payload)
     {:total  total
      :data   (api/present-items present-model-items rows)
      :limit  (request/limit)
      :offset (request/offset)}))
-
-(api/define-routes)

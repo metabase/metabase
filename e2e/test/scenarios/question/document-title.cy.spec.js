@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 const PG_DB_ID = 2;
 

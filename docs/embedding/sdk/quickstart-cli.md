@@ -6,7 +6,7 @@ title: Embedded analytics SDK - CLI quickstart
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true enterprise-only=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 We built a single command to spin up a Metabase and help you get an embedded dashboard in your app. This setup with API keys won't work in production; it's only intended for you to quickly try out the SDK on your local machine. A production setup requires a Pro/Enterprise license, and SSO with JWT.
 
@@ -62,6 +62,17 @@ npm run start
 ## Generates React components that you'll import into your app
 
 Generates example React components files. By default, it will save them in `./src/components/metabase` in your React app, though the tool will prompt you to save them to a different directory (e.g., `./src/analytics`).
+
+It generates a couple of demo components for you to try out theming and user switching:
+
+- `AnalyticsDashboard` - a dashboard component that embeds a Metabase dashboard.
+- `AnalyticsPage` - a page that embeds a dashboard with a wrapped provider. In a real application, you must add the `MetabaseProvider` separately to your app's root `App` component (or where you would've added your other providers).
+- `ThemeSwitcher` - switch between light and dark themes.
+- `UserSwitcher` - switch between fake users.
+- `AnalyticsProvider` - a provider that adds the demo state for the example theme switcher and user switcher components.
+- `EmbeddingProvider` - a provider that wraps the `MetabaseProvider` with demo themes and auth configuration.
+
+You can delete these files once you've played around with the tool, and are ready to setup your own theming and user management.
 
 ## Add the Metabase/React components to your app
 

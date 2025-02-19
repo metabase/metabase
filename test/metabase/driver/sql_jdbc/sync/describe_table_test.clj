@@ -790,8 +790,8 @@
     false))
 
 (deftest describe-view-fields
-  (mt/test-drivers (set/union (mt/normal-drivers-with-feature ::describe-materialized-view-fields)
-                              (mt/normal-drivers-with-feature ::describe-view-fields))
+  (mt/test-drivers (set/union (mt/normal-drivers-with-feature ::describe-materialized-view-fields :test/dynamic-dataset-loading)
+                              (mt/normal-drivers-with-feature ::describe-view-fields :test/dynamic-dataset-loading))
     (doseq [materialized? (cond-> []
                             (driver/database-supports? driver/*driver* ::describe-view-fields nil)
                             (conj false)
@@ -805,7 +805,8 @@
           (tx/create-view-of-table! driver/*driver* (mt/db) view-name table-name {:materialized? materialized?})
           (sync/sync-database! (mt/db) {:scan :schema})
           (let [orders-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name table-name}) (mt/db)))
-                orders-m-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db)))
+                view-instance (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db))
+                orders-m-id (:id view-instance)
                 non-view-fields (t2/select-fn-vec
                                  (juxt (comp u/lower-case-en :name) :base_type :database_position)
                                  :model/Field
@@ -816,6 +817,8 @@
                              :model/Field
                              :table_id orders-m-id
                              {:order-by [:database_position]})]
+            (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db))))
+                           (:name view-instance)))
             (is (some? orders-m-id))
             (is (some? orders-id))
             (is (= 9 (count view-fields)))

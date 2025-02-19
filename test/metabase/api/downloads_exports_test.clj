@@ -20,8 +20,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter :as formatter]
    [metabase.public-settings :as public-settings]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.core :as pulse]
+   [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.interface :as qp.i]
    [metabase.test :as mt]
@@ -149,7 +148,7 @@
   (let [m    (update
               (mt/with-test-user nil
                 (pulse.test-util/with-captured-channel-send-messages!
-                  (pulse/send-pulse! pulse)))
+                  (pulse.send/send-pulse! pulse)))
               :channel/email vec)
         msgs (get-in m [:channel/email 0 :message])]
     (first (keep
@@ -1601,3 +1600,22 @@
                 val-unscaled (Double/parseDouble (first (second result-unscaled)))]
             (is (= val-scaled
                    (* val-unscaled 2.13)))))))))
+
+(deftest ^:parallel pivot-xlsx-export-respects-custom-title
+  (testing "Pivot tables exported as xlsx should respect column title viz settings #51342"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["CATEGORY"]
+                                                :columns []
+                                                :values  ["sum" "count"]}
+                                               :column_settings
+                                               {"[\"name\",\"sum\"]" {:column_title "Custom Title"}}}
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]
+                                                               [:count]]
+                                                 :breakout    [$category]})}]
+        (let [res (card-download card {:export-format :xlsx :format-rows true :pivot true})]
+          (is (= "Custom Title"
+                 (second (first res)))))))))

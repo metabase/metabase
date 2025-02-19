@@ -8,6 +8,10 @@ redirect_from:
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
+## Supported versions
+
+Metabase supports the oldest supported version through the latest stable version. See [Oracle's Release Schedule of Current Database Releases](https://support.oracle.com/knowledge/Oracle%20Database%20Products/742060_1.html).
+
 ## Settings
 
 You can edit these settings at any time. Just remember to save your changes.

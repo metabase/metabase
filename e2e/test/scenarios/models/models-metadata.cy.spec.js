@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
@@ -80,33 +80,29 @@ describe("scenarios > models metadata", () => {
         .and("not.contain", "Pre-tax");
     });
 
-    it(
-      "clears custom metadata when a model is turned back into a question",
-      { tags: "@flaky" },
-      () => {
-        H.openQuestionActions();
-        H.popover().findByTextEnsureVisible("Edit metadata").click();
+    it("clears custom metadata when a model is turned back into a question", () => {
+      H.openQuestionActions();
+      H.popover().findByTextEnsureVisible("Edit metadata").click();
 
-        H.openColumnOptions("Subtotal");
-        H.renameColumn("Subtotal", "Pre-tax");
-        H.setColumnType("No special type", "Cost");
-        H.saveMetadataChanges();
+      H.openColumnOptions("Subtotal");
+      H.renameColumn("Subtotal", "Pre-tax");
+      H.setColumnType("No special type", "Cost");
+      H.saveMetadataChanges();
 
-        cy.findAllByTestId("header-cell")
-          .should("contain", "Pre-tax ($)")
-          .and("not.contain", "Subtotal");
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Pre-tax ($)")
+        .and("not.contain", "Subtotal");
 
-        H.openQuestionActions();
-        H.popover()
-          .findByTextEnsureVisible("Turn back to saved question")
-          .click();
-        cy.wait("@cardQuery");
+      H.openQuestionActions();
+      H.popover()
+        .findByTextEnsureVisible("Turn back to saved question")
+        .click();
+      cy.wait("@cardQuery");
 
-        cy.findAllByTestId("header-cell")
-          .should("contain", "Subtotal")
-          .and("not.contain", "Pre-tax ($)");
-      },
-    );
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Subtotal")
+        .and("not.contain", "Pre-tax ($)");
+    });
   });
 
   it("should edit native model metadata", () => {
@@ -196,12 +192,8 @@ describe("scenarios > models metadata", () => {
     H.openQuestionActions();
     H.popover().findByTextEnsureVisible("Edit query definition").click();
 
-    H.main().within(() => {
-      cy.get("textarea")
-        .focus()
-        .invoke("val", "")
-        .type("SELECT TOTAL FROM ORDERS LIMIT 5");
-    });
+    H.NativeEditor.clear();
+    H.NativeEditor.type("SELECT TOTAL FROM ORDERS LIMIT 5");
 
     cy.findByTestId("editor-tabs-metadata-name").click();
     cy.wait("@dataset");

@@ -48,6 +48,7 @@ jobs:
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
+      MB_EXPERIMENTAL_SEARCH_BLOCK_ON_QUEUE: true
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       TZ: US/Pacific # to make node match the instance tz
@@ -118,7 +119,7 @@ jobs:
           SPLIT_SUMMARY: false
         shell: bash
         run: |
-          node e2e/runner/run_cypress_ci.js test \
+          node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
@@ -126,7 +127,7 @@ jobs:
         if: ${{ inputs.specs }}
         shell: bash
         run: |
-          node e2e/runner/run_cypress_ci.js test \
+          node e2e/runner/run_cypress_ci.js e2e \
           --env grepTags="${{inputs.tags}} --@quarantine",grepOmitFiltered=true \
           --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}

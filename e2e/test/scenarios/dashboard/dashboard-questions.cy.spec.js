@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as S from "e2e/support/cypress_sample_instance_data";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
@@ -392,8 +392,11 @@ describe("Dashboard > Dashboard Questions", () => {
         .should("exist");
     });
 
-    it("can save a native question to a dashboard", { tags: "@flaky" }, () => {
+    it("can save a native question to a dashboard", () => {
       H.startNewNativeQuestion({ query: "SELECT 123" });
+
+      // this reduces the flakiness
+      cy.wait(500);
 
       H.queryBuilderHeader().button("Save").click();
       H.modal().within(() => {
@@ -484,7 +487,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.dashboardCards().findAllByText("Orders").should("have.length", 1);
     });
 
-    it("can share a dashboard card via public link", { tags: "@flaky" }, () => {
+    it("can share a dashboard card via public link", () => {
       H.createQuestion(
         {
           name: "Total Orders",
@@ -501,6 +504,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.openSharingMenu("Create a public link");
       cy.findByTestId("public-link-input")
         .invoke("val")
+        .should("not.be.empty")
         .then(publicLink => {
           cy.signOut();
           cy.visit(publicLink);
@@ -541,6 +545,59 @@ describe("Dashboard > Dashboard Questions", () => {
       H.navigationSidebar().findByText("Orders").should("be.visible");
     });
 
+    it("shows trash action for the last dashcard for a dashboard question", () => {
+      H.createDashboard({
+        name: "Foo Dashboard",
+      }).then(({ body: dashboard }) => {
+        H.createQuestion({
+          name: "Foo dashboard question",
+          query: { "source-table": SAMPLE_DATABASE.ORDERS_ID, limit: 5 },
+          dashboard_id: dashboard.id,
+        }).then(({ body: card }) => {
+          H.addOrUpdateDashboardCard({
+            card_id: card.id,
+            dashboard_id: dashboard.id,
+            card: {
+              size_x: 6,
+              size_y: 6,
+            },
+          });
+
+          H.visitDashboard(dashboard.id);
+        });
+      });
+
+      H.editDashboard();
+
+      cy.log(
+        "should have trash option as only dashcard for dashboard question",
+      );
+      H.showDashboardCardActions(0);
+      cy.icon("trash").realHover();
+      H.tooltip().findByText("Remove and trash").should("exist");
+
+      cy.log(
+        "should have remove options if there's more than one dashcard for the dashboard question",
+      );
+      cy.icon("copy").click();
+      cy.findAllByTestId("dashcard").should("have.length", 2);
+      H.showDashboardCardActions(0);
+      cy.icon("trash").should("not.exist");
+      cy.icon("close").should("exist");
+
+      cy.log(
+        "should have the trash option if changes leave only one dashcard for a question",
+      );
+      cy.findAllByTestId("dashcard").eq(1).realHover().icon("close").click();
+      cy.findAllByTestId("dashcard").should("have.length", 1);
+      H.showDashboardCardActions(0);
+      cy.icon("trash").should("exist");
+
+      cy.log("should notify user that removal will also trash the card");
+      cy.icon("trash").click();
+      cy.findAllByTestId("dashcard").should("have.length", 0);
+    });
+
     it("can delete a question from a dashboard without deleting all of the questions in metabase", () => {
       H.createQuestion({
         name: "Total Orders",
@@ -579,8 +636,8 @@ describe("Dashboard > Dashboard Questions", () => {
       H.editDashboard();
       H.dashboardCards().findByText("Total Orders").realHover();
       // eslint-disable-next-line no-unsafe-element-filtering
-      cy.icon("close").last().click();
-      H.undoToast().findByText("Removed card");
+      cy.icon("trash").last().click();
+      H.undoToast().findByText("Trashed and removed card");
       H.saveDashboard();
 
       // check that we didn't accidentally delete everything

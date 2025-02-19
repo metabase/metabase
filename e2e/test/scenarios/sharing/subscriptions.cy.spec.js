@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
@@ -485,7 +485,6 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("OSS email subscriptions", { tags: ["@OSS", "external"] }, () => {
     beforeEach(() => {
-      H.onlyOnOSS();
       cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
       H.setupSMTP();
     });
@@ -547,7 +546,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
-  H.describeEE("EE email subscriptions", { tags: "@external" }, () => {
+  describe("EE email subscriptions", { tags: "@external" }, () => {
     beforeEach(() => {
       H.setTokenFeatures("all");
       H.setupSMTP();

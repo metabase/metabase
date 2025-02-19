@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -154,7 +154,7 @@ describe("scenarios > dashboard > filters > management", () => {
       changeFilterType("ID");
 
       cy.log("verify ID doesn't render operator select");
-      H.sidebar().findAllByRole("searchbox").should("have.length", 1);
+      H.sidebar().findByText("Filter operator").should("not.exist");
 
       changeFilterType("Date picker");
 
@@ -377,6 +377,6 @@ function verifyOperatorValue(value) {
   H.sidebar()
     .findByText("Filter operator")
     .next()
-    .findByRole("searchbox")
+    .findByRole("textbox")
     .should("have.value", value);
 }

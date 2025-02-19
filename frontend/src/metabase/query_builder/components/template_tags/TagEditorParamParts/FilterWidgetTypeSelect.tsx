@@ -29,7 +29,7 @@ export function FilterWidgetTypeSelect({
     () =>
       (hasOptions ? options : [{ name: t`None`, type: "none" }]).map(
         option => ({
-          label: option.menuName ?? option.name,
+          label: option.menuName ?? option.name ?? option.type,
           value: option.type,
         }),
       ),

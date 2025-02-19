@@ -136,7 +136,9 @@ export function ViewTitleHeaderRightSide({
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
   const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
-  const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
+  const disabledSaveTooltip = isSaveDisabled
+    ? getDisabledSaveTooltip(isEditable)
+    : undefined;
 
   return (
     <Flex
@@ -222,7 +224,11 @@ export function ViewTitleHeaderRightSide({
         />
       )}
       {hasSaveButton && (
-        <Tooltip label={disabledSaveTooltip} disabled={canSave} position="left">
+        <Tooltip
+          disabled={!disabledSaveTooltip}
+          label={disabledSaveTooltip}
+          position="left"
+        >
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"

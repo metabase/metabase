@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -192,12 +192,7 @@ describe("issue 12581", () => {
 
     // Both delay and a repeated sequence of `{selectall}{backspace}` are there to prevent typing flakes
     // Without them at least 1 in 10 test runs locally didn't fully clear the field or type correctly
-    H.focusNativeEditor()
-      .as("editor")
-      .click()
-      .type("{selectall}{backspace}", { delay: 50 })
-      .click()
-      .type("{selectall}{backspace}SELECT 1");
+    H.NativeEditor.clear().type("SELECT 1");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -216,7 +211,6 @@ describe("issue 12581", () => {
       cy.findByText(/You created this/i);
 
       cy.findByTestId("question-revert-button").click(); // Revert to the first revision
-      cy.wait("@dataset");
 
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/You reverted to an earlier version/i);
@@ -229,7 +223,7 @@ describe("issue 12581", () => {
       .click();
 
     cy.log("Reported failing on v0.35.3");
-    H.focusNativeEditor().should("be.visible").and("contain", ORIGINAL_QUERY);
+    H.NativeEditor.get().should("be.visible").and("contain", ORIGINAL_QUERY);
 
     H.tableInteractive().findByText("37.65");
 
@@ -434,7 +428,7 @@ describe("issue 14302", () => {
         expect(xhr.response.body.error).not.to.exist;
       });
 
-      H.nativeEditor().should("not.be.visible");
+      H.NativeEditor.get().should("not.be.visible");
       cy.get("[data-testid=cell-data]").should("contain", "51");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
@@ -701,7 +695,7 @@ describe("issue 16756", () => {
   });
 });
 
-describe("issue 17019", { tags: "@flaky" }, () => {
+describe("issue 17019", () => {
   const question = {
     name: "17019",
     native: {
@@ -968,41 +962,37 @@ describe("issue 29786", { tags: "@external" }, () => {
     cy.signInAsAdmin();
   });
 
-  it(
-    "should allow using field filters with null schema (metabase#29786)",
-    { tags: "@flaky" },
-    () => {
-      H.startNewNativeQuestion({
-        display: "table",
-        collection_id: COLLECTION_GROUP,
-        query: SQL_QUERY,
-      });
+  it("should allow using field filters with null schema (metabase#29786)", () => {
+    H.startNewNativeQuestion({
+      display: "table",
+      collection_id: COLLECTION_GROUP,
+      query: SQL_QUERY,
+    });
 
-      // type a space to trigger fields
-      cy.focused().type(" ");
+    // type a space to trigger fields
+    H.NativeEditor.type(" ");
 
-      cy.findByTestId("tag-editor-variable-f1")
-        .findByTestId("variable-type-select")
-        .click();
-      SQLFilter.chooseType("Field Filter");
-      FieldFilter.mapTo({ table: "Products", field: "Category" });
+    cy.findByTestId("tag-editor-variable-f1")
+      .findByTestId("variable-type-select")
+      .click();
+    SQLFilter.chooseType("Field Filter");
+    FieldFilter.mapTo({ table: "Products", field: "Category" });
 
-      cy.findByTestId("tag-editor-variable-f2")
-        .findByTestId("variable-type-select")
-        .click();
-      SQLFilter.chooseType("Field Filter");
-      FieldFilter.mapTo({ table: "Products", field: "Vendor" });
+    cy.findByTestId("tag-editor-variable-f2")
+      .findByTestId("variable-type-select")
+      .click();
+    SQLFilter.chooseType("Field Filter");
+    FieldFilter.mapTo({ table: "Products", field: "Vendor" });
 
-      H.filterWidget().should("have.length", 2).first().click();
-      FieldFilter.selectFilterValueFromList("Widget");
-      H.filterWidget().should("have.length", 2).last().click();
-      FieldFilter.addWidgetStringFilter("Von-Gulgowski");
+    H.filterWidget().should("have.length", 2).first().click();
+    FieldFilter.selectFilterValueFromList("Widget");
+    H.filterWidget().should("have.length", 2).last().click();
+    FieldFilter.addWidgetStringFilter("Von-Gulgowski");
 
-      SQLFilter.runQuery();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("1087115303928").should("be.visible");
-    },
-  );
+    SQLFilter.runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("1087115303928").should("be.visible");
+  });
 });
 
 describe("issue 31606", { tags: "@external" }, () => {
@@ -1221,7 +1211,8 @@ describe("issue 49577", () => {
   });
 
   it("should not show the values initially when using a single select search box (metabase#49577)", () => {
-    H.startNewNativeQuestion().type("select * from {{param");
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select * from {{param");
     // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar()
       .last()

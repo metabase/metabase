@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -137,7 +137,7 @@ describe("issue 9027", () => {
 
     H.startNewNativeQuestion();
 
-    H.focusNativeEditor().type("select 0");
+    H.NativeEditor.focus().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     H.saveQuestion(QUESTION_NAME, undefined, {
@@ -277,11 +277,11 @@ describe("issue 14957", { tags: "@external" }, () => {
   });
 
   it("should save a question before query has been executed (metabase#14957)", () => {
-    H.startNewNativeQuestion().as("editor");
+    H.startNewNativeQuestion();
 
     cy.findByTestId("gui-builder-data").click();
     cy.findByLabelText(PG_DB_NAME).click();
-    cy.get("@editor").type("select pg_sleep(60)");
+    H.NativeEditor.type("select pg_sleep(60)");
     H.saveQuestion("14957", undefined, {
       tab: "Browse",
       path: ["Our analytics"],
@@ -711,7 +711,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
       { string: "> quan", field: "Quantity" },
     ]);
 
-    H.blurNativeEditor();
+    cy.get(".ace_text-input").blur();
     cy.button("Done").click();
 
     H.getNotebookStep("filter").findByText("Discount is greater than Quantity");
@@ -827,7 +827,7 @@ describe("issue 18207", () => {
   });
 });
 
-describe("issues 11914, 18978, 18977, 23857", { tags: "@flaky" }, () => {
+describe("issues 11914, 18978, 18977, 23857", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -991,10 +991,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     function postDrillAssertion(filterName) {
       cy.findByTestId("qb-filters-panel").findByText(filterName).click();
-      H.popover().within(() => {
+      H.popover("filter-picker-dropdown").within(() => {
         // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByRole("combobox")
           .last()
+          .parent()
           .should("contain", "1")
           .and("contain", "2");
         cy.button("Update filter").should("be.visible");
@@ -1072,7 +1073,7 @@ function setParamValue(paramName, text) {
   // wait to leave editing mode and set a param value
   cy.findByText("You're editing this dashboard.").should("not.exist");
   cy.findByText(paramName).click();
-  H.popover().within(() => {
+  H.dashboardParametersPopover().within(() => {
     cy.findByPlaceholderText("Search by Name").type(text);
     cy.findByText("Add filter").click();
   });

@@ -5,12 +5,13 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [java-time.clock]
-   [metabase.analytics.stats :as stats]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -19,6 +20,7 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
+   (java.util Queue)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -119,6 +121,7 @@
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
+  (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
   (search/reindex!)
   nil)
@@ -187,7 +190,5 @@
 (api.macros/defendpoint :post "/stats"
   "Triggers a send of instance usage stats"
   []
-  (stats/phone-home-stats!)
+  (analytics/phone-home-stats!)
   {:success true})
-
-(api/define-routes)

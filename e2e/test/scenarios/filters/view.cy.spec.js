@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -80,13 +80,13 @@ describe("scenarios > question > view", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
-      H.popover().within(() => {
-        cy.findByPlaceholderText("Enter some text").type("Balistreri-Muller");
+      H.dashboardParametersPopover().within(() => {
+        H.fieldValuesInput().type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
       cy.findAllByText("CATEGORY").first().click();
-      H.popover().within(() => {
-        cy.findByPlaceholderText("Enter some text").type("Widget");
+      H.dashboardParametersPopover().within(() => {
+        H.fieldValuesInput().type("Widget");
         cy.findByText("Add filter").click();
       });
 

@@ -363,7 +363,7 @@ describe("DashboardHeaderButtonRow", () => {
       });
     });
 
-    it("should not show regular dashboard action menu", async () => {
+    it("should not show regular dashboard action menu", () => {
       setup({ isEditing: false, isAnalyticsDashboard: true });
 
       expect(

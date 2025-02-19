@@ -1,6 +1,6 @@
 import { assocIn } from "icepick";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { many_data_types_rows } from "e2e/support/test_tables_data";
 import { createMockActionParameter } from "metabase-types/api/mocks";
@@ -35,8 +35,8 @@ const MODEL_NAME = "Test Action Model";
       H.describeWithSnowplow("adding and executing actions", () => {
         beforeEach(() => {
           H.resetSnowplow();
-          H.resetTestTable({ type: dialect, table: TEST_TABLE });
           H.restore(`${dialect}-writable`);
+          H.resetTestTable({ type: dialect, table: TEST_TABLE });
           cy.signInAsAdmin();
           H.enableTracking();
           H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
@@ -528,8 +528,8 @@ const MODEL_NAME = "Test Action Model";
 
       describe("Actions Data Types", () => {
         beforeEach(() => {
-          H.resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           H.restore(`${dialect}-writable`);
+          H.resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           cy.signInAsAdmin();
           H.resyncDatabase({
             dbId: WRITABLE_DB_ID,
@@ -902,8 +902,8 @@ const MODEL_NAME = "Test Action Model";
         );
 
         beforeEach(() => {
-          H.resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           H.restore(`${dialect}-writable`);
+          H.resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           cy.signInAsAdmin();
           H.resyncDatabase({
             dbId: WRITABLE_DB_ID,
@@ -967,9 +967,9 @@ const MODEL_NAME = "Test Action Model";
           });
 
           actionEditorModal().within(() => {
-            H.focusNativeEditor().type("{home}{shift+end}{backspace}");
+            H.NativeEditor.clear();
             const TEST_COLUMNS_QUERY = `UPDATE ${TEST_COLUMNS_TABLE} SET timestamp = {{ Timestamp }} WHERE id = {{ ID }}`;
-            H.focusNativeEditor().type(TEST_COLUMNS_QUERY, {
+            H.NativeEditor.focus().type(TEST_COLUMNS_QUERY, {
               delay: 0,
               parseSpecialCharSequences: false,
             });
@@ -1024,8 +1024,8 @@ const MODEL_NAME = "Test Action Model";
 
 describe("action error handling", { tags: ["@external", "@actions"] }, () => {
   beforeEach(() => {
-    H.resetTestTable({ type: "postgres", table: TEST_TABLE });
     H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: TEST_TABLE });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
     H.createModelFromTableName({
@@ -1096,8 +1096,8 @@ describe(
 
     describe("Inline action edit", () => {
       beforeEach(() => {
-        H.resetTestTable({ type: "postgres", table: TEST_TABLE });
         H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: TEST_TABLE });
         cy.signInAsAdmin();
         H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
         H.createModelFromTableName({
@@ -1139,7 +1139,7 @@ describe(
         });
 
         H.filterWidget().click();
-        H.popover().within(() => {
+        H.dashboardParametersPopover().within(() => {
           H.fieldValuesInput().type("{backspace}10");
         });
         cy.button("Update filter").click();

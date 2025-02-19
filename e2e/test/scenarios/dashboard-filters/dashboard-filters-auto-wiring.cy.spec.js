@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -518,7 +518,7 @@ describe("dashboard filters auto-wiring", () => {
 
       H.dashboardParametersContainer().findByText("ID").click();
 
-      H.popover().within(() => {
+      H.dashboardParametersPopover().within(() => {
         H.fieldValuesInput().type("1,");
         cy.button("Add filter").click();
       });
@@ -568,7 +568,7 @@ describe("dashboard filters auto-wiring", () => {
 
       H.dashboardParametersContainer().findByText("ID").click();
 
-      H.popover().within(() => {
+      H.dashboardParametersPopover().within(() => {
         H.fieldValuesInput().type("1,");
         cy.button("Add filter").click();
       });
@@ -649,6 +649,8 @@ describe("dashboard filters auto-wiring", () => {
       cy.clock();
       H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
+      cy.tick(1000);
+
       H.undoToast().should("be.visible");
 
       // AUTO_WIRE_TOAST_TIMEOUT
@@ -659,10 +661,12 @@ describe("dashboard filters auto-wiring", () => {
       removeFilterFromDashCard(0);
 
       H.selectDashboardFilter(H.getDashboardCard(0), "Name");
+      cy.tick(1000);
 
-      cy.clock();
+      // cy.clock();
       H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
 
+      cy.tick(1000);
       H.undoToast().should("be.visible");
 
       // AUTO_WIRE_UNDO_TOAST_TIMEOUT

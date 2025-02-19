@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USERS, WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -157,7 +157,7 @@ describe("issue 18352", { tags: "@external" }, () => {
   });
 });
 
-H.describeEE("issue 18669", { tags: "@external" }, () => {
+describe("issue 18669", { tags: "@external" }, () => {
   const questionDetails = {
     name: "Product count",
     database: SAMPLE_DB_ID,
@@ -416,7 +416,7 @@ describe("issue 22524", () => {
   });
 });
 
-H.describeEE("issue 24223", () => {
+describe("issue 24223", () => {
   const questionDetails = {
     name: "24223",
     query: {
@@ -636,7 +636,7 @@ describe("issue 25473", () => {
   });
 });
 
-H.describeEE("issue 26988", () => {
+describe("issue 26988", () => {
   beforeEach(() => {
     H.restore();
     cy.intercept("GET", "/api/preview_embed/dashboard/*").as(

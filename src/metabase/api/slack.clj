@@ -3,7 +3,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
@@ -42,10 +41,11 @@
                                 :text "anonymous user"})
                              {:type "text"
                               :text "\n\nDescription:\n"
-                              :style {:bold true}}
-                             {:type "text"
-                              :text (or description "N/A")}
-                             {:type "text"
+                              :style {:bold true}}]}]}
+     {:type "section" :text {:type "mrkdwn" :text (or description "N/A")}}
+     {:type "rich_text"
+      :elements [{:type "rich_text_section"
+                  :elements [{:type "text"
                               :text "\n\nURL:\n"
                               :style {:bold true}}
                              {:type "link"
@@ -171,5 +171,3 @@
     (catch Exception e
       {:success false
        :error (.getMessage e)})))
-
-(api/define-routes)

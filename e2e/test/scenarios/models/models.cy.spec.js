@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -598,7 +598,7 @@ describe("scenarios > models", () => {
     // Check card tags are supported by models
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
-    H.focusNativeEditor().type(
+    H.NativeEditor.focus().type(
       "{leftarrow}{leftarrow}{backspace}{backspace}#1-orders",
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -619,7 +619,7 @@ describe("scenarios > models", () => {
     }).then(({ body: { id: modelId } }) => {
       cy.request("PUT", `/api/card/${modelId}`, { type: "model" }).then(() => {
         cy.visit(`/model/${modelId}/query`);
-        H.focusNativeEditor().type("{movetoend}").type(" WHERE {{F", {
+        H.NativeEditor.focus().type("{movetoend}").type(" WHERE {{F", {
           parseSpecialCharSequences: false,
         });
         cy.findByTestId("tag-editor-sidebar").should("not.exist");
@@ -702,7 +702,8 @@ describe("scenarios > models", () => {
     it("should allow using models in native queries", () => {
       cy.intercept("POST", "/api/dataset").as("query");
       cy.get("@modelId").then(id => {
-        H.startNewNativeQuestion().type(`select * from {{#${id}}}`, {
+        H.startNewNativeQuestion();
+        H.NativeEditor.type(`select * from {{#${id}}}`, {
           parseSpecialCharSequences: false,
         });
       });

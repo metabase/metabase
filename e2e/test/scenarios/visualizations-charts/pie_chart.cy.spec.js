@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -107,7 +107,16 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    cy.findByTestId("chart-legend").findByText("Doohickey").realHover();
+    // flakiness prevention
+    cy.findByTestId("chart-container").findByText("TOTAL").should("be.visible");
+    cy.findByTestId("view-footer")
+      .findByText("Showing 4 rows")
+      .should("be.visible");
+
+    cy.findByTestId("chart-legend")
+      .findByText("Doohickey")
+      .trigger("mouseover");
+
     [
       ["Doohickey", "true"],
       ["Gadget", "false"],

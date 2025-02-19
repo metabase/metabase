@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -190,30 +190,26 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .and("contain", "koss-ella@hotmail.com");
   });
 
-  it(
-    "handles browsing records by FKs (metabase#21756)",
-    { tags: "@flaky" },
-    () => {
-      H.openOrdersTable();
+  it("handles browsing records by FKs (metabase#21756)", () => {
+    H.openOrdersTable();
 
-      drillFK({ id: 1 });
+    drillFK({ id: 1 });
 
-      assertUserDetailView({ id: 1, name: "Hudson Borer" });
-      getPreviousObjectDetailButton().should("not.exist");
-      getNextObjectDetailButton().should("not.exist");
+    assertUserDetailView({ id: 1, name: "Hudson Borer" });
+    getPreviousObjectDetailButton().should("not.exist");
+    getNextObjectDetailButton().should("not.exist");
 
-      cy.go("back");
-      cy.go("back");
-      cy.wait("@dataset");
+    cy.go("back");
+    cy.go("back");
+    cy.wait("@dataset");
 
-      changeSorting("User ID", "desc");
-      drillFK({ id: 2500 });
+    changeSorting("User ID", "desc");
+    drillFK({ id: 2500 });
 
-      assertUserDetailView({ id: 2500, name: "Kenny Schmidt" });
-      getPreviousObjectDetailButton().should("not.exist");
-      getNextObjectDetailButton().should("not.exist");
-    },
-  );
+    assertUserDetailView({ id: 2500, name: "Kenny Schmidt" });
+    getPreviousObjectDetailButton().should("not.exist");
+    getNextObjectDetailButton().should("not.exist");
+  });
 
   it("handles opening a filtered out record", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -429,8 +425,8 @@ function changeSorting(columnName, direction) {
       const TEST_TABLE = "composite_pk_table";
 
       beforeEach(() => {
-        H.resetTestTable({ type: dialect, table: TEST_TABLE });
         H.restore(`${dialect}-writable`);
+        H.resetTestTable({ type: dialect, table: TEST_TABLE });
         cy.signInAsAdmin();
         H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
       });
@@ -482,8 +478,8 @@ function changeSorting(columnName, direction) {
       const TEST_TABLE = "no_pk_table";
 
       beforeEach(() => {
-        H.resetTestTable({ type: dialect, table: TEST_TABLE });
         H.restore(`${dialect}-writable`);
+        H.resetTestTable({ type: dialect, table: TEST_TABLE });
         cy.signInAsAdmin();
         H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
       });

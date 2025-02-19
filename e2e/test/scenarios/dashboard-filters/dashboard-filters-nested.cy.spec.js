@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -68,7 +68,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
 
     // Add multiple values (metabase#18113)
     H.filterWidget().click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       H.fieldValuesInput().type("Gizmo,Gadget").blur();
     });
 

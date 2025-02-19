@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -521,7 +521,7 @@ describe("scenarios > admin > people", () => {
   });
 });
 
-H.describeEE("scenarios > admin > people", () => {
+describe("scenarios > admin > people", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -605,7 +605,7 @@ H.describeEE("scenarios > admin > people", () => {
   });
 });
 
-H.describeEE("scenarios > admin > people > group managers", () => {
+describe("scenarios > admin > people > group managers", () => {
   function confirmLosingAbilityToManageGroup() {
     H.modal().within(() => {
       cy.findByText(
@@ -787,7 +787,7 @@ H.describeEE("scenarios > admin > people > group managers", () => {
   });
 });
 
-H.describeEE("issue 23689", () => {
+describe("issue 23689", () => {
   function findUserByFullName(user) {
     const { first_name, last_name } = user;
     return cy.findByText(`${first_name} ${last_name}`);

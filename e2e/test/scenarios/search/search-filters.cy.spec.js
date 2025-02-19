@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -858,7 +858,7 @@ describe("scenarios > search", () => {
       });
     });
 
-    H.describeEE("verified filter", () => {
+    describe("verified filter", () => {
       beforeEach(() => {
         H.setTokenFeatures("all");
         H.createModerationReview({

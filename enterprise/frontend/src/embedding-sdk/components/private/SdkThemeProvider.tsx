@@ -45,5 +45,10 @@ function GlobalSdkCssVariables() {
   // the default is needed for when the sdk can't connect to the instance and get the default from there
   const font = useSelector(getFont) ?? DEFAULT_FONT;
 
-  return <Global styles={getMetabaseSdkCssVariables(theme, font)} />;
+  const styles = useMemo(
+    () => getMetabaseSdkCssVariables(theme, font),
+    [theme, font],
+  );
+
+  return <Global styles={styles} />;
 }
