@@ -45,9 +45,6 @@ export const InteractiveQuestionResult = ({
   withResetButton,
   withChartTypeSelector,
 }: InteractiveQuestionResultProps & FlexibleSizeProps): ReactElement => {
-  const [isEditorOpen, { close: closeEditor, toggle: toggleEditor }] =
-    useDisclosure(false);
-
   const {
     originalId,
     question,
@@ -59,14 +56,21 @@ export const InteractiveQuestionResult = ({
     isSaveEnabled,
     saveToCollectionId,
     isCardIdError,
+    isCreatingQuestionFromScratch,
   } = useInteractiveQuestionContext();
+
+  const [isEditorOpen, { close: closeEditor, toggle: toggleEditor }] =
+    useDisclosure(isCreatingQuestionFromScratch);
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
-    question && shouldRunCardQuery(question) && !queryResults;
+    !isCreatingQuestionFromScratch &&
+    question &&
+    shouldRunCardQuery(question) &&
+    !queryResults;
 
   if (isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
@@ -82,6 +86,8 @@ export const InteractiveQuestionResult = ({
     isSaveEnabled &&
     !isSaveModalOpen;
 
+  const showTopBar = !isCreatingQuestionFromScratch || queryResults;
+
   return (
     <FlexibleSizeComponent
       height={height}
@@ -89,63 +95,65 @@ export const InteractiveQuestionResult = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-        <Group justify="space-between" align="flex-end">
-          <Group gap="xs">
-            <Box mr="sm">
-              <InteractiveQuestion.BackButton />
-            </Box>
-            <ResultTitle title={title} withResetButton={withResetButton} />
-          </Group>
-          {showSaveButton && (
-            <InteractiveQuestion.SaveButton onClick={openSaveModal} />
-          )}
-        </Group>
-        <Group
-          justify="space-between"
-          p="sm"
-          bg="var(--mb-color-bg-sdk-question-toolbar)"
-          style={{ borderRadius: "0.5rem" }}
-          data-testid="interactive-question-result-toolbar"
-        >
-          <Group gap="xs">
-            {isEditorOpen ? (
-              <PopoverBackButton
-                onClick={toggleEditor}
-                color="brand"
-                fz="md"
-                ml="sm"
-              >
-                {t`Back to visualization`}
-              </PopoverBackButton>
-            ) : (
-              <>
-                {withChartTypeSelector && (
-                  <>
-                    <Button.Group>
-                      <InteractiveQuestion.ChartTypeDropdown />
-                      <InteractiveQuestion.QuestionSettingsDropdown />
-                    </Button.Group>
-                    <Divider
-                      mx="xs"
-                      orientation="vertical"
-                      // we have to do this for now because Mantine's divider overrides this color no matter what
-                      color="var(--mb-color-border) !important"
-                    />
-                  </>
-                )}
-                <InteractiveQuestion.FilterDropdown />
-                <InteractiveQuestion.SummarizeDropdown />
-                <InteractiveQuestion.BreakoutDropdown />
-              </>
+      {showTopBar && (
+        <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+          <Group justify="space-between" align="flex-end">
+            <Group gap="xs">
+              <Box mr="sm">
+                <InteractiveQuestion.BackButton />
+              </Box>
+              <ResultTitle title={title} withResetButton={withResetButton} />
+            </Group>
+            {showSaveButton && (
+              <InteractiveQuestion.SaveButton onClick={openSaveModal} />
             )}
           </Group>
-          <InteractiveQuestion.EditorButton
-            isOpen={isEditorOpen}
-            onClick={toggleEditor}
-          />
-        </Group>
-      </Stack>
+          <Group
+            justify="space-between"
+            p="sm"
+            bg="var(--mb-color-bg-sdk-question-toolbar)"
+            style={{ borderRadius: "0.5rem" }}
+            data-testid="interactive-question-result-toolbar"
+          >
+            <Group gap="xs">
+              {isEditorOpen ? (
+                <PopoverBackButton
+                  onClick={toggleEditor}
+                  color="brand"
+                  fz="md"
+                  ml="sm"
+                >
+                  {t`Back to visualization`}
+                </PopoverBackButton>
+              ) : (
+                <>
+                  {withChartTypeSelector && (
+                    <>
+                      <Button.Group>
+                        <InteractiveQuestion.ChartTypeDropdown />
+                        <InteractiveQuestion.QuestionSettingsDropdown />
+                      </Button.Group>
+                      <Divider
+                        mx="xs"
+                        orientation="vertical"
+                        // we have to do this for now because Mantine's divider overrides this color no matter what
+                        color="var(--mb-color-border) !important"
+                      />
+                    </>
+                  )}
+                  <InteractiveQuestion.FilterDropdown />
+                  <InteractiveQuestion.SummarizeDropdown />
+                  <InteractiveQuestion.BreakoutDropdown />
+                </>
+              )}
+            </Group>
+            <InteractiveQuestion.EditorButton
+              isOpen={isEditorOpen}
+              onClick={toggleEditor}
+            />
+          </Group>
+        </Stack>
+      )}
 
       <Box className={InteractiveQuestionS.Main} p="sm" w="100%" h="100%">
         <Box className={InteractiveQuestionS.Content}>

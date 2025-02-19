@@ -65,4 +65,7 @@ export type InteractiveQuestionContextType = Omit<
     onSave: (question: Question) => Promise<void>;
   } & {
     isCardIdError: boolean;
+
+    /** If we are creating a question from scratch (i.e. if questionId is undefined) */
+    isCreatingQuestionFromScratch: boolean;
   };

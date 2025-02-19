@@ -28,10 +28,13 @@ export const QuestionVisualization = ({
     navigateToNewCard,
     onNavigateBack,
     updateQuestion,
+    isCreatingQuestionFromScratch,
   } = useInteractiveQuestionContext();
 
   // When visualizing a question for the first time, there is no query result yet.
-  const isQueryResultLoading = question && !queryResults;
+  // We need to also check for "id === undefined" for when a question is created from scratch.
+  const isQueryResultLoading =
+    !isCreatingQuestionFromScratch && question && !queryResults;
 
   if (isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;

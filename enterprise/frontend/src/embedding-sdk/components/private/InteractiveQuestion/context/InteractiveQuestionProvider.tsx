@@ -131,7 +131,9 @@ export const InteractiveQuestionProvider = ({
 
   const questionContext: InteractiveQuestionContextType = {
     originalId: initialQuestionId,
-    isQuestionLoading: isQuestionLoading || isLoadingValidatedId,
+    isQuestionLoading:
+      isQuestionLoading ||
+      (initialQuestionId !== undefined && isLoadingValidatedId),
     isQueryRunning,
     resetQuestion: loadAndQueryQuestion,
     onReset: loadAndQueryQuestion,
@@ -151,6 +153,8 @@ export const InteractiveQuestionProvider = ({
     isSaveEnabled,
     saveToCollectionId,
     isCardIdError,
+    isCreatingQuestionFromScratch:
+      initialQuestionId === undefined && !question?.isSaved(),
   };
 
   useEffect(() => {
