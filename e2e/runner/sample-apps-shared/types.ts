@@ -7,7 +7,7 @@ export type EmbeddingSdkVersion = string | "local" | undefined;
 
 export type SampleAppSetupConfig = {
   subAppName?: string;
-  branch: string;
+  defaultBranch: string;
   env: Record<string, string | number>;
   additionalSetup?: (data: {
     installationPath: string;

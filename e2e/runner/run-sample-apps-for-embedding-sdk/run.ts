@@ -17,9 +17,10 @@ import type {
 import { SAMPLE_APP_NAMES } from "./config";
 
 const userOptions = {
-  EMBEDDING_SDK_VERSION: "",
+  EMBEDDING_SDK_VERSION: "local",
   SAMPLE_APP_NAMES: SAMPLE_APP_NAMES.join(","),
   EXCLUDE_SAMPLE_APP_NAMES: "",
+  SAMPLE_APP_BRANCH_NAME: "",
   ...booleanify(process.env),
 };
 
@@ -29,6 +30,7 @@ printBold(`Running Cypress Sample Apps Tests with options:
   - EMBEDDING_SDK_VERSION      : ${userOptions.EMBEDDING_SDK_VERSION}
   - SAMPLE_APP_NAMES           : ${userOptions.SAMPLE_APP_NAMES}
   - EXCLUDE_SAMPLE_APP_NAMES   : ${userOptions.EXCLUDE_SAMPLE_APP_NAMES}
+  - SAMPLE_APP_BRANCH_NAME     : ${userOptions.SAMPLE_APP_BRANCH_NAME}
 `);
 
 async function initSampleApp({
@@ -40,8 +42,15 @@ async function initSampleApp({
   setupConfig: SampleAppSetupConfig;
   embeddingSdkVersion: EmbeddingSdkVersion;
 }) {
-  const { subAppName, branch, env, startCommand, additionalSetup } =
-    setupConfig;
+  const {
+    subAppName,
+    defaultBranch,
+    env,
+    startCommand,
+    additionalSetup,
+  } = setupConfig;
+  const branch = userOptions.SAMPLE_APP_BRANCH_NAME ?? defaultBranch;
+
   const loggerPrefix = [appName, subAppName].filter(Boolean).join("/");
 
   const { rootPath, installationPath } = await fetchApp({

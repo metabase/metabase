@@ -7,6 +7,7 @@ const {
   PR_NUMBER,
   GITHUB_REPOSITORY,
   JOB_NAME,
+  TEST_SUITE,
 } = process.env;
 
 const MAX_TEST_LENGTH = 10;
@@ -58,7 +59,7 @@ function getCommentText(tests: TestInfo[]) {
   }
 
   return `
-  ## e2e tests failed on \`${HASH ?? "hash"}\`
+  ## ${TEST_SUITE} tests failed on \`${HASH ?? "hash"}\`
 
   [e2e test run](https://github.com/metabase/metabase/actions/runs/${GITHUB_RUN_ID}?pr=${PR_NUMBER})
 
@@ -105,7 +106,7 @@ async function getComment(): Promise<{ body: string; id: string } | undefined> {
   }
 
   return comments.find((comment: { body: string; id: string }) =>
-    comment?.body?.includes("## e2e tests failed on"),
+    comment?.body?.includes(`## ${TEST_SUITE} tests failed on`),
   );
 }
 

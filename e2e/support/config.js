@@ -266,6 +266,9 @@ const sampleAppsEmbeddingSdkE2eTestConfig = {
   specPattern: getSampleAppsEmbeddingSdkSpecFiles(
     "e2e/test/sample-apps-embedding-sdk-scenarios",
   ),
+  reporter: mainConfig.reporter,
+  reporterOptions: mainConfig.reporterOptions,
+  retries: mainConfig.retries,
 };
 
 module.exports = {
