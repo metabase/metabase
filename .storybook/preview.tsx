@@ -28,7 +28,6 @@ const parameters = {
         "Design System",
         "Typography",
         "Components",
-        "Buttons",
         "Viz",
         "*",
         "Patterns",

@@ -137,7 +137,7 @@ const LabelsAndDividersTemplate = (args: MenuProps) => (
 );
 
 export default {
-  title: "Overlays/Menu",
+  title: "Components/Overlays/Menu",
   component: Menu,
   args,
   argTypes,

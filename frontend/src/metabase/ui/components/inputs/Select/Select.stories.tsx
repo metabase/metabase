@@ -117,7 +117,7 @@ const VariantTemplate = (args: SelectProps<string>) => (
 );
 
 export default {
-  title: "Inputs/Select",
+  title: "Components/Inputs/Select",
   component: Select,
   args,
   argTypes,
