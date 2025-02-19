@@ -180,7 +180,7 @@
 
 (defmethod serdes/hash-fields :model/Field
   [_field]
-  [:name (serdes/hydrated-hash :table)])
+  [:name (serdes/hydrated-hash :table :table_id)])
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
