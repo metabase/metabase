@@ -4,6 +4,20 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.53.0
+
+- The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:
+
+  - The majority of `/api/alert` endpoints have been removed in favor of the new `/api/notification` endpoints. For backward compatibility, these endpoints will remain available until the next release:
+    - `GET /api/alert`
+    - `GET /api/alert/:id`
+    - `DELETE /api/alert/:id/subscription`
+
+  - Developers should migrate to using the `/api/notification` endpoints. For reference:
+    - An overview of the new notification system can be found at `src/metabase/notification/README.md`
+    - Notification API documentation at `{{YOUR_URL}}/api/docs/#tag/apinotification`
+    - Interactive API documentation available at `/api/docs` endpoint
+
 ## Metabase 0.52.0
 
 - `POST /api/user/:id/send_invite` has been removed.

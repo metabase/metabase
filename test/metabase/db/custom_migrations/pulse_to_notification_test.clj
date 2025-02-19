@@ -160,15 +160,15 @@
                                                    :alert-props {:alert_condition "goal"
                                                                  :alert_above_goal false
                                                                  :alert_first_only true}}]]
-           (testing (format "testing %s condition" alert-props)
-             (let [alert-id (create-alert! alert-props card-id [{:channel_type "email"
-                                                                 :recipients  [{:user_id (mt/user->id :rasta)}]}])
-                   notification (first (migrate-alert! alert-id))]
-               (is (=? {:payload_type :notification/card
-                        :payload      (merge {:card_id card-id} expected)
-                        :active       true
-                        :creator_id   (mt/user->id :crowberto)}
-                       notification))))))))))
+            (testing (format "testing %s condition" alert-props)
+              (let [alert-id (create-alert! alert-props card-id [{:channel_type "email"
+                                                                  :recipients  [{:user_id (mt/user->id :rasta)}]}])
+                    notification (first (migrate-alert! (#'task/scheduler) alert-id))]
+                (is (=? {:payload_type :notification/card
+                         :payload      (merge {:card_id card-id} expected)
+                         :active       true
+                         :creator_id   (mt/user->id :crowberto)}
+                        notification))))))))))
 
 (defn- bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
@@ -180,21 +180,22 @@
 (defn test-alert-view!
   [{:keys [alert pcs expected-views]}]
   (mt/with-model-cleanup [:model/Pulse :model/Notification]
-    (mt/with-temp [:model/Card {card-id :id} {}]
-      (let [alert-id (create-alert! alert card-id pcs)
-            notification-id (:id (first (migrate-alert! (#'task/scheduler) alert-id)))
-            entity-id       (format "notification_%s" notification-id)
-            card-entity-id (format "card_%s" card-id)]
-        (is (=? (map #(assoc %
-                             :card_qualified_id card-entity-id
-                             :card_id card-id
-                             :entity_id notification-id)
-                     expected-views)
-                (map #(update % :archived bit->boolean)
-                     (t2/query {:select [:*]
-                                :from [:v_alerts]
-                                :where [:= :entity_qualified_id entity-id]
-                                :order-by [:recipient_type]}))))))))
+    (mt/with-temp-scheduler!
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [alert-id (create-alert! alert card-id pcs)
+              notification-id (:id (first (migrate-alert! (#'task/scheduler) alert-id)))
+              entity-id       (format "notification_%s" notification-id)
+              card-entity-id  (format "card_%s" card-id)]
+          (is (=? (map #(assoc %
+                               :card_qualified_id card-entity-id
+                               :card_id card-id
+                               :entity_id notification-id)
+                       expected-views)
+                  (map #(update % :archived bit->boolean)
+                       (t2/query {:select [:*]
+                                  :from [:v_alerts]
+                                  :where [:= :entity_qualified_id entity-id]
+                                  :order-by [:recipient_type]})))))))))
 
 (deftest v_alerts-test
   (testing "testing the new v_alerts view created by v53.2024-12-12T08:06:00 migration"

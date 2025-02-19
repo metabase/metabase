@@ -19,7 +19,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- get-notification
+(defn get-notification
+  "Get a notification by id."
   [id]
   (-> (t2/select-one :model/Notification id)
       api/check-404
@@ -29,18 +30,9 @@
   [notification]
   (= :notification/card (:payload_type notification)))
 
-(api.macros/defendpoint :get "/"
-  "List notifications.
-  - `creator_id`: if provided returns only notifications created by this user
-  - `recipient_id`: if provided returns only notification that has recipient_id as a recipient
-  - `card_id`: if provided returns only notification that has card_id as payload"
-  [_route-params
-   {:keys [creator_id recipient_id card_id include_inactive]} :-
-   [:map
-    [:creator_id       {:optional true} ms/PositiveInt]
-    [:recipient_id     {:optional true} ms/PositiveInt]
-    [:card_id          {:optional true} ms/PositiveInt]
-    [:include_inactive {:optional true} ms/BooleanValue]]]
+(defn list-notifications
+  "List notifications. See `GET /` for parameters."
+  [{:keys [creator_id recipient_id card_id payload_type include_inactive legacy-active legacy-user-id]}]
   (->> (t2/reducible-select :model/Notification
                             (cond-> {}
                               creator_id
@@ -61,12 +53,48 @@
                                    :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
                                   (sql.helpers/where [:= :notification_recipient.user_id recipient_id]))
 
-                              (not (true? include_inactive))
-                              (sql.helpers/where [:= :notification.active true])))
+                              (and (nil? legacy-active) (not (true? include_inactive)))
+                              (sql.helpers/where [:= :notification.active true])
+
+                              payload_type
+                              (sql.helpers/where [:= :notification.payload_type (u/qualified-name payload_type)])
+
+                              ;; legacy-active and legacy-user-id only used by alert api, will be removed soon
+                              (some? legacy-active)
+                              (sql.helpers/where [:= :notification.active legacy-active])
+
+                              legacy-user-id
+                              (-> (sql.helpers/left-join
+                                   :notification_handler [:= :notification_handler.notification_id :notification.id])
+                                  (sql.helpers/left-join
+                                   :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
+                                  (sql.helpers/where [:or
+                                                      [:= :notification_recipient.user_id legacy-user-id]
+                                                      [:= :notification.creator_id legacy-user-id]]))))
+
        (into [] (comp
                  (map t2.realize/realize)
                  (filter mi/can-read?)))
        models.notification/hydrate-notification))
+
+(api.macros/defendpoint :get "/"
+  "List notifications.
+  - `creator_id`: if provided returns only notifications created by this user
+  - `recipient_id`: if provided returns only notification that has recipient_id as a recipient
+  - `card_id`: if provided returns only notification that has card_id as payload"
+  [_route-params
+   {:keys [creator_id recipient_id card_id include_inactive payload_type]} :-
+   [:map
+    [:creator_id       {:optional true} ms/PositiveInt]
+    [:recipient_id     {:optional true} ms/PositiveInt]
+    [:card_id          {:optional true} ms/PositiveInt]
+    [:include_inactive {:optional true} ms/BooleanValue]
+    [:pyaload_type     {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
+  (list-notifications {:creator_id       creator_id
+                       :recipient_id     recipient_id
+                       :card_id          card_id
+                       :include_inactive include_inactive
+                       :payload_type     payload_type}))
 
 (api.macros/defendpoint :get "/:id"
   "Get a notification by id."
@@ -187,17 +215,23 @@
       promote-to-t2-instance
       (notification/send-notification! :notification/sync? true)))
 
-(api.macros/defendpoint :post "/:id/unsubscribe"
-  "Unsubscribe current user from a notification."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [notification (get-notification id)]
+(defn unsubscribe-user!
+  "Unsubscribe a user from a notification."
+  [notification-id user-id]
+  (let [notification (get-notification notification-id)]
     (api/check-403 (models.notification/current-user-is-recipient? notification))
-    (models.notification/unsubscribe-user! id api/*current-user-id*)
-    (u/prog1 (get-notification id)
+    (models.notification/unsubscribe-user! notification-id user-id)
+    (u/prog1 (get-notification notification-id)
       (when (card-notification? <>)
         (u/ignore-exceptions
           (messages/send-you-unsubscribed-notification-card-email!
            (update <> :payload t2/hydrate :card)
            [(:email @api/*current-user*)])))
-      (events/publish-event! :event/notification-unsubscribe {:object {:id id}
+      (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
                                                               :user-id api/*current-user-id*}))))
+
+(api.macros/defendpoint :post "/:id/unsubscribe"
+  "Unsubscribe current user from a notification."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (unsubscribe-user! id api/*current-user-id*)
+  api/generic-204-no-content)
