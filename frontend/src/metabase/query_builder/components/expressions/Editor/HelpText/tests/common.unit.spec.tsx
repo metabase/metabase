@@ -17,7 +17,7 @@ describe("HelpText (OSS)", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(getBrokenUpTextMatcher("concat(⟨value1⟩, ⟨value2⟩, …)")),
+      screen.getByText(getBrokenUpTextMatcher("concat(value1, value2, …)")),
     ).toBeInTheDocument();
 
     expect(
@@ -65,7 +65,7 @@ describe("HelpText (OSS)", () => {
     );
 
     helpText?.args?.forEach(({ name, description }) => {
-      const expectedName = name === "…" ? "…" : `⟨${name}⟩`;
+      const expectedName = name === "…" ? "…" : name;
       expect(
         within(argumentsBlock).getByText(expectedName),
       ).toBeInTheDocument();
