@@ -356,7 +356,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       tableName: bigIntPkTableName,
       baseType: "type/BigInteger",
     });
-    cy.signInAsNormalUser();
     testBigIntFilters({ withDrillThru: true });
     visitPublicDashboard();
     testBigIntFilters();
@@ -369,7 +368,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       tableName: decimalPkTableName,
       baseType: "type/Decimal",
     });
-    cy.signInAsNormalUser();
     testDecimalFilters({ withDrillThru: true });
     visitPublicDashboard();
     testDecimalFilters();
@@ -1016,7 +1014,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         tableName: bigIntPkTableName,
         baseType: "type/BigInteger",
       });
-      cy.signInAsNormalUser();
       H.visitQuestion("@questionId");
       testBitIntFilter({ withRunButton: true });
       visitPublicQuestion();
@@ -1030,7 +1027,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         tableName: decimalPkTableName,
         baseType: "type/Decimal",
       });
-      cy.signInAsNormalUser();
       H.visitQuestion("@questionId");
       testDecimalFilter({ withRunButton: true });
       visitPublicQuestion();
