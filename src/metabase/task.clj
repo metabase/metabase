@@ -23,7 +23,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (org.quartz CronTrigger JobDetail JobExecutionException JobKey JobPersistenceException ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobExecutionContext JobExecutionException JobKey JobPersistenceException
+               ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -309,8 +310,8 @@
 (defmacro rerun-on-error
   "Retry the current Job if an exception is thrown by the enclosed code."
   {:style/indent 1}
-  [ctx & body]
-  `(let [msg# (str (-> ~ctx .getJobDetail .getName) " failed, but we will try it again.")]
+  [^JobExecutionContext ctx & body]
+  `(let [msg# (str (-> ~ctx .getJobDetail .getKey .getName) " failed, but we will try it again.")]
      (try
        ~@body
        (catch Exception e#
