@@ -121,7 +121,7 @@
              pc            (first pcs)
              subscriptions [{:type          "notification-subscription/cron"
                              :cron_schedule (schedule-map->cron-string pc)
-                             :created_at    :%now}]
+                             :created_at    (:created_at (first pcs))}]
              handlers      (map (fn [pc]
                                   (merge
                                    {:active (:enabled pc)}

@@ -116,8 +116,12 @@
 
 (defn- send-you-were-added-card-notification-email! [notification]
   (when (email/email-configured?)
-    (messages/send-you-were-added-card-notification-email!
-     (update notification :payload t2/hydrate :card) (all-email-recipients notification) @api/*current-user*)))
+    (let [current-user? #{(:email @api/*current-user*)}]
+      (when-let [recipients-except-creator (->> (all-email-recipients notification)
+                                                (remove current-user?)
+                                                seq)]
+        (messages/send-you-were-added-card-notification-email!
+         (update notification :payload t2/hydrate :card) recipients-except-creator @api/*current-user*)))))
 
 (api.macros/defendpoint :post "/"
   "Create a new notification, return the created notification."

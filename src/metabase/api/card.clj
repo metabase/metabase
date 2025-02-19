@@ -465,7 +465,8 @@
                             [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
                             [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
                             [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]]]
+                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+                            [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
   (card/check-run-permissions-for-query query)
@@ -528,7 +529,8 @@
    [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:collection_preview     {:optional true} [:maybe :boolean]]
-   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
 
 (mu/defn update-card!
   "Updates a card - impl"
