@@ -242,19 +242,18 @@
   []
   {:popular_items (get-popular-items-model-and-id)})
 
-(api.macros/defendpoint :get "/model/:id/view-history"
+(api.macros/defendpoint :get "/model/:type/:id/view-history"
   "Return who has viewed this card."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (map
-    #(-> %
-       user/add-picture-url
-       user/add-common-name)
+  [{:keys [type id]} :- [:map
+                         [:id ms/PositiveInt]]]
+  (map #(-> %
+          user/add-picture-url
+          user/add-common-name)
     (t2/select :model/ViewLog
       {:select   [:user_id :first_name :last_name :email :auto_picture_url :show_picture [:%max.timestamp :latest_timestamp] [:%count.* :view_count]]
        :from     [[:view_log :l]]
        :join     [[:core_user :u] [:= :u.id :l.user_id]]
-       :where    [:= :model_id id]
+       :where    [:and [:= :model_id id] [:= :model type]]
        :group-by [:user_id :first_name :last_name :email :auto_picture_url :show_picture]
        :order-by [[:latest_timestamp :desc]]})))
 
