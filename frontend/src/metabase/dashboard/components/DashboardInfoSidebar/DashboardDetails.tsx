@@ -1,8 +1,8 @@
 import cx from "classnames";
-import { useEffect, useState } from "react";
-
-const initSqlJs = window.initSqlJs;
+import { useState } from "react";
+import snake_case from "lodash.snakecase";
 import { c, t } from "ttag";
+import { match } from "ts-pattern";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
@@ -13,43 +13,77 @@ import { collection as collectionUrl } from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { DashboardPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
 import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
-import type { Dashboard } from "metabase-types/api";
+import { useSelector } from "metabase/lib/redux";
+import { getDashcardDataMap } from "metabase/dashboard/selectors";
+import type { Dashboard, Dataset } from "metabase-types/api";
 
 import SidebarStyles from "./DashboardInfoSidebar.module.css";
 
-const SqliteGenerator = () => {
+const initSqlJs = window.initSqlJs;
+
+const SqliteGenerator = ({ dashboard }: { dashboard: Dashboard }) => {
+  const dashboardData = useSelector(getDashcardDataMap);
 
   const handleClick = async () => {
-      // if (!sql) return;
+    const results = Object.values(dashboardData)
+      .map(kv => Object.entries(kv)?.[0])
+      .filter(([, x]) => !!x) as [string, Dataset][];
 
-        // Initialize SQL.js
-  const SQL = await initSqlJs({
-    // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
-    // You can omit locateFile completely when running in node
-    locateFile: file => `https://sql.js.org/dist/${file}`
+    const sqliteData = results
+      .map(([cardId, result], index) => {
+        const relatedCard = dashboard.dashcards.find(
+          dc => dc.card.id === parseInt(cardId, 10),
+        )?.card;
+        const tableName = snake_case(relatedCard?.name ?? `table_${index}`);
+
+        const columns = result.data.cols.map(col => {
+          const sqliteType = match(col.base_type)
+            .with("type/Date", () => "DATE")
+            .with("type/DateTime", () => "DATETIME")
+            .with("type/Float", () => "REAL")
+            .with("type/Integer", () => "INTEGER")
+            .with("type/BigInteger", () => "INTEGER")
+            .otherwise(() => "TEXT");
+          return `"${col.display_name}" ${sqliteType}`;
+        });
+
+        const table = `CREATE TABLE ${tableName} (${columns.join(", ")});`;
+
+        const rows = result.data.rows
+          .map(row => `(${row.map(val => JSON.stringify(val)).join(", ")})`)
+          .join(",\n");
+
+        const data = `INSERT INTO ${tableName}\nVALUES ${rows};`;
+
+        return [table, data].join("\n");
+      })
+      .join("\n");
+
+    // if (!sql) return;
+
+    // Initialize SQL.js
+    const SQL = await initSqlJs({
+      // Required to load the wasm binary asynchronously. Of course, you can host it wherever you want
+      // You can omit locateFile completely when running in node
+      locateFile: file => `https://sql.js.org/dist/${file}`,
     });
-
-
 
     // Create a new database
     const db = new SQL.Database();
 
     // Create a simple table with some data
-    db.run(`
-      CREATE TABLE test (id INTEGER, name TEXT);
-      INSERT INTO test VALUES (1, 'Alice');
-      INSERT INTO test VALUES (2, 'Bob');
-    `);
+    db.run(sqliteData);
 
     // Export the database as a Uint8Array
     const binaryArray = db.export();
 
     // Create and download the file
-    const blob = new Blob([binaryArray], { type: 'application/x-sqlite3' });
+    const blob = new Blob([binaryArray], { type: "application/x-sqlite3" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'database.db';
+    const niceDashName = snake_case(dashboard.name.toLowerCase());
+    a.download = `${niceDashName}_${new Date().getTime()}.db`;
     a.click();
 
     // Cleanup
@@ -111,10 +145,8 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
         {creator && (
           <Flex gap="sm" align="top">
             <FixedSizeIcon name="ai" className={SidebarStyles.IconMargin} />
-            <Text>
-                Download this data as sqlite
-            </Text>
-            <SqliteGenerator />
+            <Text>Download this data as sqlite</Text>
+            <SqliteGenerator dashboard={dashboard} />
           </Flex>
         )}
       </SidesheetCardSection>
