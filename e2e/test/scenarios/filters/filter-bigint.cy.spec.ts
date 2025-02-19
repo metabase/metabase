@@ -223,7 +223,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     const bigIntPkTableName = "bigint_pk_table";
     const decimalPkTableName = "decimal_pk_table";
 
-    function setupDatabase() {
+    function setupTables() {
       const dialect = "postgres";
       H.restore("postgres-writable");
       H.resetTestTable({ type: dialect, table: bigIntPkTableName });
@@ -277,6 +277,10 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       const dashboardDetails: DashboardDetails = {
         name: "Dashboard",
         parameters: [parameterDetails],
+        enable_embedding: true,
+        embedding_params: {
+          [parameterDetails.slug]: "enabled",
+        },
       };
 
       const getTargetQuestionDetails = (
@@ -325,7 +329,13 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       });
     }
 
-    function testFilter({ value }: { value: string }) {
+    function testFilter({
+      value,
+      withDrillThru,
+    }: {
+      value: string;
+      withDrillThru: boolean;
+    }) {
       cy.log("add a filter");
       H.getDashboardCard()
         .findByTestId("scalar-value")
@@ -339,36 +349,57 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         .findByTestId("scalar-value")
         .should("have.text", "1");
 
-      cy.log("drill-thru");
-      H.getDashboardCard().findByText("MBQL").click();
-      H.queryBuilderFiltersPanel().findByText(`ID is ${value}`);
-      H.queryBuilderMain()
-        .findByTestId("scalar-value")
-        .should("have.text", "1");
+      if (withDrillThru) {
+        cy.log("drill-thru");
+        H.getDashboardCard().findByText("MBQL").click();
+        H.queryBuilderFiltersPanel().findByText(`ID is ${value}`);
+        H.queryBuilderMain()
+          .findByTestId("scalar-value")
+          .should("have.text", "1");
+        H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
+      }
 
-      cy.log("cleanup");
-      H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
       H.filterWidget().icon("close").click();
     }
 
+    function testBigIntFilters({ withDrillThru }: { withDrillThru: boolean }) {
+      testFilter({ value: minBigIntValue, withDrillThru });
+      testFilter({ value: maxBigIntValue, withDrillThru });
+    }
+
+    function testDecimalFilters({ withDrillThru }: { withDrillThru: boolean }) {
+      testFilter({ value: negativeDecimalValue, withDrillThru });
+      testFilter({ value: positiveDecimalValue, withDrillThru });
+    }
+
     cy.log("create tables");
-    setupDatabase();
+    setupTables();
 
     cy.log("BIGINT");
+    cy.signInAsAdmin();
     setupDashboard({
       tableName: bigIntPkTableName,
       baseType: "type/BigInteger",
     });
-    testFilter({ value: minBigIntValue });
-    testFilter({ value: maxBigIntValue });
+    cy.signInAsNormalUser();
+    testBigIntFilters({ withDrillThru: true });
+    visitPublicDashboard();
+    testBigIntFilters({ withDrillThru: false });
+    visitEmbeddedDashboard();
+    testBigIntFilters({ withDrillThru: false });
 
     cy.log("DECIMAL");
+    cy.signInAsAdmin();
     setupDashboard({
       tableName: decimalPkTableName,
       baseType: "type/Decimal",
     });
-    testFilter({ value: negativeDecimalValue });
-    testFilter({ value: positiveDecimalValue });
+    cy.signInAsNormalUser();
+    testDecimalFilters({ withDrillThru: true });
+    visitPublicDashboard();
+    testDecimalFilters({ withDrillThru: false });
+    visitEmbeddedDashboard();
+    testDecimalFilters({ withDrillThru: false });
   });
 
   it("mbql query + dashboards + number parameters", () => {
