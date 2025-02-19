@@ -2,8 +2,9 @@ import { checkbox } from "@inquirer/prompts";
 import ora from "ora";
 
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
-import type { Table } from "metabase-types/api";
+import type { Table, TableId } from "metabase-types/api";
 
+import { SAMPLE_DATABASE_SELECTED_TABLES } from "../constants/config";
 import {
   cliError,
   propagateErrorResponse,
@@ -73,24 +74,34 @@ export const pickDatabaseTables: CliStepMethod = async state => {
 
   spinner.succeed();
 
-  const chosenTableIds = await checkbox({
-    validate: choices => {
-      if (choices.length === 0) {
-        return "Pick 1 - 3 tables to embed.";
-      }
+  let chosenTableIds: TableId[] = [];
 
-      if (choices.length > 3) {
-        return "You can only choose up to 3 tables.";
-      }
+  if (!state.useSampleDatabase) {
+    chosenTableIds = await checkbox({
+      validate: choices => {
+        if (choices.length === 0) {
+          return "Pick 1 - 3 tables to embed.";
+        }
 
-      return true;
-    },
-    message: "Pick 1 - 3 tables to embed:",
-    choices: tablesWithoutMetadata.map(table => ({
-      name: table.name,
-      value: table.id,
-    })),
-  });
+        if (choices.length > 3) {
+          return "You can only choose up to 3 tables.";
+        }
+
+        return true;
+      },
+      message: "Pick 1 - 3 tables to embed:",
+      choices: tablesWithoutMetadata.map(table => ({
+        name: table.name,
+        value: table.id,
+      })),
+    });
+  } else {
+    // The user does not know about the sample database's structure,
+    // so we pick a couple tables for them.
+    chosenTableIds = tablesWithoutMetadata
+      .filter(item => SAMPLE_DATABASE_SELECTED_TABLES.includes(item.name))
+      .map(table => table.id);
+  }
 
   spinner.start("Fetching table metadata...");
 
