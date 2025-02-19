@@ -1,11 +1,15 @@
 #!/usr/bin/env bb
 (ns mage
-  (:require [babashka.cli :as cli]
-            [babashka.nrepl.server :as nrepl.server]
-            [clojure.string :as str]
-            [format :as format]
-            [splash :as splash]
-            [util :as u]))
+  (:require
+   [babashka.cli :as cli]
+   [babashka.nrepl.server :as nrepl.server]
+   [clojure.string :as str]
+   [format :as format]
+   [kondo :as kondo]
+   [splash :as splash]
+   [util :as u]))
+
+(set! *warn-on-reflection* true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; CLI
@@ -35,6 +39,8 @@
    {:cmds ["nrepl"] :fn mage-nrepl}
    {:cmds ["format"] :fn format/format}
    {:cmds ["format" "help"] :fn format/help}
+   {:cmds ["kondo"] :fn kondo/kondo}
+   {:cmds ["kondo-updated"] :fn kondo/kondo-updated}
    {:cmds ["help"] :fn help}
    {:cmds [] :fn help}])
 
