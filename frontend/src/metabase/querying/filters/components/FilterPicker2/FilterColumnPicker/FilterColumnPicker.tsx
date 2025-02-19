@@ -101,7 +101,8 @@ export function FilterColumnPicker({
 
   const sections = useMemo(() => {
     const realStageCount = Lib.stageCount(Lib.dropEmptyStages(query));
-    const max = realStageCount;
+    const stageCount = Lib.stageCount(query);
+    const max = stageCount === realStageCount ? stageCount - 1 : realStageCount;
 
     const sections = Lib.stageIndexes(query).flatMap(stageIndex => {
       if (limit.isLimited && stageIndex !== 0 && stageIndex < max) {
