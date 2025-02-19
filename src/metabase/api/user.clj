@@ -203,11 +203,10 @@
         clauses             (user-clauses status query group-id-clause include_deactivated)]
     {:data (cond-> (t2/select
                     (vec (cons :model/User (user-visible-columns)))
-                    (cond-> clauses
-                      (and (some? group_id) group-id-clause) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
-                      true             (sql.helpers/order-by [:%lower.first_name :asc]
-                                                             [:%lower.last_name :asc]
-                                                             [:id :asc])))
+                    (sql.helpers/order-by clauses
+                                          [:%lower.first_name :asc]
+                                          [:%lower.last_name :asc]
+                                          [:id :asc]))
              ;; For admins also include the IDs of Users' Personal Collections
              api/*is-superuser?*
              (t2/hydrate :personal_collection_id)
