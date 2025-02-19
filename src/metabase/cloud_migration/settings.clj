@@ -61,7 +61,9 @@
   ;; This will cause the restore to fail on cloud unless you also set `migration-dump-file` to
   ;; a dump from that version, but it lets you test everything else up to that point works.
   :default    (when (-> (config/mb-version-info :tag)
-                        (#(or (= % "vLOCAL_DEV") (str/ends-with? % "-SNAPSHOT"))))
+                        (#(or (= % "vLOCAL_DEV")
+                              (= % "vUNKNOWN")
+                              (str/ends-with? % "-SNAPSHOT"))))
                 "v0.53.3")
   :doc        false
   :export?    false)
