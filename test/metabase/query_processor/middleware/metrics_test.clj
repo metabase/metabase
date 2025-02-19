@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.metrics-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
@@ -13,6 +13,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
@@ -832,3 +833,262 @@
           (is (=  "sum"
                   (get-in (#'metrics/fetch-referenced-metrics query stage)
                           [(:id metric) :aggregation 1 :name]))))))))
+
+;; TODO: Extend to exception match / check
+(deftest incompatible-metric-joins-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (mt/with-temp
+      [;; contains NON fk->pk join
+       :model/Card
+       {offending-id :id}
+       {:type :metric
+        :dataset_query
+        (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+            (lib/join (lib.metadata/table mp (mt/id :orders)))
+            (lib/aggregate (lib/count))
+            (lib.convert/->legacy-MBQL))}
+
+       :model/Card
+       {none-id :id}
+       {:type :metric
+        :dataset_query
+        (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+            (lib/aggregate (lib/count))
+            (lib.convert/->legacy-MBQL))}]
+      (testing "Sanity: no joins"
+        (is (=? {:status :completed}
+                (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                      (lib/aggregate (lib.metadata/metric mp none-id)))))))
+      (testing "Incompatible joins in query or metric provoke an exception"
+        (are [description query] (thrown? Throwable (qp/process-query query))
+
+          "Metric has incompatible join" (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                             (lib/aggregate (lib.metadata/metric mp offending-id)))
+
+          "Query has incompatible join" (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                            (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :orders))))
+                                            (lib/aggregate (lib.metadata/metric mp none-id)))
+
+          "Both have incompatible join" (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                            (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :orders))))
+                                            (lib/aggregate (lib.metadata/metric mp offending-id))))))))
+
+;;
+(deftest compatible-metric-joins-test-xix
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (mt/with-temp
+      [;; contains NON fk->pk join
+       :model/Card
+       {conformant-id :id}
+       {:type :metric
+        :dataset_query
+        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            (lib/join (lib.metadata/table mp (mt/id :products)))
+            (lib/aggregate (lib/count))
+            (lib.convert/->legacy-MBQL))}
+
+       :model/Card
+       {none-id :id}
+       {:type :metric
+        :dataset_query
+        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            (lib/aggregate (lib/count))
+            (lib.convert/->legacy-MBQL))}]
+      (testing "Query with metric with compatible joins executes succesfully"
+        (are [description query] (=? {:status :completed}
+                                     (qp/process-query query))
+
+          "No joins used" (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                              (lib/aggregate (lib.metadata/metric mp none-id)))
+
+          "Metric has compatible join" (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                           (lib/aggregate (lib.metadata/metric mp conformant-id)))
+
+          "Query has compatible join" (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))))
+                                          (lib/aggregate (lib.metadata/metric mp none-id)))
+
+          "Both have compatible join" (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))))
+                                          (lib/aggregate (lib.metadata/metric mp conformant-id))))))))
+
+;; TODO: Better exceptions
+;; TODO: How would the solution work with models?
+(deftest fk-to-different-pk-join-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (mt/with-temp
+      [:model/Card
+       {no-join-id :id}
+       {:type :metric
+        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/count))
+                           (lib.convert/->legacy-MBQL))}
+
+       :model/Card
+       {with-join-id :id}
+       {:type :metric
+        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/join (lib/with-join-conditions
+                                       (lib/join-clause (lib.metadata/table mp (mt/id :reviews)))
+                                       [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                               (lib.metadata/field mp (mt/id :reviews :id)))]))
+                           (lib/aggregate (lib/count))
+                           (lib.convert/->legacy-MBQL))}]
+      (testing "Query with fk join with different target should provoke an exception"
+        (is (thrown? Throwable (qp/process-query
+                                (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                    (lib/aggregate (lib.metadata/metric mp with-join-id)))))))
+      (testing "Metric with fk join with different target should provoke an exception"
+        (is (thrown? Throwable (qp/process-query
+                                (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                    (lib/join (lib/with-join-conditions
+                                                (lib/join-clause (lib.metadata/table mp (mt/id :reviews)))
+                                                [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                        (lib.metadata/field mp (mt/id :reviews :id)))]))
+                                    (lib/aggregate (lib.metadata/metric mp no-join-id))))))))))
+
+(deftest join-operator-is-:=-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (mt/with-temp
+      [:model/Card
+       {incompatible-id :id}
+       {:type :metric
+        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/join (lib.metadata/table mp (mt/id :products)))
+                           (lib/aggregate (lib/count))
+                           (lib.util/update-query-stage 0 assoc-in [:joins 0 :conditions 0 0] :>))}
+
+       :model/Card
+       {no-join-id :id}
+       {:type :metric
+        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/count)))}]
+      (testing "Processing of query referencing a metric with join with non-:= condition provokes an exception"
+        (is (thrown? Throwable (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                     (lib/aggregate (lib.metadata/metric mp incompatible-id)))))))
+      (testing "Processing of query with join with non-:= condition referencing a metric provokes an exception"
+        (is (thrown? Throwable (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                     (lib/join (lib.metadata/table mp (mt/id :products)))
+                                                     (lib.util/update-query-stage 0 assoc-in [:joins 0 :conditions 0 0] :>)
+                                                     (lib/aggregate (lib.metadata/metric mp no-join-id))))))))))
+
+;; !!! TODO: Ensure that joins eg on following stages are not affected!
+
+;; now filters
+(deftest compatible-filters-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        metric-query-base (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                            (lib/filter $ (lib/> (m/find-first (comp #{"Total"} :display-name)
+                                                               (lib/filterable-columns $))
+                                                 10)))]
+    (mt/with-temp
+      [:model/Card
+       {mid-cnt :id}
+       {:type :metric
+        :dataset_query (-> metric-query-base
+                           (lib/aggregate (lib/count))
+                           (lib.convert/->legacy-MBQL))}
+
+       :model/Card
+       {mid-sum :id}
+       {:type :metric
+        :dataset_query (-> metric-query-base
+                           (lib/aggregate (lib/sum (->> (lib/visible-columns metric-query-base)
+                                                        (m/find-first (comp #{"Total"} :display-name)))))
+                           (lib.convert/->legacy-MBQL))}]
+      (testing "Processing of query referencing metrics with compatible filters completes"
+        (is (=? {:status :completed}
+                (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                      (lib/aggregate (lib.metadata/metric mp mid-cnt))
+                                      (lib/aggregate (lib.metadata/metric mp mid-sum))))))))))
+
+(deftest incompatible-filters-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        metric-query-fn (fn [filter-op]
+                          (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                            (lib/filter $ (filter-op (m/find-first (comp #{"Total"} :display-name)
+                                                                   (lib/filterable-columns $))
+                                                     10))
+                            (lib/aggregate $ (lib/count))
+                            (lib.convert/->legacy-MBQL $)))]
+    (mt/with-temp
+      [:model/Card
+       {mid-gt :id}
+       {:type :metric
+        :dataset_query (metric-query-fn lib/>)}
+  
+       :model/Card
+       {mid-lt :id}
+       {:type :metric
+        :dataset_query (metric-query-fn lib/<)}]
+      (testing "Processing of query referencing metrics with compatible filters completes"
+        (is (thrown-with-msg?
+             Throwable #"Metrics `\d+` and `\d+` have incompatible filters"
+             (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                   (lib/aggregate (lib.metadata/metric mp mid-gt))
+                                   (lib/aggregate (lib.metadata/metric mp mid-lt))))))))))
+
+(def efs @#'metrics/equal-filter-shape?)
+
+;; equal filter shape test
+;; TMP: It seem
+(deftest equal-filter-shape-test
+  (is (true? (efs [:> {} [:field {} 2] 1]
+                  [:> {} [:field {} 2] 1])))
+  
+  (is (false? (efs [:< {} [:field {} 2] 1]
+                   [:> {} [:field {} 2] 1])))
+  
+  (is (true? (efs [:< {}
+                   [:=
+                    [:field {} 100]
+                    [:+
+                     [:field {} 2]
+                     [:field {} 300]]]
+                   1]
+                   ;
+                  [:< {}
+                   [:=
+                    [:field {} 100]
+                    [:+
+                     [:field {} 2]
+                     [:field {} 300]]]
+                   1])))
+  
+  (is (false? (efs [:< {}
+                    [:=
+                     [:field {} 100]
+                     [:+
+                      [:field {} 2]
+                      [:field {} 300]]]
+                    1]
+                     ;
+                   [:< {}
+                    [:=
+                     [:field {} 100]
+                     [:-
+                      [:field {} 2]
+                      [:field {} 300]]]
+                    1])))
+  
+  (is (false? (efs [:< {}
+                    [:=
+                     [:field {} 100]
+                     [:+
+                      [:field {} 2]
+                      [:field {} 300]]]
+                    1]
+                       ;
+                   [:< {}
+                    [:=
+                     [:field {} 100]
+                     [:+
+                      [:field {} 2]
+                      nil]]
+                    1]))))
+
+(deftest dummy-filter-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    @(def qq (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                 (lib/filter (lib/= 2 (lib/+ 1 1)))
+                 (lib/filter (lib/= 3 (lib/+ 2 1)))))))
