@@ -134,7 +134,6 @@ export class ClickActionsPopover extends Component<
         opened={!!popoverAnchor}
         onClose={this.close}
         position="bottom-start"
-        width={700}
         offset={8}
         {...popoverAction?.popoverProps}
       >
