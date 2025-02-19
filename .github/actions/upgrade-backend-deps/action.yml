@@ -7,7 +7,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-      name: Open PRs to Bump Backend Deps
+    - name: Open PRs to Bump Backend Deps
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
       shell: bash
