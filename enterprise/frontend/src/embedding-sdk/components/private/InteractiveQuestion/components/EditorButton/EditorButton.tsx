@@ -15,19 +15,13 @@ export const EditorButton = ({
   isOpen = false,
   ...actionIconProps
 }: EditorButtonProps) => {
-  const { question, isCreatingQuestionFromScratch } =
-    useInteractiveQuestionContext();
-
-  const shouldRender =
-    isCreatingQuestionFromScratch ||
-    (question &&
-      QuestionNotebookButton.shouldRender({
-        question,
-        isActionListVisible: true,
-      }));
-
+  const { question } = useInteractiveQuestionContext();
   return (
-    shouldRender && (
+    question &&
+    QuestionNotebookButton.shouldRender({
+      question,
+      isActionListVisible: true,
+    }) && (
       <ActionIcon
         data-testid="notebook-button"
         size="lg"
