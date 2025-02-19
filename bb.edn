@@ -1,0 +1,72 @@
+{;; path is bin, but everything is in the mage subdirectory,
+ ;; so the namespaces are mage.cli, mage.format, etc.
+ :paths ["bin"]
+ :deps  {escherize/bask {:git/url "https://github.com/escherize/bask.git"
+                         :git/sha "81cc9af3021d7689cfbddf0518a1e828f785f006"}
+         metosin/malli  {:mvn/version "0.17.0"}
+         table/table    {:mvn/version "0.5.0"}}
+ :tasks {:requires [[clojure.string :as str]
+                    [bask.colors :as c]
+                    [mage.format :as format]
+                    [mage.util :as u]
+                    [mage.cli :as cli]]
+
+         cljfmt-staged {:doc      "Runs cljfmt on staged files"
+                        :examples [["bb cljfmt-staged" "Format staged files"]]
+                        :task     (do
+                                    (prn "?")
+                                    (cli/menu! (current-task)) (format/staged))}
+
+         cljfmt-all {:doc      "Runs cljfmt on all (clojure) files"
+                     :requires [[mage.format :as format]]
+                     :examples [["bb cljfmt-all" "Format all files"]]
+                     :task     (do (cli/menu! (current-task)) (format/all))}
+
+         cljfmt-file {:doc      "Runs cljfmt on the given files/directories"
+                      :requires [[mage.format :as format]]
+                      :examples [["bb format-file src/metabase/events.clj" "Format events.clj"]
+                                 ["bb format-file src" "Format all files in src"]]
+                      :task     (format/files (:args (cli/menu! (current-task))))}
+
+         watch-ci
+         {:doc  "Prints the command to watch your CI build for a specific branch."
+          :task (println
+                 (str/join "\n" ["To watch your branch, cd to metabase, switch to your branch, and run:"
+                                 "" (c/green "gh pr checks --watch --required && say done") ""]))}
+
+         -install-autotab
+         {:doc      "Prints shell code to autocomplete tasks using bb.
+                        Note: for fish shell please make sure ~/.config/fish/completions exists."
+          :examples [["bb install-autotab --shell bash >> ~/.bashrc" "Bash ^"]
+                     ["bb install-autotab --shell zsh >> ~/.zshrc" "Zsh ^"]
+                     ["bb install-autotab --shell fish >> ~/.config/fish/completions/bb.fish" "Fish ^"]]
+          :options  [{:id      :shell-type
+                      :long    "--shell SHELL"
+                      :title   "What kind of shell?"
+                      :choices ["zsh" "bash" "fish"]
+                      :prompt  :select}]
+          :task     (let [{:keys [shell-type] :as x} (cli/menu! (current-task))]
+                      (println "\nPlease add this to your shell's rc file:")
+                      (println (str "\n# --- bb autocomplete follows ---\n"
+                                    (slurp (str "./bin/mage/" shell-type "_completion.sh")))))}
+
+         nrepl
+         {:doc      "Starts the babashka nrepl server for bb tasks development."
+          :requires [[babashka.nrepl.server :as nrepl.server]]
+          :examples [["bb nrepl" "Starts the nrepl server"]]
+          :task     (do
+                      (spit ".nrepl-port" 1667)
+                      (println (c/green "Started nrepl server!"))
+                      (nrepl.server/start-server!)
+                      (deref (promise)))}
+
+         _example
+         {;; docstring for the task:
+          :doc      "sample task"
+          ;; lazily require libraries:
+          :requires []
+          ;; examples get printed out when you pass -h or --help.
+          :examples [["mage _x" "runs this task"]]
+          ;; options are things like --file, --name, etc.
+          :options  []
+          :task     (prn "hi")}}}
