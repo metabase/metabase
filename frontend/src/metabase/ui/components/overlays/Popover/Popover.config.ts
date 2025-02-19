@@ -14,6 +14,7 @@ export const popoverOverrides = {
         shift: true,
         flip: true,
         size: {
+          // This fixes extra scrollbars on the body when the popover has the same width as viewport
           padding: 5,
         },
       },
