@@ -15,6 +15,11 @@ import {
   getExpressionName,
 } from "./config";
 import {
+  formatDimensionName,
+  formatMetricName,
+  formatSegmentName,
+} from "./identifier";
+import {
   isBooleanLiteral,
   isCaseOrIf,
   isDimension,
@@ -28,12 +33,6 @@ import {
   isStringLiteral,
 } from "./matchers";
 import { formatStringLiteral } from "./string";
-
-import {
-  formatDimensionName,
-  formatMetricName,
-  formatSegmentName,
-} from "./index";
 
 export type FormatOptions = {
   startRule: string;
