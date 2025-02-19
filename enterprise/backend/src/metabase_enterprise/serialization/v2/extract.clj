@@ -5,6 +5,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models.collection :as collection]
@@ -153,9 +154,72 @@
   (extract-subtrees opts))
 
 (comment
-  (def nodes (let [colls (mapv vector (repeat "Collection") (collection-set-for-user nil))]
-               (merge
-                (u/traverse colls #(serdes/ascendants (first %) (second %)))
-                (u/traverse colls #(serdes/descendants (first %) (second %))))))
+
+  (defn desc [[model id]]
+    (vec (distinct (keys (serdes/descendants model id)))))
+
+  (desc ["Card" 13007])
+  (desc ["Card" 1221])
+  (desc ["Card" 13329])
+  (desc ["Dashboard" 1887])
+
+  [(serdes/descendants "Card" 13)
+   (serdes/ascendants "Card" 6736)]
+
+  (defn ->eid [[model id]]
+    (t2/select-one-fn :entity_id (keyword "model"
+                                          model) id))
+  (keyword "model"
+           "Dashboard")
+
+  (->eid ["Dashboard" 1887])
+
+  (def nodes
+    (let [model+ids (mapv vector (repeat "Collection") (collection-set-for-user nil))
+          #_[["Collection" 200] #_["Dashboard" 1887]]]
+      (merge
+       #_(u/traverse colls #(serdes/ascendants (first %) (second %)))
+       (u/traverse model+ids #(serdes/descendants (first %) (second %))))))
+
+  (count nodes)
+
+  (def eid-adj-list (-> nodes
+                        (update-vals (comp
+                                      #(or % "rootrootrootrootrootr")
+                                      (fn [m]
+                                        (cond
+                                          (get m "Dashboard") (->eid ["Dashboard" (get m "Dashboard")])
+                                          (get m "Collection") (->eid ["Collection" (get m "Collection")])
+                                          (get m "Card") (->eid ["Card" (get m "Card")])))))
+                        (update-keys (comp #(or % "rootrootrootrootrootr") ->eid))))
+
+  (take 5 eid-adj-list)
+
+  {["Card" 2700] {"Card" 3170}
+   ["Card" 4715] {"Collection" 200}
+   ["Card" 4177] {"DashboardCard" 5510, "Dashboard" 644}}
+
+  (defn map->csv [data]
+    (let [headers "key,value\n"
+          rows (map #(str (first %) "," (second %) "\n") data)]
+      (apply str headers rows)))
+
+  (map->csv {"a" "1" "b" "2" "c" "3"})
+
+  (spit "arakaki.csv" (map->csv eid-adj-list))
+
+  (map (fn [[m id]]
+         [[m id] (keys (serdes/descendants m id))])
+       (keys (serdes/descendants "Dashboard" 1)))
+
+  (println (str
+            "flowchart LR\n"
+            (str/join "\n"
+                      (doall (for [[k vs] nodes
+                                   v vs]
+                               (let [from (str (first k) "_" (second k))
+                                     to  (str (first v) "_" (second v))]
+                                 (str from " --> " to)))))))
+
   (def escaped (escape-analysis (u/group-by first second (keys nodes)) nodes))
   (log-escape-report! escaped))
