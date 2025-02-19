@@ -17,7 +17,6 @@ import { WIDTH } from "../constants";
 import type { ColumnListItem, SegmentListItem } from "../types";
 
 import S from "./FilterColumnPicker.module.css";
-import { useKey } from "react-use";
 
 export interface FilterColumnPickerProps {
   className?: string;
@@ -134,7 +133,10 @@ export function FilterColumnPicker({
           : [];
 
         return {
-          name: getGroupName(groupInfo, stageIndex, limit.isLimited),
+          name:
+            limit.isLimited && stageIndex === realStageCount
+              ? t`Result columns`
+              : getGroupName(groupInfo, stageIndex),
           stageIndex,
           icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
           items: [...segmentItems, ...columnItems],
