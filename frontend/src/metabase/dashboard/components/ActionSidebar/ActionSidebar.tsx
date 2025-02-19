@@ -7,29 +7,21 @@ import { isActionDashCard } from "metabase/actions/utils";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import {
-  FieldLabel,
-  FieldLabelContainer,
-} from "metabase/core/components/FormField/FormField.styled";
+import FormField from "metabase/core/components/FormField/FormField";
 import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import { closeSidebar } from "metabase/dashboard/actions";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { Form, FormProvider } from "metabase/forms";
 import { connect } from "metabase/lib/redux";
+import { Box, Flex, Title } from "metabase/ui";
 import type {
   ActionDashboardCard,
   Dashboard,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import {
-  ChangeActionContainer,
-  Heading,
-  SidebarBody,
-  SidebarFooter,
-  SidebarHeader,
-} from "./ActionSidebar.styled";
+import S from "./ActionSidebar.module.css";
 
 const buttonVariantOptions = ActionViz.settings["button.variant"].props.options;
 
@@ -66,10 +58,10 @@ export function ActionSidebar({
 
   return (
     <Sidebar>
-      <SidebarHeader>
-        <Heading>{t`Button properties`}</Heading>
-      </SidebarHeader>
-      <SidebarBody>
+      <Box px="xl" py="md" className={S.SidebarHeader}>
+        <Title order={4} className={S.Heading}>{t`Button properties`}</Title>
+      </Box>
+      <Box px="xl" py="md" className={S.SidebarBody}>
         <FormProvider
           initialValues={{
             button_text:
@@ -104,9 +96,9 @@ export function ActionSidebar({
             />
           </Form>
         </FormProvider>
-        <FieldLabelContainer orientation="vertical" hasDescription={false}>
-          <FieldLabel hasError={false}>{t`Action`}</FieldLabel>
-        </FieldLabelContainer>
+        <FormField.LabelContainer orientation="vertical" hasDescription={false}>
+          <FormField.Label hasError={false}>{t`Action`}</FormField.Label>
+        </FormField.LabelContainer>
 
         <ModalWithTrigger
           ref={actionSettingsModalRef}
@@ -119,12 +111,12 @@ export function ActionSidebar({
                 {t`Pick an action`}
               </Button>
             ) : (
-              <ChangeActionContainer>
+              <Flex justify="space-between">
                 <Ellipsified>
                   <strong>{dashcard.action.name}</strong>
                 </Ellipsified>
                 <Button onlyText>{t`Change action`}</Button>
-              </ChangeActionContainer>
+              </Flex>
             )
           }
         >
@@ -136,12 +128,12 @@ export function ActionSidebar({
             }}
           />
         </ModalWithTrigger>
-      </SidebarBody>
-      <SidebarFooter>
+      </Box>
+      <Flex px="xl" py="md" justify="flex-end" className={S.SidebarFooter}>
         <Button onClick={onClose} primary small>
           {t`Close`}
         </Button>
-      </SidebarFooter>
+      </Flex>
     </Sidebar>
   );
 }

@@ -1,0 +1,81 @@
+.DashboardBody {
+  flex: 1 0 auto;
+
+  &.isEditingOrSharing {
+    flex-basis: 0;
+  }
+}
+
+.ParametersFixedWidthContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+
+  @media screen and (max-width: 40em) {
+    flex-direction: column;
+  }
+}
+
+.DashboardHeaderContainer {
+  position: relative;
+  z-index: 2;
+  background-color: var(--mb-color-background);
+  border-bottom: 1px solid var(--mb-color-border);
+
+  &.isFullscreen {
+    background-color: transparent;
+    border: none;
+  }
+
+  &.isNightMode {
+    color: var(--mb-color-text-white);
+  }
+}
+
+.DashboardLoadingAndErrorWrapper {
+  min-height: 100%;
+  height: 1px;
+  /* prevents header from scrolling so we can have a fixed sidebar */
+
+  &.isFullHeight {
+    height: 100%;
+  }
+}
+
+.ParametersAndCardsContainer {
+  flex: auto;
+  min-width: 0;
+  overflow-y: visible;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+
+  @supports (overflow-x: clip) {
+    overflow-x: clip;
+  }
+
+  &.shouldMakeDashboardHeaderStickyAfterScrolling {
+    overflow-y: auto;
+
+    &.notEmpty {
+      align-self: initial;
+    }
+  }
+
+  /* Makes sure it doesn't use all the height, so the actual content height could be used in embedding #37437 */
+  &.notEmpty {
+    align-self: flex-start;
+  }
+
+  padding-bottom: 40px;
+
+  .CardsContainer {
+    margin-top: 8px;
+  }
+}
+
+.FixedWidthContainer {
+  &.isFixedWidth {
+    margin: 0 auto;
+    max-width: var(--dashboard-fixed-width);
+  }
+}
