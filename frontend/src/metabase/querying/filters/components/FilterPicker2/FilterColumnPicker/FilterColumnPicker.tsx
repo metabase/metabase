@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
@@ -17,6 +17,7 @@ import { WIDTH } from "../constants";
 import type { ColumnListItem, SegmentListItem } from "../types";
 
 import S from "./FilterColumnPicker.module.css";
+import { useKey } from "react-use";
 
 export interface FilterColumnPickerProps {
   className?: string;
@@ -54,6 +55,10 @@ export const isSegmentListItem = (
   return (item as SegmentListItem).segment != null;
 };
 
+export const limit = {
+  isLimited: false,
+};
+
 /**
  * Select a column, segment, or custom expression upon which to filter
  * Filter ColumnOrSegmentOrCustomExpressionPicker was too long of a name
@@ -70,9 +75,40 @@ export function FilterColumnPicker({
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
-  const query = useMemo(() => /* Lib.ensureFilterStage */(query2), [query2]);
+  const query = useMemo(() => /* Lib.ensureFilterStage */ query2, [query2]);
+  const [x, setX] = useState(0);
+
+  const callback = useCallback(() => {
+    setTimeout(() => {
+      setX(x => x + 1);
+    });
+  }, []);
+
+  const handleKeyDown = useCallback(
+    event => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "l") {
+        callback();
+      }
+    },
+    [callback],
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
   const sections = useMemo(() => {
+    const realStageCount = Lib.stageCount(Lib.dropEmptyStages(query));
+    const max = realStageCount;
+
     const sections = Lib.stageIndexes(query).flatMap(stageIndex => {
+      if (limit.isLimited && stageIndex !== 0 && stageIndex < max) {
+        return [];
+      }
+
       const columns = Lib.filterableColumns(query, stageIndex);
       const columnGroups = Lib.groupColumns(columns);
 
@@ -98,7 +134,7 @@ export function FilterColumnPicker({
           : [];
 
         return {
-          name: getGroupName(groupInfo, stageIndex),
+          name: getGroupName(groupInfo, stageIndex, limit.isLimited),
           stageIndex,
           icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
           items: [...segmentItems, ...columnItems],
@@ -112,7 +148,7 @@ export function FilterColumnPicker({
       ...sections,
       ...(withCustomExpression ? [CUSTOM_EXPRESSION_SECTION] : []),
     ];
-  }, [query, withColumnGroupIcon, withCustomExpression]);
+  }, [query, withColumnGroupIcon, withCustomExpression, x]);
 
   const handleSectionChange = (section: Section) => {
     if (section.key === "custom-expression") {
@@ -129,7 +165,7 @@ export function FilterColumnPicker({
   };
 
   return (
-    <DelayGroup>
+    <DelayGroup data-asd={x}>
       <AccordionList
         className={cx(S.StyledAccordionList, className)}
         sections={sections}

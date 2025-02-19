@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import cx from "classnames";
-import { forwardRef } from "react";
+import { forwardRef, useCallback, useEffect } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -20,6 +20,7 @@ import {
   setArchivedQuestion,
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
+import { limit } from "metabase/querying/filters/components/FilterPicker2/FilterColumnPicker";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -90,6 +91,27 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     isShowingDataReference,
     isShowingSnippetSidebar,
   } = props;
+
+  const callback = useCallback(() => {
+    limit.isLimited = !limit.isLimited;
+  }, []);
+
+  const handleKeyDown = useCallback(
+    event => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "l") {
+        event.preventDefault();
+        callback();
+      }
+    },
+    [callback],
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleKeyDown]);
 
   // if we don't have a question at all or no databases then we are initializing, so keep it simple
   if (!question || !databases) {
