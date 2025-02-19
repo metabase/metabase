@@ -32,10 +32,6 @@
   }
 }
 
-.CardsContainer {
-  margin-top: 8px;
-}
-
 .DashboardLoadingAndErrorWrapper {
   min-height: 100%;
   height: 1px;
@@ -71,4 +67,8 @@
   }
 
   padding-bottom: 40px;
+
+  .CardsContainer {
+    margin-top: 8px;
+  }
 }
