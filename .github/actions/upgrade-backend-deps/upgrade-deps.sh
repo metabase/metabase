@@ -37,7 +37,7 @@ for upgrade in $UPGRADES; do
   NEW_VERSION=${temp[2]}
   DIFF_URL=${temp[3]}
   MODIFIED_FILE=${temp[4]}
-  BRANCH_NAME="dependencies/clojure/$DEP_NAME-$NEW_VERSION"
+  BRANCH_NAME="auto-bump-backend-dep-$DEP_NAME-$NEW_VERSION"
 
   # Checkout the branch if it exists, otherwise create it
   echo "Checking out" $BRANCH_NAME
