@@ -868,7 +868,7 @@
                        :handlers     [{:channel_type "channel/email"
                                        :recipients   [{:type    :notification-recipient/user
                                                        :user_id (mt/user->id :lucky)}]}]}]
-        (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" (:id notification)))
+        (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" (:id notification)))
         (testing "unsubscribing from a notification publishes an event/notification-unsubscribe event"
           (is (= {:topic    :notification-unsubscribe
                   :user_id  (mt/user->id :lucky)
