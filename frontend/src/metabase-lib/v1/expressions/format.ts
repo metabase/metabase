@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 import type {
+  CallExpression,
   FieldReference,
   MetricAgg,
   SegmentFilter,
@@ -252,7 +253,7 @@ const NEGATIVE_FILTERS: Record<string, string> = {
   "not-null": "is-null",
 };
 
-function isNegativeFilter(expr: Filter) {
+function isNegativeFilter(expr: CallExpression) {
   if (!Array.isArray(expr)) {
     return false;
   }
@@ -261,7 +262,7 @@ function isNegativeFilter(expr: Filter) {
   return typeof NEGATIVE_FILTERS[fn] === "string" && args.length >= 1;
 }
 
-function formatNegativeFilter(mbql: Filter, options: FormatOptions) {
+function formatNegativeFilter(mbql: CallExpression, options: FormatOptions) {
   const [fn, ...args] = mbql;
   const baseFn = NEGATIVE_FILTERS[fn];
   return "NOT " + format([baseFn, ...args], options);
