@@ -522,7 +522,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.get("@subscriptionBar").findByText("Corbin Mertz").click();
 
         H.popover().within(() => {
-          H.removeFieldValuesValue(0);
+          cy.findByText("Corbin Mertz").click();
           H.fieldValuesInput().type("Sallie");
           cy.findByText("Sallie Flatley").click();
         });
