@@ -1217,4 +1217,6 @@ export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
 };
 
 export const getFunctionByStructure = (structure: string) =>
-  HELPER_TEXT_STRINGS.find(h => h.structure === structure)?.name;
+  HELPER_TEXT_STRINGS.find(
+    h => h.structure.toLowerCase() === structure.toLowerCase(),
+  )?.name;
