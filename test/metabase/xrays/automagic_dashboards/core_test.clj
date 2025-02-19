@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.xrays.automagic-dashboards.core-test
+(ns metabase.xrays.automagic-dashboards.core-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -6,12 +6,12 @@
    [clojure.walk :as walk]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.query :as query]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]

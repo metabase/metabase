@@ -23,6 +23,7 @@ import { Icon } from "metabase/ui";
 
 import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
 
+import S from "./TokenField.module.css";
 import {
   PrefixContainer,
   TokenFieldContainer,
@@ -46,7 +47,7 @@ export type TokenFieldProps = {
   placeholder?: string | undefined;
   multi?: boolean;
   validateValue?: (value: any) => boolean;
-  parseFreeformValue?: (value: any) => any;
+  parseFreeformValue?: (value: string | undefined) => any;
   updateOnInputChange?: boolean;
   optionRenderer?: (option: any) => React.ReactNode;
   valueRenderer?: (value: any) => React.ReactNode;
@@ -572,7 +573,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
               >
                 <Icon
                   name="close"
-                  className={cx(CS.flex, CS.alignCenter)}
+                  className={cx(CS.flex, CS.alignCenter, S.closeIcon)}
                   size={12}
                 />
               </TokenFieldAddon>

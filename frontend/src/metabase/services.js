@@ -140,9 +140,9 @@ export const CardApi = {
   get: GET("/api/card/:cardId"),
   update: PUT("/api/card/:id"),
   delete: DELETE("/api/card/:id"),
-  persist: POST("/api/card/:id/persist"),
-  unpersist: POST("/api/card/:id/unpersist"),
-  refreshModelCache: POST("/api/card/:id/refresh"),
+  persist: POST("/api/persist/card/:id/persist"),
+  unpersist: POST("/api/persist/card/:id/unpersist"),
+  refreshModelCache: POST("/api/persist/card/:id/refresh"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
   bookmark: {
@@ -273,7 +273,7 @@ export const GoogleApi = {
 
 export const TimelineApi = {
   list: GET("/api/timeline"),
-  listForCollection: GET("/api/collection/:collectionId/timelines"),
+  listForCollection: GET("/api/timeline/collection/:collectionId"),
   get: GET("/api/timeline/:id"),
   create: POST("/api/timeline"),
   update: PUT("/api/timeline/:id"),
@@ -295,8 +295,8 @@ export const MetabaseApi = {
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
-  db_persist: POST("/api/database/:dbId/persist"),
-  db_unpersist: POST("/api/database/:dbId/unpersist"),
+  db_persist: POST("/api/persist/database/:dbId/persist"),
+  db_unpersist: POST("/api/persist/database/:dbId/unpersist"),
   db_usage_info: GET("/api/database/:dbId/usage_info"),
   table_list: GET("/api/table"),
   table_get: GET("/api/table/:tableId"),
@@ -377,7 +377,7 @@ export const RevisionApi = {
 };
 
 export const RevisionsApi = {
-  get: GET("/api/:entity/:id/revisions"),
+  get: GET("/api/revision/:entity/:id"),
 };
 
 export const SessionApi = {
@@ -548,13 +548,6 @@ export const ActionsApi = {
   executeDashcardAction: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
-};
-
-export const MetabotApi = {
-  modelPrompt: POST("/api/metabot/model/:modelId"),
-  databasePrompt: POST("/api/metabot/database/:databaseId"),
-  databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
-  sendFeedback: POST("/api/metabot/feedback"),
 };
 
 export const CacheConfigApi = {

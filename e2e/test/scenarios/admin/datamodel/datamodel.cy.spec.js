@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -283,7 +283,7 @@ describe("scenarios > admin > datamodel > field", () => {
   });
 });
 
-describe("Unfold JSON", () => {
+describe("Unfold JSON", { tags: "@external" }, () => {
   function getUnfoldJsonContent() {
     return cy
       .findByText("Unfold JSON")
@@ -292,8 +292,8 @@ describe("Unfold JSON", () => {
   }
 
   beforeEach(() => {
-    H.resetTestTable({ type: "postgres", table: "many_data_types" });
     H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_data_types" });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
   });
@@ -398,6 +398,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     cy.signInAsAdmin();
 
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
+    cy.intercept("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
   });
 
   it("should remap FK display value from field ", () => {
@@ -509,7 +510,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       semantic_type: null,
     });
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "14124",
         query: {
@@ -600,6 +601,29 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
     openOptionsForSection("Display values");
     H.popover().findByText("Custom mapping");
+  });
+
+  it("allows to map FK to date fields (metabase#7108)", () => {
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.USER_ID}/general`,
+    );
+    openOptionsForSection("Display values");
+    H.popover().findByText("Use foreign key").click();
+    cy.findAllByTestId("select-button-content")
+      .filter(":contains('Name')")
+      .click();
+
+    H.popover().within(() => {
+      cy.findByText("Birth Date").scrollIntoView().should("be.visible");
+      cy.findByText("Created At").scrollIntoView().should("be.visible").click();
+    });
+
+    cy.wait("@fieldDimensionUpdate");
+    H.visitQuestion(ORDERS_QUESTION_ID);
+
+    cy.findAllByTestId("cell-data")
+      .eq(10) // 1st data row, 2nd column (User ID)
+      .should("have.text", "2023-10-07T01:34:35.462-07:00");
   });
 
   describe("column formatting options", () => {
@@ -695,6 +719,8 @@ describe("scenarios > admin > datamodel > segments", () => {
       H.entityPickerModal().within(() => {
         cy.findByText("Orders").click();
       });
+
+      cy.findByTestId("segment-editor").findByText("Orders").should("exist");
 
       cy.findByTestId("segment-editor")
         .findByText("Add filters to narrow your answer")
@@ -910,6 +936,7 @@ describe("scenarios > admin > datamodel > segments", () => {
           .first()
           .should("contain", "You edited the description")
           .and("contain", "Foo");
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.get("@revisions")
           .last()
           .should("contain", `You created "${SEGMENT_NAME}"`)
@@ -1010,7 +1037,7 @@ describe("scenarios > admin > databases > table", () => {
     });
 
     it("question with joins (metabase#15947-2)", () => {
-      cy.createQuestion({
+      H.createQuestion({
         name: "15947",
         query: {
           "source-table": ORDERS_ID,

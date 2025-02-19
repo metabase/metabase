@@ -32,6 +32,7 @@ const hiddenBackgroundStyle = css`
 
 export const DashCardRoot = styled.div<DashCardRootProps>`
   background-color: var(--mb-color-bg-dashboard-card);
+  scroll-margin: 6px 0;
 
   ${({ isNightMode }) => isNightMode && rootNightModeStyle}
   ${({ isUsuallySlow, theme }) => isUsuallySlow && getRootSlowCardStyle(theme)}

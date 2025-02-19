@@ -64,11 +64,6 @@ describe("PinnedItemCard enterprise", () => {
 
     it("should show a verified badge next to the model name", () => {
       setup({ item: model });
-      expect(screen.getByTestId("model-detail-link")).toBeInTheDocument();
-      expect(screen.getByTestId("model-detail-link")).toHaveAttribute(
-        "href",
-        "/model/1-order/detail",
-      );
       expect(
         screen.getByRole("img", { name: /verified_filled/ }),
       ).toBeInTheDocument();

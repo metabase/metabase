@@ -91,12 +91,11 @@
           (group-by :semantic_type))
      set)))
 
-(defmulti
-  ^{:doc      "Get a reference for a given model to be injected into a template
-          (either MBQL, native query, or string)."
-    :arglists '([template-type model])}
-  ->reference (fn [template-type model]
-                [template-type (mi/model model)]))
+(defmulti ->reference
+  "Get a reference for a given model to be injected into a template (either MBQL, native query, or string)."
+  {:arglists '([template-type model])}
+  (fn [template-type model]
+    [template-type (mi/model model)]))
 
 (defn- optimal-temporal-resolution
   [field]

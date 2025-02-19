@@ -73,7 +73,7 @@ export function FormCollectionAndDashboardPicker({
   className,
   style,
   title,
-  placeholder = t`Select a collection or dashboard`,
+  placeholder,
   type = "collections",
   filterPersonalCollections,
   collectionPickerModalProps,
@@ -89,6 +89,10 @@ export function FormCollectionAndDashboardPicker({
   const dashboardField = useField(dashboardIdFieldName);
   const [dashboardIdInput, dashboardIdMeta, dashboardIdHelpers] =
     dashboardField;
+
+  const pickerTitle = collectionPickerModalProps?.models?.includes("dashboard")
+    ? t`Select a collection or dashboard`
+    : t`Select a collection`;
 
   const pickerValue = dashboardIdInput.value
     ? ({ id: dashboardIdInput.value, model: "dashboard" } as const)
@@ -186,7 +190,7 @@ export function FormCollectionAndDashboardPicker({
           id={id}
           onClick={() => setIsPickerOpen(true)}
           fullWidth
-          rightIcon={<Icon name="ellipsis" />}
+          rightSection={<Icon name="ellipsis" />}
           styles={{
             inner: {
               justifyContent: "space-between",
@@ -202,13 +206,13 @@ export function FormCollectionAndDashboardPicker({
               type={type}
             />
           ) : (
-            placeholder
+            (placeholder ?? pickerTitle)
           )}
         </Button>
       </FormField>
       {isPickerOpen && (
         <CollectionPickerModal
-          title={t`Select a collection or dashboard`}
+          title={pickerTitle}
           value={pickerValue}
           onChange={handleChange}
           onClose={handleModalClose}

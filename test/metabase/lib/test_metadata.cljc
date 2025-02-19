@@ -55,7 +55,10 @@
         :people       70
         :reviews      80
         :ic/accounts  90
-        :ic/reports  100)))
+        :ic/reports  100
+        :gh/issues   110
+        :gh/users    120
+        :gh/comments 130)))
 
   ([table-name field-name]
    (+ random-id-offset
@@ -125,8 +128,25 @@
                        :name      901)       ; :type/Text
         :ic/reports  (case field-name        ;
                        :id         1000      ; :type/Integer
-                       :created-by 1100      ; :type/Integer
-                       :updated-by 1200))))) ; :type/Integer
+                       :created-by 1001      ; :type/Integer
+                       :updated-by 1002)     ; :type/Integer
+        :gh/issues   (case field-name
+                       :id          1100     ; :type/UUID
+                       :reporter-id 1101     ; :type/Text (FK to :gh/users)
+                       :assignee-id 1102     ; :type/Text (FK to :gh/users)
+                       :is-open     1103     ; :type/Integer (but it wants to be :type/Boolean)
+                       :reported-at 1104     ; :type/DateTime
+                       :closed-at   1105)    ; :type/DateTime
+        :gh/users    (case field-name
+                       :id           1200    ; :type/Text (Github usernames eg. camsaul, bshepherdson)
+                       :birthday     1202    ; :type/Date
+                       :email        1203)   ; :type/Text
+        :gh/comments (case field-name
+                       :id            1300   ; :type/UUID
+                       :author-id     1301   ; :type/Text
+                       :posted-at     1302   ; :type/DateTime
+                       :reply-to      1303   ; :type/UUID (FK to the same table)
+                       :body-markdown 1304))))) ;type/Text
 
 (defmulti ^:private table-metadata-method
   {:arglists '([table-name])}
@@ -157,6 +177,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :categories :id)
+   :ident               "PWWBk6ty2MHhRsyVxynoW"
    :position            0
    :visibility-type     :normal
    :target              nil
@@ -188,6 +209,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :categories :name)
+   :ident               "RDOjlMfV-Fg8UwZMPWiq3"
    :position            1
    :visibility-type     :normal
    :target              nil
@@ -246,6 +268,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :checkins :id)
+   :ident               "vWsH15xQSs3zTEAnBfBpg"
    :position            0
    :visibility-type     :normal
    :target              nil
@@ -277,6 +300,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :checkins :date)
+   :ident               "A9rzjV-n0z6b6UvRgVu8G"
    :position            1
    :visibility-type     :normal
    :target              nil
@@ -309,6 +333,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :checkins :user-id)
+   :ident               "lrJ9XAr6FRGHGafMQuxKJ"
    :position            2
    :visibility-type     :normal
    :target              nil
@@ -340,6 +365,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :checkins :venue-id)
+   :ident               "_99ifdCxbDKLesl4IkeUl"
    :position            3
    :visibility-type     :normal
    :target              nil
@@ -395,6 +421,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :users :id)
+   :ident               "Bo3W7NNZIr2tODiMTy4yN"
    :position            0
    :visibility-type     :normal
    :target              nil
@@ -426,6 +453,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :users :name)
+   :ident               "kB6mZwmTLfGs3t5zwibjn"
    :position            1
    :visibility-type     :normal
    :target              nil
@@ -463,6 +491,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :users :last-login)
+   :ident               "J8tIOKqMWIluDSAIk9Wvi"
    :position            2
    :visibility-type     :normal
    :target              nil
@@ -495,6 +524,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :users :password)
+   :ident               "UNtexw8AUjzvrQSshcY_J"
    :position            3
    :visibility-type     :sensitive
    :target              nil
@@ -556,6 +586,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :id)
+   :ident               "aYXxJJkPa0GR3fc9uv6m2"
    :position            0
    :visibility-type     :normal
    :target              nil
@@ -587,6 +618,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :name)
+   :ident               "5fzDTF0GuMRk21YLch7OQ"
    :position            1
    :visibility-type     :normal
    :target              nil
@@ -624,6 +656,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :category-id)
+   :ident               "wOMa4NLLsgHe74Rj1okcc"
    :position            2
    :visibility-type     :normal
    :target              nil
@@ -655,6 +688,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :latitude)
+   :ident               "FXhsCz8PYDMfikR2D3ccw"
    :position            3
    :visibility-type     :normal
    :target              nil
@@ -693,6 +727,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :longitude)
+   :ident               "Z7YfJn_oH2E7QDqUlhXcF"
    :position            4
    :visibility-type     :normal
    :target              nil
@@ -733,6 +768,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :price)
+   :ident               "oel2OtBaZRcjpBF4HkEOh"
    :position            5
    :visibility-type     :normal
    :target              nil
@@ -798,6 +834,7 @@
    :parent-id                  nil
    :id                         (id :products :id)
    :database-is-auto-increment true
+   :ident                      "zaFrUMrlem27YA4vX20PP"
    :position                   0
    :visibility-type            :normal
    :preview-display            true
@@ -829,6 +866,7 @@
    :parent-id                  nil
    :id                         (id :products :rating)
    :database-is-auto-increment false
+   :ident                      "orY0SwYoFpT0cp-NTwBtl"
    :position                   6
    :visibility-type            :normal
    :preview-display            true
@@ -866,6 +904,7 @@
    :parent-id                  nil
    :id                         (id :products :category)
    :database-is-auto-increment false
+   :ident                      "MvxP-c7scJi3Ypicz7Pko"
    :position                   3
    :visibility-type            :normal
    :preview-display            true
@@ -901,6 +940,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :price)
+   :ident                      "_Mw1CWXwjrjeEKI3Ixzil"
    :database-is-auto-increment false
    :position                   5
    :visibility-type            :normal
@@ -938,6 +978,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :title)
+   :ident                      "cy6cxdeEcrYTdx30bDZvI"
    :database-is-auto-increment false
    :position                   2
    :visibility-type            :normal
@@ -974,6 +1015,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :created-at)
+   :ident                      "Y_E2kCrZCo7htAwby4_m-"
    :database-is-auto-increment false
    :position                   7
    :visibility-type            :normal
@@ -1007,6 +1049,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :vendor)
+   :ident                      "SUw6OkR5bIL0MAYdN1KmV"
    :database-is-auto-increment false
    :position                   4
    :visibility-type            :normal
@@ -1043,6 +1086,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :ean)
+   :ident                      "j6KkODbzbivj5vQPjZyFv"
    :database-is-auto-increment false
    :position                   1
    :visibility-type            :normal
@@ -1105,6 +1149,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :id)
+   :ident                      "YV9abw8AQ5pCVAQhaSMVO"
    :database-is-auto-increment true
    :position                   0
    :visibility-type            :normal
@@ -1136,6 +1181,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :subtotal)
+   :ident                      "F31vad3vgquibQmIsVBK2"
    :database-is-auto-increment false
    :position                   3
    :visibility-type            :normal
@@ -1174,6 +1220,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :total)
+   :ident                      "lMq_ks9eJgnASWwo-5UCE"
    :database-is-auto-increment false
    :position                   5
    :visibility-type            :normal
@@ -1212,6 +1259,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :tax)
+   :ident                      "aHk-zDyLzTY8XYyESg8dl"
    :database-is-auto-increment false
    :position                   4
    :visibility-type            :normal
@@ -1250,6 +1298,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :discount)
+   :ident                      "HjXFQSw4fNHOoyzyWLgPx"
    :database-is-auto-increment false
    :position                   6
    :visibility-type            :normal
@@ -1287,6 +1336,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :quantity)
+   :ident                      "qe9EvBhTR7LKgx2wRrk3f"
    :database-is-auto-increment false
    :position                   8
    :visibility-type            :normal
@@ -1324,6 +1374,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :created-at)
+   :ident                      "kLEi3k1-6i8GpgqsQ0-7k"
    :database-is-auto-increment false
    :position                   7
    :visibility-type            :normal
@@ -1357,6 +1408,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :product-id)
+   :ident                      "V5NFZP_6JOWd6J7ULXCIs"
    :database-is-auto-increment false
    :position                   2
    :visibility-type            :normal
@@ -1388,6 +1440,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :user-id)
+   :ident                      "w6egqJWAVTNypKmv7gemF"
    :database-is-auto-increment false
    :position                   1
    :visibility-type            :normal
@@ -1446,6 +1499,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :id)
+   :ident                      "SmYetbZtPKwwFfkjGcEm3"
    :database-is-auto-increment true
    :position                   0
    :visibility-type            :normal
@@ -1477,6 +1531,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :state)
+   :ident                      "M6zAelR060aOQEIcUjOLR"
    :database-is-auto-increment false
    :position                   7
    :visibility-type            :normal
@@ -1513,6 +1568,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :city)
+   :ident                      "WkzaKB-IvSHf6zZzT45vz"
    :database-is-auto-increment false
    :position                   5
    :visibility-type            :normal
@@ -1549,6 +1605,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :address)
+   :ident                      "nOD2ARIn9IGwSwc5_5_SM"
    :database-is-auto-increment false
    :position                   1
    :visibility-type            :normal
@@ -1585,6 +1642,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :name)
+   :ident                      "XNv5jtDfnuvp2KN8WhJex"
    :database-is-auto-increment false
    :position                   4
    :visibility-type            :normal
@@ -1621,6 +1679,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :source)
+   :ident                      "dU-riH8RvUl3nMmWxRCnO"
    :database-is-auto-increment false
    :position                   8
    :visibility-type            :normal
@@ -1657,6 +1716,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :zip)
+   :ident                      "oleh-os9rLmUjdWrjKkMP"
    :database-is-auto-increment false
    :position                   10
    :visibility-type            :normal
@@ -1693,6 +1753,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :latitude)
+   :ident                      "4mOOY4ru0ZDc0RAPiMcMI"
    :database-is-auto-increment false
    :position                   11
    :visibility-type            :normal
@@ -1730,6 +1791,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :password)
+   :ident                      "8FhaFSmfDk9wjOzNN-pcP"
    :database-is-auto-increment false
    :position                   3
    :visibility-type            :normal
@@ -1766,6 +1828,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :birth-date)
+   :ident                      "TbRRgbOjjSXfl7Q3RYjRn"
    :database-is-auto-increment false
    :position                   9
    :visibility-type            :normal
@@ -1799,6 +1862,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :longitude)
+   :ident                      "Ey0aDHLWUBQhEBcLtzgUi"
    :database-is-auto-increment false
    :position                   6
    :visibility-type            :normal
@@ -1836,6 +1900,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :email)
+   :ident                      "51mJbNKKAk9Fzu8NHE7Z_"
    :database-is-auto-increment false
    :position                   2
    :visibility-type            :normal
@@ -1872,6 +1937,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :created-at)
+   :ident                      "7x7cvFd0i_9hCtu8KK2Fm"
    :database-is-auto-increment false
    :position                   12
    :visibility-type            :normal
@@ -1936,6 +2002,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :id)
+   :ident                      "EvuypV2uqt8DJb7L8NKPi"
    :database-is-auto-increment true
    :position                   0
    :visibility-type            :normal
@@ -1967,6 +2034,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :created-at)
+   :ident                      "-2YPEvQPmJ5WiBX9rNEdG"
    :database-is-auto-increment false
    :position                   5
    :visibility-type            :normal
@@ -2000,6 +2068,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :rating)
+   :ident                      "TwyzncoirctxX4EvM567q"
    :database-is-auto-increment false
    :position                   3
    :visibility-type            :normal
@@ -2037,6 +2106,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :reviewer)
+   :ident                      "esBOudUYL1gyTl_WjmWwH"
    :database-is-auto-increment false
    :position                   2
    :visibility-type            :normal
@@ -2073,6 +2143,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :body)
+   :ident                      "-t7C0NJxK7bCX9nHSr6zL"
    :database-is-auto-increment false
    :position                   4
    :visibility-type            :normal
@@ -2109,6 +2180,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :product-id)
+   :ident                      "1Zp5Muev3k5mT4RvtpPQR"
    :database-is-auto-increment false
    :position                   1
    :visibility-type            :normal
@@ -2165,6 +2237,7 @@
    :parent-id                  nil
    :id                         (id :ic/accounts :id)
    :last-analyzed              nil
+   :ident                      "Lu7nMH_XdHH6hqsHaKW1m"
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   0
@@ -2197,6 +2270,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/accounts :name)
+   :ident                      "Wf7y6030q_c31L5mtCAK8"
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   1
@@ -2255,6 +2329,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/reports :id)
+   :ident                      "rN1WZzhva-9naWlhJOisG"
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   0
@@ -2289,6 +2364,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/reports :created-by)
+   :ident                      "_fSRZCC1h0FeFnyKBITuh"
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   1
@@ -2321,6 +2397,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/reports :updated-by)
+   :ident                      "dLX0Y18XnBwWkbw_SiADu"
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   2
@@ -2355,6 +2432,581 @@
    :fields                  [(field-metadata-method :ic/reports :id)
                              (field-metadata-method :ic/reports :created-by)
                              (field-metadata-method :ic/reports :updated-by)]})
+
+(defmethod field-metadata-method [:gh/issues :id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "UUID"
+   :base-type                  :type/UUID
+   :effective-type             :type/UUID
+   :semantic-type              :type/PK
+   :table-id                   (id :gh/issues)
+   :id                         (id :gh/issues :id)
+   :ident                      "JKyXKw2V2cjoVVmvHvy_v"
+   :name                       "ID"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :position                   0
+   :custom-position            0
+   :database-position          0
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :visibility-type            :normal
+   :preview-display            true
+   :display-name               "ID"
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 2, :nil% 0.0}
+                                :type   {:type/UUID {}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/issues :reporter-id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "CHARACTER VARYING"
+   :base-type                  :type/Text
+   :effective-type             :type/Text
+   :semantic-type              :type/FK
+   :table-id                   (id :gh/issues)
+   :id                         (id :gh/issues :reporter-id)
+   :ident                      "x-yxZZNE3c7LqZaxFEnWx"
+   :name                       "REPORTER_ID"
+   :display-name               "Reporter ID"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         (id :gh/users :id)
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   2
+   :custom-position            2
+   :database-position          2
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 11.4}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/issues :assignee-id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "CHARACTER VARYING"
+   :base-type                  :type/Text
+   :effective-type             :type/Text
+   :semantic-type              :type/FK
+   :table-id                   (id :gh/issues)
+   :id                         (id :gh/issues :assignee-id)
+   :ident                      "9Wt9ogSynNeMVtsWuA6VX"
+   :name                       "ASSIGNEE_ID"
+   :display-name               "Assignee ID"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         (id :gh/users :id)
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   2
+   :custom-position            2
+   :database-position          2
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          false
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.4}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 11.4}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/issues :is-open]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "int4"
+   :base-type                  :type/Integer
+   :effective-type             :type/Integer
+   :semantic-type              :type/Category
+   :table-id                   (id :gh/issues)
+   :id                         (id :gh/issues :is-open)
+   :ident                      "tyoebOZRaf0QbfgpFzxnd"
+   :name                       "IS_OPEN"
+   :display-name               "Is Open"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   3
+   :custom-position            3
+   :database-position          3
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 2, :nil% 0.0}
+                                :type   {:type/Number {:min 0, :q1 0, :q3 0
+                                                       :max 1, :sd 0.7071067811865476, :avg 0.5}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/issues :reported-at]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "TIMESTAMP"
+   :base-type                  :type/DateTime
+   :effective-type             :type/DateTime
+   :semantic-type              nil
+   :table-id                   (id :gh/issues)
+   :id                         (id :gh/issues :reported-at)
+   :ident                      "9f74xH4NWQeTmCHR0TOye"
+   :name                       "REPORTED_AT"
+   :display-name               "Reported At"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   4
+   :custom-position            4
+   :database-position          4
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}
+                                :type   {:type/DateTime {:earliest "2016-06-03T00:37:05.818Z"
+                                                         :latest   "2020-04-19T14:15:25.677Z"}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/issues :closed-at]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "TIMESTAMP"
+   :base-type                  :type/DateTime
+   :effective-type             :type/DateTime
+   :semantic-type              nil
+   :table-id                   (id :gh/issues)
+   :id                         (id :gh/issues :closed-at)
+   :ident                      "iYumlBafrHPue9CLJLsSA"
+   :name                       "CLOSED_AT"
+   :display-name               "Closed At"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   5
+   :custom-position            5
+   :database-position          5
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          false
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.6}
+                                :type   {:type/DateTime {:earliest "2016-06-03T00:37:05.818Z"
+                                                         :latest   "2020-04-19T14:15:25.677Z"}}}
+   :lib/type                   :metadata/column})
+
+(defmethod table-metadata-method :gh/issues
+  [_table-name]
+  {:description             nil
+   :entity-type             :entity/GenericTable
+   :schema                  "public"
+   :show-in-getting-started false
+   :name                    "GH_ISSUES"
+   :caveats                 nil
+   :active                  true
+   :id                      (id :gh/issues)
+   :db-id                   (id)
+   :visibility-type         nil
+   :field-order             :database
+   :is-upload               false
+   :initial-sync-status     :complete
+   :display-name            "GH Issues"
+   :points-of-interest      nil
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata-method :gh/issues :id)
+                             (field-metadata-method :gh/issues :reporter-id)
+                             (field-metadata-method :gh/issues :assignee-id)
+                             (field-metadata-method :gh/issues :is-open)
+                             (field-metadata-method :gh/issues :reported-at)
+                             (field-metadata-method :gh/issues :closed-at)]})
+
+(defmethod field-metadata-method [:gh/users :id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "CHARACTER VARYING"
+   :base-type                  :type/Text
+   :effective-type             :type/Text
+   :semantic-type              :type/PK
+   :table-id                   (id :gh/users)
+   :id                         (id :gh/users :id)
+   :ident                      "kGAQfykjP7sNUuKklvX9E"
+   :name                       "ID"
+   :display-name               "Username"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   0
+   :custom-position            0
+   :database-position          0
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.6}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 11.4}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/users :birthday]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "DATE"
+   :base-type                  :type/Date
+   :effective-type             :type/Date
+   :semantic-type              nil
+   :table-id                   (id :gh/users)
+   :id                         (id :gh/users :birthday)
+   :ident                      "AhzW2ts1iYLtnVsN8duI2"
+   :name                       "BIRTHDAY"
+   :display-name               "Birthday"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   1
+   :custom-position            1
+   :database-position          1
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          false
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 105, :nil% 0.3}
+                                :type   {:type/Date {:earliest "2013-01-03", :latest "2015-12-29"}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/users :email]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "CHARACTER VARYING"
+   :base-type                  :type/Text
+   :effective-type             :type/Text
+   :semantic-type              :type/Email
+   :table-id                   (id :gh/users)
+   :id                         (id :gh/users :email)
+   :ident                      "hxVljG-mcCWR2yCyLDyfI"
+   :name                       "EMAIL"
+   :display-name               "Email"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   2
+   :custom-position            2
+   :database-position          2
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  1.0
+                                                     :percent-state  0.0
+                                                     :average-length 26.1}}}
+   :lib/type                   :metadata/column})
+
+(defmethod table-metadata-method :gh/users
+  [_table-name]
+  {:description             nil
+   :entity-type             :entity/GenericTable
+   :schema                  "public"
+   :show-in-getting-started false
+   :name                    "GH_USERS"
+   :caveats                 nil
+   :active                  true
+   :id                      (id :gh/users)
+   :db-id                   (id)
+   :visibility-type         nil
+   :field-order             :database
+   :is-upload               false
+   :initial-sync-status     :complete
+   :display-name            "GH Users"
+   :points-of-interest      nil
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata-method :gh/users :id)
+                             (field-metadata-method :gh/users :birthday)
+                             (field-metadata-method :gh/users :email)]})
+
+(defmethod field-metadata-method [:gh/comments :id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "UUID"
+   :base-type                  :type/UUID
+   :effective-type             :type/UUID
+   :semantic-type              :type/PK
+   :table-id                   (id :gh/comments)
+   :id                         (id :gh/comments :id)
+   :ident                      "N9GPZG-iBB3fNJFw6k75L"
+   :name                       "ID"
+   :display-name               "ID"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   0
+   :custom-position            0
+   :database-position          0
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}
+                                :type   {:type/UUID {}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/comments :author-id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "CHARACTER VARYING"
+   :base-type                  :type/Text
+   :effective-type             :type/Text
+   :semantic-type              :type/FK
+   :table-id                   (id :gh/comments)
+   :id                         (id :gh/comments :author-id)
+   :ident                      "N8Zc29IeohSLcDhPlntTI"
+   :name                       "AUTHOR_ID"
+   :display-name               "Author ID"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         (id :gh/users :id)
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   1
+   :custom-position            1
+   :database-position          1
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 11.4}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/comments :posted-at]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "TIMESTAMP"
+   :base-type                  :type/DateTime
+   :effective-type             :type/DateTime
+   :semantic-type              :type/CreationDate
+   :table-id                   (id :gh/comments)
+   :id                         (id :gh/comments :posted-at)
+   :ident                      "SFZiylJmurPdeucrYWBZO"
+   :name                       "POSTED_AT"
+   :display-name               "Posted At"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   2
+   :custom-position            2
+   :database-position          2
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}
+                                :type   {:type/DateTime {:earliest "2016-06-03T00:37:05.818Z"
+                                                         :latest   "2020-04-19T14:15:25.677Z"}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/comments :reply-to]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "UUID"
+   :base-type                  :type/UUID
+   :effective-type             :type/UUID
+   :semantic-type              :type/FK
+   :table-id                   (id :gh/comments)
+   :id                         (id :gh/comments :reply-to)
+   :ident                      "b1ng7KzofdPc2IuDEA8M2"
+   :name                       "REPLY_TO"
+   :display-name               "Reply To"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         (id :gh/comments :id)
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   4
+   :custom-position            4
+   :database-position          4
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}
+                                :type   {:type/UUID {}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/comments :body-markdown]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "CHARACTER VARYING"
+   :base-type                  :type/Text
+   :effective-type             :type/Text
+   :semantic-type              nil
+   :table-id                   (id :gh/comments)
+   :id                         (id :gh/comments :body-markdown)
+   :ident                      "CidSifa32m1qX0mEeh46X"
+   :name                       "BODY_MARKDOWN"
+   :display-name               "Body Markdown"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   4
+   :custom-position            4
+   :database-position          4
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 301.9}}}
+   :lib/type                   :metadata/column})
+
+(defmethod table-metadata-method :gh/comments
+  [_table-name]
+  {:description             nil
+   :entity-type             :entity/GenericTable
+   :schema                  "public"
+   :show-in-getting-started false
+   :name                    "GH_COMMENTS"
+   :caveats                 nil
+   :active                  true
+   :id                      (id :gh/comments)
+   :db-id                   (id)
+   :visibility-type         nil
+   :field-order             :database
+   :is-upload               false
+   :initial-sync-status     :complete
+   :display-name            "GH Comments"
+   :points-of-interest      nil
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata-method :gh/comments :id)
+                             (field-metadata-method :gh/comments :author-id)
+                             (field-metadata-method :gh/comments :posted-at)
+                             (field-metadata-method :gh/comments :reply-to)
+                             (field-metadata-method :gh/comments :body-markdown)]})
 
 (def metadata
   "Complete Database metadata for testing, captured from a call to `GET /api/database/:id/metadata`. For the H2 version
@@ -2403,7 +3055,10 @@
                                  (table-metadata-method :people)
                                  (table-metadata-method :reviews)
                                  (table-metadata-method :ic/accounts)
-                                 (table-metadata-method :ic/reports)]
+                                 (table-metadata-method :ic/reports)
+                                 (table-metadata-method :gh/issues)
+                                 (table-metadata-method :gh/users)
+                                 (table-metadata-method :gh/comments)]
    :creator-id                  nil
    :is-full-sync                true
    :cache-ttl                   nil
@@ -2437,7 +3092,7 @@
 (mu/defn tables :- [:set :keyword]
   "Set of valid table names."
   []
-  (set (keys (methods table-metadata-method))))
+  (into (sorted-set) (keys (methods table-metadata-method))))
 
 (mu/defn fields :- [:set :keyword]
   "Set of valid table names for a `:table-name`."
@@ -2462,3 +3117,9 @@
   [table-name :- :keyword
    field-name :- :keyword]
   (field-metadata-method table-name field-name))
+
+(mu/defn ident :- :string
+  "Convenience to get the `:ident` string for a given field, by its table and field keys."
+  [table-name :- :keyword
+   field-name :- :keyword]
+  (:ident (field-metadata table-name field-name)))

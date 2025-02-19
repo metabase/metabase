@@ -1,4 +1,5 @@
-(ns metabase.db.custom-migrations.metrics-v2-test
+(ns ^:mb/old-migrations-test metabase.db.custom-migrations.metrics-v2-test
+  "These are 'old' tests now since this migration happened in 51."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [malli.error :as me]
@@ -17,7 +18,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest ^:mb/once convert-metric-v2-test
+(deftest ^:parallel convert-metric-v2-test
   (testing "basic metric"
     (let [metric-definition {:source-table 5
                              :aggregation [["sum" ["field" 41 nil]]]
@@ -58,7 +59,7 @@
       (is (= metric-v2 (-> (#'metrics-v2/convert-metric-v2 metric-v1 1)
                            (update :dataset_query json/decode+kw)))))))
 
-(deftest ^:mb/once rewrite-single-metric-consuming-card-test
+(deftest ^:parallel rewrite-single-metric-consuming-card-test
   (doseq [metric-tag ["metric" "METRIC" "meTriC"]]
     (testing (str "with source-table key " metric-tag)
       (let [metric-dataset-query {:type "query"
@@ -92,7 +93,7 @@
                                                                {1 (:id metric-card)})
                    json/decode+kw)))))))
 
-(deftest ^:mb/once rewrite-multi-metric-consuming-card-test
+(deftest ^:parallel rewrite-multi-metric-consuming-card-test
   (let [metric1-dataset-query {:type "query"
                                :database 1
                                :query {:source-table 5

@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -18,15 +18,17 @@
   [query]
   (some-> query :info :context name (str/includes? "download")))
 
-(defmulti ^:private current-user-download-perms-level :type)
+(defmulti ^:private current-user-download-perms-level
+  {:arglists '([mbql-query])}
+  :type)
 
 (defmethod current-user-download-perms-level :default
   [_]
   :one-million-rows)
 
 (defmethod current-user-download-perms-level :native
-  [{database :database}]
-  (data-perms/native-download-permission-for-user api/*current-user-id* database))
+  [{database-id :database}]
+  (data-perms/native-download-permission-for-user api/*current-user-id* database-id))
 
 (defmethod current-user-download-perms-level :query
   [{db-id :database, :as query}]

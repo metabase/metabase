@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util-test
+(ns metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require
    #?@(:clj [[metabase.test :as mt]
@@ -9,7 +9,8 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.number :as u.number])
   #?(:clj (:import [java.time DayOfWeek Month])))
 
 #?(:clj (set! *warn-on-reflection* true))
@@ -359,6 +360,7 @@
     "x"                                   :dispatch-type/string
     :x                                    :dispatch-type/keyword
     1                                     :dispatch-type/integer
+    (u.number/bigint "10")                :dispatch-type/integer
     1.1                                   :dispatch-type/number
     {:a 1}                                :dispatch-type/map
     [1]                                   :dispatch-type/sequential

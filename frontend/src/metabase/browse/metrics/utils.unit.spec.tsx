@@ -132,63 +132,6 @@ describe("sortMetrics", () => {
         metricMap["model named B, with collection path D / E / F"],
       ]);
     });
-
-    it("can sort by collection path, ascending, and then does a secondary sort by name - with a localized sort order", () => {
-      const sortingOptions = {
-        sort_column: "collection",
-        sort_direction: SortDirection.Asc,
-      } as const;
-
-      const addUmlauts = (model: MetricResult): MetricResult => ({
-        ...model,
-        name: model.name.replace(/^B$/g, "Bä"),
-        collection: {
-          ...model.collection,
-          effective_ancestors: model.collection?.effective_ancestors?.map(
-            ancestor => ({
-              ...ancestor,
-              name: ancestor.name.replace("X", "Ä"),
-            }),
-          ),
-        },
-      });
-
-      const swedishmetricMap = {
-        "model named A, with collection path Ä / Y / Z": addUmlauts(
-          metricMap["model named A, with collection path X / Y / Z"],
-        ),
-        "model named Bä, with collection path D / E / F": addUmlauts(
-          metricMap["model named B, with collection path D / E / F"],
-        ),
-        "model named Bz, with collection path D / E / F": addUmlauts(
-          metricMap["model named Bz, with collection path D / E / F"],
-        ),
-        "model named C, with collection path Y": addUmlauts(
-          metricMap["model named C, with collection path Y"],
-        ),
-        "model named C, with collection path Z": addUmlauts(
-          metricMap["model named C, with collection path Z"],
-        ),
-      };
-
-      const swedishResults = Object.values(swedishmetricMap);
-
-      // When sorting in Swedish, z comes before ä
-      const swedishLocaleCode = "sv";
-      const sorted = sortMetrics(
-        swedishResults,
-        sortingOptions,
-        swedishLocaleCode,
-      );
-      expect("ä".localeCompare("z", "sv", { sensitivity: "base" })).toEqual(1);
-      expect(sorted).toEqual([
-        swedishmetricMap["model named Bz, with collection path D / E / F"], // Model Bz sorts before Bä
-        swedishmetricMap["model named Bä, with collection path D / E / F"],
-        swedishmetricMap["model named C, with collection path Y"],
-        swedishmetricMap["model named C, with collection path Z"], // Collection Z sorts before Ä
-        swedishmetricMap["model named A, with collection path Ä / Y / Z"],
-      ]);
-    });
   });
 });
 

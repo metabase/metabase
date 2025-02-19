@@ -41,13 +41,15 @@
    [metabase.db.schema-migrations-test.impl
     :as schema-migrations-test.impl]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [next.jdbc]))
 
 (set! *warn-on-reflection* true)
 
@@ -227,6 +229,11 @@
   ([table-name field-name & nested-field-names]
    (apply data.impl/the-field-id (id table-name) (map format-name (cons field-name nested-field-names)))))
 
+(defn metadata-provider
+  "Get a metadata-provider for the current database."
+  []
+  (lib.metadata.jvm/application-database-metadata-provider (id)))
+
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
   current DB (for [[metabase.test.data]] functions like [[id]] and [[db]]), and execute `body`.
@@ -269,19 +276,31 @@
   [& body]
   `(data.impl/do-with-temp-copy-of-db (^:once fn* [] ~@body)))
 
+(def h2-app-db-script
+  "To save time during tests, instead of running all migrations for each new empty H2 app db, we perform the
+  migrations once and dump the schema into a script. Subsequently, this script can be used to instantiate new copies
+  of H2 app db. The result is a dereffable temp file."
+  (delay
+    (schema-migrations-test.impl/with-temp-empty-app-db [conn :h2]
+      ;; since the actual group defs are not dynamic, we need with-redefs to change them here
+      (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
+                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
+        (mdb/setup-db! :create-sample-content? false)
+        (let [f (java.io.File/createTempFile "db-export" ".sql")]
+          (next.jdbc/execute! conn ["SCRIPT TO ?" (str f)])
+          f)))))
+
 ;;; TODO FIXME -- rename this to `with-empty-h2-app-db!`
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-empty-h2-app-db
   "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
-  created via Liquibase schema migrations. After `body` is finished, the original app DB bindings are restored.
+  created from `h2-app-db-script`. After `body` is finished, the original app DB bindings are restored.
 
   Makes use of functionality in the [[metabase.db.schema-migrations-test.impl]] namespace since that already does what
   we need."
   {:style/indent 0}
   [& body]
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
-     ;; since the actual group defs are not dynamic, we need with-redefs to change them here
-     (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
-                   perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
-       (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
-       ~@body)))
+     (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script)])
+     (mdb/finish-db-setup)
+     ~@body))

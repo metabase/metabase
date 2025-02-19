@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -11,7 +11,7 @@ const TEST_QUESTION_QUERY = {
   breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }]],
 };
 
-H.describeEE("official collections", () => {
+describe("official collections", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -146,17 +146,17 @@ H.describeEE("official collections", () => {
 });
 
 function testOfficialBadgePresence(expectBadge = true) {
-  cy.createCollection({
+  H.createCollection({
     name: COLLECTION_NAME,
     authority_level: "official",
   }).then(response => {
     const { id: collectionId } = response.body;
-    cy.createQuestion({
+    H.createQuestion({
       name: "Official Question",
       collection_id: collectionId,
       query: TEST_QUESTION_QUERY,
     });
-    cy.createDashboard({
+    H.createDashboard({
       name: "Official Dashboard",
       collection_id: collectionId,
     });
@@ -206,12 +206,12 @@ function testOfficialBadgeInSearch({
 }
 
 function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
-  cy.createCollection({
+  H.createCollection({
     name: COLLECTION_NAME,
     authority_level: "official",
   }).then(response => {
     const { id: collectionId } = response.body;
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         name: "Official Question",
         collection_id: collectionId,

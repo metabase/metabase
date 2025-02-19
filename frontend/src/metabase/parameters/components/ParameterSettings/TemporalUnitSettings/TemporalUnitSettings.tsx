@@ -36,7 +36,7 @@ export function TemporalUnitSettings({
       <Popover.Target>
         <Button
           fw="normal"
-          rightIcon={<Icon name="chevrondown" />}
+          rightSection={<Icon name="chevrondown" />}
           fullWidth
           px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
           styles={{ inner: { justifyContent: "space-between" } }} // justify prop in mantine v7

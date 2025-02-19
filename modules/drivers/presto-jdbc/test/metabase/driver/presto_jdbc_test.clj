@@ -13,7 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
@@ -282,3 +282,7 @@
         (finally
           (.delete truststore)
           (.delete keystore))))))
+
+(deftest bytes-to-varbinary-test
+  (is (= ["FROM_BASE64(?)" "YSBzdHJpbmc="]
+         (sql/format (sql.qp/->honeysql :presto-jdbc (.getBytes "a string"))))))

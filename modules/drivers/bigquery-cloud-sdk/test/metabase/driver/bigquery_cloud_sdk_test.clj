@@ -12,7 +12,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.interface :as tx]
@@ -866,7 +866,7 @@
         (try
           (let [synced-tables (t2/select :model/Table :db_id (mt/id))]
             (is (= 2 (count synced-tables)))
-            (t2/insert! :model/Table (map #(dissoc % :id :schema) synced-tables))
+            (t2/insert! :model/Table (map #(dissoc % :id :entity_id :schema) synced-tables))
             (sync/sync-database! (mt/db) {:scan :schema})
             (let [synced-tables (t2/select :model/Table :db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]
@@ -1221,3 +1221,15 @@
               (is (= (if (= :cancelled stop-tag) "Query cancelled" "My Exception")
                      (:error result)))))))
       (is (< (count before-names) (+ (count (future-thread-names)) 5))))))
+
+(deftest alternate-host-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Alternate BigQuery host can be configured"
+      (mt/with-temp [:model/Database {:as temp-db}
+                     {:engine  :bigquery-cloud-sdk
+                      :details (-> (:details (mt/db))
+                                   (assoc :host "bigquery.example.com"))}]
+        (let [client (#'bigquery/database-details->client (:details temp-db))]
+          (is (= "bigquery.example.com"
+                 (.getHost (.getOptions client)))
+              "BigQuery client should be configured with alternate host"))))))

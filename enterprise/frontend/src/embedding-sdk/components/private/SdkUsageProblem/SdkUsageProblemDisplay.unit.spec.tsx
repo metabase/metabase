@@ -5,8 +5,9 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk/lib/is-localhost";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import {
   createMockApiKeyConfig,
   createMockAuthProviderUriConfig,
@@ -27,6 +28,7 @@ jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
 interface Options {
   authConfig: MetabaseAuthConfig;
   hasEmbeddingFeature?: boolean;
+  isEmbeddingSdkEnabled?: boolean;
 }
 
 const setup = (options: Options) => {
@@ -34,7 +36,10 @@ const setup = (options: Options) => {
     embedding_sdk: options.hasEmbeddingFeature ?? true,
   });
 
-  const settingValues = createMockSettings({ "token-features": tokenFeatures });
+  const settingValues = createMockSettings({
+    "token-features": tokenFeatures,
+    "enable-embedding-sdk": options.isEmbeddingSdkEnabled ?? true,
+  });
 
   const state = createMockState({
     settings: mockSettings(settingValues),
@@ -45,10 +50,9 @@ const setup = (options: Options) => {
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValues);
 
-  return renderWithProviders(<div>hello!</div>, {
+  return renderWithSDKProviders(<div>hello!</div>, {
     sdkProviderProps: { authConfig: options.authConfig },
     storeInitialState: state,
-    mode: "sdk",
   });
 };
 
@@ -83,6 +87,15 @@ describe("SdkUsageProblemDisplay", () => {
         /Attempting to use this in other ways is in breach of our usage policy/,
       ),
     ).toBeInTheDocument();
+
+    const docsLink = within(card).getByRole("link", {
+      name: /View documentation/,
+    });
+
+    expect(docsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/upgrade",
+    );
   });
 
   it("shows a warning when API keys are used in localhost", async () => {
@@ -100,6 +113,15 @@ describe("SdkUsageProblemDisplay", () => {
         /This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO./,
       ),
     ).toBeInTheDocument();
+
+    const docsLink = within(card).getByRole("link", {
+      name: /View documentation/,
+    });
+
+    expect(docsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#authenticating-people-from-your-server",
+    );
   });
 
   it("shows an error when API keys are used in production", async () => {
@@ -134,11 +156,22 @@ describe("SdkUsageProblemDisplay", () => {
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
     expect(
-      within(screen.getByTestId(PROBLEM_CARD_TEST_ID)).getByText(
+      within(card).getByText(
         /must provide either an Auth Provider URI or an API key for authentication/,
       ),
     ).toBeInTheDocument();
+
+    const docsLink = within(card).getByRole("link", {
+      name: /View documentation/,
+    });
+
+    expect(docsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#authenticating-people-from-your-server",
+    );
   });
 
   it("shows an error when both an Auth Provider URI and API keys are provided", async () => {
@@ -153,10 +186,50 @@ describe("SdkUsageProblemDisplay", () => {
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
     expect(
-      within(screen.getByTestId(PROBLEM_CARD_TEST_ID)).getByText(
+      within(card).getByText(
         /cannot use both an Auth Provider URI and API key authentication at the same time/,
       ),
     ).toBeInTheDocument();
+
+    const docsLink = within(card).getByRole("link", {
+      name: /View documentation/,
+    });
+
+    expect(docsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#authenticating-people-from-your-server",
+    );
+  });
+
+  // Caveat: we cannot detect this on non-localhost environments, as
+  // CORS is disabled on /api/session/properties.
+  it("shows an error when Embedding SDK is disabled on localhost", async () => {
+    setup({
+      authConfig: createMockAuthProviderUriConfig(),
+      hasEmbeddingFeature: true,
+      isEmbeddingSdkEnabled: false,
+    });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
+    expect(
+      within(card).getByText(
+        /The embedding SDK is not enabled for this instance. Please enable it in settings to start using the SDK./,
+      ),
+    ).toBeInTheDocument();
+
+    const docsLink = within(card).getByRole("link", {
+      name: /View documentation/,
+    });
+
+    expect(docsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/embedding/sdk/introduction#in-metabase",
+    );
   });
 });

@@ -1,8 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  mockScrollIntoView,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+
+import { FilterModalProvider } from "../context";
+import { createMockFilterModalContext } from "../test-utils";
 
 import { DateFilterEditor } from "./DateFilterEditor";
 
@@ -16,17 +23,19 @@ interface SetupOpts {
 function setup({ query, stageIndex, column, filter }: SetupOpts) {
   const onChange = jest.fn();
   const onInput = jest.fn();
+  mockScrollIntoView();
 
   renderWithProviders(
-    <DateFilterEditor
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      filter={filter}
-      isSearching={false}
-      onChange={onChange}
-      onInput={onInput}
-    />,
+    <FilterModalProvider
+      value={createMockFilterModalContext({ query, onInput })}
+    >
+      <DateFilterEditor
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        onChange={onChange}
+      />
+    </FilterModalProvider>,
   );
 
   const getNextFilterName = () => {
@@ -144,7 +153,7 @@ describe("DateFilterEditor", () => {
     const { query, filter } = createQueryWithFilter(
       defaultQuery,
       stageIndex,
-      Lib.specificDateFilterClause(defaultQuery, stageIndex, {
+      Lib.specificDateFilterClause({
         operator: "=",
         column,
         values: [new Date(2020, 1, 15)],

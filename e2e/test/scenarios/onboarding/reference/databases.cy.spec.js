@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 describe("scenarios > reference > databases", () => {
   beforeEach(() => {
@@ -99,6 +99,7 @@ describe("scenarios > reference > databases", () => {
 
 function checkReferenceDatabasesOrder() {
   cy.get("[class*=Card]").as("databaseCard").first().should("have.text", "a");
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.get("@databaseCard").last().should("have.text", "Sample Database");
 }
 
@@ -111,6 +112,7 @@ function checkQuestionSourceDatabasesOrder() {
   H.popover().within(() => {
     cy.findByText("Raw Data").click();
     cy.get(selector).as("databaseName").eq(1).should("have.text", "a");
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@databaseName")
       .eq(lastDatabaseIndex)
       .should("have.text", "Sample Database");

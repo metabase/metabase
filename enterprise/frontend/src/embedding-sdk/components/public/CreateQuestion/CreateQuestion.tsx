@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { FlexibleSizeComponent } from "embedding-sdk";
+import { FlexibleSizeComponent } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Button, Flex } from "metabase/ui";

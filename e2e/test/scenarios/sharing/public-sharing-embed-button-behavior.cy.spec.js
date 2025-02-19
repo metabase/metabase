@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 ["dashboard", "question"].forEach(resource => {
   describe(`embed modal behavior for ${resource}s`, () => {
@@ -173,7 +173,7 @@ describe("embed modal display", () => {
     });
   });
 
-  H.describeEE("when the user has a paid instance", () => {
+  describe("when the user has a paid instance", () => {
     it("should display a disabled state and a link to the Interactive embedding settings", () => {
       H.setTokenFeatures("all");
       H.visitDashboard("@dashboardId");
@@ -522,7 +522,7 @@ describe("#39152 sharing an unsaved question", () => {
           }
         });
 
-        H.describeEE("Pro/EE instances", () => {
+        describe("Pro/EE instances", () => {
           beforeEach(() => {
             H.setTokenFeatures("all");
           });
@@ -769,7 +769,7 @@ function toSecond(milliseconds) {
 
 function createResource(resource) {
   if (resource === "question") {
-    return cy.createNativeQuestion({
+    return H.createNativeQuestion({
       name: "Question",
       native: {
         query: `
@@ -826,7 +826,7 @@ function createResource(resource) {
       type: "string/contains",
     };
 
-    return cy.createDashboard({
+    return H.createDashboard({
       name: "Dashboard",
       parameters: [dateFilter, numberFilter, textFilter],
     });

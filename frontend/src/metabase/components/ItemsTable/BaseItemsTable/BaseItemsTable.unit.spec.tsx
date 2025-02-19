@@ -104,11 +104,6 @@ describe("BaseItemsTable", () => {
     );
   });
 
-  it("doesn't show model detail page link", () => {
-    setup();
-    expect(screen.queryByTestId("model-detail-link")).not.toBeInTheDocument();
-  });
-
   it("allows user with write permission to select all items", async () => {
     const onSelectAll = jest.fn();
     setup({
@@ -156,7 +151,7 @@ describe("BaseItemsTable", () => {
       const icon = getIcon("info");
       await userEvent.hover(icon);
 
-      const tooltip = screen.getByRole("tooltip");
+      const tooltip = await screen.findByRole("tooltip");
 
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent(DESCRIPTION);
@@ -171,28 +166,10 @@ describe("BaseItemsTable", () => {
       const icon = getIcon("info");
       await userEvent.hover(icon);
 
-      const tooltip = screen.getByRole("tooltip");
+      const tooltip = await screen.findByRole("tooltip");
 
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent("important text");
-    });
-  });
-
-  describe("models", () => {
-    const model = getCollectionItem({
-      id: 1,
-      name: "Order",
-      model: "dataset",
-      url: "/model/1",
-    });
-
-    it("shows model detail page link", () => {
-      setup({ items: [model] });
-      expect(screen.getByTestId("model-detail-link")).toBeInTheDocument();
-      expect(screen.getByTestId("model-detail-link")).toHaveAttribute(
-        "href",
-        "/model/1-order/detail",
-      );
     });
   });
 });

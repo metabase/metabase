@@ -23,6 +23,7 @@
   "Formats a value appropriately for inclusion in a text card, based on its type. Does not do any escaping.
   For datetime parameters, the logic here should mirror the logic (as best as possible) in
   frontend/src/metabase/parameters/utils/date-formatting.ts"
+  {:arglists '([tyype value locale])}
   (fn [tyype _value _locale] (keyword tyype)))
 
 (defmethod formatted-value :date/single

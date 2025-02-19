@@ -1,10 +1,9 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { describeEE } from "e2e/support/helpers";
 
 const { admin } = USERS;
 
@@ -25,7 +24,14 @@ describe("command palette", () => {
     cy.visit("/");
 
     cy.findByRole("button", { name: /Search/ }).click();
+    H.commandPalette().should("be.visible");
+    cy.findByRole("option", { name: "Orders in a dashboard" }).should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
     H.closeCommandPalette();
+    H.commandPalette().should("not.exist");
 
     cy.log("open the command palette with keybinding");
     H.openCommandPalette();
@@ -76,13 +82,13 @@ describe("command palette", () => {
       // Check that we are not filtering search results by action name
       H.commandPaletteInput().clear().type("Company");
       cy.findByRole("option", { name: /View and filter/ }).should("exist");
-      cy.findByRole("option", { name: "REVIEWS" }).should(
+      cy.findByRole("option", { name: "Products" }).should(
         "have.attr",
         "aria-selected",
         "true",
       );
-      cy.findByRole("option", { name: "PEOPLE" }).should("exist");
-      cy.findByRole("option", { name: "PRODUCTS" }).should("exist");
+      cy.findByRole("option", { name: "People" }).should("exist");
+      cy.findByRole("option", { name: "Reviews" }).should("exist");
       H.commandPaletteInput().clear();
 
       H.commandPaletteInput().clear().type("New met");
@@ -143,6 +149,7 @@ describe("command palette", () => {
         const results = response.body.data;
 
         results.forEach((result, index) => {
+          // eslint-disable-next-line no-unsafe-element-filtering
           cy.findAllByRole("option")
             .eq(index + 2)
             .should("contain.text", result.name);
@@ -209,7 +216,7 @@ describe("command palette", () => {
       });
     });
 
-    describeEE("with advanced permissions", () => {
+    describe("with advanced permissions", () => {
       it("should render links for non-admins that have specific privileges", () => {
         // setup
         cy.log("setup permissions");

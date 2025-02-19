@@ -3,9 +3,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.geojson-test :as geojson-test]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models.permissions :as perms]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 

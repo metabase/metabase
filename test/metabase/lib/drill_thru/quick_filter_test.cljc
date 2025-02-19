@@ -213,10 +213,8 @@
        "multi-stage query"
        (fn [base-case]
          {:custom-query #(lib.drill-thru.tu/append-filter-stage % "sum")
-          :expected-query (lib.drill-thru.tu/prepend-filter-to-stage
-                           (:expected-query base-case)
-                           -1
-                           [:> {} [:field {} "sum"] -1])})))))
+          :expected-query (-> (:expected-query base-case)
+                              (lib.drill-thru.tu/prepend-filter-to-test-expectation-stage "sum"))})))))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test-2
   (testing "quick-filter on a breakout should not introduce a new stage"
@@ -247,10 +245,9 @@
         :custom-query   #(lib.drill-thru.tu/append-filter-stage % "sum")
         ;; the extra stage is added by append-filter-stage, not by the quick-filter
         :expected       (update-in (:expected base-case) [:query :stages] conj {})
-        :expected-query (lib.drill-thru.tu/prepend-filter-to-stage
-                         (update (:expected-query base-case) :stages #(into [{}] %))
-                         -1
-                         [:> {} [:field {} "sum"] -1])}))))
+        :expected-query (-> (:expected-query base-case)
+                            lib.drill-thru.tu/prepend-stage-to-test-expectation
+                            (lib.drill-thru.tu/prepend-filter-to-test-expectation-stage "sum"))}))))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test-3
   (testing "quick-filter on an aggregation should introduce an new stage (#34346)"
@@ -275,10 +272,8 @@
      "multi-stage query: no new stage added"
      (fn [base-case]
        {:custom-query   #(lib.drill-thru.tu/append-filter-stage % "max")
-        :expected-query (lib.drill-thru.tu/prepend-filter-to-stage
-                         (:expected-query base-case)
-                         -1
-                         [:> {} [:field {} "max"] -1])}))))
+        :expected-query (-> (:expected-query base-case)
+                            (lib.drill-thru.tu/prepend-filter-to-test-expectation-stage "max"))}))))
 
 (deftest ^:parallel contains-does-not-contain-test
   (testing "Should return :contains/:does-not-contain for text columns (#33560)"
@@ -310,3 +305,38 @@
         (testing :does-not-contain
           (is (=? {:stages [{:filters [[:does-not-contain {} [:field {} (meta/id :reviews :body)] "text"]]}]}
                   (lib/drill-thru query -1 nil drill "does-not-contain"))))))))
+
+(deftest ^:parallel preserve-temporal-bucket-test-quick-filter
+  (testing "preserve the temporal bucket on a breakout column (#50722)"
+    (let [base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                             (lib/aggregate (lib/count))
+                             (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                               (lib/with-temporal-bucket :month))))
+          count-col      (m/find-first #(= (:name %) "count")
+                                       (lib/returned-columns base-query))
+          _              (is (some? count-col))
+          created-at-col (m/find-first #(= (:name %) "CREATED_AT")
+                                       (lib/returned-columns base-query))
+          _              (is (some? created-at-col))
+          context        {:column     created-at-col
+                          :column-ref (lib/ref created-at-col)
+                          :value      "2023-03-01T00:00:00Z"
+                          :row        [{:column     created-at-col,
+                                        :column-ref (lib/ref created-at-col)
+                                        :value      "2023-03-01T00:00:00Z"}
+                                       {:column     count-col
+                                        :column-ref (lib/ref count-col)
+                                        :value      127}]
+                          :dimensions [{:column     created-at-col
+                                        :column-ref (lib/ref created-at-col)
+                                        :value      "2023-03-01T00:00:00Z"}
+                                       {:column     count-col
+                                        :column-ref (lib/ref count-col)
+                                        :value      127}]}
+          drill          (m/find-first #(= (:type %) :drill-thru/quick-filter)
+                                       (lib/available-drill-thrus base-query context))]
+      (is (some? drill))
+      (is (=? {:stages [{:filters [[:= {}
+                                    [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                    "2023-03-01T00:00:00Z"]]}]}
+              (lib/drill-thru base-query -1 nil drill "="))))))

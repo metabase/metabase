@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util.malli.defn-test
+(ns metabase.util.malli.defn-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

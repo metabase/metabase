@@ -13,7 +13,6 @@ import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrateg
 import { skipToken, useSearchQuery } from "metabase/api";
 import { ClientSortableTable } from "metabase/common/components/Table/ClientSortableTable";
 import type { ColumnItem } from "metabase/common/components/Table/types";
-import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import {
   Box,
@@ -248,8 +247,6 @@ const _StrategyEditorForQuestionsAndDashboards = ({
     updateTarget({ id: null, model: null }, isStrategyFormDirty);
   }, [updateTarget, isStrategyFormDirty]);
 
-  const locale = useLocale();
-
   return (
     <Flex
       role="region"
@@ -264,7 +261,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       }}
     >
       <Stack
-        spacing="sm"
+        gap="sm"
         lh="1.5rem"
         pt="md"
         pb="md"
@@ -292,7 +289,6 @@ const _StrategyEditorForQuestionsAndDashboards = ({
                 rowRenderer={rowRenderer}
                 defaultSortColumn="name"
                 defaultSortDirection={SortDirection.Asc}
-                locale={locale}
                 formatValueForSorting={formatValueForSorting}
                 emptyBody={<NoResultsTableRow />}
                 aria-labelledby={explanatoryAsideId}
@@ -359,7 +355,6 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
       </tr>
     )}
     className={Styles.CacheableItemTable}
-    locale="en-US"
   />
 );
 

@@ -1,6 +1,6 @@
 import { onlyOn } from "@cypress/skip-test";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -30,7 +30,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
               cy.signInAsAdmin();
-              cy.createNativeQuestionAndDashboard({
+              H.createNativeQuestionAndDashboard({
                 questionDetails,
                 dashboardDetails: { name: dashboardName },
               }).then(({ body: { dashboard_id } }) => {

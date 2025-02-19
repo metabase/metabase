@@ -1,9 +1,9 @@
-(ns ^:mb/once metabase.task.creator-sentiment-emails-test
+(ns metabase.task.creator-sentiment-emails-test
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.email-test :as et :refer [inbox]]
+   [metabase.channel.email-test :as et :refer [inbox]]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.task.creator-sentiment-emails :as creator-sentiment-emails]

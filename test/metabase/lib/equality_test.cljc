@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
@@ -267,7 +268,7 @@
 
 (deftest ^:parallel find-matching-column-by-id-test
   (testing "find-matching-column should find columns based on matching ID (#31482) (#33453)"
-    (let [query lib.tu/query-with-join
+    (let [query (lib.tu/query-with-join)
           cols  (lib/returned-columns query)
           refs  (map lib.ref/ref cols)
           a-ref [:field {:lib/uuid (str (random-uuid))
@@ -288,7 +289,7 @@
              (lib.equality/find-matching-column query -1 a-ref cols))))))
 
 (deftest ^:parallel find-matching-column-from-column-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/breakout (meta/field-metadata :venues :id)))
         filterable-cols (lib/filterable-columns query)
         matched-from-col (lib.equality/find-matching-column query -1 (m/find-first :breakout-positions (lib/breakoutable-columns query)) filterable-cols)
@@ -304,7 +305,7 @@
 
 (deftest ^:parallel find-matching-column-by-name-test
   (testing "find-matching-column should find columns based on matching name"
-    (let [query    (lib/append-stage lib.tu/query-with-join)
+    (let [query    (lib/append-stage (lib.tu/query-with-join))
           cols     (lib/returned-columns query)
           refs     (map lib.ref/ref cols)
           cat-name [:field {:lib/uuid (str (random-uuid))
@@ -339,14 +340,16 @@
 
 (deftest ^:parallel find-matching-column-self-join-test
   (testing "find-matching-column with a self join"
-    (let [query     lib.tu/query-with-self-join
+    (let [query     (lib.tu/query-with-self-join)
+          [join]    (lib/joins query)
           cols      (for [col (meta/fields :orders)]
                       (meta/field-metadata :orders col))
           table-col #(assoc % :lib/source :source/table-defaults)
-          join-col  #(merge %
-                            {:lib/source                   :source/joins
-                             :metabase.lib.join/join-alias "Orders"
-                             :lib/desired-column-alias     (str "Orders__" (:name %))})
+          join-col  #(-> %
+                         (merge {:lib/source                   :source/joins
+                                 :metabase.lib.join/join-alias "Orders"
+                                 :lib/desired-column-alias     (str "Orders__" (:name %))})
+                         (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
           sorted    #(sort-by (juxt :position :source-alias) %)
           visible   (lib/visible-columns query)]
       (is (=? (sorted (concat (map table-col cols)
@@ -379,7 +382,7 @@
 
 (deftest ^:parallel find-matching-column-self-join-with-fields-test
   (testing "find-matching-column works with a tricky case taken from an e2e test"
-    (let [base   (-> lib.tu/query-with-self-join
+    (let [base   (-> (lib.tu/query-with-self-join)
                      (lib/with-fields [(meta/field-metadata :orders :id)
                                        (meta/field-metadata :orders :tax)]))
           [join] (lib/joins base)
@@ -488,7 +491,7 @@
                     (lib.equality/find-column-indexes-for-refs just-3 -1 refs ret-3)))))))))
 
 (deftest ^:parallel find-matching-column-aggregation-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/aggregate (lib/count)))
         [ag]  (lib/aggregations query)]
     (testing "without passing query"
@@ -523,47 +526,43 @@
   (is (=? {:name "expr", :lib/source :source/expressions}
           (lib.equality/find-matching-column
            [:expression {:lib/uuid (str (random-uuid))} "expr"]
-           (lib/visible-columns lib.tu/query-with-expression)))))
+           (lib/visible-columns (lib.tu/query-with-expression))))))
 
 (deftest ^:parallel find-column-for-legacy-ref-field-test
-  (are [legacy-ref] (=? {:name "NAME", :id (meta/id :venues :name)}
-                        (lib/find-column-for-legacy-ref
-                         lib.tu/venues-query
-                         legacy-ref
-                         (lib/visible-columns lib.tu/venues-query)))
-    [:field (meta/id :venues :name) nil]
-    [:field (meta/id :venues :name) {}]
-    ;; should work with refs that need normalization
-    ["field" (meta/id :venues :name) nil]
-    ["field" (meta/id :venues :name)]
-    #?@(:cljs
-        [#js ["field" (meta/id :venues :name) nil]
-         #js ["field" (meta/id :venues :name) #js {}]])))
+  (let [query (lib.tu/venues-query)]
+    (are [legacy-ref] (=? {:name "NAME", :id (meta/id :venues :name)}
+                          (lib/find-column-for-legacy-ref query legacy-ref (lib/visible-columns query)))
+      [:field (meta/id :venues :name) nil]
+      [:field (meta/id :venues :name) {}]
+      ;; should work with refs that need normalization
+      ["field" (meta/id :venues :name) nil]
+      ["field" (meta/id :venues :name)]
+      #?@(:cljs
+          [#js ["field" (meta/id :venues :name) nil]
+           #js ["field" (meta/id :venues :name) #js {}]]))))
 
 (deftest ^:parallel find-column-for-legacy-ref-match-by-name-test
   (testing "Make sure fallback matching by name works correctly"
     (is (=? {:name "NAME"}
             (lib/find-column-for-legacy-ref
-             lib.tu/venues-query
+             (lib.tu/venues-query)
              [:field (meta/id :venues :name) nil]
              [(dissoc (meta/field-metadata :venues :name) :id :table-id)])))))
 
 (deftest ^:parallel find-column-for-legacy-ref-expression-test
-  (are [legacy-ref] (=? {:name "expr", :lib/source :source/expressions}
-                        (lib/find-column-for-legacy-ref
-                         lib.tu/query-with-expression
-                         legacy-ref
-                         (lib/visible-columns lib.tu/query-with-expression)))
-    [:expression "expr"]
-    ["expression" "expr"]
-    ["expression" "expr" nil]
-    ["expression" "expr" {}]
-    #?@(:cljs
-        [#js ["expression" "expr"]
-         #js ["expression" "expr" #js {}]])))
+  (let [query (lib.tu/query-with-expression)]
+    (are [legacy-ref] (=? {:name "expr", :lib/source :source/expressions}
+                          (lib/find-column-for-legacy-ref query legacy-ref (lib/visible-columns query)))
+      [:expression "expr"]
+      ["expression" "expr"]
+      ["expression" "expr" nil]
+      ["expression" "expr" {}]
+      #?@(:cljs
+          [#js ["expression" "expr"]
+           #js ["expression" "expr" #js {}]]))))
 
 (deftest ^:parallel find-column-for-legacy-ref-aggregation-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/aggregate (lib/count)))]
     (are [legacy-ref] (=? {:name           "count"
                            :effective-type :type/Integer
@@ -657,7 +656,7 @@
                          :base-type :type/Text
                          :join-alias "Cat"}
                  (meta/id :categories :name)]
-          query (-> lib.tu/query-with-join
+          query (-> (lib.tu/query-with-join)
                     (lib/expression "Joied Name" a-ref))
           cols  (lib/returned-columns query)]
       (is (=? {:name "NAME"

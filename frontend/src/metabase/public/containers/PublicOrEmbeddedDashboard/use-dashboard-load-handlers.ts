@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
+/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { getEventHandlers } from "embedding-sdk/store/selectors";
 import {
   getIsLoading,

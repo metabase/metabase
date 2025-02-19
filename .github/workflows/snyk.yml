@@ -9,7 +9,7 @@ on:
       - '**/deps.edn'
       - '**/package.json'
       - '.github/workflows/snyk.yml'
-      - '.github/scripts/write-poms.xml'
+      - '.github/scripts/write-poms.sh'
   schedule:
     - cron: '0 5 * * *'
 
@@ -35,6 +35,6 @@ jobs:
         continue-on-error: true
         run: snyk test --all-projects --sarif-file-output=snyk.sarif
       - name: Upload result to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk.sarif

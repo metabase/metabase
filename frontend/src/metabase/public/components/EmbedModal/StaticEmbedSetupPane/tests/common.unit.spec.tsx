@@ -1,7 +1,11 @@
-import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { getBrokenUpTextMatcher } from "__support__/ui";
+import {
+  getBrokenUpTextMatcher,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { getMockResource, setup } from "./setup";
@@ -160,7 +164,7 @@ describe("Static Embed Setup phase", () => {
         expect(screen.getByLabelText("Code")).toBeChecked();
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-          `// you will need to install via 'npm install jsonwebtoken' or in your package.json var jwt = require("jsonwebtoken"); var METABASE_SITE_URL = "http://localhost:3000"; var METABASE_SECRET_KEY = "my_super_secret_key"; var payload = { resource: { ${resourceType}: 1 }, params: {}, exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration }; var token = jwt.sign(payload, METABASE_SECRET_KEY); var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + "#bordered=true&titled=true";`,
+          `// you will need to install via 'npm install jsonwebtoken' or in your package.json const jwt = require("jsonwebtoken"); const METABASE_SITE_URL = "http://localhost:3000"; const METABASE_SECRET_KEY = "my_super_secret_key"; const payload = { resource: { ${resourceType}: 1 }, params: {}, exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration }; const token = jwt.sign(payload, METABASE_SECRET_KEY); const iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + "#bordered=true&titled=true";`,
         );
       });
 
@@ -414,7 +418,7 @@ describe("Static Embed Setup phase", () => {
         expect(screen.getByLabelText("Code")).toBeChecked();
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-          `// you will need to install via 'npm install jsonwebtoken' or in your package.json var jwt = require("jsonwebtoken"); var METABASE_SITE_URL = "http://localhost:3000"; var METABASE_SECRET_KEY = "my_super_secret_key"; var payload = { resource: { ${resourceType}: ${resource.id} }, params: {}, exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration }; var token = jwt.sign(payload, METABASE_SECRET_KEY); var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + "#bordered=true&titled=true";`,
+          `// you will need to install via 'npm install jsonwebtoken' or in your package.json const jwt = require("jsonwebtoken"); const METABASE_SITE_URL = "http://localhost:3000"; const METABASE_SECRET_KEY = "my_super_secret_key"; const payload = { resource: { ${resourceType}: ${resource.id} }, params: {}, exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration }; const token = jwt.sign(payload, METABASE_SECRET_KEY); const iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + "#bordered=true&titled=true";`,
         );
       });
 

@@ -5,6 +5,7 @@ import slugg from "slugg";
 import _ from "underscore";
 
 import { utf8_to_b64url } from "metabase/lib/encoding";
+import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -16,14 +17,6 @@ import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import {
-  applyFilterParameter,
-  applyTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/mbql";
-import {
-  isFilterParameter,
-  isTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/parameter-type";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
@@ -42,6 +35,7 @@ import type {
   CardType,
   CollectionId,
   DashCardId,
+  Dashboard,
   DashboardId,
   DatabaseId,
   DatasetData,
@@ -777,29 +771,33 @@ class Question {
       return this;
     }
 
-    const newQuery = this.parameters().reduce((query, parameter) => {
-      if (isFilterParameter(parameter)) {
-        const stageIndex =
-          isDimensionTarget(parameter.target) && !isComposed
-            ? getParameterDimensionTargetStageIndex(parameter.target)
-            : -1;
-        return applyFilterParameter(query, stageIndex, parameter);
-      } else if (isTemporalUnitParameter(parameter)) {
-        const stageIndex =
-          isDimensionTarget(parameter.target) && !isComposed
-            ? getParameterDimensionTargetStageIndex(parameter.target)
-            : -1;
+    // If the query is composed (models or metrics) we cannot add filters to the underlying query since that query is used for data source.
+    // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations.
+    const queryWithExtraStage =
+      !isComposed && this.display() !== "pivot"
+        ? Lib.ensureFilterStage(query)
+        : query;
+    const queryWithFilters = this.parameters().reduce((newQuery, parameter) => {
+      const stageIndex =
+        isDimensionTarget(parameter.target) && !isComposed
+          ? getParameterDimensionTargetStageIndex(parameter.target)
+          : -1;
+      return applyParameter(
+        newQuery,
+        stageIndex,
+        parameter.type,
+        parameter.target,
+        parameter.value,
+      );
+    }, queryWithExtraStage);
+    const queryWithFiltersWithoutExtraStage =
+      Lib.dropEmptyStages(queryWithFilters);
 
-        return applyTemporalUnitParameter(query, stageIndex, parameter);
-      } else {
-        return query;
-      }
-    }, query);
-    const newQuestion = this.setQuery(newQuery)
+    const newQuestion = this.setQuery(queryWithFiltersWithoutExtraStage)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    const hasQueryBeenAltered = query !== newQuery;
+    const hasQueryBeenAltered = queryWithExtraStage !== queryWithFilters;
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
 
     function getParameterDimensionTargetStageIndex(

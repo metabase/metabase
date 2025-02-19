@@ -37,5 +37,6 @@ serdes/meta:
   model: Table
 - id: cache_field_values_schedule
   model: Field
-database_indexed: null
+database_indexed: false
 database_partitioned: null
+entity_id: tXgihfYDy6_4nrSXQtv44

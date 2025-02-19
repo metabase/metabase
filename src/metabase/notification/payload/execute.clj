@@ -269,7 +269,7 @@
                               (process-fn
                                (qp/userland-query
                                 (assoc query
-                                       :middleware {:skip-results-metadata?            true
+                                       :middleware {:skip-results-metadata?            false
                                                     :process-viz-settings?             true
                                                     :js-int-to-string?                 false
                                                     :add-default-userland-constraints? false})

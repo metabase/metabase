@@ -7,10 +7,10 @@
     :as advanced-permissions.common]
    [metabase.api.database :as api.database]
    [metabase.driver :as driver]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -106,11 +106,21 @@
                                                         :group_id  group-id
                                                         :table_id  table-id
                                                         :perm_type :perms/view-data))]
-        (testing "New table gets `blocked` view-data perms if any tables in the DB are `blocked`"
+        (testing "A new table gets `:blocked` view-data perms if any tables in the DB are `:blocked`"
           (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :blocked)
           (data-perms/set-table-permission! group-id table-id-2 :perms/view-data :unrestricted)
           (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
+            ;; Check that no DB-level perm is set
             (is (nil? (perm-value nil)))
+            (is (= :blocked (perm-value table-id-3)))))
+
+        (testing "A new table defaults to `:blocked` if the group has a sandbox for any existing table"
+          (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
+          (mt/with-temp [:model/GroupTableAccessPolicy _ {:group_id group-id
+                                                          :table_id table-id-1}
+                         :model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
+            (is (nil? (perm-value nil)))
+            (is (= :unrestricted (perm-value table-id-1)))
             (is (= :blocked (perm-value table-id-3)))))))))
 
 (deftest new-group-view-data-permission-level
@@ -571,8 +581,10 @@
 
         (testing "a non-admin can update table metadata if they have data model perms for the table"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 3"})))))
+            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 3"})))))))
 
+(deftest table-rescan-values-test
+  (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
     (testing "POST /api/table/:id/rescan_values"
       (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
         (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
@@ -584,21 +596,25 @@
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
         (t2/delete! :model/FieldValues :field_id (mt/id :venues :price))
         (is (= nil (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))
-        (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
+        (with-redefs [sync.concurrent/submit-task! (fn [task] (task))]
           (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
                                                          :create-queries :no
                                                          :data-model     {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
             (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" (mt/id :venues)))))
-        (is (= [1 2 3 4] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))))
+        (is (= [1 2 3 4] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))))))
 
+(deftest table-discard-values-test
+  (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
     (testing "POST /api/table/:id/discard_values"
       (testing "A non-admin can discard field values if they have data model perms for the table"
         (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
           (mt/user-http-request :rasta :post 403 (format "table/%d/discard_values" table-id)))
 
         (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-          (mt/user-http-request :rasta :post 200 (format "table/%d/discard_values" table-id)))))
+          (mt/user-http-request :rasta :post 200 (format "table/%d/discard_values" table-id)))))))
 
+(deftest table-fields-ordering-test
+  (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
     (testing "POST /api/table/:id/fields/order"
       (testing "A non-admin can set a custom field ordering if they have data model perms for the table"
         (mt/with-temp [:model/Field {field-1-id :id} {:table_id table-id}
@@ -608,8 +624,9 @@
                                   [field-2-id field-1-id]))
 
           (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-            (mt/user-http-request :rasta :put 200 (format "table/%d/fields/order" table-id)
-                                  [field-2-id field-1-id])))))))
+            (is (= {:success true}
+                   (mt/user-http-request :rasta :put 200 (format "table/%d/fields/order" table-id)
+                                         [field-2-id field-1-id])))))))))
 
 (deftest audit-log-generated-when-table-manual-scan
   (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]

@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { forwardRef } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -18,31 +19,39 @@ import {
 } from "./ErrorDiagnosticModal";
 import { ErrorPageRoot } from "./ErrorPages.styled";
 
-export const GenericError = ({
-  title = t`Something’s gone wrong`,
-  message = t`We’ve run into an error. You can try refreshing the page, or just go back.`,
-  details,
-}: {
+interface GenericErrorProps {
   title?: string;
   message?: string;
   details: ErrorDetailsProps["details"];
-}) => (
-  <ErrorPageRoot>
-    <EmptyState
-      title={title}
-      message={message}
-      illustrationElement={
-        <div
-          className={cx(
-            QueryBuilderS.QueryErrorImage,
-            QueryBuilderS.QueryErrorImageServerError,
-          )}
+}
+export const GenericError = forwardRef<HTMLDivElement, GenericErrorProps>(
+  function _GenericError(
+    {
+      title = t`Something’s gone wrong`,
+      message = t`We’ve run into an error. You can try refreshing the page, or just go back.`,
+      details,
+    },
+    ref,
+  ) {
+    return (
+      <ErrorPageRoot ref={ref}>
+        <EmptyState
+          title={title}
+          message={message}
+          illustrationElement={
+            <div
+              className={cx(
+                QueryBuilderS.QueryErrorImage,
+                QueryBuilderS.QueryErrorImageServerError,
+              )}
+            />
+          }
         />
-      }
-    />
-    <ErrorDetails className={CS.pt2} details={details} centered />
-    <ErrorDiagnosticModalTrigger />
-  </ErrorPageRoot>
+        <ErrorDetails className={CS.pt2} details={details} centered />
+        <ErrorDiagnosticModalTrigger />
+      </ErrorPageRoot>
+    );
+  },
 );
 
 export const NotFound = ({
@@ -86,14 +95,16 @@ export const Archived = ({
   </ErrorPageRoot>
 );
 
-export const SmallGenericError = ({
-  message = t`Something’s gone wrong.`,
-  bordered = true,
-  ...props
-}: {
-  message?: string;
-  bordered?: boolean;
-}) => {
+export const SmallGenericError = forwardRef<
+  HTMLDivElement,
+  {
+    message?: string;
+    bordered?: boolean;
+  }
+>(function _SmallGenericError(
+  { message = t`Something’s gone wrong.`, bordered = true, ...props },
+  ref,
+) {
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
     useToggle(false);
 
@@ -104,22 +115,22 @@ export const SmallGenericError = ({
     : message + t` Click for more information`;
 
   return (
-    <ErrorPageRoot bordered={bordered} {...props}>
+    <ErrorPageRoot bordered={bordered} {...props} ref={ref}>
       <Tooltip label={tooltipMessage}>
         {isEmbedded ? (
           <Icon name="warning" size={32} color={color("text-light")} />
         ) : (
           <Button
-            leftIcon={
+            leftSection={
               <Icon name="warning" size={32} color={color("text-light")} />
             }
             color="text-light"
             onClick={openModal}
-            variant="unstyled"
+            variant="subtle"
           />
         )}
       </Tooltip>
       <ErrorExplanationModal isModalOpen={isModalOpen} onClose={closeModal} />
     </ErrorPageRoot>
   );
-};
+});

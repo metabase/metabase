@@ -6,7 +6,7 @@ title: Embedded analytics SDK - quickstart with sample app
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true enterprise-only=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 This guide sets up the embedded analytics SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample), but you can follow along with your own application.
 
@@ -116,15 +116,15 @@ In the sample app's main directory, copy the `.env.example` template to `.env`.
 cp .env.example .env
 ```
 
-In `.env`, make sure `REACT_APP_METABASE_INSTANCE_URL` and `METABASE_INSTANCE_URL` point to your Metabase instance URL, e.g., `http://localhost:3000`.
+In `.env`, make sure `VITE_METABASE_INSTANCE_URL` and `METABASE_INSTANCE_URL` point to your Metabase instance URL, e.g., `http://localhost:3000`.
 
 Your `.env` will look something like:
 
 ```txt
 # FRONTEND
 PORT=3100
-REACT_APP_METABASE_INSTANCE_URL="http://localhost:3000"
-REACT_APP_AUTH_PROVIDER_URI="http://localhost:9090/sso/metabase"
+VITE_METABASE_INSTANCE_URL="http://localhost:3000"
+VITE_AUTH_PROVIDER_URI="http://localhost:9090/sso/metabase"
 
 # BACKEND
 BACKEND_PORT=9090

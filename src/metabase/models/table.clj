@@ -5,11 +5,10 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -40,7 +39,11 @@
   (derive :metabase/model)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
+  ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
+  ;; cause duplication rather than good matching if the two instances are later linked by serdes.
+  #_(derive :hook/entity-id))
 
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
@@ -66,25 +69,25 @@
 (defn- set-new-table-permissions!
   [table]
   (t2/with-transaction [_conn]
-    (let [all-users-group  (perms-group/all-users)
-          non-magic-groups (perms-group/non-magic-groups)
+    (let [all-users-group  (perms/all-users-group)
+          non-magic-groups (perms/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
       ;; Data access permissions
       (if (= (:db_id table) audit/audit-db-id)
         (do
          ;; Tables in audit DB should start out with no query access in all groups
-          (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-          (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
+          (perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
+          (perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
         (do
           ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
-          (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-          (data-perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
-          (data-perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
+          (perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
+          (perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
+          (perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
       ;; Download permissions
-      (data-perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
-      (data-perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)
+      (perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
+      (perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)
       ;; Table metadata management
-      (data-perms/set-new-table-permissions! non-admin-groups table :perms/manage-table-metadata :no))))
+      (perms/set-new-table-permissions! non-admin-groups table :perms/manage-table-metadata :no))))
 
 (t2/define-after-insert :model/Table
   [table]
@@ -93,13 +96,13 @@
 
 (defmethod mi/can-read? :model/Table
   ([instance]
-   (and (data-perms/user-has-permission-for-table?
+   (and (perms/user-has-permission-for-table?
          api/*current-user-id*
          :perms/view-data
          :unrestricted
          (:db_id instance)
          (:id instance))
-        (data-perms/user-has-permission-for-table?
+        (perms/user-has-permission-for-table?
          api/*current-user-id*
          :perms/create-queries
          :query-builder
@@ -122,7 +125,7 @@
 
 (defmethod serdes/hash-fields :model/Table
   [_table]
-  [:schema :name (serdes/hydrated-hash :db)])
+  [:schema :name (serdes/hydrated-hash :db :db_id)])
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
@@ -163,12 +166,13 @@
   "Set field order to `field-order`."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
-  (t2/update! :model/Table (u/the-id table) {:field_order :custom})
-  (doall
-   (map-indexed (fn [position field-id]
-                  (t2/update! :model/Field field-id {:position        position
-                                                     :custom_position position}))
-                field-order)))
+  (t2/with-transaction [_]
+    (t2/update! :model/Table (u/the-id table) {:field_order :custom})
+    (dorun
+     (map-indexed (fn [position field-id]
+                    (t2/update! :model/Field field-id {:position        position
+                                                       :custom_position position}))
+                  field-order))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -278,7 +282,7 @@
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter]
+               :database_require_filter :entity_id]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
                :db_id      (serdes/fk :model/Database :name)}})

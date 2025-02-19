@@ -21,6 +21,14 @@
   (is (= "'this' & !'that':*"
          (search-expr "this -that")))
 
+  (testing "hyphens"
+    (is (= "'[ops' & 'monitoring]' & '-' & 'available':*"
+           (search-expr "[ops monitoring] - available")))
+    (is (= "'[ops' & 'monitoring]' & '--' & 'available':*"
+           (search-expr "[ops monitoring] -- available")))
+    (is (= "'[ops' & 'monitoring]' & 'not-available':*"
+           (search-expr "[ops monitoring] not-available"))))
+
   (is (= "'a' & 'b' & 'c' <-> 'd' & 'e' | 'b' & 'e':*"
          (search-expr "a b \" c d\" e or b e")))
 
@@ -42,6 +50,9 @@
   (testing "dangerous characters"
     (is (= "'you' & '<-' & 'pointing':*"
            (search-expr "you <- pointing"))))
+
+  (testing "backslash"
+    (is (= "'test\\\\':*" (search-expr "test\\"))))
 
   (testing "single quotes"
     (is (= "'you''re':*"

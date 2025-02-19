@@ -11,7 +11,7 @@
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]

@@ -1,11 +1,11 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const PG_DB_ID = 2;
 
-H.describeEE("impersonated permission", () => {
+describe("impersonated permission", { tags: "@external" }, () => {
   describe("admins", () => {
     beforeEach(() => {
       H.restore("postgres-12");
@@ -71,10 +71,14 @@ H.describeEE("impersonated permission", () => {
         cy.get("main").findByText("Orders").click();
         cy.findAllByTestId("header-cell").contains("Subtotal");
 
+        cy.reload();
+
         // No access through the native query builder
-        H.openNativeEditor({ databaseName: "QA Postgres12" }).type(
-          "select * from reviews",
-        );
+        H.startNewNativeQuestion();
+
+        cy.findByTestId("gui-builder-data").click();
+        cy.findByLabelText("QA Postgres12").click();
+        H.NativeEditor.type("select * from reviews");
         H.runNativeQuery();
 
         cy.findByTestId("query-builder-main").within(() => {
@@ -83,9 +87,9 @@ H.describeEE("impersonated permission", () => {
         });
 
         // Has access to other tables
-        cy.get("@editor")
-          .type("{selectall}{backspace}", { delay: 50 })
-          .type("select * from orders");
+        H.NativeEditor.type("{selectall}{backspace}", { delay: 50 }).type(
+          "select * from orders",
+        );
 
         H.runNativeQuery();
 

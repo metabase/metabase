@@ -13,7 +13,8 @@
         "lbrdnk",
         "appleby",
         "uladzimirdev",
-        "wzimrin"
+        "wzimrin",
+        "ericnormand"
       ]
     },
     {
@@ -33,7 +34,8 @@
         "WiNloSt",
         "oisincoveney",
         "npretto",
-        "heypoom"
+        "heypoom",
+        "sanex3339"
       ]
     },
     {
@@ -44,21 +46,24 @@
         "qnkhuat",
         "piranha",
         "crisptrutski",
-        "deniskaber"
+        "deniskaber",
+        "wotbrew",
+        "spalt08",
+        "stasgavrylov"
       ]
     },
     {
       "name": "Admin Webapp",
       "label": ".Team/AdminWebapp",
       "members": [
-        "noahmoss",
-        "escherize",
         "npfitz",
         "johnswanson",
         "rafpaf",
         "sloansparger",
         "iethree",
-        "nvoxland"
+        "nvoxland",
+        "fraserdrops",
+        "edpaget"
       ]
     },
     {
@@ -67,15 +72,17 @@
       "members": [
         "alxnddr",
         "kulyk",
-        "adam-james-v",
-        "tsplude"
+        "tsplude",
+        "lorem--ipsum",
+        "noahmoss"
       ]
     },
     {
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
-        "camsaul"
+        "camsaul",
+        "escherize"
       ]
     }
   ]

@@ -24,6 +24,7 @@
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
+   [metabase.util.number :as u.number]
    [metabase.util.polyfills]
    [nano-id.core :as nano-id]
    [net.cgrand.macrovich :as macros]
@@ -54,10 +55,13 @@
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data
                         auto-retry
+                        string-to-bytes
+                        bytes-to-string
                         decode-base64
                         decode-base64-to-bytes
                         deref-with-timeout
                         encode-base64
+                        encode-base64-bytes
                         filtered-stacktrace
                         full-exception-chain
                         host-port-up?
@@ -65,15 +69,12 @@
                         poll
                         host-up?
                         ip-address?
-                        metabase-namespace-symbols
                         sorted-take
                         varargs
                         with-timeout
                         with-us-locale]
                        [u.str
-                        build-sentence]
-                       [u.ns
-                        find-and-load-namespaces!]))
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
@@ -840,20 +841,20 @@
   off of `type` in pure Clojure."
   [x]
   (cond
-    (nil? x)        :dispatch-type/nil
-    (boolean? x)    :dispatch-type/boolean
-    (string? x)     :dispatch-type/string
-    (keyword? x)    :dispatch-type/keyword
-    (integer? x)    :dispatch-type/integer
-    (number? x)     :dispatch-type/number
-    (map? x)        :dispatch-type/map
-    (sequential? x) :dispatch-type/sequential
-    (set? x)        :dispatch-type/set
-    (symbol? x)     :dispatch-type/symbol
-    (fn? x)         :dispatch-type/fn
-    (regexp? x)     :dispatch-type/regex
+    (nil? x)              :dispatch-type/nil
+    (boolean? x)          :dispatch-type/boolean
+    (string? x)           :dispatch-type/string
+    (keyword? x)          :dispatch-type/keyword
+    (u.number/integer? x) :dispatch-type/integer
+    (number? x)           :dispatch-type/number
+    (map? x)              :dispatch-type/map
+    (sequential? x)       :dispatch-type/sequential
+    (set? x)              :dispatch-type/set
+    (symbol? x)           :dispatch-type/symbol
+    (fn? x)               :dispatch-type/fn
+    (regexp? x)           :dispatch-type/regex
     ;; we should add more mappings here as needed
-    :else           :dispatch-type/*))
+    :else                 :dispatch-type/*))
 
 (defn assoc-dissoc
   "Called like `(assoc m k v)`, this does [[assoc]] if `(some? v)`, and [[dissoc]] if not.
@@ -1202,3 +1203,26 @@
     (if res
       (assoc m k res)
       (dissoc m k))))
+
+(defn not-blank
+  "Like not-empty, but for strings"
+  [s]
+  (when-not (str/blank? s) s))
+
+#?(:clj
+   (defn do-with-timer-ms
+     "Impl of `with-timer-ms` for the JVM."
+     [thunk]
+     (let [start-time     (start-timer)
+           duration-ms-fn (fn [] (since-ms start-time))]
+       (thunk duration-ms-fn))))
+
+#?(:clj
+   (defmacro with-timer-ms
+     "Execute the body with a function that returns the duration in milliseconds.
+
+     (with-timer-ms [elapsed-ms-fn]
+       (do-something)
+       (elapsed-ms-fn))"
+     [[duration-ms-fn] & body]
+     `(do-with-timer-ms (fn [~duration-ms-fn] ~@body))))

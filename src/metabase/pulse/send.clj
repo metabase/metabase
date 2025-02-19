@@ -2,7 +2,7 @@
   "Code related to sending Pulses (Alerts or Dashboard Subscriptions)."
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -51,13 +51,13 @@
     {:channel_type :channel/email
      :details      {:type    :email/handlebars-resource
                     :subject "{{payload.dashboard.name}}"
-                    :path    "metabase/email/dashboard_subscription.hbs"}}
+                    :path    "metabase/channel/email/dashboard_subscription.hbs"}}
 
     [:channel/email :notification/card]
     {:channel_type :channel/email
      :details      {:type    :email/handlebars-resource
                     :subject "{{computed.subject}}"
-                    :path    "metabase/email/alert.hbs"}}
+                    :path    "metabase/channel/email/alert.hbs"}}
     nil))
 
 (defn- get-notification-handler

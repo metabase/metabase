@@ -13,8 +13,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u])
   (:import
-   (java.nio.charset StandardCharsets)
-   (java.util Base64)
    (javax.net.ssl SSLSocketFactory)))
 
 (comment h2/keep-me)
@@ -225,34 +223,6 @@
            clojure.lang.ExceptionInfo
            #"Cycle detected"
            (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
-
-(deftest ^:parallel connection-details-client->server-test
-  (testing "db-details-client->server works as expected"
-    (let [ks-val      "super duper secret keystore" ; not a real KeyStore "value" (which is a binary thing), but good
-                                                    ; enough for our test purposes here
-          db-details {:host                    "other-host"
-                      :password-value          "super-secret-pw"
-                      :use-keystore            true
-                      :keystore-options        "uploaded"
-                      ;; because treat-before-posting is base64 in the config for this property, simulate that happening
-                      :keystore-value          (->> (.getBytes ks-val StandardCharsets/UTF_8)
-                                                    (.encodeToString (Base64/getEncoder))
-                                                    (str "data:application/octet-stream;base64,"))
-                      :keystore-password-value "my-keystore-pw"}
-          transformed (driver.u/db-details-client->server :secret-test-driver db-details)]
-      ;; compare all fields except `:keystore-value` as a single map
-      (is (= {:host                    "other-host"
-              :password-value          "super-secret-pw"
-              :keystore-password-value "my-keystore-pw"
-              :use-keystore            true}
-             (select-keys transformed [:host :password-value :keystore-password-value :use-keystore])))
-      ;; the keystore-value should have been base64 decoded because of treat-before-posting being base64 (see above)
-      (is (mt/secret-value-equals? ks-val (:keystore-value transformed))))))
-
-(deftest ^:parallel decode-uploaded-test
-  (are [expected base64] (= expected (String. (driver.u/decode-uploaded base64) "UTF-8"))
-    "hi" "aGk="
-    "hi" "data:application/octet-stream;base64,aGk="))
 
 (deftest ^:parallel semantic-version-gte-test
   (testing "semantic-version-gte works as expected"

@@ -5,11 +5,12 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.test-util.generators.util :as gen.u]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.test.util.random :as tu.rng]
    [metabase.util.time :as u.time]))
 
 ;; Filter values =================================================================================
 (defn- gen-int []
-  (- (rand-int 2000000) 1000000))
+  (- (tu.rng/rand-int 2000000) 1000000))
 
 (def ^:private valid-ascii
   (mapv char (range 0x20 0x7f)))
@@ -19,26 +20,26 @@
 
 (defn- gen-string
   ([]
-   (if (< (rand) 0.1)
+   (if (< (tu.rng/rand) 0.1)
      (gen-string han-unicode 40)
      (gen-string valid-ascii 70)))
   ([symbols max-len]
-   (apply str (repeatedly (inc (rand-int max-len)) #(rand-nth symbols)))))
+   (apply str (repeatedly (inc (tu.rng/rand-int max-len)) #(tu.rng/rand-nth symbols)))))
 
 (defn- gen-time []
-  (u.time/local-time (rand-int 24) (rand-int 60) (rand-int 60) (rand-int 1000000000)))
+  (u.time/local-time (tu.rng/rand-int 24) (tu.rng/rand-int 60) (tu.rng/rand-int 60) (tu.rng/rand-int 1000000000)))
 
 (defn- gen-time:minute []
-  (u.time/local-time (rand-int 24) (rand-int 60) 0 0))
+  (u.time/local-time (tu.rng/rand-int 24) (tu.rng/rand-int 60) 0 0))
 
 (defn- gen-date []
   ;; Random day of the year, from 2000-01-01 through 2037-12-31.
   ;; Avoids 2038 because of the 32-bit timestamp overflow.
   ;; TODO: Always adds 0-364 days, so it can't return Dec 31st of a leap year. I don't think it matters, but I will
   ;; highlight it.
-  (u.time/add (u.time/local-date (+ 2000 (rand-int 38)) 1 1) ;; Jan 1, from 2000 through 2037
+  (u.time/add (u.time/local-date (+ 2000 (tu.rng/rand-int 38)) 1 1) ;; Jan 1, from 2000 through 2037
               :day
-              (rand-int 365)))
+              (tu.rng/rand-int 365)))
 
 (defn- gen-datetime []
   (u.time/local-date-time (gen-date) (gen-time)))
@@ -48,11 +49,11 @@
 
 (defn- gen-latitude []
   ;; +/- 75 degrees is a generous but plausible range for latitudes.
-  (* 150 (- (rand) 0.5)))
+  (* 150 (- (tu.rng/rand) 0.5)))
 
 (defn- gen-longitude []
   ;; +/- 180 degrees
-  (- (* 360 (rand))
+  (- (* 360 (tu.rng/rand))
      180))
 
 (def ^:private fake-categories
@@ -61,7 +62,7 @@
 
 (defn- gen-category []
   ;; Just some made-up values that are clearly not random strings for debugging.
-  (rand-nth fake-categories))
+  (tu.rng/rand-nth fake-categories))
 
 (defn- rand-column-value [{:keys [effective-type] :as column}]
   (cond
@@ -73,7 +74,7 @@
     (lib.types.isa/latitude? column)                   (gen-latitude)
     (lib.types.isa/longitude? column)                  (gen-longitude)
     (lib.types.isa/numeric? column)                    (cond-> (gen-int)
-                                                         (< (rand) 0.5) (+ (rand)))
+                                                         (< (tu.rng/rand) 0.5) (+ (tu.rng/rand)))
     (lib.types.isa/string-or-string-like? column)      (gen-string)
     (lib.types.isa/time? column)                       (gen-time)
     (lib.types.isa/date-without-time? column)          (gen-date)
@@ -85,6 +86,7 @@
 (def ^:private ^:dynamic *filterable-columns* nil)
 
 (defmulti ^:private gen-filter-clause
+  {:arglists '([column operator])}
   (fn [_column operator]
     (:short operator)))
 
@@ -104,7 +106,7 @@
                 [:contains         lib/contains]
                 [:does-not-contain lib/does-not-contain]]]
   (defmethod gen-filter-clause op [column _op]
-    (apply f column (repeatedly (inc (rand-int 4))
+    (apply f column (repeatedly (inc (tu.rng/rand-int 4))
                                 #(rand-column-value column)))))
 
 (defmethod gen-filter-clause :between [column _op]
@@ -145,7 +147,7 @@
         unit        (gen-filter:unit column)
         n           (gen.u/choose (range 1 20))]
     (cond-> (lib/time-interval column (past-future n) unit)
-      (< (rand) 0.2) (lib.options/update-options assoc :include-current true))))
+      (< (tu.rng/rand) 0.2) (lib.options/update-options assoc :include-current true))))
 
 (defn- gen-filter:relative-date-offset [column]
   ;; Only one past-future, since both offsets have to point in the same direction, at least in the UI.
@@ -163,13 +165,15 @@
   ;; Previous: N minutes/hours/days/weeks/months/quarters/years
   ;; Next: N minutes/hours/days/weeks/months/quarters/years
   ;; Plus optionally either "include this <unit>" or "M <larger-unit>s from now/ago"
-  (let [r (rand)]
+  (let [r (tu.rng/rand)]
     (cond
       (< r 0.2) (gen-filter:relative-date-current column)    ;; "This month"
       (< r 0.4) (gen-filter:relative-date-offset column)     ;; "Next 3 months starting from 2 years ago"
       :else     (gen-filter:relative-date-nearby column))))  ;; ""
 
-(defmulti ^:private gen-filter:exclude-date-options identity)
+(defmulti ^:private gen-filter:exclude-date-options
+  {:arglists '([unit])}
+  identity)
 
 (defmethod gen-filter:exclude-date-options :hour-of-day [_unit]
   (range 0 24))
@@ -201,18 +205,18 @@
         unit     (gen.u/choose units)
         opts     (vec (gen-filter:exclude-date-options unit))
         ;; Always one option, plus 40% chance of more.
-        selected (loop [sel #{(rand-nth opts)}]
-                   (if (< (rand) 0.4)
-                     (recur (conj sel (rand-nth opts)))
+        selected (loop [sel #{(tu.rng/rand-nth opts)}]
+                   (if (< (tu.rng/rand) 0.4)
+                     (recur (conj sel (tu.rng/rand-nth opts)))
                      sel))
         ;; But if that selected everything, drop one at random.
         selected (cond-> selected
-                   (= (count selected) (count opts)) (disj (rand-nth opts)))]
+                   (= (count selected) (count opts)) (disj (tu.rng/rand-nth opts)))]
     (apply lib/!= (lib/with-temporal-bucket column unit) selected)))
 
 (defn- specify-time? [column]
   (and (not (lib.types.isa/date-without-time? column))
-       (< (rand) 0.2)))
+       (< (tu.rng/rand) 0.2)))
 
 (defn- gen-filter:date-binary [column operator]
   (if (specify-time? column)
@@ -230,7 +234,7 @@
   ;; - 30% relative date ranges
   ;; - 20% exclude
   ;; - 50% before/after/on/between
-  (let [r (rand)]
+  (let [r (tu.rng/rand)]
     (cond
       (< r 0.20) (gen-filter:relative-date column)
       (< r 0.30) (gen-filter:relative-date-offset column)
@@ -247,7 +251,7 @@
 (defn- gen-filter:generic [column]
   (when-let [operator (some->> (:operators column)
                                (remove skipped-operator?)
-                               rand-nth)]
+                               tu.rng/rand-nth)]
     (gen-filter-clause column operator)))
 
 (defn- gen-filter:inside [col1 col2]
@@ -265,7 +269,7 @@
                        lib.types.isa/latitude?)
         counterparts (filter counterpart? *filterable-columns*)]
     (if (and (seq counterparts)
-             (< (rand) 0.5))
+             (< (tu.rng/rand) 0.5))
       ;; If we found a coordinate pair, generate an :inside filter 50% of the time.
       (gen-filter:inside column (gen.u/choose counterparts))
       ;; Otherwise, generic filter on the original column.
@@ -274,7 +278,7 @@
 (defn- ^:private gen-filter*
   ([] (gen-filter* 0))
   ([recursion-depth]
-   (let [column (rand-nth *filterable-columns*)]
+   (let [column (tu.rng/rand-nth *filterable-columns*)]
      (cond
        (lib.types.isa/coordinate? column)        (gen-filter:coordinate column)
        (lib.types.isa/date-without-time? column) (gen-filter:date column)
@@ -294,7 +298,7 @@
   (defmethod gen-filter-clause op [_column _op]
     (->> (repeatedly gen-filter*)
          (filter identity)
-         (take (+ 2 (rand-int 3)))
+         (take (+ 2 (tu.rng/rand-int 3)))
          (apply f))))
 
 (defn gen-filter

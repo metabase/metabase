@@ -5,12 +5,12 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.api.alert :as api.alert]
-   [metabase.models.pulse :as models.pulse]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.util :as perms-util]
+   [metabase.pulse.api.alert :as api.alert]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor :as qp]
@@ -81,7 +81,7 @@
                     :model    "Pulse"
                     :model_id (:id pulse)
                     :details  {:recipients [(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]
-                               :filters    nil}}
+                               :filters    []}}
                    (mt/latest-audit-log-entry :subscription-send (:id pulse))))))))))
 
 (deftest alert-send-event-test

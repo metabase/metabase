@@ -175,16 +175,11 @@
 (mu/defn with-different-database :- ::lib.schema/query
   "Changes the database for this query. The first stage must be a native type.
    Native extras must be provided if the new database requires it."
-  ([query :- ::lib.schema/query
-    metadata-provider :- ::lib.schema.metadata/metadata-providerable]
-   (with-different-database query metadata-provider nil))
-  ([query :- ::lib.schema/query
-    metadata-provider :- ::lib.schema.metadata/metadata-providerable
-    native-extras :- [:maybe ::native-extras]]
-   (assert-native-query! (lib.util/query-stage query 0))
+  [query :- ::lib.schema/query
+   metadata-provider :- ::lib.schema.metadata/metadata-providerable]
+  (assert-native-query! (lib.util/query-stage query 0))
    ;; Changing the database should also clean up template tags, see #31926
-   (-> (lib.query/query-with-stages metadata-provider (:stages query))
-       (with-native-extras native-extras))))
+  (lib.query/query-with-stages metadata-provider (:stages query)))
 
 (mu/defn native-extras :- [:maybe ::native-extras]
   "Returns the extra keys for native queries associated with this query."
@@ -214,7 +209,7 @@
      (assert-native-query! stage)
      (let [valid-tags (keys existing-tags)]
        (assoc stage :template-tags
-              (m/deep-merge existing-tags (select-keys tags valid-tags)))))))
+              (merge existing-tags (select-keys tags valid-tags)))))))
 
 (mu/defn raw-native-query :- ::common/non-blank-string
   "Returns the native query string"
@@ -239,6 +234,15 @@
      (lib.metadata/card query card-id))
    (template-tag-card-ids query)))
 
+(mu/defn has-template-tag-variables? :- :boolean
+  "Tests whether `query` has any template-tag variables.
+
+  That is, any `:template-tags` values with `:type` other than `:snippet` or `:card`."
+  [query :- ::lib.schema/query]
+  (letfn [(variable-tag? [{tag-type :type}]
+            (not (#{:snippet :card} tag-type)))]
+    (boolean (some variable-tag? (vals (template-tags query))))))
+
 (mu/defn has-write-permission :- :boolean
   "Returns whether the database has native write permissions.
    This is only filled in by [[metabase.api.database/add-native-perms-info]]
@@ -254,7 +258,7 @@
                 (set (keys (native-extras query))))
    (not (str/blank? (raw-native-query query)))))
 
-(mu/defn engine :- :keyword
+(mu/defn engine :- [:maybe :keyword]
   "Returns the database engine.
    Must be a native query"
   [query :- ::lib.schema/query]

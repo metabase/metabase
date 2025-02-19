@@ -1,51 +1,42 @@
 (ns metabase-enterprise.cache.strategies
   (:require
    [java-time.api :as t]
+   [metabase.api.cache]
    [metabase.models.cache-config :as cache-config]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
-   [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(comment metabase.api.cache/keep-me)
+
 ;; Data shape
 
-(defenterprise CacheStrategy
-  "Schema for a caching strategy"
-  :feature :cache-granular-controls
-  []
+(mr/def ::cache-strategy
+  "Schema for a caching strategy used internally"
   [:and
-   [:map
-    [:type [:enum :nocache :ttl :duration :schedule]]]
+   :metabase.api.cache/cache-strategy.base
    [:multi {:dispatch :type}
-    [:nocache  [:map ;; not closed due to a way it's used in tests for clarity
-                [:type [:= :nocache]]]]
-    [:ttl      [:map {:closed true}
-                [:type [:= :ttl]]
-                [:multiplier ms/PositiveInt]
-                [:min_duration_ms ms/IntGreaterThanOrEqualToZero]
-                ^:internal
-                [:invalidated-at {:optional true} some?]]]
-    [:duration [:map {:closed true}
-                [:type [:= :duration]]
-                [:duration ms/PositiveInt]
-                [:unit [:enum "hours" "minutes" "seconds" "days"]]
-                [:refresh_automatically {:optional true} [:maybe :boolean]]
-                ^:internal
-                [:invalidated-at {:optional true} some?]]]
-    [:schedule [:map {:closed true}
-                [:type [:= :schedule]]
-                [:schedule u.cron/CronScheduleString]
-                [:refresh_automatically {:optional true} [:maybe :boolean]]
-                ^:internal
-                [:invalidated-at {:optional true} some?]]]]])
+    [:nocache  :metabase.api.cache/cache-strategy.nocache]
+    [:ttl      [:merge
+                :metabase.api.cache/cache-strategy.ttl
+                [:map
+                 [:invalidated-at {:optional true} some?]]]]
+    [:duration [:merge
+                :metabase.api.cache/cache-strategy.ee.duration
+                [:map
+                 [:invalidated-at {:optional true} some?]]]]
+    [:schedule [:merge
+                :metabase.api.cache/cache-strategy.ee.schedule
+                [:map
+                 [:invalidated-at {:optional true} some?]]]]]])
 
 ;;; Querying DB
 
-(defenterprise-schema cache-strategy :- [:maybe (CacheStrategy)]
+(defenterprise-schema cache-strategy :- [:maybe ::cache-strategy]
   "Returns the granular cache strategy for a card."
   :feature :cache-granular-controls
   [card dashboard-id]
@@ -71,6 +62,7 @@
 
 (defmulti ^:private fetch-cache-stmt-ee*
   "Generate prepared statement for a db cache backend for a given strategy"
+  {:arglists '([strategy query-hash conn])}
   (fn [strategy _hash _conn] (:type strategy)))
 
 (defmethod fetch-cache-stmt-ee* :ttl [strategy query-hash conn]

@@ -71,9 +71,7 @@
             :body             query
             :auth-enabled     (:auth-enabled details)
             :auth-username    (:auth-username details)
-            :auth-token-value (-> details
-                                  (secret/db-details-prop->secret-map "auth-token")
-                                  secret/value->string))
+            :auth-token-value (secret/value-as-string :druid details "auth-token"))
       ;; don't need to do anything fancy if the query was killed
       (catch InterruptedException e
         (throw e))
@@ -96,9 +94,7 @@
         (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id))
                 :auth-enabled     (:auth-enabled details)
                 :auth-username    (:auth-username details)
-                :auth-token-value (-> details
-                                      (secret/db-details-prop->secret-map "auth-token")
-                                      secret/value->string))
+                :auth-token-value (secret/value-as-string :druid details "auth-token"))
         (catch Exception cancel-e
           (log/warnf cancel-e "Failed to cancel Druid query with queryId %s" query-id))))))
 

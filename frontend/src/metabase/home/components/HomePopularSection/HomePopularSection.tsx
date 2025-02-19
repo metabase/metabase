@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListPopularItemsQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import * as Urls from "metabase/lib/urls";
