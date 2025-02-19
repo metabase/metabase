@@ -100,8 +100,8 @@
     }
 
     .cm-snippetField {
-      background-color: var(--mb-color-bg-medium);
-      opacity: 0.65;
+      font-style: italic;
+      background: none;
     }
   }
 }
