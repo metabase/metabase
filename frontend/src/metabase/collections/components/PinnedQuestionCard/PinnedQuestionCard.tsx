@@ -12,15 +12,11 @@ import {
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
-import { Box, CloseButton, type IconName } from "metabase/ui";
+import { getIcon } from "metabase/entities/questions";
+import { Box, CloseButton, type IconName, type IconProps } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type {
-  Bookmark,
-  Collection,
-  CollectionItem,
-  RecentItem,
-} from "metabase-types/api";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import {
   CardActionMenuContainer,
@@ -29,7 +25,6 @@ import {
   CardStaticSkeleton,
 } from "./PinnedQuestionCard.styled";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
-import _ from "underscore";
 
 export type PinnedQuestionCardProps = {
   item: CollectionItem;
@@ -99,6 +94,10 @@ const PinnedQuestionCard = ({
     card: t`A question`,
     metric: t`A metric`,
   };
+
+  if (!item.getIcon) {
+    item.getIcon = () => getIcon(item) as IconProps;
+  }
 
   return (
     <CardRoot
