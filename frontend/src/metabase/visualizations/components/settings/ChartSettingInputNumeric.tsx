@@ -30,6 +30,7 @@ interface ChartSettingInputProps extends ChartSettingWidgetProps<number> {
   id?: string;
   placeholder?: string;
   getDefault?: () => string;
+  className?: string;
 }
 
 export const ChartSettingInputNumeric = ({
@@ -39,6 +40,7 @@ export const ChartSettingInputNumeric = ({
   options,
   id,
   getDefault,
+  className,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
   const defaultValueProps = getDefault ? { defaultValue: getDefault() } : {};
@@ -72,6 +74,7 @@ export const ChartSettingInputNumeric = ({
           setInputValue(String(num));
         }
       }}
+      className={className}
     />
   );
 };
