@@ -3,13 +3,19 @@
    [clojure.string :as str]
    [toucan2.core :as t2]))
 
-(defn draft? [alias] (str/ends-with? alias "@draft"))
+(defn draft? [alias] (boolean (some-> alias (str/ends-with? "@draft"))))
 
 (defn old? [alias] (str/ends-with? alias "@old"))
 
 (defn root? [alias] (not (str/includes? alias "@")))
 
 (defn stem [alias] (str/replace alias #"@.*" ""))
+
+(defn parent-for-draft
+  [draft-alias]
+  (assert (draft? draft-alias) "Not a draft alias")
+  (let [root-alias (-> draft-alias stem)]
+    (t2/select-one :model/Dashboard :alias root-alias)))
 
 (defn- organize-versions
   [dashboards]
