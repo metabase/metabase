@@ -2,7 +2,7 @@
   height: 100%;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  /* justify-content: flex-end; */
   padding: 0 0.75em;
   color: var(--mb-color-text-light);
   cursor: default;

@@ -7,7 +7,7 @@ import {
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { DatasetColumn } from "metabase-types/api";
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import S from "./HeaderCellWithColumnInfo.module.css";
 
 export interface HeaderCellWithColumnInfoProps extends HeaderCellProps {
@@ -32,6 +32,13 @@ export const HeaderCellWithColumnInfo = memo(
     const query = question?.query();
     const stageIndex = -1;
 
+    const handleClick = useCallback(
+      (event: React.MouseEvent<HTMLDivElement>) => {
+        onClick?.(event, column?.name);
+      },
+      [column],
+    );
+
     return (
       <HeaderCellWrapper variant={variant} align={align}>
         <QueryColumnInfoPopover
@@ -45,7 +52,7 @@ export const HeaderCellWithColumnInfo = memo(
           showFingerprintInfo
         >
           <div className={S.headerPillWrapper}>
-            <HeaderCellPill name={name} sort={sort} onClick={onClick} />
+            <HeaderCellPill name={name} sort={sort} onClick={handleClick} />
           </div>
         </QueryColumnInfoPopover>
       </HeaderCellWrapper>

@@ -7,29 +7,40 @@ import { Icon, Tooltip } from "metabase/ui";
 import TableS from "../Table.module.css";
 
 import S from "./RowIdCell.module.css";
+import { BaseCell } from "./BaseCell";
+import { memo } from "react";
 
 export interface RowIdCellProps {
   value?: React.ReactNode;
+  backgroundColor?: string;
 }
 
-export const RowIdCell = ({ value }: RowIdCellProps) => {
+export const RowIdCell = memo(function RowIdCell({
+  value,
+  backgroundColor,
+}: RowIdCellProps) {
   const hasValue = value != null;
 
   return (
     <Tooltip label={t`View details`}>
-      <div className={cx(S.root)}>
-        {hasValue ? <span className={S.rowNumber}>{value}</span> : null}
+      <BaseCell
+        className={cx(S.root)}
+        backgroundColor={backgroundColor}
+        align="right"
+      >
+        {hasValue ? (
+          <span className={cx(S.rowNumber, TableS.rowHoverHidden)}>
+            {value}
+          </span>
+        ) : null}
 
         <Icon
           data-testid="detail-shortcut"
-          className={cx({
-            [TableS.rowHoverVisible]: !hasValue,
-            [S.expandIcon]: hasValue,
-          })}
+          className={cx(TableS.rowHoverVisible, {})}
           name="expand"
           size={14}
         />
-      </div>
+      </BaseCell>
     </Tooltip>
   );
-};
+});

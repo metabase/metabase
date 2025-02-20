@@ -41,7 +41,6 @@ import type {
   QueryClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import * as Lib from "metabase-lib";
 import type { OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
@@ -127,6 +126,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isRawTable = useSelector(getIsShowingRawTable);
 
   const { rows, cols } = data;
+
   const prevColNamesRef = useRef<Set<string>>(
     new Set(cols.map(col => col.name)),
   );
@@ -192,7 +192,14 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   );
 
   const handleHeaderCellClick = useCallback(
-    (event: React.MouseEvent<HTMLDivElement, MouseEvent>, columnId: string) => {
+    (
+      event: React.MouseEvent<HTMLDivElement, MouseEvent>,
+      columnId?: string,
+    ) => {
+      if (!columnId) {
+        return;
+      }
+
       if (isPivoted) {
         columnId = getColumnIdFromPivotedColumnId(columnId);
       }
@@ -270,10 +277,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       return cachedFormatter(value =>
         formatValue(value, {
           ...columnSettings,
-          column: col,
           type: "cell",
           jsx: true,
           rich: true,
+          // add clicked????
         }),
       );
     });
@@ -321,8 +328,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               align={align}
               sort={sortDirection}
               variant={headerVariant}
-              // FIXME: provide onclick
-              // onClick
+              onClick={handleHeaderCellClick}
             />
           );
         },
@@ -437,7 +443,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       <Table
         {...tableProps}
         onBodyCellClick={handleBodyCellClick}
-        onHeaderCellClick={handleHeaderCellClick}
+        // onHeaderCellClick={handleHeaderCellClick}
         onAddColumnClick={handleAddColumnButtonClick}
       />
     </div>

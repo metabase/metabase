@@ -11,18 +11,6 @@
   outline: none;
 }
 
-.bordered {
-  box-shadow:
-    inset 1px 0 0 var(--mb-color-border),
-    inset -1px 0 0 var(--mb-color-border);
-}
-
-.root:hover {
-  box-shadow:
-    inset 1px 0 0 var(--mb-color-border),
-    inset -1px 0 0 var(--mb-color-border);
-}
-
 .headerContent {
   width: 100%;
   height: 100%;

@@ -37,10 +37,6 @@ export const Table = forwardRef(function Table<TData>(
     rowVirtualizer,
   } = virtualGrid;
 
-  const isResizing = Boolean(
-    table.getState().columnSizingInfo.isResizingColumn,
-  );
-
   const dndContextProps = useMemo(
     () => ({
       sensors: columnsReordering.sensors,
@@ -113,9 +109,9 @@ export const Table = forwardRef(function Table<TData>(
                         }}
                       >
                         <SortableHeader
+                          className={S.headerCell}
                           header={header}
                           onClick={onHeaderCellClick}
-                          isResizing={isResizing}
                         >
                           {headerCell}
                         </SortableHeader>

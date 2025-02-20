@@ -85,9 +85,29 @@
 }
 
 .rowHoverVisible {
-  visibility: hidden;
+  display: none;
 }
 
 .row:hover .rowHoverVisible {
+  display: unset;
+}
+
+.rowHoverHidden {
+  display: unset;
+}
+
+.row:hover .rowHoverHidden {
+  display: none;
+}
+
+.row:hover .headerCell {
+  box-shadow: inset -1px 0 0 var(--mb-color-border);
+}
+
+.cellHoverVisible {
+  visibility: hidden;
+}
+
+.bodyCell:hover .cellHoverVisible {
   visibility: visible;
 }

@@ -2,6 +2,7 @@ import type {
   CellContext,
   ColumnDef,
   ColumnSizingState,
+  HeaderContext,
 } from "@tanstack/react-table";
 import type React from "react";
 
@@ -10,6 +11,7 @@ import { HeaderCell } from "metabase/visualizations/components/Table/cell/Header
 
 import { MIN_COLUMN_WIDTH } from "../constants";
 import type { ColumnOptions, ExpandedColumnsState } from "../types";
+import { memo } from "react";
 
 const getDefaultCellTemplate = <TRow, TValue>(
   {
@@ -81,8 +83,17 @@ export const getDataColumn = <TRow, TValue>(
   const columnDefinition: ColumnDef<TRow, TValue> = {
     accessorFn,
     id,
-    header: header ?? getDefaultHeaderTemplate(columnOptions),
-    cell: cell ?? getDefaultCellTemplate(columnOptions, isTruncated, onExpand),
+    header:
+      typeof header !== "string"
+        ? memo(header ?? getDefaultHeaderTemplate(columnOptions))
+        : header,
+    cell:
+      typeof cell !== "string"
+        ? memo(
+            cell ??
+              getDefaultCellTemplate(columnOptions, isTruncated, onExpand),
+          )
+        : cell,
     minSize: MIN_COLUMN_WIDTH,
     enableResizing: true,
     meta: {

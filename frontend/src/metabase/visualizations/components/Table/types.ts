@@ -23,7 +23,10 @@ export type HeaderCellBaseProps = {
   name?: React.ReactNode;
   align?: CellAlign;
   sort?: "asc" | "desc";
-  onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onClick?: (
+    event: React.MouseEvent<HTMLDivElement>,
+    columnId?: string,
+  ) => void;
 };
 
 export type BodyCellBaseProps<TValue> = {

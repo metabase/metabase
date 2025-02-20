@@ -31,6 +31,7 @@ import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import {
   isAvatarURL,
+  isCoordinate,
   isDimension,
   isEmail,
   isImageURL,
@@ -65,7 +66,7 @@ interface TableState {
 
 class Table extends Component<TableProps, TableState> {
   static uiName = t`Table`;
-  static identifier = "table-old";
+  static identifier = "table";
   static iconName = "table2";
   static canSavePng = false;
 
@@ -222,7 +223,10 @@ class Table extends Component<TableProps, TableState> {
         title: t`Align`,
         widget: "select",
         getDefault: column => {
-          return isNumber(column) ? "right" : "left";
+          const baseColumn = column?.remapped_to_column ?? column;
+          return isNumber(baseColumn) || isCoordinate(baseColumn)
+            ? "right"
+            : "left";
         },
         props: {
           options: [

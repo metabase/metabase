@@ -2,13 +2,12 @@ import cx from "classnames";
 import type React from "react";
 import { type MouseEventHandler, memo, useCallback } from "react";
 
-import CS from "metabase/css/core/index.css";
-
 import { ExpandButton } from "../Table.styled";
 import type { BodyCellBaseProps } from "../types";
 
 import { BaseCell } from "./BaseCell";
 import S from "./BodyCell.module.css";
+import TableS from "../Table.module.css";
 
 export interface BodyCellProps<TValue> extends BodyCellBaseProps<TValue> {
   variant?: "text" | "pill";
@@ -41,7 +40,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
   return (
     <BaseCell
       align={align}
-      className={cx(S.root, CS.hoverParent, CS.hoverVisibility, {
+      className={cx(S.root, {
         [S.clickable]: !!onClick,
         [S.pill]: variant === "pill",
       })}
@@ -63,7 +62,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
 
       {hasExpandButton && (
         <ExpandButton
-          className={CS.hoverChild}
+          className={TableS.cellHoverVisible}
           data-testid="expand-column"
           small
           borderless
