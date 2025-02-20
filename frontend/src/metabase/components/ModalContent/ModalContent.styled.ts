@@ -14,7 +14,6 @@ export const ActionsWrapper = styled.div`
 export const ModalContentActionIcon = styled(Icon)`
   color: var(--mb-color-text-light);
   cursor: pointer;
-  padding: 0.5rem;
 
   &:hover {
     color: var(--mb-color-text-medium);
