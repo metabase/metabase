@@ -64,7 +64,7 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
-import { createEntityIdRedirect } from "./routes-stable-id-aware";
+import { ShowItem, createEntityIdRedirect } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
@@ -138,6 +138,8 @@ export const getRoutes = store => {
           >
             <IndexRoute component={Onboarding} />
           </Route>
+
+          <Route path="item/:alias" component={ShowItem} />
 
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}

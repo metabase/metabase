@@ -4,7 +4,9 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useGetDashboardQuery, useUpdateDashboardMutation } from "metabase/api";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
+import { AliasSelector } from "metabase/core/components/AliasSelector";
 import { toggleAutoApplyFilters } from "metabase/dashboard/actions";
 import { isDashboardCacheable } from "metabase/dashboard/utils";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
@@ -91,6 +93,8 @@ const DashboardSidesheetBody = ({
 
   const isCacheable = isDashboardCacheable(dashboard);
   const showCaching = canWrite && PLUGIN_CACHING.isGranularCachingEnabled();
+  const { data: rtkDashboard } = useGetDashboardQuery({ id: dashboard.id });
+  const [saveDashboard] = useUpdateDashboardMutation();
 
   if (dashboard.archived) {
     return null;
@@ -110,6 +114,26 @@ const DashboardSidesheetBody = ({
           onChange={e => handleToggleAutoApplyFilters(e.target.checked)}
         />
       </SidesheetCard>
+      {rtkDashboard && (
+        <SidesheetCard>
+          <AliasSelector
+            alias={rtkDashboard?.alias}
+            onChange={async (newAlias: string, oldId?: number) => {
+              // unset the old one, lol
+              if (oldId) {
+                await saveDashboard({
+                  id: oldId,
+                  alias: null,
+                });
+              }
+              await saveDashboard({
+                id: dashboard.id,
+                alias: newAlias ?? null,
+              });
+            }}
+          />
+        </SidesheetCard>
+      )}
       {showCaching && isCacheable && (
         <SidesheetCard title={t`Caching`}>
           <PLUGIN_CACHING.SidebarCacheSection

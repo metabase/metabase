@@ -2,6 +2,7 @@ export * from "./actions";
 export * from "./activity";
 export * from "./admin";
 export * from "./alert";
+export * from "./alias";
 export * from "./autocomplete";
 export * from "./automagic-dashboards";
 export * from "./bookmark";

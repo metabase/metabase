@@ -1,6 +1,7 @@
 export * from "./action";
 export * from "./activity";
 export * from "./alert";
+export * from "./alias";
 export * from "./api";
 export * from "./api-key";
 export * from "./automagic-dashboards";

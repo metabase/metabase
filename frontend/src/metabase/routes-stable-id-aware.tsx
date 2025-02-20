@@ -7,12 +7,14 @@ import {
   isBaseEntityID,
 } from "metabase-types/api/entity-id";
 
+import { useGetAliasQuery } from "./api";
 import {
   type TranslateEntityIdResponse,
   useTranslateEntityIdQuery,
 } from "./api/entity-id";
 import { NotFound } from "./components/ErrorPages";
 import { LoadingAndErrorWrapper } from "./components/LoadingAndErrorWrapper";
+import { DashboardAppConnected } from "./dashboard/containers/DashboardApp/DashboardApp";
 type ResourceType = "dashboard" | "collection" | "card" | "dashboard-tab";
 type ParamType = "param" | "search";
 
@@ -153,3 +155,22 @@ export function createEntityIdRedirect(config: {
 export const canBeEntityId = (id: string): id is BaseEntityId => {
   return isBaseEntityID(id);
 };
+
+export const ShowItem = (props: { routeParams: { alias: string }}) => {
+  const alias = props.routeParams.alias;
+  const { data: entityInfo } = useGetAliasQuery(alias);
+
+  if (!entityInfo) {
+    return <LoadingAndErrorWrapper loading={true} />;
+  }
+
+  if (entityInfo.model === "dashboard") {
+    return <DashboardAppConnected {...props} dashboardId={entityInfo.id}/>;
+  }
+
+  if (entityInfo.model === "card") {
+    // return <Question question={question} />;
+  }
+
+  return <NotFound />;
+}

@@ -57,6 +57,7 @@ export interface Dashboard {
   can_restore: boolean;
   can_delete: boolean;
   cache_ttl: number | null;
+  alias?: string;
   "last-edit-info": {
     id: number;
     email: string;
@@ -279,6 +280,7 @@ export type UpdateDashboardRequest = {
     | "width"
     | "embedding_params"
     | "cache_ttl"
+    | "alias"
   >
 >;
 
