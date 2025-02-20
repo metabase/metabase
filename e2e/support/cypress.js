@@ -171,3 +171,5 @@ beforeEach(function () {
     cy.skipOn(true);
   }
 });
+
+Cypress.Keyboard.defaults({ keystrokeDelay: 0 });

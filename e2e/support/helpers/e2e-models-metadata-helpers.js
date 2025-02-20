@@ -36,7 +36,9 @@ export function setColumnType(oldType, newType) {
 
   popover().within(() => {
     cy.findByText(oldType).closest(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordionList virtualization
-    cy.findByPlaceholderText("Search for a special type").realType(newType);
+    cy.findByPlaceholderText("Search for a special type").realType(newType, {
+      pressDelay: 0,
+    });
     cy.findByLabelText(newType).click();
   });
 }

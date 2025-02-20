@@ -53,7 +53,7 @@ type TypeOptions = {
 
 function nativeEditorType(
   text: string,
-  { delay = 10, focus = true }: TypeOptions = {},
+  { delay = 0, focus = true }: TypeOptions = {},
 ) {
   if (focus) {
     focusNativeEditor();
