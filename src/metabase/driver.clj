@@ -1252,8 +1252,26 @@
   "Returns a mapping of which types a column can be implicitly relaxed to, based on the content of appended values.
   In the context of uploads, this allowlist permits certain appends or replacements of an existing csv table
   to change column types with `alter-table-columns!`.
+
   e.g. an allowlist: `{:metabase.upload/int #{:metabase.upload/float}}` would allow int columns to be migrated to floats.
-  If we require a relaxation which is not allowlisted here, we will reject the corresponding file."
+  If we require a relaxation which is not allowlisted here, we will reject the corresponding file.
+
+  It is expected that such an allowlist is transitively closed.
+  If type A can be relaxed to B, and B can be relaxed to C, then A must also explicitly list C as a valid relaxation.
+  This is to avoid situations where promotions are reachable but require additional user effort,
+  such as filtering and re-uploading csv files.
+
+  e.g.
+
+  Valid (transitively closed):
+  {:metabase.upload/int #{:metabase.upload/float}
+   :metabase.upload/boolean #{:metabase.upload/int, :metabase.upload/float}}
+  Since boolean -> int and int -> float, we also include boolean -> float.
+
+  Invalid (not transitively closed):
+  {:metabase.upload/int #{:metabase.upload/float}
+   :metabase.upload/boolean #{:metabase.upload/int}}
+  This would reject a boolean -> float transition, despite boolean reaching float through int."
   {:added "0.54.0", :arglists '([driver])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
