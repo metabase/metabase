@@ -3,7 +3,7 @@
   time, context it was executed in, etc."
   (:require
    [malli.error :as me]
-   [metabase.analytics.sdk :as sdk]
+   [metabase.analytics.core :as analytics]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -30,7 +30,7 @@
 
 (t2/define-before-insert :model/QueryExecution
   [{context :context, :as query-execution}]
-  (u/prog1 (sdk/include-analytics query-execution)
+  (u/prog1 (analytics/include-sdk-info query-execution)
     (validate-context context)))
 
 (t2/define-after-select :model/QueryExecution

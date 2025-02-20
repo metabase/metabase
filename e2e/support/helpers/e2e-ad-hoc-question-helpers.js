@@ -104,10 +104,7 @@ function newNativeCardHash(
  */
 export function startNewNativeQuestion(config) {
   const hash = newNativeCardHash("question", config);
-
   cy.visit("/question#" + hash);
-
-  return NativeEditor.get();
 }
 
 /**

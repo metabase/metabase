@@ -5,12 +5,12 @@
    [metabase.actions.actions :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.actions.models :as action]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.persisted-info :as persisted-info]
+   [metabase.model-persistence.core :as model-persistence]
    [metabase.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
@@ -204,11 +204,11 @@
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (snowplow/track-event! ::snowplow/action
-                           {:event     :action-executed
-                            :source    :dashboard
-                            :type      (:type action)
-                            :action_id (:id action)})
+    (analytics/track-event! :snowplow/action
+                            {:event     :action-executed
+                             :source    :dashboard
+                             :type      (:type action)
+                             :action_id (:id action)})
     (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values
@@ -223,7 +223,7 @@
               :action-id   (:id action)}
         card (t2/select-one :model/Card :id (:model_id action))
         ;; prefilling a form with day old data would be bad
-        result (binding [persisted-info/*allow-persisted-substitution* false]
+        result (model-persistence/with-persisted-substituion-disabled
                  (qp/process-query
                   (qp/userland-query
                    (qp.card/query-for-card card prefetch-parameters nil nil)

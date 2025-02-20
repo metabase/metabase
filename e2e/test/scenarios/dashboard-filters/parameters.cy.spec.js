@@ -66,7 +66,9 @@ describe("scenarios > dashboard > parameters", () => {
     H.filterWidget().contains("Text").click();
 
     // After typing "Ga", you should see this name!
-    H.popover().within(() => cy.findByPlaceholderText("Search").type("Ga"));
+    H.popover().within(() =>
+      cy.findByPlaceholderText("Search the list").type("Ga"),
+    );
     cy.wait("@dashboard");
     // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().contains("Gabrielle Considine");

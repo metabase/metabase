@@ -89,7 +89,7 @@
 (deftest survive-classify-fields-errors
   (testing "Make sure we survive field classification failing"
     (sync-survives-crash?! classifiers.name/semantic-type-for-name-and-base-type)
-    (sync-survives-crash?! classifiers.category/infer-is-category-or-list)
+    (sync-survives-crash?! classifiers.category/infer-is-category)
     (sync-survives-crash?! classifiers.no-preview-display/infer-no-preview-display)
     (sync-survives-crash?! classifiers.text-fingerprint/infer-semantic-type)))
 
