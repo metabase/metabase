@@ -8,7 +8,7 @@ interface ConfirmContentProps {
   opened: boolean | undefined;
   "data-testid"?: string;
   title: string | ReactNode;
-  content?: string | null;
+  content?: string;
   message?: string | ReactNode;
   onClose?: () => void;
   onConfirm?: () => void;
@@ -20,7 +20,7 @@ export const ConfirmationModal = ({
   opened,
   "data-testid": dataTestId,
   title,
-  content = null,
+  content,
   message = t`Are you sure you want to do this?`,
   onClose = _.noop,
   onConfirm = _.noop,
@@ -36,9 +36,11 @@ export const ConfirmationModal = ({
         </Modal.Title>
       </Modal.Header>
       <Modal.Body p="2.5rem 3rem">
-        <Text lh="1.5rem" mb={"lg"}>
-          {content}
-        </Text>
+        {content ? (
+          <Text lh="1.5rem" mb={"lg"}>
+            {content}
+          </Text>
+        ) : null}
         <Text lh="1.5rem" mb={"lg"}>
           {message}
         </Text>
