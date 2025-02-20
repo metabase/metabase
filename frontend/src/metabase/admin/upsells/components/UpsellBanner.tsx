@@ -56,15 +56,13 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
         </Box>
       </Flex>
 
-      <Box
-        component={ExternalLink}
-        onClickCapture={() => trackUpsellClicked({ source, campaign })}
-        href={url}
+      <ExternalLink
         className={S.UpsellCTALink}
-        style={{ flexShrink: 0 }}
+        href={url}
+        onClickCapture={() => trackUpsellClicked({ source, campaign })}
       >
         {buttonText}
-      </Box>
+      </ExternalLink>
     </Box>
   );
 };
