@@ -355,6 +355,67 @@ describe("scenarios > question > settings", () => {
         });
     });
 
+    it("should show all series settings without text overflowing (metabase#54074)", () => {
+      const regularColumnName = "regular column";
+      const longColumnName1 =
+        "very very very very very very very very very very very long column 1";
+      const longColumnName2 =
+        "very very very very very very very very very very very long column 2";
+
+      H.createNativeQuestion(
+        {
+          name: "54074",
+          native: {
+            query: `select 'foo' x, 10 "${regularColumnName}", 20 "${longColumnName1}", 20 "${longColumnName2}"`,
+          },
+          display: "bar",
+        },
+        { visitQuestion: true },
+      );
+
+      H.openVizSettingsSidebar();
+
+      H.sidebar()
+        .findAllByTestId("chartsettings-field-picker")
+        .eq(3)
+        .within(() => {
+          cy.findByTestId("color-selector-button").should("be.visible");
+          cy.findByLabelText("chevrondown icon").should("not.exist");
+          cy.findByLabelText("ellipsis icon").should("be.visible");
+          cy.findByLabelText("grabber icon").should("be.visible");
+          cy.get("input").should("have.value", longColumnName2);
+          cy.findByLabelText("close icon").should("be.visible");
+
+          cy.findByTestId(`remove-${longColumnName2}`).click();
+        });
+
+      H.sidebar()
+        .findAllByTestId("chartsettings-field-picker")
+        .eq(2)
+        .within(() => {
+          cy.findByTestId("color-selector-button").should("be.visible");
+          cy.findByLabelText("chevrondown icon").should("be.visible");
+          cy.findByLabelText("ellipsis icon").should("be.visible");
+          cy.findByLabelText("grabber icon").should("be.visible");
+          cy.get("input").should("have.value", longColumnName1);
+          cy.findByLabelText("close icon").should("be.visible");
+
+          cy.findByTestId(`remove-${longColumnName1}`).click();
+        });
+
+      H.sidebar()
+        .findAllByTestId("chartsettings-field-picker")
+        .eq(1)
+        .within(() => {
+          cy.findByTestId("color-selector-button").should("be.visible");
+          cy.findByLabelText("chevrondown icon").should("be.visible");
+          cy.findByLabelText("ellipsis icon").should("be.visible");
+          cy.findByLabelText("grabber icon").should("not.exist");
+          cy.get("input").should("have.value", regularColumnName);
+          cy.findByLabelText("close icon").should("not.exist");
+        });
+    });
+
     it.skip("should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)", () => {
       // products joined to orders with breakouts on 3 product columns followed by a custom column
       H.createQuestion(
