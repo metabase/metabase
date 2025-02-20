@@ -1,10 +1,9 @@
 (ns mage.cli
   (:require
    [babashka.tasks :refer [shell]]
-   ;; [bask.bask :as b]
-   [bask.colors :as c]
    [clojure.string :as str]
    [clojure.tools.cli :refer [parse-opts]]
+   [mage.color :as c]
    [table.core :as t]))
 
 (set! *warn-on-reflection* true)
@@ -25,7 +24,8 @@
                (when validate [:validate validate]))))
 
 (defn- check-print-help [current-task options args]
-  (when (or (get (set args) "-h") (get (set args) "--help"))
+  (when (or (get (set args) "-h")
+            (get (set args) "--help"))
     (println (c/green (str "  " (:doc current-task))))
     (doseq [opt options]
       (println (c/cyan (str " " (:short opt) " " (:long opt) " " (:msg opt))))

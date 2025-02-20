@@ -2,9 +2,7 @@
  ;; we put path as bin, and everything is in the mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["bin" "test"]
- :deps           {escherize/bask {:git/url "https://github.com/escherize/bask.git"
-                                  :git/sha "81cc9af3021d7689cfbddf0518a1e828f785f006"}
-                  metosin/malli  {:mvn/version "0.17.0"}
+ :deps           {metosin/malli  {:mvn/version "0.17.0"}
                   table/table    {:mvn/version "0.5.0"}}
 
  :tasks
@@ -30,7 +28,7 @@
    :task     (do (cli/menu! (current-task)) (format/all))}
 
   kondo
-  {:doc      "Runs Kondo against a file, directory, or everything we usually lint."
+  {:doc      "Runs Kondo against a file, directory, or everything we usually lint"
    :examples [["bb kondo" "run Kondo against everything we usually lint"]
               ["bb kondo --lint src/metabase/db.clj" "run Kondo against a file"]
               ["bb kondo --lint src/metabase/api/macros" "run Kondo against a directory"]]
@@ -40,7 +38,7 @@
                  (kondo/kondo *command-line-args*))}
 
   kondo-updated
-  {:doc      "Runs kondo against files that have been changed relative to a Git ref (default `HEAD`)"
+  {:doc      "Runs kondo against files changed compared to a git ref"
    :examples [["bb kondo-updated" "run Kondo on files with changes relative to HEAD"]
               ["bb kondo-updated master" "run Kondo on files with changes relative to master"]]
    :requires [[mage.kondo :as kondo]]
@@ -56,33 +54,30 @@
                  (start-db/start-db *command-line-args*))}
 
   install-autotab
-  {:doc      "Prints shell code to autocomplete tasks using bb.
-                        Note: for fish shell please make sure ~/.config/fish/completions exists."
+  {:doc      "Prints instructions to make autocomplete work"
    :examples [["bb install-autotab" "Shows a link to instructions to make autocomplete work."]]
-   :task     (do
-               (cli/menu! (current-task))
-               (println "\nPlease follow these instructions:")
-               (println "  https://book.babashka.org/#_terminal_tab_completion"))}
+   :task     (do (cli/menu! (current-task))
+                 (println "\nPlease follow these instructions:")
+                 (println "  https://book.babashka.org/#_terminal_tab_completion"))}
 
   nrepl
-  {:doc      "Starts the babashka nrepl server for bb tasks development."
+  {:doc      "Starts the babashka nrepl server for bb tasks development"
    :requires [[babashka.nrepl.server :as nrepl.server]
-              [bask.colors :as c]]
+              [mage.color :as c]]
    :examples [["bb nrepl" "Starts the nrepl server"]]
-   :task     (do
-               (spit ".nrepl-port" 1667)
-               (println (c/green "Started nrepl server!"))
-               (nrepl.server/start-server!)
-               (deref (promise)))}
+   :task     (do (spit ".nrepl-port" 1667)
+                 (println (c/green "Started nrepl server!"))
+                 (nrepl.server/start-server!)
+                 (deref (promise)))}
 
-  download-jar {:doc      "Given a version, downloads a metabase jar"
+  jar-download {:doc      "Given a version, downloads a metabase jar"
                 :examples [["mb-download 1.45.2 ~/path/to/my/jars" "Download 1.45.2 to ~/path/to/my/jars"]
                            ["mb-download 1.45.2" "Download 1.45.2 to $JARS."]
                            ["mb-download 0.45.2" "Download 0.45.2 to $JARS.\n   ProTip: this script will read from $JARS, and use that as your jar directory."]]
-                :requires [[mage.mb-download :as mb-download]]
+                :requires [[mage.jar-download :as jar-download]]
                 :task     (do
                             (cli/menu! (current-task))
-                            (mb-download/mb-download *command-line-args*))}
+                            (jar-download/jar-download *command-line-args*))}
 
   ;; note: task symbols starting with `-` are not listed in `bb tasks`.
   -example

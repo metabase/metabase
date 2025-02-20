@@ -1,9 +1,9 @@
 (ns mage.util
   (:require
    [babashka.tasks :refer [shell]]
-   [bask.colors :as c]
    [clojure.java.io :as io]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [mage.color :as c]))
 
 (def ^String project-root-directory
   "Root directory of the Metabase repo."
