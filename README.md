@@ -72,22 +72,30 @@ $ clojure -M:run
 
 For a more detailed setup of a dev environment for Metabase, check out our [Developers Guide](./docs/developers-guide/start.md).
 
-### Development Automation
+### MAGE - Development Automation
 
-You need [Babashka](https://github.com/babashka/babashka#quickstart) to run the dev scripts. From the root of the repo run `bb tasks` to see what you can do. All of them support `-h` to learn more and show examples.
+You need [Babashka](https://github.com/babashka/babashka#quickstart) to run The Metabase Automation Genius Engine (MAGE). Run `./bin/mage` to list your tasks. All of them support `-h` to learn more and show examples.
 
 ``` shell
-$ bb tasks
+$  ███╗   ███╗ █████╗  ██████╗ ███████╗
+   ████╗ ████║██╔══██╗██╔════╝ ██╔════╝
+   ██╔████╔██║███████║██║  ███╗█████╗
+   ██║╚██╔╝██║██╔══██║██║   ██║██╔══╝
+   ██║ ╚═╝ ██║██║  ██║╚██████╔╝███████╗
+   ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝
+    The Metabase Automation Genius Engine
+
 The following tasks are available:
 
 cljfmt-staged   Runs cljfmt on staged files
 cljfmt-file     Runs cljfmt on the given files/directories
 cljfmt-all      Runs cljfmt on all (clojure) files
-kondo           Runs Kondo against a file, directory, or everything we usually lint.
-kondo-updated   Runs kondo against files that have been changed relative to a Git ref (default `HEAD`)
+kondo           Runs Kondo against a file, directory, or everything we usually lint
+kondo-updated   Runs kondo against files changed compared to a git ref
 start-db        Start a db on a default port in docker
-install-autotab Prints shell code to autocomplete tasks using bb.
-nrepl           Starts the babashka nrepl server for bb tasks development.
+install-autotab Prints instructions to make autocomplete work
+nrepl           Starts the babashka nrepl server for bb tasks development
+jar-download    Given a version, downloads a metabase jar
 $ bb kondo -h
 ... prints help for easily running kondo ...
 ```
