@@ -9,10 +9,7 @@ import { useMemo } from "react";
 import { isNotNull } from "metabase/lib/types";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 import type * as Lib from "metabase-lib";
-import {
-  type Shortcut,
-  suggestions,
-} from "metabase-lib/v1/expressions/complete";
+import { suggestions } from "metabase-lib/v1/expressions/complete";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { insertIndent } from "../../NativeQueryEditor/CodeMirrorEditor/extensions";
@@ -30,7 +27,6 @@ type Options = {
   metadata: Metadata;
   reportTimezone?: string;
   extensions?: Extension[];
-  shortcuts?: Shortcut[];
 };
 
 function getTooltipParent() {
@@ -57,7 +53,6 @@ export function useExtensions(options: Options): Extension[] {
     reportTimezone,
     metadata,
     extensions: extra = [],
-    shortcuts,
   } = options;
 
   return useMemo(() => {
@@ -118,7 +113,6 @@ export function useExtensions(options: Options): Extension[] {
         startRule,
         expressionIndex,
         metadata,
-        shortcuts,
       }),
       tooltips({
         position: "fixed",
@@ -138,7 +132,6 @@ export function useExtensions(options: Options): Extension[] {
     onCommit,
     metadata,
     reportTimezone,
-    shortcuts,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);
