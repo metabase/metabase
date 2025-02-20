@@ -358,7 +358,7 @@ describe("DashCardCardParameterMapper", () => {
       });
       expect(
         screen.getByText(
-          /Native question variables only accept a single value\. They do not support dropdown lists/i,
+          /Action parameters only accept a single value\. They do not support dropdown lists/i,
         ),
       ).toBeInTheDocument();
     });
@@ -386,9 +386,7 @@ describe("DashCardCardParameterMapper", () => {
         editingParameter: createMockParameter({ type: "date/month-year" }),
       });
       expect(
-        screen.getByText(
-          /Native question variables do not support dropdown lists/i,
-        ),
+        screen.getByText(/Action parameters do not support dropdown lists/i),
       ).toBeInTheDocument();
     });
   });
