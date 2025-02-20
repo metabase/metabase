@@ -17,9 +17,9 @@
 
 (defn- bb-task-has-example? [task-name]
   (doseq [cmd [(str "bb " task-name " -h")
-               (str "bb " task-name " -help")]]
+               (str "bb " task-name " --help")]]
     (println (str "Testing that task has examples with '" cmd "'"))
-    (when-not (str/includes? (u/sh! (str "bb " task-name " -h")) "Examples:")
+    (when-not (str/includes? (u/sh! cmd) "Examples:")
       (System/exit 1))))
 
 (when (= *file* (System/getProperty "babashka.file"))
