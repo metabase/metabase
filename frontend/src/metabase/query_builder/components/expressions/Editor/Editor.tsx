@@ -1,23 +1,19 @@
 import type { EditorState } from "@codemirror/state";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import cx from "classnames";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useMount } from "react-use";
-import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { format, isExpression } from "metabase-lib/v1/expressions";
+import { format } from "metabase-lib/v1/expressions";
 import type { Shortcut } from "metabase-lib/v1/expressions/complete";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
-import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
-import { processSource } from "metabase-lib/v1/expressions/process";
 import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Expression } from "metabase-types/api";
 
 import type { ClauseType, StartRule } from "../types";
 
@@ -26,6 +22,7 @@ import { Shortcuts } from "./Shortcuts";
 import { Tooltip } from "./Tooltip";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
+import { diagnoseAndCompileExpression } from "./utils";
 
 type EditorProps<S extends StartRule> = {
   id?: string;
@@ -131,101 +128,54 @@ function useExpression<S extends StartRule = "expression">({
 }: EditorProps<S> & {
   metadata: Metadata;
 }) {
-  const expression = useMemo(() => {
-    const expressionFromClause =
-      clause &&
-      Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
-
-    return expressionFromClause;
-  }, [clause, query, stageIndex]);
-
-  const [source, setSource] = useState<string>("");
+  const [source, setSource] = useState("");
   const [isFormatting, setIsFormatting] = useState(true);
 
-  const formatExpression = useCallback(
-    async (expression: Expression | null): Promise<string> => {
-      if (!expression) {
-        return "";
-      }
-      return format(expression, {
-        query,
-        stageIndex,
-        expressionIndex,
-        printWidth: 55, // 60 is the width of the editor
-      });
-    },
-    [stageIndex, query, expressionIndex],
-  );
-
   useMount(() => {
-    // format the expression on mount
-    formatExpression(expression).then(source => {
-      setSource(source);
+    // format the source when the component mounts
+
+    const expression =
+      clause &&
+      Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
+    if (!expression) {
+      setSource("");
       setIsFormatting(false);
-    });
+      return;
+    }
+
+    format(expression, {
+      query,
+      stageIndex,
+      expressionIndex,
+      printWidth: 55, // 60 is the width of the editor
+    })
+      .then(source => {
+        setIsFormatting(false);
+        setSource(source);
+      })
+      .catch(() => {
+        setSource("");
+        setIsFormatting(false);
+      });
   });
 
   const handleUpdate = useCallback(
     function (source: string) {
       setSource(source);
-
-      if (source.trim() === "") {
-        onChange(null, { message: t`Invalid expression` });
-        return;
-      }
-
-      const error = diagnose({
-        source,
+      const { clause, error } = diagnoseAndCompileExpression(source, {
         startRule,
         query,
         stageIndex,
         expressionIndex,
         metadata,
-      });
-
-      if (error) {
-        onChange(null, error);
-        return;
-      }
-
-      const compiledExpression = processSource({
-        source,
         name,
-        query,
-        stageIndex,
-        startRule,
-        expressionIndex,
       });
-
-      const { expression, expressionClause, compileError } = compiledExpression;
-      if (
-        compileError &&
-        typeof compileError === "object" &&
-        "message" in compileError &&
-        typeof compileError.message === "string"
-      ) {
-        onChange(null, { message: compileError.message });
-        return;
-      } else if (compileError) {
-        onChange(null, { message: t`Invalid expression` });
-        return;
-      }
-
-      if (!expression || !isExpression(expression) || !expressionClause) {
-        onChange(null, { message: t`Invalid expression` });
-        return;
-      }
-
-      // TODO: can this be typed so we don't need to cast?
-      const clause = expressionClause as ClauseType<S>;
-
-      onChange(clause, null);
+      onChange(clause, error);
     },
     [name, query, stageIndex, startRule, metadata, expressionIndex, onChange],
   );
 
   return {
-    expression,
     source,
     onSourceChange: handleUpdate,
     isFormatting,
