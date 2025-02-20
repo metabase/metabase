@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { render, screen } from "__support__/ui";
+import type { ColumnFormattingSetting } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import { ChartSettingsTableFormatting } from "./ChartSettingsTableFormatting";
@@ -61,8 +62,8 @@ const NUMBER_OPERATORS = [
 
 const BOOLEAN_OPERATORS = ["is null", "is not null", "is true", "is false"];
 
-const Wrapper = props => {
-  const [value, setValue] = useState([]);
+const Wrapper = (props = {}) => {
+  const [value, setValue] = useState<ColumnFormattingSetting[]>([]);
 
   return (
     <ChartSettingsTableFormatting
@@ -74,7 +75,7 @@ const Wrapper = props => {
   );
 };
 
-const setup = props => {
+const setup = (props = {}) => {
   render(<Wrapper {...props} />);
 };
 
