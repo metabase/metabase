@@ -31,8 +31,8 @@
       (throw (ex-info "Not a draft" {:status-code 400})))
     (let [current (alias/parent-for-draft (:alias dashboard))]
       (t2/with-transaction [_]
-          (t2/update! :model/Dashboard :id (:id current) {:alias (str (:alias current) "@old")})
-          (t2/update! :model/Dashboard :id (:id dashboard) {:alias (:alias current)})))
+        (t2/update! :model/Dashboard :id (:id current) {:alias (str (:alias current) "@old")})
+        (t2/update! :model/Dashboard :id (:id dashboard) {:alias (:alias current)})))
     api/generic-204-no-content))
 
 (api.macros/defendpoint :get "/:alias"
