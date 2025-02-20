@@ -1,15 +1,13 @@
 /* eslint-disable react/prop-types */
-import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
-import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 
 import { RuleEditor } from "./RuleEditor";
-import { RulePreview } from "./RulePreview";
+import { SortableRuleList } from "./SortableRuleList";
 import { DEFAULTS_BY_TYPE } from "./constants";
 
 export const ChartSettingsTableFormatting = props => {
@@ -79,54 +77,6 @@ export const ChartSettingsTableFormatting = props => {
       />
     );
   }
-};
-
-const SortableRuleList = ({ rules, cols, onEdit, onRemove, onMove }) => {
-  const rulesWithIDs = useMemo(
-    () => rules.map((rule, index) => ({ ...rule, id: index.toString() })),
-    [rules],
-  );
-
-  const getId = rule => rule.id.toString();
-
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 15 },
-  });
-
-  const handleSortEnd = ({ id, newIndex }) => {
-    const oldIndex = rulesWithIDs.findIndex(rule => getId(rule) === id);
-
-    onMove(oldIndex, newIndex);
-  };
-
-  const handleRemove = id =>
-    onRemove(rulesWithIDs.findIndex(rule => getId(rule) === id));
-
-  const handleEdit = id =>
-    onEdit(rulesWithIDs.findIndex(rule => getId(rule) === id));
-
-  const renderItem = ({ item, id }) => (
-    <Sortable id={id} draggingStyle={{ opacity: 0.5 }}>
-      <RulePreview
-        rule={item}
-        cols={cols}
-        onClick={() => handleEdit(id)}
-        onRemove={() => handleRemove(id)}
-      />
-    </Sortable>
-  );
-
-  return (
-    <div>
-      <SortableList
-        items={rulesWithIDs}
-        getId={getId}
-        renderItem={renderItem}
-        sensors={[pointerSensor]}
-        onSortEnd={handleSortEnd}
-      />
-    </div>
-  );
 };
 
 const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
