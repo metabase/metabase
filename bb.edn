@@ -1,6 +1,6 @@
 {;; we put path as bin, and everything is in the mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
- :paths ["bin"]
+ :paths ["bin" "test"]
  :deps  {escherize/bask {:git/url "https://github.com/escherize/bask.git"
                          :git/sha "81cc9af3021d7689cfbddf0518a1e828f785f006"}
          metosin/malli  {:mvn/version "0.17.0"}
@@ -54,12 +54,6 @@
                      ["bb start-db mysql oldest" "start the oldest mysql db we support"]]
           :task (do (cli/menu! (current-task))
                     (start-db/start-db *command-line-args*))}
-
-         watch-ci
-         {:doc  "Prints the command to watch your CI build for a specific branch."
-          :task (println
-                 (str/join "\n" ["To watch your branch, cd to metabase, switch to your branch, and run:"
-                                 "" (c/green "gh pr checks --watch --required && say done") ""]))}
 
          install-autotab
          {:doc      "Prints shell code to autocomplete tasks using bb.
