@@ -159,6 +159,13 @@ saved later when it is ready."
         (catch Throwable e
           (log/errorf e "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
 
+(defn infer-metadata
+  "Infer the default result_metadata to store for MBQL cards."
+  [query]
+  (not-empty (request/with-current-user nil
+               (u/ignore-exceptions
+                 (qp.preprocess/query->expected-cols query)))))
+
 (defn populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
   metadata from the query."
@@ -197,7 +204,4 @@ saved later when it is ready."
     :else
     (do
       (log/debug "Attempting to infer result metadata for Card")
-      (let [inferred-metadata (not-empty (request/with-current-user nil
-                                           (u/ignore-exceptions
-                                             (qp.preprocess/query->expected-cols query))))]
-        (assoc card :result_metadata inferred-metadata)))))
+      (assoc card :result_metadata (infer-metadata query)))))

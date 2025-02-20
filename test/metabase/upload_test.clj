@@ -1900,7 +1900,7 @@
       (testing (action-testing-str action)
         (with-upload-table! [table (create-upload-table!)]
           (let [table-id    (:id table)
-                csv-rows    ["name" "Luke Skywalker"]
+                csv-rows    ["name, age" "Luke Skywalker, 57"]
                 file        (csv-file-with csv-rows)
                 other-id    (mt/id :venues)
                 other-table (t2/select-one :model/Table other-id)
@@ -1931,7 +1931,9 @@
                   (testing "No unwanted caches were invalidated"
                     (is (= #{model-id} (set/difference cached-before cached-after))))
                   (testing "We can see the new row when querying the model"
-                    (is (some (fn [[_ row-name]] (= "Luke Skywalker" row-name))
+                    (is (some (fn [[_ row-name age]]
+                                (and (= "Luke Skywalker" row-name)
+                                     (= 57 age)))
                               (rows-for-model (:db_id table) model-id)))))))
 
             (io/delete-file file)))))))
