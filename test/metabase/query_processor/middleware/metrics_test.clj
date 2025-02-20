@@ -835,6 +835,7 @@
                           [(:id metric) :aggregation 1 :name]))))))))
 
 ;; TODO: Extend to exception match / check
+;; MODELS WIP
 (deftest incompatible-metric-joins-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
     (mt/with-temp
@@ -876,7 +877,13 @@
 (deftest compatible-metric-joins-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
     (mt/with-temp
-      [;; contains NON fk->pk join
+      [:model/Card
+       {model-id :id}
+       {:type :model
+        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib.convert/->legacy-MBQL))}
+
+       ;; contains NON fk->pk join
        :model/Card
        {conformant-id :id}
        {:type :metric
@@ -893,23 +900,25 @@
         (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
             (lib/aggregate (lib/count))
             (lib.convert/->legacy-MBQL))}]
-      (testing "Query with metric with compatible joins executes succesfully"
-        (are [description query] (=? {:status :completed}
-                                     (qp/process-query query))
+      (doseq [[btype query-base] [[:table (lib.metadata/table mp (mt/id :orders))]
+                                  [:model (lib.metadata/card mp model-id)]]]
+        (testing (format "Query based on %s with metric with compatible joins executes succesfully" btype)
+          (are [description query] (=? {:status :completed}
+                                       (qp/process-query query))
 
-          "No joins used" (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                              (lib/aggregate (lib.metadata/metric mp none-id)))
+            "No joins used" (-> (lib/query mp query-base)
+                                (lib/aggregate (lib.metadata/metric mp none-id)))
 
-          "Metric has compatible join" (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                           (lib/aggregate (lib.metadata/metric mp conformant-id)))
+            "Metric has compatible join" (-> (lib/query mp query-base)
+                                             (lib/aggregate (lib.metadata/metric mp conformant-id)))
 
-          "Query has compatible join" (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))))
-                                          (lib/aggregate (lib.metadata/metric mp none-id)))
+            "Query has compatible join" (-> (lib/query mp query-base)
+                                            (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))))
+                                            (lib/aggregate (lib.metadata/metric mp none-id)))
 
-          "Both have compatible join" (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))))
-                                          (lib/aggregate (lib.metadata/metric mp conformant-id))))))))
+            "Both have compatible join" (-> (lib/query mp query-base)
+                                            (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))))
+                                            (lib/aggregate (lib.metadata/metric mp conformant-id)))))))))
 
 ;; TODO: Better exceptions
 ;; TODO: How would the solution work with models?
@@ -917,6 +926,11 @@
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
     (mt/with-temp
       [:model/Card
+       {model-id :id}
+       {:type :model
+        :dataset_query }
+       
+       :model/Card
        {no-join-id :id}
        {:type :metric
         :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
@@ -973,8 +987,8 @@
 
 ;; !!! TODO: Ensure that joins eg on following stages are not affected!
 
-;; now filters
-(deftest compatible-filters-test
+;; throws now!
+(deftest compatible-filters-test-x ; something wrong with editor -- wrong test runs for some reason, tmp change name
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         metric-query-base (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                             (lib/filter $ (lib/> (m/find-first (comp #{"Total"} :display-name)
@@ -1001,7 +1015,7 @@
                                       (lib/aggregate (lib.metadata/metric mp mid-cnt))
                                       (lib/aggregate (lib.metadata/metric mp mid-sum))))))))))
 
-(deftest incompatible-filters-test
+(deftest incompatible-filters-test-x
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         metric-query-fn (fn [filter-op]
                           (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
@@ -1020,7 +1034,7 @@
        {mid-lt :id}
        {:type :metric
         :dataset_query (metric-query-fn lib/<)}]
-      (testing "Processing of query referencing metrics with compatible filters completes"
+      (testing "Processing of query referencing metrics with compatible filters "
         (is (thrown-with-msg?
              Throwable #"Metrics `\d+` and `\d+` have incompatible filters"
              (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
@@ -1139,14 +1153,15 @@
                                                        10))
                                   (lib/aggregate $ (lib/count))
                                   (lib.convert/->legacy-MBQL $)))}]
-      @(def rr (qp/process-query @(def qa (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-                                            (lib/filter $ (lib/= (m/find-first (comp #{"Total"} :display-name)
-                                                                               (lib/filterable-columns $))
-                                                                 10))
-                                            (lib/filter $ (lib/= (m/find-first (comp #{"Subtotal"} :display-name)
-                                                                               (lib/filterable-columns $))
-                                                                 20))
-                                            (lib/aggregate $ (lib.metadata/metric mp mid)))))))))
+      (is (=? {:status :completed}
+              @(def rr (qp/process-query @(def qa (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                                                    (lib/filter $ (lib/= (m/find-first (comp #{"Total"} :display-name)
+                                                                                       (lib/filterable-columns $))
+                                                                         10))
+                                                    (lib/filter $ (lib/= (m/find-first (comp #{"Subtotal"} :display-name)
+                                                                                       (lib/filterable-columns $))
+                                                                         20))
+                                                    (lib/aggregate $ (lib.metadata/metric mp mid)))))))))))
 
 ;; simple failing case -- ok
 (deftest stage-filter-must-contain-filters-of-metrics-when-present-test
