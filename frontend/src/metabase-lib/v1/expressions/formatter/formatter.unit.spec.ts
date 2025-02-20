@@ -117,12 +117,16 @@ describe("format", () => {
 
 describe("if printWidth = Infinity, it should return the same results as the single-line formatter", () => {
   describe.each(dataForFormatting)("%s", (_name, cases, opts) => {
-    const tests = cases.filter(([_res, mbql, _name]) => mbql != null);
+    const tests = cases.filter(([, expr]) => expr !== undefined);
 
     it.each(tests)(
       `should format %s`,
-      async (source: string, mbql: unknown) => {
-        const result = await format(mbql as Expression, {
+      async (source: string, expression: Expression | undefined) => {
+        if (expression === undefined) {
+          // unreachable
+          return;
+        }
+        const result = await format(expression, {
           ...opts,
           printWidth: Infinity,
         });
