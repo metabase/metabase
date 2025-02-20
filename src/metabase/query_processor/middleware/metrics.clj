@@ -238,6 +238,7 @@
   (lib.util.match/match-one query
     [:metric _ _] &match))
 
+;; operates on single filter -- not filters vector as returned from lib/filters
 (defn- equal-filter?
   [f1 f2]
   (let [f1 (cond-> f1 (lib.util/clause-of-type? f1 :value) (get 2))
@@ -250,7 +251,10 @@
       (and (= (first f1) (first f2))
            (= (count (nthnext f1 2)) (count (nthnext f2 2))))
       (every? #(apply equal-filter? %)
-              (map vector (nthnext f1 2) (nthnext f2 2))))))
+              (map vector (nthnext f1 2) (nthnext f2 2)))
+
+      :else
+      false)))
 
 (defn- filters-for-subset?
   "Check whether filter clause `f1` filters for subset of rows that filter clause `f2` filters for."
