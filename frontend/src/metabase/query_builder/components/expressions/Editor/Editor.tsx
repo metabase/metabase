@@ -57,7 +57,6 @@ export function Editor<S extends StartRule = "expression">(
     query,
     expressionIndex,
     readOnly,
-    error,
     reportTimezone,
     shortcuts = DEFAULT_SHORTCUTS,
   } = props;
@@ -65,14 +64,8 @@ export function Editor<S extends StartRule = "expression">(
   const ref = useRef<ReactCodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
 
-  const {
-    source,
-    onSourceChange,
-    onChange,
-    onCommit,
-    hasChanges,
-    isFormatting,
-  } = useExpression({ ...props, metadata });
+  const { source, onSourceChange, onChange, onCommit, isFormatting } =
+    useExpression({ ...props, metadata });
 
   const [customTooltip, portal] = useCustomTooltip({
     getPosition: getTooltipPosition,
@@ -106,8 +99,7 @@ export function Editor<S extends StartRule = "expression">(
 
   return (
     <>
-      <div className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
-        <div className={S.prefix}>=</div>
+      <Box className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
         <CodeMirror
           id={id}
           ref={ref}
@@ -122,8 +114,9 @@ export function Editor<S extends StartRule = "expression">(
           width="100%"
           indentWithTab={false}
         />
-      </div>
-      {error && hasChanges && <Box className={S.error}>{error.message}</Box>}
+      </Box>
+      {/* TODO: render elswhere */}
+      {/* {error && hasChanges && <Box className={S.error}>{error.message}</Box>} */}
       {portal}
     </>
   );
@@ -165,7 +158,7 @@ function useExpression<S extends StartRule = "expression">({
         query,
         stageIndex,
         expressionIndex,
-        printWidth: Infinity,
+        printWidth: 55, // 60 is the width of the editor
       });
     },
     [stageIndex, query, expressionIndex],

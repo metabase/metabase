@@ -6,7 +6,6 @@ import type {
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import { isNotNull } from "metabase/lib/types";
 import { Box, Button, Flex, TextInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -20,9 +19,8 @@ import {
 
 import { CombineColumns, hasCombinations } from "./CombineColumns";
 import { Editor } from "./Editor";
-import ExpressionWidgetS from "./ExpressionWidget.module.css";
+import S from "./ExpressionWidget.module.css";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
-import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
 import { ExtractColumn, hasExtractions } from "./ExtractColumn";
 import type { ClauseType, StartRule } from "./types";
 
@@ -195,65 +193,54 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   return (
     <Box w={WIDGET_WIDTH} data-testid="expression-editor">
       {header}
-      <Box p="1.5rem 1.5rem 1rem">
-        <Box
-          component="label"
-          className={ExpressionWidgetS.FieldLabel}
-          htmlFor="expression-content"
-        >
-          {t`Expression`}
-          <ExpressionWidgetInfo />
-        </Box>
-        <Editor
-          id="expression-content"
-          expressionIndex={expressionIndex}
-          startRule={startRule as S}
-          clause={clause}
-          name={name}
-          query={query}
-          stageIndex={stageIndex}
-          reportTimezone={reportTimezone}
-          onChange={handleExpressionChange}
-          onCommit={handleCommit}
-          error={error}
-          onError={handleError}
-          shortcuts={shortcuts}
-        />
-      </Box>
 
-      {withName && (
-        <Box p="0 1.5rem 1.5rem">
-          <Box
-            component="label"
-            className={ExpressionWidgetS.FieldLabel}
-            htmlFor="expression-name"
-          >
-            {t`Name`}
-          </Box>
+      <Editor
+        id="expression-content"
+        expressionIndex={expressionIndex}
+        startRule={startRule as S}
+        clause={clause}
+        name={name}
+        query={query}
+        stageIndex={stageIndex}
+        reportTimezone={reportTimezone}
+        onChange={handleExpressionChange}
+        onCommit={handleCommit}
+        error={error}
+        onError={handleError}
+        shortcuts={shortcuts}
+      />
+
+      <Flex gap="xs" align="center">
+        {withName && (
           <TextInput
-            classNames={{
-              input: CS.textBold,
-            }}
             id="expression-name"
             data-testid="expression-name"
             type="text"
             value={name}
-            placeholder={t`Something nice and descriptive`}
-            w="100%"
-            radius="md"
+            placeholder={t`Give your column a name...`}
             onChange={handleNameChange}
             onKeyDown={handleKeyDown}
+            style={{ flexGrow: 1 }}
+            classNames={{ input: S.nameInput }}
           />
-        </Box>
-      )}
+        )}
 
-      <Flex className={ExpressionWidgetS.Footer}>
-        <Flex ml="auto" gap="md">
-          {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
-          <Button variant="filled" disabled={!isValid} onClick={handleSubmit}>
-            {initialName ? t`Update` : t`Done`}
-          </Button>
-        </Flex>
+        {onClose && (
+          <Button
+            onClick={onClose}
+            variant="subtle"
+            size="xs"
+          >{t`Cancel`}</Button>
+        )}
+        <Button
+          variant="filled"
+          disabled={!isValid}
+          onClick={handleSubmit}
+          size="xs"
+          mr="sm"
+        >
+          {initialName ? t`Update` : t`Done`}
+        </Button>
       </Flex>
     </Box>
   );

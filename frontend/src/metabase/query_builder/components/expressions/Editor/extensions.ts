@@ -15,6 +15,8 @@ import {
 } from "metabase-lib/v1/expressions/complete";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
+import { insertIndent } from "../../NativeQueryEditor/CodeMirrorEditor/extensions";
+
 import S from "./Editor.module.css";
 import { customExpression } from "./language";
 
@@ -100,16 +102,12 @@ export function useExtensions(options: Options): Extension[] {
       Prec.high(
         keymap.of([
           {
-            key: "Enter",
-            run(view: EditorView) {
-              const source = view.state.doc.toString();
-              onCommit(source);
-              return true;
-            },
+            key: "Tab",
+            run: acceptCompletion,
           },
           {
             key: "Tab",
-            run: acceptCompletion,
+            run: insertIndent,
           },
         ]),
       ),
