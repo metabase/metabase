@@ -193,7 +193,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
         shortcuts={shortcuts}
       />
 
-      <Flex gap="xs" align="center">
+      <Flex gap="xs" align="center" justify="end" p="0" pr="sm">
         {withName && (
           <NameInput
             value={name}
@@ -203,22 +203,23 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
           />
         )}
 
-        {onClose && (
+        <Box py="sm">
+          {onClose && (
+            <Button
+              onClick={onClose}
+              variant="subtle"
+              size="xs"
+            >{t`Cancel`}</Button>
+          )}
           <Button
-            onClick={onClose}
-            variant="subtle"
+            variant="filled"
+            disabled={!isValid}
+            onClick={handleSubmit}
             size="xs"
-          >{t`Cancel`}</Button>
-        )}
-        <Button
-          variant="filled"
-          disabled={!isValid}
-          onClick={handleSubmit}
-          size="xs"
-          mr="sm"
-        >
-          {initialName ? t`Update` : t`Done`}
-        </Button>
+          >
+            {initialName ? t`Update` : t`Done`}
+          </Button>
+        </Box>
       </Flex>
     </Box>
   );
