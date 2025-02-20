@@ -107,3 +107,17 @@
 
 (comment
   (load-connection-properties :snowflake))
+
+(defn get-connection-properties
+  [driver]
+  (let [manifest (str (io/file "modules/drivers/" (name driver) "resources/metabase-plugin.yaml"))
+        properties (some->
+                    (slurp manifest)
+                    yaml/parse-string
+                    :driver
+                    (parse-connection-properties))]
+    properties))
+
+(defn get-property [driver property] (some #(when (= (:name %) property) %) (get-connection-properties driver)))
+
+(defn get-properties [driver] (get-connection-properties driver))
