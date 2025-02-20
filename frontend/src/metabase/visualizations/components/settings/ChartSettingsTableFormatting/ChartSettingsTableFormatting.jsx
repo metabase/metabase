@@ -7,11 +7,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
-import ColorRange from "metabase/core/components/ColorRange";
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
+import { RuleBackground } from "./RuleBackground";
 import { RuleDescription } from "./RuleDescription";
 import { RuleEditor } from "./RuleEditor";
 import { DEFAULTS_BY_TYPE } from "./constants";
@@ -215,14 +215,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
   </div>
 );
 
-const RuleBackground = ({ rule, className, style }) =>
-  rule.type === "range" ? (
-    <ColorRange colors={rule.colors} className={className} style={style} />
-  ) : rule.type === "single" ? (
-    <SinglePreview color={rule.color} className={className} style={style} />
-  ) : null;
-
-const SinglePreview = ({ color, className, style, ...props }) => (
+export const SinglePreview = ({ color, className, style, ...props }) => (
   <div
     className={className}
     style={{ ...style, background: color }}
