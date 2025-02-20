@@ -2,7 +2,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [mage.shell :as shell]))
+   [mage.shell :as shell]
+   [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,7 +24,7 @@
 
 (def ^:private saved-deps-edn-hash-filename
   "File to store the MD5 checksum for `deps.edn`."
-  (str shell/project-root-directory "/.clj-kondo/.deps.edn.md5sum"))
+  (str u/project-root-directory "/.clj-kondo/.deps.edn.md5sum"))
 
 (defn- saved-deps-edn-hash
   []
@@ -72,7 +73,7 @@
                  "--" "*.clj" "*.cljc" "*.cljs" ":!/.clj-kondo" ":!/dev")
        ;; filter out any files that have been deleted/moved
        (filter (fn [filename]
-                 (.exists (io/file (str shell/project-root-directory "/" filename)))))))
+                 (.exists (io/file (str u/project-root-directory "/" filename)))))))
 
 (defn- kondo-updated* [diff-target]
   (let [diff-target   (or diff-target "HEAD")

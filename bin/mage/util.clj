@@ -2,29 +2,35 @@
   (:require
    [babashka.tasks :refer [shell]]
    [bask.colors :as c]
+   [clojure.java.io :as io]
    [clojure.string :as str]))
 
-(defn sh!
+(def ^String project-root-directory
+  "Root directory of the Metabase repo."
+  (.. (java.io.File. (.toURI (io/resource "mage/util.clj"))) ; this file
+      getParentFile ; /Users/me/metabase/bin/mage
+      getParentFile ; /Users/me/metabase/bin
+      getParentFile ; /Users/me/metabase
+      getCanonicalPath))
+
+(defn sh
   "Run a shell command and return the output as a trimmed string."
   [cmd]
-  (str/trim-newline (:out (shell {:out :string} cmd))))
+  (->> (shell {:out :string :dir project-root-directory} cmd)
+       :out
+       str/trim-newline))
 
-(defn shl!
+(defn shl
   "Run a shell command and return the output as a vector of lines."
   [cmd]
-  (-> cmd sh! str/split-lines vec))
-
-(defn check-help! [{:keys [opts] :as m} help-thunk]
-  (when (or (:h opts) (:help opts))
-    (help-thunk)
-    (System/exit 0)))
+  (-> cmd sh str/split-lines vec))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Git Stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn staged-files []
-  (->> (shl! "git diff --name-status --cached -- \"*.clj\" \"*.cljc\" \"*.cljs\"")
+  (->> (shl "git diff --name-status --cached -- \"*.clj\" \"*.cljc\" \"*.cljs\"")
        (filter #(re-find #"^[AM]" %))
        (map #(str/split % #"\t"))
        (mapv second)))

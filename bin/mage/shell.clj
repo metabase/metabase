@@ -8,14 +8,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^String project-root-directory
-  "Root directory of the Metabase repo."
-  (.. (java.io.File. (.toURI (io/resource "mage/shell.clj"))) ; this file
-      getParentFile ; /Users/camsaul/metabase/bin/mage
-      getParentFile ; /Users/camsaul/metabase/bin
-      getParentFile ; /Users/camsaul/metabase
-      getCanonicalPath))
-
 (defn- read-lines [^java.io.BufferedReader reader {:keys [quiet?]}]
   (loop [lines []]
     (if-let [line (.readLine reader)]
@@ -61,7 +53,7 @@
                             args
                             (cons nil args))
         opts              (merge
-                           {:dir project-root-directory}
+                           {:dir u/project-root-directory}
                            opts)
         {:keys [env dir]} opts
         cmd-array         (into-array (map str args))
