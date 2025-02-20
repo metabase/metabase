@@ -2,15 +2,30 @@
 import { arrayMove } from "@dnd-kit/sortable";
 import { useState } from "react";
 
+import type {
+  ColumnFormattingSetting,
+  DatasetColumn,
+} from "metabase-types/api";
+
 import { RuleEditor } from "./RuleEditor";
 import { RuleListing } from "./RuleListing";
 import { DEFAULTS_BY_TYPE } from "./constants";
 
-export const ChartSettingsTableFormatting = props => {
-  const [editingRule, setEditingRule] = useState();
-  const [editingRuleIsNew, setEditingRuleIsNew] = useState();
-
-  const { value, onChange, cols, canHighlightRow } = props;
+export const ChartSettingsTableFormatting = ({
+  value,
+  onChange,
+  cols,
+  canHighlightRow,
+}: {
+  value: ColumnFormattingSetting[];
+  onChange: (rules: ColumnFormattingSetting[]) => void;
+  cols: DatasetColumn[];
+  canHighlightRow?: boolean;
+}) => {
+  const [editingRule, setEditingRule] = useState<number | null>(null);
+  const [editingRuleIsNew, setEditingRuleIsNew] = useState<boolean | null>(
+    null,
+  );
 
   if (editingRule !== null && value[editingRule]) {
     return (
@@ -18,7 +33,7 @@ export const ChartSettingsTableFormatting = props => {
         canHighlightRow={canHighlightRow}
         rule={value[editingRule]}
         cols={cols}
-        isNew={editingRuleIsNew}
+        isNew={!!editingRuleIsNew}
         onChange={rule => {
           onChange([
             ...value.slice(0, editingRule),
@@ -74,11 +89,3 @@ export const ChartSettingsTableFormatting = props => {
     );
   }
 };
-
-export const SinglePreview = ({ color, className, style, ...props }) => (
-  <div
-    className={className}
-    style={{ ...style, background: color }}
-    {...props}
-  />
-);
