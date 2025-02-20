@@ -725,6 +725,10 @@
     (let [source-table-aliases (field-source-table-aliases field-clause)
           source-nfc-path      (field-nfc-path field-clause)
           source-alias         (field-source-alias field-clause)
+          ;; we can only get database type if we have a field-id
+          ;; which means nested native queries will cause bugs like #42817
+          ;; but this should all be fixed with field refs overhaul!
+          ;; https://linear.app/metabase-inc/issue/ENG-8766/[epic]-field-refs-overhaul
           field-metadata       (when (integer? id-or-name)
                                  (lib.metadata/field (qp.store/metadata-provider) id-or-name))
           allow-casting?       (and field-metadata
