@@ -87,7 +87,7 @@ describe("scenarios > question > relative-datetime", () => {
   }
 
   describe("basic functionality", () => {
-    it("starting from should contain units only equal or greater than the filter unit", () => {
+    it("starting from should contain all units, including those smaller than the filter unit (metabase#53734)", () => {
       H.openOrdersTable();
 
       H.tableHeaderClick("Created At");
@@ -103,6 +103,8 @@ describe("scenarios > question > relative-datetime", () => {
         .click();
 
       assertOptions([
+        "minutes ago",
+        "hours ago",
         "days ago",
         "weeks ago",
         "months ago",
@@ -115,7 +117,15 @@ describe("scenarios > question > relative-datetime", () => {
         .findByRole("textbox", { name: "Starting from unit" })
         .click();
 
-      assertOptions(["quarters ago", "years ago"]);
+      assertOptions([
+        "minutes ago",
+        "hours ago",
+        "days ago",
+        "weeks ago",
+        "months ago",
+        "quarters ago",
+        "years ago",
+      ]);
     });
 
     it("should go back to shortcuts view", () => {
