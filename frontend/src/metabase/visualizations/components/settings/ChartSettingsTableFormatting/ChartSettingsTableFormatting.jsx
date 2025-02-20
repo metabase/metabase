@@ -1,19 +1,15 @@
 /* eslint-disable react/prop-types */
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
 
-import { RuleBackground } from "./RuleBackground";
-import { RuleDescription } from "./RuleDescription";
 import { RuleEditor } from "./RuleEditor";
+import { RulePreview } from "./RulePreview";
 import { DEFAULTS_BY_TYPE } from "./constants";
 
 export const ChartSettingsTableFormatting = props => {
@@ -159,59 +155,6 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
         />
       </div>
     ) : null}
-  </div>
-);
-
-const RulePreview = ({ rule, cols, onClick, onRemove }) => (
-  <div
-    className={cx(
-      CS.my2,
-      CS.bordered,
-      CS.rounded,
-      CS.shadowed,
-      CS.cursorPointer,
-      CS.bgWhite,
-    )}
-    onClick={onClick}
-    data-testid="formatting-rule-preview"
-  >
-    <div className={cx(CS.p1, CS.borderBottom, CS.relative, CS.bgLight)}>
-      <div className={cx(CS.px1, CS.flex, CS.alignCenter, CS.relative)}>
-        <span className={cx(CS.h4, CS.flexAuto, CS.textDark, CS.textWrap)}>
-          {rule.columns.length > 0 ? (
-            rule.columns
-              .map(
-                name =>
-                  (_.findWhere(cols, { name }) || {}).display_name || name,
-              )
-              .join(", ")
-          ) : (
-            <span
-              style={{ fontStyle: "oblique" }}
-            >{t`No columns selected`}</span>
-          )}
-        </span>
-        <Icon
-          name="close"
-          className={cx(CS.cursorPointer, CS.textLight, CS.textMediumHover)}
-          style={{ minWidth: 16 }}
-          onClick={e => {
-            e.stopPropagation();
-            onRemove();
-          }}
-        />
-      </div>
-    </div>
-    <div className={cx(CS.p2, CS.flex, CS.alignCenter)}>
-      <RuleBackground
-        rule={rule}
-        className={cx(CS.mr2, CS.flexNoShrink, CS.rounded, {
-          [CS.bordered]: rule.type === "range",
-        })}
-        style={{ width: 40, height: 40 }}
-      />
-      <RuleDescription rule={rule} />
-    </div>
   </div>
 );
 
