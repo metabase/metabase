@@ -175,7 +175,7 @@
                                                                             :widget-type  "category"
                                                                             :required     true}}}}}]
       (is (= {(mt/id :categories :name) {:values                (t2/select-one-fn (comp count :values)
-                                                                                  'FieldValues :field_id category-name-id
+                                                                                  :model/FieldValues :field_id category-name-id
                                                                                   :type :full)
                                          :human_readable_values []
                                          :field_id              category-name-id}}
@@ -1825,7 +1825,7 @@
                      :post 200
                      (format "public/action/%s/execute" public_uuid)
                      {:parameters {:id 1 :name "European"}})
-                    (is (= {:data   {"action_id" (t2/select-one-pk 'Action :public_uuid public_uuid)
+                    (is (= {:data   {"action_id" (t2/select-one-pk :model/Action :public_uuid public_uuid)
                                      "event"     "action_executed"
                                      "source"    "public_form"
                                      "type"      "query"}

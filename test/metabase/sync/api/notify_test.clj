@@ -114,7 +114,7 @@
         (mt/with-temp [:model/Database database {:engine :postgres :details (assoc details :dbname db-name)}]
           (let [spec     (sql-jdbc.conn/connection-details->spec :postgres details)
                 exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
-                tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select 'Table :db_id (:id %))))
+                tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select :model/Table :db_id (:id %))))
                 post     (fn post-api
                            ([payload] (post-api payload 200))
                            ([payload expected-code]
@@ -172,7 +172,7 @@
                                                        :is_attached_dwh true}]
                 (let [spec     (sql-jdbc.conn/connection-details->spec :postgres details)
                       exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
-                      tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select 'Table :db_id (:id %))))
+                      tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select :model/Table :db_id (:id %))))
                       post     (fn post-api
                                  ([payload] (post-api payload 200))
                                  ([payload expected-code]

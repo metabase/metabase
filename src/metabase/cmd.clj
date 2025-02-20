@@ -20,11 +20,15 @@
    [clojure.tools.cli :as cli]
    [metabase.config :as config]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.models :as models]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
+
+(comment
+  models/keep-me)
 
 (set! *warn-on-reflection* true)
 

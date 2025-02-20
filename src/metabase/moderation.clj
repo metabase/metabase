@@ -49,7 +49,7 @@
   [moderation-reviews]
   (when (seq moderation-reviews)
     (let [id->user (m/index-by :id
-                               (t2/select 'User :id [:in (map :moderator_id moderation-reviews)]))]
+                               (t2/select :model/User :id [:in (map :moderator_id moderation-reviews)]))]
       (for [mr moderation-reviews]
         (assoc mr :user (get id->user (:moderator_id mr)))))))
 

@@ -63,7 +63,7 @@
   (let [defaults      {:parameters []}
         dashboard-id  (:dashboard_id notification)
         collection-id (if dashboard-id
-                        (t2/select-one-fn :collection_id 'Dashboard, :id dashboard-id)
+                        (t2/select-one-fn :collection_id :model/Dashboard, :id dashboard-id)
                         (:collection_id notification))
         notification  (->> (for [[k v] notification
                                  :when (some? v)]
