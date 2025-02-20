@@ -9,8 +9,8 @@ cd "$script_dir/../../.."
 echo `pwd`
 
 # Configure Git user opening PRs to the GH Actions bot.
-git config --global user.name "github-actions[bot]"
-git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+git config --global user.email "metabase-bot@metabase.com"
+git config --global user.name "Metabase bot"
 
 # Run antq to check for outdated dependencies and output to UPGRADE_LIST
 echo "::group::Checking for outdated dependencies"
@@ -24,6 +24,9 @@ UPGRADES=$(echo ${UPGRADE_LIST} | sed '/Failed to fetch/d' | sed '/Unable to fet
 echo "::group::Upgrades"
 echo ${UPGRADES}
 echo "::endgroup::"
+
+# Make sure we're on master
+git checkout master
 
 # Iterate over all upgrades
 for upgrade in $UPGRADES; do
