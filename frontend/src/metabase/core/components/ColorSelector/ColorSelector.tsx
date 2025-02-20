@@ -3,7 +3,7 @@ import type { HTMLAttributes } from "react";
 
 import type { PillSize } from "metabase/core/components/ColorPill";
 import { ColorPill } from "metabase/core/components/ColorPill";
-import { Center, Popover } from "metabase/ui";
+import { Center, Popover, type PopoverProps } from "metabase/ui";
 
 import ColorSelectorPopover from "./ColorSelectorPopover";
 
@@ -18,6 +18,7 @@ export interface ColorSelectorProps extends ColorSelectorAttributes {
   pillSize?: PillSize;
   onChange?: (newValue: string) => void;
   withinPortal?: boolean;
+  popoverProps?: PopoverProps;
 }
 
 export const ColorSelector = ({
@@ -25,6 +26,7 @@ export const ColorSelector = ({
   colors,
   onChange,
   withinPortal = true,
+  popoverProps,
   ...props
 }: ColorSelectorProps) => {
   const [opened, { toggle, close }] = useDisclosure(false);

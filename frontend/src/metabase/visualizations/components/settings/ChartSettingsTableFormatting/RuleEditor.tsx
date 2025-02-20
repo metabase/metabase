@@ -1,16 +1,19 @@
 import cx from "classnames";
+import { match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import NumericInput from "metabase/components/NumericInput";
-import Button from "metabase/core/components/Button";
 import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
 import { ColorSelector } from "metabase/core/components/ColorSelector";
-import Input from "metabase/core/components/Input";
-import Radio from "metabase/core/components/Radio";
-import Select, { Option } from "metabase/core/components/Select";
-import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
+import {
+  Button,
+  MultiSelect,
+  NumberInput,
+  Select,
+  Switch,
+  TextInputBlurChange,
+} from "metabase/ui";
 import {
   isBoolean,
   isNumeric,
@@ -23,6 +26,8 @@ import type {
   DatasetColumn,
   NumberOperator,
 } from "metabase-types/api";
+
+import { ChartSettingRadio } from "../ChartSettingRadio";
 
 import {
   BOOLEAN_OPERATIOR_NAMES,
@@ -43,10 +48,6 @@ interface RuleEditorProps {
   onDone: () => void;
   onRemove: () => void;
   canHighlightRow?: boolean;
-}
-
-interface SelectMultipleItemsReturned extends Array<string> {
-  changedItem: string;
 }
 
 export const RuleEditor = ({
@@ -79,7 +80,7 @@ export const RuleEditor = ({
     rule.operator !== "is-true" &&
     rule.operator !== "is-false";
 
-  const handleColumnChange = (columns: SelectMultipleItemsReturned) => {
+  const handleColumnChange = (columns: ColumnFormattingSetting["columns"]) => {
     const _cols = columns.map(name => _.findWhere(cols, { name }));
     const operatorUpdate: { operator?: BooleanOperator | NumberOperator } =
       columns.length === 1 && columns[0] === columns.changedItem
@@ -93,45 +94,36 @@ export const RuleEditor = ({
   return (
     <div>
       <h3 className={CS.mb1}>{t`Which columns should be affected?`}</h3>
-      <Select
+      <MultiSelect
+        comboboxProps={{ withinPortal: false }}
         value={rule.columns}
-        onChange={(e: { target: { value: SelectMultipleItemsReturned } }) =>
-          handleColumnChange(e.target.value)
-        }
-        isInitiallyOpen={rule.columns.length === 0}
+        onChange={handleColumnChange}
+        defaultDropdownOpened={rule.columns.length === 0}
         placeholder={t`Choose a column`}
-        multiple
-      >
-        {cols.map(col => (
-          <Option
-            key={col.name}
-            value={col.name}
-            disabled={
-              (isStringRule && (!isString(col) || isBoolean(col))) ||
-              (isNumericRule && !isNumeric(col)) ||
-              (isBooleanRule && !isBoolean(col))
-            }
-          >
-            {col.display_name}
-          </Option>
-        ))}
-      </Select>
+        data={cols.map(col => ({
+          value: col.name,
+          label: col.display_name,
+          disabled:
+            (isStringRule && (!isString(col) || isBoolean(col))) ||
+            (isNumericRule && !isNumeric(col)) ||
+            (isBooleanRule && !isBoolean(col)),
+        }))}
+      />
       {isNumericRule && (
         <div>
           <h3 className={cx(CS.mt3, CS.mb1)}>{t`Formatting style`}</h3>
-          <Radio
-            value={rule.type}
+          <ChartSettingRadio
             options={[
               { name: t`Single color`, value: "single" },
               { name: t`Color range`, value: "range" },
             ]}
+            value={rule.type}
             onChange={type =>
               onChange({
                 ...DEFAULTS_BY_TYPE[type],
                 columns: rule.columns,
               })
             }
-            vertical
           />
         </div>
       )}
@@ -145,46 +137,31 @@ export const RuleEditor = ({
             )}
           </h3>
           <Select
+            comboboxProps={{ withinPortal: false }}
             value={rule.operator}
-            onChange={(e: { target: { value: ColumnFormattingOperator } }) =>
-              onChange({ ...rule, operator: e.target.value })
-            }
-            buttonProps={{
-              "data-testid": "conditional-formatting-value-operator-button",
-            }}
-          >
-            {Object.entries({
-              ...COMMON_OPERATOR_NAMES,
-              ...(isBooleanRule
-                ? BOOLEAN_OPERATIOR_NAMES
-                : isNumericRule
-                  ? NUMBER_OPERATOR_NAMES
-                  : isStringRule
-                    ? STRING_OPERATOR_NAMES
-                    : {}),
-            }).map(([operator, operatorName]) => (
-              <Option key={operatorName} value={operator}>
-                {operatorName}
-              </Option>
-            ))}
-          </Select>
+            onChange={operator => onChange({ ...rule, operator })}
+            data={getOperatorOptions({
+              isBooleanRule,
+              isNumericRule,
+              isStringRule,
+            })}
+            data-testid="conditional-formatting-value-operator-button"
+          />
           {hasOperand && isNumericRule ? (
-            <NumericInput
+            <TextInputBlurChange
               data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
               type="number"
               value={rule.value}
-              onChange={(value: string | number) =>
-                onChange({ ...rule, value })
-              }
+              onBlurChange={e => onChange({ ...rule, value: e.target.value })}
               placeholder="0"
             />
           ) : hasOperand ? (
-            <Input
+            <TextInputBlurChange
               data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
               value={rule.value}
-              onChange={e => onChange({ ...rule, value: e.target.value })}
+              onBlurChange={e => onChange({ ...rule, value: e.target.value })}
               placeholder={t`Column value`}
             />
           ) : null}
@@ -196,6 +173,9 @@ export const RuleEditor = ({
             value={rule.color}
             colors={COLORS}
             onChange={color => onChange({ ...rule, color })}
+            popoverProps={{
+              withinPortal: false,
+            }}
           />
           {canHighlightRow && (
             <>
@@ -203,9 +183,14 @@ export const RuleEditor = ({
                 className={cx(CS.mt3, CS.mb1)}
               >{t`Highlight the whole row`}</h3>
 
-              <Toggle
-                value={rule.highlight_row}
-                onChange={highlight_row => onChange({ ...rule, highlight_row })}
+              <Switch
+                checked={rule.highlight_row}
+                onChange={event =>
+                  onChange({
+                    ...rule,
+                    highlight_row: event.currentTarget.checked,
+                  })
+                }
               />
             </>
           )}
@@ -222,7 +207,7 @@ export const RuleEditor = ({
             colorRanges={COLOR_RANGES}
           />
           <h3 className={cx(CS.mt3, CS.mb1)}>{t`Start the range at`}</h3>
-          <Radio
+          <ChartSettingRadio
             value={rule.min_type}
             onChange={min_type => onChange({ ...rule, min_type })}
             options={(rule.columns.length <= 1
@@ -235,18 +220,17 @@ export const RuleEditor = ({
                   },
                 ]
             ).concat([{ name: t`Custom value`, value: "custom" }])}
-            vertical
           />
           {rule.min_type === "custom" && (
-            <NumericInput
+            <NumberInput
               className={INPUT_CLASSNAME}
               type="number"
               value={rule.min_value}
-              onChange={(min_value: number) => onChange({ ...rule, min_value })}
+              onChange={min_value => onChange({ ...rule, min_value })}
             />
           )}
           <h3 className={cx(CS.mt3, CS.mb1)}>{t`End the range at`}</h3>
-          <Radio
+          <ChartSettingRadio
             value={rule.max_type}
             onChange={max_type => onChange({ ...rule, max_type })}
             options={(rule.columns.length <= 1
@@ -259,25 +243,24 @@ export const RuleEditor = ({
                   },
                 ]
             ).concat([{ name: t`Custom value`, value: "custom" }])}
-            vertical
           />
           {rule.max_type === "custom" && (
-            <NumericInput
+            <NumberInput
               className={INPUT_CLASSNAME}
               type="number"
               value={rule.max_value}
-              onChange={(max_value: number) => onChange({ ...rule, max_value })}
+              onChange={max_value => onChange({ ...rule, max_value })}
             />
           )}
         </div>
       ) : null}
       <div className={CS.mt4}>
         {rule.columns.length === 0 ? (
-          <Button primary onClick={onRemove}>
+          <Button variant="filled" onClick={onRemove}>
             {isNew ? t`Cancel` : t`Delete`}
           </Button>
         ) : (
-          <Button primary onClick={onDone}>
+          <Button variant="filled" onClick={onDone}>
             {isNew ? t`Add rule` : t`Update rule`}
           </Button>
         )}
@@ -285,3 +268,20 @@ export const RuleEditor = ({
     </div>
   );
 };
+
+const getOperatorOptions = (props: {
+  isBooleanRule: boolean;
+  isNumericRule: boolean;
+  isStringRule: boolean;
+}) =>
+  _.pairs({
+    ...COMMON_OPERATOR_NAMES,
+    ...match(props)
+      .with({ isBooleanRule: true }, () => BOOLEAN_OPERATIOR_NAMES)
+      .with({ isNumericRule: true }, () => NUMBER_OPERATOR_NAMES)
+      .with({ isStringRule: true }, () => STRING_OPERATOR_NAMES)
+      .otherwise(() => ({})),
+  }).map(([value, label]) => ({
+    value,
+    label,
+  }));
