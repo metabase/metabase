@@ -189,7 +189,12 @@ export const BaseChartSettings = ({
 
   return (
     <>
-      <Stack data-testid="chartsettings-sidebar" gap={0} {...stackProps}>
+      <Stack
+        data-testid="chartsettings-sidebar"
+        gap={0}
+        w="100%"
+        {...stackProps}
+      >
         {showSectionPicker && (
           <SectionContainer>
             <Radio
