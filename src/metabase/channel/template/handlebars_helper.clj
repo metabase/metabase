@@ -107,6 +107,11 @@
   [id _params _kparams _options]
   (urls/card-url id))
 
+(defhelper trash-url
+  "Return the URL to trash page."
+  [_ _params _kparams _options]
+  (urls/trash-url))
+
 (defhelper dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.
 

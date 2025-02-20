@@ -1,5 +1,4 @@
 import { pickEntity } from "./e2e-collection-helpers";
-import { focusNativeEditor } from "./e2e-native-editor-helpers";
 
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
@@ -11,50 +10,6 @@ export function visitAlias(alias) {
   cy.get(alias).then(url => {
     cy.visit(url);
   });
-}
-
-/**
- * Open native (SQL) editor and alias it.
- * @deprecated To avoid typing SQL, which is unreliable, use the helper startNewNativeQuestion
- *
- * @param {object} options
- * @param {string} [options.databaseName] - If there is more than one database, select the desired one by its name.
- * @param {string} [options.alias="editor"] - The alias that can be used later in the test as `cy.get("@" + alias)`.
- * @example
- * openNativeEditor().type("SELECT 123");
- * @example
- * openNativeEditor({ databaseName: "QA Postgres12" }).type("SELECT 123");
- */
-export function openNativeEditor({
-  databaseName,
-  alias = "editor",
-  fromCurrentPage,
-  newMenuItemTitle = "SQL query",
-} = {}) {
-  if (!fromCurrentPage) {
-    cy.visit("/");
-  }
-  cy.findByText("New").click();
-  cy.findByText(newMenuItemTitle).click();
-
-  // We are first loading databases to see if we should show the
-  // database selector or simply display the previously selected database
-  cy.findAllByTestId("loading-indicator").should("not.exist");
-
-  databaseName && cy.findByText(databaseName).click();
-  // At this point we have either manually selected a database or the app has
-  // knowedge about the previously used database so it will pre-select it.
-  // See: `last-used-native-database-id`.
-  //
-  // The source of many native editor flakes in the past was the page re-render
-  // that happens when the UI updates from showing the database selector to
-  // displaying the previously selected database.
-  //
-  // Explicitly waiting for the database selector to be gone should give tests a
-  // better chance at passing (until we get rid of this helper altogether)!
-  cy.findByText("Select a database").should("not.exist");
-
-  return focusNativeEditor().as(alias);
 }
 
 /**
@@ -103,8 +58,8 @@ export function interceptPromise(method, path) {
  * @param {Array.<Cypress.Chainable<any>>} commands - Cypress commands
  * @example
  * cypressWaitAll([
- *   cy.createQuestionAndAddToDashboard(firstQuery, 1),
- *   cy.createQuestionAndAddToDashboard(secondQuery, 1),
+ *   H.createQuestionAndAddToDashboard(firstQuery, 1),
+ *   H.createQuestionAndAddToDashboard(secondQuery, 1),
  * ]).then(() => {
  *   cy.visit(`/dashboard/1`);
  * });

@@ -50,46 +50,133 @@
                                          (meta/field-metadata :venues :longitude)
                                          {:north 10, :south -10, :east 20, :west -20}))))))
 
-(deftest ^:parallel update-lat-lon-filter-remove-existing-test
-  (testing "Remove existing filter(s) against this column. Don't remove ones from a different source"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-                    (lib/join (-> (lib/join-clause (meta/table-metadata :venues))
-                                  (lib/with-join-conditions [(lib/= (meta/field-metadata :venues :id)
-                                                                    (-> (meta/field-metadata :venues :id)
-                                                                        (lib/with-join-alias "V2")))])
-                                  (lib/with-join-alias "V2")))
-                    (lib/filter (lib/= (meta/field-metadata :venues :latitude) 1))
-                    (lib/filter (lib/= (meta/field-metadata :venues :longitude) 2))
-                    (lib/filter (lib/= (lib/with-join-alias (meta/field-metadata :venues :latitude) "V2") 4)))]
-      (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
-                                   [:inside
-                                    {}
-                                    [:field {} (meta/id :venues :latitude)]
-                                    [:field {} (meta/id :venues :longitude)]
-                                    10
-                                    -20
-                                    -10
-                                    20]]}]}
-              (lib/update-lat-lon-filter query
-                                         (meta/field-metadata :venues :latitude)
-                                         (meta/field-metadata :venues :longitude)
-                                         {:north 10, :south -10, :east 20, :west -20}))))))
-
-(deftest ^:parallel update-lat-lon-filter-fix-order-test
-  (testing "Fix lat/lon min/max if values are passed in backwards"
+(deftest ^:parallel update-lat-lon-filter-antimerdian-test
+  (testing "Add a new filter that crosses the antimeridian (metabase#41056)"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))]
-      (is (=? {:stages [{:filters [[:inside
+      (is (=? {:stages [{:filters [[:or
                                     {}
-                                    [:field {} (meta/id :venues :latitude)]
-                                    [:field {} (meta/id :venues :longitude)]
-                                    10
-                                    -20
-                                    -10
-                                    20]]}]}
+                                    [:inside
+                                     {}
+                                     [:field {} (meta/id :venues :latitude)]
+                                     [:field {} (meta/id :venues :longitude)]
+                                     10
+                                     179
+                                     -10
+                                     180]
+                                    [:inside
+                                     {}
+                                     [:field {} (meta/id :venues :latitude)]
+                                     [:field {} (meta/id :venues :longitude)]
+                                     10
+                                     -180
+                                     -10
+                                     -179]]]}]}
               (lib/update-lat-lon-filter query
                                          (meta/field-metadata :venues :latitude)
                                          (meta/field-metadata :venues :longitude)
-                                         {:north -10, :south 10, :east -20, :west 20}))))))
+                                         {:north 10, :south -10, :east -179, :west 179}))))))
+
+(deftest ^:parallel update-lat-lon-filter-remove-existing-test
+  (testing "Remove existing filter(s) against this column. Don't remove ones from a different source.\n"
+    (let [base-query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                         (lib/join (-> (lib/join-clause (meta/table-metadata :venues))
+                                       (lib/with-join-conditions [(lib/= (meta/field-metadata :venues :id)
+                                                                         (-> (meta/field-metadata :venues :id)
+                                                                             (lib/with-join-alias "V2")))])
+                                       (lib/with-join-alias "V2")))
+                         (lib/filter (lib/= (meta/field-metadata :venues :latitude) 1))
+                         (lib/filter (lib/= (meta/field-metadata :venues :longitude) 2))
+                         (lib/filter (lib/= (lib/with-join-alias (meta/field-metadata :venues :latitude) "V2") 4)))
+          query-lat-lon  (lib/update-lat-lon-filter base-query
+                                                    (meta/field-metadata :venues :latitude)
+                                                    (meta/field-metadata :venues :longitude)
+                                                    {:north 10, :south -10, :east 20, :west -20})]
+      (testing "First application of update-lat-lon-filter"
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
+                                     [:inside
+                                      {}
+                                      [:field {} (meta/id :venues :latitude)]
+                                      [:field {} (meta/id :venues :longitude)]
+                                      10
+                                      -20
+                                      -10
+                                      20]]}]}
+                query-lat-lon)))
+      (testing "Second application of update-lat-lon-filter"
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
+                                     [:inside
+                                      {}
+                                      [:field {} (meta/id :venues :latitude)]
+                                      [:field {} (meta/id :venues :longitude)]
+                                      11
+                                      -21
+                                      -11
+                                      21]]}]}
+                (lib/update-lat-lon-filter base-query
+                                           (meta/field-metadata :venues :latitude)
+                                           (meta/field-metadata :venues :longitude)
+                                           {:north 11, :south -11, :east 21, :west -21})))))))
+
+(deftest ^:parallel update-lat-lon-filter-remove-existing-antimerdian-test
+  (testing "Remove existing filter(s) that cross the antimerdian (metabase#41056).\n"
+    (let [base-query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                         (lib/join (-> (lib/join-clause (meta/table-metadata :venues))
+                                       (lib/with-join-conditions [(lib/= (meta/field-metadata :venues :id)
+                                                                         (-> (meta/field-metadata :venues :id)
+                                                                             (lib/with-join-alias "V2")))])
+                                       (lib/with-join-alias "V2")))
+                         (lib/filter (lib/= (meta/field-metadata :venues :latitude) 1))
+                         (lib/filter (lib/= (meta/field-metadata :venues :longitude) 2))
+                         (lib/filter (lib/= (lib/with-join-alias (meta/field-metadata :venues :latitude) "V2") 4)))
+          query-lat-lon  (lib/update-lat-lon-filter base-query
+                                                    (meta/field-metadata :venues :latitude)
+                                                    (meta/field-metadata :venues :longitude)
+                                                    {:north 10, :south -10, :east -170, :west 170})]
+      (testing "First application of update-lat-lon-filter (metabase#41056)"
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
+                                     [:or
+                                      {}
+                                      [:inside
+                                       {}
+                                       [:field {} (meta/id :venues :latitude)]
+                                       [:field {} (meta/id :venues :longitude)]
+                                       10
+                                       170
+                                       -10
+                                       180]
+                                      [:inside
+                                       {}
+                                       [:field {} (meta/id :venues :latitude)]
+                                       [:field {} (meta/id :venues :longitude)]
+                                       10
+                                       -180
+                                       -10
+                                       -170]]]}]}
+                query-lat-lon)))
+      (testing "Second application of update-lat-lon-filter (metabase#41056)"
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
+                                     [:or
+                                      {}
+                                      [:inside
+                                       {}
+                                       [:field {} (meta/id :venues :latitude)]
+                                       [:field {} (meta/id :venues :longitude)]
+                                       11
+                                       171
+                                       -11
+                                       180]
+                                      [:inside
+                                       {}
+                                       [:field {} (meta/id :venues :latitude)]
+                                       [:field {} (meta/id :venues :longitude)]
+                                       11
+                                       -180
+                                       -11
+                                       -171]]]}]}
+                (lib/update-lat-lon-filter base-query
+                                           (meta/field-metadata :venues :latitude)
+                                           (meta/field-metadata :venues :longitude)
+                                           {:north 11, :south -11, :east -171, :west 171})))))))
 
 (deftest ^:parallel update-temporal-filter-test
   (testing "Add a new filter -- no unit"
@@ -141,6 +228,33 @@
 
 (deftest ^:parallel update-temporal-filter-existing-breakout-change-unit-test
   (testing "Update an existing query with breakout and filter against this column; update the breakout unit"
+    (doseq [[table field field-type] [[:users    :last-login :type/DateTime]
+                                      [:products :created-at :type/DateTimeWithLocalTZ]]]
+      (testing (str field-type " column, specifically " table " " field)
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+                        (lib/breakout (-> (meta/field-metadata table field)
+                                          (lib/with-temporal-bucket :day)))
+                        (lib/filter (lib/= (-> (meta/field-metadata table field)
+                                               (lib/with-temporal-bucket :day))
+                                           "2024-01-02T15:00")))]
+          (is (=? {:stages [{:breakout [[:field
+                                         ;; `:day` should have been changed to `:hour`, because there aren't enough days
+                                         ;; between `2024-01-02` and `2024-01-03`
+                                         {:temporal-unit :hour}
+                                         (meta/id table field)]]
+                             :filters  [[:between
+                                         {}
+                                         [:field {} (meta/id table field)]
+                                         "2024-01-02"
+                                         "2024-01-03"]]}]}
+                  (lib/update-temporal-filter query
+                                              (-> (meta/field-metadata table field)
+                                                  (lib/with-temporal-bucket :day))
+                                              "2024-01-01"
+                                              "2024-01-03"))))))))
+
+(deftest ^:parallel update-temporal-filter-existing-breakout-date-stop-drill-down
+  (testing "Update an existing query with breakout and filter against this column; update the breakout unit"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
                     (lib/breakout (-> (meta/field-metadata :checkins :date)
                                       (lib/with-temporal-bucket :day)))
@@ -148,9 +262,9 @@
                                            (lib/with-temporal-bucket :day))
                                        "2024-01-02T15:00")))]
       (is (=? {:stages [{:breakout [[:field
-                                     ;; `:day` should have been changed to `:hour`, because there aren't enough days
+                                     ;; `:day` should not change to `:hour` for `:type/Date`
                                      ;; between `2024-01-02` and `2024-01-03`
-                                     {:temporal-unit :hour}
+                                     {:temporal-unit :day}
                                      (meta/id :checkins :date)]]
                          :filters  [[:between
                                      {}

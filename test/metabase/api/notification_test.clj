@@ -1,21 +1,19 @@
 (ns metabase.api.notification-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.models.collection :as collection]
    [metabase.models.notification :as models.notification]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :test-users-personal-collections))
+(use-fixtures :once (fixtures/initialize :test-users-personal-collections :notifications))
 
 (deftest get-notification-card-test
   (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel
@@ -40,7 +38,8 @@
                    :creator_id    (mt/user->id :crowberto)
                    :creator       {:email "crowberto@metabase.com"}
                    :payload_type  "notification/card"
-                   :payload       {:card_id (-> notification :payload :card_id)}
+                   :payload       {:card_id (-> notification :payload :card_id)
+                                   :card    {:id (-> notification :payload :card_id)}}
                    :subscriptions [{:notification_id notification-id
                                     :type            "notification-subscription/cron"
                                     :cron_schedule   "0 0 0 * * ?"}
@@ -99,7 +98,7 @@
           (is (=? (assoc notification :id (mt/malli=? int?))
                   (mt/user-http-request :crowberto :post 200 "notification" notification))))))))
 
-(defn- do-with-send-messages-sync!
+(defn do-with-send-messages-sync!
   [f]
   (let [orig-send-email! @#'messages/send-email!]
     (with-redefs [messages/send-email! (fn [& args]
@@ -115,8 +114,8 @@
     (notification.tu/with-channel-fixtures [:channel/email]
       (mt/with-temp [:model/Card {card-id :id} {:name "My Card"}]
         (doseq [[send_condition expected_text] [["has_result" "whenever this question has any results"]
-                                                #_["goal_above" "when this question meets its goal"]
-                                                #_["goal_below" "when this question goes below its goal"]]]
+                                                ["goal_above" "when this question meets its goal"]
+                                                ["goal_below" "when this question goes below its goal"]]]
           (let [notification {:payload_type  "notification/card"
                               :active        true
                               :payload       {:card_id card-id
@@ -129,25 +128,69 @@
                                                                :user_id (mt/user->id :crowberto)}
                                                               {:type    :notification-recipient/raw-value
                                                                :details {:value "ngoc@metabase.com"}}]}]}]
-            (let [[email] (notification.tu/with-mock-inbox-email!
-                            (with-send-messages-sync!
-                              (mt/user-http-request :crowberto :post 200 "notification" notification)))
-                  a-card-url (format "<a href=\"https://metabase.com/testmb/question/%d\">My Card</a>." card-id)]
+            (let [[added-email confirmation-email] (sort-by :subject
+                                                            (notification.tu/with-mock-inbox-email!
+                                                              (with-send-messages-sync!
+                                                                (mt/user-http-request :crowberto :post 200 "notification" notification))))
+                  a-card-url (format "<a href=\"https://testmb.com/question/%d\">My Card</a>." card-id)]
               (testing (format "send email with %s condition" send_condition)
-                (is (=? {:bcc     #{"rasta@metabase.com" "ngoc@metabase.com" "crowberto@metabase.com"}
-                         :subject "Crowberto Corv added you to an alert"
-                         :body    [{a-card-url true
-                                    expected_text true}]}
-                        (mt/summarize-multipart-single-email email
-                                                             (re-pattern a-card-url)
-                                                             (re-pattern expected_text))))))))))))
+                (testing "recipients will get you were added to a card email"
+                  (is (=? {:bcc     #{"rasta@metabase.com" "ngoc@metabase.com"}
+                           :subject "Crowberto Corv added you to an alert"
+                           :body    [{a-card-url true
+                                      expected_text true}]}
+                          (mt/summarize-multipart-single-email added-email
+                                                               (re-pattern a-card-url)
+                                                               (re-pattern expected_text)))))
+                (testing "creator will get confirmation email"
+                  (is (=? {:to      #{"crowberto@metabase.com"}
+                           :subject "You set up an alert"
+                           :body    [{a-card-url true
+                                      expected_text true}]}
+                          (mt/summarize-multipart-single-email confirmation-email
+                                                               (re-pattern a-card-url)
+                                                               (re-pattern expected_text)))))))))))))
+
+(deftest create-notification-audit-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [notification {:payload_type  "notification/card"
+                            :active        true
+                            :payload       {:card_id card-id}
+                            :subscriptions [{:type          "notification-subscription/cron"
+                                             :cron_schedule "0 0 0 * * ?"}]
+                            :handlers      [{:channel_type "channel/email"
+                                             :recipients   [{:type    "notification-recipient/user"
+                                                             :user_id  (mt/user->id :rasta)}]}]}]
+          (testing "creating a notification publishes an event/notification-create event"
+            (let [created-notification (mt/user-http-request :crowberto :post 200 "notification" notification)]
+              (is (=? {:topic :notification-create
+                       :user_id (mt/user->id :crowberto)
+                       :model "Notification"
+                       :model_id (:id created-notification)
+                       :details {:id            (:id created-notification)
+                                 :active        true
+                                 :creator_id    (mt/user->id :crowberto)
+                                 :payload_id    (mt/malli=? int?)
+                                 :payload_type  "notification/card"
+                                 :subscriptions [{:notification_id (:id created-notification)
+                                                  :type "notification-subscription/cron"
+                                                  :event_name nil
+                                                  :cron_schedule "0 0 0 * * ?"}]
+                                 :handlers [{:recipients [{:id (mt/malli=? int?)
+                                                           :type "notification-recipient/user"
+                                                           :user_id (mt/user->id :rasta)
+                                                           :permissions_group_id nil
+                                                           :details nil}]}]}}
+                      (mt/latest-audit-log-entry))))))))))
 
 (deftest create-notification-error-test
   (testing "require auth"
     (is (= "Unauthenticated" (mt/client :post 401 "notification"))))
 
   (testing "card notification requires a card_id"
-    (is (=? {:specific-errors {:body {:payload {:card_id ["missing required key, received: nil"]}}}}
+    (is (=? {:specific-errors {:payload {:card_id ["missing required key, received: nil"]}}}
             (mt/user-http-request :crowberto :post 400 "notification" {:payload      {}
                                                                        :payload_type "notification/card"}))))
 
@@ -203,13 +246,12 @@
                 existing-user-recipient (m/find-first #(= "notification-recipient/user" (:type %))
                                                       (:recipients existing-email-handler))
                 new-recipients          [(assoc existing-user-recipient :user_id (mt/user->id :rasta))
-                                         {:id                      -1
-                                          :type                    :notification-recipient/group
+                                         {:type                    :notification-recipient/group
                                           :notification_handler_id (:id existing-email-handler)
-                                          :permissions_group_id    (:id (perms-group/admin))}]
+                                          :permissions_group_id    (:id (perms/admin-group))}]
                 new-handlers            [(assoc existing-email-handler :recipients new-recipients)]]
             (is (=? [{:type                "notification-recipient/group"
-                      :permissions_group_id (:id (perms-group/admin))}
+                      :permissions_group_id (:id (perms/admin-group))}
                      {:type    "notification-recipient/user"
                       :user_id (mt/user->id :rasta)}]
                     (->> (update-notification (assoc @notification :handlers new-handlers))
@@ -220,11 +262,9 @@
                           :handlers (m/find-first #(= "channel/email" (:channel_type %))) :recipients))))))
 
         (testing "can add new handler"
-          (let [new-handler {:id              -1
-                             :notification_id notification-id
+          (let [new-handler {:notification_id notification-id
                              :channel_type    :channel/slack
-                             :recipients      [{:id      -1
-                                                :type    :notification-recipient/user
+                             :recipients      [{:type    :notification-recipient/user
                                                 :user_id (mt/user->id :rasta)}]}
                 new-handlers (conj (:handlers @notification) new-handler)]
             (is (=? {:channel_type "channel/slack"
@@ -232,6 +272,36 @@
                                      :user_id (mt/user->id :rasta)}]}
                     (->> (update-notification (assoc @notification :handlers new-handlers))
                          :handlers (m/find-first #(= "channel/slack" (:channel_type %))))))))))))
+
+(deftest update-notification-audit-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-premium-features #{:audit-app}
+      (notification.tu/with-card-notification
+        [notification {:notification {:creator_id (mt/user->id :rasta)}
+                       :handlers     [{:channel_type "channel/email"
+                                       :recipients   [{:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :lucky)}]}]}]
+        (mt/user-http-request
+         :crowberto :put 200
+         (format "notification/%d" (:id notification))
+         (assoc notification :active false
+                :subscriptions [{:id            -1
+                                 :notification_id (:id notification)
+                                 :type          "notification-subscription/cron"
+                                 :cron_schedule "0 0 0 * * ?"}]))
+        (testing "updating a notification publishes an event/notification-update event"
+          (is (= {:topic :notification-update
+                  :user_id (mt/user->id :crowberto)
+                  :model "Notification"
+                  :model_id (:id notification)
+                  :details {:previous {:subscriptions []
+                                       :active true}
+                            :new      {:subscriptions [{:notification_id (:id notification)
+                                                        :type "notification-subscription/cron"
+                                                        :event_name nil
+                                                        :cron_schedule "0 0 0 * * ?"}]
+                                       :active false}}}
+                 (mt/latest-audit-log-entry))))))))
 
 (deftest update-notification-error-test
   (testing "require auth"
@@ -244,7 +314,7 @@
                                   :payload      {:card_id 1}
                                   :payload_type "notification/card"}))))
   (testing "400 on invalid payload"
-    (is (=? {:specific-errors {:body {:payload {:card_id ["missing required key, received: nil"]}}}}
+    (is (=? {:specific-errors {:payload {:card_id ["missing required key, received: nil"]}}}
             (mt/user-http-request :crowberto :put 400 "notification/1" {:creator_id   (mt/user->id :crowberto)
                                                                         :payload      {}
                                                                         :payload_type "notification/card"})))))
@@ -282,40 +352,35 @@
                                  (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification))
                                                        {:handler_ids handler-ids}))))))))))))
 
-(defn- strip-keys
-  [x to-remove-keys]
-  (walk/postwalk
-   (fn [x]
-     (if (map? x)
-       (apply dissoc x to-remove-keys)
-       x))
-   x))
-
 (deftest send-unsaved-notification-api-test
   (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
                                                        :details {:url         "https://metabase.com/testhttp"
-                                                                 :auth-method "none"}}]
+                                                                 :auth-method "none"}}
+                 :model/Card    {card-id :id}         {:dataset_query (mt/mbql-query products {:aggregation [[:count]]
+                                                                                               :breakout    [$category]})}]
     (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
-      (notification.tu/with-card-notification
-        [notification {:handlers [{:channel_type :channel/email
-                                   :recipients   [{:type    :notification-recipient/user
-                                                   :user_id (mt/user->id :crowberto)}]}
-                                  {:channel_type :channel/slack
-                                   :recipients   [{:type    :notification-recipient/raw-value
-                                                   :details {:value "#general"}}]}
-                                  {:channel_type :channel/http
-                                   :channel_id   http-channel-id}]}]
-        ;; this test only check that channel will send, the content are tested in [[metabase.notification.payload.impl.card-test]]
-        (testing "send to all handlers"
-          (is (=? {:channel/email [{:message    (mt/malli=? some?)
-                                    :recipients ["crowberto@metabase.com"]}]
-                   :channel/slack [{:attachments (mt/malli=? some?)
-                                    :channel-id  "#general"}]
-                   :channel/http  [{:body (mt/malli=? some?)}]}
-                  (notification.tu/with-captured-channel-send!
-                    (mt/user-http-request :crowberto :post 204 "notification/send" (strip-keys notification [:id :created_at :updated_at]))))))))))
-
-;; Permission tests
+      (testing "send to all handlers"
+        (is (=? {:channel/email [{:message    (mt/malli=? some?)
+                                  :recipients ["crowberto@metabase.com"]}]
+                 :channel/slack [{:attachments (mt/malli=? some?)
+                                  :channel-id  "#general"}]
+                 :channel/http  [{:body (mt/malli=? some?)}]}
+                (notification.tu/with-captured-channel-send!
+                  (mt/user-http-request :crowberto :post 204 "notification/send"
+                                        {:handlers [{:channel_type :channel/email
+                                                     :recipients   [{:type    :notification-recipient/user
+                                                                     :user_id (mt/user->id :crowberto)}]}
+                                                    {:channel_type :channel/slack
+                                                     :recipients   [{:type    :notification-recipient/raw-value
+                                                                     :details {:value "#general"}}]}
+                                                    {:channel_type :channel/http
+                                                     :channel_id   http-channel-id}]
+                                         :payload_type :notification/card
+                                         :payload      {:card_id card-id
+                                                        :send_condition :has_result
+                                                        :send_once false}
+                                         :subscriptions [{:type          :notification-subscription/cron
+                                                          :cron_schedule "0 0 0 * * ?"}]}))))))))
 
 (deftest get-notification-permissions-test
   (mt/with-temp
@@ -354,18 +419,18 @@
       (testing "other than that no one can view"
         (get-notification :lucky 403)))))
 
-(defmacro with-disabled-subscriptions-permissions
+(defmacro ^:private with-disabled-subscriptions-permissions!
   [& body]
   `(try
-     (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
+     (perms/revoke-application-permissions! (perms/all-users-group) :subscription)
      ~@body
      (finally
-       (perms/grant-application-permissions! (perms-group/all-users) :subscription))))
+       (perms/grant-application-permissions! (perms/all-users-group) :subscription))))
 
 (deftest create-card-notification-permissions-test
   (mt/with-model-cleanup [:model/Notification]
     (binding [collection/*allow-deleting-personal-collections* true]
-      (with-disabled-subscriptions-permissions
+      (with-disabled-subscriptions-permissions!
         (mt/with-user-in-groups [group {:name "test notification perm"}
                                  user  [group]]
           (mt/with-temp
@@ -436,13 +501,13 @@
 
             (mt/when-ee-evailable
              ;; change notification's creator to user for easy of testing
-             (with-disabled-subscriptions-permissions
+             (with-disabled-subscriptions-permissions!
                (try
                  (change-notification-creator (:id user))
                  (move-card-collection (:id user))
                  (mt/with-premium-features #{:advanced-permissions}
                    (testing "owners won't be able to update without subscription permissions"
-                     (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
+                     (perms/revoke-application-permissions! (perms/all-users-group) :subscription)
                      (perms/revoke-application-permissions! group :subscription)
                      (update! (:id user) 403))
                    (testing "owners can update with subscription permissions"
@@ -508,7 +573,7 @@
                 (create-notification! :rasta 403))
 
               (mt/when-ee-evailable
-               (with-disabled-subscriptions-permissions
+               (with-disabled-subscriptions-permissions!
                  (mt/with-premium-features #{:advanced-permissions}
                    (testing "when advanced subscription permissions is enabled and users can read the card"
                      (testing "can't send if don't have subscription permissions"
@@ -715,7 +780,7 @@
                              (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :recipients))]
       (testing "creator can unsubscribe themselves"
         (unsbuscribe
-         :crowberto 200
+         :crowberto 204
          (fn [noti]
            (is (=?
                 [{:type    :notification-recipient/user
@@ -724,7 +789,7 @@
 
       (testing "recipient can unsubscribe themselves"
         (unsbuscribe
-         :lucky 200
+         :lucky 204
          (fn [noti]
            (is (=?
                 [{:type    :notification-recipient/user
@@ -761,7 +826,7 @@
                                                                                    :recipients   [{:type    :notification-recipient/user
                                                                                                    :user_id (mt/user->id :lucky)}]}]}]
               ;; Unsubscribe from first notification
-              (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))
+              (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))
 
               ;; Check first notification has no recipients
               ;; First notification should have no recipients
@@ -783,8 +848,8 @@
                                                                                                      :user_id (mt/user->id :lucky)}]}]}]
           (let [[email] (notification.tu/with-mock-inbox-email!
                           (with-send-messages-sync!
-                            (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))))
-                a-href (format "<a href=\"https://metabase.com/testmb/question/%d\">My Card</a>."
+                            (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
+                a-href (format "<a href=\"https://testmb.com/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
             (testing "sends unsubscribe confirmation email"
               (is (=? {:bcc     #{"lucky@metabase.com"}
@@ -794,6 +859,23 @@
                       (mt/summarize-multipart-single-email email
                                                            #"You’re no longer receiving alerts about"
                                                            (re-pattern a-href)))))))))))
+
+(deftest unsubscribe-notification-audit-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-premium-features #{:audit-app}
+      (notification.tu/with-card-notification
+        [notification {:notification {:creator_id (mt/user->id :rasta)}
+                       :handlers     [{:channel_type "channel/email"
+                                       :recipients   [{:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :lucky)}]}]}]
+        (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" (:id notification)))
+        (testing "unsubscribing from a notification publishes an event/notification-unsubscribe event"
+          (is (= {:topic    :notification-unsubscribe
+                  :user_id  (mt/user->id :lucky)
+                  :model    "Notification"
+                  :model_id (:id notification)
+                  :details  {}}
+                 (mt/latest-audit-log-entry))))))))
 
 (deftest notify-notification-updates-email-test
   (testing "notify-notification-updates! sends appropriate emails based on notification changes"
@@ -807,7 +889,7 @@
                                                                 {:type    :notification-recipient/raw-value
                                                                  :details {:value "test@metabase.com"}}]}]}
               make-card-url-tag (fn [notification]
-                                  (format "<a href=\"https://metabase.com/testmb/question/%d\">Test Card</a>."
+                                  (format "<a href=\"https://testmb.com/question/%d\">Test Card</a>."
                                           (-> notification :payload :card_id)))
               update-notification! (fn [noti-id notification updates]
                                      (notification.tu/with-mock-inbox-email!
@@ -845,12 +927,10 @@
             (notification.tu/with-card-notification
               [{noti-id :id :as notification} base-notification]
               (let [handler-id (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :id)
-                    updated-recipients [{:id                      -1
-                                         :notification_handler_id handler-id
+                    updated-recipients [{:notification_handler_id handler-id
                                          :type                    :notification-recipient/user
                                          :user_id                 (mt/user->id :lucky)}
-                                        {:id                      -2
-                                         :notification_handler_id handler-id
+                                        {:notification_handler_id handler-id
                                          :type                    :notification-recipient/raw-value
                                          :details                 {:value "new@metabase.com"}}]
                     [removed-email added-email] (update-notification! noti-id notification

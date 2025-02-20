@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const SANKEY_QUERY = `
@@ -53,7 +53,7 @@ describe("scenarios > visualizations > sankey", () => {
     H.echartsContainer().findByText("Social Media");
 
     // Edit viz settings
-    H.openVizSettingsSidebar({ isSidebarOpen: true });
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar")
       .as("settings-sidebar")
       .findByText("Display")

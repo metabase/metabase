@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -130,7 +130,7 @@ H.describeWithSnowplow("extract action", () => {
       });
 
       it("saved question with viz settings", () => {
-        cy.createQuestion(
+        H.createQuestion(
           {
             query: {
               "source-table": ORDERS_ID,
@@ -177,7 +177,7 @@ H.describeWithSnowplow("extract action", () => {
     });
 
     it("should add an expression based on a breakout column", () => {
-      cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
+      H.createQuestion(DATE_QUESTION, { visitQuestion: true });
       extractColumnAndCheck({
         column: "Created At: Month",
         option: "Month of year",
@@ -187,7 +187,7 @@ H.describeWithSnowplow("extract action", () => {
     });
 
     it("should add an expression based on an aggregation column", () => {
-      cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
+      H.createQuestion(DATE_QUESTION, { visitQuestion: true });
       extractColumnAndCheck({
         column: "Min of Created At",
         option: "Year",
@@ -237,7 +237,7 @@ H.describeWithSnowplow("extract action", () => {
         column: "Created At",
         option: "Tag der Woche",
         value: "Dienstag",
-        extraction: "Extract day, month…",
+        extraction: "Auszug Tag, Monat...",
       });
     });
   });
@@ -311,6 +311,7 @@ function extractColumnAndCheck({
   H.popover().findByText(option).click();
   cy.wait(`@${requestAlias}`);
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByRole("columnheader")
     .last()
     .should("have.text", newColumn)

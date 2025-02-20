@@ -124,6 +124,14 @@
   :encryption :when-encryption-key-set
   :feature    :test-feature)
 
+(defsetting test-setting-that-doesnt-allow-env
+  "Setting to test that a setting can be configured to disallow setting it via an environment variable."
+  :can-read-from-env? false
+  :visibility :internal
+  :type :string
+  :encryption :no
+  :default "the default value")
+
 ;; ## HELPER FUNCTIONS
 
 (defn db-fetch-setting
@@ -1603,3 +1611,12 @@
     (is (= :no (:encryption (setting/resolve-setting :test-boolean-setting)))))
   (testing "Boolean settings can be encrypted"
     (is (= :when-encryption-key-set (:encryption (setting/resolve-setting :test-boolean-encrypted-setting))))))
+
+(deftest settings-can-disallow-being-set-via-env-vars
+  (test-setting-that-doesnt-allow-env! nil)
+  (is (= "the default value" (test-setting-that-doesnt-allow-env)))
+  (with-redefs [env/env {:mb-test-setting-that-doesnt-allow-env "doesn't work"}]
+    (is (= "the default value" (test-setting-that-doesnt-allow-env))))
+  (testing "You can set them normally though"
+    (test-setting-that-doesnt-allow-env! "this works")
+    (is (= "this works" (test-setting-that-doesnt-allow-env)))))

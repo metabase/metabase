@@ -1,24 +1,22 @@
 (ns metabase.pulse.send-test
   "These are mostly Alerts test, dashboard subscriptions could be found in
   [[metabase.dashboard-subscription-test]]."
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.channel.email :as email]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
-   [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse :as models.pulse]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.core :as pulse]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
@@ -28,6 +26,12 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each
+  (fn warn-possible-rebuild
+    [thunk]
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n\n"
+      (thunk))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Util Fns & Macros                                                |
@@ -132,8 +136,8 @@
                       (f {:card-id card-id, :pulse-id pulse-id}
                          ((keyword "channel" (name channel-type))
                           (pulse.test-util/with-captured-channel-send-messages!
-                            (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
-                              (pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
+                            (mt/with-temporary-setting-values [site-url "https://testmb.com"]
+                              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
                     (thunk []
                       (if fixture
                         (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
@@ -197,7 +201,7 @@
                 {:title           pulse.test-util/card-name
                  :rendered-info   {:attachments false
                                    :content     true}
-                 :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                 :title_link      (str "https://testmb.com/question/" card-id)
                  :attachment-name "image.png"
                  :channel-id      "FOO"
                  :fallback        pulse.test-util/card-name}]}
@@ -236,7 +240,7 @@
               (is (= (rasta-alert-message {:message [{pulse.test-util/card-name                            true
                                                       "More results have been included"                    false
                                                       "ID</th>"                                            true
-                                                      "<a href=\\\"https://metabase.com/testmb/dashboard/" false}
+                                                      "<a href=\\\"https://testmb.com/dashboard/" false}
                                                      pulse.test-util/png-attachment
                                                      pulse.test-util/csv-attachment]})
                      (mt/summarize-multipart-single-email
@@ -244,7 +248,7 @@
                       test-card-regex
                       #"More results have been included"
                       #"ID</th>"
-                      #"<a href=\"https://metabase.com/testmb/dashboard/"))))
+                      #"<a href=\"https://testmb.com/dashboard/"))))
 
             :slack
             (fn [{:keys [card-id]} [pulse-results]]
@@ -257,7 +261,7 @@
                            {:title           pulse.test-util/card-name
                             :rendered-info   {:attachments false
                                               :content     true}
-                            :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                            :title_link      (str "https://testmb.com/question/" card-id)
                             :attachment-name "image.png"
                             :channel-id      "FOO"
                             :fallback        pulse.test-util/card-name}]}
@@ -398,7 +402,7 @@
                                       {:title           pulse.test-util/card-name
                                        :rendered-info   {:attachments false
                                                          :content     true}
-                                       :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                                       :title_link      (str "https://testmb.com/question/" card-id)
                                        :attachment-name "image.png"
                                        :channel-id      "FOO"
                                        :fallback        pulse.test-util/card-name}]}
@@ -430,37 +434,6 @@
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"More results have been included"
                                                             #"ID</th>"))))}})))
-
-(deftest alert-first-run-only-test
-  (tests! {:pulse {:alert_condition "rows", :alert_first_only true}}
-          "first run only with data"
-          {:card
-           (merge
-            (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-            {:visualization_settings {:graph.dimensions ["DATE"]
-                                      :graph.metrics    ["count"]}})
-
-           :assert
-           {:email
-            (fn [{pulse-id :pulse-id} [email]]
-              (is (= (rasta-alert-message)
-                     (mt/summarize-multipart-single-email email test-card-regex))) ;#"stop sending you alerts")))
-              (testing "Pulse should be deleted"
-                (is (= false
-                       (t2/exists? :model/Pulse :id pulse-id)))))}}
-
-          "first run alert with no data"
-          {:card
-           (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
-                                                 :breakout [!day.date]})
-
-           :assert
-           {:email
-            (fn [{:keys [pulse-id]} emails]
-              (is (empty? emails))
-              (testing "Pulse should still exist"
-                (is (= true
-                       (t2/exists? :model/Pulse :id pulse-id)))))}}))
 
 (deftest above-goal-alert-test
   (testing "above goal alert"
@@ -845,41 +818,6 @@
                                                           [:message :string]
                                                           [:timestamp :string]]])}}
                     (latest-task-history-entry :channel-send)))))))))
-
-(deftest alerts-do-not-remove-user-metadata
-  (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."
-    (mt/dataset test-data
-      (let [q               {:database (mt/id)
-                             :type     :query
-                             :query
-                             {:source-table (mt/id :reviews)
-                              :aggregation  [[:count]]}}
-            result-metadata [{:base_type         :type/Integer
-                              :name              "count"
-                              :display_name      "ASDF Count"
-                              :description       "ASDF Some description"
-                              :semantic_type     :type/Quantity
-                              :source            :aggregation
-                              :field_ref         [:aggregation 0]
-                              :aggregation_index 0}]]
-        (mt/with-temp [:model/Card {card-id :id} {:display         :table
-                                                  :dataset_query   q
-                                                  :type            :model
-                                                  :result_metadata result-metadata}
-                       :model/Pulse {pulse-id :id :as p} {:name "Test Pulse" :alert_condition "rows"}
-                       :model/PulseCard _ {:pulse_id pulse-id
-                                           :card_id  card-id}
-                       :model/PulseChannel _ {:channel_type :email
-                                              :pulse_id     pulse-id
-                                              :enabled      true}]
-          (pulse.send/send-pulse! p)
-          (testing "The custom columns defined in the result-metadata (:display_name and :description) are still present after the alert has run."
-            (is (= (-> result-metadata
-                       first
-                       (select-keys [:display_name :description]))
-                   (t2/select-one-fn
-                    (comp #(select-keys % [:display_name :description]) first :result_metadata)
-                    :model/Card :id card-id)))))))))
 
 (deftest partial-channel-failure-will-deliver-all-that-success-test
   (testing "if a pulse is set to send to multiple channels and one of them fail, the other channels should still receive the message"

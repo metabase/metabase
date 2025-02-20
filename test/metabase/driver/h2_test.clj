@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase.actions.error :as actions.error]
    [metabase.config :as config]
-   [metabase.core :as mbc]
+   [metabase.core.core :as mbc]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
@@ -208,6 +208,16 @@
                       "ORDER BY ATTEMPTS.DATE ASC")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
+(deftest ^:parallel do-not-cast-to-date-binned-by-week-to-datetime
+  (mt/test-driver :h2
+    (testing "Don't cast date binned by week"
+      (mt/dataset attempted-murders
+        (let [query (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :breakout    [!week.date]})
+              compiled (some-> (qp.compile/compile query) :query pretty-sql)]
+          (is (not (re-find #"CAST\([^)]+\s+AS\s+datetime\)" compiled))))))))
+
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
@@ -273,7 +283,9 @@
       "table orders"
       "call 1 + 1"
       ;; Note this passes the check, but will fail on execution
-      "update venues set name = 'bill'; some query that can't be parsed;"))
+      "update venues set name = 'bill'; some query that can't be parsed;")))
+
+(deftest ^:parallel check-read-only-test-2
   (testing "not read only statements should fail"
     (are [query] (thrown?
                   clojure.lang.ExceptionInfo
@@ -304,7 +316,11 @@
             (is (=? {:message "Error executing Action: DDL commands are not allowed to be used with H2."}
                     (mt/user-http-request :crowberto
                                           :post 500
-                                          (format "action/%s/execute" action-id)))))))
+                                          (format "action/%s/execute" action-id))))))))))
+
+(deftest disallowed-commands-in-action-test-2
+  (mt/test-driver :h2
+    (mt/with-actions-test-data-and-actions-enabled
       (testing "Should be able to execute query actions with allowed commands"
         (let [sql "update categories set name = 'stomp' where id = 1; update categories set name = 'stomp' where id = 2;"]
           (mt/with-actions [{:keys [action-id]} {:type :query
@@ -343,7 +359,7 @@
             (t2/delete! :model/Database :is_audit true)
             (when original-audit-db (mbc/ensure-audit-db-installed!))))))))
 
-;; API tests are in [[metabase.api.action-test]]
+;; API tests are in [[metabase.actions.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (= {:type    :metabase.actions.error/violate-not-null-constraint

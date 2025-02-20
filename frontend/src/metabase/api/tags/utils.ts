@@ -20,6 +20,7 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
+  GetUserKeyValueRequest,
   Group,
   GroupListQuery,
   ModelCacheRefreshStatus,
@@ -135,6 +136,10 @@ export function provideApiKeyTags(apiKey: ApiKey): TagDescription<TagType>[] {
   return [idTag("api-key", apiKey.id)];
 }
 
+export function provideAutocompleteSuggestionListTags(): TagDescription<TagType>[] {
+  return [listTag("table"), listTag("field")];
+}
+
 export function provideBookmarkListTags(
   bookmarks: Bookmark[],
 ): TagDescription<TagType>[] {
@@ -148,6 +153,10 @@ export function provideBookmarkTags(
     idTag("bookmark", bookmark.id),
     idTag(TAG_TYPE_MAPPING[bookmark.type], bookmark.item_id),
   ];
+}
+
+export function provideCardAutocompleteSuggestionListTags(): TagDescription<TagType>[] {
+  return [listTag("card")];
 }
 
 export function provideCardListTags(cards: Card[]): TagDescription<TagType>[] {
@@ -409,7 +418,7 @@ export function providePersistedInfoTags(
 
 /**
  * We have to differentiate between the `persisted-info` and `persisted-model` tags
- * because the model cache refresh lives on the card api `/api/card/model/:id/refresh`.
+ * because the model cache refresh lives on the card api `/api/persist/card/:id/refresh`.
  * That endpoint doesn't have information about the persisted info id, so we have to
  * map the model id to the `card_id` on the ModelCacheRefreshStatus.
  */
@@ -562,4 +571,11 @@ export function provideUserListTags(
 
 export function provideUserTags(user: UserInfo): TagDescription<TagType>[] {
   return [idTag("user", user.id)];
+}
+
+export function provideUserKeyValueTags({
+  namespace,
+  key,
+}: GetUserKeyValueRequest) {
+  return [{ type: "user-key-value" as const, id: `${namespace}#${key}` }];
 }

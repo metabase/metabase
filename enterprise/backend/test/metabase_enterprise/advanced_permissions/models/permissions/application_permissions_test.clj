@@ -2,8 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as g-perms]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.application-permissions-revision :as a-perm-revision]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -41,14 +42,16 @@
 
 (deftest application-permissions-update-graph!-test
   (testing "Grant successfully and increase revision"
-    (with-new-group-and-current-graph group-id current-graph
-      (let [new-graph     (assoc-in current-graph [:groups group-id] {:setting      :yes
-                                                                      :monitoring   :no
-                                                                      :subscription :no})
-            _             (g-perms/update-graph! new-graph)
-            updated-graph (g-perms/graph)]
-        (is (partial= (:groups new-graph) (:groups updated-graph)))
-        (is (= (inc (:revision current-graph)) (:revision updated-graph))))))
+    (let [initial-revision (a-perm-revision/latest-id)]
+      (with-new-group-and-current-graph group-id current-graph
+        (let [new-graph (assoc-in current-graph [:groups group-id] {:setting      :yes
+                                                                    :monitoring   :no
+                                                                    :subscription :no})
+              _ (g-perms/update-graph! new-graph)
+              updated-graph (g-perms/graph)]
+          (is (partial= (:groups new-graph) (:groups updated-graph)))
+          (is (= (inc (:revision current-graph)) (:revision updated-graph)))
+          (is (< initial-revision (a-perm-revision/latest-id)))))))
 
   (testing "Revoke successfully and increase revision"
     (with-new-group-and-current-graph group-id current-graph

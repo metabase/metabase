@@ -13,15 +13,15 @@
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed.common :as api.embed.common]
-   [metabase.api.pivots :as api.pivots]
-   [metabase.api.public-test :as public-test]
    [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filer-test]
+   [metabase.public-sharing.api-test :as public-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
+   [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -545,11 +545,12 @@
    :embedding_params {:date :enabled}})
 
 (deftest csv-reports-count
-  (testing "make sure CSV (etc.) downloads take editable params into account (#6407)"
-    (with-embedding-enabled-and-new-secret-key!
-      (mt/with-temp [:model/Card card (card-with-date-field-filter)]
-        (is (= "count\n107\n"
-               (client/client :get 200 (str (card-query-url card "/csv") "&date=Q1-2014"))))))))
+  (testing "GET /api/embed/card/:token/query/:export-format"
+    (testing "make sure CSV (etc.) downloads take editable params into account (#6407)"
+      (with-embedding-enabled-and-new-secret-key!
+        (mt/with-temp [:model/Card card (card-with-date-field-filter)]
+          (is (= "count\n107\n"
+                 (client/client :get 200 (str (card-query-url card "/csv") "&date=Q1-2014")))))))))
 
 (deftest csv-forward-url-test
   (mt/test-helpers-set-global-values!
@@ -1951,7 +1952,7 @@
     (is (= {eid {:id id :type :card :status :ok}}
            (api.embed.common/model->entity-ids->ids {:card [eid]})))))
 
-(deftest entity-id-card-translations-test
+(deftest ^:parallel entity-id-card-translations-test
   (mt/with-temp
     [:model/Card {id   :id eid   :entity_id} {}
      :model/Card {id-0 :id eid-0 :entity_id} {}

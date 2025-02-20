@@ -8,7 +8,6 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -24,12 +23,13 @@
           (apply f args))))
 
 (deftest ^:parallel general-filter-clause-test
-  (let [q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))
+  (let [q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues (lib.tu/mock-cards)))
         venues-category-id-metadata (meta/field-metadata :venues :category-id)
         venues-name-metadata        (meta/field-metadata :venues :name)
         venues-latitude-metadata    (meta/field-metadata :venues :latitude)
         venues-longitude-metadata   (meta/field-metadata :venues :longitude)
-        categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
+        categories-id-metadata      (m/find-first #(= (:id %) (meta/id :categories :id))
+                                                  (lib/visible-columns q2))
         checkins-date-metadata      (meta/field-metadata :checkins :date)]
     (testing "comparisons"
       (doseq [[op f] [[:=  lib/=]
@@ -42,7 +42,10 @@
          [op
           {:lib/uuid string?}
           [:field {:lib/uuid string?} (meta/id :venues :category-id)]
-          [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
+          [:field {:base-type    :type/BigInteger
+                   :lib/uuid     string?
+                   :source-field (meta/id :venues :category-id)}
+           (meta/id :categories :id)]]
          f
          venues-category-id-metadata
          categories-id-metadata)))
@@ -53,7 +56,10 @@
         {:lib/uuid string?}
         [:field {:lib/uuid string?} (meta/id :venues :category-id)]
         42
-        [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
+        [:field {:base-type    :type/BigInteger
+                 :lib/uuid     string?
+                 :source-field (meta/id :venues :category-id)}
+         (meta/id :categories :id)]]
        lib/between
        venues-category-id-metadata
        42
@@ -118,7 +124,7 @@
 
 (deftest ^:parallel filter-test
   (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
-        q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))
+        q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues (lib.tu/mock-cards)))
         venues-category-id-metadata (meta/field-metadata :venues :category-id)
         original-filter
         [:between
@@ -214,7 +220,7 @@
   (testing "#29947"
     (is (= "Name ends with t"
            (lib/display-name
-            lib.tu/venues-query
+            (lib.tu/venues-query)
             [:ends-with
              {:lib/uuid "953597df-a96d-4453-a57b-665e845abc69"}
              [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} (meta/id :venues :name)]
@@ -285,7 +291,7 @@
 
 (deftest ^:parallel filterable-columns-excludes-offset-expressions-test
   (testing "filterable-columns should exclude expressions which contain :offset"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/order-by (meta/field-metadata :venues :id) :asc)
                     (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
                     (lib/expression "Nested Offset"
@@ -313,7 +319,7 @@
                 (lib/filter new-filter)
                 lib/filters))))
   (testing "standalone clause"
-    (let [query lib.tu/venues-query
+    (let [query (lib.tu/venues-query)
           [id-col] (lib/filterable-columns query)
           [eq-op] (lib/filterable-column-operators id-col)
           filter-clause (lib/filter-clause eq-op id-col 123)]
@@ -466,7 +472,7 @@
                (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL (first filter-clauses))))))))))
 
 (deftest ^:parallel find-filterable-column-for-legacy-ref-test
-  (let [query (lib/filter lib.tu/venues-query (lib/= (meta/field-metadata :venues :name) "BBQ"))]
+  (let [query (lib/filter (lib.tu/venues-query) (lib/= (meta/field-metadata :venues :name) "BBQ"))]
     (are [legacy-ref] (=? {:name      "NAME"
                            :id        (meta/id :venues :name)
                            :operators seq}
@@ -738,6 +744,21 @@
       {:clause [:<= tax 1], :name "Tax is less than or equal to 1"}
       {:clause [:is-null tax], :name "Tax is empty"}
       {:clause [:not-null tax], :name "Tax is not empty"}])))
+
+(deftest ^:parallel bigint-frontend-filter-display-names-test
+  (let [id        (meta/field-metadata :orders :id)
+        pos-value "9223372036854775808"
+        neg-value "-9223372036854775809"]
+    (check-display-names
+     [{:clause [:= id pos-value], :name (str "ID is " pos-value)}
+      {:clause [:!= id pos-value], :name (str "ID is not " pos-value)}
+      {:clause [:> id pos-value], :name (str "ID is greater than " pos-value)}
+      {:clause [:>= id pos-value], :name (str "ID is greater than or equal to " pos-value)}
+      {:clause [:< id pos-value], :name (str "ID is less than " pos-value)}
+      {:clause [:<= id pos-value], :name (str "ID is less than or equal to " pos-value)}
+      {:clause [:between id 0 pos-value], :name (str "ID is between 0 and " pos-value)}
+      {:clause [:between id neg-value 0], :name (str "ID is between " neg-value " and 0")}
+      {:clause [:between id neg-value pos-value], :name (str "ID is " neg-value " – " pos-value)}])))
 
 (deftest ^:parallel relative-datetime-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]

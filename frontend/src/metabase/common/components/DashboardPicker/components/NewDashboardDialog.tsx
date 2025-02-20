@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useCreateDashboardMutation } from "metabase/api";
-import FormFooter from "metabase/core/components/FormFooter";
+import { FormFooter } from "metabase/core/components/FormFooter";
 import {
   Form,
   FormErrorMessage,

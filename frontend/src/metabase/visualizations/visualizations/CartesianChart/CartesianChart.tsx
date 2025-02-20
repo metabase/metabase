@@ -12,7 +12,7 @@ import { useSet } from "react-use";
 import { isDesktopSafari } from "metabase/lib/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
-import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
+import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import {
   useCartesianChartSeriesColorsClasses,
@@ -78,8 +78,6 @@ function _CartesianChart(props: VisualizationProps) {
 
   const chartRef = useRef<EChartsType>();
 
-  const hasTitle = showTitle && settings["card.title"];
-  const title = settings["card.title"] || card.name;
   const description = settings["card.description"];
 
   const legendItems = useMemo(
@@ -142,9 +140,9 @@ function _CartesianChart(props: VisualizationProps) {
 
   return (
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
-      {hasTitle && (
+      {showTitle && (
         <LegendCaption
-          title={title}
+          title={settings["card.title"]}
           description={description}
           icon={headerIcon}
           actionButtons={actionButtons}
@@ -159,13 +157,13 @@ function _CartesianChart(props: VisualizationProps) {
         isReversed={settings["legend.is_reversed"]}
         hasLegend={hasLegend}
         items={legendItems}
-        actionButtons={!hasTitle ? actionButtons : undefined}
+        actionButtons={!showTitle ? actionButtons : undefined}
         hovered={hovered}
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
         onSelectSeries={onSelectSeries}
         onToggleSeriesVisibility={
-          canToggleSeriesVisibility && handleToggleSeriesVisibility
+          canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
         }
         canRemoveSeries={canRemoveSeries}
         onRemoveSeries={onRemoveSeries}

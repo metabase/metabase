@@ -1,11 +1,12 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
-import { type ComponentProps, useEffect } from "react";
+import { type ComponentProps, useEffect, useMemo } from "react";
 
 import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import { Api } from "metabase/api";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import LegacyTooltip from "metabase/core/components/Tooltip";
@@ -14,7 +15,9 @@ import { publicReducers } from "metabase/reducers-public";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
+import Table from "metabase/visualizations/visualizations/Table";
 import type { DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
@@ -35,6 +38,11 @@ import {
   PublicOrEmbeddedDashboardView,
   type PublicOrEmbeddedDashboardViewProps,
 } from "./PublicOrEmbeddedDashboardView";
+
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(Table);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(BarChart);
 
 export default {
   title: "embed/PublicOrEmbeddedDashboardView",
@@ -63,9 +71,17 @@ function ReduxDecorator(Story: StoryFn) {
  */
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
 function WaitForResizeToStopDecorator(Story: StoryFn) {
-  const asyncCallback = createAsyncCallback();
+  const asyncCallback = useMemo(() => createAsyncCallback(), []);
+
   useEffect(() => {
-    setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
+    const timeoutId = setTimeout(
+      asyncCallback,
+      TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING,
+    );
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [asyncCallback]);
 
   return <Story />;
@@ -117,7 +133,7 @@ const initialState = createMockState({
   }),
 });
 
-const store = getStore(publicReducers, initialState);
+const store = getStore(publicReducers, initialState, [Api.middleware]);
 
 interface CreateDashboardOpts {
   hasScroll?: boolean;
@@ -178,6 +194,7 @@ const defaultArgs: Partial<
       id: PARAMETER_ID,
     }),
   ],
+  withFooter: true,
 };
 
 export const LightThemeDefault = {
@@ -367,6 +384,9 @@ export function ComponentCompatibility() {
             Dropdown
           </Text>
         }
+        // loki couldn't make a screenshot of the tooltip in correct default position,
+        // so we have to specify it explicitly
+        offset={[8, 8]} // Add explicit offset
       />
       <PopoverWithTrigger
         isInitiallyOpen
@@ -428,7 +448,7 @@ export const CardVisualizationsDarkTheme = {
 };
 
 function ScrollDecorator(Story: StoryFn) {
-  const asyncCallback = createAsyncCallback();
+  const asyncCallback = useMemo(() => createAsyncCallback(), []);
 
   useEffect(() => {
     const scrollContainer = document.querySelector("[data-testid=embed-frame]");
@@ -440,6 +460,10 @@ function ScrollDecorator(Story: StoryFn) {
         asyncCallback();
       }
     }, 100);
+
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [asyncCallback]);
 
   return <Story />;

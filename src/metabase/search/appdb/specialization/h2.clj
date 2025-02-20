@@ -23,7 +23,7 @@
   ;; TODO just generate raw SQL
   (when (seq entries)
     (doseq [{:keys [model model_id]} entries]
-      (t2/delete! table :model model :model_id model_id))
+      (t2/delete! table :model model :model_id (str model_id)))
     (t2/insert! table entries)))
 
 (defn- wildcard-tokens [search-term]

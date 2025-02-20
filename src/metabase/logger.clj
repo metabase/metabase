@@ -1,7 +1,7 @@
 (ns metabase.logger
   "Configures the logger system for Metabase. Sets up an in-memory logger in a ring buffer for showing in the UI. Other
-  logging options are set in [[metabase.bootstrap]]: the context locator for log4j2 and ensuring log4j2 is the logger
-  that clojure.tools.logging uses."
+  logging options are set in [[metabase.core.bootstrap]]: the context locator for log4j2 and ensuring log4j2 is the
+  logger that clojure.tools.logging uses."
   (:require
    [amalloy.ring-buffer :refer [ring-buffer]]
    [clj-time.coerce :as time.coerce]
@@ -21,7 +21,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^:const max-log-entries 2500)
+(def ^:private ^:const max-log-entries 250)
 
 (defonce ^:private messages* (atom (ring-buffer max-log-entries)))
 
@@ -30,14 +30,21 @@
   []
   (reverse (seq @messages*)))
 
+(defn- elide-string
+  "Elides the string to the specified length, adding '...' if it exceeds that length."
+  [s max-length]
+  (if (> (count s) max-length)
+    (str (subs s 0 (- max-length 3)) "...")
+    s))
+
 (defn- event->log-data [^LogEvent event]
   {:timestamp    (time.format/unparse (time.format/formatter :date-time)
                                       (time.coerce/from-long (.getTimeMillis event)))
    :level        (.getLevel event)
    :fqns         (.getLoggerName event)
-   :msg          (.getMessage event)
+   :msg          (elide-string (str (.getMessage event)) 4000)
    :exception    (when-let [throwable (.getThrown event)]
-                   (seq (ExceptionUtils/getStackFrames throwable)))
+                   (take 20 (map #(elide-string (str %) 500) (seq (ExceptionUtils/getStackFrames throwable)))))
    :process_uuid config/local-process-uuid})
 
 (defn- metabase-appender ^Appender []

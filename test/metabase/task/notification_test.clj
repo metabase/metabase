@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.task.notification-test
+(ns metabase.task.notification-test
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]

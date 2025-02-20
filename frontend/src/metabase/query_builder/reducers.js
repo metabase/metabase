@@ -59,6 +59,7 @@ import {
   onCloseTimelines,
   onEditSummary,
   onOpenChartSettings,
+  onOpenChartType,
   onOpenQuestionInfo,
   onOpenQuestionSettings,
   onOpenTimelines,
@@ -227,6 +228,11 @@ export const uiControls = handleActions(
     [onCloseChartSettings]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onOpenChartType]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingChartTypeSidebar: true,
     }),
     [onCloseChartType]: state => ({
       ...state,

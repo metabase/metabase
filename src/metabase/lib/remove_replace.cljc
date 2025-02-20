@@ -246,7 +246,7 @@
                        query
                        stage-number
                        target-clause
-                       (select-keys (second replacement-clause) [:binning :temporal-unit]))
+                       (dissoc (second replacement-clause) :lib/uuid :ident))
 
                       changing-breakout?
                       (remove-breakout-order-by query stage-number target-clause)
@@ -674,8 +674,8 @@
                                                        (not= (:source-card new-join)
                                                              (:source-card %)))]
                                 (cond-> new-join
-                                  ;; We need to remove so the default alias is used when changing the join.
-                                  should-rename? (dissoc :alias)
+                                  ;; We need to tag the join so that add-default-alias knows to replace this alias
+                                  should-rename? (assoc ::lib.join/replace-alias true)
                                   ;; TODO: Maybe join idents *should* change under the same conditions as aliases?
                                   ;; All the column idents are going to change anyway, so it doesn't matter that much.
                                   (:ident %)     (assoc :ident (:ident %))))

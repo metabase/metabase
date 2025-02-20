@@ -1,7 +1,7 @@
 (ns metabase.api.notification.unsubscribe-test
   (:require
    [clojure.test :refer :all]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -71,8 +71,8 @@
               (is (not (t2/exists? :model/NotificationRecipient :notification_handler_id handler-id)))
               (is (= {:topic    :notification-unsubscribe-ex
                       :user_id  nil
-                      :model    "Notification"
-                      :model_id nil
+                      :model    "NotificationHandler"
+                      :model_id handler-id
                       :details  {:email "test@metabase.com"}}
                      (mt/latest-audit-log-entry :notification-unsubscribe-ex))))))))))
 
@@ -98,8 +98,8 @@
                       (t2/select :model/NotificationRecipient :notification_handler_id handler-id)))
               (is (= {:topic    :notification-unsubscribe-undo-ex
                       :user_id  nil
-                      :model    "Notification"
-                      :model_id nil
+                      :model    "NotificationHandler"
+                      :model_id handler-id
                       :details  {:email "test@metabase.com"}}
                      (mt/latest-audit-log-entry :notification-unsubscribe-undo-ex)))))
 

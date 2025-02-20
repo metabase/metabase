@@ -13,6 +13,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isRunning: false,
   isQueryComplete: false,
   isShowingSummarySidebar: false,
+  isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
@@ -48,6 +49,7 @@ export const DEFAULT_QUERY_STATUS: QueryBuilderQueryStatus = "idle";
 export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
   isShowingSummarySidebar: false,
   isShowingChartSettingsSidebar: false,
+  isShowingChartTypeSidebar: false,
   isShowingTimelineSidebar: false,
   isShowingQuestionInfoSidebar: false,
 };

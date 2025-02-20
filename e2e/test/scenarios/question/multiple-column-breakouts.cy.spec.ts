@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -306,6 +306,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .findByLabelText(columnName)
             .findByLabelText(bucketLabel)
             .click();
+          // eslint-disable-next-line no-unsafe-element-filtering
           H.popover().last().findByText(bucket1Name).click();
           H.getNotebookStep("summarize")
             .findByTestId("breakout-step")
@@ -315,6 +316,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .findByLabelText(columnName)
             .findByLabelText(bucketLabel)
             .click();
+          // eslint-disable-next-line no-unsafe-element-filtering
           H.popover().last().findByText(bucket2Name).click();
           H.visualize();
           cy.wait("@dataset");
@@ -518,6 +520,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           .should("contain.text", "All time")
           .click();
         H.popover().findByDisplayValue("All time").click();
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.popover().last().findByText("On").click();
         H.popover().within(() => {
           cy.findByLabelText("Date").clear().type("August 14, 2023");
@@ -608,7 +611,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
           cy.log("change display and assert the default settings");
           H.openVizTypeSidebar();
-          cy.findByTestId("chartsettings-sidebar")
+          cy.findByTestId("chart-type-sidebar")
             .findByTestId("Pivot Table-button")
             .click();
           cy.wait("@pivotDataset");
@@ -617,7 +620,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 3);
 
           cy.log("move a column from rows to columns");
-          H.openVizSettingsSidebar({ isSidebarOpen: true });
+          H.openVizSettingsSidebar();
           H.dragField(2, 3);
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")
@@ -1800,11 +1803,13 @@ function tableHeaderClick(
   columnName: string,
   { columnIndex = 0 }: { columnIndex?: number } = {},
 ) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.tableInteractive()
     .findAllByText(columnName)
     .eq(columnIndex)
     .trigger("mousedown");
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.tableInteractive()
     .findAllByText(columnName)
     .eq(columnIndex)

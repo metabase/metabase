@@ -1,13 +1,14 @@
 /* eslint-disable react/prop-types */
 
 import cx from "classnames";
+import { forwardRef } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { deletePermanently } from "metabase/archive/actions";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
@@ -23,20 +24,19 @@ import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor"
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import DatasetEditor from "../../../DatasetEditor";
+import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
-import { ViewFooter } from "../../ViewFooter";
 import ViewSidebar from "../../ViewSidebar";
-import { ChartSettingsSidebar } from "../../sidebars/ChartSettingsSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
+import { ViewLeftSidebarContainer } from "../ViewLeftSidebarContainer";
 import { ViewMainContainer } from "../ViewMainContainer";
 import { ViewRightSidebarContainer } from "../ViewRightSidebarContainer";
 
 import S from "./View.module.css";
 
-const ViewInner = props => {
+const ViewInner = forwardRef(function _ViewInner(props, ref) {
   const {
     question,
     result,
@@ -77,6 +77,14 @@ const ViewInner = props => {
     onOpenModal,
     originalQuestion,
     isShowingChartSettingsSidebar,
+    isShowingChartTypeSidebar,
+    onCloseChartSettings,
+    addField,
+    initialChartSetting,
+    onReplaceAllVisualizationSettings,
+    onOpenChartType,
+    visualizationSettings,
+    showSidebarTitle,
     isShowingSummarySidebar,
     isShowingTemplateTagsEditor,
     isShowingDataReference,
@@ -85,7 +93,9 @@ const ViewInner = props => {
 
   // if we don't have a question at all or no databases then we are initializing, so keep it simple
   if (!question || !databases) {
-    return <LoadingAndErrorWrapper className={CS.fullHeight} loading />;
+    return (
+      <LoadingAndErrorWrapper className={CS.fullHeight} loading ref={ref} />
+    );
   }
 
   const query = question.query();
@@ -98,9 +108,10 @@ const ViewInner = props => {
   if ((isModel || isMetric) && queryBuilderMode === "dataset") {
     return (
       <>
-        {isModel && <DatasetEditor {...props} />}
+        {isModel && <DatasetEditor {...props} ref={ref} />}
         {isMetric && (
           <MetricEditor
+            ref={ref}
             question={question}
             result={result}
             rawSeries={rawSeries}
@@ -154,7 +165,8 @@ const ViewInner = props => {
   const isNotebookContainerOpen =
     isNewQuestion || queryBuilderMode === "notebook";
 
-  const showLeftSidebar = isShowingChartSettingsSidebar;
+  const showLeftSidebar =
+    isShowingChartSettingsSidebar || isShowingChartTypeSidebar;
   const showRightSidebar =
     isShowingTimelineSidebar ||
     isShowingQuestionInfoSidebar ||
@@ -174,9 +186,8 @@ const ViewInner = props => {
     .with({ isShowingQuestionInfoSidebar: true }, () => 0)
     .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
     .otherwise(() => SIDEBAR_SIZES.NORMAL);
-
   return (
-    <div className={CS.fullHeight}>
+    <div className={CS.fullHeight} ref={ref}>
       <Flex
         className={cx(QueryBuilderS.QueryBuilder, S.QueryBuilderViewRoot)}
         data-testid="query-builder-root"
@@ -200,9 +211,21 @@ const ViewInner = props => {
             />
           )}
           <ViewSidebar side="left" isOpen={showLeftSidebar}>
-            {isShowingChartSettingsSidebar && (
-              <ChartSettingsSidebar question={question} result={result} />
-            )}
+            <ViewLeftSidebarContainer
+              question={question}
+              result={result}
+              isShowingChartSettingsSidebar={isShowingChartSettingsSidebar}
+              isShowingChartTypeSidebar={isShowingChartTypeSidebar}
+              onCloseChartSettings={onCloseChartSettings}
+              addField={addField}
+              initialChartSetting={initialChartSetting}
+              onReplaceAllVisualizationSettings={
+                onReplaceAllVisualizationSettings
+              }
+              onOpenChartType={onOpenChartType}
+              visualizationSettings={visualizationSettings}
+              showSidebarTitle={showSidebarTitle}
+            />
           </ViewSidebar>
           <ViewMainContainer
             showLeftSidebar={showLeftSidebar}
@@ -217,10 +240,6 @@ const ViewInner = props => {
             <ViewRightSidebarContainer {...props} />
           </ViewSidebar>
         </Flex>
-
-        {queryBuilderMode !== "notebook" && (
-          <ViewFooter className={CS.flexNoShrink} />
-        )}
       </Flex>
 
       {isShowingNewbModal && (
@@ -257,7 +276,7 @@ const ViewInner = props => {
       />
     </div>
   );
-};
+});
 
 const mapDispatchToProps = dispatch => ({
   onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
@@ -279,5 +298,5 @@ const mapDispatchToProps = dispatch => ({
 
 export const View = _.compose(
   ExplicitSize({ refreshMode: "debounceLeading" }),
-  connect(null, mapDispatchToProps),
+  connect(null, mapDispatchToProps, null, { forwardRef: true }),
 )(ViewInner);

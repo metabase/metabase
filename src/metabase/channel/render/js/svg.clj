@@ -163,7 +163,8 @@
   (let [response (.asString (js.engine/execute-fn-name (context) "javascript_visualization"
                                                        (json/encode cards-with-data)
                                                        (json/encode dashcard-viz-settings)
-                                                       (json/encode (public-settings/application-colors))))]
+                                                       (json/encode {:applicationColors (public-settings/application-colors)
+                                                                     :startOfWeek (public-settings/start-of-week)})))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))

@@ -1,6 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  mockScrollIntoView,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
 import type {
   DatePickerUnit,
@@ -25,6 +29,8 @@ interface SetupOpts {
   value: DateIntervalValue;
   availableUnits?: DatePickerUnit[];
 }
+
+mockScrollIntoView();
 
 function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts) {
   const onChange = jest.fn();
@@ -129,7 +135,7 @@ describe("SimpleDateIntervalPicker", () => {
           value: defaultValue,
         });
 
-        await userEvent.click(screen.getByLabelText("Unit"));
+        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
         await userEvent.click(screen.getByText("years"));
 
         expect(onChange).toHaveBeenCalledWith({

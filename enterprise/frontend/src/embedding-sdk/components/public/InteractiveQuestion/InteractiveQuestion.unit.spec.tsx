@@ -9,14 +9,9 @@ import {
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
-import {
-  act,
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-  within,
-} from "__support__/ui";
+import { act, screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
@@ -70,6 +65,7 @@ function InteractiveQuestionCustomLayout({
   );
 }
 
+const TEST_CARD = createMockCard({ name: "My Question" });
 const setup = ({
   isValidCard = true,
   title,
@@ -85,7 +81,6 @@ const setup = ({
     currentUser: TEST_USER,
   });
 
-  const TEST_CARD = createMockCard({ name: "My Question" });
   if (isValidCard) {
     setupCardEndpoints(TEST_CARD);
     setupCardQueryMetadataEndpoint(
@@ -104,7 +99,7 @@ const setup = ({
 
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
-  return renderWithProviders(
+  return renderWithSDKProviders(
     <InteractiveQuestion
       questionId={TEST_CARD.id}
       title={title}
@@ -113,7 +108,6 @@ const setup = ({
       {withCustomLayout ? <InteractiveQuestionCustomLayout /> : undefined}
     </InteractiveQuestion>,
     {
-      mode: "sdk",
       sdkProviderProps: {
         authConfig: createMockAuthProviderUriConfig({
           authProviderUri: "http://TEST_URI/sso/metabase",
@@ -150,7 +144,7 @@ describe("InteractiveQuestion", () => {
     // Simulate drilling down by re-running the query again
     act(() => screen.getByText("Run Query").click());
 
-    expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(
       within(await screen.findByRole("gridcell")).getByText("Test Row"),
@@ -178,7 +172,7 @@ describe("InteractiveQuestion", () => {
     await waitForLoaderToBeRemoved();
 
     expect(screen.queryByText("Error")).not.toBeInTheDocument();
-    expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("should render an error if a question isn't found", async () => {
@@ -186,7 +180,9 @@ describe("InteractiveQuestion", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByText("Question not found")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      `Question ${TEST_CARD.id} not found. Make sure you pass the correct ID.`,
+    );
   });
 
   it.each([

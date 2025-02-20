@@ -101,11 +101,11 @@ export function SelectEmbedTypePane({
     <Stack
       display={"inline-flex"}
       p="lg"
-      spacing="lg"
+      gap="lg"
       data-testid="sharing-pane-container"
       align="stretch"
     >
-      <Group spacing="lg" maw="100%" align="stretch">
+      <Group gap="lg" maw="100%" align="stretch">
         {/* STATIC EMBEDDING*/}
         <SharingPaneButton
           title={t`Static embedding`}
@@ -169,7 +169,6 @@ export function SelectEmbedTypePane({
             title={t`Embedded analytics SDK`}
             badge={
               <>
-                <Badge color="gray">{t`Beta`}</Badge>
                 <Badge color="brand">{t`Pro`}</Badge>
               </>
             }
@@ -186,7 +185,7 @@ export function SelectEmbedTypePane({
           </SharingPaneButton>
         </MaybeLink>
       </Group>
-      <Group position="apart">
+      <Group justify="space-between">
         {/* PUBLIC EMBEDDING */}
         {isPublicSharingEnabled ? (
           <PublicEmbedCard

@@ -1,15 +1,17 @@
-import { type JSX, useState } from "react";
+import { Fragment, type JSX, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
+import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   onOpenQuestionSettings,
   softReloadCard,
   turnModelIntoQuestion,
+  turnQuestionIntoModel,
 } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import DatasetMetadataStrengthIndicator from "metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
@@ -81,12 +83,18 @@ export const QuestionMoreActionsMenu = ({
       datasetEditorTab: "metadata",
     });
 
+  const [ackedModelModal] = useUserAcknowledgement("turn_into_model_modal");
+
   const handleTurnToModel = () => {
-    const modal = checkCanBeModel(question)
-      ? MODAL_TYPES.TURN_INTO_DATASET
-      : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+    if (!ackedModelModal) {
+      const modal = checkCanBeModel(question)
+        ? MODAL_TYPES.TURN_INTO_DATASET
+        : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+      onOpenModal(modal);
+    } else {
+      dispatch(turnQuestionIntoModel());
+    }
     trackTurnIntoModelClicked(question);
-    onOpenModal(modal);
   };
   const onOpenSettingsSidebar = () => dispatch(onOpenQuestionSettings());
 
@@ -100,7 +108,7 @@ export const QuestionMoreActionsMenu = ({
     (isStandaloneQuestion || isMetric) && (
       <Menu.Item
         key="add_to_dash"
-        icon={<Icon name="add_to_dash" />}
+        leftSection={<Icon name="add_to_dash" />}
         onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
         data-testid={ADD_TO_DASH_TESTID}
       >
@@ -111,7 +119,7 @@ export const QuestionMoreActionsMenu = ({
     hasCollectionPermissions && isModelOrMetric && hasDataPermissions && (
       <Menu.Item
         key="edit_definition"
-        icon={<Icon name="notebook" />}
+        leftSection={<Icon name="notebook" />}
         onClick={handleEditQuery}
       >
         {isMetric ? t`Edit metric definition` : t`Edit query definition`}
@@ -120,7 +128,7 @@ export const QuestionMoreActionsMenu = ({
     hasCollectionPermissions && isModel && (
       <Menu.Item
         key="edit-metadata"
-        icon={<Icon name="label" />}
+        leftSection={<Icon name="label" />}
         data-testid="edit-metadata"
         onClick={handleEditMetadata}
       >
@@ -136,7 +144,7 @@ export const QuestionMoreActionsMenu = ({
     hasCollectionPermissions && !isDashboardQuestion && !isModel && (
       <Menu.Item
         key="turn_into_model"
-        icon={<Icon name="model" />}
+        leftSection={<Icon name="model" />}
         data-testid={TURN_INTO_DATASET_TESTID}
         onClick={handleTurnToModel}
       >
@@ -146,7 +154,7 @@ export const QuestionMoreActionsMenu = ({
     hasCollectionPermissions && isModel && (
       <Menu.Item
         key="turn_into_question"
-        icon={<Icon name="insight" />}
+        leftSection={<Icon name="insight" />}
         onClick={onTurnModelIntoQuestion}
       >
         {t`Turn back to saved question`}
@@ -155,7 +163,7 @@ export const QuestionMoreActionsMenu = ({
     enableSettingsSidebar && (
       <Menu.Item
         key="edit-settings"
-        icon={<Icon name="gear" />}
+        leftSection={<Icon name="gear" />}
         data-testid="question-settings-button"
         onClick={onOpenSettingsSidebar}
       >
@@ -163,22 +171,22 @@ export const QuestionMoreActionsMenu = ({
       </Menu.Item>
     ),
     hasCollectionPermissions && (
-      <>
+      <Fragment key="move">
         <Menu.Divider />
         <Menu.Item
           key="move"
-          icon={<Icon name="move" />}
+          leftSection={<Icon name="move" />}
           data-testid={MOVE_TESTID}
           onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
         >
           {c("A verb, not a noun").t`Move`}
         </Menu.Item>
-      </>
+      </Fragment>
     ),
     hasDataPermissions && (
       <Menu.Item
         key="duplicate"
-        icon={<Icon name="clone" />}
+        leftSection={<Icon name="clone" />}
         data-testid={CLONE_TESTID}
         onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
       >
@@ -186,17 +194,17 @@ export const QuestionMoreActionsMenu = ({
       </Menu.Item>
     ),
     hasCollectionPermissions && (
-      <>
+      <Fragment key="trash">
         <Menu.Divider />
         <Menu.Item
           key="trash"
-          icon={<Icon name="trash" />}
+          leftSection={<Icon name="trash" />}
           data-testid={ARCHIVE_TESTID}
           onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
         >
           {t`Move to trash`}
         </Menu.Item>
-      </>
+      </Fragment>
     ),
   ].filter(Boolean);
 

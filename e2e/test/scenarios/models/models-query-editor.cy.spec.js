@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { selectFromDropdown } from "./helpers/e2e-models-helpers";
@@ -120,7 +120,7 @@ describe("scenarios > models query editor", () => {
 
   describe("native models", () => {
     it("allows to edit native model query", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "Native Model",
           type: "model",
@@ -144,7 +144,7 @@ describe("scenarios > models query editor", () => {
       cy.url().should("include", "/query");
       cy.button("Save changes").should("be.disabled");
 
-      H.focusNativeEditor().type("{backspace}2");
+      H.NativeEditor.focus().type("{backspace}2");
 
       H.runNativeQuery();
 
@@ -161,7 +161,7 @@ describe("scenarios > models query editor", () => {
     });
 
     it("allows for canceling changes", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "Native Model",
           type: "model",
@@ -185,7 +185,7 @@ describe("scenarios > models query editor", () => {
       cy.url().should("include", "/query");
       cy.button("Save changes").should("be.disabled");
 
-      H.focusNativeEditor().type("{backspace}2");
+      H.NativeEditor.focus().type("{backspace}2");
 
       H.runNativeQuery();
 
@@ -203,7 +203,7 @@ describe("scenarios > models query editor", () => {
     });
 
     it("handles failing queries", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "Erroring Model",
           type: "model",
@@ -230,7 +230,7 @@ describe("scenarios > models query editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("be.visible");
 
-      H.focusNativeEditor().type("{backspace}".repeat(" FROM".length));
+      H.NativeEditor.focus().type("{backspace}".repeat(" FROM".length));
       H.runNativeQuery();
 
       cy.get("[data-testid=cell-data]").contains(1);

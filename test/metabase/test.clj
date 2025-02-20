@@ -8,6 +8,7 @@
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [mb.hawk.init]
    [metabase.actions.test-util :as actions.test-util]
+   [metabase.channel.email-test]
    [metabase.config :as config]
    [metabase.core.init]
    [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
@@ -15,9 +16,9 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.email-test :as et]
    [metabase.http-client :as client]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.model-persistence.test-util]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor :as qp]
@@ -32,7 +33,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
-   [metabase.test.persistence :as test.persistence]
    [metabase.test.redefs :as test.redefs]
    [metabase.test.util :as tu]
    [metabase.test.util.async :as tu.async]
@@ -65,13 +65,14 @@
   data/keep-me
   datasets/keep-me
   driver/keep-me
-  et/keep-me
   i18n.tu/keep-me
   initialize/keep-me
   lib.metadata.jvm/keep-me
   mb.hawk.init/keep-me
   mdb.test-util/keep-me
+  metabase.channel.email-test/keep-me
   metabase.core.init/keep-me
+  metabase.model-persistence.test-util/keep-me
   metabase.request.core/keep-me
   metabase.test.util.dynamic-redefs/keep-me
   metabase.util.log.capture/keep-me
@@ -82,12 +83,11 @@
   schema-migrations-test.impl/keep-me
   sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
-  toucan2.tools.with-temp/keep-me
   test-runner.assert-exprs/keep-me
-  test.persistence/keep-me
   test.redefs/keep-me
   test.tz/keep-me
   test.users/keep-me
+  toucan2.tools.with-temp/keep-me
   tu.async/keep-me
   tu.log/keep-me
   tu.misc/keep-me
@@ -117,6 +117,7 @@
   format-name
   id
   mbql-query
+  metadata-provider
   native-query
   query
   run-mbql-query
@@ -134,7 +135,7 @@
  [driver
   with-driver]
 
- [et
+ [metabase.channel.email-test
   email-to
   fake-inbox-email-fn
   inbox
@@ -169,6 +170,9 @@
 
  [mdb.test-util
   with-app-db-timezone-id!]
+
+ [metabase.model-persistence.test-util
+  with-persistence-enabled!]
 
  [metabase.request.core
   as-admin
@@ -227,9 +231,6 @@
  [test-runner.assert-exprs
   derecordize]
 
- [test.persistence
-  with-persistence-enabled!]
-
  [test.users
   fetch-user
   test-user?
@@ -253,8 +254,11 @@
   discard-setting-changes
   doall-recursive
   file->bytes
+  file-path->bytes
+  bytes->base64-data-uri
   latest-audit-log-entry
   let-url
+  metric-value
   obj->json->obj
   ordered-subset?
   postwalk-pred
@@ -276,6 +280,7 @@
   with-non-admin-groups-no-collection-perms
   with-all-users-data-perms-graph!
   with-anaphora
+  with-prometheus-system!
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file

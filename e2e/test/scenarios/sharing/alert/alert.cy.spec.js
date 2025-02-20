@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
@@ -159,7 +159,9 @@ describe("scenarios > alert", () => {
       cy.findByRole("checkbox", { name: /Channel Foo Hook/ }).click();
       cy.findByRole("checkbox", { name: /Channel Bar Hook/ }).click();
 
-      cy.findByRole("button", { name: "Delete this alert" }).click();
+      cy.findByTestId("delete-confirmation-modal-alert")
+        .findByRole("button", { name: "Delete this alert" })
+        .click();
     });
   });
 

@@ -6,7 +6,9 @@ title: SQL Server
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
-Fill out the fields for that database, and click **Save changes** at the bottom.
+## Supported versions
+
+Metabase supports the oldest supported version of SQL Server through the latest stable version. See [SQL Server end of support options](https://learn.microsoft.com/en-us/sql/sql-server/end-of-support/sql-server-end-of-support-overview).
 
 ## Settings
 
@@ -86,6 +88,10 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll see t
 Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
+
+## Connecting to Azure SQL
+
+To connect to Azure SQL, you'll need to set the port to 1433.
 
 ## Further reading
 

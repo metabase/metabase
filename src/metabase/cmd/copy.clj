@@ -9,6 +9,7 @@
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.setup :as mdb.setup]
+   [metabase.models.init]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -21,6 +22,11 @@
    (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
+
+(comment
+  ;; need at least basic model dynamic resolution stuff loaded. This SHOULD already be loaded by [[metabase.core.init]]
+  ;; but we'll include it here too for the benefit of tests.
+  metabase.models.init/keep-me)
 
 (defn- log-ok []
   (log/info (u/colorize 'green "[OK]")))

@@ -59,8 +59,9 @@
           (log/info (u/format-color :green "Creating new %s Database %s" (:engine database) (pr-str (:name database))))
           (let [db (first (t2/insert-returning-instances! :model/Database database))]
             (if (config-from-file-sync-databases)
-              (future
-                ((requiring-resolve 'metabase.sync/sync-database!) db))
+              (let [submit-task!   (requiring-resolve 'metabase.sync.core/submit-task!)
+                    sync-database! (requiring-resolve 'metabase.sync.core/sync-database!)]
+                (submit-task! (fn [] (sync-database! db))))
               (log/info "Sync on database creation when initializing from file is disabled. Skipping sync."))))))))
 
 (defmethod advanced-config.file.i/initialize-section! :databases

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 
 const PG_DB_ID = 2;
@@ -249,7 +249,12 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
 
   it("can write a native MySQL query with a field filter", () => {
     // Write Native query that includes a filter
-    H.openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
+    H.startNewNativeQuestion();
+
+    cy.findByTestId("gui-builder-data").click();
+    cy.findByLabelText(MYSQL_DB_NAME).click();
+
+    H.NativeEditor.type(
       "SELECT TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.ID = {{id}}]];",
       {
         parseSpecialCharSequences: false,
@@ -274,9 +279,12 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
   });
 
   it("can save a native MySQL query", () => {
-    H.openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
-      "SELECT * FROM ORDERS",
-    );
+    H.startNewNativeQuestion();
+
+    cy.findByTestId("gui-builder-data").click();
+    cy.findByLabelText(MYSQL_DB_NAME).click();
+
+    H.NativeEditor.type("SELECT * FROM ORDERS");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.wait("@dataset");
@@ -287,7 +295,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
 
     // Save the query
     H.saveQuestion("sql count", { wrapId: true });
-    cy.url().should("match", /\/dashboard\/\d+#edit/);
+    cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*#edit$/);
   });
 });
 
@@ -326,7 +334,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   });
 
   it("can save a native MongoDB query", () => {
-    H.focusNativeEditor().type('[ { $count: "Total" } ]', {
+    H.NativeEditor.focus().type('[ { $count: "Total" } ]', {
       parseSpecialCharSequences: false,
     });
     cy.findByTestId("native-query-editor-container").icon("play").click();

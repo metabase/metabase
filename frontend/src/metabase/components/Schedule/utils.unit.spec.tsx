@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-
+import { render, screen } from "__support__/ui";
 import type { SelectProps } from "metabase/ui";
 
 import {
@@ -107,16 +106,6 @@ describe("Schedule utility functions", () => {
       expect(result).toBe("the longest string in the array");
     });
 
-    it("should return the longest label from a mixed array", () => {
-      const data: SelectProps["data"] = [
-        "short",
-        { value: "value", label: "the longest string in the array" },
-        "medium length",
-      ];
-      const result = getLongestSelectLabel(data);
-      expect(result).toBe("the longest string in the array");
-    });
-
     it("should return an empty string if data is empty", () => {
       const data: SelectProps["data"] = [];
       const result = getLongestSelectLabel(data);
@@ -124,17 +113,14 @@ describe("Schedule utility functions", () => {
     });
 
     it("should return an empty string if all objects have no labels", () => {
-      const data: SelectProps["data"] = [
-        { value: "first" },
-        { value: "second" },
-      ];
+      const data = [{ value: "first" }, { value: "second" }];
       const result = getLongestSelectLabel(data);
       expect(result).toBe("");
     });
 
-    it("should handle undefined labels in objects", () => {
+    it("should handle empty labels in objects", () => {
       const data: SelectProps["data"] = [
-        { value: "first", label: undefined },
+        { value: "first", label: "" },
         { value: "second", label: "valid label" },
       ];
       const result = getLongestSelectLabel(data);

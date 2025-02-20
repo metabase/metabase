@@ -5,6 +5,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
+   [medley.core :as m]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -44,7 +45,7 @@
 (defn validate-spec!
   "Check whether a given spec is valid"
   [spec]
-  (when-let [info (mc/explain ::Spec spec)]
+  (when-let [info (mr/explain ::Spec spec)]
     (throw (ex-info (str "Invalid spec for " (:model spec) ": " (me/humanize info)) info))))
 
 (defmacro define-spec
@@ -83,15 +84,25 @@
   [{:keys [compare-cols extra-cols fk-column] :as _spec}]
   #(select-keys % (filter some? (concat compare-cols extra-cols [fk-column]))))
 
+(defn- handle-row-nested-updates!
+  [row existing-rows {:keys [nested-specs id-col]} path]
+  (when nested-specs
+    (log/tracef "%s nested models detected, updating nested models" (format-path path))
+    (let [existing-row (m/find-first #(= (id-col row) (id-col %)) existing-rows)]
+      (handle-nested-updates!
+       existing-row
+       (with-parent-id row nested-specs (id-col row))
+       nested-specs
+       (conj path (id-col row))))))
+
 (defn- handle-sequential-updates!
   [existing-rows new-rows {:keys [model nested-specs id-col] :as spec} path]
   (let [{:keys [to-update
                 to-create
                 to-delete
-                to-skip]
-         :as _updates}    (u/row-diff existing-rows new-rows
+                to-skip]} (u/row-diff existing-rows new-rows
                                       :to-compare (compare-cols-fn spec) :id-fn id-col)
-        sanitize-row      (sanitize-row-fn spec)]
+        sanitize-row     (sanitize-row-fn spec)]
     (when (seq to-create)
       (if nested-specs
         (do
@@ -116,18 +127,15 @@
         (let [path (conj path (id-col row))]
           (log/debugf "%s Updating" (format-path path))
           (t2/update! model (id-col row) (sanitize-row row))
-          (when nested-specs
-            (log/tracef "%s nested models detected, updating" (format-path path))
-            (let [existing-row (first (filter #(= (id-col row) (id-col %)) existing-rows))]
-              (handle-nested-updates! existing-row row nested-specs path))))))
+          (handle-row-nested-updates! row existing-rows spec path))))
 
     ;; the row might not change, but the nested models might
     (when (and (seq to-skip) nested-specs)
+      (log/tracef "%s nested models detected, updating unchanged nested models for %s %s"
+                  (format-path path) model (id-col (first to-skip)))
       (doseq [row to-skip]
-        (handle-nested-updates! (first (filter #(= (id-col row) (id-col %)) existing-rows))
-                                row
-                                nested-specs
-                                (conj path (id-col row)))))))
+        (log/tracef "%s updating nested models for %s %s" (format-path path) model (id-col row))
+        (handle-row-nested-updates! row existing-rows spec path)))))
 
 (defn- handle-map-update!
   [existing-data new-data {:keys [model nested-specs id-col] :as spec} path]
@@ -183,19 +191,8 @@
         (log/debugf "%s no change detected for %s %s" (format-path path) model existing-id)
         (handle-nested! existing-data new-data existing-id)))))
 
-(defn- check-id-exists
-  "if x is a map, check if it has id key, if x is a seq, check if all elements have id key."
-  [x id-col]
-  (when x
-    (assert (if (sequential? x)
-              (every? id-col x)
-              (id-col x))
-            (format "%s is missing in %s" id-col x))))
-
 (defn- do-update!*
-  [existing-data new-data {:keys [id-col] :as spec} path]
-  (check-id-exists existing-data id-col)
-  (check-id-exists new-data id-col)
+  [existing-data new-data spec path]
   (if (:multi-row? spec)
     (do
       (log/tracef "%s multi-row spec found" (format-path path))

@@ -303,6 +303,15 @@ Object keyed by type, containing formatting settings.
 
 JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.
 
+### `MB_CUSTOM_GEOJSON_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `custom-geojson-enabled`.
+- [Configuration file name](./config-file.md): `custom-geojson-enabled`
+
+Whether or not the use of custom GeoJSON is enabled.
+
 ### `MB_CUSTOM_HOMEPAGE`
 
 - Type: boolean
@@ -342,6 +351,15 @@ Timeout in minutes for databases query execution, both Metabase application data
   If you have long-running queries, you might consider increasing this value.
   Adjusting the timeout does not impact Metabase’s frontend.
   Please be aware that other services (like Nginx) may still drop long-running queries.
+
+### `MB_DEFAULT_MAPS_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `default-maps-enabled`.
+- [Configuration file name](./config-file.md): `default-maps-enabled`
+
+Whether or not the default GeoJSON maps are enabled.
 
 ### `MB_DOWNLOAD_ROW_LIMIT`
 
@@ -1069,6 +1087,13 @@ Options for displaying the illustration when there are no results after searchin
 
 The custom illustration for when there are no results after searching.
 
+### `MB_NOT_BEHIND_PROXY`
+
+- Type: boolean
+- Default: `false`
+
+Indicates whether Metabase is running behind a proxy that sets the source-address-header for incoming requests.
+
 ### `MB_NOTIFICATION_LINK_BASE_URL`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -1774,13 +1799,6 @@ Default: `config.yml`
 
 This feature requires the `config-text-file` feature flag on your token.
 
-### `MB_CUSTOM_GEOJSON_ENABLED`
-
-Type: boolean<br>
-Default: `true`
-
-Whether or not the use of custom GeoJSON is enabled.
-
 ### `MB_DB_AUTOMIGRATE`
 
 Type: boolean<br>
@@ -1901,13 +1919,6 @@ Type: boolean<br>
 Default: `null`
 
 When `true`, this will enable `/api/testing` endpoint. **Warning:** This should never be enabled in production system.
-
-### `MB_ENABLE_XRAYS`
-
-Type: boolean<br>
-Default: `true`
-
-Allow users to explore data using X-rays.
 
 ### `MB_ENCRYPTION_SECRET_KEY`
 

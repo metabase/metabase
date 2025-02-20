@@ -37,24 +37,18 @@ export async function loadLocalization(locale) {
   return translationsObject;
 }
 
-// Tell moment.js to use the value of the start-of-week Setting for its current locale
+// Tell moment.js and dayjs to use the value of the start-of-week Setting for its current locale
 // Moment.js dow range Sunday (0) - Saturday (6)
-export function updateMomentStartOfWeek() {
-  const startOfWeekDay = getStartOfWeekDay();
+export function updateStartOfWeek(startOfWeekDayName) {
+  const startOfWeekDay = getStartOfWeekDay(startOfWeekDayName);
   if (startOfWeekDay != null) {
     moment.updateLocale(moment.locale(), { week: { dow: startOfWeekDay } });
-  }
-}
-
-export function updateDayjsStartOfWeek() {
-  const startOfWeekDay = getStartOfWeekDay();
-  if (startOfWeekDay != null) {
     dayjs.updateLocale(dayjs.locale(), { weekStart: startOfWeekDay });
   }
 }
 
 // if the start of week Setting is updated, update the moment start of week
-MetabaseSettings.on("start-of-week", updateMomentStartOfWeek);
+MetabaseSettings.on("start-of-week", updateStartOfWeek);
 
 function setLanguage(translationsObject) {
   const locale = translationsObject.headers.language;
@@ -73,8 +67,7 @@ export function setLocalization(translationsObject) {
   setLanguage(translationsObject);
   updateMomentLocale(language);
   updateDayjsLocale(language);
-  updateMomentStartOfWeek();
-  updateDayjsStartOfWeek();
+  updateStartOfWeek(MetabaseSettings.get("start-of-week"));
 
   if (ARABIC_LOCALES.includes(language)) {
     preverseLatinNumbersInMomentLocale(language);
@@ -132,8 +125,7 @@ function getLocale(language = "") {
   }
 }
 
-function getStartOfWeekDay() {
-  const startOfWeekDayName = MetabaseSettings.get("start-of-week");
+function getStartOfWeekDay(startOfWeekDayName) {
   if (!startOfWeekDayName) {
     return;
   }

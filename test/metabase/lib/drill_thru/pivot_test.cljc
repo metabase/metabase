@@ -82,20 +82,31 @@
    "multi-stage query"
    {:custom-query #(lib.drill-thru.tu/append-filter-stage % "count")}))
 
-(defn- orders-count-with-breakouts [breakout-values]
+(defn- orders-count-with-breakouts* [base-query breakout-values]
   {:drill-type   :drill-thru/pivot
    :click-type   :cell
    :query-type   :aggregated
    :query-table  "ORDERS"
    :column-name  "count"
    :custom-query (reduce #(lib/breakout %1 -1 %2)
-                         (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (-> base-query
                              (lib/aggregate (lib/count)))
                          (map first breakout-values))
    :custom-row   (->> (for [[col value] breakout-values]
                         [(:name col) value])
                       (into {})
                       (merge {"count" 77}))})
+
+(defn- orders-count-with-breakouts [breakout-values]
+  (orders-count-with-breakouts*
+   (lib/query meta/metadata-provider (meta/table-metadata :orders))
+   breakout-values))
+
+(defn- orders-count-with-breakouts-and-join [breakout-values]
+  (orders-count-with-breakouts*
+   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+       (lib/join (meta/table-metadata :products)))
+   breakout-values))
 
 (def ^:private bv-date
   [(meta/field-metadata :orders :created-at)
@@ -206,6 +217,15 @@
    (merge (orders-count-with-breakouts [bv-date bv-category1])
           (expecting ["CREATED_AT" "CATEGORY"] [:category :location]))
    "multi-stage query"
+   variant-with-count-filter-stage))
+
+(deftest ^:parallel returns-pivot-test-2c-explicit-join-cat+loc-with-cat
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-returns-drill
+   "single-stage query"
+   (merge (orders-count-with-breakouts-and-join [bv-date bv-category1])
+          (expecting ["CREATED_AT" "CATEGORY"] [:category :location]))
+   "multi-stage-query"
    variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-3a-cat+time-with-address

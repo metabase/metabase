@@ -6,10 +6,11 @@
   (:require
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.models.channel :as models.channel]
+   [metabase.channel.models.channel :as models.channel]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.util.spec-update :as models.u.spec-update]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -66,7 +67,7 @@
    :id
    {:default []}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Notification :payload]
+(methodical/defmethod t2/batched-hydrate [:default :payload]
   "Batch hydration payloads for a list of Notifications."
   [_model k notifications]
   (let [payload-type->ids        (u/group-by :payload_type :payload_id
@@ -76,8 +77,12 @@
                                        (for [[payload-type payload-ids] payload-type->ids]
                                          (case payload-type
                                            :notification/card
-                                           (t2/select-fn->fn (fn [x] [payload-type (:id x)]) identity
-                                                             :model/NotificationCard :id [:in payload-ids])
+                                           (let [notification-cards (t2/hydrate
+                                                                     (t2/select :model/NotificationCard
+                                                                                :id [:in payload-ids])
+                                                                     :card)]
+                                             (into {} (for [nc notification-cards]
+                                                        [[:notification/card (:id nc)] nc])))
                                            {[payload-type nil] nil})))]
 
     (for [notification notifications]
@@ -119,6 +124,14 @@
   (validate-notification instance)
   instance)
 
+(defn- update-subscription-trigger!
+  [& args]
+  (apply (requiring-resolve 'metabase.task.notification/update-subscription-trigger!) args))
+
+(defn- delete-trigger-for-subscription!
+  [& args]
+  (apply (requiring-resolve 'metabase.task.notification/delete-trigger-for-subscription!) args))
+
 (t2/define-before-update :model/Notification
   [instance]
   (validate-notification instance)
@@ -126,11 +139,15 @@
     (throw (ex-info (format "Update %s is not allowed." (name unallowed-key))
                     {:status-code 400
                      :changes     (t2/changes instance)})))
+  (when (contains? (t2/changes instance) :active)
+    (let [subscriptions (t2/select :model/NotificationSubscription
+                                   :notification_id (:id instance)
+                                   :type :notification-subscription/cron)]
+      (doseq [subscription subscriptions]
+        (if (:active instance)
+          (update-subscription-trigger! subscription)
+          (delete-trigger-for-subscription! (:id subscription))))))
   instance)
-
-(defn- delete-trigger-for-subscription!
-  [& args]
-  (apply (requiring-resolve 'metabase.task.notification/delete-trigger-for-subscription!) args))
 
 (t2/define-before-delete :model/Notification
   [instance]
@@ -144,6 +161,17 @@
                   :model/NotificationCard)
                 payload-id))
   instance)
+
+(defmethod audit-log/model-details :model/Notification
+  [{:keys [subscriptions handlers] :as fully-hydrated-notification} _event-type]
+  (merge
+   (select-keys fully-hydrated-notification [:id :payload_type :payload_id :creator_id :active])
+   {:subscriptions (map #(dissoc % :id :created_at) subscriptions)
+    :handlers      (map (fn [handler]
+                          (merge (select-keys [:id :channel_type :channel_id :template_id :active]
+                                              handler)
+                                 {:recipients (map #(select-keys % [:id :type :user_id :permissions_group_id :details]) (:recipients handler))}))
+                        handlers)}))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                               :model/NotificationSubscription                                   ;;
@@ -181,10 +209,6 @@
   (validate-subscription instance)
   instance)
 
-(defn- update-subscription-trigger!
-  [& args]
-  (apply (requiring-resolve 'metabase.task.notification/update-subscription-trigger!) args))
-
 (t2/define-after-insert :model/NotificationSubscription
   [instance]
   (update-subscription-trigger! instance)
@@ -208,7 +232,7 @@
 (t2/deftransforms :model/NotificationHandler
   {:channel_type (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))})
 
-(methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :channel]
+(methodical/defmethod t2/batched-hydrate [:default :channel]
   "Batch hydration Channels for a list of NotificationHandlers"
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
@@ -220,7 +244,7 @@
    :channel_id
    {:default nil}))
 
-(methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :template]
+(methodical/defmethod t2/batched-hydrate [:default :template]
   "Batch hydration ChannelTemplates for a list of NotificationHandlers"
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
@@ -238,20 +262,23 @@
    notification-handlers
    k
    #(group-by :notification_handler_id
-              (let [recipients       (t2/select :model/NotificationRecipient
-                                                :notification_handler_id [:in (map :id notification-handlers)])
-                    type->recipients (group-by :type recipients)]
-                (-> type->recipients
-                    (m/update-existing :notification-recipient/user
-                                       (fn [recipients]
-                                         (t2/hydrate recipients :user)))
-                    (m/update-existing :notification-recipient/group
-                                       (fn [recipients]
-                                         (t2/hydrate recipients [:permissions_group :members])))
-                    vals
-                    flatten)))
+              (t2/select :model/NotificationRecipient
+                         :notification_handler_id [:in (map :id notification-handlers)]))
    :id
    {:default []}))
+
+(methodical/defmethod t2/batched-hydrate [:default :recipients-detail]
+  "Batch hydration of details (user, group members) for NotificationRecipients"
+  [_model _k recipients]
+  (-> (group-by :type recipients)
+      (m/update-existing :notification-recipient/user
+                         (fn [recipients]
+                           (t2/hydrate recipients :user)))
+      (m/update-existing :notification-recipient/group
+                         (fn [recipients]
+                           (t2/hydrate recipients [:permissions_group :members])))
+      vals
+      flatten))
 
 (defn- cross-check-channel-type-and-template-type
   [notification-handler]
@@ -365,6 +392,7 @@
   "Schema for :model/NotificationCard."
   [:map
    [:card_id                         ms/PositiveInt]
+   [:card           {:optional true} [:maybe :map]]
    [:send_condition {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
    [:send_once      {:optional true} :boolean]])
 
@@ -465,7 +493,17 @@
               :creator
               :payload
               :subscriptions
-              [:handlers :channel :template :recipients]))
+              [:handlers :channel :template [:recipients :recipients-detail]]))
+
+(mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]
+  "Find all active card notifications for a given card-id."
+  [card-id :- pos-int?]
+  (hydrate-notification (t2/select :model/Notification
+                                   :active true
+                                   :payload_type :notification/card
+                                   :payload_id [:in {:select [:id]
+                                                     :from   [:notification_card]
+                                                     :where  [:= :card_id card-id]}])))
 
 (defn notifications-for-event
   "Find all active notifications for a given event."

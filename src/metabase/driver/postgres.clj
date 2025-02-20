@@ -10,6 +10,7 @@
    [honey.sql.helpers :as sql.helpers]
    [honey.sql.pg-ops :as sql.pg-ops]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -19,7 +20,8 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [with-quoting quote-columns quote-identifier]]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
+                                             with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -42,7 +44,11 @@
    [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
-   (java.sql Connection ResultSet ResultSetMetaData Types)
+   (java.sql
+    Connection
+    ResultSet
+    ResultSetMetaData
+    Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.postgresql.copy CopyManager)
    (org.postgresql.jdbc PgConnection)))
@@ -454,8 +460,15 @@
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
   ;; Postgres doesn't support quarter in intervals (#20683)
-  (if (= unit :quarter)
+  (cond
+    (= unit :quarter)
     (recur driver hsql-form (* 3 amount) :month)
+
+    ;; date + interval -> timestamp, so cast the expression back to date
+    (h2x/is-of-type? hsql-form "date")
+    (h2x/cast "date" (h2x/+ hsql-form (interval amount unit)))
+
+    :else
     (let [hsql-form (->timestamp hsql-form)]
       (-> (h2x/+ hsql-form (interval amount unit))
           (h2x/with-type-info (h2x/type-info hsql-form))))))
@@ -466,7 +479,8 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
-  [:to_timestamp expr])
+  ;; without tagging the expression, other code will want to add a type
+  (h2x/with-database-type-info [:to_timestamp expr] "timestamptz"))
 
 (defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
@@ -505,6 +519,10 @@
     "timetz"
     (h2x/cast "timetz" (time-trunc unit expr))
 
+    ;; postgres returns timestamp or timestamptz from `date_trunc`, so cast back if we've got a date column
+    "date"
+    (h2x/cast "date" [:date_trunc (h2x/literal unit) expr])
+
     #_else
     (let [expr' (->timestamp expr)]
       (-> [:date_trunc (h2x/literal unit) expr']
@@ -522,7 +540,6 @@
 (defmethod sql.qp/date [:postgres :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))
 (defmethod sql.qp/date [:postgres :hour]             [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:postgres :hour-of-day]      [_ _ expr] (extract-integer :hour expr))
-(defmethod sql.qp/date [:postgres :day]              [_ _ expr] (h2x/->date expr))
 (defmethod sql.qp/date [:postgres :day-of-month]     [_ _ expr] (extract-integer :day expr))
 (defmethod sql.qp/date [:postgres :day-of-year]      [_ _ expr] (extract-integer :doy expr))
 (defmethod sql.qp/date [:postgres :month]            [_ _ expr] (date-trunc :month expr))
@@ -551,6 +568,10 @@
 (mu/defn- quoted? [database-type :- ::lib.schema.common/non-blank-string]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
+
+(defmethod sql.qp/date [:postgres :day]
+  [_ _ expr]
+  (h2x/maybe-cast (h2x/database-type expr) (h2x/->date expr)))
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
@@ -834,6 +855,17 @@
    (keyword "timestamp with time zone")    :type/DateTimeWithLocalTZ
    (keyword "timestamp without time zone") :type/DateTime})
 
+(defmethod driver/dynamic-database-types-lookup :postgres
+  [_driver database database-types]
+  (when (seq database-types)
+    (let [ts (enum-types database)]
+      (not-empty
+       (into {}
+             (comp
+              (filter ts)
+              (map #(vector % :type/PostgresEnum)))
+             database-types)))))
+
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
   [_driver database-type]
   (default-base-types database-type))
@@ -858,39 +890,19 @@
 (defn- ssl-params
   "Builds the params to include in the JDBC connection spec for an SSL connection."
   [{:keys [ssl-key-value] :as db-details}]
-  (let [ssl-root-cert   (when (contains? #{"verify-ca" "verify-full"} (:ssl-mode db-details))
-                          (secret/db-details-prop->secret-map db-details "ssl-root-cert"))
-        ssl-client-key  (when (:ssl-use-client-auth db-details)
-                          (secret/db-details-prop->secret-map db-details "ssl-key"))
-        ssl-client-cert (when (:ssl-use-client-auth db-details)
-                          (secret/db-details-prop->secret-map db-details "ssl-client-cert"))
-        ssl-key-pw      (when (:ssl-use-client-auth db-details)
-                          (secret/db-details-prop->secret-map db-details "ssl-key-password"))
-        all-subprops    (apply concat (map :subprops [ssl-root-cert ssl-client-key ssl-client-cert ssl-key-pw]))
-        has-value?      (comp some? :value)]
-    (cond-> (set/rename-keys db-details {:ssl-mode :sslmode})
+  (-> (set/rename-keys db-details {:ssl-mode :sslmode})
       ;; if somehow there was no ssl-mode set, just make it required (preserves existing behavior)
-      (nil? (:ssl-mode db-details))
-      (assoc :sslmode "require")
-
-      (has-value? ssl-root-cert)
-      (assoc :sslrootcert (secret/value->file! ssl-root-cert :postgres))
-
-      (has-value? ssl-client-key)
-      (assoc :sslkey (secret/value->file! ssl-client-key :postgres (when (pkcs-12-key-value? ssl-key-value) ".p12")))
-
-      (has-value? ssl-client-cert)
-      (assoc :sslcert (secret/value->file! ssl-client-cert :postgres))
-
+      (cond-> (nil? (:ssl-mode db-details)) (assoc :sslmode "require"))
+      (m/assoc-some :sslrootcert (secret/value-as-file! :postgres db-details "ssl-root-cert"))
+      (m/assoc-some :sslkey (secret/value-as-file! :postgres db-details "ssl-key" (when (pkcs-12-key-value? ssl-key-value) ".p12")))
+      (m/assoc-some :sslcert (secret/value-as-file! :postgres db-details "ssl-client-cert"))
       ;; Pass an empty string as password if none is provided; otherwise the driver will prompt for one
-      true
-      (assoc :sslpassword (or (secret/value->string ssl-key-pw) ""))
+      (assoc :sslpassword (or (secret/value-as-string :postgres db-details "ssl-key-password") ""))
 
-      true
       (as-> params ;; from outer cond->
             (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
                     :ssl-use-client-auth)
-        (apply dissoc params all-subprops)))))
+        (secret/clean-secret-properties-from-details params :postgres))))
 
 (def ^:private disable-ssl-params
   "Params to include in the JDBC connection spec to disable SSL."
@@ -960,14 +972,20 @@
     (fn []
       (.getObject rs i))))
 
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/SQLXML]
+  [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
+  (fn [] (.getString rs i)))
+
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :postgres
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (let [obj (.getObject rs i)]
-      (if (instance? org.postgresql.util.PGobject obj)
-        (.getValue ^org.postgresql.util.PGobject obj)
-        obj))))
+      (cond (instance? org.postgresql.util.PGobject obj)
+            (.getValue ^org.postgresql.util.PGobject obj)
+
+            :else
+            obj))))
 
 ;; Postgres doesn't support OffsetTime
 (defmethod sql-jdbc.execute/set-parameter [:postgres OffsetTime]

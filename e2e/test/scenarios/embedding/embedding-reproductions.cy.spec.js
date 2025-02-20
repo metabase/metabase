@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { defer } from "metabase/lib/promise";
@@ -57,7 +57,7 @@ describe.skip("issue 15860", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         name: "Q1",
         query: { "source-table": PRODUCTS_ID },
@@ -83,7 +83,7 @@ describe.skip("issue 15860", () => {
       },
     }).then(({ body: { card_id: q1, dashboard_id } }) => {
       // Create a second question with the same source table
-      cy.createQuestion({
+      H.createQuestion({
         name: "Q2",
         query: { "source-table": PRODUCTS_ID },
       }).then(({ body: { id: q2 } }) => {
@@ -212,7 +212,7 @@ describe("issue 20438", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -278,7 +278,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "20634",
         native: {
@@ -384,7 +384,7 @@ describe("issues 20845, 25031", () => {
 
       const questionDetails = getQuestionDetails(value);
 
-      cy.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: { id, dashboard_id, card_id } }) => {
@@ -486,7 +486,7 @@ describe("issues 20845, 25031", () => {
 // - Add tests for embedding previews in both cases
 // - Add tests for disabled, editable and locked parameters in both cases
 // BONUS: Ideally add tests for email subscriptions with the filter applied
-describe("issue 27643", () => {
+describe("issue 27643", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
   const TEMPLATE_TAG_NAME = "expected_invoice";
   const getQuestionDetails = fieldId => {
@@ -545,7 +545,7 @@ describe("issue 27643", () => {
 
       cy.get("@postgresInvoicesExpectedInvoiceId")
         .then(fieldId => {
-          cy.createNativeQuestionAndDashboard({
+          H.createNativeQuestionAndDashboard({
             questionDetails: getQuestionDetails(fieldId),
             dashboardDetails,
           });
@@ -566,7 +566,7 @@ describe("issue 27643", () => {
             ],
           };
 
-          cy.editDashboardCard(dashboardCard, mapFilterToCard);
+          H.editDashboardCard(dashboardCard, mapFilterToCard);
         });
     });
 
@@ -646,7 +646,7 @@ describe("issue 27643", () => {
   });
 });
 
-H.describeEE("issue 30535", () => {
+describe("issue 30535", () => {
   const questionDetails = {
     name: "3035",
     query: {
@@ -667,7 +667,7 @@ H.describeEE("issue 30535", () => {
       },
     });
 
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createQuestion(questionDetails).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -752,7 +752,7 @@ describe("dashboard preview", () => {
         [filter3.slug]: "enabled",
       },
     };
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { card_id, dashboard_id } }) => {
@@ -837,7 +837,7 @@ describe("dashboard preview", () => {
         [filter3.slug]: "locked",
       },
     };
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { card_id, dashboard_id } }) => {
@@ -939,7 +939,7 @@ describe("issue 40660", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -1004,7 +1004,7 @@ describe.skip("issue 49142", () => {
   });
 });
 
-H.describeEE("issue 8490", () => {
+describe("issue 8490", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

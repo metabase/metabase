@@ -255,7 +255,10 @@
 (defn- copy-table-fields! [old-table-id new-table-id]
   (t2/insert! :model/Field
               (for [field (t2/select :model/Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
-                (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
+                (-> field
+                    (dissoc :id :fk_target_field_id)
+                    (assoc :table_id new-table-id
+                           :entity_id (u/generate-nano-id)))))
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (t2/select-pk->fn :name :model/Field :table_id old-table-id :active true)
         new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id :active true)
@@ -276,7 +279,10 @@
         new-table-ids (sort ; sorting by PK recovers the insertion order, because insert-returning-pks! doesn't guarantee this
                        (t2/insert-returning-pks! :model/Table
                                                  (for [table old-tables]
-                                                   (-> table (dissoc :id) (assoc :db_id new-db-id)))))]
+                                                   (-> table
+                                                       (dissoc :id)
+                                                       (assoc :db_id new-db-id
+                                                              :entity_id (u/generate-nano-id))))))]
     (doseq [[old-table-id new-table-id] (zipmap (map :id old-tables) new-table-ids)]
       (copy-table-fields! old-table-id new-table-id))))
 
@@ -307,14 +313,13 @@
 
 (defn- get-linked-secrets
   [{:keys [details] :as database}]
-  (when-let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
-    (let [conn-props (conn-props-fn (driver.u/database->driver database))]
-      (into {}
-            (keep (fn [prop-name]
-                    (let [id-prop (keyword (str prop-name "-id"))]
-                      (when-let [id (get details id-prop)]
-                        [id-prop id]))))
-            (keys (secret/conn-props->secret-props-by-name conn-props))))))
+  (when-let [conn-props (secret/secret-conn-props-by-name (driver.u/database->driver database))]
+    (into {}
+          (keep (fn [prop-name]
+                  (let [id-prop (keyword (str prop-name "-id"))]
+                    (when-let [id (get details id-prop)]
+                      [id-prop id]))))
+          (keys conn-props))))
 
 (defn- copy-secrets [database]
   (let [prop->old-id (get-linked-secrets database)]

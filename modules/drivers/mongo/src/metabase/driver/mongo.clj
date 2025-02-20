@@ -321,6 +321,8 @@
         "binData"    :type/*
         "objectId"   :type/MongoBSONID
         "bool"       :type/Boolean
+        ;; Mongo's date type is actually a date time so we can't map it to :type/Date
+        ;; See documentation: https://www.mongodb.com/docs/manual/reference/bson-types/#std-label-document-bson-type-date
         "date"       :type/Instant
         "null"       :type/*
         "regex"      :type/*
@@ -408,6 +410,7 @@
                               :set-timezone                    true
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false
+                              :identifiers-with-spaces         true
                               :index-info                      true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 

@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.core :as channel]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.events.notification :as events.notification]
    [metabase.integrations.slack :as slack]
    [metabase.models.notification :as models.notification]
@@ -104,7 +104,7 @@
 (def default-card-name "Card notification test card")
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defn- with-temp-notification
+(defn do-with-temp-notification
   "Create a temporary notification for testing."
   [{:keys [notification handlers subscriptions]} thunk]
   (let [notification (models.notification/create-notification!
@@ -116,6 +116,16 @@
       (finally
         (t2/delete! :model/Notification (:id notification))))))
 
+(defmacro with-temp-notification
+  "Macro that sets up a temporary notification for testing.
+    (with-temp-notification
+      [notification {:notification  {:creator_id 1}
+                     :subscriptions []
+                     :handlers      []}]
+      (do-something))"
+  [[bindings props] & body]
+  `(do-with-temp-notification ~props (fn [~bindings] ~@body)))
+
 (defn do-with-card-notification
   [{:keys [card notification-card notification subscriptions handlers]} thunk]
   (mt/with-temp
@@ -125,15 +135,15 @@
                                                                          :breakout    [$category]})}
 
                                 card)]
-    (with-temp-notification
-      {:notification  (merge {:payload      (assoc notification-card
-                                                   :card_id card-id)
-                              :payload_type :notification/card
-                              :creator_id   (mt/user->id :crowberto)}
-                             notification)
-       :subscriptions subscriptions
-       :handlers      handlers}
-      thunk)))
+    (do-with-temp-notification
+     {:notification  (merge {:payload      (assoc notification-card
+                                                  :card_id card-id)
+                             :payload_type :notification/card
+                             :creator_id   (mt/user->id :crowberto)}
+                            notification)
+      :subscriptions subscriptions
+      :handlers      handlers}
+     thunk)))
 
 (defmacro with-card-notification
   "Macro that sets up a card notification for testing.
@@ -149,13 +159,13 @@
 (defn do-with-system-event-notification!
   [{:keys [event notification subscriptions handlers]} thunk]
   (with-temporary-event-topics! [event]
-    (with-temp-notification
-      {:notification  (merge {:payload_type :notification/system-event
-                              :creator_id   (mt/user->id :crowberto)}
-                             notification)
-       :subscriptions subscriptions
-       :handlers      handlers}
-      thunk)))
+    (do-with-temp-notification
+     {:notification  (merge {:payload_type :notification/system-event
+                             :creator_id   (mt/user->id :crowberto)}
+                            notification)
+      :subscriptions subscriptions
+      :handlers      handlers}
+     thunk)))
 
 (defmacro with-system-event-notification!
   "Macro that sets up a system event notification for testing.
@@ -170,7 +180,7 @@
 (def channel-type->fixture
   {:channel/email (fn [thunk] (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                                                  email-smtp-port 587
-                                                                 site-url        "https://metabase.com/testmb"]
+                                                                 site-url        "https://testmb.com/"]
                                 (thunk)))
    :channel/slack (fn [thunk] (with-redefs [slack/files-channel (constantly "FOO")]
                                 (thunk)))})
@@ -184,7 +194,8 @@
 (defmacro with-channel-fixtures
   "Macro that applies the given channel fixtures to the body of the macro."
   [channel-types & body]
-  `(apply-channel-fixtures ~channel-types (fn [] ~@body)))
+  `(with-send-notification-sync
+     (apply-channel-fixtures ~channel-types (fn [] ~@body))))
 
 (defn test-send-notification!
   "Test sending a notification with the given channel-type->assert-fn map."

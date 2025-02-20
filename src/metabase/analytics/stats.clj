@@ -8,15 +8,13 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.eid-translation :as eid-translation]
-   [metabase.email :as email]
-   [metabase.embed.settings :as embed.settings]
-   [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -104,12 +102,12 @@
 
 (def ^:private ui-colors #{:brand :filter :summarize})
 
-(defn appearance-ui-colors-changed?
+(defn- appearance-ui-colors-changed?
   "Returns true if the 'User Interface Colors' have been customized"
   []
   (boolean (seq (select-keys (public-settings/application-colors) ui-colors))))
 
-(defn appearance-chart-colors-changed?
+(defn- appearance-chart-colors-changed?
   "Returns true if the 'Chart Colors' have been customized"
   []
   (boolean (seq (apply dissoc (public-settings/application-colors) ui-colors))))
@@ -125,21 +123,21 @@
    :report_timezone                      (driver/report-timezone)
    ;; We deprecated advanced humanization but have this here anyways
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")
-   :email_configured                     (email/email-configured?)
+   :email_configured                     (setting/get :email-configured?)
    :slack_configured                     (slack/slack-configured?)
-   :sso_configured                       (google/google-auth-enabled)
+   :sso_configured                       (setting/get :google-auth-enabled)
    :instance_started                     (snowplow/instance-creation)
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
-   :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
-   :enable_embedding_sdk                 (embed.settings/enable-embedding-sdk)
-   :enable_embedding_interactive         (embed.settings/enable-embedding-interactive)
-   :enable_embedding_static              (embed.settings/enable-embedding-static)
+   :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (setting/get :enable-embedding)
+   :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
+   :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
+   :enable_embedding_static              (setting/get :enable-embedding-static)
    :embedding_app_origin_set             (boolean
                                           #_{:clj-kondo/ignore [:deprecated-var]}
-                                          (embed.settings/embedding-app-origin))
-   :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (embed.settings/embedding-app-origins-sdk)]
+                                          (setting/get :embedding-app-origin))
+   :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (setting/get :embedding-app-origins-sdk)]
                                                     (and sdk-origins (not= "localhost:*" sdk-origins))))
-   :embedding_app_origin_interactive_set (embed.settings/embedding-app-origins-interactive)
+   :embedding_app_origin_interactive_set (setting/get :embedding-app-origins-interactive)
    :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
    :appearance_help_link                 (public-settings/help-link)
    :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
@@ -784,13 +782,13 @@
   []
   [{:name      :email
     :available true
-    :enabled   (email/email-configured?)}
+    :enabled   (setting/get :email-configured?)}
    {:name      :slack
     :available true
     :enabled   (slack/slack-configured?)}
    {:name      :sso-google
     :available true
-    :enabled   (google/google-auth-configured)}
+    :enabled   (setting/get :google-auth-configured)}
    {:name      :sso-ldap
     :available true
     :enabled   (public-settings/ldap-enabled?)}
@@ -800,20 +798,20 @@
    {:name      :interactive-embedding
     :available (premium-features/hide-embed-branding?)
     :enabled   (and
-                (embed.settings/enable-embedding-interactive)
-                (boolean (embed.settings/embedding-app-origins-interactive))
+                (setting/get :enable-embedding-interactive)
+                (boolean (setting/get :embedding-app-origins-interactive))
                 (public-settings/sso-enabled?))}
    {:name      :static-embedding
     :available true
     :enabled   (and
-                (embed.settings/enable-embedding-static)
+                (setting/get :enable-embedding-static)
                 (or
                  (t2/exists? :model/Dashboard :enable_embedding true)
                  (t2/exists? :model/Card :enable_embedding true)))}
    {:name      :public-sharing
     :available true
     :enabled   (and
-                (public-settings/enable-public-sharing)
+                (setting/get :enable-public-sharing)
                 (or
                  (t2/exists? :model/Dashboard :public_uuid [:not= nil])
                  (t2/exists? :model/Card :public_uuid [:not= nil])))}
@@ -890,7 +888,7 @@
         grouped-metrics     (snowplow-grouped-metrics (->snowplow-grouped-metric-info))
         features            (snowplow-features)]
     ;; grouped_metrics and settings are required in the json schema, but their data will be included in the next Milestone:
-    {"analytics_uuid"      (snowplow/analytics-uuid)
+    {"analytics_uuid"      (analytics.settings/analytics-uuid)
      "features"            features
      "grouped_metrics"     grouped-metrics
      "instance_attributes" instance-attributes
@@ -928,5 +926,5 @@
               (str "Missing required keys in snowplow-data. got:" (sort (keys snowplow-data))))
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
-      (snowplow/track-event! ::snowplow/instance_stats snowplow-data)
+      (snowplow/track-event! :snowplow/instance_stats snowplow-data)
       (stats-post-cleanup))))

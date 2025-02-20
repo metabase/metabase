@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { StyleHTMLAttributes } from "react";
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -14,7 +14,7 @@ import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenFie
 import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
-import { parseNumberValue } from "metabase/lib/number";
+import { parseNumber } from "metabase/lib/number";
 import { defer } from "metabase/lib/promise";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -105,37 +105,43 @@ export interface IFieldValuesWidgetProps {
   layoutRenderer?: (props: LayoutRendererArgs) => JSX.Element;
 }
 
-export function FieldValuesWidgetInner({
-  color,
-  maxResults = MAX_SEARCH_RESULTS,
-  alwaysShowOptions = true,
-  style = {},
-  formatOptions = {},
-  containerWidth,
-  maxWidth = 500,
-  minWidth,
-  width,
-  disableList = false,
-  disableSearch = false,
-  disablePKRemappingForSearch,
-  showOptionsInPopover = false,
-  parameter,
-  parameters,
-  fields,
-  dashboard,
-  question,
-  value,
-  onChange,
-  multi,
-  autoFocus,
-  className,
-  prefix,
-  placeholder,
-  checkedColor,
-  valueRenderer,
-  optionRenderer,
-  layoutRenderer,
-}: IFieldValuesWidgetProps) {
+export const FieldValuesWidgetInner = forwardRef<
+  HTMLDivElement,
+  IFieldValuesWidgetProps
+>(function FieldValuesWidgetInner(
+  {
+    color,
+    maxResults = MAX_SEARCH_RESULTS,
+    alwaysShowOptions = true,
+    style = {},
+    formatOptions = {},
+    containerWidth,
+    maxWidth = 500,
+    minWidth,
+    width,
+    disableList = false,
+    disableSearch = false,
+    disablePKRemappingForSearch,
+    showOptionsInPopover = false,
+    parameter,
+    parameters,
+    fields,
+    dashboard,
+    question,
+    value,
+    onChange,
+    multi,
+    autoFocus,
+    className,
+    prefix,
+    placeholder,
+    checkedColor,
+    valueRenderer,
+    optionRenderer,
+    layoutRenderer,
+  },
+  ref,
+) {
   const [options, setOptions] = useState<FieldValue[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingStateType>("INIT");
   const [lastValue, setLastValue] = useState<string>("");
@@ -436,14 +442,16 @@ export function FieldValuesWidgetInner({
     options,
   });
 
-  const parseFreeformValue = (value: string | number) => {
-    return isNumeric(fields[0], parameter)
-      ? parseNumberValue(value)
-      : parseStringValue(value);
+  const parseFreeformValue = (value: string | undefined) => {
+    if (isNumeric(fields[0], parameter)) {
+      const number = typeof value === "string" ? parseNumber(value) : null;
+      return typeof number === "bigint" ? String(number) : number;
+    }
+    return parseStringValue(value);
   };
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary ref={ref}>
       <div
         data-testid="field-values-widget"
         style={{
@@ -451,6 +459,7 @@ export function FieldValuesWidgetInner({
           minWidth: minWidth ?? undefined,
           maxWidth: maxWidth ?? undefined,
         }}
+        ref={ref}
       >
         {isListMode && isLoading ? (
           <LoadingState />
@@ -512,10 +521,15 @@ export function FieldValuesWidgetInner({
       </div>
     </ErrorBoundary>
   );
-}
+});
 
 export const FieldValuesWidget = ExplicitSize<IFieldValuesWidgetProps>()(
   FieldValuesWidgetInner,
+);
+
+// eslint-disable-next-line import/no-default-export
+export default connect(mapStateToProps, null, null, { forwardRef: true })(
+  FieldValuesWidget,
 );
 
 const LoadingState = () => (
@@ -523,7 +537,7 @@ const LoadingState = () => (
     className={cx(CS.flex, CS.layoutCentered, CS.alignCenter)}
     style={{ minHeight: 82 }}
   >
-    <LoadingSpinner size={32} />
+    <LoadingSpinner size={16} />
   </div>
 );
 
@@ -549,9 +563,6 @@ const EveryOptionState = () => (
   <OptionsMessage>{t`Including every option in your filter probably won’t do much…`}</OptionsMessage>
 );
 
-// eslint-disable-next-line import/no-default-export
-export default connect(mapStateToProps)(FieldValuesWidget);
-
 interface RenderOptionsProps {
   alwaysShowOptions: boolean;
   parameter?: Parameter;
@@ -566,7 +577,6 @@ interface RenderOptionsProps {
   isAllSelected: boolean;
   isFiltered: boolean;
 }
-
 function renderOptions({
   alwaysShowOptions,
   parameter,

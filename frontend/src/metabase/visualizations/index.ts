@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isStorybookActive } from "metabase/env";
 import type {
   DatasetData,
   RawSeries,
@@ -49,6 +50,16 @@ export function registerVisualization(visualization: Visualization) {
     );
   }
   if (visualizations.has(identifier)) {
+    if (isStorybookActive) {
+      console.error(
+        `Visualization with that identifier is already registered: ` +
+          visualization.name,
+      );
+
+      // do not throw if it's storybook
+      return;
+    }
+
     throw new Error(
       t`Visualization with that identifier is already registered: ` +
         visualization.name,

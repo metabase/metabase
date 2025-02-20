@@ -10,7 +10,7 @@ import { ChartSettingColorPicker } from "../ChartSettingColorPicker";
 
 import ColumnItemS from "./ColumnItem.module.css";
 
-interface ColumnItemProps {
+export interface ColumnItemProps {
   className?: string;
   title: string;
   color?: string;
@@ -66,7 +66,7 @@ export const ColumnItem = ({
     py="xs"
     my="sm"
   >
-    <Group noWrap spacing="xs" p="xs">
+    <Group wrap="nowrap" gap="xs" p="xs">
       {draggable && (
         <Icon
           className={cx(CS.flexNoShrink, ColumnItemS.ColumnItemDragHandle)}
@@ -82,13 +82,13 @@ export const ColumnItem = ({
         />
       )}
     </Group>
-    <Group className={CS.flex1} px="xs">
-      {icon && <Icon name={icon} />}
-      <Text lh="normal" fw="bold">
+    <Group className={CS.flex1} px="xs" wrap="nowrap">
+      {icon && <Icon name={icon} className={CS.flexNoShrink} />}
+      <Text lh="normal" fw="bold" className={CS.textWrap}>
         {title}
       </Text>
     </Group>
-    <Group noWrap spacing="sm" p="xs">
+    <Group wrap="nowrap" gap="sm" p="xs">
       {onEdit && (
         <ChartSettingActionIcon
           icon="ellipsis"

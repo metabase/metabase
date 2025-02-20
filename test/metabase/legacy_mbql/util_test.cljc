@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.legacy-mbql.util-test
+(ns metabase.legacy-mbql.util-test
   (:require
    #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt])
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))

@@ -38,10 +38,13 @@ export type CliState = Partial<{
   modelCollectionId: number;
 
   /** Directory where the Express.js mock server is saved to */
-  mockServerDir: string;
+  mockServerPath: string;
 
   /** Directory where the React components are saved to */
-  reactComponentDir: string;
+  reactComponentPath: string;
+
+  /** Whether the Next.js custom app or root layout file already exists */
+  hasNextJsCustomAppOrRootLayout: boolean;
 }>;
 
 export type CliError = {

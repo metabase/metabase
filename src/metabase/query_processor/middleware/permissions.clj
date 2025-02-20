@@ -9,8 +9,8 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.walk :as lib.walk]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -32,7 +32,7 @@
    (ex-info message
             (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
-                    :actual-permissions   (data-perms/permissions-for-user *current-user-id*)
+                    :actual-permissions   (perms/permissions-for-user *current-user-id*)
                     :permissions-error?   true}
                    additional-ex-data))))
 
@@ -44,12 +44,12 @@
 (defn- throw-inactive-table-error
   [{db-id :id db-name :name} {table-id :id table-name :name schema :schema}]
   ;; We don't cache perms for inactive tables, so we need to manually bypass the cache here
-  (binding [data-perms/*use-perms-cache?* false]
-    (let [show-table-name? (data-perms/user-has-permission-for-table? *current-user-id*
-                                                                      :perms/view-data
-                                                                      :unrestricted
-                                                                      db-id
-                                                                      table-id)]
+  (perms/disable-perms-cache
+    (let [show-table-name? (perms/user-has-permission-for-table? *current-user-id*
+                                                                 :perms/view-data
+                                                                 :unrestricted
+                                                                 db-id
+                                                                 table-id)]
       (throw (Exception. (tru "Table {0} is inactive." (if show-table-name?
                                                          (format "\"%s.%s.%s\"" db-name schema table-name)
                                                          table-id)))))))
@@ -101,7 +101,7 @@
   [{database-id :database, {gtap-perms :gtaps} ::perms :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user permissions = %s"
-                (pr-str (data-perms/permissions-for-user *current-user-id*)))
+                (pr-str (perms/permissions-for-user *current-user-id*)))
     (when (= audit/audit-db-id database-id)
       (check-audit-db-permissions outer-query))
     (check-query-does-not-access-inactive-tables outer-query)
@@ -184,7 +184,7 @@
   [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
-   (= (data-perms/full-db-permission-for-user *current-user-id* :perms/create-queries database-id)
+   (= (perms/full-db-permission-for-user *current-user-id* :perms/create-queries database-id)
       :query-builder-and-native)))
 
 (defn check-current-user-has-adhoc-native-query-perms

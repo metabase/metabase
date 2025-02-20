@@ -7,12 +7,12 @@
    [metabase.db :as mdb]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.field-values :as field-values]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -116,7 +116,11 @@
 
 (doto :model/Field
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
+  ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
+  ;; cause duplication rather than good matching if the two instances are later linked by serdes.
+  #_(derive :hook/entity-id))
 
 (t2/define-after-select :model/Field
   [field]
@@ -147,13 +151,13 @@
 
 (defmethod mi/can-read? :model/Field
   ([instance]
-   (and (data-perms/user-has-permission-for-table?
+   (and (perms/user-has-permission-for-table?
          api/*current-user-id*
          :perms/view-data
          :unrestricted
          (field->db-id instance)
          (:table_id instance))
-        (data-perms/user-has-permission-for-table?
+        (perms/user-has-permission-for-table?
          api/*current-user-id*
          :perms/create-queries
          :query-builder
@@ -176,7 +180,7 @@
 
 (defmethod serdes/hash-fields :model/Field
   [_field]
-  [:name (serdes/hydrated-hash :table)])
+  [:name (serdes/hydrated-hash :table :table_id)])
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -381,8 +385,8 @@
 (defmethod serdes/make-spec "Field" [_model-name opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_indexed
                :database_is_auto_increment :database_partitioned :database_position :database_required :database_type
-               :description :display_name :effective_type :has_field_values :is_defective_duplicate :json_unfolding
-               :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
+               :description :display_name :effective_type :entity_id :has_field_values :is_defective_duplicate
+               :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
    :skip      [:fingerprint :fingerprint_version :last_analyzed]
    :transform {:created_at         (serdes/date)
