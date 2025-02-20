@@ -984,9 +984,6 @@
       (cond (instance? org.postgresql.util.PGobject obj)
             (.getValue ^org.postgresql.util.PGobject obj)
 
-            (instance? org.postgresql.jdbc.PgArray obj)
-            (vec (.getArray ^org.postgresql.jdbc.PgArray obj)) ;; TODO -- we should probably be careful of very large arrays
-
             :else
             obj))))
 
