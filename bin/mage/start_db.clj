@@ -47,7 +47,8 @@
   [database version]
   (if (= version :oldest)
     (fetch-oldest-supported-version database)
-    version))
+    (cond-> version
+      (keyword? version) name)))
 
 (defn- kill-existing! [image-name]
   (shell/sh* {:quiet? true} "docker" "kill" image-name)
