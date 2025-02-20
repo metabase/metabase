@@ -12,9 +12,9 @@
 (defn stem [alias] (str/replace alias #"@.*" ""))
 
 (defn parent-for-draft
-  [draft-alias]
-  (assert (draft? draft-alias) "Not a draft alias")
-  (let [root-alias (-> draft-alias stem)]
+  [promotable-alias]
+  (assert ((some-fn draft? old?) promotable-alias) "Not a draft or old alias")
+  (let [root-alias (-> promotable-alias stem)]
     (t2/select-one :model/Dashboard :alias root-alias)))
 
 (defn- organize-versions
