@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.metrics
   (:require
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.lib.core :as lib]
