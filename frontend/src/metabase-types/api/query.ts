@@ -370,7 +370,8 @@ export type Expression =
   | OffsetExpression
   | CaseOrIfExpression
   | CallExpression
-  | ConcreteFieldReference;
+  | ConcreteFieldReference
+  | Filter;
 
 export type CallOptions = { [key: string]: unknown };
 export type CallExpression =
@@ -390,17 +391,12 @@ export type CaseOrIfExpression =
 export type OffsetExpression = [
   "offset",
   OffsetOptions,
-  ExpressionOperand,
+  Expression,
   NumericLiteral,
 ];
 
 type ExpressionOperator = string;
-type ExpressionOperand =
-  | ConcreteFieldReference
-  | NumericLiteral
-  | StringLiteral
-  | boolean
-  | Expression;
+type ExpressionOperand = Expression | CallOptions;
 
 type FieldsClause = ConcreteFieldReference[];
 
