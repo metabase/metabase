@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 import type {
-  CallExpression,
   FieldReference,
   MetricAgg,
   SegmentFilter,
@@ -68,8 +67,6 @@ export function format(mbql: any, options: FormatOptions): string {
     return formatSegment(mbql, options);
   } else if (isCaseOrIf(mbql)) {
     return formatCaseOrIf(mbql, options);
-  } else if (isNegativeFilter(mbql)) {
-    return formatNegativeFilter(mbql, options);
   }
   throw new Error("Unknown MBQL clause " + JSON.stringify(mbql));
 }
@@ -244,25 +241,4 @@ function formatOffset([_tag, _opts, expr, n]: any[], options: FormatOptions) {
   const formattedExpr = format(expr, options);
 
   return `${formattedName}(${formattedExpr}, ${n})`;
-}
-
-const NEGATIVE_FILTERS: Record<string, string> = {
-  "does-not-contain": "contains",
-  "not-empty": "is-empty",
-  "not-null": "is-null",
-};
-
-function isNegativeFilter(expr: CallExpression) {
-  if (!Array.isArray(expr)) {
-    return false;
-  }
-
-  const [fn, ...args] = expr;
-  return typeof NEGATIVE_FILTERS[fn] === "string" && args.length >= 1;
-}
-
-function formatNegativeFilter(mbql: CallExpression, options: FormatOptions) {
-  const [fn, ...args] = mbql;
-  const baseFn = NEGATIVE_FILTERS[fn];
-  return "NOT " + format([baseFn, ...args], options);
 }
