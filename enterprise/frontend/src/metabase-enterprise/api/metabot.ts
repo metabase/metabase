@@ -10,7 +10,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
     metabotAgent: builder.mutation<MetabotAgentResponse, MetabotAgentRequest>({
       query: body => ({
         method: "POST",
-        url: "/api/ee/metabot-v3/agent",
+        url: "/api/ee/metabot-v3/v2/agent",
         body,
       }),
     }),

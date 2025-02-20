@@ -56,7 +56,12 @@ export const setVisible =
 export const submitInput = createAsyncThunk(
   "metabase-enterprise/metabot/submitInput",
   async (
-    data: { message: string; context: MetabotChatContext; history: any[] },
+    data: {
+      message: string;
+      context: MetabotChatContext;
+      history: any[];
+      state: any;
+    },
     { dispatch, getState },
   ) => {
     const isProcessing = getIsProcessing(getState() as any);
@@ -80,7 +85,12 @@ export const submitInput = createAsyncThunk(
 export const sendMessageRequest = createAsyncThunk(
   "metabase-enterprise/metabot/sendMessageRequest",
   async (
-    data: { message: string; context: MetabotChatContext; history: any[] },
+    data: {
+      message: string;
+      context: MetabotChatContext;
+      history: any[];
+      state: any;
+    },
     { dispatch, getState },
   ) => {
     // TODO: make enterprise store
@@ -97,7 +107,7 @@ export const sendMessageRequest = createAsyncThunk(
 
     const result = await dispatch(
       metabotAgent.initiate(
-        { ...data, session_id: sessionId },
+        { ...data, conversation_id: sessionId },
         { fixedCacheKey: METABOT_TAG },
       ),
     );

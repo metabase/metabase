@@ -22,6 +22,7 @@ export interface MetabotState {
   sessionId: string | undefined;
   userMessages: string[];
   visible: boolean;
+  state: any;
 }
 
 export const metabotInitialState: MetabotState = {
@@ -32,6 +33,7 @@ export const metabotInitialState: MetabotState = {
   sessionId: undefined,
   userMessages: [],
   visible: false,
+  state: {},
 };
 
 export const metabot = createSlice({
