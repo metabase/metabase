@@ -274,6 +274,28 @@
                             :parameters
                             (filter #(= "uuid" (:id %))))))))))))
 
+(deftest updating-implicit-params-round-trip-test
+  ;; See #39101
+  (one-off-dbs/with-blank-db
+    (doseq [statement ["CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
+                       "SET DB_CLOSE_DELAY -1;"
+                       "CREATE TABLE \"FOO\" (\"id\" IDENTITY PRIMARY KEY, \"toggle\" BOOLEAN);"
+                       "GRANT ALL ON \"FOO\" TO GUEST;"]]
+      (jdbc/execute! one-off-dbs/*conn* [statement]))
+    (sync/sync-database! (mt/db))
+    (mt/with-actions-enabled
+      (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query foo)}]
+        (let [action-data         {:type     :implicit
+                                   :kind     "row/create"
+                                   :name     "create foo"
+                                   :model_id model-id}
+              action-id           (action/insert! action-data)
+              select-action       #(action/select-action :id action-id)
+              action-after-insert (select-action)]
+          (is (= [:type/Boolean] (map :type (:parameters action-after-insert))))
+          (action/update! (assoc (select-action) :name "create foo2") action-after-insert)
+          (is (= (:parameters action-after-insert) (:parameters (select-action)))))))))
+
 (deftest implicit-action-parameters-schema-change-test
   (one-off-dbs/with-blank-db
     (doseq [statement ["CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
