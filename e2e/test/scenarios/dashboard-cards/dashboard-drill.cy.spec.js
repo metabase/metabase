@@ -1074,7 +1074,7 @@ function setParamValue(paramName, text) {
   cy.findByText("You're editing this dashboard.").should("not.exist");
   cy.findByText(paramName).click();
   H.dashboardParametersPopover().within(() => {
-    cy.findByPlaceholderText("Search by Name").type(text);
+    cy.findByPlaceholderText("Search the list").type(text);
     cy.findByText("Add filter").click();
   });
 }

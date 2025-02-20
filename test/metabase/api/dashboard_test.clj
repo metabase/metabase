@@ -638,7 +638,8 @@
                                                                                       :parameter_id "bar"
                                                                                       :target       [:dimension
                                                                                                      [:field (mt/id :categories :name) nil]]}]}]
-
+          ;; Manually activate Field values since they are not created during sync (#53387)
+          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
           (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
                                                                  "25°"
                                                                  "33 Taps"]
@@ -687,6 +688,8 @@
                                                      :parameter_id "foo"
                                                      :target       [:dimension
                                                                     [:field (mt/id :venues :name) nil]]}]}]
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
       (let [dashboard-load-a (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
             _                (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
             dashboard-load-b (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
@@ -4804,6 +4807,8 @@
                                   :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}]
     (let [call-count (volatile! 0)
           orig-filterable-columns-for-query params/filterable-columns-for-query]
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :people :state)))
       (with-redefs [params/filterable-columns-for-query
                     (fn [& args]
                       (vswap! call-count inc)
