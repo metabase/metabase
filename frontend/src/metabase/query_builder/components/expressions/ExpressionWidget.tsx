@@ -1,13 +1,9 @@
-import type {
-  ChangeEvent,
-  KeyboardEvent as ReactKeyboardEvent,
-  ReactNode,
-} from "react";
+import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import { Box, Button, Flex, TextInput } from "metabase/ui";
+import { Box, Button, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Shortcut } from "metabase-lib/v1/expressions/complete";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
@@ -19,9 +15,9 @@ import {
 
 import { CombineColumns, hasCombinations } from "./CombineColumns";
 import { Editor } from "./Editor";
-import S from "./ExpressionWidget.module.css";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExtractColumn, hasExtractions } from "./ExtractColumn";
+import { NameInput } from "./NameInput";
 import type { ClauseType, StartRule } from "./types";
 
 const WIDGET_WIDTH = 472;
@@ -100,10 +96,6 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
     setError(null);
   }, []);
 
-  const handleNameChange = useCallback((evt: ChangeEvent<HTMLInputElement>) => {
-    setName(evt.target.value);
-  }, []);
-
   const shortcuts = useMemo(
     () =>
       [
@@ -151,15 +143,6 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
     setIsCombiningColumns(false);
     setIsExtractingColumn(false);
   }, []);
-
-  const handleKeyDown = useCallback(
-    (evt: ReactKeyboardEvent<HTMLInputElement>) => {
-      if (evt.key === "Enter") {
-        handleCommit(clause);
-      }
-    },
-    [handleCommit, clause],
-  );
 
   if (startRule === "expression" && isCombiningColumns) {
     return (
@@ -212,16 +195,11 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
 
       <Flex gap="xs" align="center">
         {withName && (
-          <TextInput
-            id="expression-name"
-            data-testid="expression-name"
-            type="text"
+          <NameInput
             value={name}
-            placeholder={t`Give your column a name...`}
-            onChange={handleNameChange}
-            onKeyDown={handleKeyDown}
-            style={{ flexGrow: 1 }}
-            classNames={{ input: S.nameInput }}
+            onChange={setName}
+            onSubmit={handleSubmit}
+            startRule={startRule}
           />
         )}
 
