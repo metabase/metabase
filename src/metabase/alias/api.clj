@@ -44,6 +44,7 @@
     (when-not (:alias dashboard)
       (throw (ex-info "Dashboard does not have an alias" {:status-code 400})))
     (dashboard/copy-dashboard {:name (str (:name dashboard) " DRAFT⚒️⚒️⚒️⚒️⚒️")
+                               :collection_id (:collection_id dashboard)
                                :alias (alias/make-draft-alias (:alias dashboard))
                                :is_deep_copy true}
                               dashboard)))
