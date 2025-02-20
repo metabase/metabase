@@ -1,5 +1,6 @@
 // TODO: get text nodes working
 
+import cx from "classnames";
 import React, { useEffect, useRef, useState } from "react";
 import { Icon, Box, Flex, Text } from "metabase/ui";
 import { t } from "ttag";
@@ -74,15 +75,17 @@ export const Slide = ({
   dashboard,
   tab,
   width,
+  className,
 }: {
   dashboard: Dashboard;
   tab: DashboardTab;
   width?: number;
+  className?: string;
 }) => {
   const DashGrid = width ? DashboardGridKindaConnected : DashboardGridConnected;
 
   return (
-    <Box className={S.slide}>
+    <Box className={cx(S.slide, className)}>
       <Box className={S.slideInner}>
         <Box is="h2" style={{ fontWeight: 900, fontSize: "3rem" }} mb="md">
           {tab.name}

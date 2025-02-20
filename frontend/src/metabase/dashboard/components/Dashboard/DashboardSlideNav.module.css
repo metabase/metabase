@@ -1,9 +1,20 @@
-.slidePreview > div {
-  transform: scale(0.15);
-  transform-origin: top left;
+.slidePreviewContainer {
+  background: white;
+  border-right: 1px solid var(--mb-color-border);
+  overflow-y: auto;
+  padding: 1rem 1rem 1rem .75rem;
+  height: calc(100dvh - 52px - 85px);
+  flex-shrink: 0;
+  width: 13.75rem;
 }
 
 .slidePreview > div {
-  width: calc(1600px - 5rem);
-  height: calc(900px - 5rem);
+  transform: scale(0.1);
+  transform-origin: top left;
+  width: calc(1600px - 2rem);
+  height: calc(900px - 2rem);
+}
+
+.slidePreviewSlide {
+  pointer-events: none;
 }

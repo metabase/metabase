@@ -2,7 +2,6 @@ import { Box, Card, Flex, Text } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { Dashboard } from "metabase-types/api";
 import { selectTab } from "metabase/dashboard/actions";
-import { DashboardGridConnected } from "../DashboardGrid";
 import S from "./DashboardSlideNav.module.css";
 import {
   Slide,
@@ -17,16 +16,7 @@ export const DashboardSlideNav = ({ dashboard }: { dashboard: Dashboard }) => {
   }));
 
   return (
-    <Flex
-      direction="column"
-      bg="white"
-      mih="100dvh"
-      h="100%"
-      p="md"
-      pr="1.25rem"
-      gap="md"
-      style={{ borderRight: "1px solid var(--mb-color-border)" }}
-    >
+    <Flex direction="column" gap="md" className={S.slidePreviewContainer}>
       <SlidePreview number={1} title={"Title slide"}>
         <TitleSlide dashboard={dashboard} />
       </SlidePreview>
@@ -38,8 +28,14 @@ export const DashboardSlideNav = ({ dashboard }: { dashboard: Dashboard }) => {
               number={index + 2}
               isSelected={tab.id === selectedTabId}
               title={tab.name}
+              key={tab.id}
             >
-              <Slide dashboard={dashboard} tab={tab} width={1600 - 136} />
+              <Slide
+                dashboard={dashboard}
+                tab={tab}
+                width={1600 - 136}
+                className={S.slidePreviewSlide}
+              />
             </SlidePreview>
           );
         })}
@@ -50,11 +46,13 @@ export const DashboardSlideNav = ({ dashboard }: { dashboard: Dashboard }) => {
 const SlidePreview = (props: any) => {
   return (
     <Flex gap="sm">
-      <Text fw="900">{props.number}</Text>
-      <Box>
+      <Text fw="900" w="1rem" style={{ textAlign: "end", flexShrink: 0 }}>
+        {props.number}
+      </Text>
+      <Box style={{ flexShrink: 0 }}>
         <Card
           style={{
-            width: "15rem",
+            width: "10rem",
             aspectRatio: "16 / 9",
             border: props.isSelected
               ? "1px solid var(--mb-color-brand)"
@@ -67,7 +65,7 @@ const SlidePreview = (props: any) => {
           className={S.slidePreview}
           {...props}
         />
-        <Text fw={700} fz="xs">
+        <Text fw={700} fz="xs" lh={1.4} mt=".25rem" w="10rem">
           {props.title}
         </Text>
       </Box>

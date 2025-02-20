@@ -462,6 +462,7 @@ function Dashboard(props: DashboardProps) {
                 shouldMakeDashboardHeaderStickyAfterScrolling={
                   !isFullscreen && (isEditing || isSharing)
                 }
+                noPadding={dashboard.is_presentational}
               >
                 <DashboardParameterPanel isFullscreen={isFullscreen} />
 
