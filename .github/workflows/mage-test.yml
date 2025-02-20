@@ -16,3 +16,6 @@ jobs:
 
       - name: bb task list
         run: bb tasks
+
+      - name: run mage tests
+        run: bb test/mage/core_test.clj
