@@ -40,6 +40,10 @@
   {:api  #{metabase.activity-feed.api metabase.activity-feed.init}
    :uses #{api config db events models util}}
 
+  alias
+  {:api #{metabase.alias.core}
+   :uses #{api}}
+
   analytics
   {:api  #{metabase.analytics.core
            metabase.analytics.prometheus
