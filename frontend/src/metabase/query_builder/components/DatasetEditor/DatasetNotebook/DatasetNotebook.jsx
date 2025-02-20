@@ -32,7 +32,7 @@ const Handle = forwardRef(function Handle(props, ref) {
       w="100%"
       h="sm"
       pos="absolute"
-      bottom={`-${rem(4)}`}
+      bottom={rem(-4)}
       style={{
         cursor: "row-resize",
       }}
