@@ -118,7 +118,7 @@ module.exports = env => {
     },
 
     externals: {
-      ...mainConfig.externals,
+      // ...mainConfig.externals,
       react: "react",
       "react-dom": "react-dom",
       "react/jsx-runtime": "react/jsx-runtime",
