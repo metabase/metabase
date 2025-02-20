@@ -27,7 +27,6 @@ import { diagnoseAndCompileExpression } from "./utils";
 type EditorProps<S extends StartRule> = {
   id?: string;
   clause?: ClauseType<S> | null;
-  error: ErrorWithMessage | null;
   name: string;
   query: Lib.Query;
   stageIndex: number;

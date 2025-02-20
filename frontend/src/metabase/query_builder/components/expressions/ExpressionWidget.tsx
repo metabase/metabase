@@ -183,15 +183,14 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
 
       <Editor
         id="expression-content"
-        expressionIndex={expressionIndex}
         startRule={startRule as S}
         clause={clause}
+        onChange={handleExpressionChange}
         name={name}
         query={query}
         stageIndex={stageIndex}
+        expressionIndex={expressionIndex}
         reportTimezone={reportTimezone}
-        onChange={handleExpressionChange}
-        error={error}
         shortcuts={shortcuts}
       />
 
