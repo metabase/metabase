@@ -134,7 +134,9 @@
 (defmethod prometheus/known-labels :metabase-notification/channel-send-ok [_] payload-channel-labels)
 (defmethod prometheus/known-labels :metabase-notification/channel-send-error [_] payload-channel-labels)
 
-(def ^:private time-since-trigger-time #(-> % meta :notification/triggered-at-ns u/since-ms))
+(defn- time-since-trigger-time
+  [notification-info]
+  (some-> notification-info meta :notification/triggered-at-ns u/since-ms))
 
 (mu/defn send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
