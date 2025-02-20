@@ -161,9 +161,6 @@ export const RuleEditor = ({
             value={rule.color}
             colors={COLORS}
             onChange={color => onChange({ ...rule, color })}
-            popoverProps={{
-              withinPortal: false,
-            }}
           />
           {canHighlightRow && (
             <>
