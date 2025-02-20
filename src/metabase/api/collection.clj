@@ -542,6 +542,7 @@
                    [:last_viewed_at :last_used_at]
                    :d.collection_id
                    :d.archived_directly
+                   :d.alias
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
                    :archived
@@ -562,6 +563,7 @@
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
+                   [:= 0 [:strpos :d.alias "@"]]
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
@@ -794,7 +796,7 @@
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
-   :collection_id
+   :collection_id :alias
    [:dashboard_id :integer]
    [:archived_directly :boolean]
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
