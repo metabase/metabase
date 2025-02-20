@@ -339,6 +339,23 @@ describe("DashCardCardParameterMapper", () => {
     expect(screen.queryByText(/Column to filter on/i)).not.toBeInTheDocument();
   });
 
+  describe("Action parameter", () => {
+    it("should show action parameter warning if an action parameter is used", () => {
+      const dashcard = createMockActionDashboardCard();
+
+      setup({
+        card: dashcard.card,
+        dashcard,
+        target: ["variable", ["template-tag", "source"]],
+      });
+      expect(
+        screen.getByText(
+          /Action parameters only accept a single value\. They do not support dropdown lists/i,
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("Native question", () => {
     it("should show native question variable warning if a native question variable is used", () => {
       const card = createMockCard({
@@ -358,7 +375,7 @@ describe("DashCardCardParameterMapper", () => {
       });
       expect(
         screen.getByText(
-          /Action parameters only accept a single value\. They do not support dropdown lists/i,
+          /Native question variables only accept a single value\. They do not support dropdown lists/i,
         ),
       ).toBeInTheDocument();
     });
@@ -386,7 +403,9 @@ describe("DashCardCardParameterMapper", () => {
         editingParameter: createMockParameter({ type: "date/month-year" }),
       });
       expect(
-        screen.getByText(/Action parameters do not support dropdown lists/i),
+        screen.getByText(
+          /Native question variables do not support dropdown lists/i,
+        ),
       ).toBeInTheDocument();
     });
   });
