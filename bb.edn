@@ -1,4 +1,5 @@
 {:min-bb-version "1.12.196"
+
  ;; we put path as bin, and everything is in the mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths ["bin" "test"]
@@ -6,11 +7,7 @@
                          :git/sha "81cc9af3021d7689cfbddf0518a1e828f785f006"}
          metosin/malli  {:mvn/version "0.17.0"}
          table/table    {:mvn/version "0.5.0"}}
- :tasks {:requires [[clojure.string :as str]
-                    [bask.colors :as c]
-                    [mage.kondo :as kondo]
-                    [mage.cli :as cli]
-                    [mage.util :as u]]
+ :tasks {:requires [[mage.cli :as cli]]
 
          cljfmt-staged
          {:doc      "Runs cljfmt on staged files"
@@ -32,29 +29,30 @@
           :task     (do (cli/menu! (current-task)) (format/all))}
 
          kondo
-         {:doc "Runs Kondo against a file, directory, or everything we usually lint."
+         {:doc      "Runs Kondo against a file, directory, or everything we usually lint."
           :examples [["bb kondo" "run Kondo against everything we usually lint"]
                      ["bb kondo --lint src/metabase/db.clj" "run Kondo against a file"]
                      ["bb kondo --lint src/metabase/api/macros" "run Kondo against a directory"]]
 
           :requires [[mage.kondo :as kondo]]
-          :task (do (cli/menu! (current-task))
-                    (kondo/kondo *command-line-args*))}
+          :task     (do (cli/menu! (current-task))
+                        (kondo/kondo *command-line-args*))}
 
          kondo-updated
-         {:doc "Runs kondo against files that have been changed relative to a Git ref (default `HEAD`)"
+         {:doc      "Runs kondo against files that have been changed relative to a Git ref (default `HEAD`)"
           :examples [["bb kondo-updated" "run Kondo on files with changes relative to HEAD"]
                      ["bb kondo-updated master" "run Kondo on files with changes relative to master"]]
-          :task (do (cli/menu! (current-task))
-                    (kondo/kondo-updated *command-line-args*))}
+          :requires [[mage.kondo :as kondo]]
+          :task     (do (cli/menu! (current-task))
+                        (kondo/kondo-updated *command-line-args*))}
 
          start-db
-         {:doc "Start a db on a default port in docker"
+         {:doc      "Start a db on a default port in docker"
           :requires [[mage.start-db :as start-db]]
           :examples [["bb start-db postgres latest" "start the latest postgres db we support"]
                      ["bb start-db mysql oldest" "start the oldest mysql db we support"]]
-          :task (do (cli/menu! (current-task))
-                    (start-db/start-db *command-line-args*))}
+          :task     (do (cli/menu! (current-task))
+                        (start-db/start-db *command-line-args*))}
 
          install-autotab
          {:doc      "Prints shell code to autocomplete tasks using bb.
@@ -67,7 +65,8 @@
 
          nrepl
          {:doc      "Starts the babashka nrepl server for bb tasks development."
-          :requires [[babashka.nrepl.server :as nrepl.server]]
+          :requires [[babashka.nrepl.server :as nrepl.server]
+                     [bask.colors :as c]]
           :examples [["bb nrepl" "Starts the nrepl server"]]
           :task     (do
                       (spit ".nrepl-port" 1667)
@@ -75,14 +74,23 @@
                       (nrepl.server/start-server!)
                       (deref (promise)))}
 
+         download-jar {:doc      "Given a version, downloads a metabase jar"
+                       :examples [["mb-download 1.45.2 ~/path/to/my/jars" "Download 1.45.2 to ~/path/to/my/jars"]
+                                  ["mb-download 1.45.2" "Download 1.45.2 to $JARS."]
+                                  ["mb-download 0.45.2" "Download 0.45.2 to $JARS.\n   ProTip: this script will read from $JARS, and use that as your jar directory."]]
+                       :requires [[mage.mb-download :as mb-download]]
+                       :task     (do
+                                   (cli/menu! (current-task))
+                                   (mb-download/mb-download *command-line-args*))}
+
          ;; note: task symbols starting with `-` are not listed in `bb tasks`.
-          -example
+         -example
          {;; docstring for the task:
-          :doc      "sample task"
-          ;; lazily require libraries:
+          :doc      "The sample task docstring"
+          ;; you should lazily require libraries:
           :requires []
           ;; examples get printed out when you pass -h or --help.
-          :examples [["mage _x" "runs this task"]]
+          :examples [["bb -example" "it runs this task"]]
           ;; options are things like --file, --name, etc.
           :options  []
           :task     (prn "hi")}}}
