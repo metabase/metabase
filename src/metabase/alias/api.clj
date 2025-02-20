@@ -33,7 +33,7 @@
       (throw (ex-info "Must be a draft or old version to promote" {:status-code 400})))
     (let [current (alias/parent-for-draft (:alias dashboard))]
       (t2/with-transaction [_]
-        (t2/update! :model/Dashboard :id (:id current) {:alias (str (:alias current) "@old")})
+        (t2/update! :model/Dashboard :id (:id current) {:alias (alias/make-old-alias (:alias current))})
         (t2/update! :model/Dashboard :id (:id dashboard) {:alias (:alias current)})))
     api/generic-204-no-content))
 
@@ -44,14 +44,14 @@
     (when-not (:alias dashboard)
       (throw (ex-info "Dashboard does not have an alias" {:status-code 400})))
     (dashboard/copy-dashboard {:name (str (:name dashboard) " DRAFT⚒️⚒️⚒️⚒️⚒️")
-                               :alias (str (:alias dashboard) "@draft")
+                               :alias (alias/make-draft-alias (:alias dashboard))
                                :is_deep_copy true}
                               dashboard)))
 
 (api.macros/defendpoint :get "/:alias"
   "Fetch recent logins for the current user."
   [{:keys [alias]}]
-  (when (str/includes? alias "@")
+  (when ((some-fn alias/draft? alias/old?) alias)
     (throw (ex-info "Cannot get draft and old aliases this way" {:alias alias})))
   (or (some-> (t2/select-one [:model/Dashboard :id :alias] :alias alias)
               (assoc :model "dashboard"))

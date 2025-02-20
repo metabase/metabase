@@ -11,6 +11,14 @@
 
 (defn stem [alias] (str/replace alias #"@.*" ""))
 
+(defn make-draft-alias [a]
+  (assert (string? a) "No alias!")
+  (-> a stem (str "@draft")))
+
+(defn make-old-alias [a]
+  (assert (string? a) "No alias!")
+  (-> a stem (str "@old")))
+
 (defn parent-for-draft
   [promotable-alias]
   (assert ((some-fn draft? old?) promotable-alias) "Not a draft or old alias")
