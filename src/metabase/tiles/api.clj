@@ -7,6 +7,8 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -123,13 +125,15 @@
   "Adjust native queries to be an mbql from a source query so we can add the filter clause."
   [query]
   (if (contains? query :native)
-    (let [native (set/rename-keys (:native query) {:query :native})]
+    (let [source-query (-> (:native query)
+                           (set/rename-keys {:query :native})
+                           (assoc :parameters (:parameters query)))]
       {:database (:database query)
        :type     :query
-       :query    {:source-query native}})
+       :query    {:source-query source-query}})
     query))
 
-;;; ---------------------------------------------------- ENDPOINT ----------------------------------------------------
+;;; ---------------------------------------------------- ENDPOINTS ----------------------------------------------------
 
 (defn- int-or-string
   "Parse a string into an integer if it can be otherwise return the string. Intended to determine whether something is a
@@ -154,28 +158,59 @@
   - limit query results to `tile-coordinate-limit` number of results
   - only select lat and lon fields rather than entire query's fields"
   [query {:keys [zoom x y lat-field lon-field]}]
-  (-> query
-      native->source-query
-      (update :query query-with-inside-filter
-              lat-field lon-field
-              x y zoom)
-      (assoc-in [:query :fields] [lat-field lon-field])
-      (assoc-in [:query :limit] tile-coordinate-limit)))
+  (let [lat-field-ref (field-ref lat-field)
+        lon-field-ref (field-ref lon-field)]
+    (-> query
+        native->source-query
+        (update :query query-with-inside-filter
+                lat-field-ref lon-field-ref
+                x y zoom)
+        (assoc-in [:query :fields] [lat-field-ref lon-field-ref])
+        (assoc-in [:query :limit] tile-coordinate-limit))))
 
 ;;; TODO -- what if the field name contains a slash? Are we expected to URL-encode it? I don't think we have any code
 ;;; that handles that.
 (mr/def ::field-id-or-name
   [:string {:api/regex #"[^/]+"}])
 
-;; TODO - this can be reworked to be async instead
-;;
-;; TODO - this should reduce results from the QP in a streaming fashion instead of requiring them all to be in memory
-;; at the same time
+(defn- tiles-query
+  [query zoom x y lat-field lon-field]
+  (let [query (mbql.normalize/normalize query)]
+    (query->tiles-query query {:zoom zoom :x x :y y
+                               :lat-field lat-field
+                               :lon-field lon-field})))
+
+(defn- result->points
+  [{{:keys [rows cols]} :data} lat-field lon-field]
+  (let [lat-key (qp.util/field-ref->key (field-ref lat-field))
+        lon-key (qp.util/field-ref->key (field-ref lon-field))
+        find-fn (fn [lat-or-lon-key]
+                  (first (keep-indexed
+                          (fn [idx col] (when (= (qp.util/field-ref->key (:field_ref col)) lat-or-lon-key) idx))
+                          cols)))
+        lat-idx (find-fn lat-key)
+        lon-idx (find-fn lon-key)]
+    (for [row rows]
+      [(nth row lat-idx) (nth row lon-idx)])))
+
+;; TODO - this should be async and stream results from the QP instead of requiring them all to be in memory at the same
+;; time
+(defn- tiles-response
+  [result zoom points]
+  (if (= (:status result) :completed)
+    {:status  200
+     :headers {"Content-Type" "image/png"}
+     :body    (tile->byte-array (create-tile zoom points))}
+    (throw (ex-info (tru "Query failed")
+                      ;; `result` might be a `core.async` channel or something we're not expecting
+                    (assoc (when (map? result) result) :status-code 400)))))
+
+;; These endpoints provides an image with the appropriate pins rendered given a MBQL `query` (passed as a GET query
+;; string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the
+;; appropriate ones. It's expected that to render a full map view several calls will be made to this endpoint in
+;; parallel.
 (api.macros/defendpoint :get "/:zoom/:x/:y/:lat-field/:lon-field"
-  "This endpoints provides an image with the appropriate pins rendered given a MBQL `query` (passed as a GET query
-  string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the
-  appropriate ones. It's expected that to render a full map view several calls will be made to this endpoint in
-  parallel."
+  "Generates a single tile image for an ad-hoc query."
   [{:keys [zoom x y lat-field lon-field]} :- [:map
                                               [:zoom      ms/Int]
                                               [:x         ms/Int]
@@ -184,35 +219,74 @@
                                               [:lon-field ::field-id-or-name]]
    {:keys [query]} :- [:map
                        [:query ms/JSONString]]]
-  (let [lat-field-ref (field-ref lat-field)
-        lon-field-ref (field-ref lon-field)
+  (let [query         (json/decode+kw query)
+        updated-query (tiles-query query zoom x y lat-field lon-field)
+        result        (qp/process-query
+                       (qp/userland-query updated-query {:executed-by api/*current-user-id*
+                                                         :context     :map-tiles}))
+        points        (result->points result lat-field lon-field)]
+    (tiles-response result zoom points)))
 
-        query
-        (mbql.normalize/normalize (json/decode+kw query))
+(api.macros/defendpoint :get "/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+  "Generates a single tile image for a saved Card."
+  [{:keys [card-id zoom x y lat-field lon-field]}
+   :- [:map
+       [:card-id   ms/PositiveInt]
+       [:zoom      ms/Int]
+       [:x         ms/Int]
+       [:y         ms/Int]
+       [:lat-field ::field-id-or-name]
+       [:lon-field ::field-id-or-name]]
+   {:keys [parameters]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]]]
+  (let [parameters (json/decode+kw parameters)
+        result
+        (qp.card/process-query-for-card
+         card-id
+         :api
+         {:parameters parameters
+          :context    :map-tiles
+          :make-run   (constantly
+                       (fn [query info]
+                         (-> query
+                             (update :info merge info)
+                             (tiles-query zoom x y lat-field lon-field)
+                             qp/userland-query
+                             qp/process-query)))})
+        points (result->points result lat-field lon-field)]
+    (tiles-response result zoom points)))
 
-        updated-query (query->tiles-query query {:zoom zoom :x x :y y
-                                                 :lat-field lat-field-ref
-                                                 :lon-field lon-field-ref})
-
-        {:keys [status], {:keys [rows cols]} :data, :as result}
-        (qp/process-query
-         (qp/userland-query updated-query {:executed-by api/*current-user-id*
-                                           :context     :map-tiles}))
-
-        lat-key (qp.util/field-ref->key lat-field-ref)
-        lon-key (qp.util/field-ref->key lon-field-ref)
-        find-fn (fn [lat-or-lon-key]
-                  (first (keep-indexed
-                          (fn [idx col] (when (= (qp.util/field-ref->key (:field_ref col)) lat-or-lon-key) idx))
-                          cols)))
-        lat-idx (find-fn lat-key)
-        lon-idx (find-fn lon-key)
-        points  (for [row rows]
-                  [(nth row lat-idx) (nth row lon-idx)])]
-    (if (= status :completed)
-      {:status  200
-       :headers {"Content-Type" "image/png"}
-       :body    (tile->byte-array (create-tile zoom points))}
-      (throw (ex-info (tru "Query failed")
-                      ;; `result` might be a `core.async` channel or something we're not expecting
-                      (assoc (when (map? result) result) :status-code 400))))))
+(api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+  "Generates a single tile image for a dashcard."
+  [{:keys [dashboard-id dashcard-id card-id zoom x y lat-field lon-field]}
+   :- [:map
+       [:dashboard-id ms/PositiveInt]
+       [:dashcard-id ms/PositiveInt]
+       [:card-id   ms/PositiveInt]
+       [:zoom      ms/Int]
+       [:x         ms/Int]
+       [:y         ms/Int]
+       [:lat-field ::field-id-or-name]
+       [:lon-field ::field-id-or-name]]
+   {:keys [parameters]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]]]
+  (let [parameters (json/decode+kw parameters)
+        result
+        (qp.dashboard/process-query-for-dashcard
+         :dashboard-id  dashboard-id
+         :dashcard-id   dashcard-id
+         :card-id       card-id
+         :export-format :api
+         :parameters    parameters
+         :context       :map-tiles
+         :make-run      (constantly
+                         (fn [query info]
+                           (-> query
+                               (update :info merge info)
+                               (tiles-query zoom x y lat-field lon-field)
+                               qp/userland-query
+                               qp/process-query))))
+        points (result->points result lat-field lon-field)]
+    (tiles-response result zoom points)))

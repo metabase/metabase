@@ -3,38 +3,160 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.tiles.api :as api.tiles]
+   [metabase.util :as u]
    [metabase.util.json :as json]))
 
+;; TODO: Assert on the contents of the response, not just the format
 (defn- png? [s]
   (= [\P \N \G]
      (drop 1 (take 4 s))))
 
-(deftest basic-test
-  (let [venues-query {:database (mt/id)
-                      :type     :query
-                      :query    {:source-table (mt/id :venues)
-                                 :fields [[:field (mt/id :venues :name) nil]
-                                          [:field (mt/id :venues :latitude) nil]
-                                          [:field (mt/id :venues :longitude) nil]]}}]
-    (testing "GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id"
-      (is (png? (mt/user-http-request
-                 :crowberto :get 200 (format "tiles/1/1/1/%d/%d"
-                                             (mt/id :venues :latitude)
-                                             (mt/id :venues :longitude))
-                 :query (json/encode venues-query)))))
-    (testing "Works on native queries"
-      (let [native-query {:query (:query (qp.compile/compile venues-query))
-                          :template-tags {}}]
+(defn- venues-query
+  []
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table (mt/id :people)
+              :fields [[:field (mt/id :people :id) nil]
+                       [:field (mt/id :people :state) nil]
+                       [:field (mt/id :people :latitude) nil]
+                       [:field (mt/id :people :longitude) nil]]}})
+
+(defn- native-query
+  []
+  {:database (mt/id)
+   :type     :native
+   :native   {:query "SELECT LATITUDE, LONGITUDE FROM PEOPLE;"
+              :template-tags {}}})
+
+(defn- parameterized-native-query
+  []
+  {:database (mt/id)
+   :type     :native
+   :native   {:query "SELECT LATITUDE, LONGITUDE FROM PEOPLE WHERE STATE = {{state}};"
+              :template-tags {"state" {:id           "_STATE_"
+                                       :name         "state"
+                                       :display-name "State"
+                                       :type         "text"
+                                       :required     false}}}})
+
+(deftest ad-hoc-query-test
+  (testing "GET /api/tiles/:zoom/:x/:y/:lat-field/:lon-field"
+    (is (png? (mt/user-http-request
+               :crowberto :get 200 (format "tiles/4/2/4/%d/%d"
+                                           (mt/id :people :latitude)
+                                           (mt/id :people :longitude))
+               :query (json/encode (venues-query))))))
+  (testing "Works on native queries"
+    (is (png? (mt/user-http-request
+               :crowberto :get 200 (format "tiles/1/1/1/%s/%s"
+                                           "LATITUDE"
+                                           "LONGITUDE")
+               :query (json/encode (native-query)))))))
+
+(deftest saved-card-test
+  (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+    (testing "MBQL saved card"
+      (mt/with-temp [:model/Card card {:dataset_query (venues-query)}]
         (is (png? (mt/user-http-request
-                   :crowberto :get 200 (format "tiles/1/1/1/%s/%s"
-                                               "LATITUDE" "LONGITUDE")
-                   :query (json/encode
-                           {:database (mt/id)
-                            :type :native
-                            :native native-query}))))))))
+                   :crowberto :get 200 (format "tiles/%d/1/1/1/%d/%d"
+                                               (u/id card)
+                                               (mt/id :people :latitude)
+                                               (mt/id :people :longitude)))))))
+
+    (testing "Native saved card"
+      (mt/with-temp [:model/Card card {:dataset_query (native-query)}]
+        (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "tiles/%d/1/1/1/%s/%s"
+                                                 (u/id card)
+                                                 "LATITUDE" "LONGITUDE")))))))
+
+    (testing "Parameterized native saved card"
+      (mt/with-temp [:model/Card card {:dataset_query (parameterized-native-query)}]
+        (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "tiles/%d/1/1/1/%s/%s"
+                                                 (u/id card)
+                                                 "LATITUDE"
+                                                 "LONGITUDE")
+                     :parameters (json/encode [{:type :text
+                                                :target [:variable [:template-tag :state]]
+                                                :value "CA"}])))))))))
+
+(deftest dashcard-test
+  (testing "GET /api/tiles/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+    (testing "MBQL dashcard"
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                     :model/Card {card-id :id} {:dataset_query (venues-query)}
+                     :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                                                             :dashboard_id dashboard-id}]
+        (is (png? (mt/user-http-request
+                   :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%d/%d"
+                                               dashboard-id
+                                               dashcard-id
+                                               card-id
+                                               (mt/id :people :latitude)
+                                               (mt/id :people :longitude)))))))
+
+    (testing "Native dashcard"
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                     :model/Card {card-id :id} {:dataset_query (native-query)}
+                     :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                                                             :dashboard_id dashboard-id}]
+        (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%s/%s"
+                                                 dashboard-id
+                                                 dashcard-id
+                                                 card-id
+                                                 "LATITUDE"
+                                                 "LONGITUDE")))))))
+
+    (testing "Parameterized mbql dashcard"
+      (mt/with-temp [:model/Dashboard  {dashboard-id :id} {:parameters [{:name "State"
+                                                                         :id "_STATE_"
+                                                                         :type "text"}]}
+
+                     :model/Card {card-id :id} {:dataset_query (venues-query)}
+                     :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                                                             :dashboard_id dashboard-id
+                                                             :parameter_mappings [{:parameter_id "_STATE_"
+                                                                                   :card_id card-id
+                                                                                   :target [:dimension (mt/$ids people $state)]}]}]
+        (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%s/%s"
+                                                 dashboard-id
+                                                 dashcard-id
+                                                 card-id
+                                                 (mt/id :people :latitude)
+                                                 (mt/id :people :longitude))
+                     :parameters (json/encode [{:id "_STATE_"
+                                                :value ["CA"]}])))))))
+
+    (testing "Parameterized native dashcard"
+      (mt/with-temp [:model/Dashboard  {dashboard-id :id} {:parameters [{:name "State"
+                                                                         :id "_STATE_"
+                                                                         :type "text"}]}
+
+                     :model/Card {card-id :id} {:dataset_query (parameterized-native-query)}
+                     :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                                                             :dashboard_id dashboard-id
+                                                             :parameter_mappings [{:parameter_id "_STATE_"
+                                                                                   :card_id card-id
+                                                                                   :target [:variable ["template-tag" "state"]]}]}]
+        (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%s/%s"
+                                                 dashboard-id
+                                                 dashcard-id
+                                                 card-id
+                                                 "LATITUDE"
+                                                 "LONGITUDE")
+                     :parameters (json/encode [{:id "_STATE_"
+                                                :value ["CA"]}])))))))))
 
 (deftest query->tiles-query-test
   (letfn [(clean [q]
