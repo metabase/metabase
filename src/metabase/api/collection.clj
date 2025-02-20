@@ -9,6 +9,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
+   [metabase.alias.core :as alias]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.db :as mdb]
@@ -563,7 +564,9 @@
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
-                   [:= 0 [:strpos :d.alias "@"]]
+                   [:or
+                    [:= [:inline 0] [:strpos :d.alias [:inline "@"]]]
+                    [:= nil [:strpos :d.alias [:inline "@"]]]]
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
@@ -930,11 +933,13 @@
                              :limit  (if (zero? limit) 1 limit)
                              :offset offset))
         rows        (mdb.query/query limit-query)
+        post-rows   (post-process-rows options collection rows)
         res         {:total  (->> rows first :total_count)
                      :data   (if (= limit 0)
                                []
-                               (post-process-rows options collection rows))
-                     :models models}
+                               post-rows)
+                     :models models
+                     :versions (alias/versions-for-dashboards (filter (comp #{"dashboard"} :model) post-rows))}
         limit-res   (assoc res
                            :limit  (request/limit)
                            :offset (request/offset))]
