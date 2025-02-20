@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.alias.core :as alias]
    [metabase.api.common :as api]
+   [metabase.api.dashboard]
    [metabase.api.macros :as api.macros]
    [metabase.models.dashboard :as dashboard]
    [metabase.util.malli.schema :as ms]
