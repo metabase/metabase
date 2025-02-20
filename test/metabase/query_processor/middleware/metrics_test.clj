@@ -873,8 +873,7 @@
                                             (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :orders))))
                                             (lib/aggregate (lib.metadata/metric mp offending-id))))))))
 
-;;
-(deftest compatible-metric-joins-test-xix
+(deftest compatible-metric-joins-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
     (mt/with-temp
       [;; contains NON fk->pk join
@@ -1028,67 +1027,144 @@
                                    (lib/aggregate (lib.metadata/metric mp mid-gt))
                                    (lib/aggregate (lib.metadata/metric mp mid-lt))))))))))
 
-(def efs @#'metrics/equal-filter-shape?)
+(def efs @#'metrics/equal-filter?)
 
 ;; equal filter shape test
 ;; TMP: It seem
 (deftest equal-filter-shape-test
-  (is (true? (efs [:> {} [:field {} 2] 1]
-                  [:> {} [:field {} 2] 1])))
+  (is (true? (efs [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2] 1]
+                  [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2] 1])))
   
-  (is (false? (efs [:< {} [:field {} 2] 1]
-                   [:> {} [:field {} 2] 1])))
-  
-  (is (true? (efs [:< {}
-                   [:=
-                    [:field {} 100]
-                    [:+
-                     [:field {} 2]
-                     [:field {} 300]]]
-                   1]
-                   ;
-                  [:< {}
-                   [:=
-                    [:field {} 100]
-                    [:+
-                     [:field {} 2]
-                     [:field {} 300]]]
-                   1])))
-  
-  (is (false? (efs [:< {}
-                    [:=
-                     [:field {} 100]
-                     [:+
-                      [:field {} 2]
-                      [:field {} 300]]]
+  (is (false? (efs [:< {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 
+                    [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2] 
                     1]
-                     ;
-                   [:< {}
-                    [:=
-                     [:field {} 100]
-                     [:-
-                      [:field {} 2]
-                      [:field {} 300]]]
+                   [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                    [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2]
                     1])))
   
-  (is (false? (efs [:< {}
-                    [:=
-                     [:field {} 100]
-                     [:+
-                      [:field {} 2]
-                      [:field {} 300]]]
+  (is (true? (efs [:< {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                   [:= {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                    [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 100]
+                    [:+ {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                     [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2]
+                     [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 300]]]
+                   1]
+                   ;
+                  [:< {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                   [:= {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                    [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 100]
+                    [:+ {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                     [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2]
+                     [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 300]]]
+                   1])))
+  
+  (is (false? (efs [:< {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                    [:= {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                     [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 100]
+                     [:+ {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                      [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2]
+                      [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 300]]]
+                    1]
+                     ;
+                   [:< {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                    [:= {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                     [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 100]
+                     [:- {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                      [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2]
+                      [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 300]]]
+                    1])))
+  
+  (is (false? (efs [:< {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                    [:= {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                     [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 100]
+                     [:+ {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                      [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2]
+                      [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 300]]]
                     1]
                        ;
-                   [:< {}
-                    [:=
-                     [:field {} 100]
-                     [:+
-                      [:field {} 2]
-                      nil]]
-                    1]))))
+                   [:< {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                    [:= {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                     [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 100]
+                     [:+ {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                      [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2]
+                      0]]
+                    1])))
 
-(deftest dummy-filter-test
+  (is (true? (efs [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                   [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 10]
+                   100]
+                  [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 
+                   [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 10] 
+                   [:value {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 100]]))))
+
+;; TODO: Enable when fixed.
+(deftest compatible-filters-with-different-ordering-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        metric-query-fn (fn [filter-op1 filter-op2]
+                          (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                            (lib/filter $ (filter-op1 (m/find-first (comp #{"Total"} :display-name)
+                                                                    (lib/filterable-columns $))
+                                                      10))
+                            (lib/filter $ (filter-op2 (m/find-first (comp #{"Total"} :display-name)
+                                                                    (lib/filterable-columns $))
+                                                      10))
+                            (lib/aggregate $ (lib/count))
+                            (lib.convert/->legacy-MBQL $)))]
+    (mt/with-temp
+      [:model/Card
+       {mid-gt :id}
+       {:type :metric
+        :dataset_query (metric-query-fn lib/> lib/=)}
+
+       :model/Card
+       {mid-lt :id}
+       {:type :metric
+        :dataset_query (metric-query-fn lib/= lib/>)}]
+      (testing "Processing of query referencing metrics with same filters with different ordering should complete"
+        (is (=? {:status :completed}
+                (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                      (lib/aggregate (lib.metadata/metric mp mid-gt))
+                                      (lib/aggregate (lib.metadata/metric mp mid-lt))))))))))
+
+;; simple case -- ok
+(deftest stage-filter-must-contain-filters-of-metrics-when-present-test-xxx
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-    @(def qq (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                 (lib/filter (lib/= 2 (lib/+ 1 1)))
-                 (lib/filter (lib/= 3 (lib/+ 2 1)))))))
+    (mt/with-temp
+      [:model/Card
+       {mid :id}
+       {:type :metric
+        :dataset_query @(def qw (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                                  (lib/filter $ (lib/= (m/find-first (comp #{"Total"} :display-name)
+                                                                     (lib/filterable-columns $))
+                                                       10))
+                                  (lib/aggregate $ (lib/count))
+                                  (lib.convert/->legacy-MBQL $)))}]
+      @(def rr (qp/process-query @(def qa (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                                            (lib/filter $ (lib/= (m/find-first (comp #{"Total"} :display-name)
+                                                                               (lib/filterable-columns $))
+                                                                 10))
+                                            (lib/filter $ (lib/= (m/find-first (comp #{"Subtotal"} :display-name)
+                                                                               (lib/filterable-columns $))
+                                                                 20))
+                                            (lib/aggregate $ (lib.metadata/metric mp mid)))))))))
+
+;; simple failing case -- ok
+(deftest stage-filter-must-contain-filters-of-metrics-when-present-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (mt/with-temp
+      [:model/Card
+       {mid :id}
+       {:type :metric
+        :dataset_query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                         (lib/filter $ (lib/= (m/find-first (comp #{"Total"} :display-name)
+                                                            (lib/filterable-columns $))
+                                              10))
+                         (lib/aggregate $ (lib/count))
+                         (lib.convert/->legacy-MBQL $))}]
+      (is (thrown-with-msg?
+           Throwable #"Stage filter is not compatible with metric `\d+` filter"
+           @(def rr (qp/process-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                                        (lib/filter $ (lib/= (m/find-first (comp #{"Total"} :display-name)
+                                                                           (lib/filterable-columns $))
+                                                             9999999999))
+                                        (lib/aggregate $ (lib.metadata/metric mp mid))))))))))
