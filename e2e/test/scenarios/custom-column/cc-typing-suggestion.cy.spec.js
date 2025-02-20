@@ -131,8 +131,74 @@ describe("scenarios > question > custom column > typing suggestion", () => {
       .get("ul[role=listbox]")
       .should("be.visible");
   });
+
+  it("the help text popover should follow the cursor position", () => {
+    addCustomColumn();
+
+    H.CustomExpressionEditor.type('contains("foo"', { focus: false });
+    compareHelptextPosition('"foo"');
+
+    H.CustomExpressionEditor.type(', "bar"', { focus: false });
+    compareHelptextPosition('"bar"');
+
+    H.CustomExpressionEditor.type(', "baz"', { focus: false });
+    compareHelptextPosition('"baz"');
+
+    // move curser into baz
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(3), { focus: false });
+    compareHelptextPosition('"baz"');
+
+    // move cursor to bar
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(5), { focus: false });
+    compareHelptextPosition('"bar"');
+
+    // move cursor to foo
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(10), { focus: false });
+    compareHelptextPosition('"foo"');
+
+    // move cursor to contains(, right after (
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(1), { focus: false });
+    compareHelptextPosition("contains");
+
+    // move cursor to contains(, right before (
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(1), { focus: false });
+    compareHelptextPosition("contains");
+
+    // move cursor into contains
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(2), { focus: false });
+    compareHelptextPosition("contains");
+
+    // move cursor to bar using the mouse
+    H.CustomExpressionEditor.get().findByText('"bar"').click();
+    compareHelptextPosition('"bar"');
+
+    // move cursor to foo using the mouse
+    H.CustomExpressionEditor.get().findByText('"foo"').click();
+    compareHelptextPosition('"foo"');
+
+    // move cursor to baz using the mouse
+    H.CustomExpressionEditor.get().findByText('"baz"').click();
+    compareHelptextPosition('"baz"');
+  });
 });
 
 const addCustomColumn = () => {
   cy.findByTestId("action-buttons").findByText("Custom column").click();
 };
+
+function compareHelptextPosition(text) {
+  // allow the tooltip to update first
+  cy.wait(50);
+
+  H.CustomExpressionEditor.get()
+    .findByText(text)
+    .then($element => {
+      const { left: textLeft } = $element[0].getBoundingClientRect();
+
+      H.CustomExpressionEditor.helpText().then($element => {
+        const { left: helpTextLeft } = $element[0].getBoundingClientRect();
+
+        expect(helpTextLeft).to.be.closeTo(textLeft, 5);
+      });
+    });
+}
