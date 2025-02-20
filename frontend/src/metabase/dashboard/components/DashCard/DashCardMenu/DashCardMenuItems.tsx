@@ -21,12 +21,14 @@ type DashCardMenuItemsProps = {
   result: Dataset;
   isDownloadingData: boolean;
   onDownload: () => void;
+  isVisualizerCard?: boolean;
 };
 export const DashCardMenuItems = ({
   question,
   result,
   isDownloadingData,
   onDownload,
+  isVisualizerCard,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
 
@@ -51,7 +53,14 @@ export const DashCardMenuItems = ({
       key: string;
     })[] = [];
 
-    if (withEditLink && canEditQuestion(question)) {
+    if (isVisualizerCard) {
+      items.push({
+        key: "MB_EDIT_VISUALIZER_QUESTION",
+        iconName: "pencil",
+        label: t`Edit visualization`,
+        onClick: () => onEditQuestion(question, "visualizer"),
+      });
+    } else if (withEditLink && canEditQuestion(question)) {
       const type = question.type();
       if (type === "question") {
         items.push({
@@ -116,6 +125,7 @@ export const DashCardMenuItems = ({
     result,
     withDownloads,
     withEditLink,
+    isVisualizerCard,
   ]);
 
   return menuItems.map(item => {

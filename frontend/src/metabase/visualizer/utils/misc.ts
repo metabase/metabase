@@ -24,7 +24,7 @@ import type {
   VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
 
-import { DRAGGABLE_ID } from "./constants";
+import { DRAGGABLE_ID } from "../constants";
 
 export function createDataSource(
   type: VisualizerDataSourceType,

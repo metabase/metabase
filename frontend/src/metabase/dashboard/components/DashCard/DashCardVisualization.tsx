@@ -314,7 +314,7 @@ export function DashCardVisualization({
         downloadsEnabled={downloadsEnabled}
         question={question}
         result={mainSeries}
-        dashcardId={dashcard.id}
+        dashboardCard={dashcard}
         dashboardId={dashboard.id}
         token={
           isJWT(dashcard.dashboard_id)
@@ -330,10 +330,9 @@ export function DashCardVisualization({
     isXray,
     isPublicOrEmbedded,
     isEditing,
-    dashcard.id,
-    dashcard.dashboard_id,
     dashboard.id,
     downloadsEnabled,
+    dashcard,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({

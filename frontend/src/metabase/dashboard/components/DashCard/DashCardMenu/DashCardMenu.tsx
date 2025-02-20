@@ -25,10 +25,11 @@ import {
   type MenuItemProps,
 } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type Question from "metabase-lib/v1/Question";
 import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import type {
-  DashCardId,
+  DashboardCard,
   DashboardId,
   Dataset,
   VisualizationSettings,
@@ -40,7 +41,7 @@ interface DashCardMenuProps {
   question: Question;
   result: Dataset;
   dashboardId?: DashboardId;
-  dashcardId?: DashCardId;
+  dashboardCard?: DashboardCard;
   uuid?: string;
   token?: string;
   visualizationSettings?: VisualizationSettings;
@@ -72,7 +73,7 @@ export const DashCardMenu = ({
   question,
   result,
   dashboardId,
-  dashcardId,
+  dashboardCard,
   uuid,
   token,
 }: DashCardMenuProps) => {
@@ -83,7 +84,7 @@ export const DashCardMenu = ({
     question,
     result,
     dashboardId,
-    dashcardId,
+    dashcardId: dashboardCard?.id,
     uuid,
     token,
     params: getParameterValuesBySlugMap(store.getState()),
@@ -130,6 +131,7 @@ export const DashCardMenu = ({
         result={result}
         isDownloadingData={isDownloadingData}
         onDownload={() => setMenuView("download")}
+        isVisualizerCard={isVisualizerDashboardCard(dashboardCard)}
       />
     );
   };
