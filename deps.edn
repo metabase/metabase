@@ -852,8 +852,7 @@
           :extra-paths "dev/src/watch"
           :main-opts ["-m" "watch.watcher"]}
 
-  ;;
-  ;; DB configs -- start DBs with ./bin/mage.sh start-db <db> <version>
+  ;; DB configs -- start DBs with: bb start-db <db> <version>
   :db/postgres-oldest
   {:jvm-opts
    ["-Dmb.db.type=postgres"

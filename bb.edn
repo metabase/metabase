@@ -1,4 +1,4 @@
-{;; path is bin, but everything is in the mage subdirectory,
+{;; we put path as bin, and everything is in the mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths ["bin"]
  :deps  {escherize/bask {:git/url "https://github.com/escherize/bask.git"
@@ -29,7 +29,6 @@
           :requires [[mage.format :as format]]
           :examples [["bb cljfmt-all" "Format all files"]]
           :task     (do (cli/menu! (current-task)) (format/all))}
-
 
          kondo
          {:doc "Runs Kondo against a file, directory, or everything we usually lint."
@@ -81,7 +80,8 @@
                       (nrepl.server/start-server!)
                       (deref (promise)))}
 
-         _example
+         ;; note: task symbols starting with `-` are not listed in `bb tasks`.
+          -example
          {;; docstring for the task:
           :doc      "sample task"
           ;; lazily require libraries:

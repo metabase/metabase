@@ -1,7 +1,8 @@
 (ns mage.shell
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [mage.util :as u])
   (:import
    (java.io BufferedReader File InputStreamReader)))
 
@@ -47,12 +48,15 @@
   * `dir` -- current directory to use when running the shell command. If not specified, command is run in the repo
     root directory.
 
-  * `quiet?` -- whether to suppress output from this shell command."
+  * `quiet?` -- whether to suppress output from this shell command.
+
+  * If you set MAGE_VERBOSE env var to true , the command will be printed before running it."
   {:arglists '([cmd & args] [{:keys [env dir quiet?]} cmd & args])}
   [& args]
-  (println (str "$ " (str/join " " (map (comp pr-str str) (if (map? (first args))
-                                                            (rest args)
-                                                            args)))))
+  (when (u/env "MAGE_VERBOSE" (constantly nil))
+    (println (str "$ " (str/join " " (map (comp pr-str str) (if (map? (first args))
+                                                              (rest args)
+                                                              args))))))
   (let [[opts & args]     (if (map? (first args))
                             args
                             (cons nil args))

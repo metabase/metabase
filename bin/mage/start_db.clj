@@ -78,8 +78,8 @@
     (when-let [deps-edn-alias (condp = version
                                 :oldest :db/postgres-oldest
                                 :latest :db/postgres-latest)]
-      (printf "Use the %s alias in deps.edn to use this DB.\n"
-              deps-edn-alias))))
+      (printf "Use the %s alias in deps.edn to use this DB:\n" deps-edn-alias)
+      (printf "  clj -M:dev:ee:ee-dev%s\n" deps-edn-alias))))
 
 (defn- usage []
   (println "Usage:")
