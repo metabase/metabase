@@ -1,0 +1,1 @@
+export { ChartSettingsTableFormatting } from "./ChartSettingsTableFormatting";
