@@ -1,8 +1,10 @@
 (ns mage.start-db
   (:require
    #_:clj-kondo/ignore
+   #_:clj-kondo/ignore
    [babashka.http-client :as http]
    [cheshire.core :as json]
+   [mage.color :as c]
    [mage.shell :as shell]))
 
 (set! *warn-on-reflection* true)
@@ -76,11 +78,11 @@
               (str "postgres:" resolved-version))
     (printf "Started Postgres %s on port %s\n" version port)
     (println)
-    (when-let [deps-edn-alias (condp = version
-                                :oldest :db/postgres-oldest
-                                :latest :db/postgres-latest)]
+    (when-let [deps-edn-alias (c/green (str (condp = version
+                                              :oldest :db/postgres-oldest
+                                              :latest :db/postgres-latest)))]
       (printf "Use the %s alias in deps.edn to use this DB:\n" deps-edn-alias)
-      (printf "  clj -M:dev:ee:ee-dev%s\n" deps-edn-alias))))
+      (println (str "  clj -M:dev:ee:ee-dev" deps-edn-alias)))))
 
 (defn- usage []
   (println "Usage:")
@@ -103,6 +105,10 @@
     (assert (integer? port)
             (format "Invalid port: %s" (pr-str port)))
     (start-db! db version resolved-version port)))
+
+;; TODOs:
+;; can i swap out the db name?
+;; does it get wiped when I stop docker
 
 (defn start-db
   "Starts a db: type + version"
