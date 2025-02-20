@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import {
   ALL_MODELS,
   COLLECTION_PAGE_SIZE,
@@ -25,7 +26,7 @@ import { PaginationControls } from "metabase/components/PaginationControls";
 import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -224,12 +225,19 @@ const CollectionItemsTableContentInner = ({
   onPreviousPage,
   onUnpinnedItemsSortingChange,
 }: CollectionItemsTableContentProps) => {
+  const dispatch = useDispatch();
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
     [visibleColumns],
   );
 
   const hasPagination: boolean = total ? total > pageSize : false;
+
+  const { data: collectionItemsData, isLoading: loadingVersions } = useListCollectionItemsQuery( collection?.id ? {
+    id: collection.id,
+  }: skipToken);
+
+  const versions = collectionItemsData?.versions ?? {};
 
   const unselected = getIsSelected
     ? unpinnedItems.filter(item => !getIsSelected(item))
@@ -255,6 +263,7 @@ const CollectionItemsTableContentInner = ({
         createBookmark={createBookmark}
         deleteBookmark={deleteBookmark}
         items={unpinnedItems}
+        versions={versions}
         collection={collection}
         sortingOptions={unpinnedItemsSorting}
         onSortingOptionsChange={onUnpinnedItemsSortingChange}

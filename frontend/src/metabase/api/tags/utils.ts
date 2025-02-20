@@ -196,6 +196,7 @@ export function provideCollectionItemListTags(
   return [
     ...models.map(model => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(provideCollectionItemTags),
+    "aliases", // FIXME: this is nutty
   ];
 }
 

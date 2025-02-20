@@ -1,3 +1,5 @@
+import { versions } from "process";
+
 import {
   ItemDragSourceTableRow,
   TableRow,
@@ -12,6 +14,7 @@ import { TBody } from "../BaseItemsTable.styled";
 
 export const BaseItemsTableBody = ({
   items,
+  versions,
   getIsSelected = () => false,
   isPinned,
   collection,
@@ -56,6 +59,9 @@ export const BaseItemsTableBody = ({
 
         const testIdPrefix = `${isPinned ? "pinned-" : ""}collection-entry`;
         const itemKey = `${item.model}-${item.id}`;
+        const aliasedVersions = item.alias
+         ? versions?.[item.alias]
+         : undefined;
 
         return (
           <TableRowComponent
@@ -63,6 +69,7 @@ export const BaseItemsTableBody = ({
             itemKey={itemKey}
             testIdPrefix={testIdPrefix}
             item={item}
+            versions={aliasedVersions}
             isSelected={isSelected}
             selectedItems={selectedItems}
             onDrop={onDrop}

@@ -5,6 +5,7 @@ import type { ActionMenuProps } from "metabase/collections/components/ActionMenu
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import DateTime from "metabase/components/DateTime";
 import EntityItem from "metabase/components/EntityItem";
+import { VersionPopover } from "metabase/core/components/AliasSelector";
 import CheckBox from "metabase/core/components/CheckBox";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
@@ -149,11 +150,13 @@ export const Columns = {
     ),
     Cell: ({
       item,
+      versions,
       testIdPrefix = "table",
       includeDescription = true,
       onClick,
     }: {
       item: CollectionItem;
+      versions: CollectionItem[];
       testIdPrefix?: string;
       includeDescription?: boolean;
       onClick?: (item: CollectionItem) => void;
@@ -175,6 +178,13 @@ export const Columns = {
                     {item.description}
                   </Markdown>
                 }
+              />
+            )}
+            {versions && (
+              <VersionPopover
+                alias={item.alias}
+                versions={versions}
+                item={item}
               />
             )}
           </ItemLinkComponent>

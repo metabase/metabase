@@ -97,6 +97,7 @@ export const SortableColumnHeader = ({
 
 export type BaseItemsTableProps = {
   items: CollectionItem[];
+  versions?: Record<string, CollectionItem[]>;
   collection?: Collection;
   databases?: Database[];
   bookmarks?: Bookmark[];
@@ -129,6 +130,7 @@ export const BaseItemsTable = ({
   createBookmark,
   deleteBookmark,
   items,
+  versions,
   collection,
   selectedItems,
   hasUnselected,
@@ -217,6 +219,7 @@ export const BaseItemsTable = ({
       )}
       <BaseItemsTableBody
         items={items}
+        versions={versions}
         getIsSelected={getIsSelected}
         isPinned={isPinned}
         collection={collection}

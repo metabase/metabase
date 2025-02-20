@@ -1,0 +1,7 @@
+.HoverDazzle {
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: var(--mb-color-brand-lighter);
+  }
+}

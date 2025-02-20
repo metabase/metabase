@@ -118,6 +118,7 @@ const DashboardSidesheetBody = ({
         <SidesheetCard>
           <AliasSelector
             alias={rtkDashboard?.alias}
+            collectionId={dashboard.collection_id}
             onChange={async (newAlias: string, oldId?: number) => {
               // unset the old one, lol
               if (oldId) {

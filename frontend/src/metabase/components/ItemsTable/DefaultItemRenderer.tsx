@@ -10,6 +10,7 @@ import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 export type ItemRendererProps = {
   item: CollectionItem;
+  versions?: CollectionItem[];
   isSelected?: boolean;
   isPinned?: boolean;
   onToggleSelected?: OnToggleSelectedWithItem;
@@ -23,6 +24,7 @@ export type ItemRendererProps = {
 
 export const DefaultItemRenderer = ({
   item,
+  versions,
   isSelected,
   isPinned,
   onToggleSelected,
@@ -70,6 +72,7 @@ export const DefaultItemRenderer = ({
       {visibleColumnsMap["name"] && (
         <Columns.Name.Cell
           item={item}
+          versions={versions}
           testIdPrefix={testIdPrefix}
           onClick={onClick}
         />

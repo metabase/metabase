@@ -1,12 +1,16 @@
 import { type JSX, type MouseEvent, forwardRef, useState } from "react";
 import { Link, type LinkProps, withRouter } from "react-router";
 import type { WithRouterProps } from "react-router/lib/withRouter";
+import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
+import { useCreateDraftMutation, usePromoteMutation, useUpdateDashboardMutation } from "metabase/api";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import type { HeaderButtonProps } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
+import { slugify } from "metabase/lib/formatting";
+import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 
@@ -31,12 +35,15 @@ const DashboardActionMenuInner = ({
   openSettingsSidebar,
 }: HeaderButtonProps & WithRouterProps): JSX.Element => {
   const [opened, setOpened] = useState(false);
+  const dispatch = useDispatch();
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard.id,
     parameterQueryParams: location.query,
     refetchData: false,
   });
+  const [createDraft] = useCreateDraftMutation();
+  const [ updateDashboard ] = useUpdateDashboardMutation();
 
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
     dashboard,
@@ -99,6 +106,25 @@ const DashboardActionMenuInner = ({
             >{c("A verb, not a noun").t`Move`}</Menu.Item>
           </>
         )}
+
+        <Menu.Item
+          leftSection={<Icon name="refresh_downstream" />}
+          onClick={async ()=> {
+            if (!dashboard.alias) {
+              await updateDashboard({
+                id: dashboard.id,
+                alias: slugify(dashboard.name),
+              })
+            }
+            const result = await createDraft(dashboard.id).unwrap();
+            console.log({ result });
+
+
+            if (result) {
+              dispatch(push(`/dashboard/${result.id}`));
+            }
+          }}
+        >{t`Add a draft`}</Menu.Item>
 
         <Menu.Item
           leftSection={<Icon name="clone" />}

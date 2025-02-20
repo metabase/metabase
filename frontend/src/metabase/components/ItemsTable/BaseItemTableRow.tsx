@@ -82,6 +82,7 @@ export const ItemDragSourceTableRow = ({
   onMove,
   onToggleSelected,
   item,
+  versions,
   isSelected,
   itemKey,
   collection,
@@ -104,6 +105,7 @@ export const ItemDragSourceTableRow = ({
         <ItemComponent
           testIdPrefix={testIdPrefix}
           item={item}
+          versions={versions}
           isSelected={isSelected}
           databases={databases}
           bookmarks={bookmarks}

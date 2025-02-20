@@ -3,6 +3,7 @@ export type TagType = (typeof TAG_TYPES)[number];
 export const TAG_TYPES = [
   "action",
   "alert",
+  "aliases",
   "api-key",
   "bookmark",
   "card",

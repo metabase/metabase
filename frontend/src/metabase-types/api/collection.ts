@@ -102,6 +102,7 @@ export interface CollectionItem {
   id: CollectionItemId;
   model: CollectionItemModel;
   name: string;
+  alias?: string;
   description: string | null;
   archived: boolean;
   copy?: boolean;
@@ -164,6 +165,7 @@ export type ListCollectionItemsRequest = {
 
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];
+  versions: Record<string, CollectionItem[]>;
   models: CollectionItemModel[] | null;
 } & PaginationResponse;
 
