@@ -39,9 +39,10 @@ type EditorProps<S extends StartRule> = {
   reportTimezone?: string;
   readOnly?: boolean;
 
-  onChange: (clause: ClauseType<S> | null) => void;
-  onCommit: (clause: ClauseType<S> | null) => void;
-  onError: (error: ErrorWithMessage | null) => void;
+  onChange: (
+    clause: ClauseType<S> | null,
+    error: ErrorWithMessage | null,
+  ) => void;
   shortcuts?: Shortcut[];
 };
 
@@ -63,8 +64,10 @@ export function Editor<S extends StartRule = "expression">(
   const ref = useRef<ReactCodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
 
-  const { source, onSourceChange, onChange, onCommit, isFormatting } =
-    useExpression({ ...props, metadata });
+  const { source, onSourceChange, isFormatting } = useExpression({
+    ...props,
+    metadata,
+  });
 
   const [customTooltip, portal] = useCustomTooltip({
     getPosition: getTooltipPosition,
@@ -85,44 +88,34 @@ export function Editor<S extends StartRule = "expression">(
     stageIndex,
     name,
     expressionIndex,
-    onCommit,
     reportTimezone,
     metadata,
     extensions: [customTooltip],
   });
 
-  const handleBlur = useCallback(() => {
-    onChange(source);
-  }, [source, onChange]);
-
   return (
-    <>
-      <Box className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
-        <CodeMirror
-          id={id}
-          ref={ref}
-          data-testid="custom-expression-query-editor"
-          className={S.editor}
-          extensions={extensions}
-          readOnly={readOnly || isFormatting}
-          value={source}
-          onChange={onSourceChange}
-          onBlur={handleBlur}
-          height="100%"
-          width="100%"
-          indentWithTab={false}
-        />
+    <Box className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
+      <CodeMirror
+        id={id}
+        ref={ref}
+        data-testid="custom-expression-query-editor"
+        className={S.editor}
+        extensions={extensions}
+        readOnly={readOnly || isFormatting}
+        value={source}
+        onChange={onSourceChange}
+        height="100%"
+        width="100%"
+        indentWithTab={false}
+      />
 
-        <Shortcuts
-          shortcuts={shortcuts}
-          hide={isFormatting || source.trim() !== ""}
-        />
-      </Box>
+      <Shortcuts
+        shortcuts={shortcuts}
+        hide={isFormatting || source.trim() !== ""}
+      />
 
-      {/* TODO: render elswhere */}
-      {/* {error && hasChanges && <Box className={S.error}>{error.message}</Box>} */}
       {portal}
-    </>
+    </Box>
   );
 }
 
@@ -135,8 +128,6 @@ function useExpression<S extends StartRule = "expression">({
   expressionIndex,
   metadata,
   onChange,
-  onCommit,
-  onError,
 }: EditorProps<S> & {
   metadata: Metadata;
 }) {
@@ -149,7 +140,6 @@ function useExpression<S extends StartRule = "expression">({
   }, [clause, query, stageIndex]);
 
   const [source, setSource] = useState<string>("");
-  const [hasChanges, setHasChanges] = useState(false);
   const [isFormatting, setIsFormatting] = useState(true);
 
   const formatExpression = useCallback(
@@ -157,7 +147,6 @@ function useExpression<S extends StartRule = "expression">({
       if (!expression) {
         return "";
       }
-
       return format(expression, {
         query,
         stageIndex,
@@ -168,15 +157,20 @@ function useExpression<S extends StartRule = "expression">({
     [stageIndex, query, expressionIndex],
   );
 
-  const handleSourceChange = useCallback((source: string) => {
-    setSource(source);
-    setHasChanges(true);
-  }, []);
+  useMount(() => {
+    // format the expression on mount
+    formatExpression(expression).then(source => {
+      setSource(source);
+      setIsFormatting(false);
+    });
+  });
 
   const handleUpdate = useCallback(
-    function (source: string, commit: boolean) {
+    function (source: string) {
+      setSource(source);
+
       if (source.trim() === "") {
-        onError({ message: t`Invalid expression` });
+        onChange(null, { message: t`Invalid expression` });
         return;
       }
 
@@ -190,7 +184,7 @@ function useExpression<S extends StartRule = "expression">({
       });
 
       if (error) {
-        onError(error);
+        onChange(null, error);
         return;
       }
 
@@ -210,78 +204,30 @@ function useExpression<S extends StartRule = "expression">({
         "message" in compileError &&
         typeof compileError.message === "string"
       ) {
-        onError({ message: compileError.message });
+        onChange(null, { message: compileError.message });
         return;
       } else if (compileError) {
-        onError({ message: t`Invalid expression` });
+        onChange(null, { message: t`Invalid expression` });
         return;
       }
 
       if (!expression || !isExpression(expression) || !expressionClause) {
-        onError({ message: t`Invalid expression` });
+        onChange(null, { message: t`Invalid expression` });
         return;
       }
 
       // TODO: can this be typed so we don't need to cast?
       const clause = expressionClause as ClauseType<S>;
 
-      if (commit) {
-        onCommit(clause);
-      } else {
-        onChange(clause);
-      }
-      onError(null);
-      setIsFormatting(true);
-      formatExpression(expression)
-        .then(source => {
-          setIsFormatting(false);
-          setHasChanges(false);
-          setSource(source);
-        })
-        .catch(err => {
-          setIsFormatting(false);
-          setHasChanges(false);
-          onError(err);
-        });
+      onChange(clause, null);
     },
-    [
-      name,
-      query,
-      stageIndex,
-      startRule,
-      metadata,
-      expressionIndex,
-      formatExpression,
-      onChange,
-      onCommit,
-      onError,
-    ],
-  );
-
-  useMount(() => {
-    // format the expression on mount
-    formatExpression(expression).then(source => {
-      setSource(source);
-      setIsFormatting(false);
-    });
-  });
-
-  const handleChange = useCallback(
-    (source: string) => handleUpdate(source, false),
-    [handleUpdate],
-  );
-  const handleCommit = useCallback(
-    (source: string) => handleUpdate(source, true),
-    [handleUpdate],
+    [name, query, stageIndex, startRule, metadata, expressionIndex, onChange],
   );
 
   return {
     expression,
     source,
-    onSourceChange: handleSourceChange,
-    onChange: handleChange,
-    onCommit: handleCommit,
-    hasChanges,
+    onSourceChange: handleUpdate,
     isFormatting,
   };
 }
