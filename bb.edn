@@ -11,27 +11,27 @@
   cljfmt-staged
   {:doc      "Runs cljfmt on staged files"
    :requires [[mage.format :as format]]
-   :examples [["bb cljfmt-staged" "Format staged files"]]
+   :examples [["./bin/mage cljfmt-staged" "Format staged files"]]
    :task     (do (cli/menu! (current-task)) (format/staged))}
 
   cljfmt-file
   {:doc      "Runs cljfmt on the given files/directories"
    :requires [[mage.format :as format]]
-   :examples [["bb format-file src/metabase/events.clj" "Format events.clj"]
-              ["bb format-file src" "Format all files in src"]]
+   :examples [["./bin/mage format-file src/metabase/events.clj" "Format events.clj"]
+              ["./bin/mage format-file src" "Format all files in src"]]
    :task     (format/files (:args (cli/menu! (current-task))))}
 
   cljfmt-all
   {:doc      "Runs cljfmt on all (clojure) files"
    :requires [[mage.format :as format]]
-   :examples [["bb cljfmt-all" "Format all files"]]
+   :examples [["./bin/mage cljfmt-all" "Format all files"]]
    :task     (do (cli/menu! (current-task)) (format/all))}
 
   kondo
   {:doc      "Runs Kondo against a file, directory, or everything we usually lint"
-   :examples [["bb kondo" "run Kondo against everything we usually lint"]
-              ["bb kondo --lint src/metabase/db.clj" "run Kondo against a file"]
-              ["bb kondo --lint src/metabase/api/macros" "run Kondo against a directory"]]
+   :examples [["./bin/mage kondo" "run Kondo against everything we usually lint"]
+              ["./bin/mage kondo --lint src/metabase/db.clj" "run Kondo against a file"]
+              ["./bin/mage kondo --lint src/metabase/api/macros" "run Kondo against a directory"]]
 
    :requires [[mage.kondo :as kondo]]
    :task     (do (cli/menu! (current-task))
@@ -39,8 +39,8 @@
 
   kondo-updated
   {:doc      "Runs kondo against files changed compared to a git ref"
-   :examples [["bb kondo-updated" "run Kondo on files with changes relative to HEAD"]
-              ["bb kondo-updated master" "run Kondo on files with changes relative to master"]]
+   :examples [["./bin/mage kondo-updated" "run Kondo on files with changes relative to HEAD"]
+              ["./bin/mage kondo-updated master" "run Kondo on files with changes relative to master"]]
    :requires [[mage.kondo :as kondo]]
    :task     (do (cli/menu! (current-task))
                  (kondo/kondo-updated *command-line-args*))}
@@ -48,14 +48,14 @@
   start-db
   {:doc      "Start a db on a default port in docker"
    :requires [[mage.start-db :as start-db]]
-   :examples [["bb start-db postgres latest" "start the latest postgres db we support"]
-              ["bb start-db mysql oldest" "start the oldest mysql db we support"]]
+   :examples [["./bin/mage start-db postgres latest" "start the latest postgres db we support"]
+              ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]]
    :task     (do (cli/menu! (current-task))
                  (start-db/start-db *command-line-args*))}
 
   install-autotab
   {:doc      "Prints instructions to make autocomplete work"
-   :examples [["bb install-autotab" "Shows a link to instructions to make autocomplete work."]]
+   :examples [["./bin/mage install-autotab" "Shows a link to instructions to make autocomplete work."]]
    :task     (do (cli/menu! (current-task))
                  (println "\nPlease follow these instructions:")
                  (println "  https://book.babashka.org/#_terminal_tab_completion"))}
@@ -64,16 +64,16 @@
   {:doc      "Starts the babashka nrepl server for bb tasks development"
    :requires [[babashka.nrepl.server :as nrepl.server]
               [mage.color :as c]]
-   :examples [["bb nrepl" "Starts the nrepl server"]]
+   :examples [["./bin/mage nrepl" "Starts the nrepl server"]]
    :task     (do (spit ".nrepl-port" 1667)
                  (println (c/green "Started nrepl server!"))
                  (nrepl.server/start-server!)
                  (deref (promise)))}
 
   jar-download {:doc      "Given a version, downloads a metabase jar"
-                :examples [["bb jar-download 1.45.2 ~/path/to/my/jars" "Download 1.45.2 to ~/path/to/my/jars"]
-                           ["bb jar-download 1.45.2" "Download 1.45.2 to $JARS."]
-                           ["bb jar-download 0.45.2" "Download 0.45.2 to $JARS.\n   ProTip: this script will read from $JARS, and use that as your jar directory."]]
+                :examples [["./bin/mage jar-download 1.45.2 ~/path/to/my/jars" "Download 1.45.2 to ~/path/to/my/jars"]
+                           ["./bin/mage jar-download 1.45.2" "Download 1.45.2 to $JARS."]
+                           ["./bin/mage jar-download 0.45.2" "Download 0.45.2 to $JARS.\n   ProTip: this script will read from $JARS, and use that as your jar directory."]]
                 :requires [[mage.jar-download :as jar-download]]
                 :task     (do
                             (cli/menu! (current-task))
@@ -86,7 +86,7 @@
    ;; you should lazily require libraries:
    :requires []
    ;; examples get printed out when you pass -h or --help.
-   :examples [["bb -example" "it runs this task"]]
+   :examples [["./bin/mage -example" "it runs this task"]]
    ;; options are things like --file, --name, etc.
    :options  []
    :task     (prn "hi")}}}
