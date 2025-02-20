@@ -142,8 +142,8 @@ export type ColumnRangeFormattingSetting = {
   colors: string[];
   min_type: "custom" | "all" | null;
   max_type: "custom" | "all" | null;
-  min_value: number;
-  max_value: number;
+  min_value?: number;
+  max_value?: number;
 };
 
 export type ColumnFormattingSetting = { id: number } & (
