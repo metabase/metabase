@@ -18,13 +18,15 @@
 
 (defn create
   "Create a fresh envelope from a context and history. This envelope should be used for the lifetime of the request."
-  [context history session-id]
-  {:session-id session-id
-   :history history
-   :context context
-   :max-round-trips max-round-trips
-   :round-trips-remaining max-round-trips
-   :dummy-history []})
+  ([base-context]
+   (assoc base-context :dummy-history []))
+  ([context history session-id]
+   {:session-id session-id
+    :history history
+    :context context
+    :max-round-trips max-round-trips
+    :round-trips-remaining max-round-trips
+    :dummy-history []}))
 
 (defn full-history
   "History including the dummy tool invocations"
@@ -88,6 +90,11 @@
   [e]
   (:context e))
 
+(defn state
+  "Gets the state from the envelope."
+  [e]
+  (:state e))
+
 (defn- message->reactions
   [msg]
   (let [message-reaction {:type :metabot.reaction/message
@@ -102,18 +109,19 @@
 (defn reactions
   "Gets the reactions from the envelope. Includes messages from the LLM itself if applicable."
   [e]
-  (let [last-user-msg-idx (->> (history e)
-                               (map-indexed vector)
-                               (filter #(= (:role (second %)) :user))
-                               last
-                               first)
+  (let [last-user-msg-idx (or (->> (history e)
+                                   (map-indexed vector)
+                                   (filter #(= (:role (second %)) :user))
+                                   last
+                                   first)
+                              -1)
         llm-message-reactions (->> (history e)
                                    (drop (inc last-user-msg-idx))
                                    (filter #(= (:role %) :assistant))
                                    (filter #(not-empty (:content %)))
                                    (mapcat message->reactions)
                                    (into []))]
-    (into [] (concat llm-message-reactions (:reactions e) (metabot-v3.context/create-reactions (:context e))))))
+    (into llm-message-reactions (concat (:reactions e) (metabot-v3.context/create-reactions (:context e))))))
 
 (defn add-user-message
   "Given a user message (a string) adds it to the envelope."

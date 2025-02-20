@@ -6,9 +6,11 @@
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
+   [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
    [metabase.premium-features.core :as premium-features]
+   [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
@@ -93,6 +95,9 @@
 (defn- agent-endpoint-url []
   (str (ai-proxy-base-url) "/v1/agent/"))
 
+(defn- agent-v2-endpoint-url []
+  (str (ai-proxy-base-url) "/v2/agent"))
+
 (defn- metric-selection-endpoint-url []
   (str (ai-proxy-base-url) "/v1/select-metric"))
 
@@ -130,6 +135,55 @@
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
         (u/prog1 (decode-response-body (:body response))
+          (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
+        (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
+                        {:request (assoc options :body body)
+                         :response response}))))
+    (catch Throwable e
+      (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e))
+                      {}
+                      e)))))
+
+(mu/defn request-v2 :- ::metabot-v3.client.schema/ai-proxy.response-v2
+  "Make a V2 request to the AI Proxy."
+  [{:keys [context messages conversation-id session-id state]}
+   :- [:map
+       [:context :map]
+       [:messages [:maybe ::metabot-v3.client.schema/messages]]
+       [:conversation-id :string]
+       [:session-id :string]
+       [:state :map]]]
+  (premium-features/assert-has-feature :metabot-v3 "MetaBot")
+  (try
+    (let [url      (agent-v2-endpoint-url)
+          body     (doto (metabot-v3.u/recursive-update-keys
+                          {:messages        messages
+                           :context         context
+                           :conversation-id conversation-id
+                           :state           state
+                           :user-id         api/*current-user-id*}
+                          metabot-v3.u/safe->snake_case_en)
+                     (metabot-v3.context/log :llm.log/be->llm))
+          _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
+          options  (cond-> {:headers          {"Accept"                    "application/json"
+                                               "Content-Type"              "application/json;charset=UTF-8"
+                                               "x-metabase-instance-token" (premium-features/premium-embedding-token)
+                                               "x-metabase-session-token"  session-id
+                                               "x-metabase-url"            "http://host.docker.internal:3000" #_(public-settings/site-url)}
+                            :body             (->json-bytes body)
+                            :throw-exceptions false}
+                     *debug* (assoc :debug true))
+          response (post! url options)]
+      (metabot-v3.context/log (:body response) :llm.log/llm->be)
+      (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
+      (if (= (:status response) 200)
+        (u/prog1 (-> (mc/decode ::metabot-v3.client.schema/ai-proxy.response-v2
+                                (:body response)
+                                (mtx/transformer
+                                 (mtx/json-transformer)
+                                 {:name :api-response}
+                                 (mtx/key-transformer {:decode u/->kebab-case-en})))
+                     (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->kebab-case-en))
           (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)

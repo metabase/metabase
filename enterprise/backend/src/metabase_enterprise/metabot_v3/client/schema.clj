@@ -31,7 +31,7 @@
 (mr/def ::message
   [:map
    [:role    ::role]
-   [:content [:maybe :string]]
+   [:content {:optional true} [:maybe :string]]
    [:tool-calls {:optional true} [:maybe [:sequential ::message.tool-call]]]])
 
 (mr/def ::messages
@@ -66,3 +66,9 @@
   "Shape of the response we get back from the AI Proxy."
   [:map
    [:message ::message]])
+
+(mr/def ::ai-proxy.response-v2
+  "Schema of the V2 AI agent response."
+  [:map
+   [:messages ::messages]
+   [:state :map]])

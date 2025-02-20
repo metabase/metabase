@@ -1,69 +1,51 @@
-(ns metabase-enterprise.metabot-v3.api
-  "`/api/ee/metabot-v3/` routes"
+(ns metabase-enterprise.metabot-v3.tools.api
+  "Code for handling tool requests from the AI service."
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
+   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
-   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
-   [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
-   [metabase-enterprise.metabot-v3.handle-envelope :as metabot-v3.handle-envelope]
-   [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
-   [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
+   [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]
+   [metabase.api.routes.common :as api.routes.common]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu]
+   [metabase.request.core :as request]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
-  (:import
-   (java.time.format DateTimeFormatter)))
+   [metabase.util.malli.schema :as ms]
+   [nano-id.core :as nano-id]))
 
-(mu/defn ^:private encode-reactions [reactions :- [:sequential ::metabot-v3.reactions/reaction]]
-  (mc/encode [:sequential ::metabot-v3.reactions/reaction]
-             reactions
-             (mtx/transformer
-              {:name :api-response}
-              (mtx/key-transformer {:encode u/->snake_case_en}))))
+(def ^:private ai-sessions (atom {}))
 
-(defn request
-  "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [message context history session-id]
-  (let [env (-> (metabot-v3.envelope/create
-                 (metabot-v3.context/create-context context)
-                 history
-                 session-id)
-                (metabot-v3.envelope/add-user-message message)
-                (metabot-v3.dummy-tools/invoke-dummy-tools)
-                (metabot-v3.handle-envelope/handle-envelope))]
-    {:reactions (encode-reactions (metabot-v3.envelope/reactions env))
-     :history (metabot-v3.envelope/history env)}))
+(defn- start-ai-loop
+  [e]
+  (metabot-v3.client/request-v2
+   (-> e
+       (update :context dissoc :user_is_viewing)
+       (assoc :messages (envelope/llm-history e)))))
 
-(api.macros/defendpoint :post "/agent"
-  "Send a chat message to the LLM via the AI Proxy."
-  [_route-params
-   _query-params
-   {:keys [message context history session_id] :as body} :- [:map
-                                                             [:message ms/NonBlankString]
-                                                             [:context [:map-of :keyword :any]]
-                                                             [:history [:maybe [:sequential :map]]]
-                                                             [:session_id ms/UUIDString]]]
-  (metabot-v3.context/log body :llm.log/fe->be)
-  (let [context (mc/decode ::metabot-v3.context/context
-                           context (mtx/transformer {:name :api-request}))
-        history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
-                           history (mtx/transformer {:name :api-request}))]
-    (doto (assoc
-           (request message context history session_id)
-           :session_id session_id)
-      (metabot-v3.context/log :llm.log/be->fe))))
+(defn handle-envelope-v2
+  "Executes the AI loop in the context of a new session. Returns the response of the AI service."
+  [e]
+  (let [session-id (nano-id/nano-id)]
+    (swap! ai-sessions assoc session-id {:user-id api/*current-user-id*})
+    (try
+      (start-ai-loop (assoc e :session-id session-id))
+      (catch Exception ex
+        (let [d (ex-data ex)]
+          (if-let [assistant-message (:assistant-message d)]
+            (envelope/add-message (or (:envelope d) e)
+                                  {:role :assistant
+                                   :content assistant-message})
+            (throw ex))))
+      (finally
+        (swap! ai-sessions dissoc session-id)))))
 
 (mr/def ::existence-filter
   [:map
@@ -123,8 +105,7 @@
 
 (mr/def ::query-metric-arguments
   [:map
-   {:encode/api-request #(update-keys % u/->kebab-case-en)
-    :encode/tool-api-request #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->kebab-case-en)}
+   {:encode/tool-api-request #(#_metabot-v3.u/recursive-update-keys update-keys % metabot-v3.u/safe->kebab-case-en)}
    [:metric_id :int]
    [:filters {:optional true} [:maybe [:sequential ::filter]]]
    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]])
@@ -139,8 +120,7 @@
 (mr/def ::filtering-result
   [:or
    [:map
-    {:decode/api-response #(update-keys % u/->snake_case_en)
-     :decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
+    {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
     [:structured_output
      [:map
       [:type [:= :query]]
@@ -174,16 +154,14 @@
 
 (mr/def ::create-dashboard-subscription-arguments
   [:map
-   {:encode/api-request #(update-keys % u/->kebab-case-en)
-    :encode/tool-api-request #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->kebab-case-en)}
+   {:encode/tool-api-request #(#_metabot-v3.u/recursive-update-keys update-keys % metabot-v3.u/safe->kebab-case-en)}
    [:dashboard_id :int]
    [:email :string]
    [:schedule ::subscription-schedule]])
 
 (mr/def ::filter-records-arguments
   [:map
-   {:encode/api-request #(update-keys % u/->kebab-case-en)
-    :encode/tool-api-request #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->kebab-case-en)}
+   {:encode/tool-api-request #(#_metabot-v3.u/recursive-update-keys update-keys % metabot-v3.u/safe->kebab-case-en)}
    [:data_source [:or
                   [:map
                    [:query [:map
@@ -196,8 +174,7 @@
 (mr/def ::find-metric-result
   [:or
    [:map
-    {:decode/api-response #(update-keys % u/->snake_case_en)
-     :decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
+    {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
     [:structured_output [:map
                          [:id :int]
                          [:name :string]
@@ -208,8 +185,7 @@
 
 (mr/def ::find-outliers-arguments
   [:map
-   {:encode/api-request #(update-keys % u/->kebab-case-en)
-    :encode/tool-api-request #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->kebab-case-en)}
+   {:encode/tool-api-request #(#_metabot-v3.u/recursive-update-keys update-keys % metabot-v3.u/safe->kebab-case-en)}
    [:data_source [:or
                   [:map
                    [:query [:map
@@ -228,8 +204,7 @@
 (mr/def ::find-outliers-result
   [:or
    [:map
-    {:decode/api-response #(update-keys % u/->snake_case_en)
-     :decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
+    {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
     [:structured_output [:sequential
                          [:map
                           [:dimension :any]
@@ -238,8 +213,7 @@
 
 (mr/def ::generate-insights-arguments
   [:map
-   {:encode/api-request #(update-keys % u/->kebab-case-en)
-    :encode/tool-api-request #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->kebab-case-en)}
+   {:encode/tool-api-request #(#_metabot-v3.u/recursive-update-keys update-keys % metabot-v3.u/safe->kebab-case-en)}
    [:for [:or
           [:map [:metric_id :int]]
           [:map [:table_id :string]]
@@ -255,9 +229,9 @@
    {:keys [arguments conversation_id] :as body} :- [:merge
                                                     [:map [:arguments ::create-dashboard-subscription-arguments]]
                                                     ::tool-request]]
-  (metabot-v3.context/log body :llm.log/llm->be)
+  (metabot-v3.context/log (assoc body :api :create-dashboard-subscription) :llm.log/llm->be)
   (let [arguments (mc/encode ::create-dashboard-subscription-arguments
-                             arguments (mtx/transformer {:name :api-request}))]
+                             arguments (mtx/transformer {:name :tool-api-request}))]
     (doto (-> (metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription arguments)
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
@@ -269,12 +243,12 @@
    {:keys [arguments conversation_id] :as body} :- [:merge
                                                     [:map [:arguments ::filter-records-arguments]]
                                                     ::tool-request]]
-  (metabot-v3.context/log body :llm.log/llm->be)
+  (metabot-v3.context/log (assoc body :api :filter-records) :llm.log/llm->be)
   (let [arguments (mc/encode ::filter-records-arguments
-                             arguments (mtx/transformer {:name :api-request}))]
+                             arguments (mtx/transformer {:name :tool-api-request}))]
     (doto (-> (mc/decode ::filtering-result
                          (metabot-v3.tools.filters/filter-records arguments)
-                         (mtx/transformer {:name :api-response}))
+                         (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
@@ -285,10 +259,10 @@
    {:keys [arguments conversation_id] :as body} :- [:merge
                                                     [:map [:arguments [:map [:message :string]]]]
                                                     ::tool-request]]
-  (metabot-v3.context/log body :llm.log/llm->be)
+  (metabot-v3.context/log (assoc body :api :find-metric) :llm.log/llm->be)
   (doto (-> (mc/decode ::find-metric-result
                        (metabot-v3.tools.find-metric/find-metric arguments)
-                       (mtx/transformer {:name :api-response}))
+                       (mtx/transformer {:name :tool-api-response}))
             (assoc :conversation_id conversation_id))
     (metabot-v3.context/log :llm.log/be->llm)))
 
@@ -299,12 +273,12 @@
    {:keys [arguments conversation_id] :as body} :- [:merge
                                                     [:map [:arguments ::find-outliers-arguments]]
                                                     ::tool-request]]
-  (metabot-v3.context/log body :llm.log/llm->be)
+  (metabot-v3.context/log (assoc body :api :find-outliers) :llm.log/llm->be)
   (let [arguments (mc/encode ::find-outliers-arguments
-                             arguments (mtx/transformer {:name :api-request}))]
+                             arguments (mtx/transformer {:name :tool-api-request}))]
     (doto (-> (mc/decode ::find-outliers-result
                          (metabot-v3.tools.find-outliers/find-outliers arguments)
-                         (mtx/transformer {:name :api-response}))
+                         (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
@@ -319,9 +293,9 @@
    {:keys [arguments conversation_id] :as body} :- [:merge
                                                     [:map [:arguments ::generate-insights-arguments]]
                                                     ::tool-request]]
-  (metabot-v3.context/log body :llm.log/llm->be)
+  (metabot-v3.context/log (assoc body :api :generate-insights) :llm.log/llm->be)
   (let [arguments (mc/encode ::generate-insights-arguments
-                             arguments (mtx/transformer {:name :api-request}))]
+                             arguments (mtx/transformer {:name :tool-api-request}))]
     (doto (-> (metabot-v3.tools.generate-insights/generate-insights arguments)
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
@@ -333,56 +307,30 @@
    {:keys [arguments conversation_id] :as body} :- [:merge
                                                     [:map [:arguments ::query-metric-arguments]]
                                                     ::tool-request]]
-  (metabot-v3.context/log body :llm.log/llm->be)
+  (metabot-v3.context/log (assoc body :api :query-metric) :llm.log/llm->be)
   (let [arguments (mc/encode ::query-metric-arguments
-                             arguments (mtx/transformer {:name :api-request}))]
+                             arguments (mtx/transformer {:name :tool-api-request}))]
     (doto (-> (mc/decode ::filtering-result
                          (metabot-v3.tools.filters/query-metric arguments)
-                         (mtx/transformer {:name :api-response}))
+                         (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
-(defn request-v2
-  "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [message context history conversation_id state]
-  (let [llm-context (metabot-v3.context/create-context context {:date-format DateTimeFormatter/ISO_INSTANT})
-        env (-> {:context llm-context
-                 :conversation-id conversation_id
-                 :history history
-                 :state state}
-                metabot-v3.envelope/create
-                (metabot-v3.envelope/add-user-message message)
-                metabot-v3.dummy-tools/invoke-dummy-tools
-                metabot-v3.tools.api/handle-envelope-v2)
-        history (into (vec (metabot-v3.envelope/history env)) (:messages env))]
-    {:reactions (-> env
-                    (assoc :history history)
-                    metabot-v3.envelope/reactions
-                    encode-reactions)
-     :history history
-     :state (metabot-v3.envelope/state env)}))
+(defn- enforce-authentication
+  "Middleware that returns a 401 response if no `ai-session` can be found for  `request`."
+  [handler]
+  (with-meta
+   (fn [{:keys [headers] :as request} respond raise]
+     (if-let [user-id (get-in @ai-sessions [(get headers "x-metabase-session") :user-id])]
+       (request/with-current-user user-id
+         (handler request respond raise))
+       (respond request/response-unauthentic)))
+   (meta handler)))
 
-(api.macros/defendpoint :post "/v2/agent"
-  "Send a chat message to the LLM via the AI Proxy."
-  [_route-params
-   _query-params
-   {:keys [message context conversation_id history state] :as body}
-   :- [:map
-       [:message ms/NonBlankString]
-       [:context [:map-of :keyword :any]]
-       [:conversation_id ms/UUIDString]
-       [:history [:maybe [:sequential :map]]]
-       [:state :map]]]
-  (metabot-v3.context/log body :llm.log/fe->be)
-  (let [context (mc/decode ::metabot-v3.context/context
-                           context (mtx/transformer {:name :api-request}))
-        history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
-                           history (mtx/transformer {:name :api-request}))]
-    (doto (assoc
-           (request-v2 message context history conversation_id state)
-           :conversation_id conversation_id)
-      (metabot-v3.context/log :llm.log/be->fe))))
+(def ^{:arglists '([handler])} +tool-session
+  "Wrap `routes` so they may only be accessed with proper authentication credentials."
+  (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/metabot-v3` routes."
-  (api.macros/ns-handler *ns* +auth))
+  "`/api/ee/metabot-tools` routes."
+  (api.macros/ns-handler *ns* +tool-session))

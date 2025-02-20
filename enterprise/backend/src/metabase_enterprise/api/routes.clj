@@ -14,6 +14,7 @@
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
+   [metabase-enterprise.metabot-v3.tools.api]
    [metabase-enterprise.query-reference-validation.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
@@ -65,6 +66,7 @@
    "/billing"                    metabase-enterprise.billing.api.routes/routes
    "/logs"                       (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot-v3"                 (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
+   "/metabot-tools"              metabase-enterprise.metabot-v3.tools.api/routes
    "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
    "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/serialization"              (premium-handler metabase-enterprise.serialization.api/routes :serialization)
