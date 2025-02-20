@@ -4,6 +4,6 @@
   .input {
     border: none;
     font-weight: bold;
-    padding-left: var(--mantine-spacing-sm);
+    padding-left: var(--mantine-spacing-md);
   }
 }
