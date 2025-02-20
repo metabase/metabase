@@ -356,7 +356,7 @@ export const PulseUnsubscribeApi = {
 };
 
 // also unauthenticated
-export const NotificationUnsubscribeAPI = {
+export const NotificationUnsubscribeApi = {
   unsubscribe: POST("/api/notification/unsubscribe"),
   undo_unsubscribe: POST("/api/notification/unsubscribe/undo"),
 };

@@ -18,9 +18,11 @@ import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
-import { isEmpty } from "metabase/lib/validate";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
-import { PulseUnsubscribeApi, NotificationUnsubscribeAPI } from "metabase/services";
+import {
+  NotificationUnsubscribeApi,
+  PulseUnsubscribeApi,
+} from "metabase/services";
 import { Center, Stack, Text } from "metabase/ui";
 
 const ERRORS = {
@@ -54,8 +56,8 @@ export const UnsubscribePage = ({
     subscriptionChange,
   });
 
-  if (error) {
-    if (error.message === ERRORS.MISSING_REQUIRED_PARAMETERS) {
+  if (error || !email) {
+    if (error?.message === ERRORS.MISSING_REQUIRED_PARAMETERS) {
       return <NotFound />;
     }
 
@@ -154,7 +156,7 @@ function useUnsubscribeRequest({
   notificationHandlerId,
   subscriptionChange,
 }: UseUnsubscribeProps): UseUnsubscribeResult {
-  const params: UnsubscribeParams | undefined = useMemo(() => {
+  const params = useMemo(() => {
     if (!hash || !email) {
       return undefined;
     }
@@ -188,12 +190,13 @@ function useUnsubscribeRequest({
     }
 
     const api = notificationHandlerId
-      ? NotificationUnsubscribeAPI 
+      ? NotificationUnsubscribeApi
       : PulseUnsubscribeApi;
 
-    const method = subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE
-      ? api.unsubscribe
-      : api.undo_unsubscribe;
+    const method =
+      subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE
+        ? api.unsubscribe
+        : api.undo_unsubscribe;
 
     return await method(params);
   }, [params, subscriptionChange]);
@@ -238,11 +241,12 @@ function ErrorDisplay() {
   );
 }
 
-interface UnsubscribeQueryString {
+type UnsubscribeQueryString = Partial<{
   hash: string;
   email: string;
   "pulse-id": string;
-}
+  "notification-handler-id": string;
+}>;
 
 interface UnsubscribeProps {
   location: Location<UnsubscribeQueryString>;
