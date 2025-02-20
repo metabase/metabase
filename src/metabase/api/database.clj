@@ -759,7 +759,7 @@
                             (:name field)))]
     (contains? driver-props "ssl")))
 
-(mu/defn- test-connection-details :- :map
+(mu/defn test-connection-details :- :map
   "Try a making a connection to database `engine` with `details`.
 
   If the `details` has SSL explicitly enabled, go with that and do not accept plaintext connections. If it is disabled,
