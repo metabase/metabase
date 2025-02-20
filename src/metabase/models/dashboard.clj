@@ -2,12 +2,14 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
@@ -281,6 +283,169 @@
         (dashboard-card/update-dashboard-card! dashboard-card old-dashcard)))
     (let [new-param-field-ids (params/dashcards->param-field-ids (t2/hydrate new-dashcards :card))]
       (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
+
+(mu/defn- cards-to-copy :- [:map
+                            [:discard [:sequential :any]]
+                            [:copy [:map-of ms/PositiveInt :any]]
+                            [:reference [:map-of ms/PositiveInt :any]]]
+  "Returns a map of which cards we need to copy, which cards we need to reference, and which are not to be copied. The
+  `:copy` and `:reference` keys are maps from id to card. The `:discard` key is a vector of cards which were not
+  copied due to permissions.
+
+  If we're making a deep copy, we copy all cards that we have necessary permissions on. Otherwise, we copy Dashboard
+  Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
+  permissions)."
+  [deep-copy? :- ms/MaybeBooleanValue
+   dashcards :- [:sequential :any]]
+  (let [card->cards (fn [{:keys [card series]}] (into [card] series))
+        readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
+        card->decision (fn [parent-card card]
+                         (cond
+                           (or
+                            (not (readable? parent-card))
+                            (not (readable? card)))
+                           :discard
+
+                           (or (:dashboard_id card)
+                               (and deep-copy? (not= :model (:type card))))
+                           :copy
+
+                           :else :reference))
+        split-cards (fn [{:keys [card] :as db-card}]
+                      (let [cards (card->cards db-card)]
+                        (group-by (partial card->decision card) cards)))]
+    (reduce (fn [acc db-card]
+              (let [{:keys [discard copy reference]} (split-cards db-card)]
+                (-> acc
+                    (update :reference merge (m/index-by :id reference))
+                    (update :copy merge (m/index-by :id copy))
+                    (update :discard concat discard))))
+            {:reference {}
+             :copy {}
+             :discard []}
+            dashcards)))
+
+(defn- maybe-duplicate-cards
+  "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
+
+  Returns a map of {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly.
+
+  If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
+  [deep-copy? new-dashboard old-dashboard dest-coll-id]
+  (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
+        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
+    {:copied     (into {} (for [[id to-copy] copy]
+                            [id (card/create-card!
+                                 (cond-> to-copy
+                                   true                    (assoc :collection_id dest-coll-id)
+                                   same-collection?        (update :name #(str % " - " (tru "Duplicate")))
+                                   (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
+                                 @api/*current-user*
+                                 ;; creating cards from a transaction. wait until tx complete to signal event
+                                 true
+                                 ;; do not autoplace these cards. we will create the dashboard cards ourselves.
+                                 false)]))
+     :discarded  discard
+     :referenced reference}))
+
+(defn- duplicate-tabs
+  [new-dashboard existing-tabs]
+  (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab
+                                              (for [tab existing-tabs]
+                                                (-> tab
+                                                    (assoc :dashboard_id (:id new-dashboard))
+                                                    (dissoc :id :entity_id :created_at :updated_at))))]
+    (zipmap (map :id existing-tabs) new-tab-ids)))
+
+(defn update-cards-for-copy
+  "Update dashcards in a dashboard for copying.
+  If the dashboard has tabs, fix up the tab ids in dashcards to point to the new tabs.
+  Then if shallow copy, return the cards. If deep copy, replace ids with id from the newly-copied cards.
+  If there is no new id, it means user lacked curate permissions for the cards
+  collections and it is omitted."
+  [dashcards id->new-card id->referenced-card id->new-tab-id]
+  (let [dashcards (if (seq id->new-tab-id)
+                    (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
+                         dashcards)
+                    dashcards)]
+    (keep (fn [dashboard-card]
+            (cond
+              ;; text cards need no manipulation
+              (nil? (:card_id dashboard-card))
+              dashboard-card
+
+              ;; referenced cards need no manipulation
+              (get id->referenced-card (:card_id dashboard-card))
+              dashboard-card
+
+              ;; if we didn't duplicate, it doesn't go in the dashboard
+              (not (get id->new-card (:card_id dashboard-card)))
+              nil
+
+              :else
+              (let [new-id (fn [id]
+                             (-> id id->new-card :id))]
+                (-> dashboard-card
+                    (update :card_id new-id)
+                    (assoc :card (-> dashboard-card :card_id id->new-card))
+                    (m/update-existing :parameter_mappings
+                                       (fn [pms]
+                                         (keep (fn [pm]
+                                                 (m/update-existing pm :card_id new-id))
+                                               pms)))
+                    (m/update-existing :series
+                                       (fn [series]
+                                         (keep (fn [card]
+                                                 (when-let [id' (new-id (:id card))]
+                                                   (assoc card :id id')))
+                                               series)))))))
+          dashcards)))
+
+(defn copy-dashboard
+  [dashboard existing-dashboard]
+  (let [{:keys [name description collection_id
+                collection_position is_deep_copy]} dashboard
+        dashboard-data {:name                (or name (:name existing-dashboard))
+                        :description         (or description (:description existing-dashboard))
+                        :parameters          (or (:parameters existing-dashboard) [])
+                        :creator_id          api/*current-user-id*
+                        ;; alias will not inherit from existing dashboard. must be passed in
+                        :alias               (:alias dashboard)
+                        :collection_id       collection_id
+                        :collection_position collection_position
+                        :width               (:width existing-dashboard)}
+        new-cards      (atom nil)
+        dashboard      (t2/with-transaction [_conn]
+                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                         ;; collection to change position, check that and fix up if needed
+                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         ;; Ok, now save the Dashboard
+                         (let [dash (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
+                               {id->new-card :copied
+                                id->referenced-card :referenced
+                                uncopied :discarded}
+                               (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
+
+                               id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
+                                                (duplicate-tabs dash existing-tabs))]
+                           (reset! new-cards (vals id->new-card))
+                           (when-let [dashcards (seq (update-cards-for-copy (:dashcards existing-dashboard)
+                                                                            id->new-card
+                                                                            id->referenced-card
+                                                                            id->new-tab-id))]
+                             (api/check-500 (add-dashcards! dash dashcards)))
+                           (cond-> dash
+                             (seq uncopied)
+                             (assoc :uncopied uncopied))))]
+    (analytics/track-event! :snowplow/dashboard
+                            {:event        :dashboard-created
+                             :dashboard-id (u/the-id dashboard)})
+    ;; must signal event outside of tx so cards are visible from other threads
+    (when-let [newly-created-cards (seq @new-cards)]
+      (doseq [card newly-created-cards]
+        (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
+    (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
+    dashboard))
 
 (defn- legacy-result-metadata-for-query
   "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."

@@ -4,6 +4,7 @@
    [metabase.alias.core :as alias]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.models.dashboard :as dashboard]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -34,6 +35,14 @@
         (t2/update! :model/Dashboard :id (:id current) {:alias (str (:alias current) "@old")})
         (t2/update! :model/Dashboard :id (:id dashboard) {:alias (:alias current)})))
     api/generic-204-no-content))
+
+(api.macros/defendpoint :post "/:id/draft"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/let-404 [dashboard (#'metabase.api.dashboard/get-dashboard* id)]
+    (api/read-check dashboard)
+    (when-not (:alias dashboard)
+      (throw (ex-info "Dashboard does not have an alias" {:status-code 400})))
+    (dashboard/copy-dashboard {:alias (str (:alias dashboard) "@draft")} dashboard)))
 
 (api.macros/defendpoint :get "/:alias"
   "Fetch recent logins for the current user."
