@@ -9,7 +9,7 @@
 
 (defn bb-tasks-list []
   (->> "bb tasks"
-       u/shl!
+       u/shl
        (drop 2)
        (map (comp first #(str/split % #"\s+")))
        (remove excluded-public-tasks)
@@ -19,7 +19,7 @@
   (doseq [cmd [(str "bb " task-name " -h")
                (str "bb " task-name " --help")]]
     (println (str "Testing that task has examples with '" cmd "'"))
-    (when-not (str/includes? (u/sh! cmd) "Examples:")
+    (when-not (str/includes? (u/sh cmd) "Examples:")
       (System/exit 1))))
 
 (when (= *file* (System/getProperty "babashka.file"))
