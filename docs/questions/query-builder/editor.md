@@ -1,5 +1,7 @@
 ---
 title: The query builder
+redirect_from:
+  - /docs/latest/questions/query-builder/introduction
 ---
 
 # The query builder
