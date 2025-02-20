@@ -3,7 +3,7 @@ import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import cx from "classnames";
 import { useMemo, useState } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
@@ -12,9 +12,9 @@ import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
+import { RuleDescription } from "./RuleDescription";
 import { RuleEditor } from "./RuleEditor";
-import { ALL_OPERATOR_NAMES, DEFAULTS_BY_TYPE } from "./constants";
-import { getValueForDescription } from "./util";
+import { DEFAULTS_BY_TYPE } from "./constants";
 
 export const ChartSettingsTableFormatting = props => {
   const [editingRule, setEditingRule] = useState();
@@ -229,20 +229,3 @@ const SinglePreview = ({ color, className, style, ...props }) => (
     {...props}
   />
 );
-
-const RuleDescription = ({ rule }) => {
-  return (
-    <span>
-      {rule.type === "range"
-        ? t`Cells in this column will be tinted based on their values.`
-        : rule.type === "single"
-          ? jt`When a cell in these columns ${(
-              <span key="bold" className={CS.textBold}>
-                {ALL_OPERATOR_NAMES[rule.operator]}
-                {getValueForDescription(rule)}
-              </span>
-            )} it will be tinted this color.`
-          : null}
-    </span>
-  );
-};
