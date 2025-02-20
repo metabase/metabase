@@ -409,6 +409,7 @@
   (sql.qp/adjust-day-of-week driver [:dayofweek expr]))
 
 (defn- temporal-cast [type expr]
+  ;; mysql does not allow casting to timestamp
   (if (= "timestamp" (u/lower-case-en type))
     (h2x/maybe-cast "datetime" expr)
     (h2x/maybe-cast type expr)))
