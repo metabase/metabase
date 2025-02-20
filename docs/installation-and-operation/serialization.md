@@ -258,9 +258,15 @@ type: question
 
 ### Metabase uses Entity IDs to identify and reference Metabase items
 
-Metabase assigns a unique Entity ID to every Metabase item (a dashboard, question, model, collection, etc.). Entity IDs use the [NanoID format](https://github.com/ai/nanoid).
+Metabase assigns a unique Entity ID to every Metabase item (a dashboard, question, model, collection, etc.). These Entity IDs are in addition to the sequential IDs Metabase generates. Entity IDs use the [NanoID format](https://github.com/ai/nanoid), and are stable across Metabases. By "stable" we mean that you can, for example, export a dashboard with an entity ID from one Metabase, and import that dashboard into another Metabase and have that dashboard use the same Entity ID, even though it's in a different Metabase.
 
-You can see the Entity IDs of items in the exported YAML files in the `entity_id` field. For example, in the [Example of a serialized question](#example-of-a-serialized-question), you'll see the Entity ID of that question:
+To get an item's Entity ID in Metabase:
+
+1. Visit the item in Metabase.
+2. Click on the info button.
+3. In the overview tab, copy the Entity ID.
+
+You can also see the Entity IDs of items in the exported YAML files in the `entity_id` field. For example, in the [Example of a serialized question](#example-of-a-serialized-question), you'll see the Entity ID of that question:
 
 ```yaml
 entity_id: r6vC_vLmo9zG6_r9sAuYG
