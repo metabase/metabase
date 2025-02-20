@@ -297,11 +297,9 @@
             (testing "if the column type is varied after an update to the action, it is reflected in the parameters"
               (let [action (action/select-action action-id)]
                 (action/update! (assoc action :name "create foo2") action)
-                (->> ["ALTER TABLE \"FOO\" ALTER COLUMN \"name\" TEXT;"]
-                     (jdbc/execute! one-off-dbs/*conn*))
+                (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" TEXT;")
                 (sync/sync-database! (mt/db))
-                ;; desired behaviour, broken #39101.
-                #_(is (= [["name" :type/Text]] (map (juxt :id :type) (:parameters (action/select-action action-id))))))))
+                (is (= [["name" :type/Text]] (map (juxt :id :type) (:parameters (action/select-action action-id))))))))
           (testing "if a column added, the model column set is used, not the table"
             (exec! "ALTER TABLE \"FOO\" ADD COLUMN \"name2\" BIGINT;")
             (is (= ["name"] (map :id (:parameters (action/select-action action-id))))))
@@ -313,4 +311,3 @@
               (is (= {"name" true}  (hide-state (action/select-action action-id))))
               (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" BIGINT;")
               (is (= {"name" true}  (hide-state (action/select-action action-id)))))))))))
-
