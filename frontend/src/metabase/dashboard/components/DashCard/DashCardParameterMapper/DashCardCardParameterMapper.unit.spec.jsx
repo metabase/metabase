@@ -337,6 +337,23 @@ describe("DashCardCardParameterMapper", () => {
     expect(screen.queryByText(/Column to filter on/i)).not.toBeInTheDocument();
   });
 
+  describe("Action parameter", () => {
+    it("should show action parameter warning if an action parameter is used", () => {
+      const dashcard = createMockActionDashboardCard();
+
+      setup({
+        card: dashcard.card,
+        dashcard,
+        target: ["variable", ["template-tag", "source"]],
+      });
+      expect(
+        screen.getByText(
+          /Action parameters only accept a single value\. They do not support dropdown lists/i,
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("Native question", () => {
     it("should show native question variable warning if a native question variable is used", () => {
       const card = createMockCard({
