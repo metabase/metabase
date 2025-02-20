@@ -157,7 +157,10 @@
   (try
     (let [url      (agent-v2-endpoint-url)
           body     (doto (metabot-v3.u/recursive-update-keys
-                          {:messages        messages
+                          {:messages        (when (seq messages) ; TODO just use messages when dummy tools are gone
+                                              (mc/encode ::metabot-v3.client.schema/messages
+                                                         messages
+                                                         (mtx/transformer {:name :api-request})))
                            :context         context
                            :conversation-id conversation-id
                            :state           state
