@@ -17,10 +17,6 @@ import Select, { Option } from "metabase/core/components/Select";
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
-import {
-  getAccentColors,
-  getStatusColorRanges,
-} from "metabase/lib/colors/groups";
 import { Icon } from "metabase/ui";
 import {
   isBoolean,
@@ -30,40 +26,16 @@ import {
 
 import {
   ALL_OPERATOR_NAMES,
-  getOperatorsForColumns,
-} from "./get-operators-for-columns";
-
-// TODO
-const COLORS = getAccentColors({ dark: false });
-const COLOR_RANGES = getStatusColorRanges();
-
-const DEFAULTS_BY_TYPE = {
-  single: {
-    columns: [],
-    type: "single",
-    operator: "=",
-    value: "",
-    color: COLORS[0],
-    highlight_row: false,
-  },
-  range: {
-    columns: [],
-    type: "range",
-    colors: COLOR_RANGES[0],
-    min_type: null,
-    max_type: null,
-    min_value: 0,
-    max_value: 100,
-  },
-};
-
-// predicate for columns that can be formatted
-export const isFormattable = field => isNumeric(field) || isString(field);
-
-const INPUT_CLASSNAME = cx(CS.mt1, CS.full);
-
-const getValueForDescription = rule =>
-  ["is-null", "not-null"].includes(rule.operator) ? "" : ` ${rule.value}`;
+  BOOLEAN_OPERATIOR_NAMES,
+  COLORS,
+  COLOR_RANGES,
+  COMMON_OPERATOR_NAMES,
+  DEFAULTS_BY_TYPE,
+  INPUT_CLASSNAME,
+  NUMBER_OPERATOR_NAMES,
+  STRING_OPERATOR_NAMES,
+} from "./constants";
+import { getValueForDescription } from "./util";
 
 export const ChartSettingsTableFormatting = props => {
   const [editingRule, setEditingRule] = useState();
