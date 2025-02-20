@@ -72,6 +72,26 @@ $ clojure -M:run
 
 For a more detailed setup of a dev environment for Metabase, check out our [Developers Guide](./docs/developers-guide/start.md).
 
+### Development Automation
+
+You need [Babashka](https://github.com/babashka/babashka#quickstart) to run the dev scripts. From the root of the repo run `bb tasks` to see what you can do. All of them support `-h` to learn more and show examples.
+
+``` shell
+$ bb tasks
+The following tasks are available:
+
+cljfmt-staged   Runs cljfmt on staged files
+cljfmt-file     Runs cljfmt on the given files/directories
+cljfmt-all      Runs cljfmt on all (clojure) files
+kondo           Runs Kondo against a file, directory, or everything we usually lint.
+kondo-updated   Runs kondo against files that have been changed relative to a Git ref (default `HEAD`)
+start-db        Start a db on a default port in docker
+install-autotab Prints shell code to autocomplete tasks using bb.
+nrepl           Starts the babashka nrepl server for bb tasks development.
+$ bb kondo -h
+... prints help for easily running kondo ...
+```
+
 ## Internationalization
 
 We want Metabase to be available in as many languages as possible. See which translations are available and help contribute to internationalization using our project over at [POEditor](https://poeditor.com/join/project/ynjQmwSsGh). You can also check out our [policies on translations](https://www.metabase.com/docs/latest/administration-guide/localization.html).
