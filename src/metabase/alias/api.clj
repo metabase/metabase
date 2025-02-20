@@ -42,7 +42,9 @@
     (api/read-check dashboard)
     (when-not (:alias dashboard)
       (throw (ex-info "Dashboard does not have an alias" {:status-code 400})))
-    (dashboard/copy-dashboard {:alias (str (:alias dashboard) "@draft")} dashboard)))
+    (dashboard/copy-dashboard {:alias (str (:alias dashboard) "@draft")
+                               :is_deep_copy true}
+                              dashboard)))
 
 (api.macros/defendpoint :get "/:alias"
   "Fetch recent logins for the current user."
