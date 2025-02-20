@@ -239,7 +239,9 @@
                         :labels [:payload-type]})
    (prometheus/histogram :metabase-notification/send-duration-ms
                          {:description "Duration of notification sends in milliseconds."
-                          :labels [:payload-type]})
+                          :labels [:payload-type]
+                          ;; 1ms -> 10minutes
+                          :buckets [1 10 50 100 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-notification/channel-send-ok
                        {:description "Number of successful channel sends."
                         :labels [:payload-type :channel-type]})

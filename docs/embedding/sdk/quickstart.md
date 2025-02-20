@@ -116,15 +116,15 @@ In the sample app's main directory, copy the `.env.example` template to `.env`.
 cp .env.example .env
 ```
 
-In `.env`, make sure `REACT_APP_METABASE_INSTANCE_URL` and `METABASE_INSTANCE_URL` point to your Metabase instance URL, e.g., `http://localhost:3000`.
+In `.env`, make sure `VITE_METABASE_INSTANCE_URL` and `METABASE_INSTANCE_URL` point to your Metabase instance URL, e.g., `http://localhost:3000`.
 
 Your `.env` will look something like:
 
 ```txt
 # FRONTEND
 PORT=3100
-REACT_APP_METABASE_INSTANCE_URL="http://localhost:3000"
-REACT_APP_AUTH_PROVIDER_URI="http://localhost:9090/sso/metabase"
+VITE_METABASE_INSTANCE_URL="http://localhost:3000"
+VITE_AUTH_PROVIDER_URI="http://localhost:9090/sso/metabase"
 
 # BACKEND
 BACKEND_PORT=9090

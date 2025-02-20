@@ -33,10 +33,6 @@ const PublicComponentStylesWrapperInner = styled.div`
   transition: var(--transition-theme-change);
 
   ${saveDomImageStyles}
-
-  :where(svg) {
-    display: inline;
-  }
 `;
 
 export const PublicComponentStylesWrapper = (
@@ -71,5 +67,9 @@ export const SCOPED_CSS_RESET = css`
   :where(.mb-wrapper) *:where(ul) {
     padding: 0;
     margin: 0;
+  }
+
+  :where(.mb-wrapper) *:where(svg) {
+    display: inline;
   }
 `;

@@ -74,11 +74,11 @@ describe("impersonated permission", { tags: "@external" }, () => {
         cy.reload();
 
         // No access through the native query builder
-        H.startNewNativeQuestion().as("editor");
+        H.startNewNativeQuestion();
 
         cy.findByTestId("gui-builder-data").click();
         cy.findByLabelText("QA Postgres12").click();
-        cy.get("@editor").type("select * from reviews");
+        H.NativeEditor.type("select * from reviews");
         H.runNativeQuery();
 
         cy.findByTestId("query-builder-main").within(() => {
@@ -87,9 +87,9 @@ describe("impersonated permission", { tags: "@external" }, () => {
         });
 
         // Has access to other tables
-        cy.get("@editor")
-          .type("{selectall}{backspace}", { delay: 50 })
-          .type("select * from orders");
+        H.NativeEditor.type("{selectall}{backspace}", { delay: 50 }).type(
+          "select * from orders",
+        );
 
         H.runNativeQuery();
 
