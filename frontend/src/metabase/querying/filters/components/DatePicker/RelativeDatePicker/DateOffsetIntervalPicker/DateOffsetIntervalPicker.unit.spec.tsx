@@ -297,11 +297,13 @@ describe("DateOffsetIntervalPicker", () => {
           screen.getByRole("textbox", { name: "Starting from unit" }),
         );
 
+        expect(screen.getByText(/minutes (ago|from now)/)).toBeInTheDocument();
+        expect(screen.getByText(/hours (ago|from now)/)).toBeInTheDocument();
+        expect(screen.getByText(/days (ago|from now)/)).toBeInTheDocument();
+        expect(screen.getByText(/weeks (ago|from now)/)).toBeInTheDocument();
         expect(screen.getByText(/months (ago|from now)/)).toBeInTheDocument();
         expect(screen.getByText(/quarters (ago|from now)/)).toBeInTheDocument();
         expect(screen.getByText(/years (ago|from now)/)).toBeInTheDocument();
-        expect(screen.getByText(/hours (ago|from now)/)).toBeInTheDocument();
-        expect(screen.getByText(/days (ago|from now)/)).toBeInTheDocument();
       });
 
       it("should display the actual date range", () => {
