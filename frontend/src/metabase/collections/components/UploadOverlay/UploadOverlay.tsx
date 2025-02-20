@@ -9,14 +9,16 @@ import { DragOverlay } from "./UploadOverlay.styled";
 export default function UploadOverlay({
   isDragActive,
   collection,
+  message,
 }: {
   isDragActive: boolean;
-  collection: Collection;
+  collection?: Collection;
+  message?: string;
 }) {
   return (
     <DragOverlay isDragActive={isDragActive}>
       <Icon name="upload" size="24" />
-      <div>{t`Drop here to upload to ${collection.name}`}</div>
+      <div>{message || t`Drop here to upload to ${collection.name}`}</div>
     </DragOverlay>
   );
 }

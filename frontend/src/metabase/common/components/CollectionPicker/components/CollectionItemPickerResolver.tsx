@@ -17,6 +17,7 @@ export const CollectionItemPickerResolver = ({
   shouldDisableItem,
   shouldShowItem,
   entity = "collection",
+  level,
 }: CollectionItemListProps) => {
   if (!query) {
     return (
@@ -71,6 +72,7 @@ export const CollectionItemPickerResolver = ({
       shouldDisableItem={shouldDisableItem}
       shouldShowItem={shouldShowItem}
       options={options}
+      level={level}
     />
   );
 };

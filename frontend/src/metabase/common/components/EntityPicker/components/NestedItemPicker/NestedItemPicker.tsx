@@ -89,6 +89,7 @@ export function NestedItemPicker<
                   shouldDisableItem={shouldDisableItem}
                   shouldShowItem={shouldShowItem}
                   isFolder={isFolder}
+                  level={index}
                 />
               </ErrorBoundary>
             </ListBox>
