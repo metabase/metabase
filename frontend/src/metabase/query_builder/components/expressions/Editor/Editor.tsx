@@ -22,6 +22,7 @@ import type { Expression } from "metabase-types/api";
 import type { ClauseType, StartRule } from "../types";
 
 import S from "./Editor.module.css";
+import { Shortcuts } from "./Shortcuts";
 import { Tooltip } from "./Tooltip";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
@@ -56,6 +57,7 @@ export function Editor<S extends StartRule = "expression">(
     expressionIndex,
     readOnly,
     reportTimezone,
+    shortcuts,
   } = props;
 
   const ref = useRef<ReactCodeMirrorRef>(null);
@@ -110,7 +112,10 @@ export function Editor<S extends StartRule = "expression">(
           width="100%"
           indentWithTab={false}
         />
+
+        <Shortcuts shortcuts={shortcuts} hide={source.trim() !== ""} />
       </Box>
+
       {/* TODO: render elswhere */}
       {/* {error && hasChanges && <Box className={S.error}>{error.message}</Box>} */}
       {portal}
