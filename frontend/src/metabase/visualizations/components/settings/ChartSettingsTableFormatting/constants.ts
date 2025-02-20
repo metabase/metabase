@@ -6,12 +6,20 @@ import {
   getAccentColors,
   getStatusColorRanges,
 } from "metabase/lib/colors/groups";
+import type {
+  BooleanOperators,
+  ColumnRangeFormattingSetting,
+  ColumnSingleFormattingSetting,
+  CommonOperators,
+  NumberOperators,
+  StringOperators,
+} from "metabase-types/api";
 
-export const COMMON_OPERATOR_NAMES = {
+export const COMMON_OPERATOR_NAMES: Record<CommonOperators, string> = {
   "is-null": t`is null`,
   "not-null": t`is not null`,
 };
-export const NUMBER_OPERATOR_NAMES = {
+export const NUMBER_OPERATOR_NAMES: Record<NumberOperators, string> = {
   "=": t`is equal to`,
   "!=": t`is not equal to`,
   "<": t`is less than`,
@@ -19,7 +27,7 @@ export const NUMBER_OPERATOR_NAMES = {
   "<=": t`is less than or equal to`,
   ">=": t`is greater than or equal to`,
 };
-export const STRING_OPERATOR_NAMES = {
+export const STRING_OPERATOR_NAMES: Record<StringOperators, string> = {
   "=": t`is equal to`,
   "!=": t`is not equal to`,
   contains: t`contains`,
@@ -27,7 +35,7 @@ export const STRING_OPERATOR_NAMES = {
   "starts-with": t`starts with`,
   "ends-with": t`ends with`,
 };
-export const BOOLEAN_OPERATIOR_NAMES = {
+export const BOOLEAN_OPERATIOR_NAMES: Record<BooleanOperators, string> = {
   "is-true": t`is true`,
   "is-false": t`is false`,
 };
@@ -41,7 +49,10 @@ export const ALL_OPERATOR_NAMES = {
 // TODO
 export const COLORS = getAccentColors({ dark: false });
 export const COLOR_RANGES = getStatusColorRanges();
-export const DEFAULTS_BY_TYPE = {
+export const DEFAULTS_BY_TYPE: {
+  single: ColumnSingleFormattingSetting;
+  range: ColumnRangeFormattingSetting;
+} = {
   single: {
     columns: [],
     type: "single",

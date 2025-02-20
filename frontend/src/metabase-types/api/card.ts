@@ -113,14 +113,42 @@ export type SeriesOrderSetting = {
   color?: string;
 };
 
-export type ColumnFormattingSetting = {
-  columns: string[]; // column names
-  color?: string;
-  type?: string;
-  operator?: string;
-  value?: string | number;
-  highlight_row?: boolean;
+export type CommonOperators = "is-null" | "not-null";
+export type NumberOperators = "=" | "!=" | "<" | ">" | "<=" | ">=";
+export type StringOperators =
+  | "="
+  | "!="
+  | "contains"
+  | "does-not-contain"
+  | "starts-with"
+  | "ends-with";
+export type BooleanOperators = "is-true" | "is-false";
+
+export type ColumnSingleFormattingSetting = {
+  columns: string[];
+  type: "single";
+  operator:
+    | CommonOperators
+    | NumberOperators
+    | StringOperators
+    | BooleanOperators;
+  color: string;
+  highlight_row: boolean;
+  value: string;
 };
+export type ColumnRangeFormattingSetting = {
+  columns: string[];
+  type: "range";
+  colors: string[];
+  min_type: "custom" | "all" | null;
+  max_type: "custom" | "all" | null;
+  min_value: number;
+  max_value: number;
+};
+
+export type ColumnFormattingSetting =
+  | ColumnSingleFormattingSetting
+  | ColumnRangeFormattingSetting;
 
 export type ColumnNameColumnSplitSetting = {
   rows: string[];
