@@ -43,10 +43,16 @@ import { VizSettingsSidebar } from "../VizSettingsSidebar/VizSettingsSidebar";
 interface VisualizerProps {
   className?: string;
   onSave?: (visualization: VisualizerHistoryItem) => void;
+  saveLabel?: string;
   style?: CSSProperties;
 }
 
-export const Visualizer = ({ className, onSave, style }: VisualizerProps) => {
+export const Visualizer = ({
+  className,
+  onSave,
+  style,
+  saveLabel,
+}: VisualizerProps) => {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const display = useSelector(getVisualizationType);
@@ -133,7 +139,7 @@ export const Visualizer = ({ className, onSave, style }: VisualizerProps) => {
         h="100%"
         style={style}
       >
-        <Header onSave={onSave} />
+        <Header onSave={onSave} saveLabel={saveLabel} />
         <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
           {!isFullscreen && (
             <Flex direction="column" miw={320}>

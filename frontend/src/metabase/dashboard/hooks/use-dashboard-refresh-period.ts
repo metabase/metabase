@@ -6,6 +6,20 @@ import type { DashboardRefreshPeriodControls } from "../types";
 import { useInterval } from "./use-interval";
 
 const TICK_PERIOD = 1; // seconds
+export const useDisableDashboardRefresh = () => {
+  const { onRefreshPeriodChange } = useDashboardRefreshPeriod({
+    onRefresh: () => {},
+  });
+
+  const disableDashboardRefresh = useCallback(() => {
+    onRefreshPeriodChange(null);
+  }, [onRefreshPeriodChange]);
+
+  return {
+    disableDashboardRefresh,
+  };
+};
+
 export const useDashboardRefreshPeriod = ({
   onRefresh,
 }: {
