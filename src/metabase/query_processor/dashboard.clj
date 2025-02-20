@@ -46,46 +46,48 @@
   (log/tracef "Resolving parameter %s\n%s" (pr-str param-id) (u/pprint-to-str request-param))
   ;; find information about this dashboard parameter by its parameter `:id`. If no parameter with this ID
   ;; exists, it is an error.
-  (let [matching-param (or (get param-id->param param-id)
-                           (throw (ex-info (tru "Dashboard does not have a parameter with ID {0}." (pr-str param-id))
-                                           {:type        qp.error-type/invalid-parameter
-                                            :status-code 400})))]
-    (log/tracef "Found matching Dashboard parameter\n%s" (u/pprint-to-str (update matching-param :mappings (fn [mappings]
-                                                                                                             (into #{} (map #(dissoc % :dashcard)) mappings)))))
-    ;; now find the mapping for this specific card. If there is no mapping, we can just ignore this parameter.
-    (when-let [matching-mapping (or (some (fn [mapping]
-                                            (when (and (= (:card_id mapping) card-id)
-                                                       (= (get-in mapping [:dashcard :id]) dashcard-id))
-                                              mapping))
-                                          (:mappings matching-param))
-                                    (log/tracef "Parameter has no mapping for Card %d; skipping" card-id))]
-      (log/tracef "Found matching mapping for Card %d, Dashcard %d:\n%s"
-                  card-id dashcard-id
-                  (u/pprint-to-str (update matching-mapping :dashcard #(select-keys % [:id :parameter_mappings]))))
-      ;; if `request-param` specifies type, then validate that the type is allowed
-      (when (:type request-param)
-        (qp.card/check-allowed-parameter-value-type
-         param-id
-         (or (when (and (= (:type matching-param) :dimension)
-                        (not= (:widget-type matching-param) :none))
-               (:widget-type matching-param))
-             (:type matching-param))
-         (:type request-param)))
-      ;; ok, now return the merged parameter info map.
-      (merge
-       {:type (:type matching-param)}
-       request-param
-       ;; if value comes in as a lone value for an operator filter type (as will be the case for embedding) wrap it in a
-       ;; vector so the parameter handling code doesn't explode.
-       (let [value (:value request-param)]
-         (when (and (params.ops/operator? (:type matching-param))
-                    (if (string? value)
-                      (not (str/blank? value))
-                      (some? value))
-                    (not (sequential? value)))
-           {:value [value]}))
-       {:id     param-id
-        :target (:target matching-mapping)}))))
+  (if-let [matching-param (get param-id->param param-id)]
+    (do
+      (log/tracef "Found matching Dashboard parameter\n%s" (u/pprint-to-str (update matching-param :mappings (fn [mappings]
+                                                                                                                 (into #{} (map #(dissoc % :dashcard)) mappings)))))
+      ;; now find the mapping for this specific card. If there is no mapping, we can just ignore this parameter.
+      (when-let [matching-mapping (or (some (fn [mapping]
+                                              (when (and (= (:card_id mapping) card-id)
+                                                         (= (get-in mapping [:dashcard :id]) dashcard-id))
+                                                mapping))
+                                            (:mappings matching-param))
+                                      (log/tracef "Parameter has no mapping for Card %d; skipping" card-id))]
+        (log/tracef "Found matching mapping for Card %d, Dashcard %d:\n%s"
+                    card-id dashcard-id
+                    (u/pprint-to-str (update matching-mapping :dashcard #(select-keys % [:id :parameter_mappings]))))
+        ;; if `request-param` specifies type, then validate that the type is allowed
+        (when (:type request-param)
+          (qp.card/check-allowed-parameter-value-type
+           param-id
+           (or (when (and (= (:type matching-param) :dimension)
+                          (not= (:widget-type matching-param) :none))
+                 (:widget-type matching-param))
+               (:type matching-param))
+           (:type request-param)))
+        ;; ok, now return the merged parameter info map.
+        (merge
+         {:type (:type matching-param)}
+         request-param
+         ;; if value comes in as a lone value for an operator filter type (as will be the case for embedding) wrap it in a
+         ;; vector so the parameter handling code doesn't explode.
+         (let [value (:value request-param)]
+           (when (and (params.ops/operator? (:type matching-param))
+                      (if (string? value)
+                        (not (str/blank? value))
+                        (some? value))
+                      (not (sequential? value)))
+             {:value [value]}))
+         {:id     param-id
+          :target (:target matching-mapping)})))
+    ;; If matching-param is null, which means this parameter have been set for this card in database, use the
+    ;; parameters from the request arguments as temporary parameters. (#49319)
+    request-param))
+
 
 ;; DashboardCard parameter mappings can specify default values, and we need to make sure the parameters map returned
 ;; by [[resolve-params-for-query]] includes entries for any default values. So we'll do this by creating a entries for

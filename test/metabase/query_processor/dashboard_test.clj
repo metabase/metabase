@@ -462,3 +462,13 @@
           (mt/with-temporary-setting-values [synchronous-batch-updates true]
             (run-query-for-dashcard dashboard-id card-id dashcard-id)
             (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))))
+
+
+(deftest resolve-param-for-card-test
+  (testing "When param-id->param is null and request-param is not null, use request-param. (#49319)"
+    (let [card-id 1
+          dashcard-id 2
+          param-id->param {}
+          request-param {:id "88c10619" :value "month" :type :temporal-unit :target [:dimension [:field 14 {:base-type :type/DateTime :temporal-unit :month}] {:stage-number 0}]}
+          result (#'qp.dashboard/resolve-param-for-card card-id dashcard-id param-id->param request-param)]
+      (is (= "88c10619" (:id result))))))
