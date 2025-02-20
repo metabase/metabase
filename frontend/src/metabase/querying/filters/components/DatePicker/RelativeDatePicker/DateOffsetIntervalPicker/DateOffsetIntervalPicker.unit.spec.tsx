@@ -285,7 +285,7 @@ describe("DateOffsetIntervalPicker", () => {
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should only show offset units larger or equal to the current one", async () => {
+      it("should show all offset units, including those smaller than the current one (metabase#53734)", async () => {
         setup({
           value: {
             ...defaultValue,
@@ -300,12 +300,8 @@ describe("DateOffsetIntervalPicker", () => {
         expect(screen.getByText(/months (ago|from now)/)).toBeInTheDocument();
         expect(screen.getByText(/quarters (ago|from now)/)).toBeInTheDocument();
         expect(screen.getByText(/years (ago|from now)/)).toBeInTheDocument();
-        expect(
-          screen.queryByText(/hours (ago|from now)/),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(/days (ago|from now)/),
-        ).not.toBeInTheDocument();
+        expect(screen.getByText(/hours (ago|from now)/)).toBeInTheDocument();
+        expect(screen.getByText(/days (ago|from now)/)).toBeInTheDocument();
       });
 
       it("should display the actual date range", () => {

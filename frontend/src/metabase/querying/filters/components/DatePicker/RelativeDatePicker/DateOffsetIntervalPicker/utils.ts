@@ -57,14 +57,11 @@ export function getOffsetUnitOptions(
 ) {
   const truncationUnits = getAvailableTruncationUnits(availableUnits);
   const direction = getDirection(value);
-  const unitIndex = truncationUnits.indexOf(value.unit);
 
-  return truncationUnits
-    .filter((_, index) => index >= unitIndex)
-    .map(unit => ({
-      value: unit,
-      label: getOffsetUnitText(unit, direction, value.offsetValue),
-    }));
+  return truncationUnits.map(unit => ({
+    value: unit,
+    label: getOffsetUnitText(unit, direction, value.offsetValue),
+  }));
 }
 
 function getOffsetUnitText(
