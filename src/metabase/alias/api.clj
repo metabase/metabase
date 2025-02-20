@@ -29,8 +29,8 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/let-404 [dashboard (t2/select-one :model/Dashboard :id id)]
     (api/read-check dashboard)
-    (when-not (alias/draft? (:alias dashboard))
-      (throw (ex-info "Not a draft" {:status-code 400})))
+    (when-not ((some-fn alias/draft? alias/old?) (:alias dashboard))
+      (throw (ex-info "Must be a draft or old version to promote" {:status-code 400})))
     (let [current (alias/parent-for-draft (:alias dashboard))]
       (t2/with-transaction [_]
         (t2/update! :model/Dashboard :id (:id current) {:alias (str (:alias current) "@old")})

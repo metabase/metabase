@@ -5,9 +5,9 @@
 
 (defn draft? [alias] (boolean (some-> alias (str/ends-with? "@draft"))))
 
-(defn old? [alias] (str/ends-with? alias "@old"))
+(defn old? [alias] (boolean (some-> alias (str/ends-with? "@old"))))
 
-(defn root? [alias] (not (str/includes? alias "@")))
+(defn root? [alias] (and (string? alias) (not (str/includes? alias "@"))))
 
 (defn stem [alias] (str/replace alias #"@.*" ""))
 
