@@ -1,1 +1,1 @@
-export * from "./ChartSettingsTableFormatting";
+export { ChartSettingsTableFormatting } from "./ChartSettingsTableFormatting";
