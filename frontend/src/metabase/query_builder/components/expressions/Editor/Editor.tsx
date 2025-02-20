@@ -113,7 +113,10 @@ export function Editor<S extends StartRule = "expression">(
           indentWithTab={false}
         />
 
-        <Shortcuts shortcuts={shortcuts} hide={source.trim() !== ""} />
+        <Shortcuts
+          shortcuts={shortcuts}
+          hide={isFormatting || source.trim() !== ""}
+        />
       </Box>
 
       {/* TODO: render elswhere */}
