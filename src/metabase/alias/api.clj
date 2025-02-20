@@ -1,10 +1,8 @@
 (ns metabase.alias.api
   (:require
-   [metabase.api.common :as api]
+   [clojure.string :as str]
    [metabase.api.macros :as api.macros]
-   [metabase.util :as u]
-   [toucan2.core :as t2]
-   [clojure.string :as str]))
+   [toucan2.core :as t2]))
 
 (api.macros/defendpoint :get "/"
   "Fetch recent logins for the current user."
