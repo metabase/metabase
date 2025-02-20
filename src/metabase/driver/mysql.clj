@@ -267,7 +267,7 @@
   [:length [:cast json-field-identifier :char]])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
-  [:from_unixtime expr])
+  (h2x/with-database-type-info [:from_unixtime expr] "datetime"))
 
 (defmethod sql.qp/cast-temporal-string [:mysql :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]
@@ -275,7 +275,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:mysql :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  [:convert expr [:raw "DATETIME"]])
+  (h2x/with-database-type-info [:convert expr [:raw "DATETIME"]] "datetime"))
 
 (defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
