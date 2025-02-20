@@ -939,7 +939,9 @@
                                []
                                post-rows)
                      :models models
-                     :versions (alias/versions-for-dashboards (filter (comp #{"dashboard"} :model) post-rows))}
+                     :versions (if (mi/can-write? collection)
+                                 (alias/versions-for-dashboards (filter (comp #{"dashboard"} :model) post-rows))
+                                 {})}
         limit-res   (assoc res
                            :limit  (request/limit)
                            :offset (request/offset))]
