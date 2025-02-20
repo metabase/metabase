@@ -34,8 +34,9 @@
                         nil)
             sent-notis (atom [])]
         (testing "publishing event will send all the actively subscribed notifciations"
-          (with-redefs [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
-                        events.notification/supported-topics #{:event/test-notification}]
+          (with-redefs
+           [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
+            events.notification/supported-topics #{:event/test-notification}]
             (events/publish-event! topic {::hi true})
             (is (=? [[(:id n-1) {:event_info {::hi true}}]
                      [(:id n-2) {:event_info {::hi true}}]]

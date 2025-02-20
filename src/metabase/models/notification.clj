@@ -232,7 +232,7 @@
 (t2/deftransforms :model/NotificationHandler
   {:channel_type (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))})
 
-(methodical/defmethod t2/batched-hydrate [:default :channel]
+(methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :channel]
   "Batch hydration Channels for a list of NotificationHandlers"
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
@@ -244,7 +244,7 @@
    :channel_id
    {:default nil}))
 
-(methodical/defmethod t2/batched-hydrate [:default :template]
+(methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :template]
   "Batch hydration ChannelTemplates for a list of NotificationHandlers"
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
