@@ -1,10 +1,15 @@
 import { jt, t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import type { ColumnFormattingSetting } from "metabase-types/api";
+import type {
+  ColumnFormattingSetting,
+  ColumnSingleFormattingSetting,
+} from "metabase-types/api";
 
 import { ALL_OPERATOR_NAMES } from "./constants";
-import { getValueForDescription } from "./util";
+
+export const getValueForDescription = (rule: ColumnSingleFormattingSetting) =>
+  ["is-null", "not-null"].includes(rule.operator) ? "" : ` ${rule.value}`;
 
 export const RuleDescription = ({
   rule,
