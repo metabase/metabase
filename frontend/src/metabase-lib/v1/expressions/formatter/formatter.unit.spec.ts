@@ -7,7 +7,7 @@ import { processSource } from "../process";
 
 import { format } from "./formatter";
 
-function setup(printWidth: number) {
+function setup(printWidth: number, startRule: string = "expression") {
   async function isFormatted(expressions: string | string[]): Promise<void> {
     if (!Array.isArray(expressions)) {
       return isFormatted([expressions]);
@@ -15,7 +15,7 @@ function setup(printWidth: number) {
     for (const expr of expressions) {
       const options = {
         query,
-        startRule: "expression",
+        startRule,
         stageIndex: -1,
       };
 
@@ -91,6 +91,30 @@ describe("format", () => {
             "/"
           )
         `,
+        expression`
+          case(
+            [Total] > 10,
+            "GOOD",
+            [Total] < 5,
+            "BAD",
+            "OK"
+          )
+        `,
+        expression`
+          startsWith(
+            [Product → Category],
+            "A",
+            "B"
+          )
+        `,
+        expression`
+          startsWith(
+            [Product → Category],
+            "A",
+            "B",
+            "case-insensitive"
+          )
+        `,
       ]);
     });
 
@@ -109,6 +133,33 @@ describe("format", () => {
               "baz"
             ) AND
             concat("quu", "qux")
+        `,
+      ]);
+    });
+
+    it("formats unary operators", async () => {
+      const { isFormatted } = setup(25, "boolean");
+      await isFormatted([
+        expression`
+          NOT [Total] < 10
+        `,
+        expression`
+          NOT [Total] <
+            11111111111111
+        `,
+        expression`
+          NOT [Total] <
+            22222222222222 +
+              33333333333333
+        `,
+        expression`
+          NOT (
+            contains(
+              [User → Name],
+              "John"
+            ) OR
+              [User ID] = 1
+          )
         `,
       ]);
     });

@@ -95,6 +95,7 @@ const {
   softline,
   line,
   group,
+  ifBreak,
 } = builders;
 
 type ExpressionNode = Expression | CallOptions | undefined | null;
@@ -294,9 +295,9 @@ function formatOperator(path: AstPath<CallExpression>, print: Print): Doc {
       const ln = index === 1 ? "" : line;
 
       function ind(doc: Doc) {
-        // if (index === 1) {
-        //   return doc;
-        // }
+        if (index === 1) {
+          return doc;
+        }
         return indent(doc);
       }
 
@@ -329,9 +330,21 @@ function formatOperator(path: AstPath<CallExpression>, print: Print): Doc {
         isLowerPrecedence || isSamePrecedenceWithExecutionPriority;
 
       if (shouldUseParens) {
-        return ind([ln, "(", group(formattedArg), ")"]);
+        return ind(
+          group([
+            ln,
+            "(",
+            group(
+              ifBreak(
+                [indent([softline, group(formattedArg)]), softline],
+                formattedArg,
+              ),
+            ),
+            ")",
+          ]),
+        );
       } else {
-        return ind([ln, group(formattedArg)]);
+        return ind([ln, formattedArg]);
       }
     })
     .filter(isNotNull);
