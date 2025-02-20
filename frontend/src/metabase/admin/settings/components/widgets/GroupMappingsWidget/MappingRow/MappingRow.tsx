@@ -46,22 +46,22 @@ const MappingRow = ({
   onChange,
   onDeleteMapping,
 }: MappingRowProps) => {
-  const [showDeleteGroupMappingModal, setShowDeleteGroupMappingModal] =
+  const [deleteGroupMappingModalIsOpen, setDeleteGroupMappingModalIsOpen] =
     useState(false);
   const handleOpenDeleteGroupMappingModal = () => {
-    setShowDeleteGroupMappingModal(true);
+    setDeleteGroupMappingModalIsOpen(true);
   };
   const handleCloseDeleteGroupMappingModal = () => {
-    setShowDeleteGroupMappingModal(false);
+    setDeleteGroupMappingModalIsOpen(false);
   };
 
-  const [deleteMappingModalIsOpen, setShowDeleteMappingModalIsOpen] =
+  const [deleteMappingModalIsOpen, setDeleteMappingModalIsOpen] =
     useState(false);
   const handleOpenDeleteMappingModal = () => {
-    setShowDeleteMappingModalIsOpen(true);
+    setDeleteMappingModalIsOpen(true);
   };
   const handleCloseDeleteMappingModal = () => {
-    setShowDeleteMappingModalIsOpen(false);
+    setDeleteMappingModalIsOpen(false);
   };
 
   // Mappings may receive group ids even from the back-end
@@ -167,7 +167,7 @@ const MappingRow = ({
           handleCloseDeleteMappingModal();
         }}
       />
-      {showDeleteGroupMappingModal && (
+      {deleteGroupMappingModalIsOpen && (
         <DeleteGroupMappingModal
           name={name}
           groupIds={selectedGroupIds}
