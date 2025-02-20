@@ -295,6 +295,18 @@ collection_id: onou5H28Wvy3kWnjxxdKQ
 
 This ID refers to the collection where the question was saved. In a real export, you'd be able to find a YAML file for this collection whose name starts with its ID: `onou5H28Wvy3kWnjxxdKQ`.
 
+### Entity IDs work with embedding
+
+Metabase supports working with [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for questions, dashboards, and collections in [Static Embedding](../embedding/static-embedding.md), [Interactive embedding](../embedding/interactive-embedding.md), and the [Embedded Analytics SDK](../embedding/sdk/introduction.md).
+
+A high-level workflow for using Entity IDs when embedding Metabase in your app would look something like:
+
+1. Create a dashboard in a Metabase running locally on your machine.
+2. Embed the dashboard in your app locally using the Entity ID in your application code.
+3. Export your Metabase changes to YAML files via serialization.
+4. Import your Metabase changes (the exported YAML files) to your production Metabase.
+5. Since the Entity ID remains the same in the production Metabase, you can just push the code in your app to production, and the code will refer to the right dashboard.
+
 ### Databases, schemas, tables, and fields are identified by name
 
 By default, Metabase exports some database and data model settings. Exports exclude database connection strings by default. You can [explicitly include database connection strings](#customize-what-gets-exported). You can also choose to exclude the data model entirely.
