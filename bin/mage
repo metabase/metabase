@@ -1,0 +1,18 @@
+#! /usr/bin/env bb
+
+(ns mage
+  (:require [babashka.tasks :refer [shell]]
+            [clojure.string :as str]))
+
+(println " ███╗   ███╗ █████╗  ██████╗ ███████╗")
+(println " ████╗ ████║██╔══██╗██╔════╝ ██╔════╝")
+(println " ██╔████╔██║███████║██║  ███╗█████╗")
+(println " ██║╚██╔╝██║██╔══██║██║   ██║██╔══╝")
+(println " ██║ ╚═╝ ██║██║  ██║╚██████╔╝███████╗")
+(println " ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝")
+(println "  The Metabase Automation Genius Engine")
+(println "")
+
+(if (nil? *command-line-args*)
+  (shell "bb tasks")
+  (shell (str "bb " (str/join " " *command-line-args*))))

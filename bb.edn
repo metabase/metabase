@@ -1,7 +1,7 @@
 {:min-bb-version "1.12.196"
  ;; we put path as bin, and everything is in the mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
- :paths          ["bin" "test"]
+ :paths          ["mage"]
  :deps           {metosin/malli  {:mvn/version "0.17.0"}
                   table/table    {:mvn/version "0.5.0"}}
 
@@ -71,9 +71,9 @@
                  (deref (promise)))}
 
   jar-download {:doc      "Given a version, downloads a metabase jar"
-                :examples [["mb-download 1.45.2 ~/path/to/my/jars" "Download 1.45.2 to ~/path/to/my/jars"]
-                           ["mb-download 1.45.2" "Download 1.45.2 to $JARS."]
-                           ["mb-download 0.45.2" "Download 0.45.2 to $JARS.\n   ProTip: this script will read from $JARS, and use that as your jar directory."]]
+                :examples [["bb jar-download 1.45.2 ~/path/to/my/jars" "Download 1.45.2 to ~/path/to/my/jars"]
+                           ["bb jar-download 1.45.2" "Download 1.45.2 to $JARS."]
+                           ["bb jar-download 0.45.2" "Download 0.45.2 to $JARS.\n   ProTip: this script will read from $JARS, and use that as your jar directory."]]
                 :requires [[mage.jar-download :as jar-download]]
                 :task     (do
                             (cli/menu! (current-task))
