@@ -240,6 +240,18 @@
                            :where [:and [:= :permissions_group_membership.user_id user-id]
                                    [:not= :permissions_group_membership.group_id (:id (perms/all-users-group))]]}]})))
 
+(api.macros/defendpoint :get "/can-read/:model/:id/user/:user-id"
+  "Returns true if the user-id can read the `card` or `dashboard` with id."
+  [{:keys [model id user-id]} :- [:map
+                                  [:model [:enum "card" "dashboard"]]
+                                  [:id      ms/PositiveInt]
+                                  [:user-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [model-kw (keyword "model" (u/capitalize-en model))]
+    (request/with-current-user user-id
+      {:read (mi/can-read? model-kw id)
+       :write (mi/can-write? model-kw id)})))
+
 (api.macros/defendpoint :get "/recipients"
   "Fetch a list of `Users`. Returns only active users. Meant for non-admins unlike GET /api/user.
 
