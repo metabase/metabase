@@ -1,8 +1,7 @@
-import type { CallOptions } from "use-debounce";
-
 import type {
   BooleanLiteral,
   CallExpression,
+  CallOptions,
   CaseOrIfExpression,
   CaseOrIfOperator,
   Expression,
