@@ -51,7 +51,12 @@
   [args]
   (copy-configs-if-needed!)
   (clear-cache!)
-  (let [command           (if (empty? args) ["-M:kondo:kondo/all"] (list* "-M:kondo" args))
+  (let [command           (if (empty? args)
+                            (do
+                              (println "Hunker down, we're running kondo against everything we usually lint...")
+                              (println "(Maybe you meant to run it against a certain file?)")
+                              ["-M:kondo:kondo/all"])
+                            (list* "-M:kondo" args))
         {exit-code :exit} (apply shell/sh* "clojure" command)]
     (System/exit exit-code)))
 

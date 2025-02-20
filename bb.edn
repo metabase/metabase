@@ -1,96 +1,97 @@
 {:min-bb-version "1.12.196"
-
  ;; we put path as bin, and everything is in the mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
- :paths ["bin" "test"]
- :deps  {escherize/bask {:git/url "https://github.com/escherize/bask.git"
-                         :git/sha "81cc9af3021d7689cfbddf0518a1e828f785f006"}
-         metosin/malli  {:mvn/version "0.17.0"}
-         table/table    {:mvn/version "0.5.0"}}
- :tasks {:requires [[mage.cli :as cli]]
+ :paths          ["bin" "test"]
+ :deps           {escherize/bask {:git/url "https://github.com/escherize/bask.git"
+                                  :git/sha "81cc9af3021d7689cfbddf0518a1e828f785f006"}
+                  metosin/malli  {:mvn/version "0.17.0"}
+                  table/table    {:mvn/version "0.5.0"}}
 
-         cljfmt-staged
-         {:doc      "Runs cljfmt on staged files"
-          :requires [[mage.format :as format]]
-          :examples [["bb cljfmt-staged" "Format staged files"]]
-          :task     (do (cli/menu! (current-task)) (format/staged))}
+ :tasks
+ {:requires [[mage.cli :as cli]]
 
-         cljfmt-file
-         {:doc      "Runs cljfmt on the given files/directories"
-          :requires [[mage.format :as format]]
-          :examples [["bb format-file src/metabase/events.clj" "Format events.clj"]
-                     ["bb format-file src" "Format all files in src"]]
-          :task     (format/files (:args (cli/menu! (current-task))))}
+  cljfmt-staged
+  {:doc      "Runs cljfmt on staged files"
+   :requires [[mage.format :as format]]
+   :examples [["bb cljfmt-staged" "Format staged files"]]
+   :task     (do (cli/menu! (current-task)) (format/staged))}
 
-         cljfmt-all
-         {:doc      "Runs cljfmt on all (clojure) files"
-          :requires [[mage.format :as format]]
-          :examples [["bb cljfmt-all" "Format all files"]]
-          :task     (do (cli/menu! (current-task)) (format/all))}
+  cljfmt-file
+  {:doc      "Runs cljfmt on the given files/directories"
+   :requires [[mage.format :as format]]
+   :examples [["bb format-file src/metabase/events.clj" "Format events.clj"]
+              ["bb format-file src" "Format all files in src"]]
+   :task     (format/files (:args (cli/menu! (current-task))))}
 
-         kondo
-         {:doc      "Runs Kondo against a file, directory, or everything we usually lint."
-          :examples [["bb kondo" "run Kondo against everything we usually lint"]
-                     ["bb kondo --lint src/metabase/db.clj" "run Kondo against a file"]
-                     ["bb kondo --lint src/metabase/api/macros" "run Kondo against a directory"]]
+  cljfmt-all
+  {:doc      "Runs cljfmt on all (clojure) files"
+   :requires [[mage.format :as format]]
+   :examples [["bb cljfmt-all" "Format all files"]]
+   :task     (do (cli/menu! (current-task)) (format/all))}
 
-          :requires [[mage.kondo :as kondo]]
-          :task     (do (cli/menu! (current-task))
-                        (kondo/kondo *command-line-args*))}
+  kondo
+  {:doc      "Runs Kondo against a file, directory, or everything we usually lint."
+   :examples [["bb kondo" "run Kondo against everything we usually lint"]
+              ["bb kondo --lint src/metabase/db.clj" "run Kondo against a file"]
+              ["bb kondo --lint src/metabase/api/macros" "run Kondo against a directory"]]
 
-         kondo-updated
-         {:doc      "Runs kondo against files that have been changed relative to a Git ref (default `HEAD`)"
-          :examples [["bb kondo-updated" "run Kondo on files with changes relative to HEAD"]
-                     ["bb kondo-updated master" "run Kondo on files with changes relative to master"]]
-          :requires [[mage.kondo :as kondo]]
-          :task     (do (cli/menu! (current-task))
-                        (kondo/kondo-updated *command-line-args*))}
+   :requires [[mage.kondo :as kondo]]
+   :task     (do (cli/menu! (current-task))
+                 (kondo/kondo *command-line-args*))}
 
-         start-db
-         {:doc      "Start a db on a default port in docker"
-          :requires [[mage.start-db :as start-db]]
-          :examples [["bb start-db postgres latest" "start the latest postgres db we support"]
-                     ["bb start-db mysql oldest" "start the oldest mysql db we support"]]
-          :task     (do (cli/menu! (current-task))
-                        (start-db/start-db *command-line-args*))}
+  kondo-updated
+  {:doc      "Runs kondo against files that have been changed relative to a Git ref (default `HEAD`)"
+   :examples [["bb kondo-updated" "run Kondo on files with changes relative to HEAD"]
+              ["bb kondo-updated master" "run Kondo on files with changes relative to master"]]
+   :requires [[mage.kondo :as kondo]]
+   :task     (do (cli/menu! (current-task))
+                 (kondo/kondo-updated *command-line-args*))}
 
-         install-autotab
-         {:doc      "Prints shell code to autocomplete tasks using bb.
+  start-db
+  {:doc      "Start a db on a default port in docker"
+   :requires [[mage.start-db :as start-db]]
+   :examples [["bb start-db postgres latest" "start the latest postgres db we support"]
+              ["bb start-db mysql oldest" "start the oldest mysql db we support"]]
+   :task     (do (cli/menu! (current-task))
+                 (start-db/start-db *command-line-args*))}
+
+  install-autotab
+  {:doc      "Prints shell code to autocomplete tasks using bb.
                         Note: for fish shell please make sure ~/.config/fish/completions exists."
-          :examples [["bb install-autotab" "Shows a link to instructions to make autocomplete work."]]
-          :task     (do
-                      (cli/menu! (current-task))
-                      (println "\nPlease follow these instructions:")
-                      (println "  https://book.babashka.org/#_terminal_tab_completion"))}
+   :examples [["bb install-autotab" "Shows a link to instructions to make autocomplete work."]]
+   :task     (do
+               (cli/menu! (current-task))
+               (println "\nPlease follow these instructions:")
+               (println "  https://book.babashka.org/#_terminal_tab_completion"))}
 
-         nrepl
-         {:doc      "Starts the babashka nrepl server for bb tasks development."
-          :requires [[babashka.nrepl.server :as nrepl.server]
-                     [bask.colors :as c]]
-          :examples [["bb nrepl" "Starts the nrepl server"]]
-          :task     (do
-                      (spit ".nrepl-port" 1667)
-                      (println (c/green "Started nrepl server!"))
-                      (nrepl.server/start-server!)
-                      (deref (promise)))}
+  nrepl
+  {:doc      "Starts the babashka nrepl server for bb tasks development."
+   :requires [[babashka.nrepl.server :as nrepl.server]
+              [bask.colors :as c]]
+   :examples [["bb nrepl" "Starts the nrepl server"]]
+   :task     (do
+               (spit ".nrepl-port" 1667)
+               (println (c/green "Started nrepl server!"))
+               (nrepl.server/start-server!)
+               (deref (promise)))}
 
-         download-jar {:doc      "Given a version, downloads a metabase jar"
-                       :examples [["mb-download 1.45.2 ~/path/to/my/jars" "Download 1.45.2 to ~/path/to/my/jars"]
-                                  ["mb-download 1.45.2" "Download 1.45.2 to $JARS."]
-                                  ["mb-download 0.45.2" "Download 0.45.2 to $JARS.\n   ProTip: this script will read from $JARS, and use that as your jar directory."]]
-                       :requires [[mage.mb-download :as mb-download]]
-                       :task     (do
-                                   (cli/menu! (current-task))
-                                   (mb-download/mb-download *command-line-args*))}
+  download-jar {:doc      "Given a version, downloads a metabase jar"
+                :examples [["mb-download 1.45.2 ~/path/to/my/jars" "Download 1.45.2 to ~/path/to/my/jars"]
+                           ["mb-download 1.45.2" "Download 1.45.2 to $JARS."]
+                           ["mb-download 0.45.2" "Download 0.45.2 to $JARS.\n   ProTip: this script will read from $JARS, and use that as your jar directory."]]
+                :requires [[mage.mb-download :as mb-download]]
+                :task     (do
+                            (cli/menu! (current-task))
+                            (mb-download/mb-download *command-line-args*))}
 
-         ;; note: task symbols starting with `-` are not listed in `bb tasks`.
-         -example
-         {;; docstring for the task:
-          :doc      "The sample task docstring"
-          ;; you should lazily require libraries:
-          :requires []
-          ;; examples get printed out when you pass -h or --help.
-          :examples [["bb -example" "it runs this task"]]
-          ;; options are things like --file, --name, etc.
-          :options  []
-          :task     (prn "hi")}}}
+  ;; note: task symbols starting with `-` are not listed in `bb tasks`.
+  -example
+  {;; docstring for the task:
+   :doc      "The sample task docstring"
+   ;; you should lazily require libraries:
+   :requires []
+   ;; examples get printed out when you pass -h or --help.
+   :examples [["bb -example" "it runs this task"]]
+   ;; options are things like --file, --name, etc.
+   :options  []
+   :task     (prn "hi")}}}
