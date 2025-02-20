@@ -35,7 +35,8 @@ interface OwnProps {
   formSettings: ActionFormSettings;
   isEditable: boolean;
   onChangeFormSettings: (formSettings: ActionFormSettings) => void;
-  onClose: () => void;
+  onClose?: () => void;
+  onBack?: () => void;
 }
 
 interface StateProps {
@@ -89,6 +90,7 @@ const InlineActionSettings = ({
   onCreatePublicLink,
   onDeletePublicLink,
   onClose,
+  onBack,
 }: ActionSettingsInlineProps) => {
   const id = useUniqueId();
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] = useToggle();
@@ -122,7 +124,11 @@ const InlineActionSettings = ({
   };
 
   return (
-    <SidebarContent title={t`Action settings`} onClose={onClose}>
+    <SidebarContent
+      title={t`Action settings`}
+      onClose={onClose}
+      onBack={onBack}
+    >
       <ActionSettingsContent>
         {action && hasSharingPermission && (
           <FormField
