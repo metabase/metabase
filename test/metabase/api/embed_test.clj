@@ -1052,7 +1052,7 @@
                                                        :card_id          (u/the-id series-card)
                                                        :position         0}]
             (is (= "completed"
-                   (:status (client/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/the-id series-card))))))))))))))
+                   (:status (client/client :get 202 (dashcard-url (assoc dashcard :card_id (u/the-id series-card)))))))))))))
 
 ;;; ------------------------------- GET /api/embed/card/:token/field/:field/values nil --------------------------------
 
