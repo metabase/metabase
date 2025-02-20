@@ -87,14 +87,18 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
     handleCommit(clause);
   }, [clause, handleCommit]);
 
-  const handleError = useCallback((error: ErrorWithMessage | null) => {
-    setError(error);
-  }, []);
-
-  const handleExpressionChange = useCallback((clause: Clause | null) => {
-    setClause(clause);
-    setError(null);
-  }, []);
+  const handleExpressionChange = useCallback(
+    (clause: Clause | null, error: ErrorWithMessage | null = null) => {
+      if (error) {
+        setError(error);
+        return;
+      } else {
+        setClause(clause);
+        setError(null);
+      }
+    },
+    [],
+  );
 
   const shortcuts = useMemo(
     () =>
@@ -187,9 +191,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
         stageIndex={stageIndex}
         reportTimezone={reportTimezone}
         onChange={handleExpressionChange}
-        onCommit={handleCommit}
         error={error}
-        onError={handleError}
         shortcuts={shortcuts}
       />
 

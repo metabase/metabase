@@ -23,7 +23,6 @@ type Options = {
   stageIndex: number;
   name?: string | null;
   expressionIndex: number | undefined;
-  onCommit: (source: string) => void;
   metadata: Metadata;
   reportTimezone?: string;
   extensions?: Extension[];
@@ -49,7 +48,6 @@ export function useExtensions(options: Options): Extension[] {
     stageIndex,
     name,
     expressionIndex,
-    onCommit,
     reportTimezone,
     metadata,
     extensions: extra = [],
@@ -129,7 +127,6 @@ export function useExtensions(options: Options): Extension[] {
     stageIndex,
     name,
     expressionIndex,
-    onCommit,
     metadata,
     reportTimezone,
     // eslint-disable-next-line react-hooks/exhaustive-deps
