@@ -43,7 +43,8 @@
     (api/read-check dashboard)
     (when-not (:alias dashboard)
       (throw (ex-info "Dashboard does not have an alias" {:status-code 400})))
-    (dashboard/copy-dashboard {:alias (str (:alias dashboard) "@draft")
+    (dashboard/copy-dashboard {:name (str (:name dashboard) " DRAFT⚒️⚒️⚒️⚒️⚒️")
+                               :alias (str (:alias dashboard) "@draft")
                                :is_deep_copy true}
                               dashboard)))
 
