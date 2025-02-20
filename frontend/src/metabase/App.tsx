@@ -104,10 +104,10 @@ function App({
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
             <AppBanner />
-            {isAppBarVisible && <AppBar />}
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}
               <AppContent ref={setViewportElement}>
+                {isAppBarVisible && <AppBar />}
                 <ContentViewportContext.Provider
                   value={viewportElement ?? null}
                 >

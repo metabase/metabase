@@ -58,10 +58,6 @@ const AppBarLarge = ({
           isNavBarOpen={isNavBarOpen}
           onToggleClick={onToggleNavbar}
         />
-        <AppBarLogo
-          isLogoVisible={isLogoVisible}
-          isNavBarEnabled={isNavBarEnabled}
-        />
         <AppBarInfoContainer
           isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >
@@ -74,8 +70,6 @@ const AppBarLarge = ({
       </AppBarLeftContainer>
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
         <AppBarRightContainer>
-          {isSearchVisible && (isEmbedded ? <SearchBar /> : <SearchButton />)}
-          {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {isProfileLinkVisible && (
             <AppBarProfileLinkContainer aria-label={t`Settings menu`}>
               <ProfileLink onLogout={onLogout} />

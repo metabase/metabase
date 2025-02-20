@@ -6,3 +6,8 @@
     border-bottom-color: var(--mb-color-border);
   }
 }
+[data-variant="subtle"] {
+  border: none;
+  box-shadow: none;
+  background: transparent !important;
+}

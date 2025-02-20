@@ -22,16 +22,16 @@ export interface RouterProps {
 }
 
 const PATHS_WITHOUT_NAVBAR = [
-  /^\/setup/,
-  /^\/auth/,
-  /\/model\/.*\/query/,
-  /\/model\/.*\/metadata/,
-  /\/model\/query/,
-  /\/model\/metadata/,
-  /\/metric\/.*\/query/,
-  /\/metric\/.*\/metadata/,
-  /\/metric\/query/,
-  /\/metric\/metadata/,
+  // /^\/setup/,
+  // /^\/auth/,
+  // /\/model\/.*\/query/,
+  // /\/model\/.*\/metadata/,
+  // /\/model\/query/,
+  // /\/model\/metadata/,
+  // /\/metric\/.*\/query/,
+  // /\/metric\/.*\/metadata/,
+  // /\/metric\/query/,
+  // /\/metric\/metadata/,
 ];
 
 const PATHS_WITH_COLLECTION_BREADCRUMBS = [

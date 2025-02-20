@@ -25,9 +25,25 @@ import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotificati
 import { addUndo } from "metabase/redux/undo";
 import { getHasOwnDatabase } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
-import { Icon, type IconName, type IconProps, Tooltip } from "metabase/ui";
+import {
+  Icon,
+  type IconName,
+  type IconProps,
+  Tooltip,
+  Box,
+  Flex,
+  ActionIcon,
+} from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
+
+import {
+  AppBarLogo,
+  SearchButton,
+} from "metabase/nav/components/AppBar/AppBarLogo";
+import { SearchBar } from "metabase/nav/components/search/SearchBar";
+import { SearchButton } from "metabase/nav/components/search/SearchButton";
+import NewItemButton from "metabase/nav/components/NewItemButton";
 
 import {
   CollectionMenuList,
@@ -181,6 +197,16 @@ export function MainNavbarView({
     <ErrorBoundary>
       <SidebarContentRoot>
         <div>
+          <Flex align="center" mx="md">
+            <AppBarLogo isLogoVisible={true} isNavBarEnabled={true} />
+            <Flex ml="auto" align="center">
+              <SearchButton />
+              <ActionIcon>
+                <Icon name="ai" />
+              </ActionIcon>
+              <NewItemButton collectionId={1} />
+            </Flex>
+          </Flex>
           <SidebarSection>
             <PaddedSidebarLink
               isSelected={nonEntityItem?.url === "/"}

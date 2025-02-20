@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { METAKEY } from "metabase/lib/browser";
-import { Button, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Button, Icon, Tooltip } from "metabase/ui";
 
 export const SearchButton = () => {
   const kbar = useKBar();
@@ -30,10 +30,7 @@ export const SearchButton = () => {
   } else {
     return (
       <Tooltip label={`${t`Search...`} (${METAKEY}+k)`}>
-        <Button
-          h="36px"
-          w="240px"
-          leftSection={<Icon name="search" />}
+        <ActionIcon
           onClick={handleClick}
           // TODO: Adjust this with Mantine V7
           styles={{
@@ -43,8 +40,8 @@ export const SearchButton = () => {
           }}
           aria-label="Search"
         >
-          {t`Search`}
-        </Button>
+          <Icon name="search" />
+        </ActionIcon>
       </Tooltip>
     );
   }
