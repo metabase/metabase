@@ -177,7 +177,7 @@
   (mt/test-driver :mysql
     (mt/dataset year-db
       (testing "By default YEAR"
-        (is (= #{{:name "year_column", :base_type :type/Integer, :semantic_type :type/Category}
+        (is (= #{{:name "year_column", :base_type :type/Integer, :semantic_type nil}
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}}
                (db->fields (mt/db)))))
       (let [table  (t2/select-one :model/Table :db_id (u/id (mt/db)))
