@@ -1,6 +1,5 @@
 import { getFunctionByStructure } from "metabase-lib/v1/expressions/helper-text-strings";
-
-import { parser } from "./language";
+import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
 
 export function enclosingFunction(doc: string, pos: number) {
   const tree = parser.parse(doc);
