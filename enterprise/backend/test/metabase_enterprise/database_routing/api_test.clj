@@ -56,3 +56,23 @@
                                                 {:name "mirror database 2"
                                                  :details (:details (mt/db))}]})))
         (is (not (t2/exists? :model/Database :primary_database_id (mt/id))))))))
+
+(deftest we-can-mark-an-existing-database-as-being-a-router-database
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (mt/with-model-cleanup [:model/DatabaseRouter]
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/database/" db-id)
+                            {:user_attribute "foo"})
+      (is (t2/exists? :model/DatabaseRouter :db_id db-id :user_attribute "foo")))))
+
+(deftest marking-a-nonexistent-database-as-a-router-database-fails
+  (let [nonexistent-id 123456789]
+    (mt/with-model-cleanup [:model/DatabaseRouter]
+      (mt/user-http-request :crowberto :put 404 (str "ee/database-routing/database/" nonexistent-id)
+                            {:user_attribute "foo"})
+      (is (not (t2/exists? :model/DatabaseRouter :db_id nonexistent-id :user_attribute "foo"))))))
+
+(deftest marking-something-that-is-already-a-router-database-fails
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:db_id db-id :user_attribute "foo"}]
+    (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/database/" db-id)
+                          {:user_attribute "bar"})))

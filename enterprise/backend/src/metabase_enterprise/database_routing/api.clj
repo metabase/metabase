@@ -66,6 +66,17 @@
                                  (dissoc :valid)
                                  (merge {:name name})))))}))))
 
+(api.macros/defendpoint :put "/database/:id"
+  "Mark a database as a router database"
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [user_attribute]} :- [:map
+                                [:user_attribute ms/NonBlankString]]]
+  (api/check-404 (t2/exists? :model/Database :id id))
+  (api/check-400 (not (t2/exists? :model/DatabaseRouter :db_id id)))
+  (t2/insert-returning-instance! :model/DatabaseRouter :user_attribute user_attribute :db_id id))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/database-routing` routes"
   (api.macros/ns-handler *ns* +auth))
