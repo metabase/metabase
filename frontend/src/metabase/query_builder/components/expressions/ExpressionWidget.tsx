@@ -218,7 +218,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
             onClick={handleSubmit}
             size="xs"
           >
-            {initialName ? t`Update` : t`Done`}
+            {initialName || initialClause ? t`Update` : t`Done`}
           </Button>
         </Box>
       </Flex>
