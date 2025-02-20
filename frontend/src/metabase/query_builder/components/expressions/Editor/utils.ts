@@ -1,5 +1,14 @@
+import { t } from "ttag";
+
+import type * as Lib from "metabase-lib";
+import { isExpression } from "metabase-lib/v1/expressions";
+import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 import { getFunctionByStructure } from "metabase-lib/v1/expressions/helper-text-strings";
+import { processSource } from "metabase-lib/v1/expressions/process";
 import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+
+import type { ClauseType, StartRule } from "../types";
 
 export function enclosingFunction(doc: string, pos: number) {
   const tree = parser.parse(doc);
@@ -45,4 +54,83 @@ export function enclosingFunction(doc: string, pos: number) {
   } while (cursor.next());
 
   return res;
+}
+
+export function diagnoseAndCompileExpression<
+  S extends StartRule = "expression",
+>(
+  source: string,
+  {
+    startRule,
+    query,
+    stageIndex,
+    expressionIndex,
+    metadata,
+    name,
+  }: {
+    startRule: S;
+    query: Lib.Query;
+    stageIndex: number;
+    expressionIndex?: number;
+    metadata: Metadata;
+    name?: string;
+  },
+) {
+  if (source.trim() === "") {
+    return {
+      clause: null,
+      error: { message: t`Invalid expression` },
+    };
+  }
+
+  const error = diagnose({
+    source,
+    startRule,
+    query,
+    stageIndex,
+    expressionIndex,
+    metadata,
+  });
+
+  if (error) {
+    return { clause: null, error };
+  }
+
+  const compiledExpression = processSource({
+    source,
+    query,
+    stageIndex,
+    startRule,
+    expressionIndex,
+    name,
+  });
+
+  const {
+    expression,
+    expressionClause: clause,
+    compileError,
+  } = compiledExpression;
+  if (
+    compileError &&
+    typeof compileError === "object" &&
+    "message" in compileError &&
+    typeof compileError.message === "string"
+  ) {
+    return {
+      clause: null,
+      error: compileError,
+    };
+  }
+
+  if (compileError || !expression || !isExpression(expression) || !clause) {
+    return {
+      clause: null,
+      error: { message: t`Invalid expression` },
+    };
+  }
+
+  return {
+    clause: clause as ClauseType<S>,
+    error: null,
+  };
 }
