@@ -1,4 +1,5 @@
-{;; we put path as bin, and everything is in the mage subdirectory,
+{:min-bb-version "1.12.196"
+ ;; we put path as bin, and everything is in the mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths ["bin" "test"]
  :deps  {escherize/bask {:git/url "https://github.com/escherize/bask.git"

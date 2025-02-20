@@ -1,7 +1,7 @@
 (ns mage.cli
   (:require
    [babashka.tasks :refer [shell]]
-   [bask.bask :as b]
+   ;; [bask.bask :as b]
    [bask.colors :as c]
    [clojure.string :as str]
    [clojure.tools.cli :refer [parse-opts]]
@@ -73,9 +73,7 @@
         to-ask (mapv ->ask unanswered)]
     (if (empty? to-ask)
       cli-options
-      (do
-        (install-if-needed! "fzf" #(shell "brew install fzf"))
-        (merge cli-options (b/ask! to-ask))))))
+      (throw (Exception. "no bask allowed anymore")))))
 
 (defn- menu-cli
   "Gets required cli options through a menu when not provided by users."
