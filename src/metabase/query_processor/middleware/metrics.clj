@@ -238,86 +238,83 @@
   (lib.util.match/match-one query
     [:metric _ _] &match))
 
-(defn- more-specific-filter
-  "Decides whether f1 is more specific than f2, by checking whether f2 is contained in f1"
+(defn- equal-filter?
   [f1 f2]
-  (when (and (vector? f1) (vector? f2))
-    ;; WIP!
-    ;; remove uuids first
-    ;; Searchinng for [[equal-filter-shape?]] of `f2` in `f1`.
-    true))
+  (let [f1 (cond-> f1 (lib.util/clause-of-type? f1 :value) (get 2))
+        f2 (cond-> f2 (lib.util/clause-of-type? f2 :value) (get 2))]
+    (cond
+      (or (not (lib.util/clause? f1))
+          (not (lib.util/clause? f2)))
+      (= f1 f2)
+
+      (and (= (first f1) (first f2))
+           (= (count (nthnext f1 2)) (count (nthnext f2 2))))
+      (every? #(apply equal-filter? %)
+              (map vector (nthnext f1 2) (nthnext f2 2))))))
+
+(defn- filters-for-subset?
+  "Check whether filter clause `f1` filters for subset of rows that filter clause `f2` filters for."
+  [f1 f2]
+  (every? #(m/find-first (partial equal-filter? %) f1) f2))
 
 (defn- assert-compatible-stage-filters
+  "Assert that stage filteres are compatible with filterse of every referenced metric. Returns nil."
   [query stage-number metrics]
-  (let [query-filter (lib/filters query stage-number)]
-    (when (seq query-filter)
+  (let [query-filters (lib/filters query stage-number)]
+    (when (seq query-filters)
       (loop [metric-ids (keys metrics)]
         (when (seq metric-ids)
           (let [metric-id (first metric-ids)
                 metric-query (get metrics metric-id)
-                metric-filter (lib/filters metric-query)]
-            (when-not (more-specific-filter query-filter metric-filter)
-              (throw (ex-info "Stage filter is not compatible with metric `%d` filter."
+                metric-filters (lib/filters metric-query)]
+            (when-not (filters-for-subset? query-filters metric-filters)
+              (throw (ex-info (format "Stage filter is not compatible with metric `%d` filter."
+                                      metric-id)
                               {}))))
-          (recur (rest metric-ids)))))))
+          (recur (rest metric-ids))))))
+  nil)
 
-(defn- equal-filter-shape?:and
-  "Check 2 and filters"
+(defn- filters-map-1-1?
+  "Predicate that checks whether filtler clauses of `f1` equal to clauses of `f2` in terms of [[equal-filter?]]."
   [f1 f2]
-  )
+  (assert (and (vector f1) (vector f2)))
+  (loop [f1 f1
+         f2-indices (set (range (count f2)))]
+    (cond
+      (and (empty? f1) (empty? f2-indices))
+      true
 
-;; Now check just the shape
-;; TODO: Special handling for or and and.
-;; TODO: Property based test -- again I'd need a generator.
-(defn- equal-filter-shape?
-  "How to do this? Check just a shape? Check also refs? Check toplevel only?
+      (or (empty? f1) (empty? f2-indices))
+      false
 
-  Currently work only on one filter element aka [this-inside-of-lib/filters-result]"
-  [f1 f2]
-  (or
+      :else
+      (let [f1-elm (first f1)
+            matching (m/find-first #(equal-filter? f1-elm (get f2 %)) f2-indices)]
+        (if (nil? matching)
+          false
+          (recur (rest f1) (disj f2-indices matching)))))))
 
-   ;; base: not a clause, must be clojure equal
-   (and (or (not (lib.util/clause? f1))
-            (not (lib.util/clause? f2)))
-        (= f1 f2))
-
-   (and (or (lib.util/clause-of-type? f1 :and)
-            (lib.util/clause-of-type? f2 :and))
-        (equal-filter-shape?:and f1 f2))
-
-   ;; recursive: on clause: op equal, args shape equal
-   (let [args1 (nthnext f1 2)
-         args2 (nthnext f2 2)]
-      ;; this does false for different sizes
-     (and (= (first f1) (first f2))
-          (= (count args1) (count args2))
-          (every? #(apply equal-filter-shape? %)
-                  (map vector args1 args2))))))
-
-(defn- assert-compatible-filters
-  "Assert that metrics referenced in a stage have compatible filters.
-
-  Filters have to be equal."
+(defn- assert-compatible-filters-in-metrics
+  "Assert that metrics referenced in a stage have compatible filters. Returns nil."
   [metrics]
   (let [[base-metric-id & other-metric-ids] (keys metrics)
         base-metric-query (get metrics base-metric-id)
-        [base-filter :as _base-filters] (lib/filters base-metric-query)]
-    (loop [ids other-metric-ids]
-      (when (seq ids)
-        (let [other-metric-id (first ids)
-              other-metric-query (get metrics other-metric-id)
-              [other-filter :as _other-metric-filters] (lib/filters other-metric-query)]
-          ;; TODO: Extend the check to other than first filters from filters vector
-          (when-not (equal-filter-shape? base-filter other-filter)
-            (throw (ex-info (format "Metrics `%d` and `%d` have incompatible filters"
+        base-filters (lib/filters base-metric-query)]
+    (loop [metric-ids other-metric-ids]
+      (when (seq metric-ids)
+        (let [metric-id (first metric-ids)
+              metric-query (get metrics metric-id)
+              metric-filters (lib/filters metric-query)]
+          (when-not (filters-map-1-1? base-filters metric-filters)
+            (throw (ex-info (format "Metrics `%d` and `%d` have incompatible-filters."
                                     base-metric-id
-                                    other-metric-id)
+                                    metric-id)
                             {}))))
-        (recur (rest ids))))
-    nil))
+        (recur (rest other-metric-ids)))))
+  nil)
 
 (defn is-join-compatible?
-  "Every join must be fk->pk."
+  "Predicate that checks whether join is compatible to be used in metric or referencing stage."
   [query stage-number join]
   (every? (fn [condition]
             (when (= := (first condition))
@@ -342,7 +339,7 @@
           (:conditions join)))
 
 (defn- assert-compatible-joins
-  "Assert referencing stage and referenced metrics have no colliding joins."
+  "Assert referencing stage and referenced metrics have no incompatible joins. Returns nil."
   [query stage-number resolved-metric-queries]
   ;; check the stage joins
   (loop [stage-joins (lib/joins query stage-number)]
@@ -365,9 +362,11 @@
                 (throw (ex-info (format "Incompatible join in metric %d" metric-id)
                                 {}))))
             (recur (rest metric-joins)))))
-      (recur (rest metric-ids)))))
+      (recur (rest metric-ids))))
+  nil)
 
 (defn- assert-compatible-metrics*
+  "Assert that referencing stage and referenced metric joins and filters are allowed. Returns nil."
   [query path-type path stage-or-join]
   (when (= :lib.walk/stage path-type)
     (let [stage stage-or-join
@@ -380,13 +379,13 @@
                                (m/index-by :id))
                           (update-vals #(->> %
                                              :dataset-query
-                                             ;; TODO: calling the following twice is gross.
+                                             ;; TODO: Avoid call to the following function second time during expansion.
                                              ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
                                              (lib/query query))))]
           (assert-compatible-joins query stage-number metrics)
-          (assert-compatible-filters metrics)
-          (assert-compatible-stage-filters query stage-number metrics)
-          nil)))))
+          (assert-compatible-filters-in-metrics metrics)
+          (assert-compatible-stage-filters query stage-number metrics)))))
+  nil)
 
 (defn- assert-compatible-metrics
   [query]
