@@ -1,3 +1,6 @@
+# EET additions
+- possibility to specify unaggregated query row limit via env variable MAX_UNAGGREGATED_ROWS (defaults to 10000)
+
 # Metabase
 
 [Metabase](https://www.metabase.com) is the easy, open-source way for everyone in your company to ask questions and learn from data.
