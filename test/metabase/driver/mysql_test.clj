@@ -765,7 +765,7 @@
             (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
                           "CREATE TABLE `baz` (id INTEGER);"
                           "CREATE USER 'table_privileges_test_user' IDENTIFIED BY 'password';"
-                          (str "GRANT SELECT ON table_privileges_test.`bar` TO 'table_privileges_test_user'")]]
+                          "GRANT SELECT ON table_privileges_test.`bar` TO 'table_privileges_test_user'"]]
               (jdbc/execute! spec stmt))
             (testing "should return privileges on the table"
               (is (= [{:role   nil
@@ -777,13 +777,13 @@
                        :delete false}]
                      (get-privileges))))
             (testing "should return privileges on the database"
-              (jdbc/execute! spec (str "GRANT UPDATE ON `table_privileges_test`.* TO 'table_privileges_test_user'"))
+              (jdbc/execute! spec "GRANT UPDATE ON `table_privileges_test`.* TO 'table_privileges_test_user'")
               (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert false, :delete false}
                       {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
                      (get-privileges))))
             (testing "should return privileges on roles that the user has been granted"
               (doseq [stmt ["CREATE ROLE 'table_privileges_test_role'"
-                            (str "GRANT INSERT ON `bar` TO 'table_privileges_test_role'")
+                            "GRANT INSERT ON `bar` TO 'table_privileges_test_role'"
                             "GRANT 'table_privileges_test_role' TO 'table_privileges_test_user'"]]
                 (jdbc/execute! spec stmt))
               (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}

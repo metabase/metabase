@@ -4,6 +4,7 @@
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
+   [metabase.notification.core :as notification]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
@@ -136,7 +137,7 @@
                                                         (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/concurrent-tasks {:payload-type "notification/testing"}))))
                                                       (apply original-render args))]
             (notification.tu/with-captured-channel-send!
-              (notification.send/send-notification-sync! n)))
+              (notification/send-notification! n {:notification/sync? true})))
           (testing "once the execution is done, concurrent tasks is decreased"
             (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-notification/concurrent-tasks {:payload-type "notification/testing"}))))
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/send-ok {:payload-type "notification/testing"})))
@@ -144,7 +145,9 @@
                                                                                                          :channel-type "channel/metabase-test"})))
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/channel-send-ok {:payload-type "notification/testing"
                                                                                                          :channel-type "channel/metabase-test"})))
-          (is (prometheus-test/approx= 1 (:count (mt/metric-value system :metabase-notification/send-duration-ms {:payload-type "notification/testing"})))))))))
+          (is (prometheus-test/approx= 1 (:count (mt/metric-value system :metabase-notification/send-duration-ms {:payload-type "notification/testing"}))))
+          (is (prometheus-test/approx= 1 (:count (mt/metric-value system :metabase-notification/wait-duration-ms {:payload-type "notification/testing"}))))
+          (is (prometheus-test/approx= 1 (:count (mt/metric-value system :metabase-notification/total-duration-ms {:payload-type "notification/testing"})))))))))
 
 (deftest send-notification-record-prometheus-error-metrics-test
   (mt/with-prometheus-system! [_ system]

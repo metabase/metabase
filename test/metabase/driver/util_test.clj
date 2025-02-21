@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
+   [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -292,3 +293,12 @@
               (is (false? (driver.u/supports? :test-driver feature db)))
               (is (= []
                      (log-messages))))))))))
+
+(deftest sqlite-in-available-drivers
+  (with-redefs [driver.impl/hierarchy (->  (derive (make-hierarchy) :sqlite :metabase.driver/driver)
+                                           (derive :sqlite :metabase.driver.impl/concrete))]
+    (testing "includes sqlite in non-hosted environment"
+      (is (contains? (driver.u/available-drivers) :sqlite)))
+    (mt/with-premium-features #{:hosting}
+      (testing "does not include sqlite in hosted environment"
+        (is (not (contains? (driver.u/available-drivers) :sqlite)))))))

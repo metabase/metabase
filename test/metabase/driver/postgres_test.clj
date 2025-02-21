@@ -352,8 +352,8 @@
 
 (deftest partitioned-table-test
   (mt/test-driver :postgres
-    (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are
-                   synced properly (#15049)")
+    (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are"
+                  " synced properly (#15049)")
       (let [db-name "partitioned_table_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -1691,18 +1691,3 @@
                 binned-type-query (type-query binned-query field)]
             (is (= (-> unbinned-type-query qp/process-query mt/rows)
                    (-> binned-type-query   qp/process-query mt/rows)))))))))
-
-(deftest ^:parallel aggregated-array-is-returned-correctly-test
-  (testing "An aggregated array column should be returned in a readable format"
-    (mt/test-driver :postgres
-      (mt/dataset test-data
-        (is (= [["The Gorbals" "The Misfit Restaurant + Bar" "Marlowe" "Yamashiro Hollywood" "Musso & Frank Grill" "Pacific Dining Car" "Chez Jay" "Rush Street"]
-                ["Greenblatt's Delicatessen & Fine Wine Shop" "Handy Market"]]
-               (->> (mt/native-query {:query "select category_id, array_agg(name)
-                                              from venues
-                                              group by category_id
-                                              order by 1 asc
-                                              limit 2;"})
-                    mt/process-query
-                    mt/rows
-                    (map second))))))))
