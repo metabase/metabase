@@ -100,7 +100,7 @@ const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
   return (
     <Text
       fz={theme.other.collectionBrowser.emptyContent.subtitle.fontSize}
-      color="text-medium"
+      c="text-medium"
       ta="center"
       mb="1.5rem"
     >
