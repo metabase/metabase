@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.metrics-test
   (:require
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
