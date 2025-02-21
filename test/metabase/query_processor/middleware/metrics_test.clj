@@ -856,7 +856,7 @@
         (is (=? {:status :completed}
                 (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                                       (lib/aggregate (lib.metadata/metric mp none-id)))))))
-      (doseq [[joined-type joined-meta] [[:question (lib.metadata/table mp (mt/id :orders))]
+      (doseq [[joined-type joined-meta] [[:table (lib.metadata/table mp (mt/id :orders))]
                                          [:model (lib.metadata/card mp model-id)]]]
         (mt/with-temp
           [:model/Card
@@ -902,7 +902,7 @@
         (is (=? {:status :completed}
                 (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                       (lib/aggregate (lib.metadata/metric mp none-id)))))))
-      (doseq [[joined-type joined-metadata] [[:question (lib.metadata/table mp (mt/id :products))]
+      (doseq [[joined-type joined-metadata] [[:table (lib.metadata/table mp (mt/id :products))]
                                              [:model (lib.metadata/card mp model-id)]]]
         (mt/with-temp
           [:model/Card
