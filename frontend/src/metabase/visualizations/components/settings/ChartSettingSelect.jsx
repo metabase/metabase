@@ -64,7 +64,6 @@ export const ChartSettingSelect = ({
       placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
       initiallyOpened={isInitiallyOpen}
       searchable={!!searchProp}
-      rightSectionWidth={rightSectionWidth ?? "10px"}
       comboboxProps={{
         withinPortal: false,
         floatingStrategy: "fixed",
@@ -75,6 +74,9 @@ export const ChartSettingSelect = ({
       pr={pr}
       leftSection={leftSection}
       rightSection={rightSection}
+      rightSectionProps={
+        rightSectionWidth ? { style: { width: rightSectionWidth } } : undefined
+      }
       styles={styles}
       w={w}
       defaultDropdownOpened={defaultDropdownOpened}
