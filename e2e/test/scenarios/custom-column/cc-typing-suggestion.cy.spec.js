@@ -36,6 +36,9 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
     H.CustomExpressionEditor.completions().should("be.visible");
 
+    // Avoid flakiness with CodeMirror not accepting the suggestion immediately
+    cy.wait(300);
+
     // accept the first suggested function, i.e. "length"
     cy.realPress("Enter");
 
