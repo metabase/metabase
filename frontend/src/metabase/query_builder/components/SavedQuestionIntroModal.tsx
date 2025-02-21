@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import EmptyMetric from "assets/img/empty-states/qbnewb-metric.svg";
 import EmptyModel from "assets/img/empty-states/qbnewb-model.svg";
 import EmptyQuestion from "assets/img/empty-states/qbnewq-question.svg";
 import { Box, Button, Modal, Stack, Text } from "metabase/ui";
@@ -32,7 +33,7 @@ const getLabels = (question: Question) => {
 
   if (type === "metric") {
     return {
-      image: EmptyQuestion,
+      image: EmptyMetric,
       title: t`It's okay to play around with metrics`,
       message: t`You won't make any permanent changes to them unless you edit their query definition.`,
     };
