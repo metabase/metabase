@@ -1,6 +1,6 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import type { ReactNode, Ref } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import SelectList from "metabase/components/SelectList";
@@ -215,9 +215,14 @@ export function getBucketListItem(
   };
 }
 
-function TriggerButton({ className, ...props }: ButtonProps) {
-  return <Button className={cx(S.triggerButton, className)} {...props} />;
-}
+const TriggerButton = forwardRef(function TriggerButton(
+  { className, ...props }: ButtonProps,
+  ref: Ref<HTMLButtonElement>,
+) {
+  return (
+    <Button ref={ref} className={cx(S.triggerButton, className)} {...props} />
+  );
+});
 
 export const BaseBucketPickerPopover = Object.assign(_BaseBucketPickerPopover, {
   displayName: "BucketPickerPopover",
