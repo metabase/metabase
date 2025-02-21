@@ -118,21 +118,40 @@ describe("format", () => {
       ]);
     });
 
-    it("formats nested function calls", async () => {
+    it("formats chained function calls", async () => {
       await isFormatted([
         expression`
-          concat("a", "b") AND
-            concat("c", "d") AND
-            concat("e", "f") AND
-            concat("g", "h")
+          concat("a", "b")
+          AND concat("c", "d")
+          AND concat("e", "f")
+          AND concat("g", "h")
         `,
         expression`
-          concat("foo", "bar") AND
-            concat(
-              "bar",
-              "baz"
-            ) AND
-            concat("quu", "qux")
+          concat("foo", "bar")
+          AND concat("bar", "baz")
+          AND concat("quu", "qux")
+          OR concat("foo", "bar")
+          AND concat("bar", "baz")
+        `,
+        expression`
+          concat("foo", "bar")
+          AND (
+            concat("bar", "baz")
+            AND concat(
+              "quu",
+              "qux"
+            )
+            OR concat("foo", "bar")
+          )
+          AND concat("bar", "baz")
+        `,
+        expression`
+          concat(
+            [User ID] > 12
+            AND [Total] < 10,
+            "GOOD",
+            "OK"
+          )
         `,
       ]);
     });
@@ -157,8 +176,8 @@ describe("format", () => {
             contains(
               [User → Name],
               "John"
-            ) OR
-              [User ID] = 1
+            )
+            OR [User ID] = 1
           )
         `,
       ]);

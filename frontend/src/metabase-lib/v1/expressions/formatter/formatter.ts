@@ -1,6 +1,6 @@
-import type { Doc, ParserOptions, Plugin } from "prettier/common";
+import type { AstPath, Doc, ParserOptions, Plugin } from "prettier";
 import { builders } from "prettier/doc";
-import { type AstPath, format as pformat } from "prettier/standalone";
+import { format as pformat } from "prettier/standalone";
 
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
@@ -300,6 +300,8 @@ function formatOperator(path: AstPath<CallExpression>, print: Print): Doc {
   const [op] = node;
   const operator = getExpressionName(op) || op;
 
+  const shouldPrefixOperator = isLogicOperator(operator);
+
   const args = node
     .map((arg, index) => {
       if (index === 0) {
@@ -310,10 +312,13 @@ function formatOperator(path: AstPath<CallExpression>, print: Print): Doc {
         return null;
       }
 
-      const ln = index === 1 ? "" : line;
+      let ln = index === 1 ? "" : line;
+      if (shouldPrefixOperator) {
+        ln = "";
+      }
 
       function ind(doc: Doc) {
-        if (index === 1) {
+        if (index === 1 || shouldPrefixOperator) {
           return doc;
         }
         return indent(doc);
@@ -371,7 +376,15 @@ function formatOperator(path: AstPath<CallExpression>, print: Print): Doc {
     return [operator, " ", args[0]];
   }
 
-  return group(join([" ", operator], args));
+  if (shouldPrefixOperator) {
+    return group(join([line, operator, " "], args));
+  } else {
+    return group(join([" ", operator], args));
+  }
+}
+
+function isLogicOperator(op: string) {
+  return op === "AND" || op === "OR";
 }
 
 function isUnaryOperator(op: string) {
