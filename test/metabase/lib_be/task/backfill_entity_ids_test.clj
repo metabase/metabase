@@ -5,18 +5,28 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(defmacro with-sample-data [& body]
+(defmacro with-sample-data [[binding] & body]
   `(mt/with-temp
-     [:model/Database {~'db-id :id} {}
-      :model/Table {~'table-id :id} {}
-      :model/Field {~'field1-id :id} {}
-      :model/Field {~'field2-id :id} {}
-      :model/Field {~'field3-id :id} {:entity_id "an entity id_________"}]
-     ~@body))
+     [:model/Database {db-id# :id :as db#} {}
+      :model/Table {table-id# :id :as table#} {}
+      :model/Field {field1-id# :id :as field1#} {}
+      :model/Field {field2-id# :id :as field2#} {}
+      :model/Field {field3-id# :id :as field3#} {:entity_id "an entity id_________"}]
+     (let [~binding {:db-id db-id#
+                     :table-id table-id#
+                     :field1-id field1-id#
+                     :field2-id field2-id#
+                     :field3-id field3-id#
+                     :db db#
+                     :table table#
+                     :field1 field1#
+                     :field2 field2#
+                     :field3 field3#}]
+       ~@body)))
 
 (deftest backfill-databases-test
   (testing "Can backfill databases"
-    (with-sample-data
+    (with-sample-data [{:keys [db-id table-id field1-id field2-id field3-id]}]
       (backfill-entity-ids/backfill-entity-ids!-inner :model/Database)
       (is (not (nil? (:entity_id (t2/select-one :model/Database :id db-id)))))
       (is (nil? (:entity_id (t2/select-one :model/Table :id table-id))))
@@ -24,7 +34,7 @@
 
 (deftest backfill-tables-test
   (testing "Can backfill tables"
-    (with-sample-data
+    (with-sample-data [{:keys [db-id table-id field1-id field2-id field3-id]}]
       (backfill-entity-ids/backfill-entity-ids!-inner :model/Table)
       (is (not (nil? (:entity_id (t2/select-one :model/Table :id table-id)))))
       (is (nil? (:entity_id (t2/select :model/Database :id db-id))))
@@ -32,7 +42,7 @@
 
 (deftest backfill-fields-test
   (testing "Can backfill fields"
-    (with-sample-data
+    (with-sample-data [{:keys [db-id table-id field1-id field2-id field3-id]}]
       (backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
       (is (not (nil? (:entity_id (t2/select-one :model/Field :id field1-id)))))
       (is (not (nil? (:entity_id (t2/select-one :model/Field :id field2-id)))))
@@ -44,7 +54,7 @@
 (deftest backfill-limit-test
   (testing "Only backfills up to batch-size records"
     (binding [backfill-entity-ids/*batch-size* 1]
-      (with-sample-data
+      (with-sample-data [{:keys [db-id table-id field1-id field2-id field3-id]}]
         (backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
         (let [fields (t2/select :model/Field
                                 {:select [:*]
@@ -55,3 +65,25 @@
                                          [:= :id field3-id]]})]
           (is (= 1 (count (filter #(nil? (:entity_id %)) fields))))
           (is (= 2 (count (filter #(not (nil? (:entity_id %))) fields)))))))))
+
+(deftest backfill-ignores-failed-rows-test
+  (testing "Doesn't backfill failed rows"
+    (with-sample-data [{:keys [db-id table-id field1-id field2-id field3-id]}]
+      (backfill-entity-ids/add-failed-row! field2-id)
+      (backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
+      (backfill-entity-ids/reset-failed-rows!)
+      (is (not (nil? (:entity_id (t2/select-one :model/Field :id field1-id)))))
+      (is (nil? (:entity_id (t2/select-one :model/Field :id field2-id))))
+      (is (=? {:entity_id "an entity id_________"}
+              (t2/select-one :model/Field :id field3-id))))))
+
+(deftest backfill-adds-failures-to-failed-rows-test
+  (testing "Adds t2/update! failures to failed rows"
+    (with-sample-data [{:keys [db-id table-id field1-id field2-id field3-id]}]
+      (with-redefs [t2/update! (fn [& args] (throw (Exception. "an exception")))]
+        (backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
+        (is (= #{field1-id field2-id}
+               @backfill-entity-ids/failed-rows))
+        (is (nil? (:entity_id (t2/select-one :model/Field :id field1-id))))
+
+        (is (nil? (:entity_id (t2/select-one :model/Field :id field2-id))))))))
