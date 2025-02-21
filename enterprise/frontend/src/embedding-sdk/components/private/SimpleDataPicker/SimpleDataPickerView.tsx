@@ -9,17 +9,17 @@ import type { TableId } from "metabase-types/api";
 interface SimpleDataPickerProps {
   selectedEntity?: TableId;
   options: Options[];
-  onClick: (option: any) => void;
+  onClick: (tableId: TableId) => void;
 }
 
 interface Options {
-  id: number;
-  display_name: string;
+  id: TableId;
+  name: string;
 }
 
 const TEN_OPTIONS_HEIGHT = 10 * 33;
 
-export function SimpleDataPicker({
+export function SimpleDataPickerView({
   selectedEntity,
   options,
   onClick,
@@ -28,9 +28,7 @@ export function SimpleDataPicker({
   const [searchText, setSearchText] = useState("");
   function filterSearch(option: Options): boolean {
     if (searchText) {
-      return normalizeString(option.display_name).includes(
-        normalizeString(searchText),
-      );
+      return normalizeString(option.name).includes(normalizeString(searchText));
     }
 
     return true;
@@ -49,8 +47,8 @@ export function SimpleDataPicker({
 
   const displayOptions = options.filter(filterSearch);
   return (
-    <Paper
-      component={Flex}
+    <Flex
+      component={Paper}
       w={CONTAINER_WIDTH}
       p="sm"
       mih="200px"
@@ -60,7 +58,7 @@ export function SimpleDataPicker({
         <TextInput
           data-autofocus
           type="search"
-          icon={<Icon name="search" size={16} />}
+          leftSection={<Icon name="search" size={16} aria-hidden />}
           mb="sm"
           placeholder={t`Search…`}
           onChange={e => setSearchText(e.target.value ?? "")}
@@ -76,7 +74,6 @@ export function SimpleDataPicker({
       )}
       <Flex direction="column" justify="center" style={{ flex: 1 }}>
         {displayOptions.length >= 1 ? (
-          // @ts-expect-error - I think the typing for ScrollArea.Autosize is wrong. This might be fixed in Mantine 7 */}
           <ScrollArea.Autosize mah={TEN_OPTIONS_HEIGHT} type="auto" mb="auto">
             {displayOptions.map(option => {
               const isSelected = selectedEntity === option.id;
@@ -87,9 +84,15 @@ export function SimpleDataPicker({
                 <NavLink
                   key={option.id}
                   active={selectedEntity === option.id}
-                  icon={<Icon color={`var(${iconColor})`} name="table" />}
-                  label={option.display_name}
-                  onClick={() => onClick(option)}
+                  leftSection={
+                    <Icon
+                      color={`var(${iconColor})`}
+                      name="table"
+                      aria-hidden
+                    />
+                  }
+                  label={option.name}
+                  onClick={() => onClick(option.id)}
                   variant="default"
                 />
               );
@@ -99,7 +102,7 @@ export function SimpleDataPicker({
           <EmptyState message={t`Nothing here`} />
         )}
       </Flex>
-    </Paper>
+    </Flex>
   );
 }
 
