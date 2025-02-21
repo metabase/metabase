@@ -227,19 +227,9 @@
         points        (result->points result lat-field lon-field)]
     (tiles-response result zoom points)))
 
-(api.macros/defendpoint :get "/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
-  "Generates a single tile image for a saved Card."
-  [{:keys [card-id zoom x y lat-field lon-field]}
-   :- [:map
-       [:card-id   ms/PositiveInt]
-       [:zoom      ms/Int]
-       [:x         ms/Int]
-       [:y         ms/Int]
-       [:lat-field ::field-id-or-name]
-       [:lon-field ::field-id-or-name]]
-   {:keys [parameters]}
-   :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+(defn process-tiles-query-for-card
+  "Generates a single tile image for a dashcard and returns a Ring response that contains the data as a PNG"
+  [card-id parameters zoom x y lat-field lon-field]
   (let [parameters (json/decode+kw parameters)
         result
         (qp.card/process-query-for-card
@@ -257,21 +247,9 @@
         points (result->points result lat-field lon-field)]
     (tiles-response result zoom points)))
 
-(api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
-  "Generates a single tile image for a dashcard."
-  [{:keys [dashboard-id dashcard-id card-id zoom x y lat-field lon-field]}
-   :- [:map
-       [:dashboard-id ms/PositiveInt]
-       [:dashcard-id ms/PositiveInt]
-       [:card-id   ms/PositiveInt]
-       [:zoom      ms/Int]
-       [:x         ms/Int]
-       [:y         ms/Int]
-       [:lat-field ::field-id-or-name]
-       [:lon-field ::field-id-or-name]]
-   {:keys [parameters]}
-   :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+(defn process-tiles-query-for-dashcard
+  "Generates a single tile image for a dashcard and returns a Ring response that contains the data as a PNG"
+  [dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field]
   (let [parameters (json/decode+kw parameters)
         result
         (qp.dashboard/process-query-for-dashcard
@@ -290,3 +268,37 @@
                                qp/process-query))))
         points (result->points result lat-field lon-field)]
     (tiles-response result zoom points)))
+
+(api.macros/defendpoint :get "/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+  "Generates a single tile image for a saved Card."
+  [{:keys [card-id zoom x y lat-field lon-field]}
+   :- [:map
+       [:card-id   ms/PositiveInt]
+       [:zoom      ms/Int]
+       [:x         ms/Int]
+       [:y         ms/Int]
+       [:lat-field ::field-id-or-name]
+       [:lon-field ::field-id-or-name]]
+   {:keys [parameters]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]]]
+  (let [parameters (json/decode+kw parameters)]
+    (process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field)))
+
+(api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+  "Generates a single tile image for a dashcard."
+  [{:keys [dashboard-id dashcard-id card-id zoom x y lat-field lon-field]}
+   :- [:map
+       [:dashboard-id ms/PositiveInt]
+       [:dashcard-id ms/PositiveInt]
+       [:card-id   ms/PositiveInt]
+       [:zoom      ms/Int]
+       [:x         ms/Int]
+       [:y         ms/Int]
+       [:lat-field ::field-id-or-name]
+       [:lon-field ::field-id-or-name]]
+   {:keys [parameters]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]]]
+  (let [parameters (json/decode+kw parameters)]
+    (process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))

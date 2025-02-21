@@ -9,9 +9,8 @@
    [metabase.util.json :as json]))
 
 ;; TODO: Assert on the contents of the response, not just the format
-(defn- png? [s]
-  (= [\P \N \G]
-     (drop 1 (take 4 s))))
+(defn png? [s]
+  (= [\P \N \G] (drop 1 (take 4 s))))
 
 (defn- venues-query
   []
@@ -88,10 +87,10 @@
 (deftest dashcard-test
   (testing "GET /api/tiles/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
     (testing "MBQL dashcard"
-      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
-                     :model/Card {card-id :id} {:dataset_query (venues-query)}
-                     :model/DashboardCard {dashcard-id :id} {:card_id card-id
-                                                             :dashboard_id dashboard-id}]
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                              :dashboard_id dashboard-id}]
         (is (png? (mt/user-http-request
                    :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%d/%d"
                                                dashboard-id
@@ -101,10 +100,10 @@
                                                (mt/id :people :longitude)))))))
 
     (testing "Native dashcard"
-      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
-                     :model/Card {card-id :id} {:dataset_query (native-query)}
-                     :model/DashboardCard {dashcard-id :id} {:card_id card-id
-                                                             :dashboard_id dashboard-id}]
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                     :model/Card          {card-id :id}      {:dataset_query (native-query)}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                              :dashboard_id dashboard-id}]
         (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
           (is (png? (mt/user-http-request
                      :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%s/%s"
@@ -115,16 +114,16 @@
                                                  "LONGITUDE")))))))
 
     (testing "Parameterized mbql dashcard"
-      (mt/with-temp [:model/Dashboard  {dashboard-id :id} {:parameters [{:name "State"
-                                                                         :id "_STATE_"
-                                                                         :type "text"}]}
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:parameters [{:name "State"
+                                                                            :id "_STATE_"
+                                                                            :type "text"}]}
 
-                     :model/Card {card-id :id} {:dataset_query (venues-query)}
-                     :model/DashboardCard {dashcard-id :id} {:card_id card-id
-                                                             :dashboard_id dashboard-id
-                                                             :parameter_mappings [{:parameter_id "_STATE_"
-                                                                                   :card_id card-id
-                                                                                   :target [:dimension (mt/$ids people $state)]}]}]
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                              :dashboard_id dashboard-id
+                                                              :parameter_mappings [{:parameter_id "_STATE_"
+                                                                                    :card_id card-id
+                                                                                    :target [:dimension (mt/$ids people $state)]}]}]
         (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
           (is (png? (mt/user-http-request
                      :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%s/%s"
@@ -137,16 +136,16 @@
                                                 :value ["CA"]}])))))))
 
     (testing "Parameterized native dashcard"
-      (mt/with-temp [:model/Dashboard  {dashboard-id :id} {:parameters [{:name "State"
-                                                                         :id "_STATE_"
-                                                                         :type "text"}]}
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:parameters [{:name "State"
+                                                                            :id "_STATE_"
+                                                                            :type "text"}]}
 
-                     :model/Card {card-id :id} {:dataset_query (parameterized-native-query)}
-                     :model/DashboardCard {dashcard-id :id} {:card_id card-id
-                                                             :dashboard_id dashboard-id
-                                                             :parameter_mappings [{:parameter_id "_STATE_"
-                                                                                   :card_id card-id
-                                                                                   :target [:variable ["template-tag" "state"]]}]}]
+                     :model/Card          {card-id :id}      {:dataset_query (parameterized-native-query)}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                              :dashboard_id dashboard-id
+                                                              :parameter_mappings [{:parameter_id "_STATE_"
+                                                                                    :card_id card-id
+                                                                                    :target [:variable ["template-tag" "state"]]}]}]
         (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
           (is (png? (mt/user-http-request
                      :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%s/%s"
