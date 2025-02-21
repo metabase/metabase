@@ -2,11 +2,25 @@ import type { StoryFn } from "@storybook/react";
 import * as jose from "jose";
 import { useMemo } from "react";
 
-import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
+import type { MetabaseAuthConfig } from "embedding-sdk";
+import * as sdk_live_code from "embedding-sdk";
+
+import { sdk_52_stable, sdk_53_stable } from "./SDK_FROM_NPM";
+
+console.log("sdk_52_stable", sdk_52_stable); // <-- this breaks it, probably because it makes the import stay, so it's the import that's breaking stuff
+
+export const SDK_VERSIONS = {
+  live_code: sdk_live_code,
+  // sdk_53_stable,
+  // sdk_52_stable,
+};
+
+console.log("SDK_VERSIONS", SDK_VERSIONS);
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
 
 import { storybookThemes } from "./storybook-themes";
+
 const METABASE_INSTANCE_URL =
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
 const METABASE_JWT_SHARED_SECRET =
@@ -51,7 +65,14 @@ export const storybookSdkAuthDefaultConfig =
   getStorybookSdkAuthConfigForUser("normal");
 
 export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
-  const sdkTheme = context.globals.sdkTheme;
+  // useEffect(() => {
+  //   console.log("CommonSdkStoryWrapper mounted");
+  //   return () => {
+  //     console.log("CommonSdkStoryWrapper unmounted");
+  //   };
+  // }, []);
+
+  const sdkTheme = context.globals.sdkTheme || "default";
   const theme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
 
   const user = context.globals.user;
@@ -59,6 +80,18 @@ export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
   const authConfig = useMemo(() => {
     return getStorybookSdkAuthConfigForUser(user);
   }, [user]);
+
+  const sdkVersion = (context.globals.sdkVersion ||
+    "live_code") as keyof typeof SDK_VERSIONS;
+  const sdk = SDK_VERSIONS[sdkVersion];
+
+  console.log("CommonSdkStoryWrapper", { sdk });
+
+  const { MetabaseProvider, StaticQuestion } = sdk;
+
+  const key = `sdk-${sdkVersion}-${sdkTheme}`;
+
+  console.log("KEY", key);
 
   return (
     <MetabaseProvider authConfig={authConfig} theme={theme} key={user}>

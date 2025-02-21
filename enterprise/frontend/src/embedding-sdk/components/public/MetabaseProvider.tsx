@@ -1,6 +1,13 @@
 import { Global } from "@emotion/react";
 import type { Action, Store } from "@reduxjs/toolkit";
-import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
+import {
+  type JSX,
+  type ReactNode,
+  memo,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { useInitData } from "embedding-sdk/hooks";
@@ -109,8 +116,17 @@ export const MetabaseProviderInternal = ({
     store.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
   }, [store, authConfig.metabaseInstanceUrl]);
 
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => {
+      setIsMounted(false);
+    };
+  }, []);
+
   return (
-    <SdkContextProvider>
+    <SdkContextProvider mounted={isMounted}>
       <EmotionCacheProvider>
         <Global styles={SCOPED_CSS_RESET} />
         <SdkThemeProvider theme={theme}>
@@ -133,6 +149,12 @@ export const MetabaseProviderInternal = ({
 export const MetabaseProvider = memo(function MetabaseProvider(
   props: MetabaseProviderProps,
 ) {
+  useEffect(() => {
+    console.log("MetabaseProvider mounted", props);
+    return () => {
+      console.log("MetabaseProvider unmounted", props);
+    };
+  }, [props]);
   // This makes the store stable across re-renders, but still not a singleton:
   // we need a different store for each test or each storybook story
   const storeRef = useRef<Store<SdkStoreState, Action> | undefined>(undefined);

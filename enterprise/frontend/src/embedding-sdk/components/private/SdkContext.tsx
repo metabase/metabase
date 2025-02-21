@@ -7,8 +7,11 @@ import { createContext, useContext } from "react";
 
 const SdkContext = createContext<boolean>(false);
 
-export const SdkContextProvider = ({ children }: React.PropsWithChildren) => {
-  return <SdkContext.Provider value={true}>{children}</SdkContext.Provider>;
+export const SdkContextProvider = ({
+  children,
+  mounted,
+}: React.PropsWithChildren<{ mounted: boolean }>) => {
+  return <SdkContext.Provider value={mounted}>{children}</SdkContext.Provider>;
 };
 
 export const useIsInSdkProvider = () => {
@@ -19,6 +22,7 @@ export const RenderOnlyInSdkProvider = ({
   children,
 }: React.PropsWithChildren) => {
   const isInSdkProvider = useIsInSdkProvider();
+  console.log("RenderOnlyInSdkProvider", isInSdkProvider);
   if (!isInSdkProvider) {
     // eslint-disable-next-line no-literal-metabase-strings -- error message
     return "This component requires the MetabaseProvider parent component. Please wrap it within <MetabaseProvider>...</MetabaseProvider> in your component tree.";

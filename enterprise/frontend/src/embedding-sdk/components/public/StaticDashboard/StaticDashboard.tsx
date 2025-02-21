@@ -90,7 +90,19 @@ export const StaticDashboardInner = ({
   );
 };
 
-const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
+const StaticDashboard = props => {
+  console.log("StaticDashboard render");
+  useEffect(() => {
+    console.log("StaticDashboard mounted");
+    return () => {
+      console.log("StaticDashboard unmounted");
+    };
+  }, []);
+
+  return <_StaticDashboard {...props} />;
+};
+
+const _StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
   ({ dashboardId: initialDashboardId, ...rest }) => {
     const { isLoading, id: resolvedDashboardId } = useValidatedEntityId({
       type: "dashboard",

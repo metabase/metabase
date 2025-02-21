@@ -16,7 +16,8 @@
     "frontend/src/**/*",
     "enterprise/frontend/src/**/*",
     "frontend/test/**/*",
-    "enterprise/frontend/test/**/*"
+    "enterprise/frontend/test/**/*",
+    ".storybook-sdk/CommonSdkStoryWrapper.tsx"
   ],
   "exclude": [
     "node_modules",
