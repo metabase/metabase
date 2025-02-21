@@ -11,6 +11,8 @@ If your question results don't change frequently, you may want to store the resu
 
 For example, if your data only updates once a day, there's no point in querying the database more than once a day, as the data won't have changed. Returning cached results can be significantly faster, as your database won't have to recompute the results to load your question.
 
+> Queries from [impersonated users](../permissions/impersonation.md) will not use query cache.
+
 You can set [caching invalidation policies](#cache-invalidation-policies) for [questions](#question-caching-policy), [dashboards](#dashboard-caching-policy), and [databases](#database-caching-policy).
 
 ## How caching works in Metabase
