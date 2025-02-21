@@ -999,13 +999,15 @@
         :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib/count)))}]
       (testing "Processing of query referencing a metric with join with non-:= condition provokes an exception"
-        (is (thrown? Throwable (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                     (lib/aggregate (lib.metadata/metric mp incompatible-id)))))))
+        (is (thrown-with-msg? Throwable #"Incompatible join in the metric \d+"
+                              (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                    (lib/aggregate (lib.metadata/metric mp incompatible-id)))))))
       (testing "Processing of query with join with non-:= condition referencing a metric provokes an exception"
-        (is (thrown? Throwable (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                     (lib/join (lib.metadata/table mp (mt/id :products)))
-                                                     (lib.util/update-query-stage 0 assoc-in [:joins 0 :conditions 0 0] :>)
-                                                     (lib/aggregate (lib.metadata/metric mp no-join-id))))))))))
+        (is (thrown-with-msg? Throwable #"Incompatible join in a stage referencing a metric"
+                              (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                    (lib/join (lib.metadata/table mp (mt/id :products)))
+                                                    (lib.util/update-query-stage 0 assoc-in [:joins 0 :conditions 0 0] :>)
+                                                    (lib/aggregate (lib.metadata/metric mp no-join-id))))))))))
 
 ;; !!! TODO: Ensure that joins eg on following stages are not affected!
 
