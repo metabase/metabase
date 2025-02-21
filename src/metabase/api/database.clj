@@ -43,6 +43,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1028,7 +1029,7 @@
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
-        (sync/submit-task!
+        (quick-task/submit-task!
          (fn []
            (sync/sync-db-metadata! db)
            (sync/analyze-db! db)))
@@ -1070,7 +1071,7 @@
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
       (if *rescan-values-async*
-        (sync/submit-task!
+        (quick-task/submit-task!
          (fn []
            (sync/update-field-values! db)))
         (sync/update-field-values! db))))
