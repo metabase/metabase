@@ -882,7 +882,7 @@
       (mt/dataset uuid-dogs
         (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
                (->> {:filter [:=
-                              [:field (mt/id :dogs :person_id) {:base-type "type/*"}]
+                              [:field (mt/id :dogs :person_id) {:base-type "type/UUID"}]
                               "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]
                      :source-table (mt/id :dogs)}
                     (mt/run-mbql-query dogs)
