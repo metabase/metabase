@@ -867,17 +867,17 @@
                                (lib/aggregate (lib/count))
                                (lib.convert/->legacy-MBQL))}]
           (testing (format "Incompatible join in metric provokes an exception (joining %s)" joined-type)
-            (is (thrown-with-msg? Throwable #"Incompatible join in metric \d+"
+            (is (thrown-with-msg? Throwable #"Incompatible join in the metric \d+"
                                   (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                                                         (lib/aggregate (lib.metadata/metric mp offending-id)))))))
           (testing (format "Incompatible join in referencing stage provokes an exception (joining %s)" joined-type)
-            (is (thrown-with-msg? Throwable #"Incompatible join in stage referencing a metric"
+            (is (thrown-with-msg? Throwable #"Incompatible join in a stage referencing a metric"
                                   (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                                                         (lib/join joined-meta)
                                                         (lib/aggregate (lib.metadata/metric mp none-id)))))))
           (testing (format "Incompatible join in referencing stage and in metric provokes an exception (joining %s)"
                            joined-type)
-            (is (thrown-with-msg? Throwable #"Incompatible join in stage referencing a metric"
+            (is (thrown-with-msg? Throwable #"Incompatible join in a stage referencing a metric"
                                   (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                                                         (lib/join joined-meta)
                                                         (lib/aggregate (lib.metadata/metric mp offending-id))))))))))))
@@ -888,18 +888,8 @@
       [:model/Card
        {model-id :id}
        {:type :model
-        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                            (lib.convert/->legacy-MBQL))}
-
-       ;; contains NON fk->pk join
-       :model/Card
-       {conformant-id :id}
-       {:type :metric
-        :dataset_query
-        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-            (lib/join (lib.metadata/table mp (mt/id :products)))
-            (lib/aggregate (lib/count))
-            (lib.convert/->legacy-MBQL))}
 
        :model/Card
        {none-id :id}
@@ -908,25 +898,38 @@
         (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
             (lib/aggregate (lib/count))
             (lib.convert/->legacy-MBQL))}]
-      (doseq [[btype query-base] [[:table (lib.metadata/table mp (mt/id :orders))]
-                                  [:model (lib.metadata/card mp model-id)]]]
-        (testing (format "Query based on %s with metric with compatible joins executes succesfully" btype)
-          (are [description query] (=? {:status :completed}
-                                       (qp/process-query query))
-
-            "No joins used" (-> (lib/query mp query-base)
-                                (lib/aggregate (lib.metadata/metric mp none-id)))
-
-            "Metric has compatible join" (-> (lib/query mp query-base)
-                                             (lib/aggregate (lib.metadata/metric mp conformant-id)))
-
-            "Query has compatible join" (-> (lib/query mp query-base)
-                                            (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))))
-                                            (lib/aggregate (lib.metadata/metric mp none-id)))
-
-            "Both have compatible join" (-> (lib/query mp query-base)
-                                            (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))))
-                                            (lib/aggregate (lib.metadata/metric mp conformant-id)))))))))
+      (testing "Sanity: Query with stage with no joins referencing a metric with no joins completes"
+        (is (=? {:status :completed}
+                (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                      (lib/aggregate (lib.metadata/metric mp none-id)))))))
+      (doseq [[joined-type joined-metadata] [[:question (lib.metadata/table mp (mt/id :products))]
+                                             [:model (lib.metadata/card mp model-id)]]]
+        (mt/with-temp
+          [:model/Card
+           {conformant-id :id}
+           {:type :metric
+            :dataset_query
+            (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                (lib/join joined-metadata)
+                (lib/aggregate (lib/count))
+                (lib.convert/->legacy-MBQL))}]
+          (testing (format "Query with stage referencing a metric with compatible join completes (joining %s)"
+                           joined-type)
+            (is (=? {:status :completed}
+                    (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                          (lib/aggregate (lib.metadata/metric mp conformant-id)))))))
+          (testing (format "Query with stage referencing with compatible join referencing a metric completes (joining %s)"
+                           joined-type)
+            (is (=? {:status :completed}
+                    (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                          (lib/join joined-metadata)
+                                          (lib/aggregate (lib.metadata/metric mp none-id)))))))
+          (testing (format "Query with stage with compatible join referencing a metric with compatible join completes (joining %s)"
+                           joined-type)
+            (is (=? {:status :completed}
+                    (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                          (lib/join joined-metadata)
+                                          (lib/aggregate (lib.metadata/metric mp conformant-id))))))))))))
 
 ;; TODO: Better exceptions
 ;; TODO: How would the solution work with models?
