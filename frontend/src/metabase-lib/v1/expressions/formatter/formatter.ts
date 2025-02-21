@@ -1,6 +1,6 @@
-import type { AstPath, Doc, ParserOptions, Plugin } from "prettier";
+import type { Doc, ParserOptions, Plugin } from "prettier/common";
 import { builders } from "prettier/doc";
-import { format as pformat } from "prettier/standalone";
+import { type AstPath, format as pformat } from "prettier/standalone";
 
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
@@ -235,6 +235,24 @@ function formatFunctionOptions(options: CallOptions): Doc | null {
   return null;
 }
 
+// Helper to recurse into an AST node that is not easily expressed as a
+// property of the node currently in path.
+// We will need this when switching to Lib.expressionParts, since the cljs
+// objects can't be traversed natively by prettier.
+function recurse<T, R>(
+  path: AstPath<T>,
+  callback: (path: AstPath<T>) => R,
+  value: T,
+): R {
+  const { length } = path.stack;
+  path.stack.push(value);
+  try {
+    return callback(path);
+  } finally {
+    path.stack.length = length;
+  }
+}
+
 function formatFunction(path: AstPath<CallExpression>, print: Print): Doc {
   const { node } = path;
   if (!isFunction(node)) {
@@ -258,7 +276,7 @@ function formatFunction(path: AstPath<CallExpression>, print: Print): Doc {
       }
 
       // Recursively format the arguments
-      return path.call(print, index);
+      return recurse(path, print, node[index]);
     })
     .filter(isNotNull);
 
@@ -303,7 +321,7 @@ function formatOperator(path: AstPath<CallExpression>, print: Print): Doc {
 
       if (!isOperator(arg)) {
         // Not a call expression so not an operator
-        return ind([ln, path.call(print, index)]);
+        return ind([ln, recurse(path, print, path.node[index])]);
       }
 
       if (!Array.isArray(arg)) {
@@ -311,7 +329,7 @@ function formatOperator(path: AstPath<CallExpression>, print: Print): Doc {
       }
 
       const argOperator = arg[0];
-      const formattedArg = path.call(print, index);
+      const formattedArg = recurse(path, print, path.node[index]);
 
       const isLowerPrecedence =
         OPERATOR_PRECEDENCE[op] > OPERATOR_PRECEDENCE[argOperator];
@@ -383,8 +401,8 @@ function formatCaseOrIf(path: AstPath<CaseOrIfExpression>, print: Print): Doc {
         return arg
           .map((_clause, clauseIndex) => {
             return [
-              path.call(print, index, clauseIndex, 0),
-              path.call(print, index, clauseIndex, 1),
+              recurse(path, print, path.node[index][clauseIndex][0]),
+              recurse(path, print, path.node[index][clauseIndex][1]),
             ];
           })
           .flat();
@@ -393,7 +411,7 @@ function formatCaseOrIf(path: AstPath<CaseOrIfExpression>, print: Print): Doc {
       if (index === 2) {
         // options
         if (isOptionsObject(arg) && "default" in arg) {
-          return path.call(print, index, "default");
+          return recurse(path, print, path.node[index]["default"]);
         }
 
         return null;
@@ -409,8 +427,8 @@ function formatCaseOrIf(path: AstPath<CaseOrIfExpression>, print: Print): Doc {
 
 function formatOffset(path: AstPath<OffsetExpression>, print: Print): Doc {
   const name = getExpressionName("offset") ?? "";
-  const expr = path.call(print, 2);
-  const n = path.call(print, 3);
+  const expr = recurse(path, print, path.node[2]);
+  const n = recurse(path, print, path.node[3]);
 
   const args = [expr, n];
 
