@@ -22,7 +22,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     });
 
     // accept the only suggested item, i.e. "[Rating]"
-    cy.get("@formula").type("{enter}");
+    H.CustomExpressionEditor.type("{enter}");
 
     // if the replacement is correct -> "[Rating]"
     // if the replacement is wrong -> "[Rating] ng"
