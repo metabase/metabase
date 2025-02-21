@@ -216,12 +216,12 @@ export const CustomExpressionEditor = {
       .contains(name)
       .first();
   },
-  acceptCompletion() {
+  acceptCompletion(key: "enter" | "tab" = "enter") {
     CustomExpressionEditor.completions().should("be.visible");
 
     // Avoid flakiness with CodeMirror not accepting the suggestion immediately
     cy.wait(300);
-    CustomExpressionEditor.type("{enter}", { focus: false });
+    CustomExpressionEditor.type(`{${key}}`, { focus: false });
   },
   helpTextHeader() {
     return cy.findByTestId("expression-helper-popover-structure");
