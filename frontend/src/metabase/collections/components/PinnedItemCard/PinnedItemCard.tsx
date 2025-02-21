@@ -31,6 +31,7 @@ import {
   ItemLink,
   Title,
 } from "./PinnedItemCard.styled";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 
 type ItemOrSkeleton =
   | {
@@ -150,7 +151,7 @@ function PinnedItemCard({
                   onMouseEnter={e => maybeEnableTooltip(e, setShowTitleTooltip)}
                 >
                   <Flex align="center" gap="0.5rem">
-                    {item.name}
+                    <Ellipsified showTooltip={false}>{item.name}</Ellipsified>
                     <PLUGIN_MODERATION.ModerationStatusIcon
                       status={item.moderated_status}
                       filled
