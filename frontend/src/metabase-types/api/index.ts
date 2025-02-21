@@ -19,8 +19,9 @@ export * from "./metabot";
 export * from "./models";
 export * from "./modelIndexes";
 export * from "./moderation";
-export * from "./notification"; // TODO: move to notifications?
-export * from "./notifications";
+export * from "./notification";
+export * from "./notification-channels";
+export * from "./pulse";
 export * from "./pagination";
 export * from "./parameters";
 export * from "./performance";

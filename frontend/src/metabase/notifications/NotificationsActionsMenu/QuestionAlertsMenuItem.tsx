@@ -16,16 +16,17 @@ export function QuestionAlertsMenuItem({
     include_inactive: false,
   });
 
-  if (isLoading) {
-    return null;
-  }
-
   return (
     <CommonNotificationsMenuItem
       title={
-        questionNotifications?.length ? t`Edit alerts` : t`Create an alert`
+        isLoading
+          ? t`Loading…`
+          : questionNotifications?.length
+            ? t`Edit alerts`
+            : t`Create an alert`
       }
       iconName={"alert"}
+      disabled={isLoading}
       onClick={onClick}
     />
   );

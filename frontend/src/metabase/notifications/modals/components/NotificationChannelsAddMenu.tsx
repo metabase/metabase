@@ -1,5 +1,3 @@
-// eslint-disable-next-line no-restricted-imports
-import type { MantineSize } from "@mantine/core";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -138,10 +136,9 @@ export const NotificationChannelsAddMenu = ({
   );
 };
 
-const ManageDestinationsButton = ({ size }: { size?: MantineSize }) => (
+const ManageDestinationsButton = () => (
   <Button
     variant="subtle"
-    size={size}
     component={Link}
     to="/admin/settings/notifications"
     target="_blank"

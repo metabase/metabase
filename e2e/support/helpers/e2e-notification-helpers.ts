@@ -1,4 +1,4 @@
-import type { NotificationChannel } from "metabase-types/api/notifications";
+import type { NotificationChannel } from "metabase-types/api/notification-channels";
 
 export const getAlertChannel = (name: string) =>
   cy.findByRole("listitem", {

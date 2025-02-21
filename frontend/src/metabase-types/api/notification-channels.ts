@@ -2,21 +2,8 @@ import type {
   ScheduleSettings,
   ScheduleType,
 } from "metabase-types/api/settings";
+import type { User } from "metabase-types/api/user";
 import { isObject } from "metabase-types/guards";
-
-import type { Card } from "./card";
-import type { User } from "./user";
-
-export type Channel = {
-  channel_type: string;
-  details?: Record<string, string>;
-  enabled?: boolean;
-  recipients?: User[];
-  channel_id?: number;
-} & Pick<
-  ScheduleSettings,
-  "schedule_day" | "schedule_type" | "schedule_hour" | "schedule_frame"
->;
 
 type ChannelField = {
   name: string;
@@ -37,22 +24,6 @@ export type ChannelSpec = {
   fields?: ChannelField[];
   recipients?: ChannelSpecRecipients;
   error?: any;
-};
-
-export type Pulse = {
-  cards: Card[];
-  channels: Channel[];
-  name?: string;
-  parameters?: any[];
-};
-
-export type PulseParameter = {
-  default: boolean;
-  id: number;
-  name?: string;
-  slug?: string;
-  type?: string;
-  value?: string;
 };
 
 export type ChannelDetails = {
@@ -108,6 +79,7 @@ export type SlackChannelSpec = ChannelSpec & {
 export type EmailChannelSpec = ChannelSpec & {
   recipients: ChannelSpecRecipients;
 };
+
 export interface ChannelApiResponse {
   channels: {
     email?: EmailChannelSpec;
@@ -117,3 +89,14 @@ export interface ChannelApiResponse {
 }
 
 export type ChannelType = keyof ChannelApiResponse["channels"];
+
+export type Channel = {
+  channel_type: string;
+  details?: Record<string, string>;
+  enabled?: boolean;
+  recipients?: User[];
+  channel_id?: number;
+} & Pick<
+  ScheduleSettings,
+  "schedule_day" | "schedule_type" | "schedule_hour" | "schedule_frame"
+>;

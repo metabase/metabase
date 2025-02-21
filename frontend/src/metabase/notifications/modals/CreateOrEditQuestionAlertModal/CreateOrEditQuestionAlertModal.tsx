@@ -25,10 +25,6 @@ import {
   getHasConfiguredEmailChannel,
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { AlertModalSettingsBlock } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/AlertModalSettingsBlock";
-import { AlertTriggerIcon } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/AlertTriggerIcon";
-import type { NotificationTriggerOption } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/types";
-import { NotificationChannelsPicker } from "metabase/notifications/modals/components/NotificationChannelsPicker";
 import {
   DEFAULT_ALERT_SCHEDULE,
   getDefaultQuestionAlertRequest,
@@ -52,8 +48,12 @@ import type {
 } from "metabase-types/api";
 
 import { ChannelSetupModal } from "../ChannelSetupModal";
+import { NotificationChannelsPicker } from "../components/NotificationChannelsPicker";
 
+import { AlertModalSettingsBlock } from "./AlertModalSettingsBlock";
+import { AlertTriggerIcon } from "./AlertTriggerIcon";
 import S from "./CreateOrEditQuestionAlertModal.module.css";
+import type { NotificationTriggerOption } from "./types";
 
 const ALERT_TRIGGER_OPTIONS_MAP: Record<
   NotificationCardSendCondition,
@@ -136,15 +136,6 @@ export const CreateOrEditQuestionAlertModal = ({
   );
 
   const hasSingleTriggerOption = triggerOptions.length === 1;
-
-  // useEffect(() => {
-  //   if (question && alert) {
-  //     setAlert({
-  //       ...alert,
-  //       card: { ...alert.card, id: question.id() },
-  //     });
-  //   }
-  // }, [question]);
 
   useEffect(() => {
     if (questionId && channelSpec && user && hookChannels && !notification) {

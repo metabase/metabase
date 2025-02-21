@@ -1,6 +1,5 @@
 import type { JSX, ReactNode } from "react";
 import { useMemo } from "react";
-import _ from "underscore";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
 import { skipToken, useListNotificationsQuery } from "metabase/api";
@@ -86,10 +85,8 @@ const NotificationsAppInner = ({
   );
 };
 
-export const NotificationsApp = _.compose(
-  Pulses.loadList({
-    // Load all pulses the current user is a creator or recipient of
-    query: () => ({ creator_or_recipient: true }),
-    reload: true,
-  }),
-)(NotificationsAppInner);
+export const NotificationsApp = Pulses.loadList({
+  // Load all pulses the current user is a creator or recipient of
+  query: () => ({ creator_or_recipient: true }),
+  reload: true,
+})(NotificationsAppInner);

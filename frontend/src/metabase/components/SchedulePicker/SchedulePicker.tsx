@@ -16,6 +16,7 @@ import {
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Box } from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -252,7 +253,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
     const scheduleType = schedule.schedule_type;
 
     return (
-      <div className={cx(CS.mt3, className)} style={style}>
+      <Box mt="lg" className={className} style={style}>
         <PickerRow>
           <PickerText>{textBeforeInterval}</PickerText>
           <Select
@@ -276,7 +277,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
           scheduleType === "weekly" ||
           scheduleType === "monthly") &&
           this.renderHourPicker()}
-      </div>
+      </Box>
     );
   }
 }

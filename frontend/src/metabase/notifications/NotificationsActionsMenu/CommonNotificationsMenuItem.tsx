@@ -5,13 +5,15 @@ import { Center, Icon, type IconName, Menu } from "metabase/ui";
 type CommonNotificationsMenuItemProps = {
   iconName: IconName;
   title: string;
+  disabled?: boolean;
   onClick: MouseEventHandler;
 };
 
 export const CommonNotificationsMenuItem = ({
   iconName,
-  onClick,
   title,
+  disabled,
+  onClick,
 }: CommonNotificationsMenuItemProps) => {
   return (
     <Menu.Item
@@ -22,6 +24,7 @@ export const CommonNotificationsMenuItem = ({
           <Icon name={iconName} />
         </Center>
       }
+      disabled={disabled}
       onClick={onClick}
     >
       {title}

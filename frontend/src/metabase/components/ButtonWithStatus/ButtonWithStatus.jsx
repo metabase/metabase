@@ -50,7 +50,7 @@ export default class ButtonWithStatus extends Component {
     return (
       <Button
         className={this.props.className}
-        variant={!disabled ? "filled" : "outline"}
+        variant={disabled ? "outline" : "filled"}
         color={progressState === "completed" ? "success" : "brand"}
         disabled={disabled}
         onClick={this.onClick}

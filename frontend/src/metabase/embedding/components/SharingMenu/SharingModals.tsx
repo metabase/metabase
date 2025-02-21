@@ -1,7 +1,7 @@
 import { type Ref, forwardRef } from "react";
 
 import { DashboardSharingEmbeddingModal } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
-import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
+import { QuestionAlertListModal } from "metabase/notifications/modals";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";

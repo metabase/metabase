@@ -1,5 +1,5 @@
 import type { Card, CardId } from "metabase-types/api/card";
-import type { Channel } from "metabase-types/api/notifications";
+import type { Channel } from "metabase-types/api/notification-channels";
 import type { PaginationRequest } from "metabase-types/api/pagination";
 import type { UserId, UserInfo } from "metabase-types/api/user";
 
