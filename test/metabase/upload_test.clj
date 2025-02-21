@@ -509,6 +509,11 @@
        mt/cols
        (map :display_name)))
 
+(defn- column-display-names-for-model [db-id model-id]
+  (->> (query db-id  (str "card__" model-id))
+       mt/cols
+       (map :display_name)))
+
 (defn- column-names-for-table [table]
   (->> (query-table table)
        mt/cols
@@ -1930,6 +1935,9 @@
                     (is (not (contains? cached-after model-id))))
                   (testing "No unwanted caches were invalidated"
                     (is (= #{model-id} (set/difference cached-before cached-after))))
+                  (testing "We can see the new column when querying the model"
+                    (is (= (header-with-auto-pk ["Name" "Age"])
+                           (column-display-names-for-model (:db_id table) model-id))))
                   (testing "We can see the new row when querying the model"
                     (is (some (fn [[_ row-name age]]
                                 (and (= "Luke Skywalker" row-name)
