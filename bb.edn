@@ -2,8 +2,8 @@
  ;; we put path as bin, and everything is in the mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage"]
- :deps           {metosin/malli  {:mvn/version "0.17.0"}
-                  table/table    {:mvn/version "0.5.0"}}
+ :deps           {metosin/malli {:mvn/version "0.17.0"}
+                  table/table   {:mvn/version "0.5.0"}}
 
  :tasks
  {:requires [[mage.cli :as cli]]
@@ -50,15 +50,12 @@
    :requires [[mage.start-db :as start-db]]
    :examples [["./bin/mage start-db postgres latest" "start the latest postgres db we support"]
               ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]]
+   :ports    {:mariadb  {:oldest 3306 :latest 3307}
+              :mysql    {:oldest 3308 :latest 3309}
+              :postgres {:oldest 5432 :latest 5433}}
    :task     (do (cli/menu! (current-task))
-                 (start-db/start-db *command-line-args*))}
-
-  install-autotab
-  {:doc      "Prints instructions to make autocomplete work"
-   :examples [["./bin/mage install-autotab" "Shows a link to instructions to make autocomplete work."]]
-   :task     (do (cli/menu! (current-task))
-                 (println "\nPlease follow these instructions:")
-                 (println "  https://book.babashka.org/#_terminal_tab_completion"))}
+                 (start-db/start-db (current-task)
+                                    *command-line-args*))}
 
   nrepl
   {:doc      "Starts the babashka nrepl server for bb tasks development"
@@ -70,14 +67,30 @@
                  (nrepl.server/start-server!)
                  (deref (promise)))}
 
-  jar-download {:doc      "Given a version, downloads a metabase jar"
-                :examples [["./bin/mage jar-download 1.45.2 ~/path/to/my/jars" "Download 1.45.2 to ~/path/to/my/jars"]
-                           ["./bin/mage jar-download 1.45.2" "Download 1.45.2 to $JARS."]
-                           ["./bin/mage jar-download 0.45.2" "Download 0.45.2 to $JARS.\n   ProTip: this script will read from $JARS, and use that as your jar directory."]]
-                :requires [[mage.jar-download :as jar-download]]
-                :task     (do
-                            (cli/menu! (current-task))
-                            (jar-download/jar-download *command-line-args*))}
+  jar-download
+  {:doc      "Given a version, downloads a metabase jar"
+   :examples [["./bin/mage jar-download 1.45.2 ~/path/to/my/jars" "Download 1.45.2 to ~/path/to/my/jars"]
+              ["./bin/mage jar-download 1.45.2" "Download 1.45.2 to $JARS."]
+              ["./bin/mage jar-download 0.45.2" "Download 0.45.2 to $JARS.\n   ProTip: this script will read from $JARS, and use that as your jar directory."]]
+   :requires [[mage.jar-download :as jar-download]]
+   :task     (do
+               (cli/menu! (current-task))
+               (jar-download/jar-download *command-line-args*))}
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Private Tasks:
+  ;; - hidden from `./bin/mage` listing and `bb tasks`
+  ;; - start with a `-`
+
+  -autocomplete
+  {:doc      "Prints instructions to make autocomplete work"
+   :examples [["./bin/mage install-autotab" "Shows a link to instructions to make autocomplete work."]]
+   :requires [[mage.autotab :as autotab]]
+   :task     (do (cli/menu! (current-task))
+                 (autotab/instructions *command-line-args*))}
+
+  -new-task!
+  {:doc ""}
 
   ;; note: task symbols starting with `-` are not listed in `bb tasks`.
   -example

@@ -77,7 +77,8 @@ For a more detailed setup of a dev environment for Metabase, check out our [Deve
 You need [Babashka](https://github.com/babashka/babashka#quickstart) to run The Metabase Automation Genius Engine (MAGE). Run `./bin/mage` to list your tasks. All of them support `-h` to learn more and show examples.
 
 ``` shell
-$  ███╗   ███╗ █████╗  ██████╗ ███████╗
+$ ./bin/mage
+   ███╗   ███╗ █████╗  ██████╗ ███████╗
    ████╗ ████║██╔══██╗██╔════╝ ██╔════╝
    ██╔████╔██║███████║██║  ███╗█████╗
    ██║╚██╔╝██║██╔══██║██║   ██║██╔══╝
@@ -88,17 +89,18 @@ $  ███╗   ███╗ █████╗  ██████╗ ██�
 The following tasks are available:
 
 cljfmt-staged   Runs cljfmt on staged files
-cljfmt-file     Runs cljfmt on the given files/directories
-cljfmt-all      Runs cljfmt on all (clojure) files
+...
 kondo           Runs Kondo against a file, directory, or everything we usually lint
-kondo-updated   Runs kondo against files changed compared to a git ref
+...
 start-db        Start a db on a default port in docker
-install-autotab Prints instructions to make autocomplete work
-nrepl           Starts the babashka nrepl server for bb tasks development
 jar-download    Given a version, downloads a metabase jar
-$ bb kondo -h
-... prints help for easily running kondo ...
+$ ./bin/mage kondo -h
+<prints help for easily running kondo>
 ```
+
+### mage Autocomplete
+
+Run `./bin/mage -autocomplete` and follow the instructions to setup autocomplete in your terminal.
 
 ## Internationalization
 

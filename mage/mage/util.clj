@@ -55,3 +55,10 @@
        (print (c/yellow setting))
        (print (c/white "="))
        (println (c/cyan value))))))
+
+(defn debug
+  "Prints out verbose info when "
+  [& content]
+  (when (env "MAGE_DEBUG" (constantly nil))
+    (doseq [line (->> (str/join content) str/split-lines)]
+      (println (c/cyan "MAGE_DEBUG>") line))))

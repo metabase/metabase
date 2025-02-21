@@ -5,14 +5,11 @@
    [babashka.http-client :as http]
    [cheshire.core :as json]
    [mage.color :as c]
-   [mage.shell :as shell]))
+   [mage.shell :as shell]
+   [mage.util :as u]
+   [table.core :as t]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private ports
-  {:mariadb  {:oldest 3306 :latest 3307}
-   :mysql    {:oldest 3308 :latest 3309}
-   :postgres {:oldest 5432 :latest 5433}})
 
 (def ^:private eol-urls
   {:postgres "https://endoflife.date/api/postgresql.json"})
@@ -32,13 +29,13 @@
     (filter (fn [{:keys [^java.time.LocalDate eol]}]
               (.isAfter eol (java.time.LocalDate/now)))
             <>)
-    (sort-by :releaseDate <>)))
+    (sort-by :releaseDate <>)
+    vec))
 
 (defn- fetch-oldest-supported-version [database]
-  (-> (fetch-supported-versions database)
-      first
-      :cycle
-      parse-long))
+  (let [versions (fetch-supported-versions database)]
+    (u/debug "Found Versions:" (pr-str versions))
+    (-> versions first :cycle parse-long)))
 
 (defmulti ^:private resolve-version
   {:arglists '([database version])}
@@ -49,10 +46,12 @@
   [database version]
   (if (= version :oldest)
     (fetch-oldest-supported-version database)
-    (cond-> version
-      (keyword? version) name)))
+    (cond-> version (keyword? version) name)))
 
 (defn- kill-existing! [image-name]
+  (println (c/red "killing existing image: "
+                  (c/escape image-name)
+                  " ..."))
   (shell/sh* {:quiet? true} "docker" "kill" image-name)
   (shell/sh* {:quiet? true} "docker" "rm" image-name))
 
@@ -65,6 +64,7 @@
   [_database version resolved-version port]
   (let [image-name "mb-postgres-db"]
     (kill-existing! image-name)
+    (println (c/green "docker runing: " (c/escape image-name) " ..."))
     (shell/sh "docker" "run"
               "-d"
               "-p" (str port ":5432")
@@ -76,30 +76,36 @@
               ;; "-v" "${DATA_DIR}:/var/lib/postgresql/data:Z"
               "--name" image-name
               (str "postgres:" resolved-version))
-    (printf "Started Postgres %s on port %s\n" version port)
+    (println (c/cyan (format "Started Postgres %s on port %s\n" version port)))
     (println)
-    (when-let [deps-edn-alias (c/green (str (condp = version
+    (when-let [deps-edn-alias (c/bold (c/green
+                                       (str (condp = version
+                                              ;; todo add the rest of these
                                               :oldest :db/postgres-oldest
-                                              :latest :db/postgres-latest)))]
+                                              :latest :db/postgres-latest))))]
       (printf "Use the %s alias in deps.edn to use this DB:\n" deps-edn-alias)
       (println (str "  clj -M:dev:ee:ee-dev" deps-edn-alias)))))
 
-(defn- usage []
+(defn- usage [ports]
   (println "Usage:")
   (println)
   (println "  bb start-db <db> <version>")
   (println)
   (println "Available DBs:")
   (println)
-  (doseq [[db versions] (sort-by first ports)]
-    (println (name db))
-    (doseq [version (keys versions)]
-      (println "  " (name version)))))
+  (t/table
+   (for [[db m] {:mariadb  {:oldest 3306 :latest 3307}
+                 :mysql    {:oldest 3308 :latest 3309}
+                 :postgres {:oldest 5432 :latest 5433}}
+         [stamp port] m]
+     {:port port
+      :start-db-cmd (str "./bin/mage start-db " (name db) " " (name stamp))})
+   {:sort [:start-db-cmd :port]
+    :style :github-markdown}))
 
-(defn- start-db* [db version]
+(defn- start-db* [ports db version]
   (let [db               (keyword db)
-        version          (cond-> version
-                           (string? version) keyword)
+        version          (cond-> version (string? version) keyword)
         port             (get-in ports [db version])
         resolved-version (resolve-version db version)]
     (assert (integer? port)
@@ -107,12 +113,12 @@
     (start-db! db version resolved-version port)))
 
 ;; TODOs:
-;; can i swap out the db name?
-;; does it get wiped when I stop docker
+;; Can i swap out the db name?
+;; - [ ] Does it get wiped when I stop docker?
 
 (defn start-db
   "Starts a db: type + version"
-  [cli-args]
+  [{:keys [ports]} cli-args]
   (if-not (= (count cli-args) 2)
-    (usage)
-    (start-db* (first cli-args) (second cli-args))))
+    (usage ports)
+    (start-db* ports (first cli-args) (second cli-args))))
