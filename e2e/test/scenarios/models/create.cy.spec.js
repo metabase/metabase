@@ -86,8 +86,7 @@ describe("scenarios > models > create", () => {
 });
 
 function navigateToNewModelPage(queryType = "native") {
-  cy.findByText("New").click();
-  cy.findByText("Model").click();
+  H.newButton("Model").click();
   if (queryType === "structured") {
     cy.findByText("Use the notebook editor").click();
   } else {
