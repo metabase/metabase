@@ -32,7 +32,7 @@ export const SDKContent = ({
     </Text>
     <Group gap="md">
       <ExternalLink href={sdkQuickstartUrl}>
-        <Button variant="outline">{t`Check out the Quick Start`}</Button>
+        <Button variant="outline">{t`Check out the Quickstart`}</Button>
       </ExternalLink>
       <ExternalLink href={sdkDocsUrl}>
         <Button variant="subtle">{t`Read the docs`}</Button>
