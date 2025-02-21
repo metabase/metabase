@@ -56,7 +56,17 @@ if (hasPremiumFeature("collection_cleanup")) {
           leftSection={<Icon name="archive" />}
           component={ForwardRefLink}
           to={`${Urls.collection(collection)}/cleanup`}
-          rightSection={hasStaleItems && <Badge>Recommended</Badge>}
+          rightSection={
+            hasStaleItems && (
+              <Badge
+                styles={{
+                  root: { cursor: "pointer" },
+                }}
+              >
+                Recommended
+              </Badge>
+            )
+          }
         >{t`Clear out unused items`}</Menu.Item>,
       ],
       showIndicator: hasStaleItems,
