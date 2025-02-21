@@ -931,45 +931,56 @@
                                           (lib/join joined-metadata)
                                           (lib/aggregate (lib.metadata/metric mp conformant-id))))))))))))
 
-;; TODO: Better exceptions
-;; TODO: How would the solution work with models?
-(deftest fk-to-different-pk-join-test
+(deftest fk-to-different-pk-join-in-metrics-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-    (mt/with-temp
-      [:model/Card
-       {model-id :id}
-       {:type :model
-        :dataset_query }
-       
-       :model/Card
-       {no-join-id :id}
-       {:type :metric
-        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                           (lib/aggregate (lib/count))
-                           (lib.convert/->legacy-MBQL))}
+    (testing "Metric and referencing stage must have appropriate fk join with _appropriate_ target"
+      (mt/with-temp
+        [:model/Card
+         {model-id :id}
+         {:type :model
+          :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
+                             (lib.convert/->legacy-MBQL))}
 
-       :model/Card
-       {with-join-id :id}
-       {:type :metric
-        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                           (lib/join (lib/with-join-conditions
-                                       (lib/join-clause (lib.metadata/table mp (mt/id :reviews)))
-                                       [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
-                                               (lib.metadata/field mp (mt/id :reviews :id)))]))
-                           (lib/aggregate (lib/count))
-                           (lib.convert/->legacy-MBQL))}]
-      (testing "Query with fk join with different target should provoke an exception"
-        (is (thrown? Throwable (qp/process-query
-                                (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                    (lib/aggregate (lib.metadata/metric mp with-join-id)))))))
-      (testing "Metric with fk join with different target should provoke an exception"
-        (is (thrown? Throwable (qp/process-query
-                                (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                    (lib/join (lib/with-join-conditions
-                                                (lib/join-clause (lib.metadata/table mp (mt/id :reviews)))
-                                                [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
-                                                        (lib.metadata/field mp (mt/id :reviews :id)))]))
-                                    (lib/aggregate (lib.metadata/metric mp no-join-id))))))))))
+         :model/Card
+         {no-join-id :id}
+         {:type :metric
+          :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/aggregate (lib/count))
+                             (lib.convert/->legacy-MBQL))}]
+        (doseq [[joined-type joined-metadata] [[:table (lib.metadata/table mp (mt/id :reviews))]
+                                               [:model (lib.metadata/card mp model-id)]]]
+          (mt/with-temp
+            [:model/Card
+             {with-join-id :id}
+             {:type :metric
+              :dataset_query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                               (lib/join $ (lib/with-join-conditions
+                                             (lib/join-clause joined-metadata)
+                                             [(lib/=
+                                               (m/find-first (comp #{"Product ID"} :display-name)
+                                                             (lib/visible-columns $))
+                                               (m/find-first (comp #{"ID"} :display-name)
+                                                             (lib/returned-columns (lib/query mp joined-metadata))))]))
+                               (lib/aggregate $ (lib/count))
+                               (lib.convert/->legacy-MBQL $))}]
+            (testing (format "Referencing stage with fk join with different target provokes an exception (joining %s)"
+                             joined-type)
+              (is (thrown-with-msg? Throwable #"Incompatible join in the metric \d+"
+                                    (qp/process-query
+                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                         (lib/aggregate (lib.metadata/metric mp with-join-id)))))))
+            (testing "Metric with fk join with different target should provoke an exception (joining %s)"
+              (is (thrown? Throwable #"Incompatible join in a stage referencing a metric"
+                           (qp/process-query
+                            (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                              (lib/join $ (lib/with-join-conditions
+                                            (lib/join-clause joined-metadata)
+                                            [(lib/=
+                                              (m/find-first (comp #{"Product ID"} :display-name)
+                                                            (lib/visible-columns $))
+                                              (m/find-first (comp #{"ID"} :display-name)
+                                                            (lib/returned-columns (lib/query mp joined-metadata))))]))
+                              (lib/aggregate $ (lib.metadata/metric mp no-join-id)))))))))))))
 
 (deftest join-operator-is-:=-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
