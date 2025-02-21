@@ -834,20 +834,16 @@
                   (get-in (#'metrics/fetch-referenced-metrics query stage)
                           [(:id metric) :aggregation 1 :name]))))))))
 
-;; TODO: Extend to exception match / check
-;; MODELS WIP
+;; Tests for rejection of incompatible metrics ========================================================================
+
 (deftest incompatible-metric-joins-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
     (mt/with-temp
-      [;; contains NON fk->pk join
-       :model/Card
-       {offending-id :id}
-       {:type :metric
-        :dataset_query
-        (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-            (lib/join (lib.metadata/table mp (mt/id :orders)))
-            (lib/aggregate (lib/count))
-            (lib.convert/->legacy-MBQL))}
+      [:model/Card
+       {model-id :id}
+       {:type :model
+        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib.convert/->legacy-MBQL))}
 
        :model/Card
        {none-id :id}
@@ -856,23 +852,35 @@
         (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
             (lib/aggregate (lib/count))
             (lib.convert/->legacy-MBQL))}]
-      (testing "Sanity: no joins"
+      (testing "Sanity: Query with referencing stage with no joins referencing metric with no joins completes"
         (is (=? {:status :completed}
                 (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                                       (lib/aggregate (lib.metadata/metric mp none-id)))))))
-      (testing "Incompatible joins in query or metric provoke an exception"
-        (are [description query] (thrown? Throwable (qp/process-query query))
-
-          "Metric has incompatible join" (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                             (lib/aggregate (lib.metadata/metric mp offending-id)))
-
-          "Query has incompatible join" (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                            (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :orders))))
-                                            (lib/aggregate (lib.metadata/metric mp none-id)))
-
-          "Both have incompatible join" (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                            (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :orders))))
-                                            (lib/aggregate (lib.metadata/metric mp offending-id))))))))
+      (doseq [[joined-type joined-meta] [[:question (lib.metadata/table mp (mt/id :orders))]
+                                         [:model (lib.metadata/card mp model-id)]]]
+        (mt/with-temp
+          [:model/Card
+           {offending-id :id}
+           {:type :metric
+            :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                               (lib/join joined-meta)
+                               (lib/aggregate (lib/count))
+                               (lib.convert/->legacy-MBQL))}]
+          (testing (format "Incompatible join in metric provokes an exception (joining %s)" joined-type)
+            (is (thrown-with-msg? Throwable #"Incompatible join in metric \d+"
+                                  (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                        (lib/aggregate (lib.metadata/metric mp offending-id)))))))
+          (testing (format "Incompatible join in referencing stage provokes an exception (joining %s)" joined-type)
+            (is (thrown-with-msg? Throwable #"Incompatible join in stage referencing a metric"
+                                  (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                        (lib/join joined-meta)
+                                                        (lib/aggregate (lib.metadata/metric mp none-id)))))))
+          (testing (format "Incompatible join in referencing stage and in metric provokes an exception (joining %s)"
+                           joined-type)
+            (is (thrown-with-msg? Throwable #"Incompatible join in stage referencing a metric"
+                                  (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                        (lib/join joined-meta)
+                                                        (lib/aggregate (lib.metadata/metric mp offending-id))))))))))))
 
 (deftest compatible-metric-joins-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
