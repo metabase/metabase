@@ -27,6 +27,22 @@ describe("scenarios > embedding-sdk > styles", () => {
     cy.intercept("GET", "/api/user/current").as("getUser");
   });
 
+  describe("common", () => {
+    it('PublicComponentStylesWrapper should have the `dir="ltr"` attribute (#54082)', () => {
+      cy.mount(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <StaticQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      cy.wait("@getUser").then(({ response }) => {
+        expect(response?.statusCode).to.equal(200);
+      });
+
+      getSdkRoot().children().should("have.attr", "dir", "ltr");
+    });
+  });
+
   describe("theming", () => {
     const theme = defineMetabaseTheme({
       colors: {
