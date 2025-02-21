@@ -1,9 +1,14 @@
 import cx from "classnames";
 
-import { Button, Flex, Icon } from "metabase/ui";
-import type { Shortcut } from "metabase-lib/v1/expressions/complete";
+import { Button, Flex, Icon, type IconName } from "metabase/ui";
 
 import S from "./Shortcuts.module.css";
+
+export type Shortcut = {
+  name: string;
+  icon: IconName;
+  action: () => void;
+};
 
 const DEFAULT_SHORTCUTS: Shortcut[] = [];
 
