@@ -24,7 +24,9 @@ import {
 import { Icon } from "metabase/ui";
 import {
   isBoolean,
+  isFK,
   isNumeric,
+  isPK,
   isString,
 } from "metabase-lib/v1/types/utils/isa";
 
@@ -348,6 +350,7 @@ const RuleEditor = ({
     !hasBooleanRule &&
     selectedColumns.length > 0 &&
     selectedColumns.every(isNumeric);
+  const isKeyRule = selectedColumns.every(isPK) || selectedColumns.every(isFK);
 
   const hasOperand =
     rule.operator !== "is-null" &&
@@ -390,7 +393,7 @@ const RuleEditor = ({
           </Option>
         ))}
       </Select>
-      {isNumericRule && (
+      {isNumericRule && !isKeyRule && (
         <div>
           <h3 className={cx(CS.mt3, CS.mb1)}>{t`Formatting style`}</h3>
           <Radio
@@ -426,9 +429,9 @@ const RuleEditor = ({
               ...COMMON_OPERATOR_NAMES,
               ...(isBooleanRule
                 ? BOOLEAN_OPERATIOR_NAMES
-                : isNumericRule
+                : !isKeyRule && isNumericRule
                   ? NUMBER_OPERATOR_NAMES
-                  : isStringRule
+                  : isStringRule || isKeyRule
                     ? STRING_OPERATOR_NAMES
                     : {}),
             }).map(([operator, operatorName]) => (
@@ -437,7 +440,7 @@ const RuleEditor = ({
               </Option>
             ))}
           </Select>
-          {hasOperand && isNumericRule ? (
+          {hasOperand && isNumericRule && !isKeyRule ? (
             <NumericInput
               data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
