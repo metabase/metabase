@@ -12,7 +12,6 @@ interface BucketPickerPopoverProps
   className?: string;
   classNames?: {
     root?: string;
-    triggerButton?: string;
     chevronDown?: string;
   };
 }
