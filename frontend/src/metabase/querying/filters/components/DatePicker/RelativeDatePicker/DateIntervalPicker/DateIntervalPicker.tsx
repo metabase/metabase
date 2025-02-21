@@ -70,7 +70,7 @@ export function DateIntervalPicker({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Flex p="md" align="center">
+      <Flex p="md" gap="sm" align="center">
         <NumberInput
           value={interval}
           aria-label={t`Interval`}
@@ -81,12 +81,12 @@ export function DateIntervalPicker({
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
-          ml="md"
           onChange={handleUnitChange}
           comboboxProps={{
             withinPortal: false,
             floatingStrategy: "fixed",
           }}
+          styles={{ wrapper: { marginTop: 0 } }}
         />
         <Tooltip label={t`Starting from…`} position="bottom">
           <Button

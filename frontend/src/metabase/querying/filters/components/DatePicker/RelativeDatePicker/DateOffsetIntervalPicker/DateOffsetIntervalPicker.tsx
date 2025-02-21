@@ -113,6 +113,7 @@ export function DateOffsetIntervalPicker({
             withinPortal: false,
             floatingStrategy: "fixed",
           }}
+          styles={{ wrapper: { marginTop: 0 } }}
         />
         <div />
         <Text>{t`Starting from`}</Text>
@@ -134,6 +135,7 @@ export function DateOffsetIntervalPicker({
             withinPortal: false,
             floatingStrategy: "fixed",
           }}
+          styles={{ wrapper: { marginTop: 0 } }}
         />
         <Button
           c="text-medium"
