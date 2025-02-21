@@ -6,9 +6,7 @@ import type { SuggestArgs } from "metabase-lib/v1/expressions/suggest";
 export type SuggestOptions = Omit<
   SuggestArgs,
   "source" | "targetOffset" | "getColumnIcon"
-> & {
-  shortcuts?: Shortcut[];
-};
+>;
 
 import { suggestAggregations } from "./aggregations";
 import { suggestFields } from "./fields";
@@ -16,7 +14,6 @@ import { suggestFunctions } from "./functions";
 import { suggestLiterals } from "./literals";
 import { suggestMetrics } from "./metrics";
 import { suggestSegments } from "./segments";
-import type { Shortcut } from "./types";
 
 export function suggestions(options: SuggestOptions) {
   return autocompletion({
