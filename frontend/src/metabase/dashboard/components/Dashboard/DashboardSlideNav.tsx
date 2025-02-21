@@ -1,3 +1,5 @@
+import cx from "classnames";
+
 import { Box, Card, Flex, Text } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { Dashboard } from "metabase-types/api";
@@ -52,17 +54,16 @@ const SlidePreview = (props: any) => {
       <Box style={{ flexShrink: 0 }}>
         <Card
           style={{
-            width: "10rem",
-            aspectRatio: "16 / 9",
-            border: props.isSelected
-              ? "1px solid var(--mb-color-brand)"
-              : "1px solid #eeecec",
+            borderColor: props.isSelected ? "var(--mb-color-brand)" : "#eeecec",
             ...(props.style ?? {}),
           }}
           bg="#fafbfc"
           radius="md"
           shadow="none"
-          className={S.slidePreview}
+          className={cx(
+            S.slidePreview,
+            props.isSelected && S.slidePrevewSelected,
+          )}
           {...props}
         />
         <Text fw={700} fz="xs" lh={1.4} mt=".25rem" w="10rem">

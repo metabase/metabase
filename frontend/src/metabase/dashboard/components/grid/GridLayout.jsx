@@ -20,6 +20,7 @@ export function GridLayout({
   rowHeight,
   isEditing,
   onLayoutChange,
+  isPresentational,
   ...props
 }) {
   const theme = useMantineTheme();
@@ -95,6 +96,13 @@ export function GridLayout({
     }
     // eslint-disable-next-line no-unused-vars
     const [horizontalMargin, verticalMargin] = margin;
+
+    if (isPresentational) {
+      const rows =
+        (Math.floor(gridWidth / (cellSize.height + verticalMargin)) / 16) * 9;
+      return rows * (cellSize.height + verticalMargin);
+    }
+
     return (cellSize.height + verticalMargin) * lowestLayoutCellPoint;
   }, [cellSize.height, layout, margin, isEditing]);
 

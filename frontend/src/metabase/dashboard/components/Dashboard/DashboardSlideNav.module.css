@@ -8,6 +8,16 @@
   width: 13.75rem;
 }
 
+.slidePreview {
+  width: 10rem;
+  aspect-ratio: 16 / 9;
+  border: 1px solid #eeecec;
+}
+
+.slidePreviewSelected {
+  border: 1px solid var(--mb-color-brand);
+}
+
 .slidePreview > div {
   transform: scale(0.1);
   transform-origin: top left;

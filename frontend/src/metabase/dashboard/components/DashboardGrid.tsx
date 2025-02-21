@@ -652,6 +652,7 @@ class DashboardGridInner extends Component<
         compactType="vertical"
         items={this.getVisibleCards()}
         itemRenderer={this.renderGridItem}
+        isPresentational={this.props.dashboard.is_presentational}
       />
     );
   }
