@@ -126,6 +126,7 @@ export function Editor<S extends StartRule = "expression">(
           variant="subtle"
           leftSection={<Icon name="snippet" />}
           size="xs"
+          disabled={Boolean(isFormatting || error)}
         />
       </Box>
 
