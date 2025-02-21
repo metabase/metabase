@@ -58,7 +58,7 @@ const DefaultCollectionEmptyState = ({
       <CollectionEmptyIcon />
       <EmptyStateTitle>{t`This collection is empty`}</EmptyStateTitle>
       <EmptyStateSubtitle>
-        {t`Use collections to organize and group dashboards and questions for your team or yourself`}
+        {t`Use collections to organize questions, dashboards, models, and other collections.`}
       </EmptyStateSubtitle>
       {canWrite && (
         <NewItemMenu
@@ -108,6 +108,7 @@ const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
       c="text-medium"
       ta="center"
       mb="1.5rem"
+      maw="25rem"
     >
       {children}
     </Text>
