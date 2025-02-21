@@ -49,7 +49,11 @@ export const BulkActionBarPortal = ({
         className={cx(className, Animation.popToast)}
       >
         <Box component={ToastCard} dark data-testid="toast-card" {...props}>
-          {message && <Text color="text-white">{message}</Text>}
+          {message && (
+            <Text color="text-white" style={{ whiteSpace: "nowrap" }}>
+              {message}
+            </Text>
+          )}
           <Flex gap="sm" align="center">
             {children}
           </Flex>
