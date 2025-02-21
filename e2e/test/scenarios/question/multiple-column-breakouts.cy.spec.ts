@@ -443,6 +443,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2)
             .eq(0)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
           H.popover().findByText(bucket1Name).click();
           cy.wait("@dataset");
@@ -451,6 +452,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2)
             .eq(1)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
           H.popover().findByText(bucket2Name).click();
           cy.wait("@dataset");
