@@ -237,7 +237,9 @@
   (lib.util.match/match-one query
     [:metric _ _] &match))
 
-;; operates on single filter -- not filters vector as returned from lib/filters
+;;;; Rejection of incompatible metrics ===============================================================================
+
+;; Following fn operates on _single elements_ of filters vector (as returned from lib/filters).
 (defn- equal-filter?
   [f1 f2]
   (let [f1 (cond-> f1 (lib.util/clause-of-type? f1 :value) (get 2))
@@ -271,12 +273,14 @@
                 metric-query (get metrics metric-id)
                 metric-filters (lib/filters metric-query)]
             (when-not (filters-for-subset? query-filters metric-filters)
-              (throw (ex-info (format "Stage filter is not compatible with metric `%d` filter."
+              (throw (ex-info (format "Stage filter is not compatible with metric %d filter."
                                       metric-id)
-                              {}))))
+                              {:stage-filters query-filters
+                               :metric-filters metric-filters}))))
           (recur (rest metric-ids))))))
   nil)
 
+;; Following fn operates on filter's vectors (as returned from lib/filters)
 (defn- filters-map-1-1?
   "Predicate that checks whether filtler clauses of `f1` equal to clauses of `f2` in terms of [[equal-filter?]]."
   [f1 f2]
@@ -309,10 +313,11 @@
               metric-query (get metrics metric-id)
               metric-filters (lib/filters metric-query)]
           (when-not (filters-map-1-1? base-filters metric-filters)
-            (throw (ex-info (format "Metrics `%d` and `%d` have incompatible-filters."
+            (throw (ex-info (format "Metrics %d and %d have incompatible filters."
                                     base-metric-id
                                     metric-id)
-                            {}))))
+                            {:base-filters base-filters
+                             :metric-filters metric-filters}))))
         (recur (rest other-metric-ids)))))
   nil)
 
@@ -349,9 +354,8 @@
     (when (seq stage-joins)
       (let [join (first stage-joins)]
         (when-not (is-join-compatible? query stage-number join)
-          ;; TODO: better signalling.
-          (throw (ex-info "Incompatible join in referencing query"
-                          {}))))
+          (throw (ex-info "Incompatible join in a stage referencing a metric"
+                          {:join join}))))
       (recur (rest stage-joins))))
   ;; check the metrics' joins
   (loop [metric-ids (keys resolved-metric-queries)]
@@ -362,8 +366,8 @@
           (when (seq metric-joins)
             (let [metric-join (first metric-joins)]
               (when-not (is-join-compatible? metric-query -1 metric-join)
-                (throw (ex-info (format "Incompatible join in metric %d" metric-id)
-                                {}))))
+                (throw (ex-info (format "Incompatible join in the metric %d" metric-id)
+                                {:join metric-join}))))
             (recur (rest metric-joins)))))
       (recur (rest metric-ids))))
   nil)
@@ -393,6 +397,8 @@
 (defn- assert-compatible-metrics
   [query]
   (lib.walk/walk query assert-compatible-metrics*))
+
+;;;; Middleware =======================================================================================================
 
 (defn adjust
   "Looks for `[:metric {} id]` clause references and adjusts the query accordingly.
