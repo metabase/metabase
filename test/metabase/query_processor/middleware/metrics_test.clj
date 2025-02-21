@@ -1110,6 +1110,47 @@
                                        (lib/aggregate (lib.metadata/metric mp no-filter-id))
                                        (lib/aggregate (lib.metadata/metric mp with-filter-id))))))))))))
 
+(deftest one-metric-with-more-strict-filter-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (mt/with-temp
+      [:model/Card
+       {model-id :id}
+       {:type :model
+        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib.convert/->legacy-MBQL))}]
+      (doseq [[query-base-type query-base] [[:table (lib.metadata/table mp (mt/id :orders))]
+                                            [:model (lib.metadata/card mp model-id)]]]
+        (mt/with-temp
+          [:model/Card
+           {with-filter-id :id}
+           {:type :metric
+            :dataset_query (as-> (lib/query mp query-base) $
+                             (lib/filter $ (lib/> (m/find-first (comp #{"Total"} :display-name)
+                                                                (lib/filterable-columns $))
+                                                  10))
+                             (lib/aggregate $ (lib/count))
+                             (lib.convert/->legacy-MBQL $))}
+
+           :model/Card
+           {no-filter-id :id}
+           {:type :metric
+            :dataset_query (as-> (lib/query mp query-base) $
+                             (lib/filter $ (lib/> (m/find-first (comp #{"Total"} :display-name)
+                                                                (lib/filterable-columns $))
+                                                  10))
+                             (lib/filter $ (lib/> (m/find-first (comp #{"Subtotal"} :display-name)
+                                                                (lib/filterable-columns $))
+                                                  10))
+                             (lib/aggregate $ (lib/count))
+                             (lib.convert/->legacy-MBQL $))}]
+          (testing (format "Processing of query (%s based) referencing metrics one filter more strict provokes an excpetion"
+                           query-base-type)
+            (is (thrown-with-msg?
+                 Throwable #"Metrics `\d+` and `\d+` have incompatible filters"
+                 (qp/process-query (-> (lib/query mp query-base)
+                                       (lib/aggregate (lib.metadata/metric mp no-filter-id))
+                                       (lib/aggregate (lib.metadata/metric mp with-filter-id))))))))))))
+
 (deftest compatible-filters-in-metrics-with-different-ordering-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         metric-query-fn (fn [filter-op1 filter-op2]
