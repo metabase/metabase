@@ -10,7 +10,7 @@
   (mt/with-temporary-setting-values [site-uuid-for-unsubscribing-url "08534993-94c6-4bac-a1ad-86c9668ee8f5"]
     (let [email "rasta@pasta.com"
           notification-handler-id 12345678
-          expected-hash "9463fdc177a2349c64accd5899d594a81af22636769c92ff62434e5f4fc52640c9e514c29fd750d3c39ae81b02cdece25d575d1825f6c74782bd92448d4fdb57"]
+          expected-hash "f3cfa7bc3021186b2abeceac80c3e75524457203e54d27744672e320c65df51a98674961b38683d84d8b36f4b12b310489235dd08e5a9b8464dc8fec51c3d3f4"]
       (testing "We generate a cryptographic hash to validate unsubscribe URLs"
         (is (= expected-hash (messages/generate-notification-unsubscribe-hash notification-handler-id email))))
 

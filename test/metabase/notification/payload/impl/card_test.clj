@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.testing :as testing]
    [metabase.channel.core :as channel]
    [metabase.notification.core :as notification]
    [metabase.notification.payload.core :as notification.payload]
