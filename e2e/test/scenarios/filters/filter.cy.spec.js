@@ -296,6 +296,8 @@ describe("scenarios > question > filter", () => {
       .parent()
       .should("have.attr", "aria-selected", "true");
 
+    // Avoid flakiness caused by CodeMirror not accepting the keypress
+    // immediately
     cy.wait(100);
     cy.realPress("ArrowDown");
 

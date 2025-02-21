@@ -223,6 +223,13 @@ export const CustomExpressionEditor = {
     cy.wait(300);
     CustomExpressionEditor.type(`{${key}}`, { focus: false });
   },
+  selectCompletion(name: string) {
+    H.CustomExpressionEditor.completions().should("be.visible");
+
+    // Avoid flakiness with CodeMirror not accepting the suggestion immediately
+    cy.wait(300);
+    H.CustomExpressionEditor.completion(name).click();
+  },
   helpTextHeader() {
     return cy.findByTestId("expression-helper-popover-structure");
   },

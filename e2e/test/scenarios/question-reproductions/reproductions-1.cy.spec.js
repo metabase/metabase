@@ -729,8 +729,7 @@ function typeAndSelect(arr) {
   arr.forEach(({ string, field }) => {
     H.CustomExpressionEditor.type(string);
 
-    cy.wait(300);
-    H.CustomExpressionEditor.completion(field).click();
+    H.CustomExpressionEditor.selectCompletion(field);
   });
 }
 
