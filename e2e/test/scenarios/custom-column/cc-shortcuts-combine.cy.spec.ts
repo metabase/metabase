@@ -160,7 +160,10 @@ H.describeWithSnowplow(
 
 function selectCombineColumns() {
   H.CustomExpressionEditor.completions().should("be.visible");
+
+  // Avoid flakiness from CodeMirror not picking up on the click
   cy.wait(300);
+
   H.CustomExpressionEditor.completion("Combine columns")
     .should("be.visible")
     .click();
