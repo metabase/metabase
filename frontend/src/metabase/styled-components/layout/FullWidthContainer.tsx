@@ -1,13 +1,15 @@
 import cx from "classnames";
+import { forwardRef } from "react";
 
 import { Box, type BoxProps } from "metabase/ui";
 
 import S from "./FullWidthContainer.module.css";
 
-export const FullWidthContainer = (
-  props: BoxProps & { children: React.ReactNode },
-) => {
+export const FullWidthContainer = forwardRef<
+  HTMLDivElement,
+  BoxProps & { children: React.ReactNode }
+>(function FullWidthContainer(props) {
   const { className, ...rest } = props;
 
   return <Box className={cx(S.FullWidthContainer, className)} {...rest} />;
-};
+});
