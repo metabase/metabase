@@ -113,28 +113,30 @@ export type SeriesOrderSetting = {
   color?: string;
 };
 
-export type CommonOperators = "is-null" | "not-null";
-export type NumberOperators = "=" | "!=" | "<" | ">" | "<=" | ">=";
-export type StringOperators =
+export type CommonOperator = "is-null" | "not-null";
+export type NumberOperator = "=" | "!=" | "<" | ">" | "<=" | ">=";
+export type StringOperator =
   | "="
   | "!="
   | "contains"
   | "does-not-contain"
   | "starts-with"
   | "ends-with";
-export type BooleanOperators = "is-true" | "is-false";
+export type BooleanOperator = "is-true" | "is-false";
+
+export type ColumnFormattingOperator =
+  | CommonOperator
+  | NumberOperator
+  | StringOperator
+  | BooleanOperator;
 
 export type ColumnSingleFormattingSetting = {
   columns: string[];
   type: "single";
-  operator:
-    | CommonOperators
-    | NumberOperators
-    | StringOperators
-    | BooleanOperators;
+  operator: ColumnFormattingOperator;
   color: string;
   highlight_row: boolean;
-  value: string;
+  value: string | number;
 };
 export type ColumnRangeFormattingSetting = {
   columns: string[];

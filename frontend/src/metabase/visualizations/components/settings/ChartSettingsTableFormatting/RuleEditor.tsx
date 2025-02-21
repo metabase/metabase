@@ -17,10 +17,11 @@ import {
   isString,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
-  BooleanOperators,
+  BooleanOperator,
+  ColumnFormattingOperator,
   ColumnFormattingSetting,
   DatasetColumn,
-  NumberOperators,
+  NumberOperator,
 } from "metabase-types/api";
 
 import {
@@ -80,7 +81,7 @@ export const RuleEditor = ({
 
   const handleColumnChange = (columns: SelectMultipleItemsReturned) => {
     const _cols = columns.map(name => _.findWhere(cols, { name }));
-    const operatorUpdate: { operator?: BooleanOperators | NumberOperators } =
+    const operatorUpdate: { operator?: BooleanOperator | NumberOperator } =
       columns.length === 1 && columns[0] === columns.changedItem
         ? {
             operator: _cols.every(isBoolean) ? "is-true" : "=",
@@ -125,7 +126,11 @@ export const RuleEditor = ({
               { name: t`Color range`, value: "range" },
             ]}
             onChange={type =>
-              onChange({ ...DEFAULTS_BY_TYPE[type], ...rule, type })
+              onChange({
+                ...DEFAULTS_BY_TYPE[type],
+                id: rule.id,
+                columns: rule.columns,
+              })
             }
             vertical
           />
@@ -142,7 +147,7 @@ export const RuleEditor = ({
           </h3>
           <Select
             value={rule.operator}
-            onChange={(e: { target: { value: string } }) =>
+            onChange={(e: { target: { value: ColumnFormattingOperator } }) =>
               onChange({ ...rule, operator: e.target.value })
             }
             buttonProps={{
@@ -170,7 +175,9 @@ export const RuleEditor = ({
               className={INPUT_CLASSNAME}
               type="number"
               value={rule.value}
-              onChange={value => onChange({ ...rule, value })}
+              onChange={(value: string | number) =>
+                onChange({ ...rule, value })
+              }
               placeholder="0"
             />
           ) : hasOperand ? (
