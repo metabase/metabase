@@ -62,10 +62,7 @@ export const ColumnHeader = styled.th<ResponsiveProps>`
   ${hideResponsively}
 `;
 
-export const BulkSelectWrapper = styled(IconButtonWrapper)`
-  padding-inline: 12px;
-  width: 3em;
-`;
+export const BulkSelectWrapper = styled(IconButtonWrapper)``;
 
 export const ItemCell = styled.td<ResponsiveProps>`
   padding: 0.25em 0 0.25em 1em !important;

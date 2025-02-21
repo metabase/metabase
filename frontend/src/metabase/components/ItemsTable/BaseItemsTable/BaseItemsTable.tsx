@@ -20,6 +20,7 @@ import {
   SortDirection,
   type SortingOptions,
 } from "metabase-types/api/sorting";
+import { Box, BoxProps } from "metabase/ui";
 
 import {
   ColumnHeader,
@@ -34,7 +35,8 @@ export type SortableColumnHeaderProps = {
   name?: SortColumn;
   sortingOptions?: SortingOptions;
   onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
-  columnHeaderProps?: Partial<HTMLAttributes<HTMLTableHeaderCellElement>>;
+  columnHeaderProps?: BoxProps &
+    Partial<HTMLAttributes<HTMLTableHeaderCellElement>>;
 } & PropsWithChildren<Partial<HTMLAttributes<HTMLDivElement>>>;
 
 export const SortableColumnHeader = ({
@@ -72,7 +74,8 @@ export const SortableColumnHeader = ({
   }, [direction, isSortable, name, onSortingOptionsChange]);
 
   return (
-    <ColumnHeader
+    <Box
+      component={ColumnHeader}
       hideAtContainerBreakpoint={hideAtContainerBreakpoint}
       containerName={containerName}
       {...columnHeaderProps}
@@ -91,7 +94,7 @@ export const SortableColumnHeader = ({
           />
         )}
       </SortingControlContainer>
-    </ColumnHeader>
+    </Box>
   );
 };
 

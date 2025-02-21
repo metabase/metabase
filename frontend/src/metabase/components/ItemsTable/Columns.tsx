@@ -1,19 +1,17 @@
-import type { PropsWithChildren } from "react";
+import { Checkbox, Box, Flex, type IconProps, Tooltip } from "metabase/ui";
 import { c, t } from "ttag";
+import { useSelector } from "metabase/lib/redux";
+import type { PropsWithChildren } from "react";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import DateTime from "metabase/components/DateTime";
 import EntityItem from "metabase/components/EntityItem";
-import CheckBox from "metabase/core/components/CheckBox";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
-import Tooltip from "metabase/core/components/Tooltip";
-import { useSelector } from "metabase/lib/redux";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
-import type { IconProps } from "metabase/ui";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
 
 import type { SortableColumnHeaderProps } from "./BaseItemsTable";
@@ -55,7 +53,7 @@ const ItemLinkComponent = ({
 
 export const Columns = {
   Select: {
-    Col: () => <col style={{ width: "70px" }} />,
+    Col: () => <col style={{ width: "48px" }} />,
     Header: ({
       selectedItems,
       hasUnselected,
@@ -67,45 +65,43 @@ export const Columns = {
       onSelectAll?: () => void;
       onSelectNone?: () => void;
     }) => (
-      <ColumnHeader>
+      <Flex component={ColumnHeader} display="flex" justify="center">
         <BulkSelectWrapper>
-          <CheckBox
-            checked={!!selectedItems?.length}
-            indeterminate={!!selectedItems?.length && !!hasUnselected}
-            onChange={hasUnselected ? onSelectAll : onSelectNone}
-            aria-label={t`Select all items`}
-          />
+          <Flex align="center" justify="center">
+            <Checkbox
+              size="sm"
+              checked={!!selectedItems?.length}
+              indeterminate={!!selectedItems?.length && !!hasUnselected}
+              onChange={hasUnselected ? onSelectAll : onSelectNone}
+              aria-label={t`Select all items`}
+            />
+          </Flex>
         </BulkSelectWrapper>
-      </ColumnHeader>
+      </Flex>
     ),
     Cell: ({
       testIdPrefix,
-      icon,
-      isPinned,
       isSelected,
       handleSelectionToggled,
     }: {
       testIdPrefix: string;
-      icon: IconProps;
-      isPinned?: boolean;
       isSelected?: boolean;
       handleSelectionToggled: () => void;
     }) => (
-      <ItemCell data-testid={`${testIdPrefix}-check`}>
-        <EntityIconCheckBox
-          variant="list"
-          icon={icon}
-          pinned={isPinned}
-          selected={isSelected}
-          onToggleSelected={handleSelectionToggled}
-          selectable
-          showCheckbox
-        />
-      </ItemCell>
+      <td data-testid={`${testIdPrefix}-check`}>
+        <Flex align="center" justify="center">
+          <Checkbox
+            size="sm"
+            p={0}
+            checked={isSelected}
+            onChange={handleSelectionToggled}
+          />
+        </Flex>
+      </td>
     ),
   },
   Type: {
-    Col: () => <col style={{ width: "70px" }} />,
+    Col: () => <col style={{ width: "50px" }} />,
     Header: ({
       sortingOptions,
       onSortingOptionsChange,
@@ -116,6 +112,7 @@ export const Columns = {
         sortingOptions={sortingOptions}
         onSortingOptionsChange={onSortingOptionsChange}
         style={{ marginInlineStart: 6 }}
+        columnHeaderProps={{ ps: 0 }}
       >
         {title}
       </SortableColumnHeader>
@@ -129,9 +126,14 @@ export const Columns = {
       icon: IconProps;
       isPinned?: boolean;
     }) => (
-      <ItemCell data-testid={`${testIdPrefix}-type`}>
+      <td
+        style={{
+          padding: "0.25em 0 0.25em 0",
+        }}
+        data-testid={`${testIdPrefix}-type`}
+      >
         <EntityIconCheckBox variant="list" icon={icon} pinned={isPinned} />
-      </ItemCell>
+      </td>
     ),
   },
   Name: {
