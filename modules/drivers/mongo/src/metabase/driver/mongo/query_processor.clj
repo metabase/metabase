@@ -1588,7 +1588,10 @@
 
 (defmethod driver/prettify-native-form :mongo
   [_driver native-form]
-  (encode-mongo native-form))
+  (try
+    (encode-mongo native-form)
+    (catch Exception _
+      native-form)))
 
 (defn mbql->native
   "Compile an MBQL query."
