@@ -1,3 +1,13 @@
+## [0.53.6](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.5...embedding-sdk-0.53.6) (2025-02-20)
+
+
+### Bug Fixes
+
+* **sdk:** auto-select sample database tables in cli ([#53654](https://github.com/metabase/metabase/issues/53654)) ([#53862](https://github.com/metabase/metabase/issues/53862)) ([2846be2](https://github.com/metabase/metabase/commit/2846be2f66896cddb9bf240343bff0b7c234cd8d))
+* **sdk:** hide "New Question" in EditableDashboard sidebar ([#53908](https://github.com/metabase/metabase/issues/53908)) ([#53963](https://github.com/metabase/metabase/issues/53963)) ([cbe8360](https://github.com/metabase/metabase/commit/cbe83601c8dd4534f71cc15c708c649246e7d1da))
+
+
+
 ## [0.53.5](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.4...embedding-sdk-0.53.5) (2025-02-18)
 
 
