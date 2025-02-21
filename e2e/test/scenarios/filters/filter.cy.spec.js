@@ -681,16 +681,14 @@ describe("scenarios > question > filter", () => {
     // Try to auto-complete Tax
     H.CustomExpressionEditor.focus().type("Ta");
 
-    H.CustomExpressionEditor.completions().should("be.visible");
-
     // Suggestion popover shows up and this select the first one ([Tax])
-    cy.realPress("Enter");
+    H.CustomExpressionEditor.acceptCompletion("tab");
 
     // Focus remains on the expression editor
     cy.focused().should("have.attr", "class").and("eq", "cm-content");
 
     // Finish to complete a valid expression, i.e. [Tax] > 42
-    H.CustomExpressionEditor.type(" > 42");
+    H.CustomExpressionEditor.type("> 42");
 
     // Tab switches the focus to the "Cancel" button
     cy.realPress("Tab");
