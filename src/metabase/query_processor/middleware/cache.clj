@@ -10,9 +10,11 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.lib.query :as lib.query]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
@@ -218,6 +220,9 @@
 (defn- is-cacheable? {:arglists '([query])} [{:keys [cache-strategy]}]
   (and (public-settings/enable-query-caching)
        (some? cache-strategy)
+       ;; sometimes, e.g. on scheduled cache refresh, we don't have a user here
+       (or (nil? api/*current-user-id*)
+           (not (premium-features/impersonated-user?)))
        (not= (:type cache-strategy) :nocache)))
 
 (defn maybe-return-cached-results
