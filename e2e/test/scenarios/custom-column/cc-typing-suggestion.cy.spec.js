@@ -204,9 +204,6 @@ const addCustomColumn = () => {
 };
 
 function verifyHelptextPosition(text) {
-  // allow the tooltip to update first
-  cy.wait(50);
-
   H.CustomExpressionEditor.get()
     .findByText(text)
     .then($element => {
