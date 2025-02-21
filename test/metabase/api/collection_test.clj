@@ -1804,7 +1804,7 @@
                    :model/Card {card-3-id :id} {:collection_id nil}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-3-id}]
       (let [fetch (fn [& {:keys [limit offset] :or {limit 10 offset 0}}]
-                    (let [resp (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                    (let [resp (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
                                                      :limit limit :offset offset)]
                       (is (= 3 (:total resp)))
                       (->> resp :data (map :id))))]
@@ -1821,12 +1821,12 @@
           (is (= [card-3-id card-2-id]
                  (fetch :limit 2 :offset 0))))
         (testing "Only limit, no offset"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
                                                      :limit 2)]
             (is (= [card-3-id card-2-id]
                    (map :id data)))))
         (testing "Only offset, no limit"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
                                                      :offset 1)]
             (is (= [card-2-id card-1-id]
                    (map :id data)))))

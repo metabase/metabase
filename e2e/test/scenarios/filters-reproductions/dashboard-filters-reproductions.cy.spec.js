@@ -701,7 +701,7 @@ describe("issue 17211", () => {
   it("should not falsely alert that no matching dashboard filter has been found (metabase#17211)", () => {
     H.filterWidget().click();
 
-    cy.findByPlaceholderText("Search by City").type("abb");
+    cy.findByPlaceholderText("Search the list").type("abb");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Abbeville").click();
 
@@ -1479,7 +1479,7 @@ describe("issues 15279 and 24500", () => {
     cy.log("Make sure the search filter works");
     H.filterWidget().contains("Search").click();
     H.dashboardParametersPopover().within(() => {
-      cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
+      cy.findByPlaceholderText("Search the list").type("Lora Cronin");
       cy.button("Add filter").click();
     });
 
@@ -1524,7 +1524,7 @@ describe("issues 15279 and 24500", () => {
 
     H.filterWidget().contains("Search").click();
     H.dashboardParametersPopover().within(() => {
-      cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
+      cy.findByPlaceholderText("Search the list").type("Lora Cronin");
       cy.button("Add filter").click();
     });
 

@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.models.field-values :as field-values]
    [metabase.models.serialization :as serdes]
    [metabase.models.table :as table]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -157,6 +158,10 @@
 
 ;; hydration tests
 (deftest field-values-hydration-test
+  ;; Manually activate Field values since they are not created during sync (#53387)
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
+
   (is (=? {(mt/id :venues :price) (mt/malli=? [:sequential {:min 1} :any])
            (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
           (-> (t2/select-one :model/Table (mt/id :venues))
