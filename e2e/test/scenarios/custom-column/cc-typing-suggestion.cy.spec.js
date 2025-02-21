@@ -17,30 +17,24 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   it("should correctly accept the chosen field suggestion", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({
-      formula: "[Rating]{leftarrow}{leftarrow}{leftarrow}",
+      formula:
+        "[Rating]{leftarrow}{leftarrow}{leftarrow}{backspace}{backspace}t",
       blur: false,
     });
 
     // accept the only suggested item, i.e. "[Rating]"
-    H.CustomExpressionEditor.type("{enter}");
+    H.CustomExpressionEditor.acceptCompletion();
 
     // if the replacement is correct -> "[Rating]"
     // if the replacement is wrong -> "[Rating] ng"
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("[Rating] ng").should("not.exist");
+    H.CustomExpressionEditor.value().should("equal", "[Rating]");
   });
 
   it("should correctly accept the chosen function suggestion", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({ formula: "le", blur: false });
 
-    H.CustomExpressionEditor.completions().should("be.visible");
-
-    // Avoid flakiness with CodeMirror not accepting the suggestion immediately
-    cy.wait(300);
-
-    // accept the first suggested function, i.e. "length"
-    cy.realPress("Enter");
+    H.CustomExpressionEditor.acceptCompletion();
 
     H.CustomExpressionEditor.helpText()
       .should("be.visible")
@@ -49,7 +43,8 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should correctly insert function suggestion with the template", () => {
     addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "bet{enter}" });
+    H.enterCustomColumnDetails({ formula: "bet", blur: false });
+    H.CustomExpressionEditor.acceptCompletion();
     H.CustomExpressionEditor.value().should(
       "equal",
       "between(column, start, end)",
