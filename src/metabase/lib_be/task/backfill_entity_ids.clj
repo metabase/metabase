@@ -11,6 +11,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:dynamic *batch-size*
   "The number of records the backfill entity ids job will process at once"
   50)
@@ -110,7 +112,8 @@
       (when-let [new-model (next-model model)]
         (start-job! new-model)))))
 
-(jobs/defjob BackfillEntityIds [ctx]
+(jobs/defjob  ^{:doc "Adds entity-ids to databases/tables/fields that are missing them."}
+  BackfillEntityIds [ctx]
   (backfill-entity-ids! ctx))
 
 (defn- start-job!
