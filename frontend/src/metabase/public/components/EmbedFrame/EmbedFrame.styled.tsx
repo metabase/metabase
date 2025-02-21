@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
