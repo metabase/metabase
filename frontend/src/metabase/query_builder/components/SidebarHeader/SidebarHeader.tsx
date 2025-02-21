@@ -44,7 +44,12 @@ function SidebarHeader({ className, title, icon, onBack, onClose }: Props) {
   });
 
   return (
-    <Flex className={className} gap="sm">
+    <Flex
+      align="flex-start"
+      className={className}
+      data-testid="sidebar-header"
+      gap="sm"
+    >
       <Flex
         className={cx(SidebarHeaderS.HeaderTitleContainer, {
           [SidebarHeaderS.backButton]: headerVariant === "back-button",
