@@ -757,8 +757,11 @@
     (model-persistence/invalidate! {:card_id [:in model-ids]})
     ;; Also purge the metadata, so that newly added columns are visible, and types are updated.
     (doseq [id model-ids]
-      (let [query    (t2/select-one-fn :dataset_query [:model/Card :dataset_query] id)
-            metadata (card.metadata/infer-metadata query)]
+      (let [card     (t2/select-one [:model/Card :dataset_query :result_metadata] id)
+            ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
+            ;; the initial upload.
+            fix-name #(update % :display_name humanization/name->human-readable-name)
+            metadata (card.metadata/refresh-metadata card {:update-fn fix-name})]
         (t2/update! :model/Card id {:result_metadata metadata})))))
 
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]

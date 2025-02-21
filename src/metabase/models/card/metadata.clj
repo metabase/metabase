@@ -166,6 +166,17 @@ saved later when it is ready."
                (u/ignore-exceptions
                  (qp.preprocess/query->expected-cols query)))))
 
+(defn refresh-metadata
+  "Update cached result metadata to reflect changes to the underlying tables.
+  For now, this only handles the additional and removal of columns, and does not get into things like type changes."
+  [{:keys [result_metadata dataset_query]} {:keys [update-fn] :or {update-fn identity}}]
+  (let [new-metadata (infer-metadata dataset_query)
+        old-names    (into #{} (map :name) result_metadata)
+        new-names    (into #{} (map :name) new-metadata)]
+    (vec (concat (filter (comp new-names :name) result_metadata)
+                 (->> (remove (comp old-names :name) new-metadata)
+                      (map update-fn))))))
+
 (defn populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
   metadata from the query."
