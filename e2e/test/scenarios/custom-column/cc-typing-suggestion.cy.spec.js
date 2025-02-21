@@ -161,39 +161,39 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.CustomExpressionEditor.type(', "baz"', { focus: false });
     verifyHelptextPosition('"baz"');
 
-    // move curser into baz
+    cy.log("move curser into baz");
     H.CustomExpressionEditor.type("{leftarrow}".repeat(3), { focus: false });
     verifyHelptextPosition('"baz"');
 
-    // move cursor to bar
+    cy.log("move cursor to bar");
     H.CustomExpressionEditor.type("{leftarrow}".repeat(5), { focus: false });
     verifyHelptextPosition('"bar"');
 
-    // move cursor to foo
+    cy.log("move cursor to foo");
     H.CustomExpressionEditor.type("{leftarrow}".repeat(10), { focus: false });
     verifyHelptextPosition('"foo"');
 
-    // move cursor to contains(, right after (
+    cy.log("move cursor to contains(, right after (");
     H.CustomExpressionEditor.type("{leftarrow}".repeat(1), { focus: false });
     verifyHelptextPosition("contains");
 
-    // move cursor to contains(, right before (
+    cy.log("move cursor to contains(, right before (");
     H.CustomExpressionEditor.type("{leftarrow}".repeat(1), { focus: false });
     verifyHelptextPosition("contains");
 
-    // move cursor into contains
+    cy.log("move cursor into contains");
     H.CustomExpressionEditor.type("{leftarrow}".repeat(2), { focus: false });
     verifyHelptextPosition("contains");
 
-    // move cursor to bar using the mouse
+    cy.log("move cursor to bar using the mouse");
     H.CustomExpressionEditor.get().findByText('"bar"').click();
     verifyHelptextPosition('"bar"');
 
-    // move cursor to foo using the mouse
+    cy.log("move cursor to foo using the mouse");
     H.CustomExpressionEditor.get().findByText('"foo"').click();
     verifyHelptextPosition('"foo"');
 
-    // move cursor to baz using the mouse
+    cy.log("move cursor to baz using the mouse");
     H.CustomExpressionEditor.get().findByText('"baz"').click();
     verifyHelptextPosition('"baz"');
   });
