@@ -148,10 +148,9 @@ export type ColumnRangeFormattingSetting = {
   max_value?: number;
 };
 
-export type ColumnFormattingSetting = { id: number } & (
+export type ColumnFormattingSetting =
   | ColumnSingleFormattingSetting
-  | ColumnRangeFormattingSetting
-);
+  | ColumnRangeFormattingSetting;
 
 export type ColumnNameColumnSplitSetting = {
   rows: string[];

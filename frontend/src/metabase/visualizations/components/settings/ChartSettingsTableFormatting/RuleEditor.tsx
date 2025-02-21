@@ -128,7 +128,6 @@ export const RuleEditor = ({
             onChange={type =>
               onChange({
                 ...DEFAULTS_BY_TYPE[type],
-                id: rule.id,
                 columns: rule.columns,
               })
             }
