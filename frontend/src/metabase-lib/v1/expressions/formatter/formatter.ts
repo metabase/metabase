@@ -424,7 +424,7 @@ function formatCaseOrIf(path: AstPath<CaseOrIfExpression>, print: Print): Doc {
       if (index === 2) {
         // options
         if (isOptionsObject(arg) && "default" in arg) {
-          return recurse(path, print, path.node[index]["default"]);
+          return recurse(path, print, path.node[index]?.["default"]);
         }
 
         return null;
