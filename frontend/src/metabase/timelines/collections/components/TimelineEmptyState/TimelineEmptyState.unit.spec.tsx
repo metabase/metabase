@@ -43,7 +43,7 @@ describe("TimelineEmptyState", () => {
 
     setup(props);
 
-    expect(screen.queryByText("Add an event")).not.toBeInTheDocument();
+    expect(screen.queryByText("Create an event")).not.toBeInTheDocument();
   });
 
   it("should allow to add events when the timeline is not read-only", () => {
@@ -60,7 +60,7 @@ describe("TimelineEmptyState", () => {
 
     setup(props);
 
-    expect(screen.getByText("Add an event")).toBeInTheDocument();
+    expect(screen.getByText("Create an event")).toBeInTheDocument();
   });
 
   it("should allow to add events when the collection is not read-only", () => {
@@ -72,7 +72,7 @@ describe("TimelineEmptyState", () => {
 
     setup(props);
 
-    expect(screen.getByText("Add an event")).toBeInTheDocument();
+    expect(screen.getByText("Create an event")).toBeInTheDocument();
   });
 });
 

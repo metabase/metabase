@@ -25,7 +25,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.icon("calendar").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").click();
+      cy.findByText("Create an event").click();
       cy.findByLabelText("Event name").type("RC1");
       cy.findByLabelText("Date").type("10/20/2026");
       cy.button("Create").click();
@@ -38,7 +38,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.icon("star").should("be.visible");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").click();
+      cy.findByText("Create an event").click();
       cy.findByLabelText("Event name").type("RC2");
       cy.findByLabelText("Date").type("5/12/2027");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -62,7 +62,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.icon("calendar").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").click();
+      cy.findByText("Create an event").click();
       cy.findByLabelText("Event name").type("RC1");
       cy.findByLabelText("Date").type("10/20/2026");
       cy.button("Create").click();
@@ -100,7 +100,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").click();
+      cy.findByText("Create an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
 
@@ -128,7 +128,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").click();
+      cy.findByText("Create an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
       cy.findByLabelText("Date").type("5/12/2027");
@@ -152,7 +152,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").click();
+      cy.findByText("Create an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
 
@@ -184,7 +184,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").click();
+      cy.findByText("Create an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
 
@@ -418,7 +418,7 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Launches").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").should("be.visible");
+      cy.findByText("Create an event").should("be.visible");
     });
 
     it("should edit a timeline", () => {
@@ -481,7 +481,7 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics events").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").should("be.visible");
+      cy.findByText("Create an event").should("be.visible");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Undo").click();
@@ -597,7 +597,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").click();
+      cy.findByText("Create an event").click();
       cy.findByLabelText("Event name").type("RC1");
       cy.findByLabelText("Date").type("10/20/2026");
       cy.button("Create").click();
@@ -675,7 +675,7 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics events").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").should("not.exist");
+      cy.findByText("Create an event").should("not.exist");
     });
 
     it("should not allow creating new events in existing timelines", () => {
@@ -692,7 +692,7 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").should("not.exist");
+      cy.findByText("Create an event").should("not.exist");
     });
   });
 });
@@ -718,7 +718,7 @@ H.describeWithSnowplow("scenarios > collections > timelines", () => {
     cy.icon("calendar").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add an event").click();
+    cy.findByText("Create an event").click();
     cy.findByLabelText("Event name").type("Event");
     cy.findByLabelText("Date").type("10/20/2026");
 

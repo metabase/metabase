@@ -1459,7 +1459,7 @@ describe("issue 44637", () => {
     });
 
     H.queryBuilderFooter().icon("calendar").click();
-    H.rightSidebar().findByText("Add an event");
+    H.rightSidebar().findByText("Create an event");
   });
 });
 

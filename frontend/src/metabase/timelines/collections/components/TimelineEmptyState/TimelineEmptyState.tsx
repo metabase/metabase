@@ -80,7 +80,7 @@ const TimelineEmptyState = ({
             className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
             to={link}
           >
-            {t`Add an event`}
+            {t`Create an event`}
           </Link>
         )}
       </EmptyStateBody>
