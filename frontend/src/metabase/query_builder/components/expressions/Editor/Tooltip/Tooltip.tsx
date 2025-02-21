@@ -50,6 +50,14 @@ export function Tooltip({
     [doc, state.selection.main.head],
   );
 
+  const [hasMovedCursor, setHasMovedCursor] = useState(false);
+
+  useEffect(() => {
+    setHasMovedCursor(
+      hasMovedCursor => hasMovedCursor || state.selection.main.head !== 0,
+    );
+  }, [state.selection.main.head]);
+
   const completions = useMemo(() => currentCompletions(state), [state]);
 
   const maxHeight = usePopoverHeight(tooltipRef);
@@ -74,7 +82,7 @@ export function Tooltip({
 
   return (
     <Popover
-      opened
+      opened={hasMovedCursor}
       position="bottom-start"
       returnFocus
       closeOnEscape
