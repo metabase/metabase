@@ -50,7 +50,7 @@
 
 (api.macros/defendpoint :put "/:id"
   "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the
-  paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
+  parameter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
   one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]

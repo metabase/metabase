@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -1138,6 +1139,30 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.addSummaryGroupingField({ field: "Total" });
     H.visualize();
     H.echartsContainer().should("contain.text", "Total: 8 bins");
+  });
+
+  it("Correctly translates aggregations", () => {
+    cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
+      locale: "de",
+    });
+
+    H.openTable({
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
+
+    cy.findByRole("button", { name: "Zusammenfassen" }).click();
+    H.popover().within(() => {
+      cy.findByText("Durchschnitt von...").click();
+      cy.findByText("Subtotal").click();
+    });
+
+    cy.findAllByText("Durchschnitt von Subtotal").should("exist");
+    cy.findAllByText("Average of Subtotal").should("not.exist");
+
+    cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
+      locale: "en",
+    });
   });
 });
 
