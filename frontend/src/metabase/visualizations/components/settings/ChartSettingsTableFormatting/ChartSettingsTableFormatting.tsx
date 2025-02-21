@@ -71,7 +71,6 @@ export const ChartSettingsTableFormatting = ({
               ...DEFAULTS_BY_TYPE["single"],
               // if there's a single column use that by default
               columns: cols.length === 1 ? [cols[0].name] : [],
-              id: value.length,
             },
             ...value,
           ]);
