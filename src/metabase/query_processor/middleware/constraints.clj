@@ -3,6 +3,7 @@
   `:add-default-userland-constraints?` `:middleware` option."
   (:require
    [metabase.models.setting :as setting]
+   [metabase.config :as config]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 ;; The following "defaults" are not applied to the settings themselves - why not? Because the existing behavior is
@@ -21,7 +22,7 @@
 ;;
 ;; If we turned the below `const`s into `:default`s on the settings themselves, we would use the default values for
 ;; all queries, whether or not the middleware was applied.
-(def ^:private ^:const default-unaggregated-query-row-limit 2000)
+(def ^:private ^:const default-unaggregated-query-row-limit (or (config/config-str :max-unaggregated-rows) 10000))
 (def ^:private ^:const default-aggregated-query-row-limit 10000)
 
 ;; NOTE: this was changed from a hardcoded var with value of 2000 (now moved to [[default-unaggregated-query-row-limit]])
