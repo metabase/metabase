@@ -129,11 +129,12 @@
 (mu/defn- update-breakout :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column       :- ::lib.schema.metadata/column
+   old-column       :- ::lib.schema.metadata/column
+   new-column       :- ::lib.schema.metadata/column
    new-binning  :- ::lib.schema.binning/binning]
-  (if-let [existing-breakout (first (lib.breakout/existing-breakouts query stage-number column))]
-    (lib.remove-replace/replace-clause query stage-number existing-breakout (lib.binning/with-binning column new-binning))
-    (lib.breakout/breakout query stage-number (lib.binning/with-binning column new-binning))))
+  (if-let [existing-breakout (first (lib.breakout/existing-breakouts query stage-number old-column))]
+    (lib.remove-replace/replace-clause query stage-number existing-breakout (lib.binning/with-binning new-column new-binning))
+    (lib.breakout/breakout query stage-number (lib.binning/with-binning new-column new-binning))))
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/zoom-in.binning :- ::lib.schema/query
   [query                                        :- ::lib.schema/query
@@ -143,11 +144,12 @@
   ;; where [[metabase.query-processor.middleware.binning/update-binning-strategy]] expects to find them. Adding the
   ;; filters to top-level-stage-number breaks the binning.
   (let [top-level-stage-number (lib.underlying/top-level-stage-number query)
+        filterable-column (lib.drill-thru.common/breakout->filterable-column query stage-number column)
         old-filters (filter (fn [[operator _opts filter-column]]
                               (and (#{:>= :<} operator)
                                    (lib.equality/find-matching-column filter-column [column])))
                             (lib.filter/filters query stage-number))]
     (-> (reduce #(lib.remove-replace/remove-clause %1 stage-number %2) query old-filters)
-        (update-breakout top-level-stage-number column new-binning)
-        (lib.filter/filter stage-number (lib.filter/>= column min-value))
-        (lib.filter/filter stage-number (lib.filter/< column max-value)))))
+        (update-breakout top-level-stage-number column filterable-column new-binning)
+        (lib.filter/filter stage-number (lib.filter/>= filterable-column min-value))
+        (lib.filter/filter stage-number (lib.filter/< filterable-column max-value)))))
