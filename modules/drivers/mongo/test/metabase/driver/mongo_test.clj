@@ -206,7 +206,9 @@
               {"k" "$$item.k",
                "object"
                {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
-               "type" {"$type" "$$item.v"}}}}}}
+               "type" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
+                                    "args" ["$$item.v" {"$type" "$$item.v"}]
+                                    "lang" "js"}}}}}}}
           {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
           {"$project"
            {"path" "$kvs.k",
@@ -237,7 +239,9 @@
                  {"k" "$$item.k",
                   "object"
                   {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
-                  "type" {"$type" "$$item.v"}}}}}}
+                  "type" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
+                                       "args" ["$$item.v" {"$type" "$$item.v"}]
+                                       "lang" "js"}}}}}}}
              {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
              {"$project"
               {"path" {"$concat" ["$path" "." "$kvs.k"]},
@@ -294,7 +298,17 @@
                        :base-type         :type/Integer
                        :pk?               true
                        :database-position 0}}}
-           (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))))))
+           (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))))
+    (mt/dataset uuid-dogs
+      (testing "binData uuid fields are identified as type/UUID"
+        (is (= {:schema nil,
+                :name "dogs",
+                :fields
+                #{{:name "_id", :database-type "long", :base-type :type/Integer, :pk? true, :database-position 0}
+                  {:name "name", :database-type "string", :base-type :type/Text, :database-position 2}
+                  {:name "person_id", :database-type "uuid", :base-type :type/UUID, :database-position 3}
+                  {:name "id", :database-type "uuid", :base-type :type/UUID, :database-position 1}}}
+               (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :dogs)))))))))
 
 (deftest sync-indexes-info-test
   (mt/test-driver :mongo
