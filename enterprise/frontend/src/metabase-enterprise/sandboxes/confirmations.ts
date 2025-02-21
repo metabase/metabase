@@ -18,6 +18,7 @@ export function getSandboxedTableWarningModal(
   // should prompt them that we will have to remove native access for all tables/schemas
   if (
     value === DataPermissionValue.SANDBOXED &&
+    permissions[groupId] &&
     hasPermissionValueInGraph(
       permissions[groupId][entityId.databaseId],
       DataPermissionValue.QUERY_BUILDER_AND_NATIVE,

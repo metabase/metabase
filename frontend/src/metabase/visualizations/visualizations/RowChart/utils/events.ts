@@ -51,7 +51,11 @@ const getMetricColumnData = (
   });
 };
 
-const getColumnData = (columns: ColumnDescriptor[], datum: GroupedDatum) => {
+const getColumnData = (
+  columns: ColumnDescriptor[],
+  datum: GroupedDatum,
+  seriesIndex: number,
+) => {
   return columns
     .map(columnDescriptor => {
       const { column, index } = columnDescriptor;
@@ -66,8 +70,7 @@ const getColumnData = (columns: ColumnDescriptor[], datum: GroupedDatum) => {
 
         value = formatNullable(metricSum);
       } else {
-        const distinctValues = new Set(datum.rawRows.map(row => row[index]));
-        value = distinctValues.size === 1 ? datum.rawRows[0][index] : null;
+        value = datum.rawRows[seriesIndex][index];
       }
 
       return value != null
@@ -84,6 +87,7 @@ const getColumnData = (columns: ColumnDescriptor[], datum: GroupedDatum) => {
 const getColumnsData = (
   chartColumns: CartesianChartColumns,
   series: Series<GroupedDatum, unknown>,
+  seriesIndex: number,
   datum: GroupedDatum,
   datasetColumns: DatasetColumn[],
   visualizationSettings: VisualizationSettings,
@@ -121,7 +125,7 @@ const getColumnsData = (
     datasetColumns,
   );
 
-  data.push(...getColumnData(otherColumnsDescriptiors, datum));
+  data.push(...getColumnData(otherColumnsDescriptiors, datum, seriesIndex));
   return data;
 };
 
@@ -131,10 +135,11 @@ export const getClickData = (
   chartColumns: CartesianChartColumns,
   datasetColumns: DatasetColumn[],
 ): ClickObject => {
-  const { series, datum } = bar;
+  const { series, seriesIndex, datum } = bar;
   const data = getColumnsData(
     chartColumns,
     series,
+    seriesIndex,
     datum,
     datasetColumns,
     visualizationSettings,
@@ -299,6 +304,7 @@ export const getHoverData = (
     const data = getColumnsData(
       chartColumns,
       bar.series,
+      bar.seriesIndex,
       bar.datum,
       datasetColumns,
       settings,

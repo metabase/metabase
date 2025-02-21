@@ -1,4 +1,4 @@
-import { filterWidget, popover } from "e2e/support/helpers";
+import { filterWidget, popover, selectDropdown } from "e2e/support/helpers";
 
 // FILTER WIDGET TYPE
 
@@ -13,7 +13,7 @@ export function setWidgetType(type) {
     .findByTestId("filter-widget-type-select")
     .click();
 
-  popover().findByText(type).click();
+  selectDropdown().findByText(type).click();
 }
 
 // FIELD FILTER STRING FILTERS
@@ -47,9 +47,12 @@ export function setWidgetStringFilter(value) {
 
 export function selectFilterValueFromList(
   value,
-  { addFilter = true, buttonLabel = "Add filter" } = {},
+  { addFilter = true, buttonLabel = "Add filter", search = false } = {},
 ) {
   popover().within(() => {
+    if (search) {
+      cy.findByPlaceholderText("Search the list").type(`${value}{enter}`);
+    }
     cy.findByText(value).click();
 
     if (addFilter) {
@@ -68,10 +71,10 @@ export function selectFilterValueFromList(
 export function applyFilterByType(
   filter,
   value,
-  { buttonLabel = "Add filter" } = {},
+  { buttonLabel = "Add filter", search = false } = {},
 ) {
   if (["Is", "Is not"].includes(filter)) {
-    selectFilterValueFromList(value, { buttonLabel });
+    selectFilterValueFromList(value, { buttonLabel, search });
   } else {
     addWidgetStringFilter(value, { buttonLabel });
   }
@@ -82,8 +85,8 @@ export function applyFilterByType(
  *
  * @param {string} value
  */
-export function addDefaultStringFilter(value) {
-  enterDefaultValue(value, "Add filter");
+export function addDefaultStringFilter(value, buttonLabel = "Update filter") {
+  enterDefaultValue(value, buttonLabel);
 }
 
 // FIELD FILTER NUMBER FILTERS
@@ -108,12 +111,12 @@ export function addWidgetNumberFilter(
  * @param {array|string} value
  * @return {function}
  */
-export function addDefaultNumberFilter(value) {
+export function addDefaultNumberFilter(value, buttonLabel = "Add filter") {
   if (isBetweenFilter(value)) {
     cy.findByText("Enter a default value…").click();
-    addBetweenFilter(value);
+    addBetweenFilter(value, buttonLabel);
   } else {
-    enterDefaultValue(value);
+    enterDefaultValue(value, buttonLabel);
   }
 }
 
@@ -162,6 +165,7 @@ function addBetweenFilter([low, high] = [], buttonLabel = "Add filter") {
   popover().within(() => {
     cy.get("input").first().type(`${low}{enter}`);
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("input").last().type(`${high}{enter}`);
   });
 
@@ -193,7 +197,11 @@ function enterDefaultValue(value, buttonLabel = "Add filter") {
  * @param {string} searchTerm
  * @param {string} result
  */
-export function pickDefaultValue(searchTerm, result) {
+export function pickDefaultValue(
+  searchTerm,
+  result,
+  buttonLabel = "Add filter",
+) {
   cy.findByText("Enter a default value…").click();
   cy.findByPlaceholderText("Enter a default value…").type(searchTerm);
 
@@ -207,7 +215,7 @@ export function pickDefaultValue(searchTerm, result) {
   //
   cy.findByLabelText(result).should("be.visible").click();
 
-  cy.button("Add filter").click();
+  cy.button(buttonLabel).click();
 }
 
 /**

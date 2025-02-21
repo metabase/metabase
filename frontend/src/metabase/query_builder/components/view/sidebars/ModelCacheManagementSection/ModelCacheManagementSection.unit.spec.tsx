@@ -9,7 +9,6 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import PersistedModels from "metabase/entities/persisted-models";
 import { checkNotNull } from "metabase/lib/types";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks";
@@ -51,14 +50,7 @@ async function setup({
     card_name: model.displayName() as string,
   });
 
-  setupModelPersistenceEndpoints(modelCacheInfo);
-
-  if (!waitForSectionAppearance) {
-    jest.spyOn(PersistedModels, "Loader").mockImplementation(props => {
-      const { children } = props as any;
-      return children({ persistedModel: cacheInfo });
-    });
-  }
+  setupModelPersistenceEndpoints([modelCacheInfo]);
 
   renderWithProviders(<ModelCacheManagementSection model={model} />);
 

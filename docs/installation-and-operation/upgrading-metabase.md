@@ -6,7 +6,7 @@ redirect_from:
 
 # Upgrading Metabase
 
-Instructions for upgrading to a new [Metabase release](../releases.md).
+Instructions for upgrading to a new [Metabase release](https://github.com/metabase/metabase/releases).
 
 ## Backing up your application database
 
@@ -36,7 +36,7 @@ If you're running the JVM Jar file directly:
 5. Restart the server:
 
    ```
-   java -jar metabase.jar
+   java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
    ```
 
 On startup, Metabase will perform any tasks it needs to complete the upgrade. Once Metabase has completed those tasks, you'll be running the new version.
@@ -121,7 +121,7 @@ For example, if you're running Metabase 1.38, your upgrade path would look like:
 
 With X being the latest version available for each release.
 
-For a list of releases, see [Metabase versions](../releases.md).
+Check out a list of [Metabase releases](https://github.com/metabase/metabase/releases).
 
 ## Upgrading Metabase Cloud
 
@@ -153,7 +153,7 @@ export MB_DB_PORT=5432
 export MB_DB_USER=username
 export MB_DB_PASS=password
 export MB_DB_HOST=localhost
-java -jar metabase.jar migrate down
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down
 ```
 
 If you're running Docker, use the command `"migrate down"` (with the quotes around `"migrate down"`), and include the connection details for your application database, for example:

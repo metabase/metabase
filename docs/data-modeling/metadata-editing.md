@@ -42,7 +42,7 @@ To add a table description, click into the box below the table name. Description
 
 **Queryable** tables are visible across all of Metabase.
 
-**Hidden** tables won't show up in the [query builder](../questions/query-builder/introduction.md) or [data reference](../exploration-and-organization/data-model-reference.md). But this is not a security feature: hidden tables can still be used in SQL questions if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
+**Hidden** tables won't show up in the [query builder](../questions/query-builder/editor.md) or [data reference](../exploration-and-organization/data-model-reference.md). But this is not a security feature: hidden tables can still be used in SQL questions if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
 
 Tip: To hide all of the tables in a database (say, if you've migrated to a new database), click on the **hidden eye** icon beside "# queryable tables" in the left sidebar.
 
@@ -131,7 +131,7 @@ If you want Metabase to treat a text or number column as a datetime column:
 - UNIXNanoSeconds->DateTime
 - UNIXSeconds->DateTime
 
-Casting is different from setting the [field type](./field-types.md). For example, say you have a "Created At" column with a string [data type](https://www.metabase.com/learn/databases/data-types-overview) in your database. You'll need to cast "Created At" to one of the datetime types above if you want to do things like:
+Casting is different from setting the [field type](./field-types.md). For example, say you have a "Created At" column with a string [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) in your database. You'll need to cast "Created At" to one of the datetime types above if you want to do things like:
 
 - Create relative date filters, such as "Created At = Last week".
 - Use "Created At" with formulas like [datetimeAdd](../questions/query-builder/expressions/datetimeadd.md).
@@ -249,5 +249,5 @@ If Metabase supports JSON unfolding for your database, you can decide whether to
 
 ## Further reading
 
-- [Keeping your analytics organized](https://www.metabase.com/learn/administration/same-page)
-- [Data modeling tutorials](https://www.metabase.com/learn/data-modeling/models)
+- [Keeping your analytics organized](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/same-page)
+- [Data modeling tutorials](https://www.metabase.com/learn/metabase-basics/getting-started/models)

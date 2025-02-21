@@ -1,11 +1,11 @@
 import { useField } from "formik";
 import { useEffect, useMemo } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Select from "metabase/core/components/Select";
 import Databases from "metabase/entities/databases";
+import { connect } from "metabase/lib/redux";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { DatabaseId } from "metabase-types/api";
 

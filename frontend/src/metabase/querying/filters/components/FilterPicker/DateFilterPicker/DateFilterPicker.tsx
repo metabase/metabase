@@ -1,10 +1,11 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
-import { PopoverBackButton } from "metabase/ui";
+import type { DatePickerValue } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
-import { DatePicker, type DatePickerValue } from "../../DatePicker";
+import { DatePicker } from "../../DatePicker";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function DateFilterPicker({
@@ -38,16 +39,10 @@ export function DateFilterPicker({
         value={value}
         availableOperators={availableOperators}
         availableUnits={availableUnits}
-        backButton={
-          onBack && (
-            <PopoverBackButton p="sm" onClick={onBack}>
-              {columnInfo.longDisplayName}
-            </PopoverBackButton>
-          )
-        }
-        canUseRelativeOffsets
-        isNew={isNew}
+        submitButtonLabel={isNew ? t`Add filter` : t`Update filter`}
+        backButtonLabel={columnInfo.longDisplayName}
         onChange={handleChange}
+        onBack={onBack}
       />
     </div>
   );

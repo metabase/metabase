@@ -58,7 +58,7 @@ export const TableBodyRow = styled.div`
   }
 `;
 
-export interface TableBodyCellProps {
+interface TableBodyCellProps {
   fontWeight?: number;
 }
 

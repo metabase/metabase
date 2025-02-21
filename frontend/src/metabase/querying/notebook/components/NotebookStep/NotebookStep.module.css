@@ -1,0 +1,23 @@
+.PreviewButton {
+  margin-left: 0.5rem;
+
+  &.noPreviewButton {
+    visibility: hidden;
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.StepRoot {
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+
+  @media screen and (min-width: 40em) {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+  }
+}

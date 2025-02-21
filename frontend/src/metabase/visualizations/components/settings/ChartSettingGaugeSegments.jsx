@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import NumericInput from "metabase/components/NumericInput";
 import Button from "metabase/core/components/Button";
-import ColorSelector from "metabase/core/components/ColorSelector";
+import { ColorSelector } from "metabase/core/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";

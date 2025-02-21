@@ -45,8 +45,9 @@
     {:decode/normalize common/normalize-map}
     [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
     ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
-    ;; Only restriction is that it is non-nil.
-    [:native some?]
+    ;; Only restriction is that, if present, it is non-nil.
+    ;; It is valid to have a blank query like `{:type :native}` in legacy.
+    [:native {:optional true} some?]
     ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
     ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
     ;; nil.
@@ -224,9 +225,7 @@
   [:multi {:dispatch      lib-type
            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
    [:mbql.stage/native :map]
-   [:mbql.stage/mbql   [:fn
-                        {:error/message "An initial MBQL stage of a query must have :source-table or :source-card"}
-                        (some-fn :source-table :source-card)]]])
+   [:mbql.stage/mbql   :map]])
 
 (mr/def ::stage.additional
   [:multi {:dispatch      lib-type
@@ -338,9 +337,9 @@
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword}
                 :mbql/query]]
-    [:database [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
-                [true  ::id/saved-questions-virtual-database]
-                [false ::id/database]]]
+    [:database {:optional true} [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
+                                 [true  ::id/saved-questions-virtual-database]
+                                 [false ::id/database]]]
     [:stages   [:ref ::stages]]
     [:parameters {:optional true} [:maybe [:ref ::parameter/parameters]]]
     ;;

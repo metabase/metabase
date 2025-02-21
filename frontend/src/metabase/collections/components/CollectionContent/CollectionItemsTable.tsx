@@ -1,10 +1,17 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
-import { type ComponentType, useCallback, useEffect, useState } from "react";
+import {
+  type ComponentType,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   ALL_MODELS,
   COLLECTION_PAGE_SIZE,
+  type CollectionContentTableColumn,
+  DEFAULT_VISIBLE_COLUMNS_LIST,
 } from "metabase/collections/components/CollectionContent/constants";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import type {
@@ -13,6 +20,7 @@ import type {
 } from "metabase/collections/types";
 import { isRootTrashCollection } from "metabase/collections/utils";
 import { ItemsTable } from "metabase/components/ItemsTable";
+import { getVisibleColumnsMap } from "metabase/components/ItemsTable/utils";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
@@ -26,8 +34,10 @@ import type {
   CollectionId,
   CollectionItem,
   CollectionItemModel,
+  ListCollectionItemsRequest,
 } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { State } from "metabase-types/store";
 
 import {
   CollectionEmptyContent,
@@ -57,6 +67,9 @@ export type CollectionItemsTableProps = {
   createBookmark: CreateBookmark;
   databases: Database[];
   deleteBookmark: DeleteBookmark;
+  EmptyContentComponent?: ComponentType<{
+    collection?: Collection;
+  }>;
   getIsSelected: (item: CollectionItem) => boolean;
   handleCopy: (items: CollectionItem[]) => void;
   handleMove: (items: CollectionItem[]) => void;
@@ -64,14 +77,11 @@ export type CollectionItemsTableProps = {
   loadingPinnedItems: boolean;
   models: CollectionItemModel[];
   pageSize: number;
-  selectOnlyTheseItems: (items: CollectionItem[]) => void;
   selected: CollectionItem[];
+  selectOnlyTheseItems: (items: CollectionItem[]) => void;
   toggleItem: (item: CollectionItem) => void;
+  visibleColumns?: CollectionContentTableColumn[];
   onClick: (item: CollectionItem) => void;
-  showActionMenu: boolean;
-  EmptyContentComponent?: ComponentType<{
-    collection?: Collection;
-  }>;
 }>;
 
 const DefaultEmptyContentComponent = ({
@@ -87,33 +97,33 @@ const DefaultEmptyContentComponent = ({
 };
 
 export const CollectionItemsTable = ({
-  collectionId,
-  collection,
-  getIsSelected,
-  selectOnlyTheseItems,
-  databases,
   bookmarks,
-  createBookmark,
-  deleteBookmark,
-  loadingPinnedItems,
-  hasPinnedItems,
-  selected,
-  toggleItem,
+  collection,
+  collectionId,
   clear,
-  handleMove,
-  handleCopy,
-  pageSize = COLLECTION_PAGE_SIZE,
-  models = ALL_MODELS,
-  onClick,
-  showActionMenu = true,
+  createBookmark,
+  databases,
+  deleteBookmark,
   EmptyContentComponent = DefaultEmptyContentComponent,
+  getIsSelected,
+  handleCopy,
+  handleMove,
+  hasPinnedItems,
+  loadingPinnedItems,
+  models = ALL_MODELS,
+  pageSize = COLLECTION_PAGE_SIZE,
+  selected,
+  selectOnlyTheseItems,
+  toggleItem,
+  visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
+  onClick,
 }: CollectionItemsTableProps) => {
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
     useState<SortingOptions>(() => getDefaultSortingOptions(collection));
 
-  const [total, setTotal] = useState<number | null>(null);
+  const [total, setTotal] = useState<number>();
 
   const { handleNextPage, handlePreviousPage, setPage, page, resetPage } =
     usePagination();
@@ -121,7 +131,7 @@ export const CollectionItemsTable = ({
   useEffect(() => {
     if (collectionId) {
       resetPage();
-      setTotal(null);
+      setTotal(undefined);
     }
   }, [collectionId, resetPage]);
 
@@ -135,97 +145,152 @@ export const CollectionItemsTable = ({
 
   const showAllItems = isEmbeddingSdk || isRootTrashCollection(collection);
 
-  const unpinnedQuery = {
-    collection: collectionId,
-    models,
-    limit: pageSize,
-    offset: pageSize * page,
-    ...(showAllItems ? {} : { pinned_state: "is_not_pinned" }),
-    ...unpinnedItemsSorting,
-  };
-
-  const onSearchListLoaded = (result: {
-    payload: { metadata: { total: number } };
-  }) => {
-    // onLoaded returns a `payload` object with the data and metadata
-    if (result.payload?.metadata?.total) {
-      setTotal(result.payload.metadata.total);
-    }
-  };
-
   return (
-    <Search.ListLoader
-      query={unpinnedQuery}
-      loadingAndErrorWrapper={false}
-      keepListWhileLoading
-      wrapped
-      onLoaded={onSearchListLoaded}
-    >
-      {({
-        list: unpinnedItems = [],
-        loading: loadingUnpinnedItems,
-      }: {
-        list: CollectionItem[];
-        loading: boolean;
-      }) => {
-        const hasPagination: boolean = total ? total > pageSize : false;
-
-        const unselected = getIsSelected
-          ? unpinnedItems.filter(item => !getIsSelected(item))
-          : unpinnedItems;
-        const hasUnselected = unselected.length > 0;
-
-        const handleSelectAll = () => {
-          selectOnlyTheseItems?.(unpinnedItems);
-        };
-
-        const loading = loadingPinnedItems || loadingUnpinnedItems;
-        const isEmpty =
-          !loading && !hasPinnedItems && unpinnedItems.length === 0;
-
-        if (isEmpty && !loadingUnpinnedItems) {
-          return <EmptyContentComponent collection={collection} />;
-        }
-
-        return (
-          <CollectionTable data-testid="collection-table">
-            <ItemsTable
-              databases={databases}
-              bookmarks={bookmarks}
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-              items={unpinnedItems}
-              collection={collection}
-              sortingOptions={unpinnedItemsSorting}
-              onSortingOptionsChange={handleUnpinnedItemsSortingChange}
-              selectedItems={selected}
-              hasUnselected={hasUnselected}
-              getIsSelected={getIsSelected}
-              onToggleSelected={toggleItem}
-              onDrop={clear}
-              onMove={handleMove}
-              onCopy={handleCopy}
-              onSelectAll={handleSelectAll}
-              onSelectNone={clear}
-              onClick={onClick}
-              showActionMenu={showActionMenu}
-            />
-            <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
-              {hasPagination && (
-                <PaginationControls
-                  showTotal
-                  page={page}
-                  pageSize={pageSize}
-                  total={total ?? undefined}
-                  itemsLength={unpinnedItems.length}
-                  onNextPage={handleNextPage}
-                  onPreviousPage={handlePreviousPage}
-                />
-              )}
-            </div>
-          </CollectionTable>
-        );
+    <CollectionItemsTableContent
+      bookmarks={bookmarks}
+      clear={clear}
+      collection={collection}
+      createBookmark={createBookmark}
+      databases={databases}
+      deleteBookmark={deleteBookmark}
+      EmptyContentComponent={EmptyContentComponent}
+      getIsSelected={getIsSelected}
+      handleCopy={handleCopy}
+      handleMove={handleMove}
+      hasPinnedItems={hasPinnedItems}
+      loadingPinnedItems={loadingPinnedItems}
+      page={page}
+      selected={selected}
+      selectOnlyTheseItems={selectOnlyTheseItems}
+      toggleItem={toggleItem}
+      total={total}
+      unpinnedItemsSorting={unpinnedItemsSorting}
+      unpinnedQuery={{
+        collection: collectionId,
+        models,
+        limit: pageSize,
+        offset: pageSize * page,
+        ...(showAllItems
+          ? { show_dashboard_questions: true }
+          : { pinned_state: "is_not_pinned" }),
+        ...unpinnedItemsSorting,
       }}
-    </Search.ListLoader>
+      visibleColumns={visibleColumns}
+      onClick={onClick}
+      onNextPage={handleNextPage}
+      onPreviousPage={handlePreviousPage}
+      onUnpinnedItemsSortingChange={handleUnpinnedItemsSortingChange}
+    />
   );
 };
+
+type CollectionItemsTableContentProps = CollectionItemsTableProps & {
+  list: CollectionItem[] | undefined;
+  loading: boolean;
+  page: number;
+  total: number | undefined;
+  unpinnedItemsSorting: SortingOptions;
+  unpinnedQuery: ListCollectionItemsRequest;
+  onNextPage: () => void;
+  onPreviousPage: () => void;
+  onUnpinnedItemsSortingChange: (unpinnedItemsSorting: SortingOptions) => void;
+};
+
+const CollectionItemsTableContentInner = ({
+  bookmarks,
+  clear,
+  collection,
+  createBookmark,
+  databases,
+  deleteBookmark,
+  EmptyContentComponent = DefaultEmptyContentComponent,
+  getIsSelected,
+  handleCopy,
+  handleMove,
+  hasPinnedItems,
+  list: unpinnedItems = [],
+  loading: loadingUnpinnedItems,
+  loadingPinnedItems,
+  page,
+  pageSize = COLLECTION_PAGE_SIZE,
+  selected,
+  selectOnlyTheseItems,
+  toggleItem,
+  total,
+  unpinnedItemsSorting,
+  visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
+  onClick,
+  onNextPage,
+  onPreviousPage,
+  onUnpinnedItemsSortingChange,
+}: CollectionItemsTableContentProps) => {
+  const visibleColumnsMap = useMemo(
+    () => getVisibleColumnsMap(visibleColumns),
+    [visibleColumns],
+  );
+
+  const hasPagination: boolean = total ? total > pageSize : false;
+
+  const unselected = getIsSelected
+    ? unpinnedItems.filter(item => !getIsSelected(item))
+    : unpinnedItems;
+  const hasUnselected = unselected.length > 0;
+
+  const handleSelectAll = () => {
+    selectOnlyTheseItems?.(unpinnedItems);
+  };
+
+  const loading = loadingPinnedItems || loadingUnpinnedItems;
+  const isEmpty = !loading && !hasPinnedItems && unpinnedItems.length === 0;
+
+  if (isEmpty && !loadingUnpinnedItems) {
+    return <EmptyContentComponent collection={collection} />;
+  }
+
+  return (
+    <CollectionTable data-testid="collection-table">
+      <ItemsTable
+        databases={databases}
+        bookmarks={bookmarks}
+        createBookmark={createBookmark}
+        deleteBookmark={deleteBookmark}
+        items={unpinnedItems}
+        collection={collection}
+        sortingOptions={unpinnedItemsSorting}
+        onSortingOptionsChange={onUnpinnedItemsSortingChange}
+        selectedItems={selected}
+        hasUnselected={hasUnselected}
+        getIsSelected={getIsSelected}
+        onToggleSelected={toggleItem}
+        onDrop={clear}
+        onMove={handleMove}
+        onCopy={handleCopy}
+        onSelectAll={handleSelectAll}
+        onSelectNone={clear}
+        onClick={onClick}
+        visibleColumnsMap={visibleColumnsMap}
+      />
+      <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
+        {hasPagination && (
+          <PaginationControls
+            showTotal
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            itemsLength={unpinnedItems.length}
+            onNextPage={onNextPage}
+            onPreviousPage={onPreviousPage}
+          />
+        )}
+      </div>
+    </CollectionTable>
+  );
+};
+
+const CollectionItemsTableContent = Search.loadList({
+  query: (_state: State, props: CollectionItemsTableContentProps) => {
+    return props.unpinnedQuery;
+  },
+  loadingAndErrorWrapper: false,
+  wrapped: true,
+})(CollectionItemsTableContentInner);

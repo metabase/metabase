@@ -19,9 +19,15 @@ import { useRevisionListQuery } from "metabase/common/hooks";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 import { Stack, Tabs, Text } from "metabase/ui";
-import type { Dashboard, Revision, User } from "metabase-types/api";
+import type {
+  Dashboard,
+  ModerationReview,
+  Revision,
+  User,
+} from "metabase-types/api";
 
 import { DashboardDetails } from "./DashboardDetails";
 import { DashboardEntityIdCard } from "./DashboardEntityIdCard";
@@ -132,6 +138,7 @@ export function DashboardInfoSidebar({
                   canWrite={canWrite}
                   revisions={revisions}
                   currentUser={currentUser}
+                  moderationReviews={dashboard.moderation_reviews}
                 />
               </Tabs.Panel>
               <Tabs.Panel value={Tab.Insights}>
@@ -161,7 +168,7 @@ const OverviewTab = ({
   canWrite: boolean;
 }) => {
   return (
-    <Stack spacing="lg">
+    <Stack gap="lg">
       <SidesheetCard title={t`Description`} pb="md">
         <SidesheetEditableDescription
           description={dashboard.description}
@@ -175,6 +182,9 @@ const OverviewTab = ({
             {descriptionError}
           </Text>
         )}
+        <PLUGIN_MODERATION.ModerationReviewTextForDashboard
+          dashboard={dashboard}
+        />
       </SidesheetCard>
       <SidesheetCard>
         <DashboardDetails dashboard={dashboard} />
@@ -188,16 +198,32 @@ const HistoryTab = ({
   canWrite,
   revisions,
   currentUser,
+  moderationReviews,
 }: {
   canWrite: boolean;
   revisions?: Revision[];
   currentUser: User | null;
+  moderationReviews: ModerationReview[];
 }) => {
   const dispatch = useDispatch();
+
+  const events = useMemo(() => {
+    const moderationEvents = PLUGIN_MODERATION.getModerationTimelineEvents(
+      moderationReviews,
+      currentUser,
+    );
+    const revisionEvents = getTimelineEvents({ revisions, currentUser });
+
+    return [...revisionEvents, ...moderationEvents].sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+  }, [moderationReviews, revisions, currentUser]);
+
   return (
     <SidesheetCard>
       <Timeline
-        events={getTimelineEvents({ revisions, currentUser })}
+        events={events}
         data-testid="dashboard-history-list"
         revert={revision => dispatch(revertToRevision(revision))}
         canWrite={canWrite}

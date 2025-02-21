@@ -1,24 +1,17 @@
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  assertEChartsTooltip,
-  cartesianChartCircleWithColor,
-  chartPathWithFillColor,
-  echartsContainer,
-  restore,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > combo", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should render values on data points", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
         query: {
@@ -47,7 +40,7 @@ describe("scenarios > visualizations > combo", () => {
   });
 
   it("should support stacking", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
         query: {
@@ -84,15 +77,15 @@ describe("scenarios > visualizations > combo", () => {
       },
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("Display").click();
       cy.findByText("Stack").click();
     });
 
     // First circle of the line series
-    cartesianChartCircleWithColor("#A989C5").eq(0).trigger("mousemove");
-    assertEChartsTooltip({
+    H.cartesianChartCircleWithColor("#A989C5").eq(0).trigger("mousemove");
+    H.assertEChartsTooltip({
       header: "2022",
       rows: [
         { color: "#A989C5", name: "Average of Total", value: "56.66" },
@@ -105,10 +98,10 @@ describe("scenarios > visualizations > combo", () => {
     });
 
     // First circle of stacked area series
-    cartesianChartCircleWithColor("#98D9D9").eq(0).trigger("mousemove");
+    H.cartesianChartCircleWithColor("#98D9D9").eq(0).trigger("mousemove");
 
     // Check the tooltip shows only stacked areas series
-    assertEChartsTooltip({
+    H.assertEChartsTooltip({
       header: "2022",
       rows: [
         {
@@ -132,8 +125,8 @@ describe("scenarios > visualizations > combo", () => {
     });
 
     // First bar of stacked bar series
-    chartPathWithFillColor("#7172AD").eq(0).realHover();
-    assertEChartsTooltip({
+    H.chartPathWithFillColor("#7172AD").eq(0).realHover();
+    H.assertEChartsTooltip({
       header: "2022",
       rows: [
         {
@@ -166,6 +159,6 @@ describe("scenarios > visualizations > combo", () => {
     cy.findByTestId("chartsettings-sidebar").findByText("Stack - 100%").click();
 
     // Ensure y-axis has 100% tick
-    echartsContainer().findByText("100%");
+    H.echartsContainer().findByText("100%");
   });
 });

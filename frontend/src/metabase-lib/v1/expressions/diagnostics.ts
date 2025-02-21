@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import * as Lib from "metabase-lib";
 import type { Expr, Node } from "metabase-lib/v1/expressions/pratt";
@@ -12,14 +12,15 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
-  adjustCase,
+  adjustCaseOrIf,
+  adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
   useShorthands,
 } from "./recursive-parser";
-import { COMPARISON_OPS, LOGICAL_OPS, resolve } from "./resolver";
+import { resolve } from "./resolver";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
-import type { ErrorWithMessage } from "./types";
+import type { ErrorWithMessage, Token } from "./types";
 
 import {
   MBQL_CLAUSES,
@@ -28,13 +29,6 @@ import {
   parseMetric,
   parseSegment,
 } from "./index";
-
-type Token = {
-  type: number;
-  op: string;
-  start: number;
-  end: number;
-};
 
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
 export function countMatchingParentheses(tokens: Token[]) {
@@ -121,13 +115,6 @@ export function diagnose({
 
     if (isErrorWithMessage(mbqlOrError)) {
       return mbqlOrError;
-    }
-
-    if (startRule === "expression" && isBooleanExpression(mbqlOrError)) {
-      throw new ResolverError(
-        t`Custom columns do not support boolean expressions`,
-        mbqlOrError.node,
-      );
     }
   } catch (err) {
     if (isErrorWithMessage(err)) {
@@ -216,6 +203,18 @@ function prattCompiler({
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
+        const dimension = parseDimension(name, options);
+        const isNameKnown = Boolean(dimension);
+
+        if (isNameKnown) {
+          const error = c(
+            "{0} is an identifier of the field provided by user in a custom expression",
+          )
+            .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`;
+
+          throw new ResolverError(error, node);
+        }
+
         throw new ResolverError(t`Unknown Metric: ${name}`, node);
       }
 
@@ -244,7 +243,8 @@ function prattCompiler({
       adjustOptions,
       useShorthands,
       adjustOffset,
-      adjustCase,
+      adjustCaseOrIf,
+      adjustMultiArgOptions,
       expression =>
         resolve({
           expression,
@@ -259,16 +259,7 @@ function prattCompiler({
   return mbql;
 }
 
-function isBooleanExpression(
-  expr: unknown,
-): expr is [string, ...Expr[]] & { node?: Node } {
-  return (
-    Array.isArray(expr) &&
-    (LOGICAL_OPS.includes(expr[0]) || COMPARISON_OPS.includes(expr[0]))
-  );
-}
-
-function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
+export function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
   return (
     typeof err === "object" &&
     err != null &&

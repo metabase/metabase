@@ -51,7 +51,7 @@
      :quotes-preserve-case? (not (contains? #{:mysql :sqlserver} driver))
      :features              {:postgres-syntax        (isa? driver/hierarchy driver :postgres)
                              :square-bracket-quotes  (= :sqlserver driver)
-                             :unsupported-statements true
+                             :unsupported-statements false
                              :backslash-escape-char  true
                              ;; This will slow things down, but until we measure the difference, opt for correctness.
                              :complex-parsing        true}

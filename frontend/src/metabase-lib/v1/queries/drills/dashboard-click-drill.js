@@ -118,10 +118,15 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
     clickBehavior,
   );
 
-  const targetQuestion = new Question(
+  const baseQuestion = new Question(
     extraData.questions[targetId],
     question.metadata(),
   ).lockDisplay();
+  const targetQuestion =
+    // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations
+    baseQuestion.display() === "pivot"
+      ? baseQuestion
+      : baseQuestion.setQuery(Lib.ensureFilterStage(baseQuestion.query()));
 
   const parameters = _.chain(parameterMapping)
     .values()
@@ -142,9 +147,15 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
   const isTargetQuestionNative = Lib.queryDisplayInfo(
     targetQuestion.query(),
   ).isNative;
+  const originalQuestion = targetQuestion;
 
   return !isTargetQuestionNative
-    ? ML_Urls.getUrlWithParameters(targetQuestion, parameters, queryParams)
+    ? ML_Urls.getUrlWithParameters(
+        targetQuestion,
+        originalQuestion,
+        parameters,
+        queryParams,
+      )
     : `${ML_Urls.getUrl(targetQuestion)}?${querystring.stringify(queryParams)}`;
 }
 

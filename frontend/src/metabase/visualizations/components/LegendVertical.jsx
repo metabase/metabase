@@ -18,15 +18,9 @@ export default class LegendVertical extends Component {
   state = {
     overflowCount: 0,
     size: null,
-    listWidth: null,
   };
 
   listRef = createRef();
-
-  componentDidMount() {
-    const listWidth = this.listRef.current.getBoundingClientRect().width;
-    this.setState({ listWidth });
-  }
 
   componentDidUpdate(prevProps, prevState) {
     // Get the bounding rectangle of the chart widget to determine if
@@ -55,20 +49,6 @@ export default class LegendVertical extends Component {
         this.setState({ overflowCount, size });
       }
     }
-
-    const [previousSampleTitle] = prevProps.titles || [];
-    const [sampleTitle] = this.props.titles || [];
-
-    if (
-      sampleTitle &&
-      previousSampleTitle &&
-      previousSampleTitle.length !== sampleTitle.length
-    ) {
-      this.setState({ listWidth: null }, () => {
-        const listWidth = this.listRef.current.getBoundingClientRect().width;
-        this.setState({ listWidth });
-      });
-    }
   }
 
   render() {
@@ -95,7 +75,6 @@ export default class LegendVertical extends Component {
     return (
       <ol
         className={cx(className, LegendS.Legend, LegendS.vertical)}
-        style={{ width: this.state.listWidth }}
         ref={this.listRef}
       >
         {items.map((title, index) => {

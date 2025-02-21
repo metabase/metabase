@@ -25,9 +25,9 @@ export const StaticEmbeddingOptionCard = ({
 
   const upgradeText = jt`A "powered by Metabase" banner appears on static embeds. You can ${(
     <ExternalLink key="upgrade-link" href={upgradeUrl}>
-      {t`upgrade to a paid plan`}
+      {t`upgrade to a specific paid plan`}
     </ExternalLink>
-  )} to remove it.`;
+  )} which removes it.`;
 
   return (
     <EmbeddingOption
@@ -41,7 +41,7 @@ export const StaticEmbeddingOptionCard = ({
         )
       }`}
     >
-      <Group position="apart" align="center" w="100%">
+      <Group justify="space-between" align="center" w="100%">
         <LinkButton
           variant="default"
           to={"/admin/settings/embedding-in-other-applications/standalone"}

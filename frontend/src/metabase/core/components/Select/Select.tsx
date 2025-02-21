@@ -26,6 +26,7 @@ const MIN_ICON_WIDTH = 20;
 
 export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
   className?: string;
+  containerClassName?: string;
 
   options?: TOption[];
   sections?: SelectSection<TOption>[];
@@ -236,6 +237,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
     const {
       buttonProps,
       className,
+      containerClassName,
       placeholder,
       searchProp,
       searchCaseInsensitive,
@@ -269,10 +271,10 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           this.props.triggerElement || (
             <SelectButton
               ref={this.selectButtonRef}
-              className={CS.flexFull}
               hasValue={selectedNames.length > 0}
               disabled={disabled}
               {...buttonProps}
+              className={CS.flexFull}
             >
               {this.props.buttonText
                 ? this.props.buttonText
@@ -290,6 +292,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
         onClose={composeEventHandlers(onClose, this.handleClose)}
         triggerClasses={cx(CS.flex, className)}
         isInitiallyOpen={isInitiallyOpen}
+        containerClassName={containerClassName}
         disabled={disabled}
         verticalAttachments={["top", "bottom"]}
         // keep the popover from jumping around one its been opened,

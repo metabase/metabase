@@ -20,7 +20,7 @@ If you are having problems with a regular [filter widget][filter-widget-gloss], 
 
 1. Update the card's query to change the regular variable to a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable.
 
-See [Limitations of linking filters](../dashboards/filters.md#limitations-of-linking-filters)
+See [Limitations of linking filters](../dashboards/linked-filters.md#limitations-of-linked-filters).
 
 ## Do you understand the directionality of linked filters?
 
@@ -69,6 +69,6 @@ See [Limitations of linking filters](../dashboards/filters.md#limitations-of-lin
 
 [filter-widget-gloss]: https://www.metabase.com/glossary/filter_widget
 [foreign-key-gloss]: https://www.metabase.com/glossary/foreign_key
-[join-types]: https://www.metabase.com/learn/sql-questions/sql-join-types.html
-[learn-linking]: https://www.metabase.com/learn/dashboards/linking-filters.html
+[join-types]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-join-types
+[learn-linking]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/linking-filters.html
 [linked-filter-gloss]: https://www.metabase.com/glossary/linked_filter

@@ -1,12 +1,14 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 
-import { Option } from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
+import { Select, Stack } from "metabase/ui";
+import {
+  decodeWidgetValue,
+  encodeWidgetValue,
+} from "metabase/visualizations/lib/settings/widgets";
 
-import { SelectWithHighlightingIcon } from "./ChartSettingSelect.styled";
-
-const ChartSettingSelect = ({
+export const ChartSettingSelect = ({
   // Use null if value is undefined. If we pass undefined, Select will create an
   // uncontrolled component because it's wrapped with Uncontrollable.
   value = null,
@@ -17,27 +19,67 @@ const ChartSettingSelect = ({
   placeholder,
   placeholderNoOptions,
   id,
-  ...props
-}) => (
-  <SelectWithHighlightingIcon
-    className={cx(className, CS.block)}
-    disabled={
-      options.length === 0 ||
-      (options.length === 1 && options[0].value === value)
-    }
-    value={value}
-    onChange={e => onChange(e.target.value)}
-    placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
-    isInitiallyOpen={isInitiallyOpen}
-    buttonProps={{ id }}
-    {...props}
-  >
-    {options.map(option => (
-      <Option key={option.value} name={option.name} value={option.value}>
-        {option.name}
-      </Option>
-    ))}
-  </SelectWithHighlightingIcon>
-);
+  searchProp,
+  icon,
+  iconWidth,
+  pl,
+  pr,
+  leftSection,
+  rightSection,
+  rightSectionWidth,
+  styles,
+  w,
+  footer,
+  defaultDropdownOpened,
+}) => {
+  const disabled =
+    options.length === 0 ||
+    (options.length === 1 && options[0].value === value);
 
-export default ChartSettingSelect;
+  const data = options.map(({ name, value }) => ({
+    label: name,
+    value: encodeWidgetValue(value) || "",
+  }));
+
+  const dropdownComponent =
+    footer &&
+    (({ children }) => (
+      <Stack p={0} w="100%" gap={0}>
+        {children}
+        {footer}
+      </Stack>
+    ));
+  return (
+    <Select
+      px={0}
+      id={id}
+      data-testid="chart-setting-select"
+      className={cx(className, CS.block)}
+      data={data}
+      dropdownComponent={dropdownComponent}
+      disabled={disabled}
+      value={encodeWidgetValue(value)}
+      //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
+      onChange={v => onChange(decodeWidgetValue(v))}
+      placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
+      initiallyOpened={isInitiallyOpen}
+      searchable={!!searchProp}
+      comboboxProps={{
+        withinPortal: false,
+        floatingStrategy: "fixed",
+      }}
+      icon={icon}
+      iconWidth={iconWidth}
+      pl={pl}
+      pr={pr}
+      leftSection={leftSection}
+      rightSection={rightSection}
+      rightSectionProps={
+        rightSectionWidth ? { style: { width: rightSectionWidth } } : undefined
+      }
+      styles={styles}
+      w={w}
+      defaultDropdownOpened={defaultDropdownOpened}
+    />
+  );
+};

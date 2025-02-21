@@ -1,20 +1,6 @@
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createQuestion,
-  getTableId,
-  openOrdersTable,
-  openPeopleTable,
-  openProductsTable,
-  popover,
-  resetTestTable,
-  restore,
-  resyncDatabase,
-  tableHeaderClick,
-  visitPublicDashboard,
-  visitPublicQuestion,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 const {
   ORDERS,
@@ -51,7 +37,7 @@ const TEST_PEOPLE_QUESTION = {
 
 describe("scenarios > question > object details", { tags: "@slow" }, () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -75,7 +61,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       },
     };
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     drillPK({ id: 1 });
 
@@ -105,7 +91,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       },
     };
 
-    createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
     cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
 
     cy.log("Check object details for the first row");
@@ -152,7 +138,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       },
     };
 
-    createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     cy.findByRole("gridcell", { name: "3" }).should("be.visible").click();
 
@@ -164,7 +150,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   });
 
   it("handles browsing records by PKs", () => {
-    cy.createQuestion(TEST_QUESTION, { visitQuestion: true });
+    H.createQuestion(TEST_QUESTION, { visitQuestion: true });
     drillPK({ id: FIRST_ORDER_ID });
 
     assertOrderDetailView({ id: FIRST_ORDER_ID });
@@ -185,7 +171,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   });
 
   it("calculates a row after scrolling correctly (metabase#48323)", () => {
-    openOrdersTable();
+    H.openOrdersTable();
     cy.get(".ReactVirtualized__Grid").eq(1).scrollTo(0, 15000);
     cy.icon("expand").first().click();
     cy.findByRole("dialog")
@@ -194,8 +180,18 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .and("contain", "February 14, 2026, 10:12 AM");
   });
 
+  it("calculates a row after both vertical and horizontal scrolling correctly (metabase#51301)", () => {
+    H.openPeopleTable();
+    cy.get(".ReactVirtualized__Grid").eq(1).scrollTo(2000, 15000);
+    cy.icon("expand").first().realHover().click();
+    cy.findByRole("dialog")
+      .should("contain", "418")
+      .and("contain", "31942-31950 Oak Ridge Parkway")
+      .and("contain", "koss-ella@hotmail.com");
+  });
+
   it("handles browsing records by FKs (metabase#21756)", () => {
-    openOrdersTable();
+    H.openOrdersTable();
 
     drillFK({ id: 1 });
 
@@ -219,7 +215,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     const FILTERED_OUT_ID = 1;
 
-    cy.createQuestion(TEST_QUESTION).then(({ body: { id } }) => {
+    H.createQuestion(TEST_QUESTION).then(({ body: { id } }) => {
       cy.visit(`/question/${id}/${FILTERED_OUT_ID}`);
       cy.wait("@cardQuery");
       cy.findByRole("dialog").within(() => {
@@ -234,7 +230,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     // and has to be fetched separately
     const OUT_OF_RANGE_ID = 2150;
 
-    cy.createQuestion(TEST_PEOPLE_QUESTION).then(({ body: { id } }) => {
+    H.createQuestion(TEST_PEOPLE_QUESTION).then(({ body: { id } }) => {
       cy.visit(`/question/${id}/${OUT_OF_RANGE_ID}`);
       cy.wait("@cardQuery");
       cy.findByTestId("object-detail").within(() => {
@@ -248,7 +244,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     const PRODUCT_ID = 7;
     const EXPECTED_LINKED_ORDERS_COUNT = 92;
     const EXPECTED_LINKED_REVIEWS_COUNT = 8;
-    openProductsTable();
+    H.openProductsTable();
 
     drillPK({ id: 5 });
 
@@ -281,7 +277,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   it("should fetch linked entities data only once per entity type when reopening the modal (metabase#32720)", () => {
     cy.intercept("POST", "/api/dataset", cy.spy().as("fetchDataset"));
 
-    openProductsTable();
+    H.openProductsTable();
     cy.get("@fetchDataset").should("have.callCount", 1);
 
     drillPK({ id: 5 });
@@ -297,11 +293,12 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   });
 
   it("should not offer drill-through on the object detail records (metabase#20560)", () => {
-    openPeopleTable({ limit: 2 });
+    H.openPeopleTable({ limit: 2 });
 
     drillPK({ id: 2 });
     cy.url().should("contain", "objectId=2");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findByTestId("object-detail")
       .findAllByText("Domenica Williamson")
       .last()
@@ -320,7 +317,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       semantic_type: "type/PK",
     });
 
-    openProductsTable({ limit: 5 });
+    H.openProductsTable({ limit: 5 });
 
     cy.findByTestId("TableInteractive-root")
       .findByTextEnsureVisible("Rustic Paper Wallet")
@@ -364,7 +361,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         type: "query",
       },
     };
-    visitQuestionAdhoc(questionDetails);
+    H.visitQuestionAdhoc(questionDetails);
 
     cy.findByTestId("object-detail");
 
@@ -374,6 +371,22 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Item 1 of/i).should("be.visible");
   });
+
+  it("should not call GET /api/action endpoint for ad-hoc questions (metabase#50266)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/action", cy.spy().as("getActions"));
+
+    cy.visit("/");
+    H.browseDatabases().click();
+    cy.findByRole("heading", { name: "Sample Database" }).click();
+    cy.findByRole("heading", { name: "Orders" }).click();
+    cy.wait("@dataset");
+    cy.findAllByTestId("cell-data").eq(11).click();
+    H.popover().findByText("View details").click();
+    cy.wait(["@dataset", "@dataset", "@dataset"]); // object detail + Orders relationship + Reviews relationship
+
+    cy.get("@getActions").should("have.callCount", 0);
+  });
 });
 
 function drillPK({ id }) {
@@ -382,7 +395,7 @@ function drillPK({ id }) {
 
 function drillFK({ id }) {
   cy.get(".test-Table-FK").contains(id).first().click();
-  popover().findByText("View details").click();
+  H.popover().findByText("View details").click();
 }
 
 function assertDetailView({ id, entityName, byFK = false }) {
@@ -413,8 +426,8 @@ function getNextObjectDetailButton() {
 
 function changeSorting(columnName, direction) {
   const icon = direction === "asc" ? "arrow_up" : "arrow_down";
-  tableHeaderClick(columnName);
-  popover().within(() => {
+  H.tableHeaderClick(columnName);
+  H.popover().within(() => {
     cy.icon(icon).click();
   });
   cy.wait("@dataset");
@@ -428,14 +441,14 @@ function changeSorting(columnName, direction) {
       const TEST_TABLE = "composite_pk_table";
 
       beforeEach(() => {
-        resetTestTable({ type: dialect, table: TEST_TABLE });
-        restore(`${dialect}-writable`);
+        H.restore(`${dialect}-writable`);
+        H.resetTestTable({ type: dialect, table: TEST_TABLE });
         cy.signInAsAdmin();
-        resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
       });
 
       it("can show object detail modal for items with composite keys", () => {
-        getTableId({ name: TEST_TABLE }).then(tableId => {
+        H.getTableId({ name: TEST_TABLE }).then(tableId => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
@@ -452,7 +465,7 @@ function changeSorting(columnName, direction) {
         // this bug only manifests on tables without single integer primary keys
         // it is also reproducible on tables with string keys
 
-        getTableId({ name: TEST_TABLE }).then(tableId => {
+        H.getTableId({ name: TEST_TABLE }).then(tableId => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
@@ -481,14 +494,14 @@ function changeSorting(columnName, direction) {
       const TEST_TABLE = "no_pk_table";
 
       beforeEach(() => {
-        resetTestTable({ type: dialect, table: TEST_TABLE });
-        restore(`${dialect}-writable`);
+        H.restore(`${dialect}-writable`);
+        H.resetTestTable({ type: dialect, table: TEST_TABLE });
         cy.signInAsAdmin();
-        resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
       });
 
       it("can show object detail modal for items with no primary key", () => {
-        getTableId({ name: TEST_TABLE }).then(tableId => {
+        H.getTableId({ name: TEST_TABLE }).then(tableId => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
@@ -506,14 +519,14 @@ function changeSorting(columnName, direction) {
 
 describe("Object Detail > public", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("can view a public object detail question", () => {
-    cy.createQuestion({ ...TEST_QUESTION, display: "object" }).then(
+    H.createQuestion({ ...TEST_QUESTION, display: "object" }).then(
       ({ body: { id: questionId } }) => {
-        visitPublicQuestion(questionId);
+        H.visitPublicQuestion(questionId);
       },
     );
     cy.icon("warning").should("not.exist");
@@ -529,10 +542,10 @@ describe("Object Detail > public", () => {
   });
 
   it("can view an object detail question on a public dashboard", () => {
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: { ...TEST_QUESTION, display: "object" },
     }).then(({ body: { dashboard_id } }) => {
-      visitPublicDashboard(dashboard_id);
+      H.visitPublicDashboard(dashboard_id);
     });
 
     cy.icon("warning").should("not.exist");

@@ -13,7 +13,6 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
   columnsAreValid,
   getDefaultDimensionsAndMetrics,
-  getFriendlyName,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -231,7 +230,7 @@ export const getDefaultXAxisTitle = (
     return null;
   }
 
-  return getFriendlyName(dimensionColumn);
+  return dimensionColumn.display_name;
 };
 
 export const getIsXAxisLabelEnabledDefault = () => true;
@@ -419,18 +418,24 @@ export function getAvailableAdditionalColumns(
     .flatMap(singleSeries => {
       return singleSeries.data.cols;
     })
-    .filter(column => isMetric(column) && !alreadyIncludedColumns.has(column));
+    .filter(column => !alreadyIncludedColumns.has(column));
 }
 
 export function getComputedAdditionalColumnsValue(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
+  const isScatter = rawSeries[0].card.display === "scatter";
+
   const availableAdditionalColumnKeys = new Set(
     getAvailableAdditionalColumns(rawSeries, settings).map(column =>
       getColumnKey(column),
     ),
   );
+
+  if (!settings["graph.tooltip_columns"] && isScatter) {
+    return Array.from(availableAdditionalColumnKeys);
+  }
 
   const filteredStoredColumns = (
     settings["graph.tooltip_columns"] ?? []

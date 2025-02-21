@@ -78,20 +78,16 @@
           form))
       (dissoc query :with)))))
 
-;; TODO - fixme
 (def ^:private ^{:arglists '([])} application-db-default-timezone
   ;; cache the application DB's default timezone for an hour. I don't expect this information to change *ever*,
   ;; really, but it seems like it is possible that it *could* change. Determining this for every audit query seems
   ;; wasteful however.
-  ;;
-  ;; This is cached by db-type and the JDBC connection spec in case that gets changed/swapped out for one reason or
-  ;; another
-  (let [timezone (memoize/ttl
-                  #_{:clj-kondo/ignore [:deprecated-var]}
-                  sql-jdbc.sync/db-default-timezone
-                  :ttl/threshold (u/hours->ms 1))]
+  (mdb/memoize-for-application-db
+   (memoize/ttl
     (fn []
-      (timezone (mdb/db-type) {:datasource (mdb/app-db)}))))
+      #_{:clj-kondo/ignore [:deprecated-var]}
+      (sql-jdbc.sync/db-default-timezone (mdb/db-type) {:datasource (mdb/app-db)}))
+    :ttl/threshold (u/hours->ms 1))))
 
 (defn- compile-honeysql [driver honeysql-query]
   (try

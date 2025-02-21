@@ -53,15 +53,7 @@ describe("metabase-lib/v1/expressions/diagnostics", () => {
 
   it("should show the correct number of function arguments in a custom expression", () => {
     expect(
-      diagnose({ source: "contains([Category])", startRule: "boolean" })
-        .message,
-    ).toEqual("Function contains expects 2 arguments");
-  });
-
-  it("should show an error for custom columns with a root boolean expression", () => {
-    expect(
-      diagnose({ source: "[Canceled] = [Returned]", startRule: "expression" })
-        .message,
-    ).toEqual("Custom columns do not support boolean expressions");
+      diagnose({ source: "between([Tax])", startRule: "boolean" }).message,
+    ).toEqual("Function between expects 3 arguments");
   });
 });

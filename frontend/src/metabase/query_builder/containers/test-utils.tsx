@@ -15,6 +15,7 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupFieldValuesEndpoints,
+  setupGetUserKeyValueEndpoint,
   setupModelIndexEndpoints,
   setupPropertiesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
@@ -30,7 +31,7 @@ import {
   within,
 } from "__support__/ui";
 import NewItemMenu from "metabase/containers/NewItemMenu";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -59,7 +60,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import type { RequestState, State } from "metabase-types/store";
 
-import QueryBuilder from "./QueryBuilder";
+import { QueryBuilder } from "./QueryBuilder";
 
 export const TEST_DB = createSampleDatabase();
 
@@ -207,7 +208,7 @@ const TestQueryBuilder = (
   props: ComponentPropsWithoutRef<typeof QueryBuilder>,
 ) => {
   return (
-    <div>
+    <div data-testid="test-container">
       <link rel="icon" />
       <QueryBuilder {...props} />
     </div>
@@ -248,6 +249,11 @@ export const setup = async ({
   );
   setupRecentViewsEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([]);
+  setupGetUserKeyValueEndpoint({
+    namespace: "user_acknowledgement",
+    key: "turn_into_model_modal",
+    value: false,
+  });
 
   const metadata = createMockCardQueryMetadata({ databases: [TEST_DB] });
   setupAdhocQueryMetadataEndpoint(metadata);
@@ -271,25 +277,27 @@ export const setup = async ({
     container,
     history,
   } = renderWithProviders(
-    <Route>
-      <Route path="/" component={TestHome} />
-      <Route path="/model">
-        <Route path="new" component={NewModelOptions} />
-        <Route path="query" component={TestQueryBuilder} />
-        <Route path="metadata" component={TestQueryBuilder} />
-        <Route path="notebook" component={TestQueryBuilder} />
-        <Route path=":slug/query" component={TestQueryBuilder} />
-        <Route path=":slug/metadata" component={TestQueryBuilder} />
-        <Route path=":slug/notebook" component={TestQueryBuilder} />
+    <div>
+      <Route>
+        <Route path="/" component={TestHome} />
+        <Route path="/model">
+          <Route path="new" component={NewModelOptions} />
+          <Route path="query" component={TestQueryBuilder} />
+          <Route path="metadata" component={TestQueryBuilder} />
+          <Route path="notebook" component={TestQueryBuilder} />
+          <Route path=":slug/query" component={TestQueryBuilder} />
+          <Route path=":slug/metadata" component={TestQueryBuilder} />
+          <Route path=":slug/notebook" component={TestQueryBuilder} />
+        </Route>
+        <Route path="/question">
+          <IndexRoute component={TestQueryBuilder} />
+          <Route path="notebook" component={TestQueryBuilder} />
+          <Route path=":slug" component={TestQueryBuilder} />
+          <Route path=":slug/notebook" component={TestQueryBuilder} />
+        </Route>
+        <Route path="/redirect" component={TestRedirect} />
       </Route>
-      <Route path="/question">
-        <IndexRoute component={TestQueryBuilder} />
-        <Route path="notebook" component={TestQueryBuilder} />
-        <Route path=":slug" component={TestQueryBuilder} />
-        <Route path=":slug/notebook" component={TestQueryBuilder} />
-      </Route>
-      <Route path="/redirect" component={TestRedirect} />
-    </Route>,
+    </div>,
     {
       withRouter: true,
       initialRoute,

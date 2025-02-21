@@ -4,14 +4,14 @@ import type { Card, Dataset, ParameterQueryObject } from "metabase-types/api";
 
 interface Options {
   questionId: number;
-  parameterValues?: Record<string, string | number>;
+  sqlParameters?: Record<string, string | number>;
   cancelDeferred?: Deferred;
 }
 
 type ParameterQueryInput = { id: string } & ParameterQueryObject;
 
 export async function loadStaticQuestion(options: Options) {
-  const { questionId, parameterValues, cancelDeferred } = options;
+  const { questionId, sqlParameters, cancelDeferred } = options;
 
   let card: Card | null;
   let result: Dataset | null;
@@ -22,17 +22,17 @@ export async function loadStaticQuestion(options: Options) {
     CardApi.get({ cardId: questionId }, { cancelled }),
 
     // Query the card in parallel when no parameters are provided.
-    !parameterValues && CardApi.query({ cardId: questionId }, { cancelled }),
+    !sqlParameters && CardApi.query({ cardId: questionId }, { cancelled }),
   ]);
 
-  if (parameterValues && card?.parameters) {
+  if (sqlParameters && card?.parameters) {
     const parameters: ParameterQueryInput[] = card.parameters
       .filter(parameter => parameter.target)
       .map(parameter => ({
         id: parameter.id,
         type: parameter.type,
         target: parameter.target!,
-        value: parameterValues[parameter.slug],
+        value: sqlParameters[parameter.slug],
       }));
 
     result = await CardApi.query(

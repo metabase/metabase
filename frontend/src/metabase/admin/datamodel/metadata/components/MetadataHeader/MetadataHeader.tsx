@@ -1,12 +1,12 @@
 import cx from "classnames";
 import { useLayoutEffect } from "react";
-import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";

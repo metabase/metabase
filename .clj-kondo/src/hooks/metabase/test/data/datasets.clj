@@ -1,11 +1,13 @@
 (ns hooks.metabase.test.data.datasets
-  (:require [clj-kondo.hooks-api :as hooks]
-            [clojure.set :as set]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.set :as set]
+   [hooks.common]))
 
 (defn- only-core-drivers?
   "Whether we're for sure only testing against the 'core' drivers that are also app DB types: `:postgres`, `:mysql`, or
-  `:h2`. Tests like these are ok to mark `:mb/once` or `:mb/driver-tests` since we always run the full test suite
-  against app DB drivers anyway."
+  `:h2`. Tests like these are ok to mark `:mb/driver-tests` since we always run the full test suite against app DB
+  drivers anyway."
   [node]
   (let [drivers (hooks/sexpr (second (:children node)))
         drivers (cond
@@ -14,14 +16,6 @@
                   :else              nil)]
     (when drivers
       (empty? (set/difference drivers #{:h2 :mysql :postgres})))))
-
-(defn- validate-mb-once [x]
-  (when (:mb/once (meta (:ns x)))
-    (hooks/reg-finding!
-     (assoc (meta (:ns x))
-            :message (str "You should not use test-driver or test-drivers in a namespace marked ^:mb/once"
-                          " [:metabase/validate-mb-once]")
-            :type :metabase/validate-mb-once))))
 
 (defn- validate-mb-driver-tests [x]
   (when-not (:mb/driver-tests (meta (:ns x)))
@@ -33,7 +27,6 @@
 
 (defn- validate-ns-tags [x]
   (when-not (only-core-drivers? (:node x))
-    (validate-mb-once x)
     (validate-mb-driver-tests x)))
 
 (defn test-drivers [x]
@@ -45,7 +38,7 @@
                     (hooks/token-node 'do)
                     test-drivers
                     (-> drivers-expr
-                        (vary-meta update :clj-kondo/ignore #(conj (vec %) :unused-value)))
+                        (hooks.common/update-ignored-linters conj :unused-value))
                     body))
                   (with-meta (meta node)))))]
     (update x :node update-node)))

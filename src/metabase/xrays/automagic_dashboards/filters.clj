@@ -2,7 +2,7 @@
   (:require
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :as field]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
@@ -103,7 +103,7 @@
   [dashboard dimensions max-filters]
   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                        (:dashcards dashboard))))]
-              (field/with-targets (t2/select Field
+              (field/with-targets (t2/select :model/Field
                                              :fk_target_field_id [:not= nil]
                                              :table_id [:in table-ids])))]
     (->> dimensions

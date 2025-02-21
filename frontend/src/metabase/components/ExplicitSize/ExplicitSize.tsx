@@ -4,18 +4,18 @@ import type {
   CSSProperties,
   ComponentType,
   ForwardedRef,
+  MutableRefObject,
   PropsWithoutRef,
 } from "react";
-import React, { Component } from "react";
-import ReactDOM from "react-dom";
+import React, { Component, createRef } from "react";
 import _ from "underscore";
 
-import { waitTimeContext } from "metabase/context/wait-time";
 import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
+import { delay } from "metabase/lib/delay";
 import resizeObserver from "metabase/lib/resize-observer";
 
-const WAIT_TIME = 300;
+const WAIT_TIME = delay(300);
 
 const REFRESH_MODE = {
   throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
@@ -47,6 +47,9 @@ type InnerProps = {
 
 type ExplicitSizeOuterProps<T> = Omit<T, "width" | "height">;
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 function ExplicitSize<T>({
   selector,
   wrapped = false,
@@ -56,8 +59,6 @@ function ExplicitSize<T>({
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
     class WrappedComponent extends Component<T & InnerProps> {
-      static contextType = waitTimeContext;
-
       static displayName = `ExplicitSize[${displayName}]`;
 
       state: SizeState = {
@@ -75,11 +76,13 @@ function ExplicitSize<T>({
 
       _updateSize: () => void;
 
-      constructor(props: T & InnerProps, context: unknown) {
-        super(props, context);
+      elementRef: MutableRefObject<HTMLDivElement | null> = createRef();
+
+      constructor(props: T & InnerProps) {
+        super(props);
 
         this._printMediaQuery = window.matchMedia && window.matchMedia("print");
-        if (this.context === 0) {
+        if (WAIT_TIME === 0) {
           this._refreshMode = "none";
         } else {
           this._refreshMode =
@@ -91,10 +94,11 @@ function ExplicitSize<T>({
 
       _getElement() {
         try {
-          let element = ReactDOM.findDOMNode(this);
+          let element = this.elementRef.current;
           if (selector && element instanceof Element) {
             element = element.querySelector(selector) || element;
           }
+
           return element instanceof Element ? element : null;
         } catch (e) {
           console.error(e);
@@ -111,6 +115,11 @@ function ExplicitSize<T>({
       }
 
       componentDidUpdate() {
+        // Check if component previously had no rendered output (this._currentElement was null).
+        // Re-run size calculations since the component may now have rendered content with dimensions.
+        if (!this._currentElement) {
+          this.timeoutId = setTimeout(this._updateSize, 0);
+        }
         // update ResizeObserver if element changes
         this._updateResizeObserver();
         this._updateRefreshMode();
@@ -221,7 +230,11 @@ function ExplicitSize<T>({
           const { className, style = {}, ...rest } = props;
           const { width, height } = this.state;
           return (
-            <div className={cx(className, CS.relative)} style={style}>
+            <div
+              className={cx(className, CS.relative)}
+              style={style}
+              ref={this.elementRef}
+            >
               <ComposedComponent
                 ref={forwardedRef}
                 style={{ position: "absolute", top: 0, left: 0, width, height }}
@@ -233,7 +246,17 @@ function ExplicitSize<T>({
         } else {
           return (
             <ComposedComponent
-              ref={forwardedRef}
+              ref={(el: HTMLDivElement) => {
+                if (forwardedRef) {
+                  if (typeof forwardedRef === "function") {
+                    forwardedRef(el);
+                  } else {
+                    forwardedRef.current = el;
+                  }
+                }
+
+                this.elementRef.current = el;
+              }}
               {...(props as unknown as T)}
               {...this.state}
             />

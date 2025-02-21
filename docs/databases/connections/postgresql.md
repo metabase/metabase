@@ -6,9 +6,15 @@ redirect_from:
 
 # PostgreSQL
 
+> This page covers connecting to PostgreSQL as a _data warehouse_. For using PostgreSQL as Metabase's _application database_, see [Configuring the Metabase application database](../../installation-and-operation/configuring-application-database.md).
+
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
 Fill out the fields for that database, and click **Save changes** at the bottom.
+
+## Supported versions
+
+Metabase supports the oldest supported version of PostgreSQL through the latest stable version. See [PostgreSQL versions](https://www.postgresql.org/support/versioning/).
 
 ## Settings
 
@@ -37,6 +43,25 @@ The database username for the account that you want to use to connect to your da
 ### Password
 
 The password for the username that you use to connect to the database.
+
+### Use an authentication provider
+
+{% include plans-blockquote.html feature="Authenticating with a provider" %}
+
+Instead of a password, you can authenticate with a supported provider.
+
+Only for self-hosted Pro and Enterprise plans.
+
+#### Azure Managed Identity
+
+To use Azure Managed Identity, you'll need to input your [client ID](https://learn.microsoft.com/en-us/previous-versions/azure/postgresql/single-server/how-to-connect-with-managed-identity#retrieving-the-access-token-from-azure-instance-metadata-service).
+
+#### Oauth
+
+To use Oauth as a provider, you'll need to input your:
+
+- Auth token URL
+- Auth token request headers (a JSON map)
 
 ### Schemas
 
@@ -83,11 +108,7 @@ See the PostgreSQL docs for a table about the different [SSL Modes](https://jdbc
 
 If you set the SSL Mode to either "verify-ca" or "verify-full", you'll need to specify a root certificate (PEM). You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
-### Use an SSH tunnel
-
-See our [guide to SSH tunneling](../ssh-tunnel.md).
-
-### Authenticate client certificate
+#### Authenticate client certificate
 
 Toggle on to bring up client certificate options.
 
@@ -109,6 +130,12 @@ openssl pkcs8 -topk8 -inform PEM -outform DER -in client-key.pem -out client-key
 
 Note: if you're using GCP and you managed to issue client certificates, everything will be given in PEM format, you only need to transform the client-key.pem into a client-key.der for the "SSL Client Key"
 
+### Use an SSH tunnel
+
+See our [guide to SSH tunneling](../ssh-tunnel.md).
+
+## Advanced settings
+
 ### Unfold JSON Columns
 
 For PostgreSQL databases, Metabase can unfold JSON columns into component fields to yield a table where each JSON key becomes a column. JSON unfolding is on by default, but you can turn off JSON unfolding if performance is slow.
@@ -127,9 +154,9 @@ PostgreSQL connection URIs expect [percent-encoding](https://developer.mozilla.o
 
 ### Re-run queries for simple explorations
 
-Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
+Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when Metabase syncs and scans
 

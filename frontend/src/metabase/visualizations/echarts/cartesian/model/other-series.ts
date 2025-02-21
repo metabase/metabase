@@ -100,55 +100,75 @@ const AGGREGATION_FN_MAP: Record<
   AggregationType,
   { fn: (values: number[]) => number; label: string }
 > = {
-  count: {
-    label: t`Total`,
-    fn: sum,
+  get count() {
+    return {
+      label: t`Total`,
+      fn: sum,
+    };
   },
-  sum: {
-    label: t`Total`,
-    fn: sum,
+  get sum() {
+    return {
+      label: t`Total`,
+      fn: sum,
+    };
   },
-  "cum-sum": {
-    label: t`Total`,
-    fn: sum,
+  get "cum-sum"() {
+    return {
+      label: t`Total`,
+      fn: sum,
+    };
   },
-  "cum-count": {
-    label: t`Total`,
-    fn: sum,
+  get "cum-count"() {
+    return {
+      label: t`Total`,
+      fn: sum,
+    };
   },
-  avg: {
-    label: t`Average`,
-    fn: values => sum(values) / values.length,
+  get avg() {
+    return {
+      label: t`Average`,
+      fn: (values: number[]) => sum(values) / values.length,
+    };
   },
-  distinct: {
-    label: t`Distinct values`,
-    fn: values => new Set(values).size,
+  get distinct() {
+    return {
+      label: t`Distinct values`,
+      fn: (values: number[]) => new Set(values).size,
+    };
   },
-  min: {
-    label: t`Min`,
-    fn: values => Math.min(...values),
+  get min() {
+    return {
+      label: t`Min`,
+      fn: (values: number[]) => Math.min(...values),
+    };
   },
-  max: {
-    label: t`Max`,
-    fn: values => Math.max(...values),
+  get max() {
+    return {
+      label: t`Max`,
+      fn: (values: number[]) => Math.max(...values),
+    };
   },
-  median: {
-    label: t`Median`,
-    fn: values => {
-      const sortedValues = values.sort((a, b) => a - b);
-      const middleIndex = Math.floor(sortedValues.length / 2);
-      return sortedValues.length % 2
-        ? sortedValues[middleIndex]
-        : (sortedValues[middleIndex - 1] + sortedValues[middleIndex]) / 2;
-    },
+  get median() {
+    return {
+      label: t`Median`,
+      fn: (values: number[]) => {
+        const sortedValues = values.sort((a, b) => a - b);
+        const middleIndex = Math.floor(sortedValues.length / 2);
+        return sortedValues.length % 2
+          ? sortedValues[middleIndex]
+          : (sortedValues[middleIndex - 1] + sortedValues[middleIndex]) / 2;
+      },
+    };
   },
-  stddev: {
-    label: t`Standard deviation`,
-    fn: values => {
-      const mean = sum(values) / values.length;
-      const squaredDifferences = values.map(v => (v - mean) ** 2);
-      const variance = sum(squaredDifferences) / values.length;
-      return Math.sqrt(variance);
-    },
+  get stddev() {
+    return {
+      label: t`Standard deviation`,
+      fn: (values: number[]) => {
+        const mean = sum(values) / values.length;
+        const squaredDifferences = values.map(v => (v - mean) ** 2);
+        const variance = sum(squaredDifferences) / values.length;
+        return Math.sqrt(variance);
+      },
+    };
   },
 };

@@ -1,5 +1,8 @@
 import * as d3 from "d3";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
 import Humanize from "humanize-plus";
+dayjs.extend(duration);
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
@@ -80,6 +83,8 @@ export function formatNumber(
     return formatNumberCompact(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
+  } else if (options.number_style === "duration") {
+    return formatDuration(number, options);
   } else {
     try {
       let nf;
@@ -183,8 +188,10 @@ export function numberFormatterForOptions(options: FormatNumberOptionsType) {
 }
 
 function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
+  const separators = options["number_separators"];
+
   if (options.number_style === "percent") {
-    return formatNumberCompactWithoutOptions(value * 100) + "%";
+    return formatNumberCompactWithoutOptions(value * 100, separators) + "%";
   }
   if (options.number_style === "currency") {
     try {
@@ -205,11 +212,11 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
       return (
         valueSign +
         currency +
-        formatNumberCompactWithoutOptions(Math.abs(value))
+        formatNumberCompactWithoutOptions(Math.abs(value), separators)
       );
     } catch (e) {
       // Intl.NumberFormat failed, so we fall back to a non-currency number
-      return formatNumberCompactWithoutOptions(value);
+      return formatNumberCompactWithoutOptions(value, separators);
     }
   }
   if (options.number_style === "scientific") {
@@ -220,21 +227,28 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
       minimumFractionDigits: 1,
     });
   }
-  return formatNumberCompactWithoutOptions(value);
+  return formatNumberCompactWithoutOptions(value, separators);
 }
 
-function formatNumberCompactWithoutOptions(value: number) {
+function formatNumberCompactWithoutOptions(value: number, separators?: string) {
   if (value === 0) {
     // 0 => 0
     return "0";
-  } else if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
+  }
+
+  let formatted;
+  if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
     // 0.1 => 0.1
-    return PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
+    formatted = PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
   } else {
     // 1 => 1
     // 1000 => 1K
-    return Humanize.compactInteger(Math.round(value), 1);
+    formatted = Humanize.compactInteger(Math.round(value), 1);
   }
+
+  return separators !== DEFAULT_NUMBER_SEPARATORS
+    ? replaceNumberSeparators(formatted, separators)
+    : formatted;
 }
 
 // replaces the decimal and grouping separators with those specified by a NumberSeparators option
@@ -273,6 +287,29 @@ function formatNumberScientific(
   } else {
     return exp;
   }
+}
+
+function formatDuration(value: number, _options: FormatNumberOptionsType) {
+  const duration = dayjs.duration(value);
+  let str = "";
+
+  if (duration.days() > 0) {
+    str += `${duration.days()}d `;
+  }
+
+  if (duration.hours() > 0) {
+    str += `${duration.hours()}h `;
+  }
+
+  if (duration.minutes() > 0) {
+    str += `${duration.minutes()}m `;
+  }
+
+  if (duration.seconds() > 0) {
+    str += `${duration.seconds()}s `;
+  }
+
+  return str.trim();
 }
 
 /**

@@ -46,7 +46,7 @@
   [source-metadata]
   (->> source-metadata
        (map :field_ref)
-       (group-by #(some-> % (mbql.u/update-field-options dissoc :binning :temporal-unit)))
+       (group-by #(some-> % (mbql.u/update-field-options dissoc :binning :temporal-unit :original-temporal-unit)))
        (reduce-kv (fn [duplicates ref-key field-refs]
                     (cond-> duplicates
                       (and ref-key (next field-refs))

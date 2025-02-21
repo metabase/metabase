@@ -9,6 +9,7 @@
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
@@ -70,9 +71,9 @@
     :query-type   :aggregated
     :query-kinds [:mbql]
     :column-name  "count"
-    :custom-query (-> (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :orders))
+    :custom-query (-> (lib/query (lib.tu/metadata-provider-with-mock-cards) ((lib.tu/mock-cards) :orders))
                       (lib/aggregate (lib/count))
-                      (lib/breakout (lib.metadata/field lib.tu/metadata-provider-with-mock-cards
+                      (lib/breakout (lib.metadata/field (lib.tu/metadata-provider-with-mock-cards)
                                                         (meta/id :orders :created-at))))
     :custom-row   {"CREATED_AT" "2023-12-01"
                    "count"      9}
@@ -86,6 +87,29 @@
       :query-kinds [:mbql]
       :column-name "max"
       :expected    #(->> % (map :type) (filter #{:drill-thru/underlying-records}) count (= 1))})))
+
+(deftest ^:parallel returns-underlying-records-for-multi-stage-query-test
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type   :drill-thru/underlying-records
+    :click-type   :cell
+    :query-type   :aggregated
+    :query-kinds  [:mbql]
+    :column-name  "count"
+    :custom-query #(lib.drill-thru.tu/append-filter-stage % "count")
+    :expected     {:type       :drill-thru/underlying-records
+                   :row-count  77
+                   :table-name "Orders"
+                   ;; the "underlying" aggregation ref is reconstructed.
+                   :column-ref [:aggregation {:lib/source-name "count"} string?]
+                   ;; the "underlying" dimensions are reconstructed from the row.
+                   :dimensions [{:column     {:name       "PRODUCT_ID"
+                                              :lib/source :source/previous-stage}
+                                 :column-ref [:field {} "PRODUCT_ID"]
+                                 :value      3}
+                                {:column     {:name       "CREATED_AT"
+                                              :lib/source :source/previous-stage}
+                                 :column-ref [:field {} "CREATED_AT"]
+                                 :value      "2022-12-01T00:00:00+02:00"}]}}))
 
 (def ^:private last-month
   #?(:cljs (let [now    (js/Date.)
@@ -351,7 +375,7 @@
   (testing "should use the default row count for aggregations with negative values (#36143)"
     (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                         (lib/aggregate (lib/count))
-                        (lib/breakout (lib.metadata/field lib.tu/metadata-provider-with-mock-cards
+                        (lib/breakout (lib.metadata/field (lib.tu/metadata-provider-with-mock-cards)
                                                           (meta/id :orders :created-at))))
           count-col (m/find-first #(= (:name %) "count")
                                   (lib/returned-columns query))
@@ -386,7 +410,7 @@
                  :table-name "Orders"}
                 (lib/display-info query -1 drill)))))))
 
-(deftest ^:parallel nil-aggregation-value-test
+(deftest ^:parallel nil-aggregation-value-binned-test
   (testing "nil dimension value for binned column should return a valid query (#11345 #36581)"
     (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/aggregate (lib/count))
@@ -417,3 +441,120 @@
                                     {}
                                     [:field {:binning (symbol "nil #_\"key is not present.\"")} (meta/id :orders :discount)]]]}]}
               (lib/drill-thru query drill))))))
+
+(deftest ^:parallel nil-aggregation-value-unbinned-test
+  (testing "nil dimension value for unbinned column should return an is-null filter (#51751)"
+    (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (meta/field-metadata :products :category)))
+          count-col    (m/find-first #(= (:name %) "count")
+                                     (lib/returned-columns query))
+          _            (is (some? count-col))
+          category-col (m/find-first #(= (:name %) "CATEGORY")
+                                     (lib/returned-columns query))
+          _            (is (some? category-col))
+          context      {:column     count-col
+                        :column-ref (lib/ref count-col)
+                        :value      16845
+                        :row        [{:column     category-col
+                                      :column-ref (lib/ref category-col)
+                                      :value      nil}
+                                     {:column     count-col
+                                      :column-ref (lib/ref count-col)
+                                      :value      16845}]
+                        :dimensions [{:column     category-col
+                                      :column-ref (lib/ref category-col)
+                                      :value      nil}]}
+          drill (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                              (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (is (=? {:stages [{:filters [[:is-null {} [:field {} (meta/id :products :category)]]]}]}
+              (lib/drill-thru query drill))))))
+
+(deftest ^:parallel multi-stage-query-test
+  (testing "sum_where(subtotal, products.category = \"Doohickey\") over time with appended filter stage"
+    (let [base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                             (lib/aggregate (lib/sum-where
+                                             (meta/field-metadata :orders :subtotal)
+                                             (lib/= (meta/field-metadata :products :category)
+                                                    "Doohickey")))
+                             (lib/breakout (lib/with-temporal-bucket
+                                             (meta/field-metadata :orders :created-at)
+                                             :month))
+                             lib/append-stage)
+          sum-where-col  (m/find-first #(= (:name %) "sum_where_SUBTOTAL")
+                                       (lib/returned-columns base-query))
+          _              (is (some? sum-where-col))
+          created-at-col (m/find-first #(= (:name %) "CREATED_AT")
+                                       (lib/returned-columns base-query))
+          _              (is (some? created-at-col))
+          query          (lib/filter base-query (lib/> sum-where-col 0))
+          context        {:column     sum-where-col
+                          :column-ref (lib/ref sum-where-col)
+                          :value      16845
+                          :row        [{:column     sum-where-col
+                                        :column-ref (lib/ref sum-where-col)
+                                        :value      16845}
+                                       {:column     created-at-col
+                                        :column-ref (lib/ref created-at-col)
+                                        :value      "2023-12-01"}]}
+          drill          (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                       (lib/available-drill-thrus query context))]
+      (is (=? {:lib/type   :metabase.lib.drill-thru/drill-thru
+               :type       :drill-thru/underlying-records
+               :row-count  16845
+               :table-name "Orders"
+               :dimensions [{:column     {:name "CREATED_AT"}
+                             :column-ref [:field {} "CREATED_AT"]
+                             :value      "2023-12-01"}]
+               :column-ref [:aggregation {:lib/source-name "sum_where_SUBTOTAL"} string?]}
+              drill))
+      (is (=? {:lib/type :mbql/query
+               :stages   [{:filters     [[:= {}
+                                          (-> (meta/field-metadata :orders :created-at)
+                                              lib/ref
+                                              (lib.options/with-options {}))
+                                          "2023-12-01"]
+                                         [:= {} (-> (meta/field-metadata :products :category)
+                                                    lib/ref
+                                                    (lib.options/with-options {}))
+                                          "Doohickey"]]
+                           :aggregation (symbol "nil #_\"key is not present.\"")
+                           :breakout    (symbol "nil #_\"key is not present.\"")
+                           :fields      (symbol "nil #_\"key is not present.\"")}]}
+              (lib/drill-thru query drill))))))
+
+(deftest ^:parallel include-all-joined-columns-test
+  (testing "underlying records for a query with a join should include all fields from the join (#48032)"
+    (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/join (meta/table-metadata :people))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (-> (meta/field-metadata :orders :discount)
+                                             (lib/with-binning {:strategy :default}))))
+          count-col    (m/find-first #(= (:name %) "count")
+                                     (lib/returned-columns query))
+          _            (is (some? count-col))
+          discount-col (m/find-first #(= (:name %) "DISCOUNT")
+                                     (lib/returned-columns query))
+          _            (is (some? discount-col))
+          context      {:column     count-col
+                        :column-ref (lib/ref count-col)
+                        :value      16845
+                        :row        [{:column     discount-col
+                                      :column-ref (lib/ref discount-col)
+                                      :value      nil}
+                                     {:column     count-col
+                                      :column-ref (lib/ref count-col)
+                                      :value      16845}]
+                        :dimensions [{:column     discount-col
+                                      :column-ref (lib/ref discount-col)
+                                      :value      nil}]}
+          drill (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                              (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (is (=? :all
+              (-> query
+                  (lib/drill-thru drill)
+                  lib.join/joins
+                  first
+                  lib.join/join-fields))))))

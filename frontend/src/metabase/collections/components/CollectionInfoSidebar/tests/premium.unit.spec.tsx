@@ -10,6 +10,7 @@ import {
 const setup = ({ collection }: { collection: Collection }) =>
   baseSetup({
     collection,
+    enableEnterprisePlugins: true,
     enableOfficialCollections: true,
     enableSerialization: true,
   });

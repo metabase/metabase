@@ -168,7 +168,7 @@ const EditSandboxingModal = ({
               data-testid="collection-picker-button"
               onClick={showModal}
               fullWidth
-              rightIcon={<Icon name="ellipsis" />}
+              rightSection={<Icon name="ellipsis" />}
               styles={{
                 inner: {
                   justifyContent: "space-between",
@@ -309,11 +309,7 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
               )} question`
             : jt`rows in the ${(
                 <strong key="table-name">
-                  <EntityName
-                    entityType="tables"
-                    entityId={policy.table_id}
-                    property="display_name"
-                  />
+                  <EntityName entityType="tables" entityId={policy.table_id} />
                 </strong>
               )} table`
         }

@@ -10,7 +10,7 @@ import NumericInput from "metabase/components/NumericInput";
 import Button from "metabase/core/components/Button";
 import ColorRange from "metabase/core/components/ColorRange";
 import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
-import ColorSelector from "metabase/core/components/ColorSelector";
+import { ColorSelector } from "metabase/core/components/ColorSelector";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
 import Select, { Option } from "metabase/core/components/Select";
@@ -273,6 +273,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         <Icon
           name="close"
           className={cx(CS.cursorPointer, CS.textLight, CS.textMediumHover)}
+          style={{ minWidth: 16 }}
           onClick={e => {
             e.stopPropagation();
             onRemove();

@@ -1,13 +1,15 @@
-// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
+// Functions that get key elements in the app
+
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
-export function popover() {
-  cy.get(POPOVER_ELEMENT).should("be.visible");
-  return cy.get(POPOVER_ELEMENT);
+export function popover(testid) {
+  const selector = `${POPOVER_ELEMENT}${testid ? `[data-testid=${testid}]` : ""}`;
+  return cy.get(selector).filter(":visible").should("be.visible");
 }
 
-const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
+const HOVERCARD_ELEMENT =
+  ".mb-mantine-HoverCard-dropdown[role='dialog']:visible";
 
 export function hovercard() {
   cy.get(HOVERCARD_ELEMENT, { timeout: 6000 }).should("be.visible");
@@ -23,13 +25,17 @@ export function menu() {
 }
 
 export function modal() {
-  const MODAL_SELECTOR = ".emotion-Modal-content[role='dialog']";
+  const MODAL_SELECTOR = ".mb-mantine-Modal-content[role='dialog']";
   const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
 export function tooltip() {
-  return cy.get(".emotion-Tooltip-tooltip");
+  return cy.get(".mb-mantine-Tooltip-tooltip, [role='tooltip']");
+}
+
+export function selectDropdown() {
+  return popover().findByRole("listbox");
 }
 
 export function entityPickerModal() {
@@ -40,8 +46,13 @@ export function entityPickerModalLevel(level) {
   return cy.findByTestId(`item-picker-level-${level}`);
 }
 
+/**
+ *
+ * @param {number} level
+ * @param {string} name
+ */
 export function entityPickerModalItem(level, name) {
-  return entityPickerModalLevel(level).findByText(name).parents("button");
+  return entityPickerModalLevel(level).findByText(name).parents("a");
 }
 
 export function entityPickerModalTab(name) {
@@ -71,6 +82,10 @@ export function collectionOnTheGoModal() {
   return cy.findByTestId("create-collection-on-the-go");
 }
 
+export function dashboardOnTheGoModal() {
+  return cy.findByTestId("create-dashboard-on-the-go");
+}
+
 export function sidebar() {
   return cy.get("main aside");
 }
@@ -89,6 +104,19 @@ export function sidesheet() {
 
 export function navigationSidebar() {
   return cy.findByTestId("main-navbar-root");
+}
+
+export function assertNavigationSidebarItemSelected(name, value = "true") {
+  navigationSidebar()
+    .findByRole("treeitem", { name })
+    .should("have.attr", "aria-selected", value);
+}
+
+export function assertNavigationSidebarBookmarkSelected(name, value = "true") {
+  navigationSidebar()
+    .findByRole("tab", { name: "Bookmarks" })
+    .findByRole("listitem", { name })
+    .should("have.attr", "aria-selected", value);
 }
 
 export function appBar() {
@@ -137,10 +165,12 @@ export function filterWidget() {
 }
 
 export function clearFilterWidget(index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return filterWidget().eq(index).icon("close").click();
 }
 
 export function resetFilterWidgetToDefault(index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return filterWidget().eq(index).icon("revert").click();
 }
 
@@ -153,7 +183,7 @@ export function setFilterWidgetValue(
   popover()
     .first()
     .within(() => {
-      removeMultiAutocompleteValue(0);
+      removeFieldValuesValue(0);
       if (value) {
         cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
       }
@@ -173,8 +203,12 @@ export function toggleFilterWidgetValues(
   });
 }
 
-export const openQuestionActions = () => {
+export const openQuestionActions = action => {
   cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
+
+  if (action) {
+    popover().findByText(action).click();
+  }
 };
 
 export const collectionTable = () => {
@@ -183,6 +217,10 @@ export const collectionTable = () => {
 
 export const queryBuilderHeader = () => {
   return cy.findByTestId("qb-header");
+};
+
+export const queryBuilderFiltersPanel = () => {
+  return cy.findByTestId("qb-filters-panel");
 };
 
 export const queryBuilderFooter = () => {
@@ -280,6 +318,10 @@ export function tableInteractiveBody() {
   return cy.get("#main-data-grid");
 }
 
+export function tableAllFieldsHiddenImage() {
+  return cy.findByTestId("Table-all-fields-hidden-image");
+}
+
 export function tableHeaderClick(headerString) {
   tableInteractive().within(() => {
     cy.findByTextEnsureVisible(headerString).trigger("mousedown");
@@ -290,12 +332,21 @@ export function tableHeaderClick(headerString) {
   });
 }
 
+export function clickActionsPopover() {
+  return popover("click-actions-popover");
+}
+
+export function segmentEditorPopover() {
+  return popover("segment-popover");
+}
+
 export function assertTableData({ columns, firstRows = [] }) {
   tableInteractive()
     .findAllByTestId("header-cell")
     .should("have.length", columns.length);
 
   columns.forEach((column, index) => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     tableInteractive()
       .findAllByTestId("header-cell")
       .eq(index)
@@ -304,6 +355,7 @@ export function assertTableData({ columns, firstRows = [] }) {
 
   firstRows.forEach((row, rowIndex) => {
     row.forEach((cell, cellIndex) => {
+      // eslint-disable-next-line no-unsafe-element-filtering
       tableInteractiveBody()
         .findAllByTestId("cell-data")
         .eq(columns.length * rowIndex + cellIndex)
@@ -327,18 +379,35 @@ export function newButton(menuItem) {
 }
 
 export function multiSelectInput(filter = ":eq(0)") {
-  return cy.findByRole("combobox").filter(filter).get("input").last();
+  return cy.findByRole("combobox").filter(filter).get("input").first();
 }
 
 export function multiAutocompleteInput(filter = ":eq(0)") {
-  return cy.findAllByRole("combobox").filter(filter).get("input").last();
+  return cy.findAllByRole("combobox").filter(filter).get("input").first();
+}
+
+export function fieldValuesInput(filter = ":eq(0)") {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  return cy.findAllByRole("textbox").filter(filter).get("input").last();
+}
+
+export function fieldValuesValue(index) {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  return cy.findAllByTestId("token-field").eq(index);
+}
+
+export function removeFieldValuesValue(index) {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  return cy.findAllByTestId("token-field").icon("close").eq(index).click();
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy
     .findAllByRole("combobox")
     .filter(filter)
-    .get(`[value][index=${index}]`);
+    .siblings("[data-with-remove]")
+    .eq(index);
 }
 
 export function removeMultiAutocompleteValue(index, filter) {
@@ -355,4 +424,8 @@ export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
 
   cy.wait(interval);
   repeatAssertion(assertFn, timeout - interval, interval);
+}
+
+export function mapPinIcon() {
+  return cy.get(".leaflet-marker-icon");
 }

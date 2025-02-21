@@ -1,6 +1,5 @@
 (ns metabase.actions.http-action
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
@@ -8,6 +7,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (com.fasterxml.jackson.databind ObjectMapper)
@@ -81,9 +81,10 @@
                                           e))))]
     (log/tracef "=>%s" sql)
     (when (seq missing)
-      (throw (ex-info (tru "Cannot call the service: missing required parameters: {0}" (set missing))
-                      {:type    qp.error-type/missing-required-parameter
-                       :missing missing})))
+      (throw (ex-info (tru "Cannot call the service: missing required parameters: {0}" (str/join ", " (set missing)))
+                      {:type        qp.error-type/missing-required-parameter
+                       :missing     missing
+                       :status-code 400})))
     (str/trim sql)))
 
 (defn- parse-and-substitute [s params->value]
@@ -104,7 +105,7 @@
   ;; TODO this is pretty ineficient. We parse with `:as :json`, then reencode within a response
   ;; I couldn't find a way to get JSONNode out of cheshire, so we fall back to jackson.
   ;; Should jackson be added explicitly to deps.edn?
-  (let [json-node (.readTree ^ObjectMapper @object-mapper (json/generate-string object))
+  (let [json-node (.readTree ^ObjectMapper @object-mapper (json/encode object))
         vresults (volatile! [])
         output (ActionOutput. vresults)
         expr (JsonQuery/compile jq-query Versions/JQ_1_6)
@@ -135,13 +136,20 @@
           response (-> (http/request request)
                        (select-keys [:body :headers :status])
                        (update :body json/decode))
-          error (json/parse-string (apply-json-query response (or (:error_handle action) ".status >= 400")))]
+          error (json/decode (apply-json-query response (or (:error_handle action) ".status >= 400")))]
       (log/trace "Response before handle:" response)
       (if error
         {:status 400
          :headers {"Content-Type" "application/json"}
          :body (if (boolean? error)
-                 {:remote-status (:status response)}
+                 {:remote-status (:status response)
+                  ;; this is a very lazy approach to get some string identifying the error from the incoming data,
+                  ;; just to pass `dashcard-http-action-execution-test`; ideally the whole logic here should be
+                  ;; updated to pass enough details back to the client
+                  :message (let [body (:body response)]
+                             (or (get body "error")
+                                 (get body "error-code")
+                                 (get body "message")))}
                  error)}
         (if-some [response (some->> action :response_handle (apply-json-query response))]
           {:status 200
@@ -151,5 +159,6 @@
            :body nil})))
     (catch Exception e
       (throw (ex-info (str "Problem building request: " (ex-message e))
-                      {:template (:template action)}
+                      {:template    (:template action)
+                       :status-code (:status-code (ex-data e) 500)}
                       e)))))

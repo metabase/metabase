@@ -10,7 +10,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { createMockUserListResult } from "metabase-types/api/mocks";
 
 import { useUserListQuery } from "./use-user-list-query";

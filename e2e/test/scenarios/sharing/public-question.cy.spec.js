@@ -1,20 +1,8 @@
+import xlsx from "xlsx";
+
+const { H } = cy;
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  assertSheetRowsCount,
-  createNativeQuestion,
-  createPublicQuestionLink,
-  downloadAndAssert,
-  filterWidget,
-  main,
-  modal,
-  openNativeEditor,
-  openNewPublicLinkDropdown,
-  openSharingMenu,
-  restore,
-  saveQuestion,
-  updateSetting,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
@@ -59,64 +47,58 @@ describe("scenarios > public > question", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
 
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
-    updateSetting("enable-public-sharing", true);
+    H.updateSetting("enable-public-sharing", true);
   });
 
-  it(
-    "adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)",
-    { tags: "@flaky" },
-    () => {
-      cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-        visitQuestion(id);
+  it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
+    H.createNativeQuestion(questionData).then(({ body: { id } }) => {
+      H.visitQuestion(id);
 
-        // Make sure metadata fully loaded before we continue
-        cy.get("[data-testid=cell-data]").contains("Winner");
+      // Make sure metadata fully loaded before we continue
+      cy.findByTestId("visualization-root").should("be.visible");
 
-        openNewPublicLinkDropdown("card");
+      H.openNewPublicLinkDropdown("card");
 
-        // Although we already have API helper `visitPublicQuestion`,
-        // it makes sense to use the UI here in order to check that the
-        // generated url originally doesn't include query params
-        visitPublicURL();
+      // Although we already have API helper `visitPublicQuestion`,
+      // it makes sense to use the UI here in order to check that the
+      // generated url originally doesn't include query params
+      visitPublicURL();
 
-        // On page load, query params are added
-        cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
+      // On page load, query params are added
+      cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-        filterWidget().contains("Previous 30 Years");
-        filterWidget().contains("Affiliate");
+      H.filterWidget().contains("Previous 30 Years");
+      H.filterWidget().contains("Affiliate");
 
-        cy.wait("@publicQuery");
-        // Name of a city from the expected results
-        cy.get("[data-testid=cell-data]").contains("Winner");
+      cy.wait("@publicQuery");
 
-        // Make sure we can download the public question (metabase#21993)
-        cy.get("@uuid").then(publicUuid => {
-          downloadAndAssert(
-            { fileType: "xlsx", questionId: id, publicUuid },
-            assertSheetRowsCount(5),
-          );
-        });
+      // Make sure we can download the public question (metabase#21993)
+      cy.get("@uuid").then(publicUuid => {
+        H.downloadAndAssert(
+          { fileType: "xlsx", questionId: id, publicUuid },
+          H.assertSheetRowsCount(5),
+        );
       });
-    },
-  );
+    });
+  });
 
   it("should only allow non-admin users to see a public link if one has already been created", () => {
-    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-      createPublicQuestionLink(id);
+    H.createNativeQuestion(questionData).then(({ body: { id } }) => {
+      H.createPublicQuestionLink(id);
       cy.signOut();
       cy.signInAsNormalUser().then(() => {
-        visitQuestion(id);
+        H.visitQuestion(id);
 
-        openSharingMenu("Public link");
+        H.openSharingMenu("Public link");
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");
-          cy.findByTestId("public-link-input").then($input =>
-            expect($input.val()).to.match(PUBLIC_QUESTION_REGEX),
-          );
+          cy.findByTestId("public-link-input").should($input => {
+            expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
+          });
           cy.findByText("Remove public URL").should("not.exist");
         });
       });
@@ -126,7 +108,7 @@ describe("scenarios > public > question", () => {
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it("should be able to view public questions", () => {
-        cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+        H.createNativeQuestion(questionData).then(({ body: { id } }) => {
           cy.request("POST", `/api/card/${id}/public_link`).then(
             ({ body: { uuid } }) => {
               setUser();
@@ -134,10 +116,10 @@ describe("scenarios > public > question", () => {
 
               cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-              filterWidget().contains("Previous 30 Years");
-              filterWidget().contains("Affiliate");
+              H.filterWidget().contains("Previous 30 Years");
+              H.filterWidget().contains("Affiliate");
 
-              cy.get("[data-testid=cell-data]").contains("Winner");
+              cy.findByTestId("visualization-root").should("be.visible");
             },
           );
         });
@@ -146,13 +128,13 @@ describe("scenarios > public > question", () => {
   );
 
   it("should be able to view public questions with snippets", () => {
-    openNativeEditor();
+    H.startNewNativeQuestion({ display: "table" });
 
     // Create a snippet
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
         "'test'",
       );
@@ -160,12 +142,19 @@ describe("scenarios > public > question", () => {
       cy.findByText("Save").click();
     });
 
-    cy.get("@editor").type("{moveToStart}select ");
+    H.NativeEditor.type("{moveToStart}select ");
 
-    saveQuestion("test question", { wrapId: true });
+    H.saveQuestion(
+      "test question",
+      { wrapId: true },
+      {
+        tab: "Browse",
+        path: ["Our analytics"],
+      },
+    );
 
     cy.get("@questionId").then(id => {
-      createPublicQuestionLink(id).then(({ body: { uuid } }) => {
+      H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
         cy.signOut();
         cy.signInAsNormalUser().then(() => {
           cy.visit(`/public/question/${uuid}`);
@@ -176,21 +165,26 @@ describe("scenarios > public > question", () => {
   });
 
   it("should be able to view public questions with card template tags", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "Nested Question",
       native: {
         query: "SELECT * FROM PEOPLE LIMIT 5",
       },
     }).then(({ body: { id } }) => {
-      openNativeEditor();
+      H.startNewNativeQuestion({ display: "table" });
 
-      cy.get("@editor")
-        .type("select * from {{#")
-        .type(`{leftarrow}{leftarrow}${id}`);
+      H.NativeEditor.type(`select * from {{#${id}`);
 
-      saveQuestion("test question", { wrapId: true });
+      H.saveQuestion(
+        "test question",
+        { wrapId: true },
+        {
+          tab: "Browse",
+          path: ["Our analytics"],
+        },
+      );
       cy.get("@questionId").then(id => {
-        createPublicQuestionLink(id).then(({ body: { uuid } }) => {
+        H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
           cy.signOut();
           cy.signInAsNormalUser().then(() => {
             cy.visit(`/public/question/${uuid}`);
@@ -201,9 +195,62 @@ describe("scenarios > public > question", () => {
       });
     });
   });
+});
 
-  it("should allow to set locale from the `locale` query parameter", () => {
-    createNativeQuestion(
+describe("scenarios > question > public link with extension", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion(
+      {
+        name: "Question A",
+        native: {
+          query: "SELECT ID from (SELECT * FROM ORDERS LIMIT 1) as order_row",
+        },
+      },
+      {
+        visitQuestion: true,
+        wrapId: true,
+      },
+    ).as("questionId");
+  });
+
+  it("should download a json file when a public link with .json is shared", () => {
+    downloadPublicFileURL("json", response => {
+      expect(response.body[0]).to.deep.eq({ ID: 1 });
+    });
+  });
+
+  ["csv", "xlsx"].forEach(fileType =>
+    it(`should download a ${fileType} file when a public link with .${fileType} is shared`, () => {
+      downloadPublicFileURL(fileType, response => {
+        const { SheetNames, Sheets } = xlsx.read(response.body, {
+          type: "binary",
+        });
+
+        const sheetName = SheetNames[0];
+        const sheet = Sheets[sheetName];
+        expect(sheet["A1"].v).to.eq("ID");
+        expect(sheet["A2"].v).to.eq(1);
+      });
+    }),
+  );
+});
+
+describe("scenarios [EE] > public > question", () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
+
+    H.restore();
+    cy.signInAsAdmin();
+    H.setTokenFeatures("all");
+
+    H.updateSetting("enable-public-sharing", true);
+  });
+
+  it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
+    H.createNativeQuestion(
       {
         name: "Native question with a parameter",
         native: {
@@ -223,30 +270,61 @@ describe("scenarios > public > question", () => {
       { wrapId: true },
     );
 
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("/app/locales/de.json").as("deLocale");
+
     cy.get("@questionId").then(id => {
-      cy.request("POST", `/api/card/${id}/public_link`).then(
-        ({ body: { uuid } }) => {
-          cy.visit(
-            `/public/question/${uuid}?locale=de&some_parameter=some_value`,
-          );
+      H.visitPublicQuestion(id, {
+        params: {
+          some_parameter: "some_value",
         },
-      );
+        hash: {
+          locale: "de-CH",
+        },
+      });
     });
 
-    main().findByText("Februar 11, 2025");
+    cy.wait("@deLocale");
+
+    H.main().findByText("Februar 11, 2025");
 
     cy.url().should("include", "locale=de");
   });
 });
 
 const visitPublicURL = () => {
+  cy.findByTestId("public-link-input").should($input => {
+    // Copied URL has no get params
+    expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
+  });
   cy.findByTestId("public-link-input")
     .invoke("val")
     .then(publicURL => {
-      // Copied URL has no get params
-      expect(publicURL).to.match(PUBLIC_QUESTION_REGEX);
-
       cy.signOut();
       cy.visit(publicURL);
     });
+};
+
+const downloadPublicFileURL = (fileType, validationCallback) => {
+  H.openSharingMenu("Create a public link");
+
+  H.popover().findByText(fileType).click();
+
+  H.popover().findByTestId("public-link-input").invoke("val").as("publicUrl");
+
+  cy.get("@publicUrl").should(
+    "match",
+    new RegExp(`\\/public\\/question\\/.*\\.${fileType}`),
+  );
+
+  cy.get("@publicUrl").then(url => {
+    cy.request({
+      method: "GET",
+      url: url,
+      followRedirect: true,
+      encoding: "binary",
+    }).then(response => {
+      validationCallback(response);
+    });
+  });
 };

@@ -32,7 +32,7 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
   const handleButtonClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     if (onClick && !disabled) {
-      onClick?.(e);
+      onClick(e);
     }
   };
 
@@ -51,6 +51,7 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
       onClick={handleButtonClick}
       bg={hasBackground ? undefined : "transparent"}
       disabled={disabled}
+      c="var(--mb-color-text-primary)"
       {...actionIconProps}
     >
       {children ?? (

@@ -1,5 +1,5 @@
 ---
-title: observability-with-prometheus
+title: Observability with Prometheus
 ---
 
 # Observability with Prometheus
@@ -15,7 +15,7 @@ To give you an idea of how Metabase and Prometheus would work in your production
 Download the latest [Metabase JAR](https://www.metabase.com/start/oss/), and run Metabase using an environment variable to specify the Prometheus server port:
 
 ```sh
-MB_PROMETHEUS_SERVER_PORT=9191 java -jar metabase.jar
+MB_PROMETHEUS_SERVER_PORT=9191 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 The `MB_PROMETHEUS_SERVER_PORT=9191` specifies which port (`9191`) Metabase will use to send data to Prometheus. To clarify the ports that will be involved here:
@@ -47,24 +47,24 @@ Change into the Prometheus directory, add the following YAML file to configure y
 
 ```yaml
 global:
-  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+  scrape_interval: 15s # By default, scrape targets every 15 seconds.
 
   # Attach these labels to any time series or alerts when communicating with
   # external systems (federation, remote storage, Alertmanager).
   external_labels:
-    monitor: 'codelab-monitor'
+    monitor: "codelab-monitor"
 
 # A scrape configuration containing exactly one endpoint to scrape:
 # Here it's Prometheus itself.
 scrape_configs:
   # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
-  - job_name: 'prometheus'
+  - job_name: "prometheus"
 
     # Override the global default and scrape targets from this job every 5 seconds.
     scrape_interval: 5s
     # use whatever port here that you set for MB_PROMETHEUS_SERVER_PORT
     static_configs:
-      - targets: ['localhost:9191']
+      - targets: ["localhost:9191"]
 ```
 
 You need to change the "target" to where Metabase is, for this particular example, Metabase resides in the same host where Prometheus is running ("localhost").

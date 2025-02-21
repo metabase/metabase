@@ -1,19 +1,18 @@
 import type React from "react";
 import { t } from "ttag";
 
-import {
-  AdHocLeftSideRoot,
-  AdHocViewHeading,
-  ViewHeaderLeftSubHeading,
-  ViewHeaderMainLeftContentContainer,
-} from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
+import { ViewHeading, ViewSubHeading } from "../../../ViewSection";
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { QuestionDataSource } from "../QuestionDataSource";
 import { QuestionDescription } from "../QuestionDescription";
+
+import AdHocQuestionLeftSideS from "./AdHocQuestionLeftSide.module.css";
 
 interface AdHocQuestionLeftSideProps {
   question: Question;
@@ -45,9 +44,12 @@ export function AdHocQuestionLeftSide(
   };
 
   return (
-    <AdHocLeftSideRoot>
-      <ViewHeaderMainLeftContentContainer>
-        <AdHocViewHeading color="medium">
+    <Box className={AdHocQuestionLeftSideS.AdHocLeftSideRoot}>
+      <Flex align="center" wrap="nowrap">
+        <ViewHeading
+          className={ViewTitleHeaderS.AdHocViewHeading}
+          color="medium"
+        >
           {isNative ? (
             t`New question`
           ) : (
@@ -59,9 +61,9 @@ export function AdHocQuestionLeftSide(
               onClick={handleTitleClick}
             />
           )}
-        </AdHocViewHeading>
-      </ViewHeaderMainLeftContentContainer>
-      <ViewHeaderLeftSubHeading>
+        </ViewHeading>
+      </Flex>
+      <ViewSubHeading className={ViewTitleHeaderS.ViewHeaderLeftSubHeading}>
         {isSummarized && (
           <QuestionDataSource
             question={question}
@@ -70,7 +72,7 @@ export function AdHocQuestionLeftSide(
             subHead
           />
         )}
-      </ViewHeaderLeftSubHeading>
-    </AdHocLeftSideRoot>
+      </ViewSubHeading>
+    </Box>
   );
 }

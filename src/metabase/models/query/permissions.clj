@@ -1,7 +1,9 @@
 (ns metabase.models.query.permissions
   "Functions used to calculate the permissions needed to run a query based on old-style DATA ACCESS PERMISSIONS. The
   only thing that is subject to these sorts of checks are *ad-hoc* queries, i.e. queries that have not yet been saved
-  as a Card. Saved Cards are subject to the permissions of the Collection to which they belong."
+  as a Card. Saved Cards are subject to the permissions of the Collection to which they belong.
+
+  TODO -- does this belong HERE or in the `permissions` module?"
   (:require
    [clojure.set :as set]
    [clojure.walk :as walk]
@@ -9,16 +11,15 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.permissions.util :as perms.u]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -37,7 +38,7 @@
    (ex-info message
             (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
-                    :actual-permissions   (data-perms/permissions-for-user api/*current-user-id*)
+                    :actual-permissions   (perms/permissions-for-user api/*current-user-id*)
                     :permissions-error?   true}
                    additional-ex-data))))
 
@@ -59,21 +60,54 @@
 ;;           {:perms/view-data {table-id :unrestricted}}  source-card-read-perms
 ;;
 
-(mu/defn query->source-table-ids :- [:set [:or [:= ::native] ::lib.schema.id/table]]
-  "Return a sequence of all Table IDs referenced by `query`, and/or the ::native keyword for native queries."
-  [query :- :map]
-  (set
-   (flatten
-    (lib.util.match/match query
-      ;; if we come across a native query just put a placeholder (`::native`) there so we know we need to
-      ;; add native permissions to the complete set below.
-      (m :guard (every-pred map? :native))
-      [::native]
+(defn- merge-source-ids
+  "Merge function which takes the union of two sets of IDs, if they are both sets"
+  [val1 val2]
+  (cond
+    ;; Merge sets of table or card IDs
+    (and (set? val1) (set? val2))
+    (set/union val1 val2)
 
-      (m :guard (every-pred map? #(pos-int? (:source-table %))))
-      (cons
-       (:source-table m)
-       (query->source-table-ids (dissoc m :source-table)))))))
+    ;; Booleans should only ever be `:native? true`, but make sure we propogate truthy values
+    (and (boolean? val1) (boolean? val2))
+    (or val1 val2)
+
+    ;; Safeguard; should not be hit
+    :else (throw (ex-info "Don't know how to merge values!"
+                          {:val1 val1 :val2 val2}))))
+
+(mu/defn query->source-ids :- [:maybe
+                               [:map
+                                [:table-ids {:optional true} [:set ::lib.schema.id/table]]
+                                [:card-ids  {:optional true} [:set ::lib.schema.id/card]]
+                                [:native?   {:optional true} :boolean]]]
+  "Return a map containing table IDs and/or card IDs referenced by `query`, and/or the :native? boolean flag
+  indicating a native query or subquery. Intended to be used in the context of permissions enforcement."
+  [query :- :map]
+  (apply merge-with merge-source-ids
+         (lib.util.match/match query
+           ;; If we come across a native query, replace it with a card ID if it came from a source card, so we can check
+           ;; permissions on the card and not necessarily require full native query access to the DB
+           (m :guard (every-pred map? :native))
+           (if-let [source-card-id (:qp/stage-is-from-source-card m)]
+             {:card-ids #{source-card-id}}
+             {:native? true})
+
+           (m :guard (every-pred map? #(pos-int? (:source-table %))))
+           (merge-with merge-source-ids
+                       {:table-ids #{(:source-table m)}}
+                       ;; If there's a source card associated with a table ID, include it so that we can ensure that
+                       ;; ad-hoc queries don't access cards with no collection perms
+                       (when-let [source-card-id (:qp/stage-is-from-source-card m)]
+                         {:card-ids #{source-card-id}})
+                       (query->source-ids (dissoc m :source-table))))))
+
+(mu/defn query->source-table-ids
+  "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
+  only table ID information is needed. "
+  [query :- :map]
+  (when (seq query)
+    (:table-ids (query->source-ids query))))
 
 (def ^:dynamic *card-instances*
   "A map from card IDs to card instances with the collection_id (possibly nil).
@@ -91,7 +125,7 @@
         (t2/select-one [:model/Card :collection_id] :id card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
-(mu/defn- source-card-read-perms :- [:set perms.u/PathSchema]
+(mu/defn- source-card-read-perms :- [:set perms/PathSchema]
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- ::lib.schema.id/card]
@@ -101,7 +135,7 @@
   ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the
   ;; preprocessing to fail because current user doesn't have permissions to run it when we're not trying to run it at
   ;; all
-  (mw.session/as-admin
+  (request/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query)))
 
 (defn- referenced-card-ids
@@ -136,12 +170,12 @@
       (if-let [source-card-id (qp.util/query->source-card-id query)]
         {:paths (source-card-read-perms source-card-id)}
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
-        (let [query               (cond-> query
-                                    (not already-preprocessed?) preprocess-query)
-              table-ids-or-native (vec (query->source-table-ids query))
-              table-ids           (filter integer? table-ids-or-native)
-              native?             (.contains ^clojure.lang.PersistentVector table-ids-or-native ::native)]
+        (let [query (cond-> query
+                      (not already-preprocessed?) preprocess-query)
+              {:keys [table-ids card-ids native?]} (query->source-ids query)]
           (merge
+           (when (seq card-ids)
+             {:card-ids card-ids})
            (when (seq table-ids)
              {:perms/create-queries (zipmap table-ids (repeat :query-builder))
               :perms/view-data      (zipmap table-ids (repeat :unrestricted))})
@@ -170,7 +204,7 @@
 
 (defn required-perms-for-query
   "Returns a map representing the permissions requried to run `query`. The map has the optional keys
-  :paths (containing legacy permission paths), :perms/view-data, and :perms/create-queries."
+  :paths (containing legacy permission paths), :card-ids, :perms/view-data, and :perms/create-queries."
   [query & {:as perms-opts}]
   (if (empty? query)
     {}
@@ -186,11 +220,11 @@
   "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
   [perm-type required-perm gtap-perms db-id]
   (or
-   (data-perms/at-least-as-permissive? perm-type
-                                       (data-perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
-                                       required-perm)
+   (perms/at-least-as-permissive? perm-type
+                                  (perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
+                                  required-perm)
    (when gtap-perms
-     (data-perms/at-least-as-permissive? perm-type gtap-perms required-perm))))
+     (perms/at-least-as-permissive? perm-type gtap-perms required-perm))))
 
 (defn- has-perm-for-table?
   "Checks that the current user has the permissions for tables specified in `table-id->perm`. This can be satisfied via
@@ -200,7 +234,7 @@
   (let [table-id->has-perm?
         (into {} (for [[table-id required-perm] table-id->required-perm]
                    [table-id (boolean
-                              (or (data-perms/user-has-permission-for-table?
+                              (or (perms/user-has-permission-for-table?
                                    api/*current-user-id*
                                    perm-type
                                    required-perm
@@ -211,7 +245,7 @@
                                                          gtap-table-perms
                                                          ;; ...or a map from table IDs to table permissions
                                                          (get gtap-table-perms table-id))]
-                                    (data-perms/at-least-as-permissive? perm-type gtap-perm required-perm))))]))]
+                                    (perms/at-least-as-permissive? perm-type gtap-perm required-perm))))]))]
     (every? true? (vals table-id->has-perm?))))
 
 (mu/defn has-perm-for-query? :- :boolean
@@ -233,6 +267,23 @@
        :else
        (throw (ex-info (tru "Invalid permissions format") required-perms)))
      true)))
+
+(mu/defn check-card-read-perms
+  "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
+  [database-id :- ::lib.schema.id/database
+   card-id     :- ::lib.schema.id/card]
+  (qp.store/with-metadata-provider database-id
+    (let [card (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
+                           (update-keys u/->snake_case_en)
+                           (vary-meta assoc :type :model/Card))
+                   (throw (ex-info (tru "Card {0} does not exist." card-id)
+                                   {:type    qp.error-type/invalid-query
+                                    :card-id card-id})))]
+      (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
+      (when-not (mi/can-read? card)
+        (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
+                                (mi/perms-objects-set card :read)
+                                {:card-id card-id}))))))
 
 (defn check-data-perms
   "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the
@@ -262,9 +313,18 @@
 
 (mu/defn can-run-query?
   "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise."
-  [query]
-  (let [required-perms (required-perms-for-query query)]
-    (check-data-perms query required-perms :throw-exceptions? false)))
+  [{database-id :database :as query}]
+  (try
+    (let [required-perms (required-perms-for-query query)]
+      (check-data-perms query required-perms)
+
+      ;; Check card read permissions for any cards referenced in subqueries!
+      (doseq [card-id (:card-ids required-perms)]
+        (check-card-read-perms database-id card-id))
+
+      true)
+    (catch clojure.lang.ExceptionInfo _e
+      false)))
 
 (defn can-query-table?
   "Does the current user have permissions to run an ad-hoc query against the Table with `table-id`?"

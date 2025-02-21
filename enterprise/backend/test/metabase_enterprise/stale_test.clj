@@ -1,17 +1,18 @@
 (ns metabase-enterprise.stale-test
-  (:require [clojure.test :refer [deftest is are testing]]
-            [metabase-enterprise.stale :as stale]
-            [metabase-enterprise.test :as met]
-            [metabase.models.collection :as collection]
-            [metabase.models.moderation-review :as moderation-review]
-            [metabase.stale-test :refer [with-stale-items
-                                         stale-dashboard
-                                         stale-card
-                                         date-months-ago
-                                         datetime-months-ago]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan2.core :as t2])
+  (:require
+   [clojure.test :refer [deftest is are testing]]
+   [metabase-enterprise.stale :as stale]
+   [metabase-enterprise.test :as met]
+   [metabase.models.collection :as collection]
+   [metabase.models.moderation-review :as moderation-review]
+   [metabase.stale-test :refer [with-stale-items
+                                stale-dashboard
+                                stale-card
+                                date-months-ago
+                                datetime-months-ago]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import (java.time LocalDate)))
 
 (set! *warn-on-reflection* true)
@@ -243,6 +244,21 @@
              :sort-column    :name
              :sort-direction :asc}))
         "should not include verified dashboards or cards")))
+
+(deftest cards-in-non-standard-collection-types-are-excluded
+  (mt/with-temp [:model/Collection {col-id :id} {:type "instance-analytics"}
+                 :model/Card _ (stale-card {:name "A" :collection_id col-id})
+                 :model/Dashboard _ (stale-dashboard {:name "Dash" :collection_id col-id})]
+    (is (= {:rows  []
+            :total 0}
+           (stale/find-candidates
+            {:collection-ids #{col-id}
+             :cutoff-date    (date-months-ago 6)
+             :limit          10
+             :offset         0
+             :sort-column    :name
+             :sort-direction :asc}))
+        "should not include cards or dashboard in non-standard collections")))
 
 (deftest public-and-embedded-content-is-excluded
   (mt/with-temp [:model/Collection {col-id :id} {}

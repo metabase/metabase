@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
-import type { NumberValue } from "./types";
+import type { NumberOrEmptyValue } from "./types";
 import {
   canPickColumns,
   getAvailableColumns,
@@ -51,7 +51,7 @@ export function useCoordinateFilter({
     getDefaultValues(operator, filterParts ? filterParts.values : []),
   );
   const [secondColumn, setSecondColumn] = useState(
-    getDefaultSecondColumn(availableColumns, filterParts?.longitudeColumn),
+    getDefaultSecondColumn(availableColumns, filterParts),
   );
 
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
@@ -69,9 +69,9 @@ export function useCoordinateFilter({
     isValid,
     getDefaultValues,
     getFilterClause: (
-      operator: Lib.CoordinateFilterOperatorName,
+      operator: Lib.CoordinateFilterOperator,
       secondColumn: Lib.ColumnMetadata | undefined,
-      values: NumberValue[],
+      values: NumberOrEmptyValue[],
     ) => getFilterClause(operator, column, secondColumn, values),
     setOperator,
     setValues,

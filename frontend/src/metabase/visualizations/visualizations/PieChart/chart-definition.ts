@@ -77,7 +77,11 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     if (rows.length < 1) {
       throw new MinRowsError(1, 0);
     }
-    if (!settings["pie.dimension"] || !settings["pie.metric"]) {
+    const isDimensionMissing =
+      !settings["pie.dimension"] ||
+      (Array.isArray(settings["pie.dimension"]) &&
+        settings["pie.dimension"].every(col => col == null));
+    if (isDimensionMissing || !settings["pie.metric"]) {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
         section: `Data`,
       });
@@ -127,14 +131,13 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
             String(formatValue(value, options)),
           );
         },
-        ([{ json_query, started_at }], settings) =>
+        ([{ data }], settings) =>
           JSON.stringify({
-            json_query,
-            started_at,
+            cols: data.cols,
+            rows: data.rows,
             settings: _.pick(
               settings,
               ...pieRowsReadDeps,
-              "column",
               "pie.rows",
               "pie.sort_rows_dimension",
             ),

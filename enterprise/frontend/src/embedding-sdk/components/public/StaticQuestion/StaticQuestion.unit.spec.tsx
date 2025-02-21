@@ -1,4 +1,3 @@
-import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -7,13 +6,9 @@ import {
   setupCardQueryEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-  within,
-} from "__support__/ui";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import { act, screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
+import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -70,10 +65,10 @@ const VISUALIZATION_TYPES: Record<
 };
 
 const setup = ({
-  showVisualizationSelector = false,
+  withChartTypeSelector = false,
   isValidCard = true,
   card = createMockCard(),
-  parameterValues,
+  initialSqlParameters,
 }: Partial<StaticQuestionProps> & {
   card?: Card;
   isValidCard?: boolean;
@@ -86,17 +81,16 @@ const setup = ({
 
   setupCardQueryEndpoints(card, TEST_DATASET);
 
-  return renderWithProviders(
+  return renderWithSDKProviders(
     <StaticQuestion
       questionId={TEST_QUESTION_ID}
-      showVisualizationSelector={showVisualizationSelector}
-      parameterValues={parameterValues}
+      withChartTypeSelector={withChartTypeSelector}
+      initialSqlParameters={initialSqlParameters}
     />,
     {
-      mode: "sdk",
       sdkProviderProps: {
-        config: createMockJwtConfig({
-          jwtProviderUri: "http://TEST_URI/sso/metabase",
+        authConfig: createMockAuthProviderUriConfig({
+          authProviderUri: "http://TEST_URI/sso/metabase",
         }),
       },
     },
@@ -125,26 +119,25 @@ describe("StaticQuestion", () => {
   it("should render an error if a question isn't found", async () => {
     setup({ isValidCard: false });
     await waitForLoaderToBeRemoved();
-    expect(screen.getByText("Error")).toBeInTheDocument();
     expect(
       screen.getByText("You don't have permissions to do that."),
     ).toBeInTheDocument();
   });
 
-  it("should render a visualization selector if showVisualizationSelector is true", async () => {
-    setup({ showVisualizationSelector: true });
+  it("should render a visualization selector if withChartTypeSelector is true", async () => {
+    setup({ withChartTypeSelector: true });
     await waitForLoaderToBeRemoved();
     expect(screen.getByTestId("chart-type-settings")).toBeInTheDocument();
   });
 
-  it("should not render a visualization selector if showVisualizationSelector is false", async () => {
+  it("should not render a visualization selector if withChartTypeSelector is false", async () => {
     setup();
     await waitForLoaderToBeRemoved();
     expect(screen.queryByTestId("chart-type-settings")).not.toBeInTheDocument();
   });
 
   it("should change the visualization if a different visualization is selected", async () => {
-    setup({ showVisualizationSelector: true });
+    setup({ withChartTypeSelector: true });
     await waitForLoaderToBeRemoved();
     expect(screen.getByTestId("chart-type-settings")).toBeInTheDocument();
 
@@ -161,7 +154,7 @@ describe("StaticQuestion", () => {
 
   it("should query with the parameters in a parameterized question", async () => {
     const card = createMockCard({ parameters: [TEST_PARAM] });
-    setup({ card, parameterValues: { product_id: 1024 } });
+    setup({ card, initialSqlParameters: { product_id: 1024 } });
 
     await waitForLoaderToBeRemoved();
 
@@ -180,14 +173,14 @@ describe("StaticQuestion", () => {
     const abortSpy = jest.spyOn(AbortController.prototype, "abort");
 
     const { unmount } = setup();
-
     await act(async () => unmount());
 
-    expect(abortSpy).toHaveBeenCalled();
-    abortSpy.mockRestore();
-
-    // sanity check that the two requests were made initially
+    // two requests should've been made initially
     expect(fetchMock.calls(`path:/api/card/1`).length).toBe(1);
     expect(fetchMock.calls(`path:/api/card/1/query`).length).toBe(1);
+
+    // consequently, two abort calls should've been made for the two requests
+    expect(abortSpy).toHaveBeenCalledTimes(2);
+    abortSpy.mockRestore();
   });
 });

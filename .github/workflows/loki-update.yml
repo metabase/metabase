@@ -61,9 +61,9 @@ jobs:
         with:
           github-token: ${{secrets.METABASE_AUTOMATION_USER_TOKEN}}
           script: |
-            github.issues.removeLabel({
+            github.rest.issues.removeLabel({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               name: 'loki-update'
-            })
+            });

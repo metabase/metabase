@@ -33,3 +33,7 @@ Add events to timelines to annotate charts.
 ## [X-ray your data](./x-rays.md)
 
 X-rays are a fast and easy way to get automatic insights and explorations of your data.
+
+## [Content verification](./content-verification.md)
+
+Admins can verify items to let people know the data is accurate and up to date.

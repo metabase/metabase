@@ -9,7 +9,7 @@ import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm
 interface EntityCopyModalProps {
   entityType: string;
   entityObject: any;
-  copy: (data: any) => void;
+  copy: (data: any) => Promise<any>;
   title?: string;
   onClose: () => void;
   onSaved: (newEntityObject?: any) => void;
@@ -31,7 +31,6 @@ const EntityCopyModal = ({
     typeof entityObject?.getPlainObject === "function"
       ? entityObject.getPlainObject()
       : entityObject;
-
   const defaultCollectionId = useGetDefaultCollectionId(
     resolvedObject?.collection?.id,
   );
@@ -65,6 +64,7 @@ const EntityCopyModal = ({
           onCancel={onClose}
           onSaved={onSaved}
           initialValues={initialValues}
+          model={entityObject?.type}
           {...props}
         />
       )}

@@ -81,15 +81,9 @@ describe("metabase-lib/v1/expressions/resolve", () => {
     });
 
     it("should catch mismatched number of function parameters", () => {
-      expect(() => filter(["contains"])).toThrow();
-      expect(() => filter(["contains", Y])).toThrow();
-      expect(() => filter(["contains", Y, "A", "B", "C"])).toThrow();
-      expect(() => filter(["starts-with"])).toThrow();
-      expect(() => filter(["starts-with", A])).toThrow();
-      expect(() => filter(["starts-with", A, "P", "Q", "R"])).toThrow();
-      expect(() => filter(["ends-with"])).toThrow();
-      expect(() => filter(["ends-with", B])).toThrow();
-      expect(() => filter(["ends-with", B, "P", "Q", "R"])).toThrow();
+      expect(() => filter(["between"])).toThrow();
+      expect(() => filter(["between", Y])).toThrow();
+      expect(() => filter(["between", Y, "A", "B", "C"])).toThrow();
     });
 
     it("should allow a comparison (lexicographically) on strings", () => {
@@ -100,11 +94,6 @@ describe("metabase-lib/v1/expressions/resolve", () => {
     it("should allow a comparison (lexicographically) on functions returning string", () => {
       // Lower([A]) <= "P"
       expect(() => filter(["<=", ["lower", A], "P"])).not.toThrow();
-    });
-
-    it("should reject a less/greater comparison on functions returning boolean", () => {
-      // IsEmpty([A]) < 0
-      expect(() => filter(["<", ["is-empty", A], 0])).toThrow();
     });
 
     // backward-compatibility
@@ -148,6 +137,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
       expect(expr(["concat", A, B]).dimensions).toEqual(["A", "B"]);
       expect(expr(["coalesce", P]).dimensions).toEqual(["P"]);
       expect(expr(["coalesce", P, Q, R]).dimensions).toEqual(["P", "Q", "R"]);
+      expect(expr(["in", A, B, C]).dimensions).toEqual(["A", "B", "C"]);
     });
 
     it("should allow any number of arguments in a variadic function", () => {
@@ -180,6 +170,31 @@ describe("metabase-lib/v1/expressions/resolve", () => {
       it("should allow substring with index=1", () => {
         expect(() => expr(["substring", "foo", 1, 1])).not.toThrow();
       });
+
+      it.each(["in", "not-in"])(
+        "should reject multi-arg function calls without options when there is not enough arguments",
+        tag => {
+          expect(() => expr([tag])).toThrow();
+          expect(() => expr([tag, A])).toThrow();
+          expect(() => expr([tag, A, B])).not.toThrow();
+          expect(() => expr([tag, A, B, C])).not.toThrow();
+        },
+      );
+
+      it.each(["contains", "does-not-contain", "starts-with", "ends-with"])(
+        "should reject multi-arg function calls with options when there is not enough arguments",
+        tag => {
+          const options = { "case-sensitive": true };
+          expect(() => expr([tag])).toThrow();
+          expect(() => expr([tag, A])).toThrow();
+          expect(() => expr([tag, A, options])).toThrow();
+          expect(() => expr([tag, A, "abc"])).not.toThrow();
+          expect(() => expr([tag, A, B])).not.toThrow();
+          expect(() => expr([tag, A, B, C])).not.toThrow();
+          expect(() => expr([tag, A, B, options])).not.toThrow();
+          expect(() => expr([tag, options, A, B, C])).not.toThrow();
+        },
+      );
     });
 
     describe("datetime functions", () => {
@@ -351,6 +366,16 @@ describe("metabase-lib/v1/expressions/resolve", () => {
       // CASE(X, 0.5*Y, A-B)
       const def = { default: ["-", A, B] };
       expect(() => expr(["case", [[X, ["*", 0.5, Y]]], def])).not.toThrow();
+    });
+
+    it("should allow sum inside expression in aggregation", () => {
+      // CASE(SUM(A) > 10, B)
+      expect(() => expr(["case", [[[">", ["sum", A], 10], B]]])).not.toThrow();
+    });
+
+    it("should accept IF as an alias for CASE", () => {
+      expect(expr(["if", [[A, B]]]).segments).toEqual(["A"]);
+      expect(expr(["if", [[A, B]]]).dimensions).toEqual(["B"]);
     });
   });
 

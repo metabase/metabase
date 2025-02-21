@@ -1,7 +1,14 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { collectionApi } from "metabase/api";
+import {
+  collectionApi,
+  skipToken,
+  useGetCollectionQuery,
+  useListCollectionsQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
 import {
   canonicalCollectionId,
   isRootTrashCollection,
@@ -66,6 +73,13 @@ const Collections = createEntity({
 
   displayNameOne: t`collection`,
   displayNameMany: t`collections`,
+
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery: useGetCollectionQuery,
+    }),
+    useListQuery,
+  },
 
   api: {
     list: async (params: ListParams, dispatch: Dispatch) => {
@@ -167,7 +181,26 @@ const Collections = createEntity({
   },
 });
 
-export { getExpandedCollectionsById };
+function useListQuery(
+  params: ListParams | undefined,
+  options: Parameters<
+    typeof useListCollectionsTreeQuery | typeof useListCollectionsQuery
+  >[1],
+) {
+  const collectionsTree = useListCollectionsTreeQuery(
+    params?.tree ? _.omit(params, "tree") : skipToken,
+    options,
+  );
+
+  const collections = useListCollectionsQuery(
+    params?.tree ? skipToken : params,
+    options,
+  );
+
+  return params?.tree ? collectionsTree : collections;
+}
+
+export { getExpandedCollectionsById, useListQuery };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Collections;

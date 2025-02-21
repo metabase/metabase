@@ -1,10 +1,10 @@
 /* eslint-disable jest/expect-expect */
 /* eslint-disable react/prop-types */
 
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Component } from "react";
 
+import { act, fireEvent, render, screen, within } from "__support__/ui";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
 import TokenField from "./TokenField";
@@ -83,7 +83,7 @@ describe("TokenField", () => {
   };
 
   const options = () => {
-    return screen.getAllByRole("list")[1];
+    return screen.queryAllByRole("listbox")[0];
   };
 
   const type = str => fireEvent.change(input(), { target: { value: str } });

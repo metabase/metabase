@@ -1,6 +1,6 @@
 (ns metabase-enterprise.snippet-collections.api.native-query-snippet
   (:require
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.honey-sql-2 :as h2x]))
 
 (defenterprise snippets-collection-filter-clause

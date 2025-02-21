@@ -61,6 +61,8 @@ import breakout_component from "./breakout.svg?component";
 import breakout_source from "./breakout.svg?source";
 import bubble_component from "./bubble.svg?component";
 import bubble_source from "./bubble.svg?source";
+import bug_component from "./bug.svg?component";
+import bug_source from "./bug.svg?source";
 import burger_component from "./burger.svg?component";
 import burger_source from "./burger.svg?source";
 import calendar_component from "./calendar.svg?component";
@@ -263,6 +265,8 @@ import pause_component from "./pause.svg?component";
 import pause_source from "./pause.svg?source";
 import pencil_component from "./pencil.svg?component";
 import pencil_source from "./pencil.svg?source";
+import pencil_lines_component from "./pencil_lines.svg?component";
+import pencil_lines_source from "./pencil_lines.svg?source";
 import permissions_limited_component from "./permissions_limited.svg?component";
 import permissions_limited_source from "./permissions_limited.svg?source";
 import person_component from "./person.svg?component";
@@ -305,6 +309,8 @@ import rocket_component from "./rocket.svg?component";
 import rocket_source from "./rocket.svg?source";
 import ruler_component from "./ruler.svg?component";
 import ruler_source from "./ruler.svg?source";
+import sankey_component from "./sankey.svg?component";
+import sankey_source from "./sankey.svg?source";
 import search_component from "./search.svg?component";
 import search_source from "./search.svg?source";
 import section_component from "./section.svg?component";
@@ -685,6 +691,10 @@ export const Icons = {
     component: filter_component,
     source: filter_source,
   },
+  bug: {
+    component: bug_component,
+    source: bug_source,
+  },
   formula: {
     component: formula_component,
     source: formula_source,
@@ -921,6 +931,10 @@ export const Icons = {
     component: pencil_component,
     source: pencil_source,
   },
+  pencil_lines: {
+    component: pencil_lines_component,
+    source: pencil_lines_source,
+  },
   permissions_limited: {
     component: permissions_limited_component,
     source: permissions_limited_source,
@@ -976,6 +990,10 @@ export const Icons = {
   revert: {
     component: revert_component,
     source: revert_source,
+  },
+  sankey: {
+    component: sankey_component,
+    source: sankey_source,
   },
   share: {
     component: share_component,

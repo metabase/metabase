@@ -4,6 +4,7 @@
    [clojure.test :refer [is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.util :as u]))
@@ -19,8 +20,7 @@
                (base-context column (get row (:name column))))))
 
 (defn- column-by-name [{:keys [query]} column-name]
-  (let [columns (lib/returned-columns query)]
-    (m/find-first #(= (:name %) column-name) columns)))
+  (lib.drill-thru.tu/column-by-name query column-name))
 
 (defn- null-value [{:keys [value] :as context}]
   ; This special case is only for *top-level* contexts, not :dimensions or :row, hence the separate function.
@@ -108,6 +108,14 @@
      :aggregations   1
      :breakouts      0
      :default-column "count"}
+
+    :test.query/orders-by-product-id
+    {:query          (-> (lib/query metadata-provider (meta/table-metadata :orders))
+                         (lib/breakout (meta/field-metadata :orders :product-id)))
+     :row            {"PRODUCT_ID" 77}
+     :aggregations   0
+     :breakouts      1
+     :default-column "PRODUCT_ID"}
 
     :test.query/orders-count-by-product-id
     {:query          (-> (lib/query metadata-provider (meta/table-metadata :orders))
@@ -270,6 +278,12 @@
 
          ;; Singular aggregation for Orders, just clicking that single cell.
          [(click (test-case metadata-provider :test.query/orders-count) :cell "count" :aggregation :number)]
+
+         ;; Breakout-only for Orders by Product ID - click both cell and header.
+         (let [tc (test-case metadata-provider :test.query/orders-by-product-id)]
+           [(click tc :cell "PRODUCT_ID" :breakout    :fk)
+
+            (click tc :header "PRODUCT_ID" :breakout    :fk)])
 
          ;; Count broken out by Product ID - click both count and Product ID, both the cells and headers; also a pivot.
          (let [tc (test-case metadata-provider :test.query/orders-count-by-product-id)]

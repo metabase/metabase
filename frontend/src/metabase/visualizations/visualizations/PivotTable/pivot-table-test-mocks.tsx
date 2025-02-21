@@ -6,38 +6,40 @@ import { PivotTable } from "./PivotTable";
 
 const cols = [
   {
+    name: "field-123",
+    display_name: "field-123",
     source: "breakout",
     field_ref: ["field", 123, null],
-    display_name: "field-123",
-    name: "field-123",
   },
   {
+    name: "field-456",
+    display_name: "field-456",
     source: "breakout",
     field_ref: ["field", 456, null],
-    display_name: "field-456",
-    name: "field-456",
   },
   {
+    name: "field-789",
+    display_name: "field-789",
     source: "breakout",
     field_ref: ["field", 789, null],
-    display_name: "field-789",
-    name: "field-789",
   },
   {
-    source: "breakout",
-    field_ref: ["expression", "pivot-grouping"],
     name: "pivot-grouping",
     display_name: "pivot-grouping",
+    source: "breakout",
+    field_ref: ["expression", "pivot-grouping"],
   },
   {
+    name: "aggregation-1",
+    display_name: "aggregation-1",
     source: "aggregation",
     field_ref: ["aggregation", 1],
-    display_name: "aggregation-1",
   },
   {
+    name: "aggregation-2",
+    display_name: "aggregation-2",
     source: "aggregation",
     field_ref: ["aggregation", 2],
-    display_name: "aggregation-2",
   },
 ] as DatasetColumn[];
 
@@ -52,13 +54,13 @@ const pivotSettings = {
   "pivot.show_column_totals": true,
   "pivot.show_row_totals": true,
   "pivot_table.collapsed_rows": {
-    rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
+    rows: [cols[0].name, cols[1].name, cols[2].name],
     value: [],
   },
   "pivot_table.column_split": {
     columns: [],
-    rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
-    values: [cols[4].field_ref, cols[5].field_ref],
+    rows: [cols[0].name, cols[1].name, cols[2].name],
+    values: [cols[4].name, cols[5].name],
   },
   "table.column_formatting": [],
   column_settings: {},

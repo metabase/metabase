@@ -25,6 +25,13 @@ import type {
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
 
+export interface Padding {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+}
+
 export type Formatter = (value: unknown, options?: OptionsType) => string;
 
 export type ColorGetter = (colorName: string) => string;
@@ -132,9 +139,6 @@ export interface VisualizationProps {
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: () => void;
-
-  "graph.dimensions"?: string[];
-  "graph.metrics"?: string[];
 
   canRemoveSeries?: (seriesIndex: number) => boolean;
   canToggleSeriesVisibility?: boolean;

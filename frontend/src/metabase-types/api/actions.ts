@@ -5,6 +5,46 @@ import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
 import type { UserId, UserInfo } from "./user";
 
+export interface ListActionsRequest {
+  "model-id"?: CardId;
+}
+
+export interface CreateActionRequest {
+  database_id?: DatabaseId;
+  dataset_query?: NativeDatasetQuery;
+  description?: string | null;
+  error_handle?: string | null;
+  kind?: "row/create" | "row/update" | "row/delete";
+  model_id: CardId;
+  name: string;
+  parameter_mappings?: Record<ParameterId, ParameterTarget>;
+  parameters?: WritebackParameter[];
+  response_handle?: string | null;
+  template?: HttpActionTemplate;
+  type?: "query" | "implicit" | "http";
+  visualization_settings?: ActionFormSettings;
+}
+
+export interface UpdateActionRequest {
+  id: WritebackActionId;
+  archived?: boolean;
+  database_id?: DatabaseId;
+  dataset_query?: NativeDatasetQuery;
+  description?: string | null;
+  error_handle?: string | null;
+  kind?: "row/create" | "row/update" | "row/delete";
+  model_id?: CardId;
+  name?: string;
+  parameter_mappings?: Record<ParameterId, ParameterTarget>;
+  parameters?: WritebackParameter[];
+  response_handle?: string | null;
+  template?: HttpActionTemplate;
+  url?: string;
+  body?: string;
+  headers?: string;
+  visualization_settings?: ActionFormSettings;
+}
+
 export interface WritebackParameter extends Parameter {
   target: ParameterTarget;
 }
@@ -18,7 +58,7 @@ export interface WritebackActionBase {
   model_id: CardId;
   name: string;
   description: string | null;
-  parameters: WritebackParameter[];
+  parameters?: WritebackParameter[];
   visualization_settings?: ActionFormSettings;
   archived: boolean;
   creator_id: UserId;
@@ -75,7 +115,7 @@ export type WritebackAction = WritebackActionBase &
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
 export type ParametersForActionExecution = {
-  [id: ParameterId]: string | number | null;
+  [id: ParameterId]: string | number | boolean | null;
 };
 
 export type ActionFormInitialValues = ParametersForActionExecution;

@@ -72,7 +72,9 @@ describe("[EE, with token] embedding settings", () => {
           }),
         );
         expect(
-          withinStaticEmbeddingCard.queryByText("upgrade to a paid plan"),
+          withinStaticEmbeddingCard.queryByText(
+            "upgrade to a specific paid plan",
+          ),
         ).not.toBeInTheDocument();
       });
 
@@ -124,7 +126,9 @@ describe("[EE, with token] embedding settings", () => {
             name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
-        expect(withinEmbeddingSdkCard.getByText("Beta")).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.queryByText("Beta"),
+        ).not.toBeInTheDocument();
         expect(
           withinEmbeddingSdkCard.getByText(
             /Interactive embedding with full, granular control./,
@@ -301,7 +305,9 @@ describe("[EE, with token] embedding settings", () => {
           }),
         );
         expect(
-          withinStaticEmbeddingCard.queryByText("upgrade to a paid plan"),
+          withinStaticEmbeddingCard.queryByText(
+            "upgrade to a specific paid plan",
+          ),
         ).not.toBeInTheDocument();
       });
 
@@ -353,7 +359,9 @@ describe("[EE, with token] embedding settings", () => {
             name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
-        expect(withinEmbeddingSdkCard.getByText("Beta")).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.queryByText("Beta"),
+        ).not.toBeInTheDocument();
         expect(
           withinEmbeddingSdkCard.getByText(
             /Interactive embedding with full, granular control./,
@@ -458,6 +466,7 @@ describe("[EE, with token] embedding settings", () => {
           }),
         );
 
+        // Interactive embedding settings page
         expect(
           screen.getByLabelText("Enable Interactive embedding"),
         ).toBeEnabled();
@@ -466,6 +475,21 @@ describe("[EE, with token] embedding settings", () => {
         ).toBeChecked();
         await userEvent.click(
           screen.getByLabelText("Enable Interactive embedding"),
+        );
+
+        expect(
+          screen.getByRole("link", { name: "Check out the Quick Start" }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole("link", { name: "Check out the Quick Start" }),
+        ).toHaveProperty(
+          "href",
+          /**
+           * The link is almost the same as the test "should link to quickstart for interactive embedding", but with different version
+           * since we're not passing the version in the `setupPremium` function here, and with different `utm_content` because this link
+           * is in the interactive admin settings page rather than the embedding settings page in the aforementioned test.
+           */
+          "https://www.metabase.com/docs/latest/embedding/interactive-embedding-quick-start-guide.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-interactive&utm_content=embedding-interactive-admin&source_plan=pro-self-hosted",
         );
 
         expect(screen.getByLabelText("Authorized origins")).toBeEnabled();
@@ -495,7 +519,7 @@ describe("[EE, with token] embedding settings", () => {
     expect(getInteractiveEmbeddingQuickStartLink()).toBeInTheDocument();
     expect(getInteractiveEmbeddingQuickStartLink()).toHaveProperty(
       "href",
-      "https://www.metabase.com/docs/v0.49/embedding/interactive-embedding-quick-start-guide.html?utm_source=pro-self-hosted&utm_media=embed-settings",
+      "https://www.metabase.com/docs/v0.49/embedding/interactive-embedding-quick-start-guide.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-interactive&utm_content=embedding-admin&source_plan=pro-self-hosted",
     );
   });
 

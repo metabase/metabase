@@ -1,13 +1,15 @@
-import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
   queryIcon,
   renderWithProviders,
   screen,
+  waitFor,
 } from "__support__/ui";
+import * as modelActions from "metabase/query_builder/actions/models";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
@@ -31,8 +33,8 @@ const ICON_CASES_LABELS = [
   { label: "bookmark icon", tooltipText: "Bookmark" },
   { label: "info icon", tooltipText: "More info" },
   {
-    label: "Move, trash, and more...",
-    tooltipText: "Move, trash, and more...",
+    label: "Move, trash, and more…",
+    tooltipText: "Move, trash, and more…",
   },
 ];
 
@@ -43,9 +45,20 @@ const ICON_CASES = ICON_CASES_CARDS.flatMap(card =>
 interface SetupOpts {
   card: Card;
   hasDataPermissions?: boolean;
+  hasAcknowledgedModelModal?: boolean;
 }
 
-function setup({ card, hasDataPermissions = true }: SetupOpts) {
+function setup({
+  card,
+  hasDataPermissions = true,
+  hasAcknowledgedModelModal = false,
+}: SetupOpts) {
+  setupGetUserKeyValueEndpoint({
+    namespace: "user_acknowledgement",
+    key: "turn_into_model_modal",
+    value: hasAcknowledgedModelModal,
+  });
+
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
@@ -57,7 +70,6 @@ function setup({ card, hasDataPermissions = true }: SetupOpts) {
   const metadata = getMetadata(state);
   const question = metadata.question(card.id) as Question;
   const onOpenModal = jest.fn();
-  const onTurnModelIntoQuestion = jest.fn();
   const onSetQueryBuilderMode = jest.fn();
 
   renderWithProviders(
@@ -68,24 +80,26 @@ function setup({ card, hasDataPermissions = true }: SetupOpts) {
       onOpenModal={onOpenModal}
       onToggleBookmark={jest.fn()}
       onSetQueryBuilderMode={onSetQueryBuilderMode}
-      onTurnModelIntoQuestion={onTurnModelIntoQuestion}
       onInfoClick={jest.fn()}
-      onModelPersistenceChange={jest.fn()}
     />,
     { storeInitialState: state },
   );
 
-  return { onOpenModal, onSetQueryBuilderMode, onTurnModelIntoQuestion };
+  return { onOpenModal, onSetQueryBuilderMode };
 }
 
 describe("QuestionActions", () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it.each(ICON_CASES)(
     `should display the "$label" icon with the "$tooltipText" tooltip for $card.name questions`,
     async ({ label, tooltipText, card }) => {
       setup({ card });
 
       await userEvent.hover(screen.getByRole("button", { name: label }));
-      const tooltip = screen.getByRole("tooltip", { name: tooltipText });
+      const tooltip = await screen.findByRole("tooltip", { name: tooltipText });
       expect(tooltip).toHaveAttribute("data-placement", "top");
       expect(tooltip).toHaveTextContent(tooltipText);
     },
@@ -100,8 +114,7 @@ describe("QuestionActions", () => {
         }),
       });
 
-      await userEvent.click(getIcon("ellipsis"));
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      await openActionsMenu();
 
       await userEvent.click(screen.getByText("Edit query definition"));
       await waitFor(() => {
@@ -109,6 +122,8 @@ describe("QuestionActions", () => {
           datasetEditorTab: "query",
         });
       });
+
+      await openActionsMenu();
 
       await userEvent.click(screen.getByText("Edit metadata"));
       await waitFor(() => {
@@ -126,8 +141,7 @@ describe("QuestionActions", () => {
         }),
       });
 
-      await userEvent.click(getIcon("ellipsis"));
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      await openActionsMenu();
 
       expect(
         screen.queryByText("Edit query definition"),
@@ -144,8 +158,7 @@ describe("QuestionActions", () => {
         hasDataPermissions: false,
       });
 
-      await userEvent.click(getIcon("ellipsis"));
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      await openActionsMenu();
 
       expect(
         screen.queryByText("Edit query definition"),
@@ -163,26 +176,51 @@ describe("QuestionActions", () => {
         }),
       });
 
-      await userEvent.click(getIcon("ellipsis"));
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      await openActionsMenu();
 
       await userEvent.click(screen.getByText("Turn into a model"));
       expect(onOpenModal).toHaveBeenCalledWith(MODAL_TYPES.TURN_INTO_DATASET);
     });
 
+    it("should skip showing model modal if user has acknowledged it previously", async () => {
+      const turnQuestionIntoModelSpy = jest
+        .spyOn(modelActions, "turnQuestionIntoModel")
+        .mockImplementation(() => async () => {});
+
+      const { onOpenModal } = setup({
+        card: createMockCard({
+          type: "question",
+          can_write: true,
+        }),
+        hasAcknowledgedModelModal: true,
+      });
+
+      await openActionsMenu();
+
+      await userEvent.click(screen.getByText("Turn into a model"));
+      expect(onOpenModal).not.toHaveBeenCalled();
+
+      // should still turn into a model
+      expect(turnQuestionIntoModelSpy).toHaveBeenCalled();
+      turnQuestionIntoModelSpy.mockRestore();
+    });
+
     it("should allow to turn into a question with write data & collection permissions", async () => {
-      const { onTurnModelIntoQuestion } = setup({
+      const turnModelIntoQuestionSpy = jest.spyOn(
+        modelActions,
+        "turnModelIntoQuestion",
+      );
+      setup({
         card: createMockCard({
           type: "model",
           can_write: true,
         }),
       });
 
-      await userEvent.click(getIcon("ellipsis"));
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      await openActionsMenu();
 
       await userEvent.click(screen.getByText("Turn back to saved question"));
-      expect(onTurnModelIntoQuestion).toHaveBeenCalled();
+      expect(turnModelIntoQuestionSpy).toHaveBeenCalledTimes(1);
     });
 
     it("should not allow to turn into a model without write collection permissions", async () => {
@@ -193,8 +231,7 @@ describe("QuestionActions", () => {
         }),
       });
 
-      await userEvent.click(getIcon("ellipsis"));
-      await screen.findByRole("dialog");
+      await openActionsMenu();
 
       expect(screen.queryByText("Turn int a model")).not.toBeInTheDocument();
     });
@@ -207,8 +244,7 @@ describe("QuestionActions", () => {
         }),
       });
 
-      await userEvent.click(getIcon("ellipsis"));
-      await screen.findByRole("dialog");
+      await openActionsMenu();
 
       expect(
         screen.queryByText("Turn back to saved question"),
@@ -224,15 +260,18 @@ describe("QuestionActions", () => {
         hasDataPermissions: false,
       });
 
-      await userEvent.click(getIcon("ellipsis"));
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      await openActionsMenu();
 
       await userEvent.click(screen.getByText("Turn into a model"));
       expect(onOpenModal).toHaveBeenCalledWith(MODAL_TYPES.TURN_INTO_DATASET);
     });
 
     it("should allow to turn into a question without data permissions", async () => {
-      const { onTurnModelIntoQuestion } = setup({
+      const turnModelIntoQuestionSpy = jest.spyOn(
+        modelActions,
+        "turnModelIntoQuestion",
+      );
+      setup({
         card: createMockCard({
           type: "model",
           can_write: true,
@@ -240,11 +279,10 @@ describe("QuestionActions", () => {
         hasDataPermissions: false,
       });
 
-      await userEvent.click(getIcon("ellipsis"));
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      await openActionsMenu();
 
       await userEvent.click(screen.getByText("Turn back to saved question"));
-      expect(onTurnModelIntoQuestion).toHaveBeenCalled();
+      expect(turnModelIntoQuestionSpy).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -261,3 +299,8 @@ describe("QuestionActions", () => {
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 });
+
+async function openActionsMenu() {
+  await userEvent.click(getIcon("ellipsis"));
+  expect(await screen.findByRole("menu")).toBeInTheDocument();
+}

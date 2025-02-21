@@ -8,12 +8,9 @@
    [metabuild-common.steps :as steps])
   (:import
    (java.io File FileInputStream FileOutputStream)
-   (java.nio.file
-    FileSystems
-    FileVisitOption
-    Files
-    Path
-    Paths)
+   (java.net URI)
+   (java.nio.file Files FileSystem FileSystems FileVisitOption Path Paths)
+   (java.util Collections)
    (java.util.function BiPredicate)
    (java.util.zip ZipEntry ZipOutputStream)
    (org.apache.commons.io FileUtils)))
@@ -187,3 +184,26 @@
                (recur (.read fis buffer))))
            (.closeEntry zos))))
      (out/announce "%d Entries zipped to '%s'!" @entry-count zip-file))))
+
+(defn do-with-open-jar-file-system
+  "IMPL for `with-open-jar-file-system`."
+  [path-to-jar f]
+  (let [file (io/file path-to-jar)]
+    (assert (.exists file)
+            (format "Cannot find jar at path %s" path-to-jar))
+    (with-open [filesystem (FileSystems/newFileSystem (URI. (str "jar:" (.toURI file)))
+                                                      Collections/EMPTY_MAP)]
+      (f filesystem))))
+
+(defmacro with-open-jar-file-system
+  "Execute `body` with an open NIO JAR filesystem for the JAR at `path-to-jar`."
+  [[filesystem-binding path-to-jar & more] & body]
+  (let [body (if (seq more)
+               `((with-open-jar-file-system ~(vec more) ~@body))
+               body)]
+    `(do-with-open-jar-file-system ~path-to-jar (fn [~(vary-meta filesystem-binding assoc :tag `FileSystem)] ~@body))))
+
+(defn get-path-in-filesystem
+  "Get an NIO Path in a given NIO `FileSystem`."
+  ^Path [^FileSystem filesystem ^String path-component & more-components]
+  (.getPath filesystem path-component (misc/varargs String more-components)))

@@ -1,6 +1,6 @@
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
@@ -14,15 +14,16 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import {
   ChartTypeSettings,
   type GetSensibleVisualizationsProps,
-  type UseChartTypeVisualizationsProps,
-  useChartTypeVisualizations,
+  type UseQuestionVisualizationStateProps,
+  getSensibleVisualizations,
+  useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
 
 export type ChartTypeSidebarProps = Pick<
-  UseChartTypeVisualizationsProps,
+  UseQuestionVisualizationStateProps,
   "question"
 > &
   GetSensibleVisualizationsProps;
@@ -44,16 +45,16 @@ export const ChartTypeSidebar = ({
     }
   };
 
-  const {
-    selectedVisualization,
-    updateQuestionVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
-  } = useChartTypeVisualizations({
-    question,
-    result,
-    onUpdateQuestion,
-  });
+  const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
+    () => getSensibleVisualizations({ result }),
+    [result],
+  );
+
+  const { selectedVisualization, updateQuestionVisualization } =
+    useQuestionVisualizationState({
+      question,
+      onUpdateQuestion,
+    });
 
   const handleSelectVisualization = (display: CardDisplayType) => {
     updateQuestionVisualization(display);
@@ -80,7 +81,7 @@ export const ChartTypeSidebar = ({
         sensibleVisualizations={sensibleVisualizations}
         nonSensibleVisualizations={nonSensibleVisualizations}
         onOpenSettings={onOpenVizSettings}
-        spacing={0}
+        gap={0}
         w="100%"
         p="lg"
       />

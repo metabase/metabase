@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { FieldList } from "metabase/admin/datamodel/components/FieldList";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import SelectButton from "metabase/core/components/SelectButton";
 import { alpha, color } from "metabase/lib/colors";
@@ -16,17 +15,13 @@ export const FieldMappingContainer = styled.div`
   align-items: center;
 `;
 
-export interface FieldSelectButtonProps {
+interface FieldSelectButtonProps {
   hasError: boolean;
 }
 
 export const FieldSelectButton = styled(SelectButton)<FieldSelectButtonProps>`
   border-color: ${props =>
     props.hasError ? color("error") : alpha("accent2", 0.2)};
-`;
-
-export const ForeignKeyList = styled(FieldList)`
-  color: var(--mb-color-filter);
 `;
 
 export const FieldValueMappingInput = styled(InputBlurChange)`

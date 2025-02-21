@@ -68,28 +68,51 @@
           ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison.
           (reduce-kv (fn [acc k _]
                        (if (or (qualified-keyword? k)
-                               (= k :base-type)
-                               (= k :effective-type))
+                               (#{:base-type :effective-type :ident} k))
                          (dissoc acc k)
                          acc))
                      options options)))))))
 
-(defn remove-lib-uuids
-  "Recursively remove all uuids from x."
+(defn remove-randomized-idents
+  "Recursively remove all uuids, `:ident`s and `:entity_id`s from x."
   [x]
   (walk/postwalk
    (fn [x]
      (if (map? x)
-       (dissoc x :lib/uuid)
+       (dissoc x :lib/uuid :ident :entity_id :entity-id)
        x))
    x))
+
+(defn- indexed-order-bys-for-stage
+  "Convert all order-bys in a stage to refer to aggregations by index instead of uuid"
+  [{:keys [aggregation order-by] :as stage}]
+  (if (and aggregation order-by)
+    (let [agg-lookups (->> aggregation
+                           (map-indexed (fn [i [_type {agg-uuid :lib/uuid}]]
+                                          [agg-uuid i]))
+                           (into {}))]
+      (update stage :order-by (fn [order-bys]
+                                (mapv (fn [[_dir _opts [order-type agg-opts agg-uuid] :as order-by]]
+                                        (if (= order-type :aggregation)
+                                          (assoc order-by 2 [order-type agg-opts (agg-lookups agg-uuid)])
+                                          order-by))
+                                      order-bys))))
+    stage))
+
+(defn indexed-order-bys
+  "Convert all order-bys in a query to refer to aggregations by index instead of uuid. The result is
+  not a valid query, but avoiding random uuids is important during hashing."
+  [query]
+  (if (:stages query)
+    (update query :stages #(mapv indexed-order-bys-for-stage %))
+    query))
 
 (mr/def ::distinct-ignoring-uuids
   [:fn
    {:error/message "values must be distinct ignoring uuids"
     :error/fn      (fn [{:keys [value]} _]
-                     (str "Duplicate values ignoring uuids in: " (pr-str (remove-lib-uuids value))))}
-   (comp u/empty-or-distinct? remove-lib-uuids)])
+                     (str "Duplicate values ignoring uuids in: " (pr-str (remove-randomized-idents value))))}
+   (comp u/empty-or-distinct? remove-randomized-idents)])
 
 (defn distinct-ignoring-uuids
   "Add an additional constraint to `schema` that requires all elements to be distinct after removing uuids."

@@ -1,6 +1,7 @@
 (ns metabase.task.cache
-  (:require [metabase.public-settings.premium-features :refer [defenterprise]]
-            [metabase.task :as task]))
+  (:require
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.task :as task]))
 
 (defenterprise init-cache-task!
   "In OSS does nothing"

@@ -32,6 +32,8 @@ The database port (e.g, 8082).
 
 See our [guide to SSH tunneling](../ssh-tunnel.md).
 
+## Advanced options
+
 ### Allow unfolding of JSON columns
 
 > Only available for the Druid JDBC connection.
@@ -40,11 +42,17 @@ This enables unfolding of JSON columns into their component fields.
 
 See [JSON unfolding](../../data-modeling/json-unfolding.md).
 
+### Authentication
+
+> Only available for the Druid JDBC connection.
+
+Toggle on to enable basic authentication with a username and password.
+
 ### Re-run queries for simple explorations
 
-Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
+Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when Metabase syncs and scans
 

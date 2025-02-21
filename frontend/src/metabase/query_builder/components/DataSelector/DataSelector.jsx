@@ -1,35 +1,31 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Component, createRef } from "react";
-import { connect } from "react-redux";
+import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Schemas from "metabase/entities/schemas";
 import Search from "metabase/entities/search";
 import Tables from "metabase/entities/tables";
+import { connect } from "metabase/lib/redux";
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
+import { Box, Popover } from "metabase/ui";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
-import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
-import {
-  EmptyStateContainer,
-  TableSearchContainer,
-} from "./DataSelector.styled";
+import DataSelectorS from "./DataSelector.module.css";
 import DataBucketPicker from "./DataSelectorDataBucketPicker";
 import DatabasePicker from "./DataSelectorDatabasePicker";
 import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
@@ -42,7 +38,7 @@ import {
   TableTrigger,
   Trigger,
 } from "./TriggerComponents";
-import { DATA_BUCKET } from "./constants";
+import { CONTAINER_WIDTH, DATA_BUCKET } from "./constants";
 import { SearchResults, getSearchItemTableOrCardId } from "./data-search";
 import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
 import { getDataTypes } from "./utils";
@@ -114,6 +110,16 @@ export function SchemaTableAndFieldDataSelector(props) {
   );
 }
 
+export function FieldDataSelector(props) {
+  return (
+    <DataSelector
+      steps={[FIELD_STEP]}
+      getTriggerElementContent={FieldTrigger}
+      {...props}
+    />
+  );
+}
+
 export class UnconnectedDataSelector extends Component {
   constructor(props) {
     super();
@@ -127,6 +133,7 @@ export class UnconnectedDataSelector extends Component {
       searchText: "",
       isSavedEntityPickerShown: false,
       savedEntityType: null,
+      isPopoverOpen: props.isInitiallyOpen && !props.readOnly,
     };
     const computedState = this._getComputedState(props, state);
     this.state = {
@@ -136,7 +143,6 @@ export class UnconnectedDataSelector extends Component {
       ...state,
       ...computedState,
     };
-    this.popover = createRef();
   }
 
   static propTypes = {
@@ -192,6 +198,16 @@ export class UnconnectedDataSelector extends Component {
     isMantine: false,
     canSelectMetric: false,
   };
+
+  isPopoverOpen() {
+    // If the isOpen prop is passed in, use the controlled value.
+    if (typeof this.props.isOpen === "boolean") {
+      return this.props.isOpen;
+    }
+
+    // Otherwise, use the internal popover state.
+    return this.state.isPopoverOpen;
+  }
 
   // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
   // from props (`metadata`, `databases`, etc) and state (`selectedDatabaseId`, etc)
@@ -336,7 +352,7 @@ export class UnconnectedDataSelector extends Component {
       selectedTableId: sourceId,
     } = this.props;
 
-    if (!this.isLoadingDatasets() && !activeStep) {
+    if (!this.isSearchLoading() && !activeStep) {
       await this.hydrateActiveStep();
     }
 
@@ -418,7 +434,10 @@ export class UnconnectedDataSelector extends Component {
     }
   }
 
-  isLoadingDatasets = () => this.props.loading;
+  isSearchLoading = () => {
+    const { models, metrics, allLoading } = this.props;
+    return models == null || metrics == null || allLoading;
+  };
 
   getCardType() {
     const { selectedDataBucketId, savedEntityType } = this.state;
@@ -546,7 +565,7 @@ export class UnconnectedDataSelector extends Component {
   getPreviousStep() {
     const { steps } = this.props;
     const { activeStep } = this.state;
-    if (this.isLoadingDatasets() || activeStep === null) {
+    if (this.isSearchLoading() || activeStep === null) {
       return null;
     }
 
@@ -580,11 +599,19 @@ export class UnconnectedDataSelector extends Component {
     return steps[index];
   }
 
+  togglePopoverOpen = () => {
+    this.setStateWithComputedState({
+      isPopoverOpen: !this.state.isPopoverOpen,
+    });
+  };
+
   nextStep = async (stateChange = {}, skipSteps = true) => {
     const nextStep = this.getNextStep();
     if (!nextStep) {
-      await this.setStateWithComputedState(stateChange);
-      this.popover.current && this.popover.current.toggle();
+      await this.setStateWithComputedState({
+        ...stateChange,
+        isPopoverOpen: !this.state.isPopoverOpen,
+      });
     } else {
       await this.switchToStep(nextStep, stateChange, skipSteps);
     }
@@ -839,7 +866,14 @@ export class UnconnectedDataSelector extends Component {
   };
 
   renderActiveStep() {
-    const { combineDatabaseSchemaSteps, hasNestedQueriesEnabled } = this.props;
+    const { steps, combineDatabaseSchemaSteps, hasNestedQueriesEnabled } =
+      this.props;
+    const hasNextStep = this.getNextStep() != null;
+    const hasPreviousStep = this.getPreviousStep() != null;
+    const hasBackButton =
+      hasPreviousStep &&
+      steps.includes(DATA_BUCKET_STEP) &&
+      this.hasUsableModelsOrMetrics();
 
     const props = {
       ...this.state,
@@ -853,8 +887,8 @@ export class UnconnectedDataSelector extends Component {
 
       // misc
       isLoading: this.state.isLoading,
-      hasNextStep: !!this.getNextStep(),
-      onBack: this.getPreviousStep() ? this.previousStep : null,
+      hasNextStep,
+      onBack: hasPreviousStep ? this.previousStep : null,
       hasFiltering: true,
       hasInitialFocus: !this.showTableSearch(),
     };
@@ -862,31 +896,27 @@ export class UnconnectedDataSelector extends Component {
     switch (this.state.activeStep) {
       case DATA_BUCKET_STEP:
         return (
-          <DataBucketPicker
-            dataTypes={getDataTypes({
-              hasModels: this.hasModels(),
-              hasNestedQueriesEnabled,
-              hasSavedQuestions: this.hasSavedQuestions(),
-              hasMetrics: this.hasMetrics(),
-            })}
-            {...props}
-          />
+          <Box p="sm">
+            <DataBucketPicker
+              dataTypes={getDataTypes({
+                hasModels: this.hasModels(),
+                hasNestedQueriesEnabled,
+                hasSavedQuestions: this.hasSavedQuestions(),
+                hasMetrics: this.hasMetrics(),
+              })}
+              {...props}
+            />
+          </Box>
         );
       case DATABASE_STEP:
         return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker
-            {...props}
-            hasBackButton={this.hasUsableModelsOrMetrics() && props.onBack}
-          />
+          <DatabaseSchemaPicker {...props} hasBackButton={hasBackButton} />
         ) : (
           <DatabasePicker {...props} />
         );
       case SCHEMA_STEP:
         return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker
-            {...props}
-            hasBackButton={this.hasUsableModelsOrMetrics() && props.onBack}
-          />
+          <DatabaseSchemaPicker {...props} hasBackButton={hasBackButton} />
         ) : (
           <SchemaPicker {...props} />
         );
@@ -907,7 +937,7 @@ export class UnconnectedDataSelector extends Component {
       const table = this.props.metadata.table(tableOrCardId);
       this.props.setSourceTableFn(tableOrCardId, table.db_id);
     }
-    this.popover.current.toggle();
+    this.togglePopoverOpen();
     this.handleClose();
   };
 
@@ -936,14 +966,14 @@ export class UnconnectedDataSelector extends Component {
       const table = this.props.metadata.table(tableOrCardId);
       this.props.setSourceTableFn(table.id, table.db_id);
     }
-    this.popover.current.toggle();
+    this.togglePopoverOpen();
     this.handleClose();
   };
 
   handleClose = () => {
     const { onClose } = this.props;
     this.setState({ searchText: "" });
-    if (typeof onProps === "function") {
+    if (typeof onClose === "function") {
       onClose();
     }
   };
@@ -998,7 +1028,8 @@ export class UnconnectedDataSelector extends Component {
       selectedDataBucketId,
       selectedTable,
     } = this.state;
-    const { canChangeDatabase, selectedDatabaseId } = this.props;
+    const { canChangeDatabase, selectedDatabaseId, selectedCollectionId } =
+      this.props;
 
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
@@ -1007,7 +1038,7 @@ export class UnconnectedDataSelector extends Component {
     const isPickerOpen =
       isSavedEntityPickerShown || selectedDataBucketId === DATA_BUCKET.MODELS;
 
-    if (this.isLoadingDatasets()) {
+    if (this.isSearchLoading()) {
       return <LoadingAndErrorWrapper loading />;
     }
 
@@ -1015,7 +1046,7 @@ export class UnconnectedDataSelector extends Component {
       return (
         <>
           {this.showTableSearch() && (
-            <TableSearchContainer>
+            <Box className={DataSelectorS.TableSearchContainer}>
               <ListSearchField
                 fullWidth
                 autoFocus
@@ -1024,7 +1055,7 @@ export class UnconnectedDataSelector extends Component {
                 onChange={e => this.handleSearchTextChange(e.target.value)}
                 onResetClick={() => this.handleSearchTextChange("")}
               />
-            </TableSearchContainer>
+            </Box>
           )}
           {isSearchActive && (
             <SearchResults
@@ -1037,11 +1068,7 @@ export class UnconnectedDataSelector extends Component {
           {!isSearchActive &&
             (isPickerOpen ? (
               <SavedEntityPicker
-                collectionName={
-                  selectedTable &&
-                  selectedTable.schema &&
-                  getSchemaName(selectedTable.schema.id)
-                }
+                collectionId={selectedCollectionId}
                 type={this.getCardType()}
                 tableId={selectedTable?.id}
                 databaseId={currentDatabaseId}
@@ -1056,36 +1083,44 @@ export class UnconnectedDataSelector extends Component {
     }
 
     return (
-      <EmptyStateContainer>
+      <Box w={CONTAINER_WIDTH} p="80px 60px">
         <EmptyState
           message={t`To pick some data, you'll need to add some first`}
           icon="database"
         />
-      </EmptyStateContainer>
+      </Box>
     );
   };
 
   render() {
     if (this.props.isPopover) {
+      const triggerElement = this.getTriggerElement();
+
+      const triggerTargetClassName = cx(
+        this.props.containerClassName,
+        this.getTriggerClasses(),
+      );
+
       return (
-        <PopoverWithTrigger
-          id="DataPopover"
-          autoWidth
-          ref={this.popover}
-          isInitiallyOpen={this.props.isInitiallyOpen && !this.props.readOnly}
-          containerClassName={this.props.containerClassName}
-          triggerElement={this.getTriggerElement}
-          triggerClasses={this.getTriggerClasses()}
-          hasArrow={this.props.hasArrow}
-          tetherOptions={this.props.tetherOptions}
-          sizeToFit
-          isOpen={this.props.isOpen}
+        <Popover
           onClose={this.handleClose}
+          position="bottom-start"
+          opened={this.isPopoverOpen()}
         >
-          {this.renderContent()}
-        </PopoverWithTrigger>
+          <Popover.Target>
+            <Box
+              className={triggerTargetClassName}
+              onClick={() => this.togglePopoverOpen()}
+            >
+              {triggerElement}
+            </Box>
+          </Popover.Target>
+
+          <Popover.Dropdown>{this.renderContent()}</Popover.Dropdown>
+        </Popover>
       );
     }
+
     return this.renderContent();
   }
 }

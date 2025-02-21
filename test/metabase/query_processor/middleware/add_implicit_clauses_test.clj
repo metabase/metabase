@@ -13,8 +13,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel ordering-test
   (testing "check we fetch Fields in the right order"
@@ -51,51 +50,45 @@
   (testing "we should add order-bys for breakout clauses"
     (testing "Add Field to existing order-by"
       (mt/with-metadata-provider meta/metadata-provider
-        (is (= {:source-table 1
-                :breakout     [[:field 2 nil]]
-                :order-by     [[:asc [:field 1 nil]]
-                               [:asc [:field 2 nil]]]}
-               (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
-                {:source-table 1
-                 :breakout     [[:field 2 nil]]
-                 :order-by     [[:asc [:field 1 nil]]]})))))))
+        (is (=? (lib.tu.macros/mbql-query orders
+                  {:breakout [$product-id->products.category]
+                   :order-by [[:asc $created-at]
+                              [:asc $product-id->products.category]]})
+                (update (lib.tu.macros/mbql-query orders
+                          {:breakout [$product-id->products.category]
+                           :order-by [[:asc $created-at]]})
+                        :query #'qp.add-implicit-clauses/add-implicit-breakout-order-by)))))))
 
 (deftest ^:parallel add-order-bys-for-breakouts-test-3
   (testing "we should add order-bys for breakout clauses"
     (testing "...but not if the Field is already in an order-by"
       (mt/with-metadata-provider meta/metadata-provider
-        (is (= {:source-table 1
-                :breakout     [[:field 1 nil]]
-                :order-by     [[:asc [:field 1 nil]]]}
-               (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
-                {:source-table 1
-                 :breakout     [[:field 1 nil]]
-                 :order-by     [[:asc [:field 1 nil]]]})))))))
+        (let [{:keys [query]} (lib.tu.macros/mbql-query orders
+                                {:breakout [$product-id->products.category]
+                                 :order-by [[:asc $product-id->products.category]]})]
+          (is (= query
+                 (#'qp.add-implicit-clauses/add-implicit-breakout-order-by query))))))))
 
 (deftest ^:parallel add-order-bys-for-breakouts-test-4
   (testing "we should add order-bys for breakout clauses"
     (testing "...but not if the Field is already in an order-by"
       (mt/with-metadata-provider meta/metadata-provider
-        (is (= {:source-table 1
-                :breakout     [[:field 1 nil]]
-                :order-by     [[:desc [:field 1 nil]]]}
-               (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
-                {:source-table 1
-                 :breakout     [[:field 1 nil]]
-                 :order-by     [[:desc [:field 1 nil]]]})))))))
+        (let [{:keys [query]} (lib.tu.macros/mbql-query orders
+                                {:breakout [$product-id->products.category]
+                                 :order-by [[:desc $product-id->products.category]]})]
+          (is (= query
+                 (#'qp.add-implicit-clauses/add-implicit-breakout-order-by query))))))))
 
 (deftest ^:parallel add-order-bys-for-breakouts-test-5
   (testing "we should add order-bys for breakout clauses"
     (testing "...but not if the Field is already in an order-by"
       (testing "With a datetime-field"
         (mt/with-metadata-provider meta/metadata-provider
-          (is (= {:source-table 1
-                  :breakout     [[:field 1 {:temporal-unit :day}]]
-                  :order-by     [[:asc [:field 1 {:temporal-unit :day}]]]}
-                 (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
-                  {:source-table 1
-                   :breakout     [[:field 1 {:temporal-unit :day}]]
-                   :order-by     [[:asc [:field 1 {:temporal-unit :day}]]]}))))))))
+          (let [{:keys [query]} (lib.tu.macros/mbql-query orders
+                                  {:breakout [!day.created-at]
+                                   :order-by [[:asc !day.created-at]]})]
+            (is (= query
+                   (#'qp.add-implicit-clauses/add-implicit-breakout-order-by query)))))))))
 
 (defn- add-implicit-fields [inner-query]
   (if (qp.store/initialized?)
@@ -227,31 +220,23 @@
 (deftest ^:parallel add-correct-implicit-fields-for-deeply-nested-source-queries-test
   (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
     (qp.store/with-metadata-provider meta/metadata-provider
-      (let [expected-cols (fn [query]
-                            (qp.preprocess/query->expected-cols
-                             {:database (meta/id)
-                              :type     :query
-                              :query    query}))
-            q1            (lib.tu.macros/$ids orders
-                            {:source-table $$orders
-                             :filter       [:= $id 1]
+      (let [expected-cols qp.preprocess/query->expected-cols
+            q1            (lib.tu.macros/mbql-query orders
+                            {:filter       [:= $id 1]
                              :aggregation  [[:sum $total]]
                              :breakout     [!day.created-at
                                             $product-id->products.title
                                             $product-id->products.category]})
-            q2            (lib.tu.macros/$ids orders
-                            {:source-query    q1
+            q2            (lib.tu.macros/mbql-query nil
+                            {:source-query    (:query q1)
                              :filter          [:> *sum/Float 100]
                              :aggregation     [[:sum *sum/Float]]
-                             :breakout        [$product-id->products.title]
+                             :breakout        [$orders.product-id->products.title]
                              :source-metadata (expected-cols q1)})
-            q3            (lib.tu.macros/$ids orders
-                            {:source-query    q2
+            query         (lib.tu.macros/mbql-query nil
+                            {:source-query    (:query q2)
                              :filter          [:> *sum/Float 100]
-                             :source-metadata (expected-cols q2)})
-            query         {:database (meta/id)
-                           :type     :query
-                           :query    q3}]
+                             :source-metadata (expected-cols q2)})]
         (is (=? (lib.tu.macros/$ids orders
                   [$product-id->products.title
                    *sum/Float])
@@ -319,8 +304,8 @@
   (mt/test-drivers
     (mt/normal-drivers)
     (testing "Query with sort, breakout and _model as a source_ works correctly (#44653)."
-      (t2.with-temp/with-temp [:model/Card {card-id :id} {:type :model
-                                                          :dataset_query (mt/mbql-query orders)}]
+      (mt/with-temp [:model/Card {card-id :id} {:type :model
+                                                :dataset_query (mt/mbql-query orders)}]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
               field-id (mt/id :products :created_at)
               {:keys [base-type name]} (lib.metadata/field mp field-id)]

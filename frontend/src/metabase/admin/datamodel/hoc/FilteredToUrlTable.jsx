@@ -1,13 +1,13 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { FieldSet } from "metabase/components/FieldSet";
 import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
+import { connect } from "metabase/lib/redux";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon } from "metabase/ui";
 
@@ -64,42 +64,29 @@ class TableSelectorInner extends Component {
             selectedTableId={tableId}
             setSourceTableFn={setTableId}
             triggerElement={
-              tableId == null ? (
-                <span
-                  className={cx(
-                    CS.flex,
-                    CS.alignCenter,
-                    CS.justifyBetween,
-                    CS.flexFull,
-                    CS.textMedium,
-                    CS.textBold,
-                  )}
-                >
-                  {t`Filter by table`}
-                  <Icon name="chevrondown" size={12} />
-                </span>
-              ) : (
-                <span
-                  className={cx(
-                    CS.flex,
-                    CS.alignCenter,
-                    CS.justifyBetween,
-                    CS.flexFull,
-                    CS.textBrand,
-                    CS.textBold,
-                  )}
-                >
-                  {table && table.displayName()}
-                  <Icon
-                    name="close"
-                    onClick={e => {
+              <span
+                className={cx(
+                  CS.flex,
+                  CS.alignCenter,
+                  CS.justifyBetween,
+                  CS.flexFull,
+                  CS.textMedium,
+                  CS.textBold,
+                )}
+                data-testid="segment-list-table"
+              >
+                {table ? table.displayName() : t`Filter by table`}
+                <Icon
+                  name={table ? "close" : "chevrondown"}
+                  size={12}
+                  onClick={e => {
+                    if (table) {
                       e.stopPropagation();
                       setTableId(null);
-                    }}
-                    size={12}
-                  />
-                </span>
-              )
+                    }
+                  }}
+                />
+              </span>
             }
           />
         </div>

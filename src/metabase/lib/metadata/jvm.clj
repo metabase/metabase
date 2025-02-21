@@ -11,10 +11,11 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.memoize :as u.memo]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -31,18 +32,12 @@
   (or (qualified-keyword? k)
       (str/includes? k ".")))
 
-(def ^:private ^{:arglists '([k])} memoized-kebab-key
-  "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU
-  caching [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
+(def ^{:private true
+       :arglists '([k])} memoized-kebab-key
+  "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU caching
+  [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
   get a nice performance boost."
-  ;; we spent a lot of time messing around with different ways of doing this and this seems to be the fastest. See
-  ;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1702671632956539 -- Cam
-  (let [cache      (java.util.concurrent.ConcurrentHashMap.)
-        mapping-fn (reify java.util.function.Function
-                     (apply [_this k]
-                       (u/->kebab-case-en k)))]
-    (fn [k]
-      (.computeIfAbsent cache k mapping-fn))))
+  (u.memo/fast-memo u/->kebab-case-en))
 
 (defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
@@ -61,7 +56,7 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/database
   [model]
-  (classloader/require 'metabase.models.database)
+  (t2/resolve-model :model/Database) ; for side-effects
   model)
 
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
@@ -88,7 +83,7 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/table
   [model]
-  (classloader/require 'metabase.models.table)
+  (t2/resolve-model :model/Table)
   model)
 
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
@@ -110,10 +105,10 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/column
   [model]
-  (classloader/require 'metabase.models.dimension
-                       'metabase.models.field
-                       'metabase.models.field-values
-                       'metabase.models.table)
+  (t2/resolve-model :model/Dimension) ; for side-effects
+  (t2/resolve-model :model/Field)
+  (t2/resolve-model :model/FieldValues)
+  (t2/resolve-model :model/Table)
   model)
 
 (methodical/defmethod t2.model/model->namespace :metadata/column
@@ -177,12 +172,15 @@
 
 (t2/define-after-select :metadata/column
   [field]
-  (let [field          (instance->metadata field :metadata/column)
+  (let [entity-id      (serdes/backfill-entity-id field)
+        field          (instance->metadata field :metadata/column)
         dimension-type (some-> (:dimension/type field) keyword)]
     (merge
      (dissoc field
+             :table
              :dimension/human-readable-field-id :dimension/id :dimension/name :dimension/type
              :values/human-readable-values :values/values)
+     {:ident entity-id}
      (when (and (= dimension-type :external)
                 (:dimension/human-readable-field-id field))
        {:lib/external-remap {:lib/type :metadata.column.remapping/external
@@ -208,8 +206,8 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/card
   [model]
-  (classloader/require 'metabase.models.card
-                       'metabase.models.persisted-info)
+  (t2/resolve-model :model/Card)
+  (t2/resolve-model :model/PersistedInfo)
   model)
 
 (methodical/defmethod t2.model/model->namespace :metadata/card
@@ -233,9 +231,11 @@
   (merge
    (next-method query-type model parsed-args honeysql)
    {:select    [:card/collection_id
+                :card/created_at   ; Needed for backfilling :entity_id on demand; see [[metabase.models.card]].
                 :card/database_id
                 :card/dataset_query
                 :card/id
+                :card/entity_id
                 :card/name
                 :card/result_metadata
                 :card/table_id
@@ -283,8 +283,8 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/segment
   [model]
-  (classloader/require 'metabase.models.segment
-                       'metabase.models.table)
+  (t2.model/resolve-model :model/Segment)
+  (t2.model/resolve-model :model/Table)
   model)
 
 (methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/segment
@@ -340,9 +340,12 @@
 
 (defn- tables [database-id]
   (t2/select :metadata/table
-             :db_id           database-id
-             :active          true
-             :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
+             {:where [:and
+                      [:= :db_id database-id]
+                      [:= :active true]
+                      [:or
+                       [:is :visibility_type nil]
+                       [:not-in :visibility_type #{"hidden" "technical" "cruft"}]]]}))
 
 (defn- metadatas-for-table [metadata-type table-id]
   (case metadata-type

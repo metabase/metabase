@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import { Icon } from "metabase/ui";
 
-export interface MenuItemProps {
+interface MenuItemProps {
   color?: ColorName;
   hoverColor?: ColorName;
   hoverBgColor?: ColorName;

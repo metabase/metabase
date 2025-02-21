@@ -1,3 +1,4 @@
+import { isNotNull } from "metabase/lib/types";
 import {
   getAvailableOperatorOptions,
   getDefaultAvailableOperator,
@@ -5,11 +6,7 @@ import {
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
-import type { NumberValue, OperatorOption } from "./types";
-
-function isNotEmpty(value: NumberValue): value is number {
-  return value !== "";
-}
+import type { NumberOrEmptyValue, OperatorOption } from "./types";
 
 export function getAvailableOptions(
   query: Lib.Query,
@@ -24,15 +21,13 @@ export function getAvailableOptions(
   );
 }
 
-export function getOptionByOperator(
-  operator: Lib.CoordinateFilterOperatorName,
-) {
+export function getOptionByOperator(operator: Lib.CoordinateFilterOperator) {
   return OPERATOR_OPTIONS[operator];
 }
 
 export function getDefaultOperator(
   availableOptions: OperatorOption[],
-): Lib.CoordinateFilterOperatorName {
+): Lib.CoordinateFilterOperator {
   return getDefaultAvailableOperator(availableOptions, "between");
 }
 
@@ -52,46 +47,46 @@ export function getAvailableColumns(
 
 export function getDefaultSecondColumn(
   columns: Lib.ColumnMetadata[],
-  longitudeColumn?: Lib.ColumnMetadata,
+  filterParts: Lib.CoordinateFilterParts | null,
 ): Lib.ColumnMetadata | undefined {
-  return longitudeColumn ?? columns[0];
+  return filterParts?.longitudeColumn ?? columns[0];
 }
 
 export function canPickColumns(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   columns: Lib.ColumnMetadata[],
 ) {
   return operator === "inside" && columns.length > 1;
 }
 
 export function getDefaultValues(
-  operator: Lib.CoordinateFilterOperatorName,
-  values: NumberValue[],
-): NumberValue[] {
+  operator: Lib.CoordinateFilterOperator,
+  values: NumberOrEmptyValue[],
+): NumberOrEmptyValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   if (hasMultipleValues) {
-    return values.filter(isNotEmpty);
+    return values.filter(isNotNull);
   }
 
   return Array(valueCount)
-    .fill("")
+    .fill(null)
     .map((value, index) => values[index] ?? value);
 }
 
 export function isValidFilter(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ) {
   return getFilterParts(operator, column, secondColumn, values) != null;
 }
 
 export function getFilterClause(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ) {
   const filterParts = getFilterParts(operator, column, secondColumn, values);
   return filterParts != null
@@ -100,10 +95,10 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
   switch (operator) {
     case "between":
@@ -116,12 +111,12 @@ function getFilterParts(
 }
 
 function getSimpleFilterParts(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
-  if (!values.every(isNotEmpty)) {
+  if (!values.every(isNotNull)) {
     return undefined;
   }
   if (hasMultipleValues ? values.length === 0 : values.length !== valueCount) {
@@ -131,32 +126,39 @@ function getSimpleFilterParts(
   return {
     operator,
     column,
-    values: values.filter(isNotEmpty),
+    longitudeColumn: null,
+    values: values.filter(isNotNull),
   };
 }
 
 function getBetweenFilterParts(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
   const [startValue, endValue] = values;
-  if (isNotEmpty(startValue) && isNotEmpty(endValue)) {
+  if (isNotNull(startValue) && isNotNull(endValue)) {
+    const minValue = startValue < endValue ? startValue : endValue;
+    const maxValue = startValue < endValue ? endValue : startValue;
+
     return {
       operator,
       column,
-      values: [Math.min(startValue, endValue), Math.max(startValue, endValue)],
+      longitudeColumn: null,
+      values: [minValue, maxValue],
     };
-  } else if (isNotEmpty(startValue)) {
+  } else if (isNotNull(startValue)) {
     return {
       operator: ">=",
       column,
+      longitudeColumn: null,
       values: [startValue],
     };
-  } else if (isNotEmpty(endValue)) {
+  } else if (isNotNull(endValue)) {
     return {
       operator: "<=",
       column,
+      longitudeColumn: null,
       values: [endValue],
     };
   } else {
@@ -165,12 +167,12 @@ function getBetweenFilterParts(
 }
 
 function getInsideFilterParts(
-  operator: Lib.CoordinateFilterOperatorName,
+  operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
-  values: NumberValue[],
+  values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
-  if (!values.every(isNotEmpty)) {
+  if (!values.every(isNotNull)) {
     return undefined;
   }
   if (secondColumn == null) {
@@ -185,10 +187,10 @@ function getInsideFilterParts(
     column: isLatitude ? column : secondColumn,
     longitudeColumn: isLatitude ? secondColumn : column,
     values: [
-      Math.max(upperLatitude, lowerLatitude),
-      Math.min(leftLongitude, rightLongitude),
-      Math.min(lowerLatitude, upperLatitude),
-      Math.max(leftLongitude, rightLongitude),
+      lowerLatitude < upperLatitude ? upperLatitude : lowerLatitude,
+      leftLongitude < rightLongitude ? leftLongitude : rightLongitude,
+      lowerLatitude < upperLatitude ? lowerLatitude : upperLatitude,
+      leftLongitude < rightLongitude ? rightLongitude : leftLongitude,
     ],
   };
 }

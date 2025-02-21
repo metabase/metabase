@@ -23,7 +23,7 @@ For a deep dive on why and how to use models, check out our [Learn article on mo
 You can use models to:
 
 - Create, uh, models, with model here meaning an intuitive description of some concept in your business that you codify as a set of columns. An example model could be a "customer", which is a table that pulls together customer information from multiple tables and adds computed columns, like adding a lifetime value (LTV) column. This model represents the [measures and dimensions][measures-dimensions] that you think are relevant to your understanding of your customers.
-- Let people explore the results of SQL queries with the drill-through menu and query builder (provided you [set the column types](#column-type)).
+- Let people explore the results of SQL queries with the query builder (provided you [set the column types](#column-type)).
 - Create summary tables that pull in or aggregate data from multiple tables.
 - Clean up tables with unnecessary columns and rows filtered out.
 
@@ -53,36 +53,19 @@ Models you create are automatically [pinned to the current collection](../explor
 
 ![Turn a saved question into a model](./images/turn-into-a-model.png)
 
-## Model detail page
+## Model details
 
-To view a model's detail page:
+To view a model's details, visit the model and click on the **info** button in the upper right. Here you'll see several tabs:
 
-- From a collection: click on the **book** icon next to a model.
-- From a model: click on the **info** button in the upper right, then click **Model details**.
-
-![Model detail page](./images/model-detail.png)
-
-Here you'll see several tabs:
-
-- **Used by**: lists the items based on the model.
-- **Schema**: lists the fields in the model.
-- **Actions**: lists the actions in the model, and allows you to create new [actions](../actions/start.md).
-
-The model detail page also shows some basic info about the model:
-
-- Description
-- Contact (who wrote the model)
-- Backing table(s)
-
-To start a new question based on the model, click **Explore**.
-
-To edit the model's underlying query, click **Edit definition**.
-
-You can also edit the model's metadata.
+- **Overview**: Includes the description, Creator and Last Editor, and the list of fields included in the model. As well as the model's [Entity ID](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-and-reference-metabase-items).
+- **History**: Lists changes to the model, and by whom.
+- **Relationships**: Lists which questions use the model, and which tables the model is linked to.
+- **Actions**: Lists actions created based on the model.
+- **Insights**: Info about the [model's usage](../usage-and-performance-tools/usage-analytics.md). Only visible to admins on a [Pro or Enterprise plan](https://www.metabase.com/pricing/).
 
 ## Add metadata to columns in a model
 
-Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, or explore the results with the query builder, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visualization for the results.
+Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able explore the results with the query builder, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its query magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visualization for the results.
 
 If you only set one kind of metadata, set the **Column type** to let Metabase know what kind of data it's working with.
 
@@ -102,7 +85,7 @@ For models based on SQL queries, you can tell Metabase if the column has the sam
 
 You can set the [column type][column-type]. The default is "No special type".
 
-If your model is based on a SQL query and you want people to be able to explore the results with the query builder and drill-through menu, you'll need to set the [column type](./field-types.md) for each column in your model.
+If your model is based on a SQL query and you want people to be able to explore the results with the query builder, you'll need to set the [column type](./field-types.md) for each column in your model.
 
 ### This column should appear in...
 
@@ -174,9 +157,7 @@ See [Deleting and restoring items](../exploration-and-organization/delete-and-re
 
 ## Verifying a model
 
-{% include plans-blockquote.html feature="Model verification" %}
-
-Just like with a question, admins can verify models. Verifying a model will give it a check mark to let others know an admin vetted the model. If anyone makes any changes to the model, the check mark will disappear. An admin will have to verify the question again to restore the check mark.
+See [content verification](../exploration-and-organization/content-verification.md).
 
 ## Model persistence
 
@@ -188,8 +169,8 @@ See [Model persistence](./model-persistence.md)
 - [Troubleshooting models][troubleshooting-models].
 
 [column-type]: ./field-types.md
-[cte]: https://www.metabase.com/learn/sql-questions/sql-cte
-[measures-dimensions]: https://www.metabase.com/learn/databases/dimensions-and-measures
+[cte]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-cte
+[measures-dimensions]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/dimensions-and-measures
 [question]: ../questions/start.md
-[learn-models]: https://www.metabase.com/learn/getting-started/models
+[learn-models]: https://www.metabase.com/learn/metabase-basics/getting-started/models
 [troubleshooting-models]: ../troubleshooting-guide/models.md

@@ -10,7 +10,7 @@ export default class ParameterTargetList extends Component {
   props;
 
   render() {
-    const { target, mappingOptions } = this.props;
+    const { mappingOptions, selectedMappingOption } = this.props;
 
     const mappingOptionSections = _.groupBy(mappingOptions, "sectionName");
 
@@ -27,7 +27,7 @@ export default class ParameterTargetList extends Component {
         maxHeight={this.props.maxHeight || 600}
         sections={sections}
         onChange={item => this.props.onChange(item.target)}
-        itemIsSelected={item => _.isEqual(item.target, target)}
+        itemIsSelected={item => item === selectedMappingOption}
         renderItemIcon={item => (
           <Icon name={item.icon || "unknown"} size={18} />
         )}

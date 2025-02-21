@@ -8,13 +8,10 @@
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
-   [metabase.util.i18n
-    :as i18n
-    :refer [available-locales-with-names deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
@@ -45,21 +42,21 @@
     (binding [config/*disable-setting-cache* true]
       (application-name))))
 
-(defn- google-auth-enabled? []
+(defn google-auth-enabled?
+  "Is Google Auth (OIDC not SAML) enabled?"
+  []
   (boolean (setting/get :google-auth-enabled)))
 
 (defn ldap-enabled?
   "Is LDAP enabled?"
   []
-  (classloader/require 'metabase.api.ldap)
-  ((resolve 'metabase.api.ldap/ldap-enabled)))
+  (setting/get :ldap-enabled))
 
 (defn- ee-sso-configured? []
   (when config/ee-available?
-    (classloader/require 'metabase-enterprise.sso.integrations.sso-settings))
-  (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-enabled?)]
-    (varr)))
+    (setting/get :other-sso-enabled?)))
 
+;;; TODO -- consider whether this belongs here or in the `sso` module
 (defn sso-enabled?
   "Any SSO provider is configured and enabled"
   []
@@ -226,8 +223,8 @@ x.com")
   "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*
   site-wide UUID that we use for the EE/premium features token feature check API calls. It works in fundamentally the
   same way as [[site-uuid]] but should only be used by the token check logic
-  in [[metabase.public-settings.premium-features/fetch-token-status]]. (`site-uuid` is used for anonymous
-  analytics/stats and if we sent it along with the premium features token check API request it would no longer be
+  in [[metabase.premium-features.core/fetch-token-status]]. (`site-uuid` is used for anonymous
+  analytics aka stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
   :encryption :when-encryption-key-set
   :visibility :internal
@@ -321,13 +318,6 @@ x.com")
   :visibility :public
   :audit      :getter)
 
-(defsetting map-tile-server-url
-  (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :encryption :no
-  :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-  :visibility :public
-  :audit      :getter)
-
 (defn- coerce-to-relative-url
   "Get the path of a given URL if the URL contains an origin.
    Otherwise make the landing-page a relative path."
@@ -354,10 +344,11 @@ x.com")
                     (throw (ex-info (tru "This field must be a relative URL.") {:status-code 400}))))
                 (setting/set-value-of-type! :string :landing-page (coerce-to-relative-url new-landing-page))))
 
-(defsetting enable-public-sharing
-  (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
+(defsetting enable-pivoted-exports
+  (deferred-tru "Enable pivoted exports and pivoted subscriptions")
   :type       :boolean
   :default    true
+  :export?    true
   :visibility :authenticated
   :audit      :getter)
 
@@ -378,22 +369,6 @@ x.com")
   :type       :boolean
   :default    true
   :visibility :authenticated
-  :audit      :getter)
-
-(defsetting persisted-models-enabled
-  (deferred-tru "Allow persisting models into the source database.")
-  :type       :boolean
-  :default    false
-  :visibility :public
-  :export?    true
-  :audit      :getter)
-
-(defsetting persisted-model-refresh-cron-schedule
-  (deferred-tru "cron syntax string to schedule refreshing persisted models.")
-  :encryption :no
-  :type       :string
-  :default    "0 0 0/6 * * ? *"
-  :visibility :admin
   :audit      :getter)
 
 (def ^:private ^:const global-max-caching-kb
@@ -447,14 +422,28 @@ x.com")
   :doc        false
   :audit      :never)
 
+(def ^:private loading-message-values
+  #{:doing-science :running-query :loading-results})
+
 (defsetting loading-message
-  (deferred-tru "Choose the message to show while a query is running.")
+  (deferred-tru (str "Choose the message to show while a query is running. Possible values are \"doing-science\", "
+                     "\"running-query\", or \"loading-results\""))
   :encryption :no
   :visibility :public
   :export?    true
   :feature    :whitelabel
   :type       :keyword
   :default    :doing-science
+  :setter     (fn [new-value]
+                (let [value (or (loading-message-values (keyword new-value))
+                                (throw (ex-info "Loading message set to an unsupported value"
+                                                {:value   new-value
+                                                 :options (seq loading-message-values)})))]
+                  (setting/set-value-of-type! :keyword :loading-message value)))
+  :getter     (fn []
+                (let [value (setting/get-value-of-type :keyword :loading-message)]
+                  (or (loading-message-values value)
+                      :doing-science)))
   :audit      :getter)
 
 (defsetting application-colors
@@ -688,6 +677,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :public
   :type       :string
   :audit      :getter
+  :default   "https://www.metabase.com/help/premium"
   :feature    :whitelabel
   :setter     (fn [new-value]
                 (let [new-value-string (str new-value)]
@@ -695,13 +685,14 @@ See [fonts](../configuring-metabase/fonts.md).")
                   (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
 
 (defsetting show-metabase-links
-  (deferred-tru (str "Whether or not to display Metabase links outside admin settings."))
+  (deferred-tru "Whether or not to display Metabase links outside admin settings.")
   :type       :boolean
   :default    true
   :visibility :public
   :audit      :getter
   :feature    :whitelabel)
 
+;;; TODO -- consider whether this belongs here or in the `sso` module
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
   :visibility :public
@@ -792,14 +783,14 @@ See [fonts](../configuring-metabase/fonts.md).")
   :getter  (fn [] (some-> (setting/get-value-of-type :string :source-address-header)
                           u/lower-case-en)))
 
-(defn remove-public-uuid-if-public-sharing-is-disabled
-  "If public sharing is *disabled* and `object` has a `:public_uuid`, remove it so people don't try to use it (since it
-  won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
-  [object]
-  (if (and (:public_uuid object)
-           (not (enable-public-sharing)))
-    (assoc object :public_uuid nil)
-    object))
+(defsetting not-behind-proxy
+  (deferred-tru
+   (str "Indicates whether Metabase is running behind a proxy that sets the source-address-header for incoming "
+        "requests."))
+  :type       :boolean
+  :visibility :internal
+  :default    false
+  :export?    false)
 
 (defsetting available-fonts
   "Available fonts"
@@ -864,6 +855,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :attached_dwh                   (premium-features/has-attached-dwh?)
                       :audit_app                      (premium-features/enable-audit-app?)
                       :cache_granular_controls        (premium-features/enable-cache-granular-controls?)
+                      :cache_preemptive               (premium-features/enable-preemptive-caching?)
                       :collection_cleanup             (premium-features/enable-collection-cleanup?)
                       :database_auth_providers        (premium-features/enable-database-auth-providers?)
                       :config_text_file               (premium-features/enable-config-text-file?)
@@ -1023,7 +1015,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru "Whether or not we analyze any queries at all")
   :visibility :admin
   :export?    false
-  :default    true
+  :default    false
   :type       :boolean)
 
 (defsetting download-row-limit
@@ -1032,12 +1024,40 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :integer)
 
-(defsetting experimental-fulltext-search-enabled
-  (deferred-tru "Enables search engines which are still in the experimental stage")
+;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
+;;; should live in this namespace.
+
+(defsetting search-engine
+  (deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
   :visibility :internal
   :export?    false
+  :default    :appdb
+  :type       :keyword)
+
+(defsetting experimental-search-weight-overrides
+  (deferred-tru "Used to override weights used for search ranking")
+  :visibility :internal
+  :encryption :no
+  :export?    false
+  :default    nil
+  :type       :json
+  :doc        false)
+
+(defsetting bug-reporting-enabled
+  (deferred-tru "Enable bug report submissions.")
+  :visibility :public
+  :export?    false
+  :type       :boolean
   :default    false
-  :type       :boolean)
+  :setter     :none
+  :audit      :getter)
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                         DO NOT ADD ANY MORE SETTINGS IN THIS NAMESPACE                         !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin
@@ -1088,3 +1108,10 @@ See [fonts](../configuring-metabase/fonts.md).")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                         DO NOT ADD ANY MORE SETTINGS IN THIS NAMESPACE                         !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

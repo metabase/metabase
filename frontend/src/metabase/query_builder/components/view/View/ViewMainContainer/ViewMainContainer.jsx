@@ -1,15 +1,18 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+
+import DebouncedFrame from "metabase/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import {
-  QueryBuilderMain,
-  StyledDebouncedFrame,
-  StyledSyncedParametersList,
-} from "metabase/query_builder/components/view/View/View.styled";
-import { ViewNativeQueryEditor } from "metabase/query_builder/components/view/View/ViewNativeQueryEditor/ViewNativeQueryEditor";
-import { ViewFooter } from "metabase/query_builder/components/view/ViewFooter";
+import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { ViewFooter } from "../../ViewFooter";
+import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
+
+import ViewMainContainerS from "./ViewMainContainer.module.css";
 
 export const ViewMainContainer = props => {
   const {
@@ -34,34 +37,42 @@ export const ViewMainContainer = props => {
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
   return (
-    <QueryBuilderMain
-      isSidebarOpen={isSidebarOpen}
+    <Box
+      component="main"
+      className={cx(ViewMainContainerS.QueryBuilderMain, {
+        [ViewMainContainerS.isSidebarOpen]: isSidebarOpen,
+      })}
       data-testid="query-builder-main"
     >
       {isNative ? (
         <ViewNativeQueryEditor {...props} />
       ) : (
-        <StyledSyncedParametersList
+        <SyncedParametersList
+          className={ViewMainContainerS.StyledSyncedParametersList}
           parameters={parameters}
           setParameterValue={setParameterValue}
           commitImmediately
         />
       )}
 
-      <StyledDebouncedFrame enabled={!isLiveResizable}>
+      <DebouncedFrame
+        className={ViewMainContainerS.StyledDebouncedFrame}
+        enabled={!isLiveResizable}
+      >
         <QueryVisualization
           {...props}
           noHeader
           className={CS.spread}
           mode={queryMode}
+          onUpdateQuestion={updateQuestion}
         />
-      </StyledDebouncedFrame>
+      </DebouncedFrame>
       <TimeseriesChrome
         question={question}
         updateQuestion={updateQuestion}
         className={CS.flexNoShrink}
       />
       <ViewFooter className={CS.flexNoShrink} />
-    </QueryBuilderMain>
+    </Box>
   );
 };

@@ -1,12 +1,5 @@
-import {
-  describeEE,
-  modal,
-  popover,
-  restore,
-  setTokenFeatures,
-  typeAndBlurUsingLabel,
-} from "e2e/support/helpers";
-import { setupJwt } from "e2e/support/helpers/e2e-jwt-helpers";
+const { H } = cy;
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
   checkGroupConsistencyAfterDeletingMappings,
@@ -14,11 +7,11 @@ import {
 } from "./shared/group-mappings-widget";
 import { getSuccessUi, getUserProvisioningInput } from "./shared/helpers";
 
-describeEE("scenarios > admin > settings > SSO > JWT", () => {
+describe("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
+    H.setTokenFeatures("all");
     cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
   });
@@ -26,7 +19,22 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
   it("should allow to save and enable jwt", () => {
     cy.visit("/admin/settings/authentication/jwt");
 
-    enterJwtSettings();
+    H.typeAndBlurUsingLabel(
+      /JWT Identity Provider URI/,
+      "https://example.test",
+    );
+    cy.button("Generate key").click();
+    cy.button("Save and enable").click();
+    cy.wait("@updateSettings");
+    cy.findAllByRole("link", { name: "Authentication" }).first().click();
+
+    getJwtCard().findByText("Active").should("exist");
+  });
+
+  it("should allow to save jwt settings without a JWT URI", () => {
+    cy.visit("/admin/settings/authentication/jwt");
+
+    cy.button("Generate key").click();
     cy.button("Save and enable").click();
     cy.wait("@updateSettings");
     cy.findAllByRole("link", { name: "Authentication" }).first().click();
@@ -35,22 +43,22 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
   });
 
   it("should allow to disable and enable jwt", () => {
-    setupJwt();
+    enableJwtAuth();
     cy.visit("/admin/settings/authentication");
 
     getJwtCard().icon("ellipsis").click();
-    popover().findByText("Pause").click();
+    H.popover().findByText("Pause").click();
     cy.wait("@updateSetting");
     getJwtCard().findByText("Paused").should("exist");
 
     getJwtCard().icon("ellipsis").click();
-    popover().findByText("Resume").click();
+    H.popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getJwtCard().findByText("Active").should("exist");
   });
 
   it("should allow the user to enable/disable user provisioning", () => {
-    setupJwt();
+    enableJwtAuth();
     cy.visit("/admin/settings/authentication/jwt");
 
     getUserProvisioningInput().label.click();
@@ -61,23 +69,23 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
   });
 
   it("should allow to reset jwt settings", () => {
-    setupJwt();
+    enableJwtAuth();
     cy.visit("/admin/settings/authentication");
 
     getJwtCard().icon("ellipsis").click();
-    popover().findByText("Deactivate").click();
-    modal().button("Deactivate").click();
+    H.popover().findByText("Deactivate").click();
+    H.modal().button("Deactivate").click();
     cy.wait("@updateSettings");
 
     getJwtCard().findByText("Set up").should("exist");
   });
 
   it("should allow to regenerate the jwt key and save the settings", () => {
-    setupJwt();
+    enableJwtAuth();
     cy.visit("/admin/settings/authentication/jwt");
 
     cy.button("Regenerate key").click();
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByText("Regenerate JWT signing key?").should("exist");
       cy.findByText(
         "This will cause existing tokens to stop working until the identity provider is updated with the new key.",
@@ -113,9 +121,4 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
 
 const getJwtCard = () => {
   return cy.findByText("JWT").parent().parent();
-};
-
-const enterJwtSettings = () => {
-  typeAndBlurUsingLabel(/JWT Identity Provider URI/, "https://example.test");
-  cy.button("Generate key").click();
 };

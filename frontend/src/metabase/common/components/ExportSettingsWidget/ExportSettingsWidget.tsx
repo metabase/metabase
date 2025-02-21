@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import type { ExportFormat } from "metabase/common/types/export";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -28,11 +29,19 @@ export const ExportSettingsWidget = ({
   onToggleFormatting,
   onTogglePivoting,
 }: ExportSettingsWidgetProps) => {
+  const arePivotedExportsEnabled = useSetting("enable-pivoted-exports") ?? true;
   const applicationName = useSelector(getApplicationName);
   return (
     <Stack>
-      <Chip.Group value={selectedFormat} onChange={onChangeFormat}>
-        <Group spacing="xs" noWrap>
+      <Chip.Group
+        value={selectedFormat}
+        onChange={(newValue: string | string[]) => {
+          Array.isArray(newValue)
+            ? onChangeFormat(newValue[0] as ExportFormat)
+            : onChangeFormat(newValue as ExportFormat);
+        }}
+      >
+        <Group gap="xs" wrap="nowrap">
           {formats.map(format => (
             <Chip
               key={format}
@@ -43,7 +52,7 @@ export const ExportSettingsWidget = ({
         </Group>
       </Chip.Group>
       {canConfigureFormatting ? (
-        <Stack spacing="xs">
+        <Stack gap="xs">
           <Radio.Group
             value={isFormattingEnabled ? "true" : "false"}
             onChange={() => onToggleFormatting()}
@@ -65,7 +74,7 @@ export const ExportSettingsWidget = ({
           </Text>
         </Stack>
       ) : null}
-      {canConfigurePivoting ? (
+      {arePivotedExportsEnabled && canConfigurePivoting ? (
         <Checkbox
           data-testid="keep-data-pivoted"
           label={t`Keep data pivoted`}

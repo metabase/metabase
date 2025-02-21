@@ -2,19 +2,20 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { isNumber } from "metabase/lib/types";
+import { isNotNull } from "metabase/lib/types";
 import {
-  type NumberValue,
+  type NumberOrEmptyValue,
   useNumberFilter,
 } from "metabase/querying/filters/hooks/use-number-filter";
-import { Box, Flex, NumberInput, Text } from "metabase/ui";
+import { Box, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
+import { NumberFilterInput } from "../../NumberFilterInput";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { MAX_WIDTH, MIN_WIDTH } from "../constants";
+import { WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function NumberFilterPicker({
@@ -49,7 +50,7 @@ export function NumberFilterPicker({
     filter,
   });
 
-  const handleOperatorChange = (newOperator: Lib.NumberFilterOperatorName) => {
+  const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
   };
@@ -66,8 +67,7 @@ export function NumberFilterPicker({
   return (
     <Box
       component="form"
-      miw={MIN_WIDTH}
-      maw={MAX_WIDTH}
+      w={WIDTH}
       data-testid="number-filter-picker"
       onSubmit={handleSubmit}
     >
@@ -101,10 +101,10 @@ interface NumberValueInputProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  values: NumberValue[];
+  values: NumberOrEmptyValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
-  onChange: (values: NumberValue[]) => void;
+  onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
 function NumberValueInput({
@@ -123,7 +123,7 @@ function NumberValueInput({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          values={values.filter(isNumber)}
+          values={values.filter(isNotNull)}
           autoFocus
           onChange={onChange}
         />
@@ -134,7 +134,7 @@ function NumberValueInput({
   if (valueCount === 1) {
     return (
       <Flex p="md">
-        <NumberInput
+        <NumberFilterInput
           value={values[0]}
           placeholder={t`Enter a number`}
           autoFocus
@@ -149,17 +149,17 @@ function NumberValueInput({
   if (valueCount === 2) {
     return (
       <Flex align="center" justify="center" p="md">
-        <NumberInput
+        <NumberFilterInput
           value={values[0]}
           placeholder={t`Min`}
           autoFocus
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
+          onChange={newValue => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
-        <NumberInput
+        <NumberFilterInput
           value={values[1]}
           placeholder={t`Max`}
-          onChange={(newValue: number) => onChange([values[0], newValue])}
+          onChange={newValue => onChange([values[0], newValue])}
         />
       </Flex>
     );

@@ -1,11 +1,11 @@
 import PropTypes from "prop-types";
 import { Fragment, useMemo } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import Radio from "metabase/core/components/Radio";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { connect } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { ModelEducationButton, NavBar } from "./DataModelApp.styled";

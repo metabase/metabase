@@ -2,21 +2,16 @@
   "QueryExecution is a log of very time a query is executed, and other information such as the User who executed it, run
   time, context it was executed in, etc."
   (:require
-   [malli.core :as mc]
    [malli.error :as me]
-   [metabase.analytics.sdk :as sdk]
+   [metabase.analytics.core :as analytics]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.disallow :as t2.disallow]))
-
-(def QueryExecution
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model
-  name. We'll keep this till we replace all these symbols in our codebase."
-  :model/QueryExecution)
 
 (methodical/defmethod t2/table-name :model/QueryExecution [_model] :query_execution)
 
@@ -29,13 +24,13 @@
    :context    mi/transform-keyword})
 
 (defn- validate-context [context]
-  (when-let [error (me/humanize (mc/explain ::lib.schema.info/context context))]
+  (when-let [error (me/humanize (mr/explain ::lib.schema.info/context context))]
     (throw (ex-info (tru "Invalid query execution context: {0}" (pr-str error))
                     {:error error}))))
 
 (t2/define-before-insert :model/QueryExecution
   [{context :context, :as query-execution}]
-  (u/prog1 (sdk/include-analytics query-execution)
+  (u/prog1 (analytics/include-sdk-info query-execution)
     (validate-context context)))
 
 (t2/define-after-select :model/QueryExecution

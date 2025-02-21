@@ -1,11 +1,8 @@
-import fs from "fs/promises";
-
 import { input } from "@inquirer/prompts";
 
 import { isEmail } from "metabase/lib/email";
 
 import type { CliStepMethod } from "../types/cli";
-import { addFileToGitIgnore } from "../utils/add-file-to-git-ignore";
 import { generateRandomDemoPassword } from "../utils/generate-password";
 import {
   OUTPUT_STYLES,
@@ -15,7 +12,7 @@ import {
 
 export const generateCredentials: CliStepMethod = async state => {
   printEmptyLines();
-  printWithPadding("Setting up a local Metabase instance.");
+  printWithPadding("Setting up a local Metabase instance via Docker.");
 
   const email = await input({
     message: "What is the email address you want to use for the admin user?",
@@ -25,16 +22,6 @@ export const generateCredentials: CliStepMethod = async state => {
   });
 
   const password = generateRandomDemoPassword();
-
-  const credentialFile = "METABASE_LOGIN.json";
-
-  await addFileToGitIgnore(credentialFile);
-
-  // Store the login credentials to a file.
-  await fs.writeFile(
-    `./${credentialFile}`,
-    JSON.stringify({ email, password }, null, 2),
-  );
 
   return [
     {

@@ -139,7 +139,7 @@ function ModelActionPicker({
         )}
       </ModelCollapseSection>
       {isActionCreatorOpen && (
-        <Modal wide onClose={closeModal} closeOnClickOutside>
+        <Modal wide onClose={closeModal}>
           <ActionCreator
             modelId={model.id}
             databaseId={model.database_id}

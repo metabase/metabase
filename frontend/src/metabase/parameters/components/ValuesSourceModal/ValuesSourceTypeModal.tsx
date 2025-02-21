@@ -1,6 +1,5 @@
 import type { ChangeEvent } from "react";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -15,7 +14,7 @@ import SelectButton from "metabase/core/components/SelectButton";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
-import { useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
@@ -41,7 +40,6 @@ import type { State } from "metabase-types/store";
 import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
 
-import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import S from "./ValuesSourceTypeModal.module.css";
 import {
   ModalBodyWithPane,
@@ -49,11 +47,12 @@ import {
   ModalErrorMessage,
   ModalHelpMessage,
   ModalLabel,
+  ModalLoadingAndErrorWrapper,
   ModalMain,
   ModalPane,
   ModalSection,
   ModalTextArea,
-} from "./ValuesSourceTypeModal.styled";
+} from "./ValuesSourceTypeModalComponents";
 import { getStaticValues, getValuesText } from "./utils";
 
 interface ModalOwnProps {
@@ -442,7 +441,7 @@ const ListSourceModal = ({
 function ModelHint() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
-  const href = getLearnUrl("data-modeling/models");
+  const href = getLearnUrl("metabase-basics/getting-started/models");
   const text = t`do it once in a model`;
   const link = showMetabaseLinks ? (
     <strong key="link">

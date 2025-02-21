@@ -40,7 +40,7 @@
             (lib/breakouts query)))))
 
 (deftest ^:parallel breakout-should-drop-invalid-parts
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/with-fields [(meta/field-metadata :venues :price)])
                   (lib/order-by (meta/field-metadata :venues :price))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
@@ -59,7 +59,7 @@
     (is (= 1 (count (lib/joins query 0))))
     (is (not (contains? first-join :fields))))
   (testing "Already summarized query should be left alone"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/breakout (meta/field-metadata :venues :category-id))
                     (lib/order-by (meta/field-metadata :venues :category-id))
                     (lib/append-stage)
@@ -69,7 +69,7 @@
       (is (contains? first-stage :order-by)))))
 
 (deftest ^:parallel breakoutable-columns-test
-  (let [query lib.tu/venues-query]
+  (let [query (lib.tu/venues-query)]
     (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
       (is (=? [{:lib/type                 :metadata/column
                 :name                     "ID"
@@ -138,7 +138,7 @@
 
 (deftest ^:parallel breakoutable-expressions-test
   (testing "orderable-columns should include expressions"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/expression "Category ID + 1"  (lib/+ (meta/field-metadata :venues :category-id) 1)))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (is (=? [{:id (meta/id :venues :id) :name "ID"}
@@ -158,7 +158,7 @@
 
 (deftest ^:parallel binned-breakouts-test
   (testing "binned breakout columns should have a position (#31437)"
-    (let [base-query lib.tu/venues-query
+    (let [base-query (lib.tu/venues-query)
           breakoutables (lib/breakoutable-columns base-query)
           price-col (m/find-first #(= (:name %) "PRICE") breakoutables)
           latitude-col (m/find-first #(= (:name %) "LATITUDE") breakoutables)
@@ -179,7 +179,7 @@
 
 (deftest ^:parallel multiple-breakouts-for-the-same-column-test
   (testing "multiple breakout positions for the same column"
-    (let [base-query         lib.tu/venues-query
+    (let [base-query         (lib.tu/venues-query)
           column             (meta/field-metadata :venues :price)
           binning-strategies (lib/available-binning-strategies base-query column)
           query              (-> base-query
@@ -240,7 +240,7 @@
 
 (deftest ^:parallel breakoutable-explicit-joins-test
   (testing "breakoutable-columns should include columns from explicit joins"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
                                    [(lib/=
@@ -279,7 +279,7 @@
 (deftest ^:parallel breakoutable-columns-source-card-test
   (doseq [varr [#'lib.tu/query-with-source-card
                 #'lib.tu/query-with-source-card-with-result-metadata]
-          :let [query @varr]]
+          :let [query (@varr)]]
     (testing (str (pr-str varr) \newline (lib.util/format "Query =\n%s" (u/pprint-to-str query)))
       (let [columns (lib/breakoutable-columns query)]
         (is (=? [{:name                     "USER_ID"
@@ -353,7 +353,7 @@
 
 (deftest ^:parallel breakoutable-columns-e2e-test
   (testing "Use the metadata returned by `breakoutable-columns` to add a new breakout to a query."
-    (let [query lib.tu/venues-query]
+    (let [query (lib.tu/venues-query)]
       (is (=? {:lib/type :mbql/query
                :database (meta/id)
                :stages   [{:lib/type     :mbql.stage/mbql
@@ -374,7 +374,7 @@
 
 (deftest ^:parallel breakoutable-columns-own-and-implicitly-joinable-columns-e2e-test
   (testing "An implicitly joinable column can be broken out by."
-    (let [query lib.tu/venues-query
+    (let [query (lib.tu/venues-query)
           cat-name-col (m/find-first #(= (:id %) (meta/id :categories :name))
                                      (lib/breakoutable-columns query))
           ven-price-col (m/find-first #(= (:id %) (meta/id :venues :price))
@@ -480,7 +480,7 @@
 
 (deftest ^:parallel breakoutable-columns-with-source-card-e2e-test
   (testing "A column that comes from a source Card (Saved Question/Model/etc) can be broken out by."
-    (let [query lib.tu/query-with-source-card]
+    (let [query (lib.tu/query-with-source-card)]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (binding [lib.card/*force-broken-card-refs* false]
           (let [name-col (m/find-first #(= (:name %) "USER_ID")
@@ -500,7 +500,7 @@
                        (lib/display-name query' breakout)))))))))))
 
 (deftest ^:parallel breakoutable-columns-expression-e2e-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                   (lib/with-fields [(meta/field-metadata :venues :id)]))]
     (is (=? [{:id (meta/id :venues :id),          :name "ID",          :display-name "ID",          :lib/source :source/table-defaults}
@@ -526,7 +526,7 @@
                  (lib/describe-query query'))))))))
 
 (deftest ^:parallel breakoutable-columns-new-stage-e2e-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                   (as-> <> (lib/with-fields <> [(meta/field-metadata :venues :id)
                                                 (lib/expression-ref <> "expr")]))
@@ -559,7 +559,7 @@
             "Categories__ID" ; this column is not projected, but should still be returned.
             "Categories__NAME"]
            (map :lib/desired-column-alias
-                (-> lib.tu/venues-query
+                (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
                                    [(lib/=
@@ -573,15 +573,20 @@
     (doseq [[message field-ref] {;; this ref is basically what we [[lib/breakout]] would have added but doesn't
                                  ;; contain type info, shouldn't matter tho.
                                  "correct ref but missing :base-type/:effective-type"
-                                 [:field {:lib/uuid (str (random-uuid)), :join-alias "Categories"} (meta/id :categories :name)]
+                                 [:field {:lib/uuid   (str (random-uuid))
+                                          :join-alias "Categories"
+                                          :ident      (u/generate-nano-id)}
+                                  (meta/id :categories :name)]
 
                                  ;; this is a busted Field ref, it's referring to a Field from a joined Table but
                                  ;; does not include `:join-alias`. It should still work anyway.
                                  "busted ref"
-                                 [:field {:lib/uuid (str (random-uuid)) :base-type :type/Text}
+                                 [:field {:lib/uuid  (str (random-uuid))
+                                          :base-type :type/Text
+                                          :ident     (u/generate-nano-id)}
                                   (meta/id :categories :name)]}]
       (testing (str \newline message " ref = " (pr-str field-ref))
-        (let [query (-> lib.tu/venues-query
+        (let [query (-> (lib.tu/venues-query)
                         (lib/join (-> (lib/join-clause
                                        (meta/table-metadata :categories)
                                        [(lib/=
@@ -650,6 +655,61 @@
               (meta/id :people :latitude)]]
             (lib.breakout/existing-breakouts query -1 (meta/field-metadata :people :latitude))))))
 
+(deftest ^:parallel existing-breakouts-multiple-implicit-joins-test
+  (let [base   (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
+        groups (lib/group-columns (lib/breakoutable-columns base))
+        by-fk  (m/index-by :fk-field-id groups)
+        ;; Implicitly joining on both :created-by and :updated-by.
+        name-by-created-by (->> (get by-fk (meta/id :ic/reports :created-by))
+                                lib/columns-group-columns
+                                (m/find-first #(= (:id %) (meta/id :ic/accounts :name))))
+        name-by-updated-by (->> (get by-fk (meta/id :ic/reports :updated-by))
+                                lib/columns-group-columns
+                                (m/find-first #(= (:id %) (meta/id :ic/accounts :name))))]
+    (testing "implicit joins through two FKs to the same column"
+      (testing "both exist"
+        (is (some? name-by-created-by))
+        (is (some? name-by-updated-by)))
+      (testing "are distinct"
+        (is (not= name-by-created-by name-by-updated-by)))
+      (testing "are not considered 'existing breakouts'"
+        (is (nil? (-> base
+                      (lib/breakout name-by-created-by)
+                      (lib.breakout/existing-breakouts -1 name-by-updated-by))))
+        (is (nil? (-> base
+                      (lib/breakout name-by-updated-by)
+                      (lib.breakout/existing-breakouts -1 name-by-created-by))))))))
+
+(deftest ^:parallel existing-breakouts-multiple-explicit-joins-test
+  (let [base (-> (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
+                 (lib/join (lib/join-clause (meta/table-metadata :ic/accounts)
+                                            [(lib/= (meta/field-metadata :ic/reports :created-by)
+                                                    (meta/field-metadata :ic/accounts :id))]))
+                 (lib/join (lib/join-clause (meta/table-metadata :ic/accounts)
+                                            [(lib/= (meta/field-metadata :ic/reports :updated-by)
+                                                    (meta/field-metadata :ic/accounts :id))])))
+        groups (lib/group-columns (lib/breakoutable-columns base))
+        joined (filter #(= (:metabase.lib.column-group/group-type %) :group-type/join.explicit) groups)
+        name-by-created-by (->> (nth joined 0)
+                                lib/columns-group-columns
+                                (m/find-first #(= (:id %) (meta/id :ic/accounts :name))))
+        name-by-updated-by (->> (nth joined 1)
+                                lib/columns-group-columns
+                                (m/find-first #(= (:id %) (meta/id :ic/accounts :name))))]
+    (testing "explicit joins through two FKs to the same column"
+      (testing "both exist"
+        (is (some? name-by-created-by))
+        (is (some? name-by-updated-by)))
+      (testing "are distinct"
+        (is (not= name-by-created-by name-by-updated-by)))
+      (testing "are not considered 'existing breakouts'"
+        (is (nil? (-> base
+                      (lib/breakout name-by-created-by)
+                      (lib.breakout/existing-breakouts -1 name-by-updated-by))))
+        (is (nil? (-> base
+                      (lib/breakout name-by-updated-by)
+                      (lib.breakout/existing-breakouts -1 name-by-created-by))))))))
+
 (deftest ^:parallel remove-existing-breakouts-for-column-test
   (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                    (lib/aggregate (lib/count))
@@ -668,18 +728,21 @@
 
 (deftest ^:parallel breakout-column-test
   (testing "should find the correct column"
-    (let [query      (-> lib.tu/venues-query
+    (let [query      (-> (lib.tu/venues-query)
                          (lib/breakout  (meta/field-metadata :venues :category-id))
                          (lib/breakout  (meta/field-metadata :venues :price))
                          (lib/aggregate (lib/count)))
           category   (meta/field-metadata :venues :category-id)
           price      (meta/field-metadata :venues :price)
           breakouts  (lib/breakouts query)]
-      (is (= (count breakouts) 2))
+      (is (= 2
+             (count breakouts)))
       (is (=? category
               (lib.breakout/breakout-column query (first breakouts))))
       (is (=? price
-              (lib.breakout/breakout-column query (second breakouts))))))
+              (lib.breakout/breakout-column query (second breakouts)))))))
+
+(deftest ^:parallel breakout-column-test-2
   (testing "should set the binning strategy from the breakout clause"
     (let [base-query       (lib/query meta/metadata-provider (meta/table-metadata :people))
           column           (meta/field-metadata :people :latitude)
@@ -689,7 +752,9 @@
           breakout         (first (lib/breakouts query))]
       (is (=? {:strategy :default}
               (->> (lib/breakout-column query breakout)
-                   (lib/binning))))))
+                   (lib/binning)))))))
+
+(deftest ^:parallel breakout-column-test-3
   (testing "should set the temporal unit from the breakout clause"
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
           column     (meta/field-metadata :people :birth-date)

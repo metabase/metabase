@@ -24,7 +24,7 @@ export const HeaderLink = styled.div`
   }
 `;
 
-export interface HeaderTitleProps {
+interface HeaderTitleProps {
   tooltipMaxWidth?: string;
 }
 

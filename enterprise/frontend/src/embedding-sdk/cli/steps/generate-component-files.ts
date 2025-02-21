@@ -5,8 +5,16 @@ import { input } from "@inquirer/prompts";
 import { getGeneratedComponentFilesMessage } from "../constants/messages";
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
 import type { CliStepMethod } from "../types/cli";
+import { checkIsInTypeScriptProject } from "../utils/check-typescript-project";
 import { getComponentSnippets } from "../utils/get-component-snippets";
+import {
+  checkIfNextJsCustomAppOrRootLayoutExists,
+  checkIfNextJsProjectUsesSrcDirectory,
+  checkIsInNextJsProject,
+  generateNextJsDemoFiles,
+} from "../utils/nextjs-helpers";
 import { printError, printSuccess } from "../utils/print";
+import { getGeneratedComponentsDefaultPath } from "../utils/snippets-helpers";
 
 export const generateReactComponentFiles: CliStepMethod = async state => {
   const { instanceUrl, apiKey, dashboards = [], token } = state;
@@ -18,18 +26,26 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     ];
   }
 
-  let path: string;
+  const isNextJs = await checkIsInNextJsProject();
+  const isUsingSrcDirectory = checkIfNextJsProjectUsesSrcDirectory();
+
+  const defaultComponentPath = getGeneratedComponentsDefaultPath({
+    isNextJs,
+    isUsingSrcDirectory,
+  });
+
+  let reactComponentPath: string;
 
   // eslint-disable-next-line no-constant-condition -- ask until user provides a valid path
   while (true) {
-    path = await input({
+    reactComponentPath = await input({
       message: "Where do you want to save the example React components?",
-      default: "./components/metabase",
+      default: defaultComponentPath,
     });
 
     // Create a directory if it doesn't already exist.
     try {
-      await fs.mkdir(path, { recursive: true });
+      await fs.mkdir(reactComponentPath, { recursive: true });
       break;
     } catch (error) {
       printError(
@@ -42,29 +58,59 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     instanceUrl,
     apiKey,
     dashboards,
+    isNextJs,
 
     // Enable user switching only when a valid license is present,
     // as JWT requires a valid license.
     userSwitcherEnabled: !!token,
   });
 
+  const isInTypeScriptProject = await checkIsInTypeScriptProject();
+  const fileExtension = isInTypeScriptProject ? "ts" : "js";
+  const componentExtension = isInTypeScriptProject ? "tsx" : "jsx";
+
   // Generate sample components files in the specified directory.
-  for (const { name, content } of sampleComponents) {
-    await fs.writeFile(`${path}/${name}.jsx`, content);
+  for (const { fileName, content } of sampleComponents) {
+    await fs.writeFile(
+      `${reactComponentPath}/${fileName}.${componentExtension}`,
+      content,
+    );
   }
 
   // Generate analytics.css sample styles.
-  await fs.writeFile(`${path}/analytics.css`, ANALYTICS_CSS_SNIPPET);
+  await fs.writeFile(
+    `${reactComponentPath}/analytics.css`,
+    ANALYTICS_CSS_SNIPPET,
+  );
 
   // Generate index.js file with all the component exports.
   const exportIndexContent = sampleComponents
-    .map(file => `export * from "./${file.name}";`)
+    .map(file => `export * from "./${file.fileName}"`)
     .join("\n")
     .trim();
 
-  await fs.writeFile(`${path}/index.js`, exportIndexContent);
+  await fs.writeFile(
+    `${reactComponentPath}/index.${fileExtension}`,
+    exportIndexContent,
+  );
 
-  printSuccess(getGeneratedComponentFilesMessage(path));
+  const hasNextJsCustomAppOrRootLayout =
+    await checkIfNextJsCustomAppOrRootLayoutExists();
 
-  return [{ type: "done" }, { ...state, reactComponentDir: path }];
+  await generateNextJsDemoFiles({
+    hasNextJsCustomAppOrRootLayout,
+    reactComponentPath,
+    componentExtension,
+  });
+
+  printSuccess(getGeneratedComponentFilesMessage(reactComponentPath));
+
+  return [
+    { type: "done" },
+    {
+      ...state,
+      reactComponentPath,
+      hasNextJsCustomAppOrRootLayout,
+    },
+  ];
 };

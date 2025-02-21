@@ -1,7 +1,7 @@
 import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
   getEmbeddingComponentOverrides,
-} from "embedding-sdk/lib/theme/default-component-theme";
+} from "metabase/embedding-sdk/theme";
 
 import { getEmbeddingThemeOverride } from "./get-embedding-theme";
 
@@ -16,6 +16,14 @@ describe("Transform Embedding Theme Override", () => {
           brand: "hotpink",
           "text-primary": "yellow",
           "text-tertiary": "green",
+          "background-disabled": "pink",
+        },
+
+        // we should strip any explicit "undefined" values and apply default component values
+        components: {
+          popover: {
+            zIndex: undefined,
+          },
         },
       },
       "Roboto",
@@ -30,12 +38,13 @@ describe("Transform Embedding Theme Override", () => {
         "text-primary": expect.arrayContaining(["yellow"]),
         "text-light": expect.arrayContaining(["green"]),
         "text-tertiary": expect.arrayContaining(["green"]),
+        "background-disabled": expect.arrayContaining(["pink"]),
       },
       other: {
         fontSize: "2rem",
         ...DEFAULT_EMBEDDED_COMPONENT_THEME,
       },
-      components: getEmbeddingComponentOverrides(theme.components),
+      components: getEmbeddingComponentOverrides(),
     });
   });
 });

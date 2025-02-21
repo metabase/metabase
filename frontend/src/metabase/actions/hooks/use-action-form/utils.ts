@@ -20,7 +20,7 @@ export function stripTZInfo(dateOrTimeString: string) {
 }
 
 export const formatInitialValue = (
-  value: string | number | null,
+  value: string | number | boolean | null,
   inputType?: InputSettingType,
 ) => {
   if (!isEmpty(value) && typeof value === "string") {
@@ -57,19 +57,6 @@ export const formatSubmitValues = (
     });
 
   return values;
-};
-
-export const getChangedValues = (
-  values: ParametersForActionExecution,
-  initialValues: Partial<ParametersForActionExecution>,
-) => {
-  const changedValues = Object.entries(values).filter(([key, value]) => {
-    const initialValue = initialValues[key];
-
-    return value !== initialValue;
-  });
-
-  return Object.fromEntries(changedValues);
 };
 
 const isNumericParameter = (param: Parameter): boolean =>

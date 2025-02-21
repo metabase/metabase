@@ -1,6 +1,5 @@
 (ns metabase.api.embed.common
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
@@ -10,26 +9,32 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dashboard :as api.dashboard]
-   [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation :as eid-translation]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.pulse.core :as pulse]
+   [metabase.models.resolution :as models.resolution]
+   [metabase.models.setting :refer [defsetting]]
+   [metabase.notification.payload.core :as notification.payload]
+   [metabase.public-sharing.api :as api.public]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
-   [metabase.util.i18n
-    :as i18n
-    :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(comment
+  ;; load dynamic model resolution code... should already be loaded by [[metabase.core.init]] so this is mostly here for
+  ;; the benefit of tests
+  models.resolution/keep-me)
 
 (defn- valid-param-value?
   "Is V a valid param value? (If it is a String, is it non-blank?)"
@@ -123,7 +128,7 @@
                                         :dashboard-parameters parameters})))
             :value value}))))
 
-(defn parse-query-params
+(mu/defn parse-query-params :- :map
   "Parses parameter values from the query string in a backward compatible way.
 
   Before (v50 and below) we passed parameter values as separate query string parameters \"?param1=A&param2=B\". The
@@ -134,10 +139,11 @@
   [query-params]
   (or (try
         (when-let [parameters (:parameters query-params)]
-          (json/parse-string parameters keyword))
+          (json/decode+kw parameters))
         (catch Throwable _
           nil))
-      query-params))
+      query-params
+      {}))
 
 (mu/defn normalize-query-params :- [:map-of :keyword :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
@@ -166,7 +172,7 @@
   (-> (merge user-params token-params)
       (update-vals (fn [v]
                      (if (and (not (string? v)) (seqable? v))
-                       (seq v)
+                       (not-empty v)
                        v)))))
 
 (mu/defn- param-values-merged-params :- [:map-of ms/NonBlankString :any]
@@ -236,7 +242,7 @@
   make these parameters visible at all to the frontend."
   [dashboard token-params]
   (let [params             (:parameters dashboard)
-        dashcards      (:dashcards dashboard)
+        dashcards          (:dashcards dashboard)
         params-with-values (reduce
                             (fn [acc param]
                               (if-let [value (get token-params (keyword (:slug param)))]
@@ -249,7 +255,7 @@
            (map
             (fn [card]
               (if (-> card :visualization_settings :virtual_card)
-                (pulse/process-virtual-dashcard card params-with-values)
+                (notification.payload/process-virtual-dashcard card params-with-values)
                 card))
             dashcards))))
 
@@ -278,29 +284,36 @@
 
 ;;; -------------------------------------- Entity ID transformation functions ------------------------------------------
 
-(def ^:private api-models
-  "The models that we will service for entity-id transformations."
-  (->> (descendants :metabase/model)
-       (filter #(= (namespace %) "model"))
-       (filter (fn has-entity-id?
-                 [model] (or ;; toucan1 models
-                          (isa? model :metabase.models.interface/entity-id)
-                          ;; toucan2 models
-                          (isa? model :hook/entity-id))))
-       (map keyword)
-       set))
+(defn- api-model?
+  [model]
+  (isa? (t2/resolve-model model) :hook/entity-id))
 
+;;; This is no longer calculated dynamically so we don't have to load ~20 model namespaces just to figure out which ones
+;;; derive from `:hook/entity-id` just to generate Malli schemas. -- Cam
 (def ^:private api-name->model
-  "Map of model names used on the API to their corresponding model."
-  (->> api/model->db-model
-       (map (fn [[k v]] [(keyword k) (:db-model v)]))
-       (filter (fn [[_ v]] (contains? api-models v)))
-       (into {})))
+  "Map of model names used on the API to their corresponding model. A test makes sure this map stays in sync."
+  {:action            :model/Action
+   :card              :model/Card
+   :collection        :model/Collection
+   :dashboard         :model/Dashboard
+   :dashboard-card    :model/DashboardCard
+   :dashboard-tab     :model/DashboardTab
+   :dataset           :model/Card
+   :dimension         :model/Dimension
+   :metric            :model/Card
+   :permissions-group :model/PermissionsGroup
+   :pulse             :model/Pulse
+   :pulse-card        :model/PulseCard
+   :pulse-channel     :model/PulseChannel
+   :segment           :model/Segment
+   :snippet           :model/NativeQuerySnippet
+   :timeline          :model/Timeline
+   :user              :model/User})
 
 (defn- ->model
   "Takes a model keyword or an api-name and returns the corresponding model keyword."
   [model-or-api-name]
-  (if (contains? api-models model-or-api-name)
+  (if (api-model? model-or-api-name)
     model-or-api-name
     (api-name->model model-or-api-name)))
 
@@ -358,21 +371,21 @@
             [entity-id (if-let [id (get eid->id entity-id)]
                          {:id id :type api-name :status :ok}
                          ;; handle errors
-                         (if (mc/validate EntityId entity-id)
+                         (if (mr/validate EntityId entity-id)
                            {:type api-name
                             :status :not-found}
                            {:type api-name
                             :status :invalid-format
-                            :reason (me/humanize (mc/explain EntityId entity-id))}))])
+                            :reason (me/humanize (mr/explain EntityId entity-id))}))])
           eids)))
 
 (defn model->entity-ids->ids
   "Given a map of model names to a sequence of entity-ids for each, return a map from entity-id -> id."
   [model-key->entity-ids]
-  (when-not (mc/validate ModelToEntityIds model-key->entity-ids)
+  (when-not (mr/validate ModelToEntityIds model-key->entity-ids)
     (throw (ex-info "Invalid format." {:explanation (me/humanize
                                                      (me/with-spell-checking
-                                                       (mc/explain ModelToEntityIds model-key->entity-ids)))
+                                                       (mr/explain ModelToEntityIds model-key->entity-ids)))
                                        :allowed-models (sort (keys api-name->model))
                                        :status-code 400})))
   (u/prog1 (into {}

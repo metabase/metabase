@@ -35,7 +35,7 @@ The options you'll see here will depend on the field's type. They're generally t
 
 Currency field formatting settings include all the same options as in the global formatting section, as well as all the options that Number fields have.
 
-See [Currency formatting options](../questions/sharing/visualizations/table.md#currency-formatting-options).
+See [Currency formatting options](../questions/visualizations/table.md#currency-formatting-options).
 
 ## Question-level formatting
 
@@ -43,17 +43,17 @@ Lastly, you can override all formatting settings in any specific saved question 
 
 Formatting options vary depending on the type of visualization:
 
-- [Combo chart](../questions/sharing/visualizations/combo-chart.md)
-- [Detail](../questions/sharing/visualizations/detail.md)
-- [Funnel](../questions/sharing/visualizations/funnel.md)
-- [Gauge](../questions/sharing/visualizations/gauge.md)
-- [Line, Bar, and area charts](../questions/sharing/visualizations/line-bar-and-area-charts.md)
-- [Maps](../questions/sharing/visualizations/map.md)
-- [Numbers](../questions/sharing/visualizations/numbers.md)
-- [Pie or donut chart](../questions/sharing/visualizations/pie-or-donut-chart.md)
-- [Pivot table](../questions/sharing/visualizations/pivot-table.md)
-- [Progress bar](../questions/sharing/visualizations/progress-bar.md)
-- [Scatter plot or bubble chart](../questions/sharing/visualizations/scatterplot-or-bubble-chart.md)
-- [Tables](../questions/sharing/visualizations/table.md)
-- [Trend](../questions/sharing/visualizations/trend.md)
-- [Waterfall chart](../questions/sharing/visualizations/waterfall-chart.md)
+- [Combo chart](../questions/visualizations/combo-chart.md)
+- [Detail](../questions/visualizations/detail.md)
+- [Funnel](../questions/visualizations/funnel.md)
+- [Gauge](../questions/visualizations/gauge.md)
+- [Line, Bar, and area charts](../questions/visualizations/line-bar-and-area-charts.md)
+- [Maps](../questions/visualizations/map.md)
+- [Numbers](../questions/visualizations/numbers.md)
+- [Pie or donut chart](../questions/visualizations/pie-or-donut-chart.md)
+- [Pivot table](../questions/visualizations/pivot-table.md)
+- [Progress bar](../questions/visualizations/progress-bar.md)
+- [Scatter plot or bubble chart](../questions/visualizations/scatterplot-or-bubble-chart.md)
+- [Tables](../questions/visualizations/table.md)
+- [Trend](../questions/visualizations/trend.md)
+- [Waterfall chart](../questions/visualizations/waterfall-chart.md)

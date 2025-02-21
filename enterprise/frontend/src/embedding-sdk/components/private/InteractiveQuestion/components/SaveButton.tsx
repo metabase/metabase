@@ -1,23 +1,39 @@
-import { Button } from "metabase/ui";
+import type { ButtonProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionContext } from "../context";
 
-export const SaveButton = ({
-  onClick,
-}: {
-  onClick?: () => void;
-} = {}) => {
-  const { question, originalQuestion } = useInteractiveQuestionContext();
+import { ToolbarButton } from "./util/ToolbarButton";
 
+export const shouldShowSaveButton = ({
+  question,
+  originalQuestion,
+}: {
+  question?: Question;
+  originalQuestion?: Question;
+}) => {
   const canSave = question && Lib.canSave(question.query(), question.type());
   const isQuestionChanged = originalQuestion
     ? question && question.isQueryDirtyComparedTo(originalQuestion)
     : true;
 
+  return Boolean(isQuestionChanged && canSave);
+};
+
+export const SaveButton = (buttonProps: ButtonProps = {}) => {
+  const { question, originalQuestion } = useInteractiveQuestionContext();
+
+  const isSaveButtonEnabled = shouldShowSaveButton({
+    question,
+    originalQuestion,
+  });
+
   return (
-    <Button disabled={!isQuestionChanged || !canSave} onClick={onClick}>
-      Save
-    </Button>
+    <ToolbarButton
+      label="Save"
+      disabled={!isSaveButtonEnabled}
+      {...buttonProps}
+    />
   );
 };

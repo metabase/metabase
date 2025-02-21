@@ -9,6 +9,7 @@
    [metabase.logger :as logger]
    [metabase.test :as mt])
   (:import
+   (org.apache.logging.log4j Level)
    (org.apache.logging.log4j.core Logger)))
 
 (set! *warn-on-reflection* true)
@@ -94,3 +95,48 @@
         (finally
           (when (.exists f)
             (io/delete-file f)))))))
+
+(deftest level-enabled?-test
+  (are [set-level check-level expected-value] (= expected-value
+                                                 (mt/with-log-level [metabase.logger-test set-level]
+                                                   (logger/level-enabled? 'metabase.logger-test check-level)))
+    :error Level/ERROR true
+    :error Level/WARN  false
+    :error Level/INFO  false
+    :error Level/DEBUG false
+    :error Level/TRACE false
+
+    :warn Level/ERROR true
+    :warn Level/WARN  true
+    :warn Level/INFO  false
+    :warn Level/DEBUG false
+    :warn Level/TRACE false
+
+    :info Level/ERROR true
+    :info Level/WARN  true
+    :info Level/INFO  true
+    :info Level/DEBUG false
+    :info Level/TRACE false
+
+    :debug Level/ERROR true
+    :debug Level/WARN  true
+    :debug Level/INFO  true
+    :debug Level/DEBUG true
+    :debug Level/TRACE false
+
+    :trace Level/ERROR true
+    :trace Level/WARN  true
+    :trace Level/INFO  true
+    :trace Level/DEBUG true
+    :trace Level/TRACE true))
+
+(deftest memory-log-limits-messages
+  (testing "The memory log buffer limits the number of messages and their length"
+    (mt/with-log-level :debug
+      (dotimes [_ 500]
+        (log/debug (apply str (repeat 5000 "a"))))
+      (log/debug (ex-info (apply str (repeat 600 "b")) {}) "exception message")
+      (is (= 250 (count (logger/messages))))
+      (is (= 4000 (apply max (map #(count (:msg %)) (logger/messages)))))
+      (is (= 20 (apply max (map #(count (:exception %)) (logger/messages)))))
+      (is (= 500 (apply max (map count (mapcat :exception (logger/messages)))))))))

@@ -2,7 +2,6 @@
 import cx from "classnames";
 import { dissoc } from "icepick";
 import { Component } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -13,6 +12,7 @@ import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
 import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
@@ -21,25 +21,18 @@ import Dashboards from "metabase/entities/dashboards";
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
 import { color } from "metabase/lib/colors";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Icon } from "metabase/ui";
+import { Box, Flex, Icon, Title } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
+import { FixedWidthContainer } from "../components/Dashboard/DashboardComponents";
 import { useDashboardUrlQuery } from "../hooks/use-dashboard-url-query";
 
-import {
-  ItemContent,
-  ItemDescription,
-  ItemLink,
-  ListRoot,
-  SidebarHeader,
-  SidebarRoot,
-  SuggestionsSidebarWrapper,
-  XrayIcon,
-} from "./AutomaticDashboardApp.styled";
+import S from "./AutomaticDashboardApp.module.css";
+import { XrayIcon } from "./XrayIcon";
 
 const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
   `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
@@ -136,7 +129,7 @@ class AutomaticDashboardAppInner extends Component {
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
                   <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
-                    <XrayIcon name="bolt" size={24} />
+                    <XrayIcon />
                     <div>
                       <h2 className={cx(CS.textWrap, CS.mr2)}>
                         {dashboard && <TransientTitle dashboard={dashboard} />}
@@ -169,6 +162,7 @@ class AutomaticDashboardAppInner extends Component {
             {parameters && parameters.length > 0 && (
               <div className={cx(CS.px1, CS.pt1)}>
                 <FixedWidthContainer
+                  id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
                   data-testid="fixed-width-filters"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
@@ -194,11 +188,17 @@ class AutomaticDashboardAppInner extends Component {
           )}
         </div>
         {hasSidebar && (
-          <SuggestionsSidebarWrapper
-            className={cx(CS.absolute, CS.top, CS.right, CS.bottom)}
+          <Box
+            className={cx(
+              CS.absolute,
+              CS.top,
+              CS.right,
+              CS.bottom,
+              S.SuggestionsSidebarWrapper,
+            )}
           >
             <SuggestionsSidebar related={related} />
-          </SuggestionsSidebarWrapper>
+          </Box>
         )}
       </div>
     );
@@ -239,7 +239,7 @@ const RELATED_CONTENT = {
 };
 
 const SuggestionsList = ({ suggestions, section }) => (
-  <ListRoot>
+  <Box component="ol" my="sm">
     {Object.keys(suggestions).map((s, i) => (
       <li key={i} className={CS.my2}>
         <SuggestionSectionHeading>
@@ -247,31 +247,31 @@ const SuggestionsList = ({ suggestions, section }) => (
         </SuggestionSectionHeading>
         {suggestions[s].length > 0 &&
           suggestions[s].map((item, itemIndex) => (
-            <ItemLink
+            <Link
               key={itemIndex}
               to={item.url}
-              className={cx(CS.hoverParent, CS.hoverVisibility)}
+              className={cx(CS.hoverParent, CS.hoverVisibility, S.ItemLink)}
             >
               <Card className={CS.p2} hoverable>
-                <ItemContent>
+                <Flex align="center">
                   <Icon
                     name={RELATED_CONTENT[s].icon}
                     color={color("accent4")}
                     className={CS.mr1}
                   />
                   <h4 className={CS.textWrap}>{item.title}</h4>
-                  <ItemDescription className={CS.hoverChild}>
+                  <Box ml="auto" className={CS.hoverChild}>
                     <Tooltip tooltip={item.description}>
                       <Icon name="info_outline" color={color("bg-dark")} />
                     </Tooltip>
-                  </ItemDescription>
-                </ItemContent>
+                  </Box>
+                </Flex>
               </Card>
-            </ItemLink>
+            </Link>
           ))}
       </li>
     ))}
-  </ListRoot>
+  </Box>
 );
 
 const SuggestionSectionHeading = ({ children }) => (
@@ -288,10 +288,10 @@ const SuggestionSectionHeading = ({ children }) => (
 );
 
 const SuggestionsSidebar = ({ related }) => (
-  <SidebarRoot>
-    <SidebarHeader>{t`More X-rays`}</SidebarHeader>
+  <Flex direction="column" py="md" px="xl">
+    <Title py="sm" px={0} order={2}>{t`More X-rays`}</Title>
     <SuggestionsList suggestions={related} />
-  </SidebarRoot>
+  </Flex>
 );
 
 // Workaround until AutomaticDashboardApp is refactored to be a function component

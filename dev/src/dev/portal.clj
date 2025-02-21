@@ -1,6 +1,8 @@
 (ns dev.portal
   (:require [portal.api :as p]))
 
+(set! *warn-on-reflection* true)
+
 (defonce
   ^{:doc "The handle to portal. Can be used as @p to get the selected item."}
   p
@@ -33,6 +35,7 @@
                 line   -1
                 column -1
                 time   (java.util.Date.)}}]
+   #_{:clj-kondo/ignore [:discouraged-var]}
    (tap> {:result value
           :level  level
           :ns     ns
@@ -68,3 +71,34 @@
                 {:portal.viewer/default :portal.viewer/diff})
               (update (meta middleware-var) :ns #(.name %)))
     (send-log event)))
+
+(defmacro diff->
+  "Drop-in replacement for `->` that sends diffs to Portal at each stage."
+  [x & forms]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (loop [x x, forms forms]
+    (if forms
+      (let [form     (first forms)
+            threaded (let [args       (when (and (list? form)
+                                                 (next form))
+                                        (for [arg-form (rest form)]
+                                          [(gensym "arg") arg-form]))
+                           before-sym (gensym "before")
+                           after-sym  (gensym "after")]
+                       `(let [~before-sym ~x
+                              ~@(when (seq args)
+                                  (mapcat identity args))
+                              ~after-sym ~(if (seq args)
+                                             ;; Has args: a list with their new symbols!
+                                             `(-> ~before-sym ~(list* (first form) (map first args)))
+                                             ;; No args: just inline the form.
+                                             `(-> ~before-sym ~form))]
+                          (tap> [~(list `quote form)
+                                 ~@(when (seq args)
+                                     `[(into {} [~@(for [[sym form] args]
+                                                     [(list `quote form) sym])])])
+                                 ^{:portal.viewer/default :portal.viewer/diff}
+                                 [~before-sym ~after-sym]])
+                          ~after-sym))]
+        (recur threaded (next forms)))
+      x)))

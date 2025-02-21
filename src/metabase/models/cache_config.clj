@@ -12,8 +12,6 @@
 
 (def CachingModel "Caching is configurable for those models" [:enum "root" "database" "dashboard" "question"])
 
-(def CacheConfig "Cache configuration" :model/CacheConfig)
-
 (doto :model/CacheConfig
   (derive :metabase/model)
   (derive :hook/timestamped?))
@@ -50,7 +48,10 @@
     {:model    (:model row)
      :model_id (:model_id row)
      :strategy (-> (:config row)
-                   (assoc :type (:strategy row)))}))
+                   (assoc :type (:strategy row))
+                   (cond->
+                    (#{:duration :schedule} (:strategy row))
+                     (assoc :refresh_automatically (:refresh_automatically row))))}))
 
 (defn card-strategy
   "Shapes `row` into strategy for a given `card`."
@@ -62,10 +63,11 @@
 (defn config->row
   "Transform cache config from API form into db storage form."
   [{:keys [model model_id strategy]}]
-  {:model    model
-   :model_id model_id
-   :strategy (:type strategy)
-   :config   (dissoc strategy :type)})
+  {:model                 model
+   :model_id              model_id
+   :strategy              (:type strategy)
+   :config                (dissoc strategy :type :refresh_automatically)
+   :refresh_automatically (:refresh_automatically strategy)})
 
 (defn get-list
   "Get a list of cache configurations for given `models` and a `collection`."
@@ -136,7 +138,7 @@
     (if (empty? conditions)
       -1
       ;; using JVM date rather than DB time since it's what are used in cache tasks
-      (t2/query-one {:update (t2/table-name CacheConfig)
+      (t2/query-one {:update (t2/table-name :model/CacheConfig)
                      :set    {:invalidated_at (t/offset-date-time)}
                      :where  (into [:or] conditions)}))))
 

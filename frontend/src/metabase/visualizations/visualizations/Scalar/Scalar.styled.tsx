@@ -5,13 +5,14 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
-export interface ScalarContainerProps {
+interface ScalarContainerProps {
   isClickable: boolean;
 }
 
 export const ScalarContainer = styled(Ellipsified)<ScalarContainerProps>`
   padding: 0 ${space(1)};
   max-width: 100%;
+  box-sizing: border-box;
 
   ${({ isClickable }) =>
     isClickable &&

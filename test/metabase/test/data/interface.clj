@@ -18,10 +18,8 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.sync.describe-table]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :as field]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test.data.env :as tx.env]
@@ -31,6 +29,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.random :as u.random]
    [methodical.core :as methodical]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -280,7 +279,7 @@
 
 (defmethod metabase-instance FieldDefinition
   [this table]
-  (t2/select-one Field
+  (t2/select-one :model/Field
                  :table_id    (u/the-id table)
                  :%lower.name (u/lower-case-en (:field-name this))
                  {:order-by [[:id :asc]]}))
@@ -290,7 +289,7 @@
   ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
   ;; like Oracle
   (letfn [(table-with-name [table-name]
-            (t2/select-one Table
+            (t2/select-one :model/Table
                            :db_id       (:id database)
                            :%lower.name table-name
                            {:order-by [[:id :asc]]}))]
@@ -307,7 +306,7 @@
   [{:keys [database-name]} :- [:map [:database-name :string]]
    driver                  :- :keyword]
   (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
-  (t2/select-one Database
+  (t2/select-one :model/Database
                  :name   (database-display-name-for-driver driver database-name)
                  :engine driver
                  {:order-by [[:id :asc]]}))
@@ -461,10 +460,11 @@
   ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
    (merge
-    (first (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
+    (first (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id :model/Table :id table-id)
                                                 :type     :query
                                                 :query    {:source-table table-id
-                                                           :aggregation  [[aggregation-type [:field-id field-id]]]}}))
+                                                           :aggregation  [[aggregation-type [:field-id field-id]]]
+                                                           :aggregation-idents {0 (u/generate-nano-id)}}}))
     (when (= aggregation-type :cum-count)
       {:base_type     :type/Decimal
        :semantic_type :type/Quantity}))))
@@ -815,3 +815,130 @@
   {:arglists '([driver card-template-tag-name])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
+
+(defmulti create-view-of-table!
+  "Create a new view in database.
+   The view should be a simple view of the table, like `select * from table`
+   `view-name` is the name of the new view
+   `table-name` is the name of the table.
+   `options` can have these keys
+    - `:materialized?` will be true if it should create a materialized view."
+  {:arglists '([driver database view-name table-name options])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti drop-view!
+  "Drop a view in database if it exists.
+   `view-name` is the name of the new view
+   `options` can have these keys
+    - `:materialized?` will be true if it should create a materialized view."
+  {:arglists '([driver database view-name options])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti bad-connection-details
+  "Returns a map that when merged with details will produce a failing connection to db."
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod bad-connection-details :default
+  [_driver]
+  {:user (u.random/random-name)})
+
+(doseq [driver [:h2 :sqlite]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    nil))
+
+(doseq [driver [:bigquery-cloud-sdk]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:project-id (u.random/random-name)}))
+
+(doseq [driver [:redshift :snowflake :vertica :sparksql]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:db (u.random/random-name)}))
+
+(doseq [driver [:oracle]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:service-name (u.random/random-name)}))
+
+(doseq [driver [:presto-jdbc :databricks]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:catalog (u.random/random-name)}))
+
+(doseq [driver [:athena]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:access_key (u.random/random-name)}))
+
+(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite :vertica :athena]]
+  (defmethod driver/database-supports? [driver :test/arrays]
+    [_driver _feature _database]
+    true))
+
+(defmulti native-array-query
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-array-query :default
+  [_driver]
+  "select array['a', 'b', 'c']")
+
+(doseq [driver [:redshift :databricks]]
+  (defmethod native-array-query driver
+    [_driver]
+    "select array('a', 'b', 'c')"))
+
+(doseq [driver [:mysql :sqlite]]
+  (defmethod native-array-query driver
+    [_driver]
+    "select json_array('a', 'b', 'c')"))
+
+(defmethod native-array-query :snowflake
+  [_driver]
+  "select array_construct('a', 'b', 'c')")
+
+(doseq [driver [:postgres :athena :oracle]]
+  (defmethod driver/database-supports? [driver :test/array-aggregation]
+    [_driver _feature _database]
+    true))
+
+;; redshift only supports listagg which returns a string
+(defmethod driver/database-supports? [:redshift :test/array-aggregation]
+  [_driver _feature _database]
+  false)
+
+(defmulti agg-venues-by-category-id
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod agg-venues-by-category-id :postgres
+  [_driver]
+  "select category_id, array_agg(name)
+   from public.venues
+   group by category_id
+   order by 1 asc
+   limit 2;")
+
+(defmethod agg-venues-by-category-id :oracle
+  [_driver]
+  "select \"category_id\", cast(collect(\"name\") AS sys.odcivarchar2list)
+   from \"mb_test\".\"test_data_venues\"
+   group by \"category_id\"
+   order by \"category_id\" asc
+   fetch first 2 rows only")
+
+(defmethod agg-venues-by-category-id :athena
+  [_driver]
+  "select category_id, array_agg(name)
+   from test_data.venues
+   group by category_id
+   order by 1 asc
+   limit 2;")

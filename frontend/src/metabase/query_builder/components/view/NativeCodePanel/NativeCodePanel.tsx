@@ -1,15 +1,12 @@
+import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
-import { Icon } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 
-import {
-  CodeContainer,
-  CodeCopyButton,
-  CodeRoot,
-  CodeText,
-} from "./NativeCodePanel.styled";
+import NativeCodePanelS from "./NativeCodePanel.module.css";
 
 interface NativeCodePanelProps {
   value: string;
@@ -25,18 +22,27 @@ export const NativeCodePanel = ({
   const { isCopied, handleCopy } = useCopyButton(value);
 
   return (
-    <CodeRoot>
-      <CodeContainer isHighlighted={isHighlighted}>
-        <CodeText>{value}</CodeText>
-      </CodeContainer>
+    <Flex className={NativeCodePanelS.CodeRoot}>
+      <pre
+        className={cx(NativeCodePanelS.CodeContainer, {
+          [NativeCodePanelS.isHighlighted]: isHighlighted,
+        })}
+      >
+        <code className={NativeCodePanelS.CodeText}>{value}</code>
+      </pre>
       {isCopyEnabled && (
         <Tooltip tooltip={t`Copied!`} isOpen={isCopied}>
-          <CodeCopyButton isHighlighted={isHighlighted} onClick={handleCopy}>
+          <IconButtonWrapper
+            className={cx(NativeCodePanelS.CodeCopyButton, {
+              [NativeCodePanelS.isHighlighted]: isHighlighted,
+            })}
+            onClick={handleCopy}
+          >
             <Icon name="copy" />
-          </CodeCopyButton>
+          </IconButtonWrapper>
         </Tooltip>
       )}
-    </CodeRoot>
+    </Flex>
   );
 };
 

@@ -128,13 +128,11 @@
 (mu/defn- matching-join? :- :boolean
   [[_ref-kind {:keys [join-alias source-field]} _ref-id] :- ::lib.schema.ref/ref
    column                                                :- ::lib.schema.metadata/column]
-  ;; If the ref has a source-field, and it matches the column's :fk-field-id then this is an implicitly joined field.
-  ;; Implicitly joined columns have :source-alias ("PRODUCTS__via__PRODUCT_ID") but the refs don't have any join alias.
-  (or (and source-field
-           (clojure.core/= source-field (:fk-field-id column)))
-      ;; If it's not an implicit join, then either the join aliases must match for an explicit join, or both be nil for
-      ;; an own column.
-      (clojure.core/= (column-join-alias column) join-alias)))
+  (if source-field
+    (clojure.core/= source-field (:fk-field-id column))
+    ;; If it's not an implicit join, then either the join aliases must match for an explicit join, or both be nil for
+    ;; an own column.
+    (clojure.core/= (column-join-alias column) join-alias)))
 
 (mu/defn- plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref

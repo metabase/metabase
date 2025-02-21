@@ -2,12 +2,11 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, createRef, forwardRef } from "react";
-import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import Button from "metabase/core/components/Button";
@@ -15,10 +14,12 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
+import { connect } from "metabase/lib/redux";
 import { setUIControls, zoomInRow } from "metabase/query_builder/actions";
 import {
   getIsShowingRawTable,
@@ -169,7 +170,7 @@ class TableInteractive extends Component {
     );
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     // for measuring cells:
     this._div = document.createElement("div");
     this._div.className = cx(TableS.TableInteractive, "test-TableInteractive");
@@ -793,6 +794,7 @@ class TableInteractive extends Component {
       question,
       mode,
       theme,
+      onActionDismissal,
     } = this.props;
 
     const { dragColIndex, showDetailShortcut } = this.state;
@@ -836,6 +838,7 @@ class TableInteractive extends Component {
             dragColStyle: style,
             dragColNewIndex: columnIndex,
           });
+          onActionDismissal();
         }}
         onDrag={(e, data) => {
           const newIndex = this.getDragColNewIndex(data);
@@ -1044,7 +1047,7 @@ class TableInteractive extends Component {
       return;
     }
 
-    const scrollOffset = this.gridRef.current?.props?.scrollTop || 0;
+    const scrollOffset = this.gridRef.current?.state?.scrollTop || 0;
 
     // infer row index from mouse position when we hover the gutter column
     if (event?.currentTarget?.id === "gutter-column") {
@@ -1109,6 +1112,18 @@ class TableInteractive extends Component {
     return false;
   }
 
+  renderEmptyMessage = () => {
+    return (
+      <div className={cx(TableS.fill, CS.flex)}>
+        <ErrorMessage
+          type="noRows"
+          title={t`No results!`}
+          message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
+        />
+      </div>
+    );
+  };
+
   render() {
     const {
       width,
@@ -1118,10 +1133,11 @@ class TableInteractive extends Component {
       scrollToColumn,
       scrollToLastColumn,
       theme,
+      renderEmptyMessage,
     } = this.props;
 
     if (!width || !height) {
-      return <div className={className} />;
+      return <div ref={this.props.forwardedRef} className={className} />;
     }
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
@@ -1136,6 +1152,8 @@ class TableInteractive extends Component {
         (sum, _c, index) => sum + this.getColumnWidth({ index }),
         0,
       ) + (gutterColumn ? SIDEBAR_WIDTH : 0);
+
+    const isEmpty = rows == null || rows.length === 0;
 
     return (
       <DelayGroup>
@@ -1155,6 +1173,7 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
+                ref={this.props.forwardedRef}
                 bg={backgroundColor}
                 className={cx(
                   className,
@@ -1261,6 +1280,7 @@ class TableInteractive extends Component {
                   tabIndex={null}
                   scrollToColumn={scrollToColumn}
                 />
+                {isEmpty && renderEmptyMessage && this.renderEmptyMessage()}
                 <Grid
                   id="main-data-grid"
                   ref={this.gridRef}
@@ -1339,20 +1359,27 @@ class TableInteractive extends Component {
   }
 }
 
+const TableInteractiveMemoized = memoizeClass(
+  "_getCellClickedObjectCached",
+  "_visualizationIsClickableCached",
+  "getCellBackgroundColor",
+  "getCellFormattedValue",
+  "getHeaderClickedObject",
+)(TableInteractive);
+
+const TableInteractiveWithRef = forwardRef((props, ref) => (
+  <TableInteractiveMemoized {...props} forwardedRef={ref} />
+));
+
+TableInteractiveWithRef.displayName = "TableInteractiveInner";
+
 export default _.compose(
   withMantineTheme,
+  connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
   ExplicitSize({
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),
-  connect(mapStateToProps, mapDispatchToProps),
-  memoizeClass(
-    "_getCellClickedObjectCached",
-    "_visualizationIsClickableCached",
-    "getCellBackgroundColor",
-    "getCellFormattedValue",
-    "getHeaderClickedObject",
-  ),
-)(TableInteractive);
+)(TableInteractiveWithRef);
 
 const DetailShortcut = forwardRef((_props, ref) => (
   <div
@@ -1410,8 +1437,8 @@ function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
     >
       <UIButton
         variant="outline"
-        compact
-        leftIcon={<Icon name="add" />}
+        size="compact-md"
+        leftSection={<Icon name="add" />}
         title={t`Add column`}
         aria-label={t`Add column`}
         onClick={onClick}

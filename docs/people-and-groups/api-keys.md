@@ -8,7 +8,7 @@ Metabase can create API keys to authenticate programmatic requests to the API. T
 
 ## Fair warning about Metabase's API
 
-We don't version the [Metabase API](../api-documentation.md). We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.
+We don't version the [Metabase API](../api.html). We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.
 
 That said, there are times when it's nice to work with the API, like when managing permissions with a large number of people and groups, or bulk archiving, or content creation. So we added the ability to create API keys to authenticate your programmatic requests.
 
@@ -111,5 +111,5 @@ getGroups().then(groups => console.log("Groups in your Metabase:", groups));
 
 ## Further reading
 
-- [Metabase API reference](../api-documentation.md).
-- [Working with the Metabase API](https://www.metabase.com/learn/administration/metabase-api).
+- [Metabase API reference](../api.html).
+- [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).

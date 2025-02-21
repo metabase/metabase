@@ -36,9 +36,9 @@
                         nil)
             sent-notis (atom [])]
         (testing "publishing event will send all the actively subscribed notifciations"
-          (mt/with-dynamic-redefs
-            [notification/*send-notification!*      (fn [notification] (swap! sent-notis conj notification))
-             events.notification/supported-topics #{:event/test-notification}]
+          (with-redefs
+           [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
+            events.notification/supported-topics #{:event/test-notification}]
             (events/publish-event! topic {::hi true})
             (is (=? [[(:id n-1) {:event_info {::hi true}}]
                      [(:id n-2) {:event_info {::hi true}}]]
@@ -58,9 +58,9 @@
            :event_name topic}]
          nil)
         (testing "publish an event that is not supported for notifications will not send any notifications"
-          (mt/with-dynamic-redefs
-            [notification/*send-notification!*      (fn [notification] (swap! sent-notis conj notification))
-             events.notification/supported-topics #{}]
+          (with-redefs
+           [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
+            events.notification/supported-topics #{}]
             (events/publish-event! :event/unsupported-topic {::hi true})
             (is (empty? @sent-notis))))))))
 
@@ -92,6 +92,16 @@
              :topic   :user-joined}
             {:user_id (mt/user->id :rasta)
              :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
+           ["multiple hydration in the same map"
+            [:map
+             (-> [:user_id :int] (#'events.schema/with-hydrate :user user-hydra-model))
+             (-> [:creator :int] (#'events.schema/with-hydrate :creator user-hydra-model))]
+            {:user_id    (mt/user->id :rasta)
+             :creator_id (mt/user->id :crowberto)}
+            {:user_id    (mt/user->id :rasta)
+             :user       (t2/select-one user-hydra-model (mt/user->id :rasta))
+             :creator_id (mt/user->id :crowberto)
+             :creator    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
            ["respect the options"
             [:map
              (-> [:user_id {:optional true} :int] (#'events.schema/with-hydrate :user user-hydra-model))]
@@ -124,8 +134,8 @@
         (events/publish-event! :event/testing {})
         (testing "each notification should have a task history, in which each channel-send will have a task history"
           (is (= {"notification-trigger" 1
-                  "notification-send"      (+ 1 1) ;; 2 notifications, each send to 2 channels
-                  "channel-send"           (+ 2 2)}
+                  "notification-send"    2 ; 2 notifications, each send to 2 channels
+                  "channel-send"         4}
                  (as-> (t2/select :model/TaskHistory :task [:in ["notification-send" "channel-send" "notification-trigger"]]) th
                    (group-by :task th)
                    (update-vals th count)))))))))

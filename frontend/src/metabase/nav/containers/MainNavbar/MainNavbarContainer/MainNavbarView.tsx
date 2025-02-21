@@ -1,10 +1,11 @@
 import type { MouseEvent } from "react";
 import { useCallback, useMemo } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useUserSetting } from "metabase/common/hooks";
+import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
@@ -12,10 +13,19 @@ import {
   PERSONAL_COLLECTIONS,
   getCollectionIcon,
 } from "metabase/entities/collections";
+import { OnboardingDismissedToast } from "metabase/home/components/Onboarding";
+import {
+  getCanAccessOnboardingPage,
+  getIsNewInstance,
+} from "metabase/home/selectors";
 import { isSmallScreen } from "metabase/lib/dom";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import type { IconName, IconProps } from "metabase/ui";
+import { addUndo } from "metabase/redux/undo";
+import { getHasOwnDatabase } from "metabase/selectors/data";
+import { getSetting } from "metabase/selectors/settings";
+import { Icon, type IconName, type IconProps, Tooltip } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
@@ -24,6 +34,7 @@ import {
   CollectionsMoreIcon,
   CollectionsMoreIconContainer,
   PaddedSidebarLink,
+  PaddedSidebarLinkDismissible,
   SidebarContentRoot,
   SidebarHeading,
   SidebarHeadingWrapper,
@@ -31,7 +42,9 @@ import {
   TrashSidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
-import { SidebarOnboardingSection } from "../SidebarItems/SidebarOnboardingSection";
+import { AddDatabase } from "../SidebarItems/AddDatabase";
+import { DwhUploadCSV } from "../SidebarItems/DwhUploadCSV/DwhUploadCSV";
+import { trackOnboardingChecklistOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -78,6 +91,8 @@ export function MainNavbarView({
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
   );
+  const [isOnboardingLinkDismissed, setIsOnboardingLinkDismissed] =
+    useUserSetting("dismissed-onboarding-sidebar-link");
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
 
@@ -111,6 +126,57 @@ export function MainNavbarView({
     [collections],
   );
 
+  const ONBOARDING_URL = "/getting-started";
+  const isNewInstance = useSelector(getIsNewInstance);
+  const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
+  const showOnboardingLink =
+    !isOnboardingLinkDismissed && isNewInstance && canAccessOnboarding;
+  const isOnboardingPageSelected = nonEntityItem?.url === ONBOARDING_URL;
+
+  const dispatch = useDispatch();
+
+  const dismissOnboardingLink = () => {
+    setIsOnboardingLinkDismissed(true);
+
+    if (isOnboardingPageSelected) {
+      dispatch(push("/"));
+    }
+
+    dispatch(
+      addUndo({
+        icon: "gear",
+        message: <OnboardingDismissedToast />,
+      }),
+    );
+  };
+
+  // Instances with DWH enabled already have uploads enabled by default.
+  // It is not possible to turn the uploads off, nor to delete the attached database.
+  const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
+
+  const uploadDbId = useSelector(
+    state => getSetting(state, "uploads-settings")?.db_id,
+  );
+
+  const rootCollection = collections.find(
+    c => c.id === "root" || c.id === null,
+  );
+  const canCurateRootCollection = rootCollection?.can_write;
+  const canUploadToDatabase = databases
+    ?.find(db => db.id === uploadDbId)
+    ?.canUpload();
+
+  /**
+   * the user must have:
+   *   - "write" permissions for the root collection AND
+   *   - "upload" permissions for the attached DWH
+   */
+  const canUpload = canCurateRootCollection && canUploadToDatabase;
+  const showUploadCSVButton = hasAttachedDWHFeature && canUpload;
+
+  const isAdditionalDatabaseAdded = getHasOwnDatabase(databases);
+  const showAddDatabaseButton = isAdmin && !isAdditionalDatabaseAdded;
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -124,6 +190,27 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
+            {showOnboardingLink && (
+              <PaddedSidebarLinkDismissible
+                icon="learn"
+                right={
+                  <Tooltip label={t`Hide page`} offset={16} position="right">
+                    <Icon
+                      className="dismiss"
+                      name="eye_crossed_out"
+                      onClick={dismissOnboardingLink}
+                    />
+                  </Tooltip>
+                }
+                url={ONBOARDING_URL}
+                isSelected={isOnboardingPageSelected}
+                onClick={() => trackOnboardingChecklistOpened()}
+              >
+                {/* eslint-disable-next-line no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
+                {t`How to use Metabase`}
+              </PaddedSidebarLinkDismissible>
+            )}
+            {showUploadCSVButton && <DwhUploadCSV />}
           </SidebarSection>
 
           {bookmarks.length > 0 && (
@@ -181,14 +268,15 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
+          {showAddDatabaseButton && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <AddDatabase />
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
         </div>
         <WhatsNewNotification />
-        <SidebarOnboardingSection
-          collections={collections}
-          databases={databases}
-          hasDataAccess={hasDataAccess}
-          isAdmin={isAdmin}
-        />
       </SidebarContentRoot>
     </ErrorBoundary>
   );

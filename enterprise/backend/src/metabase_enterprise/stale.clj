@@ -1,10 +1,12 @@
 (ns metabase-enterprise.stale
-  (:require [malli.experimental.time]
-            [metabase.embed.settings :as embed.settings]
-            [metabase.public-settings :as public-settings]
-            [metabase.util.honey-sql-2 :as h2x]
-            [metabase.util.malli :as mu]
-            [toucan2.core :as t2]))
+  (:require
+   [malli.experimental.time]
+   [metabase.embed.settings :as embed.settings]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,6 +21,7 @@
 
 (defmulti ^:private find-stale-query
   "Find stale content of a given model type."
+  {:arglists '([model args])}
   (fn [model _args] model))
 
 (defmethod find-stale-query :model/Card
@@ -37,16 +40,19 @@
                :pulse [:and
                        [:= :pulse_card.pulse_id :pulse.id]
                        [:= :pulse.archived false]]
-               :sandboxes [:= :sandboxes.card_id :report_card.id]]
+               :sandboxes [:= :sandboxes.card_id :report_card.id]
+               :collection [:= :collection.id :report_card.collection_id]]
    :where [:and
            [:= :sandboxes.id nil]
            [:= :pulse.id nil]
            [:= :moderation_review.id nil]
            [:= :report_card.archived false]
            [:<= :report_card.last_used_at (-> args :cutoff-date)]
+           ;; find things only in regular collections, not the `instance-analytics` collection.
+           [:= :collection.type nil]
            (when (embed.settings/some-embedding-enabled?)
              [:= :report_card.enable_embedding false])
-           (when (public-settings/enable-public-sharing)
+           (when (setting/get :enable-public-sharing)
              [:= :report_card.public_uuid nil])
            [:or
             (when (contains? (:collection-ids args) nil)
@@ -62,14 +68,23 @@
    :from :report_dashboard
    :left-join [:pulse [:and
                        [:= :pulse.archived false]
-                       [:= :pulse.dashboard_id :report_dashboard.id]]]
+                       [:= :pulse.dashboard_id :report_dashboard.id]]
+               :collection [:= :collection.id :report_dashboard.collection_id]
+               :moderation_review [:and
+                                   [:= :moderation_review.moderated_item_id :report_dashboard.id]
+                                   [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
+                                   [:= :moderation_review.most_recent true]
+                                   [:= :moderation_review.status (h2x/literal "verified")]]]
    :where [:and
            [:= :pulse.id nil]
+           [:= :moderation_review.id nil]
            [:= :report_dashboard.archived false]
            [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
+           ;; find things only in regular collections, not the `instance-analytics` collection.
+           [:= :collection.type nil]
            (when (embed.settings/some-embedding-enabled?)
              [:= :report_dashboard.enable_embedding false])
-           (when (public-settings/enable-public-sharing)
+           (when (setting/get :enable-public-sharing)
              [:= :report_dashboard.public_uuid nil])
            [:or
             (when (contains? (:collection-ids args) nil)
@@ -133,3 +148,11 @@
                 (map (fn [v] (update v :model #(keyword "model" %)))))
                (t2/query (rows-query args)))
    :total (:count (t2/query-one (total-query args)))})
+
+(defsetting dismissed-collection-cleanup-banner
+  (deferred-tru "Was the collection cleanup banner dismissed?")
+  :user-local :only
+  :visibility :authenticated
+  :type :boolean
+  :default false
+  :export? false)

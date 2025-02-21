@@ -1,8 +1,8 @@
-import { restore } from "e2e/support/helpers";
+const { H } = cy;
 
 describe("scenarios > visualizations > rows", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -13,7 +13,7 @@ describe("scenarios > visualizations > rows", () => {
       `should not collapse rows when last value is ${testValue} (metabase#14285)`,
       { browser: "firefox" },
       () => {
-        cy.createNativeQuestion(
+        H.createNativeQuestion(
           {
             name: "14285",
             native: {
@@ -45,7 +45,7 @@ describe("scenarios > visualizations > rows", () => {
   });
 
   it("should display a row chart", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "14285",
         native: {
@@ -89,6 +89,7 @@ describe("scenarios > visualizations > rows", () => {
           .realHover()
           .invoke("width")
           .then(newWidth => {
+            // eslint-disable-next-line no-unsafe-element-filtering
             expect(prevWidth).eq(newWidth);
           });
       });

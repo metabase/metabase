@@ -59,6 +59,7 @@
                (contains? optimizable-units unit))))))
 
 (defmulti ^:private can-optimize-filter?
+  {:arglists '([mbql-clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defn- optimizable-temporal-value?

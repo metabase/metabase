@@ -4,23 +4,22 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.async.streaming-response :as streaming-response]
-   [metabase.async.streaming-response.thread-pool :as thread-pool]
-   [metabase.async.util :as async.u]
    [metabase.db :as mdb]
-   [metabase.driver.sql-jdbc.execute.diagnostic
-    :as sql-jdbc.execute.diagnostic]
+   [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.server :as server]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
+   [metabase.server.instance :as server]
+   [metabase.server.streaming-response :as streaming-response]
+   [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.async :as async.u]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (com.mchange.v2.c3p0 PoolBackedDataSource)
-   (metabase.async.streaming_response StreamingResponse)
+   (metabase.server.streaming_response StreamingResponse)
    (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
 (set! *warn-on-reflection* true)
@@ -49,11 +48,11 @@
 
 (defn- format-performance-info
   [{:keys [start-time call-count-fn _diag-info-fn]
-    :or {start-time    (System/nanoTime)
+    :or {start-time    (u/start-timer)
          call-count-fn (constantly -1)}}]
-  (let [elapsed-time (u/format-nanoseconds (- (System/nanoTime) start-time))
+  (let [elapsed-time (u/since-ms start-time)
         db-calls     (call-count-fn)]
-    (format "%s (%s DB calls)" elapsed-time db-calls)))
+    (format "%.0fms (%s DB calls)" elapsed-time db-calls)))
 
 (defn- stats [diag-info-fn]
   (str
@@ -209,7 +208,7 @@
 (defn- should-log-request? [{:keys [uri], :as request}]
   ;; don't log calls to /health or /util/logs because they clutter up the logs (especially the window in admin) with
   ;; useless lines
-  (and (req.util/api-call? request)
+  (and (request/api-call? request)
        (not ((logging-disabled-uris) uri))))
 
 (defn log-api-call
@@ -223,7 +222,7 @@
       (t2/with-call-count [call-count-fn]
         (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
           (let [info           {:request       request
-                                :start-time    (System/nanoTime)
+                                :start-time    (u/start-timer)
                                 :call-count-fn call-count-fn
                                 :diag-info-fn  diag-info-fn
                                 :log-context   {:metabase-user-id api/*current-user-id*}}

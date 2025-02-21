@@ -175,6 +175,7 @@ async function setup({
 
 const REVIEW_JOIN_CLAUSE: Join = {
   alias: "Products",
+  ident: "gxyP-LOf7Zn96z8IWueoH",
   condition: [
     "=",
     ["field", ORDERS.ID, null],
@@ -218,12 +219,9 @@ const PIVOT_TABLE_QUESTION: UnsavedCard<StructuredDatasetQuery> = {
   },
   visualization_settings: {
     "pivot_table.column_split": {
-      columns: [PIVOT_TABLE_PRODUCT_CATEGORY_FIELD],
-      rows: [
-        PIVOT_TABLE_PEOPLE_SOURCE_FIELD,
-        PIVOT_TABLE_ORDER_CREATED_AT_FIELD,
-      ],
-      values: [["aggregation", 0]],
+      columns: ["CATEGORY"],
+      rows: ["SOURCE", "CREATED_AT"],
+      values: ["count"],
     },
   },
 };
@@ -850,12 +848,9 @@ describe("QB Actions > updateQuestion", () => {
           visualization_settings: {
             ...card.visualization_settings,
             "pivot_table.column_split": {
-              columns: [PIVOT_TABLE_ORDER_CREATED_AT_FIELD],
-              rows: [
-                PIVOT_TABLE_PRODUCT_CATEGORY_FIELD,
-                PIVOT_TABLE_PEOPLE_SOURCE_FIELD,
-              ],
-              values: [["aggregation", 0]],
+              columns: ["CREATED_AT"],
+              rows: ["CATEGORY", "SOURCE"],
+              values: ["count"],
             },
           },
         },

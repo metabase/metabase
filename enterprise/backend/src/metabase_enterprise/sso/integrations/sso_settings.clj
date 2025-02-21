@@ -3,15 +3,14 @@
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
-   [malli.core :as mc]
    [metabase-enterprise.scim.api :as scim]
-   [metabase.integrations.common :as integrations.common]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [saml20-clj.core :as saml]))
 
@@ -21,7 +20,7 @@
   [:maybe [:map-of ms/KeywordOrString [:sequential ms/PositiveInt]]])
 
 (def ^:private ^{:arglists '([group-mappings])} validate-group-mappings
-  (mc/validator GroupMappings))
+  (mr/validator GroupMappings))
 
 (defsetting saml-user-provisioning-enabled?
   (deferred-tru "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who
@@ -198,7 +197,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
                false)))
 
 (defsetting jwt-identity-provider-uri
-  (deferred-tru "URL of JWT based login page")
+  (deferred-tru "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK.")
   :encryption :when-encryption-key-set
   :feature    :sso-jwt
   :audit      :getter)
@@ -267,9 +266,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :default false
   :feature :sso-jwt
   :setter  :none
-  :getter  (fn [] (boolean
-                   (and (jwt-identity-provider-uri)
-                        (jwt-shared-secret)))))
+  :getter  (fn [] (boolean (jwt-shared-secret))))
 
 (defsetting jwt-enabled
   (deferred-tru "Is JWT authentication configured and enabled?")
@@ -284,7 +281,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :doc "When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
         This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.")
 
-(define-multi-setting-impl integrations.common/send-new-sso-user-admin-email? :ee
+(define-multi-setting-impl send-new-sso-user-admin-email? :ee
   :getter (fn [] (setting/get-value-of-type :boolean :send-new-sso-user-admin-email?))
   :setter (fn [send-emails] (setting/set-value-of-type! :boolean :send-new-sso-user-admin-email? send-emails)))
 

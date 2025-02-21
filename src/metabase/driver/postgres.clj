@@ -10,6 +10,7 @@
    [honey.sql.helpers :as sql.helpers]
    [honey.sql.pg-ops :as sql.pg-ops]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -19,7 +20,8 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [with-quoting quote-columns quote-identifier]]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
+                                             with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -42,7 +44,11 @@
    [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
-   (java.sql Connection ResultSet ResultSetMetaData Types)
+   (java.sql
+    Connection
+    ResultSet
+    ResultSetMetaData
+    Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.postgresql.copy CopyManager)
    (org.postgresql.jdbc PgConnection)))
@@ -61,6 +67,9 @@
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift
 (doseq [[feature supported?] {:connection-impersonation true
+                              :describe-fields          true
+                              :describe-fks             true
+                              :describe-indexes         true
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
@@ -205,16 +214,14 @@
   (cond-> [typname]
     (not= nspname "public") (conj (format "\"%s\".\"%s\"" nspname typname))))
 
-(defn- enum-types [_driver database]
+(defn- enum-types
+  [database]
   (into #{}
-        (comp (mapcat get-typenames)
-              (map keyword))
+        (mapcat get-typenames)
         (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                     [(str "SELECT nspname, typname "
                           "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
                           "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
-
-(def ^:private ^:dynamic *enum-types* nil)
 
 (defn- get-tables-sql
   [schemas table-names]
@@ -279,13 +286,147 @@
   ;; memory in a set like this
   {:tables (into #{} (describe-syncable-tables database))})
 
+(defmethod sql-jdbc.sync/describe-fields-sql :postgres
+  ;; The implementation is based on `getColumns` in https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java
+  [driver & {:keys [schema-names table-names]}]
+  (sql/format
+   {:union-all
+    [{:select [[:c.column_name :name]
+               [[:case
+                 [:in :c.udt_schema [[:inline "public"] [:inline "pg_catalog"]]]
+                 [:format [:inline "%s"] :c.udt_name]
+                 :else
+                 [:format [:inline "\"%s\".\"%s\""] :c.udt_schema :c.udt_name]]
+                :database-type]
+               [[:- :c.ordinal_position [:inline 1]] :database-position]
+               [:c.table_schema :table-schema]
+               [:c.table_name :table-name]
+               [[:not= :pk.column_name nil] :pk?]
+               [[:col_description
+                 [:cast [:cast [:format [:inline "%I.%I"] [:cast :c.table_schema :text] [:cast :c.table_name :text]] :regclass] :oid]
+                 :c.ordinal_position]
+                :field-comment]
+               [[:and
+                 [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
+                 [:= :is_nullable [:inline "NO"]]
+                  ;;_ IS_AUTOINCREMENT from: https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1852-L1856
+                 [:not [:or
+                        [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
+                        [:!= :is_identity [:inline "NO"]]]]]
+                :database-required]
+               [[:or
+                 [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
+                 [:!= :is_identity [:inline "NO"]]]
+                :database-is-auto-increment]]
+      :from [[:information_schema.columns :c]]
+      :left-join [[{:select [:tc.table_schema
+                             :tc.table_name
+                             :kc.column_name]
+                    :from [[:information_schema.table_constraints :tc]]
+                    :join [[:information_schema.key_column_usage :kc]
+                           [:and
+                            [:= :tc.constraint_name :kc.constraint_name]
+                            [:= :tc.table_schema :kc.table_schema]
+                            [:= :tc.table_name :kc.table_name]]]
+                    :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]}
+                   :pk]
+                  [:and
+                   [:= :c.table_schema :pk.table_schema]
+                   [:= :c.table_name :pk.table_name]
+                   [:= :c.column_name :pk.column_name]]]
+      :where [:and
+              [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
+              (when schema-names [:in :c.table_schema schema-names])
+              (when table-names [:in :c.table_name table-names])]}
+     {:select [[:pa.attname :name]
+               [[:case
+                 [:in :ptn.nspname [[:inline "public"] [:inline "pg_catalog"]]]
+                 [:format [:inline "%s"] :pt.typname]
+                 :else
+                 [:format [:inline "\"%s\".\"%s\""] :ptn.nspname :pt.typname]]
+                :database-type]
+               [[:- :pa.attnum [:inline 1]] :database-position]
+               [:pn.nspname :table-schema]
+               [:pc.relname :table-name]
+               [false :pk?]
+               [nil :field-comment]
+               [false :database-required]
+               [false :database-is-auto-increment]]
+      :from [[:pg_catalog.pg_class :pc]]
+      :join [[:pg_catalog.pg_namespace :pn] [:= :pn.oid :pc.relnamespace]
+             [:pg_catalog.pg_attribute :pa] [:= :pa.attrelid :pc.oid]
+             [:pg_catalog.pg_type :pt] [:= :pt.oid :pa.atttypid]
+             [:pg_catalog.pg_namespace :ptn] [:= :ptn.oid :pt.typnamespace]]
+      :where [:and
+              [:= :pc.relkind [:inline "m"]]
+              [:>= :pa.attnum [:inline 1]]
+              (when schema-names [:in :pn.nspname schema-names])
+              (when table-names [:in :pc.relname table-names])]}]
+    :order-by [:table-schema :table-name :database-position]}
+   :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc.sync/describe-fks-sql :postgres
+  [driver & {:keys [schema-names table-names]}]
+  (sql/format {:select (vec
+                        {:fk_ns.nspname       "fk-table-schema"
+                         :fk_table.relname    "fk-table-name"
+                         :fk_column.attname   "fk-column-name"
+                         :pk_ns.nspname       "pk-table-schema"
+                         :pk_table.relname    "pk-table-name"
+                         :pk_column.attname   "pk-column-name"})
+               :from   [[:pg_constraint :c]]
+               :join   [[:pg_class     :fk_table]  [:= :c.conrelid :fk_table.oid]
+                        [:pg_namespace :fk_ns]     [:= :c.connamespace :fk_ns.oid]
+                        [:pg_attribute :fk_column] [:= :c.conrelid :fk_column.attrelid]
+                        [:pg_class     :pk_table]  [:= :c.confrelid :pk_table.oid]
+                        [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
+                        [:pg_attribute :pk_column] [:= :c.confrelid :pk_column.attrelid]]
+               :where  [:and
+                        [:raw "fk_ns.nspname !~ '^information_schema|catalog_history|pg_'"]
+                        [:= :c.contype [:raw "'f'::char"]]
+                        [:= :fk_column.attnum [:raw "ANY(c.conkey)"]]
+                        [:= :pk_column.attnum [:raw "ANY(c.confkey)"]]
+                        (when table-names [:in :fk_table.relname table-names])
+                        (when schema-names [:in :fk_ns.nspname schema-names])]
+               :order-by [:fk-table-schema :fk-table-name]}
+              :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc.sync/describe-indexes-sql :postgres
+  [driver & {:keys [schema-names table-names]}]
+  ;; From https://github.com/pgjdbc/pgjdbc/blob/master/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L2662
+  (sql/format {:select [:tmp.table-schema
+                        :tmp.table-name
+                        [[:trim :!both [:inline "\""] :!from [:pg_catalog.pg_get_indexdef :tmp.ci_oid :tmp.pos false]] :field-name]]
+               :from [[{:select [[:n.nspname :table-schema]
+                                 [:ct.relname :table-name]
+                                 [:ci.oid :ci_oid]
+                                 [[:. [:composite [:information_schema._pg_expandarray :i.indkey]] :n] :pos]]
+                        :from [[:pg_catalog.pg_class :ct]]
+                        :join [[:pg_catalog.pg_namespace :n] [:= :ct.relnamespace :n.oid]
+                               [:pg_catalog.pg_index :i] [:= :ct.oid :i.indrelid]
+                               [:pg_catalog.pg_class :ci] [:= :ci.oid :i.indexrelid]]
+                        :where [:and
+                                ;; No filtered indexes
+                                [:= [:pg_catalog.pg_get_expr :i.indpred :i.indrelid] nil]
+                                [:raw "n.nspname !~ '^information_schema|catalog_history|pg_'"]
+                                (when (seq schema-names) [:in :n.nspname schema-names])
+                                (when (seq table-names) [:in :ct.relname table-names])]}
+                       :tmp]]
+               ;; The only column or the first column in a composite index
+               :where [:= :tmp.pos 1]}
+              :dialect (sql.qp/quote-style driver)))
+
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
-;; name, but first fetches database enum types so we have access to them. These are simply binded to the dynamic var
-;; and used later in `database-type->base-type`, which you will find below.
-(defmethod driver/describe-table :postgres
-  [driver database table]
-  (binding [*enum-types* (enum-types driver database)]
-    (sql-jdbc.sync/describe-table driver database table)))
+;; name, but first fetches database enum types so we have access to them.
+(defmethod driver/describe-fields :postgres
+  [driver database & args]
+  (let [enums (enum-types database)]
+    (eduction
+     (map (fn [{:keys [database-type] :as col}]
+            (cond-> col
+              (contains? enums database-type)
+              (assoc :base-type :type/PostgresEnum))))
+     (apply (get-method driver/describe-fields :sql-jdbc) driver database args))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -319,8 +460,15 @@
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
   ;; Postgres doesn't support quarter in intervals (#20683)
-  (if (= unit :quarter)
+  (cond
+    (= unit :quarter)
     (recur driver hsql-form (* 3 amount) :month)
+
+    ;; date + interval -> timestamp, so cast the expression back to date
+    (h2x/is-of-type? hsql-form "date")
+    (h2x/cast "date" (h2x/+ hsql-form (interval amount unit)))
+
+    :else
     (let [hsql-form (->timestamp hsql-form)]
       (-> (h2x/+ hsql-form (interval amount unit))
           (h2x/with-type-info (h2x/type-info hsql-form))))))
@@ -331,11 +479,12 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
-  [:to_timestamp expr])
+  ;; without tagging the expression, other code will want to add a type
+  (h2x/with-database-type-info [:to_timestamp expr] "timestamptz"))
 
 (defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")])
+  (h2x/with-database-type-info [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")] "timestamptz"))
 
 (defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
@@ -370,6 +519,10 @@
     "timetz"
     (h2x/cast "timetz" (time-trunc unit expr))
 
+    ;; postgres returns timestamp or timestamptz from `date_trunc`, so cast back if we've got a date column
+    "date"
+    (h2x/cast "date" [:date_trunc (h2x/literal unit) expr])
+
     #_else
     (let [expr' (->timestamp expr)]
       (-> [:date_trunc (h2x/literal unit) expr']
@@ -387,7 +540,6 @@
 (defmethod sql.qp/date [:postgres :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))
 (defmethod sql.qp/date [:postgres :hour]             [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:postgres :hour-of-day]      [_ _ expr] (extract-integer :hour expr))
-(defmethod sql.qp/date [:postgres :day]              [_ _ expr] (h2x/->date expr))
 (defmethod sql.qp/date [:postgres :day-of-month]     [_ _ expr] (extract-integer :day expr))
 (defmethod sql.qp/date [:postgres :day-of-year]      [_ _ expr] (extract-integer :doy expr))
 (defmethod sql.qp/date [:postgres :month]            [_ _ expr] (date-trunc :month expr))
@@ -416,6 +568,10 @@
 (mu/defn- quoted? [database-type :- ::lib.schema.common/non-blank-string]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
+
+(defmethod sql.qp/date [:postgres :day]
+  [_ _ expr]
+  (h2x/maybe-cast (h2x/database-type expr) (h2x/->date expr)))
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
@@ -699,11 +855,20 @@
    (keyword "timestamp with time zone")    :type/DateTimeWithLocalTZ
    (keyword "timestamp without time zone") :type/DateTime})
 
+(defmethod driver/dynamic-database-types-lookup :postgres
+  [_driver database database-types]
+  (when (seq database-types)
+    (let [ts (enum-types database)]
+      (not-empty
+       (into {}
+             (comp
+              (filter ts)
+              (map #(vector % :type/PostgresEnum)))
+             database-types)))))
+
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
-  [_driver column]
-  (if (contains? *enum-types* column)
-    :type/PostgresEnum
-    (default-base-types column)))
+  [_driver database-type]
+  (default-base-types database-type))
 
 (defmethod sql-jdbc.sync/column->semantic-type :postgres
   [_driver database-type _column-name]
@@ -725,39 +890,19 @@
 (defn- ssl-params
   "Builds the params to include in the JDBC connection spec for an SSL connection."
   [{:keys [ssl-key-value] :as db-details}]
-  (let [ssl-root-cert   (when (contains? #{"verify-ca" "verify-full"} (:ssl-mode db-details))
-                          (secret/db-details-prop->secret-map db-details "ssl-root-cert"))
-        ssl-client-key  (when (:ssl-use-client-auth db-details)
-                          (secret/db-details-prop->secret-map db-details "ssl-key"))
-        ssl-client-cert (when (:ssl-use-client-auth db-details)
-                          (secret/db-details-prop->secret-map db-details "ssl-client-cert"))
-        ssl-key-pw      (when (:ssl-use-client-auth db-details)
-                          (secret/db-details-prop->secret-map db-details "ssl-key-password"))
-        all-subprops    (apply concat (map :subprops [ssl-root-cert ssl-client-key ssl-client-cert ssl-key-pw]))
-        has-value?      (comp some? :value)]
-    (cond-> (set/rename-keys db-details {:ssl-mode :sslmode})
+  (-> (set/rename-keys db-details {:ssl-mode :sslmode})
       ;; if somehow there was no ssl-mode set, just make it required (preserves existing behavior)
-      (nil? (:ssl-mode db-details))
-      (assoc :sslmode "require")
-
-      (has-value? ssl-root-cert)
-      (assoc :sslrootcert (secret/value->file! ssl-root-cert :postgres))
-
-      (has-value? ssl-client-key)
-      (assoc :sslkey (secret/value->file! ssl-client-key :postgres (when (pkcs-12-key-value? ssl-key-value) ".p12")))
-
-      (has-value? ssl-client-cert)
-      (assoc :sslcert (secret/value->file! ssl-client-cert :postgres))
-
+      (cond-> (nil? (:ssl-mode db-details)) (assoc :sslmode "require"))
+      (m/assoc-some :sslrootcert (secret/value-as-file! :postgres db-details "ssl-root-cert"))
+      (m/assoc-some :sslkey (secret/value-as-file! :postgres db-details "ssl-key" (when (pkcs-12-key-value? ssl-key-value) ".p12")))
+      (m/assoc-some :sslcert (secret/value-as-file! :postgres db-details "ssl-client-cert"))
       ;; Pass an empty string as password if none is provided; otherwise the driver will prompt for one
-      true
-      (assoc :sslpassword (or (secret/value->string ssl-key-pw) ""))
+      (assoc :sslpassword (or (secret/value-as-string :postgres db-details "ssl-key-password") ""))
 
-      true
       (as-> params ;; from outer cond->
             (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
                     :ssl-use-client-auth)
-        (apply dissoc params all-subprops)))))
+        (secret/clean-secret-properties-from-details params :postgres))))
 
 (def ^:private disable-ssl-params
   "Params to include in the JDBC connection spec to disable SSL."
@@ -827,14 +972,20 @@
     (fn []
       (.getObject rs i))))
 
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/SQLXML]
+  [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
+  (fn [] (.getString rs i)))
+
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :postgres
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (let [obj (.getObject rs i)]
-      (if (instance? org.postgresql.util.PGobject obj)
-        (.getValue ^org.postgresql.util.PGobject obj)
-        obj))))
+      (cond (instance? org.postgresql.util.PGobject obj)
+            (.getValue ^org.postgresql.util.PGobject obj)
+
+            :else
+            obj))))
 
 ;; Postgres doesn't support OffsetTime
 (defmethod sql-jdbc.execute/set-parameter [:postgres OffsetTime]

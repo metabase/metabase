@@ -1,4 +1,4 @@
-import { popover, queryBuilderMain } from "e2e/support/helpers";
+import { popover, queryBuilderMain, selectDropdown } from "e2e/support/helpers";
 
 /**
  * Initiate Summarize action
@@ -65,16 +65,17 @@ export function filterFieldPopover(
   { value, placeholder, order } = {},
 ) {
   getFilterField(fieldName, order).within(() => {
-    cy.get("input").last().click();
+    cy.findByRole("combobox").click();
   });
 
   if (value) {
-    changeValue(popover(), value, placeholder);
+    changeValue(selectDropdown(), value, placeholder);
   }
-  return popover();
+  return selectDropdown();
 }
 
 function getFilterField(fieldName, order = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy.findAllByTestId(`filter-column-${fieldName}`).eq(order);
 }
 

@@ -1,14 +1,14 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { UpsellHosting } from "metabase/admin/upsells";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
+import { connect } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
 import { Box, Flex, Icon } from "metabase/ui";

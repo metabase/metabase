@@ -12,11 +12,11 @@ export const CollectionIcon = ({
   collection,
   question,
 }: {
-  collection: Collection;
+  collection: Collection | null | undefined;
   question: Question;
 }) => {
   if (!collection?.type) {
-    return <PLUGIN_MODERATION.QuestionModerationIcon question={question} />;
+    return <PLUGIN_MODERATION.EntityModerationIcon question={question} />;
   }
 
   return (

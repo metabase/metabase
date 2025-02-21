@@ -25,6 +25,9 @@ export type EmbeddingParameters = Record<string, EmbeddingParameterVisibility>;
 
 export type EmbeddingParametersValues = Record<string, string>;
 
+/**
+ * This is a type for all the display options in static embedding sharing modal's Look and Feel tab.
+ */
 export type EmbeddingDisplayOptions = {
   font: null | string;
   theme: DisplayTheme;
@@ -35,6 +38,19 @@ export type EmbeddingDisplayOptions = {
   hide_download_button?: boolean | null;
   downloads: boolean | null;
 };
+
+/**
+ * This is a type that doesn't belong to static embedding sharing modal.
+ * Properties here exists only in the document (just `hide_parameters` since `locale` is a new one),
+ * but not in the UI.
+ */
+export type EmbeddingAdditionalHashOptions = {
+  hide_parameters?: string | null;
+  locale?: string;
+};
+
+export type EmbeddingHashOptions = EmbeddingDisplayOptions &
+  EmbeddingAdditionalHashOptions;
 
 export type CodeSampleParameters = {
   siteUrl: string;

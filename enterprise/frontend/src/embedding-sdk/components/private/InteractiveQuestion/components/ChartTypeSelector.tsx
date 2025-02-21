@@ -1,48 +1,16 @@
+import { useQuestionVisualization } from "embedding-sdk/components/private/InteractiveQuestion/hooks/use-question-visualization";
 import CS from "metabase/css/core/index.css";
-import {
-  ChartTypeSettings,
-  useChartTypeVisualizations,
-} from "metabase/query_builder/components/chart-type-selector";
-import type { CardDisplayType } from "metabase-types/api";
+import { ChartTypeSettings } from "metabase/query_builder/components/chart-type-selector";
+import type { StackProps } from "metabase/ui";
 
-import { useInteractiveQuestionContext } from "../context";
+import { useSensibleVisualizations } from "../hooks/use-sensible-visualizations";
 
-// Public facing hook so users can create their own selectors for their UI.
-// Will document once this PR is ready to go.
-export const useChartTypeSelectors = () => {
-  const { question, queryResults, updateQuestion } =
-    useInteractiveQuestionContext();
+export const ChartTypeSelector = (stackProps: StackProps) => {
+  const { sensibleVisualizations, nonSensibleVisualizations } =
+    useSensibleVisualizations();
 
-  const {
-    selectedVisualization,
-    updateQuestionVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
-  } = useChartTypeVisualizations({
-    question,
-    result: queryResults?.[0],
-    onUpdateQuestion: updateQuestion,
-  });
-
-  return {
-    selectedVisualization,
-    updateQuestionVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
-  };
-};
-
-export const ChartTypeSelector = ({
-  onChange,
-}: {
-  onChange?: (display: CardDisplayType) => void;
-}) => {
-  const {
-    selectedVisualization,
-    updateQuestionVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
-  } = useChartTypeSelectors();
+  const { selectedVisualization, updateQuestionVisualization } =
+    useQuestionVisualization();
 
   return (
     <ChartTypeSettings
@@ -50,13 +18,11 @@ export const ChartTypeSelector = ({
       p="xl"
       h="100%"
       className={CS.overflowYScroll}
+      {...stackProps}
       sensibleVisualizations={sensibleVisualizations}
       nonSensibleVisualizations={nonSensibleVisualizations}
       selectedVisualization={selectedVisualization}
-      onSelectVisualization={(display: CardDisplayType) => {
-        onChange?.(display);
-        updateQuestionVisualization(display);
-      }}
+      onSelectVisualization={updateQuestionVisualization}
     />
   );
 };

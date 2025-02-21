@@ -1,10 +1,10 @@
-(ns ^:mb/once metabase.public-settings-test
+(ns metabase.public-settings-test
   (:require
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.models.setting :as setting]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.i18n :as i18n :refer [tru]]))
@@ -301,7 +301,7 @@
            #"Setting help-link-custom-destination is not enabled because feature :whitelabel is not available"
            (public-settings/help-link-custom-destination! "http://www.metabase.com")))
 
-      (is (= nil (public-settings/help-link-custom-destination))))))
+      (is (= "https://www.metabase.com/help/premium" (public-settings/help-link-custom-destination))))))
 
 (deftest landing-page-setting-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -449,3 +449,18 @@
       (is (thrown?
            IllegalArgumentException
            (public-settings/update-channel! "millennially"))))))
+
+(deftest loading-message-test
+  (mt/with-premium-features #{:whitelabel}
+    (testing "Loading message can be set by env var"
+      (mt/with-temp-env-var-value! [mb-loading-message "running-query"]
+        (is (= :running-query (public-settings/loading-message)))))
+
+    (testing "Default value is returned if loading message set via env var to an unsupported keyword value"
+      (mt/with-temp-env-var-value! [mb-loading-message "unsupported enum value"]
+        (is (= :doing-science (public-settings/loading-message)))))
+
+    (testing "Setter blocks unsupported values set at runtime"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Loading message set to an unsupported value"
+                            (public-settings/loading-message! :unsupported-value))))))

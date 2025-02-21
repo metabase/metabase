@@ -1,24 +1,17 @@
+const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
-import {
-  createTestRoles,
-  describeEE,
-  openNativeEditor,
-  restore,
-  runNativeQuery,
-  setTokenFeatures,
-} from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const PG_DB_ID = 2;
 
-describeEE("impersonated permission", () => {
+describe("impersonated permission", { tags: "@external" }, () => {
   describe("admins", () => {
     beforeEach(() => {
-      restore("postgres-12");
-      createTestRoles({ type: "postgres" });
+      H.restore("postgres-12");
+      H.createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
-      setTokenFeatures("all");
+      H.setTokenFeatures("all");
     });
 
     describe("impersonated users", () => {
@@ -51,10 +44,10 @@ describeEE("impersonated permission", () => {
       };
 
       beforeEach(() => {
-        restore("postgres-12");
-        createTestRoles({ type: "postgres" });
+        H.restore("postgres-12");
+        H.createTestRoles({ type: "postgres" });
         cy.signInAsAdmin();
-        setTokenFeatures("all");
+        H.setTokenFeatures("all");
 
         setImpersonatedPermission();
 
@@ -78,11 +71,15 @@ describeEE("impersonated permission", () => {
         cy.get("main").findByText("Orders").click();
         cy.findAllByTestId("header-cell").contains("Subtotal");
 
+        cy.reload();
+
         // No access through the native query builder
-        openNativeEditor({ databaseName: "QA Postgres12" }).type(
-          "select * from reviews",
-        );
-        runNativeQuery();
+        H.startNewNativeQuestion();
+
+        cy.findByTestId("gui-builder-data").click();
+        cy.findByLabelText("QA Postgres12").click();
+        H.NativeEditor.type("select * from reviews");
+        H.runNativeQuery();
 
         cy.findByTestId("query-builder-main").within(() => {
           cy.findByText("An error occurred in your query");
@@ -90,11 +87,11 @@ describeEE("impersonated permission", () => {
         });
 
         // Has access to other tables
-        cy.get("@editor")
-          .type("{selectall}{backspace}", { delay: 50 })
-          .type("select * from orders");
+        H.NativeEditor.type("{selectall}{backspace}", { delay: 50 }).type(
+          "select * from orders",
+        );
 
-        runNativeQuery();
+        H.runNativeQuery();
 
         cy.findAllByTestId("header-cell").contains("subtotal");
       });

@@ -5,13 +5,11 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util.date-2 :as u.date]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
 
@@ -145,21 +143,37 @@
                                      report-timezone "UTC"]
     (mt/dataset times-mixed
       (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
-        (let [ops   [:get-year :get-quarter :get-month :get-day
-                     :get-day-of-week :get-hour :get-minute :get-second]
-              query (mt/mbql-query times
-                      {:expressions (into {} (for [op ops]
-                                               [(name op) [op "2022-10-03T07:10:20"]]))
-                       :fields      (into [] (for [op ops] [:expression (name op)]))})]
+        (let [datetime  "2022-10-03T07:10:20"
+              ops       [:get-year :get-quarter :get-month :get-day
+                         :get-day-of-week [:get-day-of-week :iso] :get-hour :get-minute :get-second]
+              expr-name (fn [op]
+                          (if (sequential? op)
+                            (->> op
+                                 (map #(if (keyword? %)
+                                         (name %)
+                                         (str %)))
+                                 (str/join "+"))
+                            (name op)))
+              query     (mt/mbql-query times
+                          {:expressions (into {}
+                                              (for [op   ops
+                                                    :let [[tag args] (if (vector? op)
+                                                                       [(first op) (rest op)]
+                                                                       [op])]]
+                                                [(expr-name op)
+                                                 (into [tag datetime] args)]))
+                           :fields      (into []
+                                              (for [op ops] [:expression (expr-name op)]))})]
           (mt/with-native-query-testing-context query
-            (is (= {:get-day         3
-                    :get-day-of-week 2
-                    :get-hour        7
-                    :get-minute      10
-                    :get-month       10
-                    :get-quarter     4
-                    :get-second      20
-                    :get-year        2022}
+            (is (= {:get-day                3
+                    :get-day-of-week        2
+                    [:get-day-of-week :iso] 1
+                    :get-hour               7
+                    :get-minute             10
+                    :get-month              10
+                    :get-quarter            4
+                    :get-second             20
+                    :get-year               2022}
                    (->> (qp/process-query query)
                         (mt/formatted-rows
                          (repeat int))
@@ -793,18 +807,18 @@
     (mt/with-report-timezone-id! "UTC"
       (mt/dataset times-mixed
         (testing "nested custom expression should works"
-          (t2.with-temp/with-temp [Card
-                                   card
-                                   {:dataset_query
-                                    (mt/mbql-query
-                                      times
-                                      {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
-                                                     "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
-                                                                    "Asia/Saigon"]}
-                                       :filter      [:= $times.index 1]
-                                       :fields      [$times.dt
-                                                     [:expression "to-07"]
-                                                     [:expression "to-07-to-09"]]})}]
+          (mt/with-temp [:model/Card
+                         card
+                         {:dataset_query
+                          (mt/mbql-query
+                            times
+                            {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
+                                           "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
+                                                          "Asia/Saigon"]}
+                             :filter      [:= $times.index 1]
+                             :fields      [$times.dt
+                                           [:expression "to-07"]
+                                           [:expression "to-07-to-09"]]})}]
             (testing "mbql query"
               (is (= [["2004-03-19T09:19:09Z"
                        "2004-03-19T16:19:09+07:00"

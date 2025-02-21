@@ -1,6 +1,6 @@
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore } from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -35,12 +35,12 @@ const BASE_QUERY = {
 
 describe("issues 34688 and 34690", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
   it("shows time series footer when category breakout is before temporal breakout (metabase#34688)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         database: SAMPLE_DB_ID,
         type: "query",
@@ -57,7 +57,7 @@ describe("issues 34688 and 34690", () => {
   });
 
   it("shows time series footer when there is a category breakout (metabase#34690)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         database: SAMPLE_DB_ID,
         type: "query",

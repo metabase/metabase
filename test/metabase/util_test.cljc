@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util-test
+(ns metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require
    #?@(:clj [[metabase.test :as mt]
@@ -9,7 +9,8 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.number :as u.number])
   #?(:clj (:import [java.time DayOfWeek Month])))
 
 #?(:clj (set! *warn-on-reflection* true))
@@ -347,8 +348,8 @@
                    (expensive-fn 1)
                    (expensive-fn 2)
                    (expensive-fn 3))]
-      (is (= [result @counter]
-             [2 [1 2]]))))
+      (is (= [2 [1 2]]
+             [result @counter]))))
   (testing "failure"
     (is (nil? (u/or-with even? 1 3 5)))))
 
@@ -359,6 +360,7 @@
     "x"                                   :dispatch-type/string
     :x                                    :dispatch-type/keyword
     1                                     :dispatch-type/integer
+    (u.number/bigint "10")                :dispatch-type/integer
     1.1                                   :dispatch-type/number
     {:a 1}                                :dispatch-type/map
     [1]                                   :dispatch-type/sequential
@@ -501,20 +503,21 @@
 #?(:clj
    (deftest ^:parallel case-enum-test
      (testing "case does not work"
+       #_{:clj-kondo/ignore [:case-symbol-test]}
        (is (= 3 (case Month/MAY
                   Month/APRIL 1
                   Month/MAY   2
                   3))))
      (testing "case-enum works"
        (is (= 2 (u/case-enum Month/MAY
-                             Month/APRIL 1
-                             Month/MAY   2
-                             3))))
+                  Month/APRIL 1
+                  Month/MAY   2
+                  3))))
      (testing "checks for type of cases"
        (is (thrown? Exception #"`case-enum` only works.*"
                     (u/case-enum Month/JANUARY
-                                 Month/JANUARY    1
-                                 DayOfWeek/SUNDAY 2))))))
+                      Month/JANUARY    1
+                      DayOfWeek/SUNDAY 2))))))
 
 (deftest ^:parallel truncate-string-to-byte-count-test
   (letfn [(truncate-string-to-byte-count [s byte-length]
@@ -551,3 +554,26 @@
       (testing (pr-str (list `lib.util/truncate-string-to-byte-count s max-length))
         (is (= expected
                (truncate-string-to-byte-count s max-length)))))))
+
+(deftest ^:parallel rconcat-test
+  (is (= [2 4 6 18 16 14 12 10 8 6 4 2 0 50]
+         (transduce
+          (map (partial * 2))
+          conj
+          []
+          (u/rconcat
+           (u/rconcat
+            (eduction (map inc) (range 3))
+            (eduction (map dec) (range 10 0 -1)))
+           [25])))))
+
+(deftest ^:parallel run-count!-test
+  (testing "counts the things"
+    (is (zero? (u/run-count! inc nil)))
+    (is (zero? (u/run-count! inc [])))
+    (is (= 3 (u/run-count! inc (range 3))))
+    (is (= 3 (u/run-count! inc (eduction (map inc) (range 3))))))
+  (testing "does the stuff"
+    (let [acc (volatile! [])]
+      (u/run-count! #(vswap! acc conj %) (eduction (map inc) (range 3)))
+      (is (= [1 2 3] @acc)))))

@@ -8,6 +8,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -248,6 +249,7 @@
                         :month)
         default-unit  (or default-unit fallback-unit)]
     (cond-> options
+      (= :inherited default-unit) (->> (mapv #(dissoc % :default)))
       default-unit  (mark-unit :default  default-unit)
       selected-unit (mark-unit :selected selected-unit))))
 
@@ -302,3 +304,29 @@
                     original-temporal-unit
                     (assoc :metabase.lib.field/original-temporal-unit original-temporal-unit))]
       [tag options id-or-name])))
+
+(defn- ends-with-temporal-unit?
+  [s temporal-unit]
+  (str/ends-with? s (str ": " (describe-temporal-unit temporal-unit))))
+
+(defn ensure-ends-with-temporal-unit
+  "Append `temporal-unit` into a string `s` if appropriate.
+
+  The `:default` temporal unit is not appended. If `temporal-unit` is already suffix of `s`, do not add it
+  for the second time. This function may be called multiple times during processing of a query stage."
+  [s temporal-unit]
+  (if (or (not (string? s)) ; ie. nil or something that definitely should not occur here
+          (= :default temporal-unit)
+          (ends-with-temporal-unit? s temporal-unit))
+    s
+    (lib.util/format "%s: %s" s (describe-temporal-unit temporal-unit))))
+
+(defn ensure-temporal-unit-in-display-name
+  "Append temporal unit into `column-metadata`'s `:display_name` when appropriate.
+
+  This is expected to be called after `:unit` is added into column metadata, ie. in terms of annotate middleware, after
+  the column metadata coming from a driver are merged with result of `column-info`."
+  [column-metadata]
+  (if-some [temporal-unit (:unit column-metadata)]
+    (update column-metadata :display_name ensure-ends-with-temporal-unit temporal-unit)
+    column-metadata))

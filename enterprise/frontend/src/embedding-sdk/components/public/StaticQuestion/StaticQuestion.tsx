@@ -1,7 +1,9 @@
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
+  QuestionNotFoundError,
   SdkError,
   SdkLoader,
   withPublicComponentWrapper,
@@ -10,24 +12,28 @@ import { useLoadStaticQuestion } from "embedding-sdk/hooks/private/use-load-stat
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import CS from "metabase/css/core/index.css";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
-import { getResponseErrorMessage } from "metabase/lib/errors";
+import {
+  getResponseErrorMessage,
+  isResourceNotFoundError,
+} from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import {
   ChartTypeSettings,
-  useChartTypeVisualizations,
+  getSensibleVisualizations,
+  useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Group } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/v1/Question";
-import type { CardEntityId, CardId, Dataset } from "metabase-types/api";
+import type { CardId, Dataset } from "metabase-types/api";
 
 export type StaticQuestionProps = {
-  questionId: CardId | CardEntityId;
-  showVisualizationSelector?: boolean;
+  questionId: CardId | string;
+  withChartTypeSelector?: boolean;
   height?: string | number;
-  parameterValues?: Record<string, string | number>;
+  initialSqlParameters?: Record<string, string | number>;
 };
 
 type StaticQuestionVisualizationSelectorProps = {
@@ -41,16 +47,16 @@ const StaticQuestionVisualizationSelector = ({
   result,
   onUpdateQuestion,
 }: StaticQuestionVisualizationSelectorProps) => {
-  const {
-    selectedVisualization,
-    updateQuestionVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
-  } = useChartTypeVisualizations({
-    question,
-    result,
-    onUpdateQuestion,
-  });
+  const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
+    () => getSensibleVisualizations({ result }),
+    [result],
+  );
+
+  const { selectedVisualization, updateQuestionVisualization } =
+    useQuestionVisualizationState({
+      question,
+      onUpdateQuestion,
+    });
 
   return (
     <Box w="355px">
@@ -65,23 +71,27 @@ const StaticQuestionVisualizationSelector = ({
 };
 
 const StaticQuestionInner = ({
-  questionId: initId,
-  showVisualizationSelector,
+  questionId: initialQuestionId,
+  withChartTypeSelector,
   height,
-  parameterValues,
+  initialSqlParameters,
 }: StaticQuestionProps): JSX.Element | null => {
   const { isLoading: isValidatingEntityId, id: questionId } =
     useValidatedEntityId({
       type: "card",
-      id: initId,
+      id: initialQuestionId,
     });
 
   const metadata = useSelector(getMetadata);
 
   const { card, loading, result, error, updateQuestion } =
-    useLoadStaticQuestion(questionId, parameterValues);
+    useLoadStaticQuestion(questionId, initialSqlParameters);
 
   const isLoading = loading || (!result && !error) || isValidatingEntityId;
+
+  if (!questionId || isResourceNotFoundError(error)) {
+    return <QuestionNotFoundError id={initialQuestionId} />;
+  }
 
   if (error) {
     return (
@@ -105,7 +115,7 @@ const StaticQuestionInner = ({
       bg="var(--mb-color-bg-question)"
     >
       <Group h="100%" pos="relative" align="flex-start">
-        {showVisualizationSelector && (
+        {withChartTypeSelector && (
           <StaticQuestionVisualizationSelector
             question={question}
             result={result}

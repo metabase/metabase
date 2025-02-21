@@ -57,7 +57,7 @@ const getCollectionItem = ({
   collection_position?: number;
   icon?: IconName;
   url?: string;
-  setArchived?: (isArchived: boolean) => void;
+  setArchived?: (isArchived: boolean) => Promise<void>;
   setPinned?: (isPinned: boolean) => void;
 } = {}): CollectionItem & { description: string } => {
   return createMockCollectionItem({
@@ -123,29 +123,6 @@ describe("PinnedItemCard", () => {
     setup();
     await userEvent.click(getIcon("ellipsis"));
     expect(await screen.findByText("Unpin")).toBeInTheDocument();
-  });
-
-  it("doesn't show model detail page link", () => {
-    setup();
-    expect(screen.queryByTestId("model-detail-link")).not.toBeInTheDocument();
-  });
-
-  describe("models", () => {
-    const model = getCollectionItem({
-      id: 1,
-      name: "Order",
-      model: "dataset",
-      url: "/model/1",
-    });
-
-    it("should show a model detail page link", () => {
-      setup({ item: model });
-      expect(screen.getByTestId("model-detail-link")).toBeInTheDocument();
-      expect(screen.getByTestId("model-detail-link")).toHaveAttribute(
-        "href",
-        "/model/1-order/detail",
-      );
-    });
   });
 
   describe("description", () => {

@@ -14,6 +14,11 @@ export const ORDERS_QUESTION_ID = _.findWhere(SAMPLE_INSTANCE_DATA.questions, {
   name: "Orders",
 }).id;
 
+export const ORDERS_QUESTION_ENTITY_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.questions,
+  { name: "Orders" },
+).entity_id;
+
 export const ORDERS_MODEL_ID = _.findWhere(SAMPLE_INSTANCE_DATA.questions, {
   name: "Orders Model",
 }).id;
@@ -76,6 +81,11 @@ export const FIRST_COLLECTION_ID = _.findWhere(
   { name: "First collection" },
 ).id;
 
+export const FIRST_COLLECTION_ENTITY_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.collections,
+  { name: "First collection" },
+).entity_id;
+
 /**
  * @type number
  */
@@ -94,6 +104,11 @@ export const ORDERS_DASHBOARD_ID = _.findWhere(
   { name: "Orders in a dashboard" },
 ).id;
 
+export const ORDERS_DASHBOARD_ENTITY_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.dashboards,
+  { name: "Orders in a dashboard" },
+).entity_id;
+
 export const ORDERS_DASHBOARD_DASHCARD_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.dashboards,
   { name: "Orders in a dashboard" },
@@ -109,6 +124,10 @@ export const NORMAL_USER_ID = _.findWhere(SAMPLE_INSTANCE_DATA.users, {
 
 export const NODATA_USER_ID = _.findWhere(SAMPLE_INSTANCE_DATA.users, {
   email: "nodata@metabase.test",
+}).id;
+
+export const IMPERSONATED_USER_ID = _.findWhere(SAMPLE_INSTANCE_DATA.users, {
+  email: "impersonated@metabase.test",
 }).id;
 
 export const ADMINISTRATORS_GROUP_ID = _.findWhere(
@@ -135,3 +154,5 @@ export const NOSQL_GROUP_ID = _.findWhere(SAMPLE_INSTANCE_DATA.groups, {
 export const READONLY_GROUP_ID = _.findWhere(SAMPLE_INSTANCE_DATA.groups, {
   name: "readonly",
 }).id;
+
+export const LOGIN_CACHE = SAMPLE_INSTANCE_DATA.loginCache;

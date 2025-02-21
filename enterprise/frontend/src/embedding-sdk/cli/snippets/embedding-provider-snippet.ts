@@ -1,44 +1,49 @@
-import { SDK_PACKAGE_NAME } from "../constants/config";
+import { getSdkPackageName } from "../utils/snippets-helpers";
 
 interface Options {
   instanceUrl: string;
   apiKey: string;
   userSwitcherEnabled: boolean;
+  isNextJs: boolean;
 }
 
 export const getEmbeddingProviderSnippet = (options: Options) => {
-  const { instanceUrl, apiKey, userSwitcherEnabled } = options;
+  const { instanceUrl, apiKey, userSwitcherEnabled, isNextJs } = options;
+
+  const sdkPackageName = getSdkPackageName({ isNextJs });
 
   let imports = "";
-  let apiKeyOrJwtConfig = "";
+  let apiKeyOrAuthUriConfig = "";
 
   // Fallback to API keys when user switching is not enabled.
   if (userSwitcherEnabled) {
-    apiKeyOrJwtConfig += `jwtProviderUri: \`\${BASE_SSO_API}/sso/metabase\`,`;
+    apiKeyOrAuthUriConfig += `authProviderUri: \`\${BASE_SSO_API}/sso/metabase\`,`;
     imports = `import { AnalyticsContext, BASE_SSO_API } from './analytics-provider'`;
   } else {
-    apiKeyOrJwtConfig += `apiKey: '${apiKey}'`;
+    apiKeyOrAuthUriConfig += `apiKey: '${apiKey}'`;
     imports = `import { AnalyticsContext } from './analytics-provider'`;
   }
 
   return `
 import {useContext, useMemo} from 'react'
-import {MetabaseProvider} from '${SDK_PACKAGE_NAME}'
+import {MetabaseProvider} from '${sdkPackageName}'
 
 ${imports}
 
-/** @type {import('@metabase/embedding-sdk-react').SDKConfig} */
-const config = {
+/** @type {import('@metabase/embedding-sdk-react').MetabaseAuthConfig} */
+const authConfig = {
   metabaseInstanceUrl: \`${instanceUrl}\`,
-  ${apiKeyOrJwtConfig}
+  ${apiKeyOrAuthUriConfig}
 }
 
+// Demo provider that wraps the MetabaseProvider with a custom theme and auth configuration.
+// In a real app, the theme would be managed by your application.
 export const EmbeddingProvider = ({children}) => {
   const {themeKey} = useContext(AnalyticsContext)
   const theme = useMemo(() => THEMES[themeKey], [themeKey])
 
   return (
-    <MetabaseProvider config={config} theme={theme}>
+    <MetabaseProvider authConfig={authConfig} theme={theme}>
       {children}
     </MetabaseProvider>
   )

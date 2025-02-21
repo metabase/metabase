@@ -3,6 +3,8 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import { Route } from "react-router";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/collections/components/CollectionContent";
+import { getVisibleColumnsMap } from "metabase/components/ItemsTable/utils";
 import type { ItemWithLastEditInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import {
   DEFAULT_DATE_STYLE,
@@ -53,6 +55,8 @@ function getCollectionItem({
   };
 }
 
+const VISIBLE_COLUMNS_MAP = getVisibleColumnsMap(DEFAULT_VISIBLE_COLUMNS_LIST);
+
 describe("BaseItemsTable", () => {
   const ITEM = getCollectionItem();
 
@@ -71,6 +75,7 @@ describe("BaseItemsTable", () => {
               sort_direction: SortDirection.Asc,
             }}
             onSortingOptionsChange={jest.fn()}
+            visibleColumnsMap={VISIBLE_COLUMNS_MAP}
             {...props}
           />
         )}
@@ -97,11 +102,6 @@ describe("BaseItemsTable", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent(
       moment(timestamp).format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),
     );
-  });
-
-  it("doesn't show model detail page link", () => {
-    setup();
-    expect(screen.queryByTestId("model-detail-link")).not.toBeInTheDocument();
   });
 
   it("allows user with write permission to select all items", async () => {
@@ -151,7 +151,7 @@ describe("BaseItemsTable", () => {
       const icon = getIcon("info");
       await userEvent.hover(icon);
 
-      const tooltip = screen.getByRole("tooltip");
+      const tooltip = await screen.findByRole("tooltip");
 
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent(DESCRIPTION);
@@ -166,28 +166,10 @@ describe("BaseItemsTable", () => {
       const icon = getIcon("info");
       await userEvent.hover(icon);
 
-      const tooltip = screen.getByRole("tooltip");
+      const tooltip = await screen.findByRole("tooltip");
 
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent("important text");
-    });
-  });
-
-  describe("models", () => {
-    const model = getCollectionItem({
-      id: 1,
-      name: "Order",
-      model: "dataset",
-      url: "/model/1",
-    });
-
-    it("shows model detail page link", () => {
-      setup({ items: [model] });
-      expect(screen.getByTestId("model-detail-link")).toBeInTheDocument();
-      expect(screen.getByTestId("model-detail-link")).toHaveAttribute(
-        "href",
-        "/model/1-order/detail",
-      );
     });
   });
 });

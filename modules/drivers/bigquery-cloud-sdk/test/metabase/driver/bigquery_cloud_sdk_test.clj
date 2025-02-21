@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk-test
   (:require
-   [cheshire.core :as json]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -9,20 +8,20 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
-   [metabase.models :refer [Database Field Table]]
+   [metabase.models.field-values :as field-values]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (com.google.cloud.bigquery TableResult)))
 
@@ -69,9 +68,9 @@
               [3 "The Apple Pan"]
               [4 "Wurstküche"]
               [5 "Brite Spot Family Restaurant"]]
-             (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                                                      [(t2/select-one Field :id (mt/id :venues :id))
-                                                       (t2/select-one Field :id (mt/id :venues :name))]
+             (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+                                                      [(t2/select-one :model/Field :id (mt/id :venues :id))
+                                                       (t2/select-one :model/Field :id (mt/id :venues :name))]
                                                       (constantly conj))
                   (sort-by first)
                   (take 5)))))
@@ -85,9 +84,9 @@
             page-callback   (fn [] (swap! pages-retrieved inc))]
         (with-bindings {#'bigquery/*page-size*     25
                         #'bigquery/*page-callback* page-callback}
-          (let [results (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                                                                 [(t2/select-one Field :id (mt/id :venues :id))
-                                                                  (t2/select-one Field :id (mt/id :venues :name))]
+          (let [results (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+                                                                 [(t2/select-one :model/Field :id (mt/id :venues :id))
+                                                                  (t2/select-one :model/Field :id (mt/id :venues :name))]
                                                                  (constantly conj))
                              (sort-by first)
                              (take 5))]
@@ -220,15 +219,27 @@
       bigquery.common/service-account-json->service-account-credential
       (.getProjectId)))
 
-(defmacro with-numeric-types-table [[table-name-binding] & body]
+(defmacro with-bigquery-types-table [[table-name-binding] & body]
   `(do-with-temp-obj "table_%s"
-                     (fn [tbl-nm#] [(str "CREATE TABLE `%s.%s` AS SELECT "
-                                         "NUMERIC '%s' AS numeric_col, "
-                                         "DECIMAL '%s' AS decimal_col, "
-                                         "BIGNUMERIC '%s' AS bignumeric_col, "
-                                         "BIGDECIMAL '%s' AS bigdecimal_col")
+                     (fn [tbl-nm#] [(str "CREATE TABLE `%s.%s` "
+                                         "(numeric_col NUMERIC, "
+                                         " decimal_col DECIMAL, "
+                                         " bignumeric_col BIGNUMERIC, "
+                                         " bigdecimal_col BIGDECIMAL, "
+                                         " string255_col STRING(255), "
+                                         " bytes32_col BYTES(32), "
+                                         " numeric29_col NUMERIC(29), "
+                                         " decimal29_col DECIMAL(29), "
+                                         " bignumeric32_col BIGNUMERIC(32), "
+                                         " bigdecimal76_col BIGDECIMAL(76,38))"
+                                         "AS SELECT NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s', 'hello', "
+                                         "  B'mybytes', NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s'")
                                     ~test-db-name
                                     tbl-nm#
+                                    ~numeric-val
+                                    ~decimal-val
+                                    ~bignumeric-val
+                                    ~bigdecimal-val
                                     ~numeric-val
                                     ~decimal-val
                                     ~bignumeric-val
@@ -510,6 +521,9 @@
               (testing "all fields are fingerprinted"
                 (is (every? some? (t2/select-fn-vec :fingerprint :model/Field :id [:in all-field-ids]))))
               (testing "Field values are correctly synced"
+                ;; Manually activate Field values since they are not created during sync (#53387)
+                (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
+                  (field-values/get-or-create-full-field-values! field))
                 (is (= {"customer_id"   #{1 2 3}
                         "vip_customer"  #{42}
                         "name"          #{"Khuat" "Quang" "Ngoc"}
@@ -522,7 +536,7 @@
                                        :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
                                        :where  [:and [:in :field.table_id table-ids]
                                                 [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
-                            (map #(update % :values (comp set json/parse-string)))
+                            (map #(update % :values (comp set json/decode)))
                             (map (juxt :field-name :values))
                             (into {}))))))
 
@@ -689,22 +703,22 @@
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Querying a different project-id works"
-      (t2.with-temp/with-temp [Database
-                               {db-id :id :as temp-db}
-                               {:engine  :bigquery-cloud-sdk
-                                :details (-> (:details (mt/db))
-                                             (assoc :project-id "bigquery-public-data"
-                                                    :dataset-filters-type "inclusion"
-                                                    :dataset-filters-patterns "chicago_taxi_trips"))}]
+      (mt/with-temp [:model/Database
+                     {db-id :id :as temp-db}
+                     {:engine  :bigquery-cloud-sdk
+                      :details (-> (:details (mt/db))
+                                   (assoc :project-id "bigquery-public-data"
+                                          :dataset-filters-type "inclusion"
+                                          :dataset-filters-patterns "chicago_taxi_trips"))}]
         (mt/with-db temp-db
           (testing " for sync"
             (sync/sync-database! temp-db {:scan :schema})
-            (let [[tbl & more-tbl] (t2/select Table :db_id db-id)]
+            (let [[tbl & more-tbl] (t2/select :model/Table :db_id db-id)]
               (is (some? tbl))
               (is (nil? more-tbl))
               (is (= "taxi_trips" (:name tbl)))
               ;; make sure all the fields for taxi_tips were synced
-              (is (= 23 (t2/count Field :table_id (u/the-id tbl))))))
+              (is (= 23 (t2/count :model/Field :table_id (u/the-id tbl))))))
           (testing " for querying"
             (is (= 23
                    (count (mt/first-row
@@ -717,7 +731,7 @@
 
 (deftest bigquery-specific-types-test
   (testing "Table with decimal types"
-    (with-numeric-types-table [#_:clj-kondo/ignore tbl-nm]
+    (with-bigquery-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema test-db-name :name tbl-nm :database_require_filter false})
           "`describe-database` should see the table")
@@ -748,7 +762,49 @@
                :database-partitioned false
                :database-position 3
                :database-type "BIGNUMERIC"
-               :name "bigdecimal_col"}]
+               :name "bigdecimal_col"}
+              {:name "string255_col",
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-type "STRING",
+               :base-type :type/Text,
+               :database-partitioned false,
+               :database-position 4}
+              {:name "bytes32_col",
+               :table-name tbl-nm,
+               :table-schema test-db-name,
+               :database-type "BYTES",
+               :base-type :type/*,
+               :database-partitioned false,
+               :database-position 5}
+              {:name "numeric29_col",
+               :table-name tbl-nm,
+               :table-schema test-db-name,
+               :database-type "NUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 6}
+              {:name "decimal29_col",
+               :table-name tbl-nm,
+               :table-schema test-db-name,
+               :database-type "NUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 7}
+              {:name "bignumeric32_col",
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-type "BIGNUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 8}
+              {:name "bigdecimal76_col",
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-type "BIGNUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 9}]
              (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
           "`describe-fields` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
@@ -812,16 +868,16 @@
     (mt/test-driver :bigquery-cloud-sdk
       (mt/dataset avian-singles
         (try
-          (let [synced-tables (t2/select Table :db_id (mt/id))]
+          (let [synced-tables (t2/select :model/Table :db_id (mt/id))]
             (is (= 2 (count synced-tables)))
-            (t2/insert! Table (map #(dissoc % :id :schema) synced-tables))
+            (t2/insert! :model/Table (map #(dissoc % :id :entity_id :schema) synced-tables))
             (sync/sync-database! (mt/db) {:scan :schema})
-            (let [synced-tables (t2/select Table :db_id (mt/id))]
+            (let [synced-tables (t2/select :model/Table :db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]
                              false [{:name "messages"} {:name "users"}]}
                             (-> (group-by :active synced-tables)
                                 (update-vals #(sort-by :name %)))))))
-          (finally (t2/delete! Table :db_id (mt/id) :active false)))))))
+          (finally (t2/delete! :model/Table :db_id (mt/id) :active false)))))))
 
 (deftest retry-certain-exceptions-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -973,9 +1029,9 @@
                        mt/process-query))))))))))
 
 (defn- synced-tables [db-attributes]
-  (t2.with-temp/with-temp [Database db db-attributes]
+  (mt/with-temp [:model/Database db db-attributes]
     (sync/sync-database! db {:scan :schema})
-    (t2/select Table :db_id (u/the-id db))))
+    (t2/select :model/Table :db_id (u/the-id db))))
 
 (deftest dataset-filtering-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1031,14 +1087,14 @@
     (testing "Details should be normalized coming out of the DB, to switch hardcoded dataset-id to an inclusion filter"
       ;; chicken and egg problem; we need the temp DB ID in order to create temp tables, but the creation of this
       ;; temp DB will cause driver/normalize-db-details to fire
-      (mt/with-temp [Database db {:name    "Legacy BigQuery DB"
-                                  :engine  :bigquery-cloud-sdk,
-                                  :details {:dataset-id "my-dataset"
-                                            :service-account-json "{}"}}
-                     Table    table1 {:name "Table 1"
-                                      :db_id (u/the-id db)}
-                     Table    table2 {:name "Table 2"
-                                      :db_id (u/the-id db)}]
+      (mt/with-temp [:model/Database db {:name    "Legacy BigQuery DB"
+                                         :engine  :bigquery-cloud-sdk,
+                                         :details {:dataset-id "my-dataset"
+                                                   :service-account-json "{}"}}
+                     :model/Table    table1 {:name "Table 1"
+                                             :db_id (u/the-id db)}
+                     :model/Table    table2 {:name "Table 2"
+                                             :db_id (u/the-id db)}]
         (let [db-id      (u/the-id db)
               call-count (atom 0)
               orig-fn    @#'bigquery/convert-dataset-id-to-filters!]
@@ -1047,7 +1103,7 @@
                                                                   (orig-fn database dataset-id))]
             ;; fetch the Database from app DB a few more times to ensure the normalization changes are only called once
             (doseq [_ (range 5)]
-              (is (nil? (get-in (t2/select-one Database :id db-id) [:details :dataset-id]))))
+              (is (nil? (get-in (t2/select-one :model/Database :id db-id) [:details :dataset-id]))))
             ;; the convert-dataset-id-to-filters! fn should have only been called *once* (as a result of the select
             ;; that runs at the end of creating the temp object, above ^
             ;; it should have persisted the change that removes the dataset-id to the app DB, so the next time someone
@@ -1055,16 +1111,16 @@
             ;; hence, assert it was not called anymore here
             (is (= 0 @call-count) "convert-dataset-id-to-filters! should not have been called any more times"))
           ;; now, so we need to manually update the temp DB again here, to force the "old" structure
-          (let [updated? (pos? (t2/update! Database db-id {:details {:dataset-id "my-dataset"}}))]
+          (let [updated? (pos? (t2/update! :model/Database db-id {:details {:dataset-id "my-dataset"}}))]
             (is updated?)
-            (let [updated (t2/select-one Database :id db-id)]
+            (let [updated (t2/select-one :model/Database :id db-id)]
               (is (nil? (get-in updated [:details :dataset-id])))
               ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
               (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))
               (is (= "inclusion" (get-in updated [:details :dataset-filters-type])))
               ;; and the existing tables should have been updated with that schema
               (is (= ["my-dataset" "my-dataset"]
-                     (t2/select-fn-vec :schema Table :id [:in [(u/the-id table1) (u/the-id table2)]]))))))))))
+                     (t2/select-fn-vec :schema :model/Table :id [:in [(u/the-id table1) (u/the-id table2)]]))))))))))
 
 (deftest query-drive-external-tables
   (mt/test-driver :bigquery-cloud-sdk
@@ -1169,3 +1225,15 @@
               (is (= (if (= :cancelled stop-tag) "Query cancelled" "My Exception")
                      (:error result)))))))
       (is (< (count before-names) (+ (count (future-thread-names)) 5))))))
+
+(deftest alternate-host-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Alternate BigQuery host can be configured"
+      (mt/with-temp [:model/Database {:as temp-db}
+                     {:engine  :bigquery-cloud-sdk
+                      :details (-> (:details (mt/db))
+                                   (assoc :host "bigquery.example.com"))}]
+        (let [client (#'bigquery/database-details->client (:details temp-db))]
+          (is (= "bigquery.example.com"
+                 (.getHost (.getOptions client)))
+              "BigQuery client should be configured with alternate host"))))))

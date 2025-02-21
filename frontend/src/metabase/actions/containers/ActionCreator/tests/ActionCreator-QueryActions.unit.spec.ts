@@ -50,6 +50,34 @@ describe("ActionCreator > Query Actions", () => {
       ).toBeInTheDocument();
     });
 
+    it("should disable 'make public' switch in new action modal and show an explanatory tooltip (metabase#51282)", async () => {
+      await setup({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Action settings" }),
+      );
+      await userEvent.tab(); // move focus away from "Action settings" button to hide its tooltip
+      await waitFor(
+        () => {
+          expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
+
+      const makePublic = screen.getByRole("switch", {
+        name: "Make public",
+      });
+      expect(makePublic).toBeDisabled();
+      expect(makePublic).not.toBeChecked();
+      await userEvent.hover(makePublic);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "To enable creating a shareable link you first need to save your action",
+      );
+    });
+
     describe("Save Modal", () => {
       it("should show default message in model picker", async () => {
         await setup({ model: null });
@@ -107,7 +135,9 @@ describe("ActionCreator > Query Actions", () => {
       const action = createMockQueryAction();
       await setup({ action });
 
-      expect(screen.getByText(action.name)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText(action.name)).toBeInTheDocument();
+      });
       expect(screen.queryByText(/New action/i)).not.toBeInTheDocument();
       expect(
         screen.getByTestId("mock-native-query-editor"),
@@ -130,7 +160,9 @@ describe("ActionCreator > Query Actions", () => {
         }),
       });
 
-      expect(screen.getAllByText("FooBar")).toHaveLength(2);
+      await waitFor(() => {
+        expect(screen.getAllByText("FooBar")).toHaveLength(2);
+      });
     });
 
     it("blocks editing if the user doesn't have write permissions for the collection", async () => {
@@ -139,7 +171,9 @@ describe("ActionCreator > Query Actions", () => {
       });
       await setup({ action, canWrite: false });
 
-      expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+      });
       expect(queryIcon("grabber")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
       expect(
@@ -157,7 +191,9 @@ describe("ActionCreator > Query Actions", () => {
       });
       await setup({ action, hasActionsEnabled: false });
 
-      expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+      });
       expect(queryIcon("grabber")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
       expect(

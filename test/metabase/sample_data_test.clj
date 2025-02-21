@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.sample-data-test
+(ns metabase.sample-data-test
   "Tests to make sure the Sample Database syncs the way we would expect."
   (:require
    [clojure.core.memoize :as memoize]
@@ -8,16 +8,15 @@
    [metabase.api.database-test :as api.database-test]
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models :refer [Database Field Table]]
+   [metabase.models.field-values :as field-values]
    [metabase.plugins :as plugins]
    [metabase.sample-data :as sample-data]
-   [metabase.sync :as sync]
-   [metabase.task.sync-databases-test :as task.sync-databases-test]
+   [metabase.sync.core :as sync]
+   [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------------- Tooling -----------------------------------------------------
 
@@ -35,7 +34,7 @@
   "Execute `body` with a temporary Sample Database DB bound to `db-binding`."
   {:style/indent 1}
   [[db-binding] & body]
-  `(t2.with-temp/with-temp [Database db# (sample-database-db false)]
+  `(mt/with-temp [:model/Database db# (sample-database-db false)]
      (sync/sync-database! db#)
      (let [~db-binding db#]
        ~@body)))
@@ -43,12 +42,12 @@
 (defn- table
   "Get the Table in a `db` with `table-name`."
   [db table-name]
-  (t2/select-one Table :name table-name, :db_id (u/the-id db)))
+  (t2/select-one :model/Table :name table-name, :db_id (u/the-id db)))
 
 (defn- field
   "Get the Field in a `db` with `table-name` and `field-name.`"
   [db table-name field-name]
-  (t2/select-one Field :name field-name, :table_id (u/the-id (table db table-name))))
+  (t2/select-one :model/Field :name field-name, :table_id (u/the-id (table db table-name))))
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
 
@@ -73,20 +72,21 @@
             (with-redefs [u.files/create-dir-if-not-exists! original-var]
               (memoize/memo-clear! @#'plugins/plugins-dir*)
               (sample-data/update-sample-database-if-needed! db)
-              (let [db-path (get-in (t2/select-one Database :id (:id db)) [:details :db])]
+              (let [db-path (get-in (t2/select-one :model/Database :id (:id db)) [:details :db])]
                 (is (re-matches extracted-db-path-regex db-path)))))))))
 
   (memoize/memo-clear! @#'plugins/plugins-dir*))
 
 (deftest sync-sample-database-test
-  (testing (str "Make sure the Sample Database is getting synced correctly. For example PEOPLE.NAME should be "
-                "has_field_values = search instead of `list`.")
+  (testing "Make sure the Sample Database is getting synced correctly."
     (with-temp-sample-database-db [db]
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (field db "PEOPLE" "NAME"))
       (is (= {:description      "The name of the user who owns an account"
               :database_type    "CHARACTER VARYING"
               :semantic_type    :type/Name
               :name             "NAME"
-              :has_field_values :search
+              :has_field_values :list
               :active           true
               :visibility_type  :normal
               :preview_display  true
@@ -109,7 +109,7 @@
 
 (deftest write-rows-sample-database-test
   (testing "should be able to execute INSERT, UPDATE, and DELETE statements on the Sample Database"
-    (t2.with-temp/with-temp [Database db (sample-database-db true)]
+    (mt/with-temp [:model/Database db (sample-database-db true)]
       (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
@@ -152,7 +152,7 @@
 
 (deftest ddl-sample-database-test
   (testing "should be able to execute DDL statements on the Sample Database"
-    (t2.with-temp/with-temp [Database db (sample-database-db true)]
+    (mt/with-temp [:model/Database db (sample-database-db true)]
       (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))

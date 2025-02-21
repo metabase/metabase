@@ -25,14 +25,14 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [malli.core :as mc]
    [medley.core :as m]
-   [metabase.analyze :as analyze]
+   [metabase.analyze.core :as analyze]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
+   [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
@@ -40,6 +40,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -97,11 +98,6 @@
 ;;; |                                             Entity & Lifecycle                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def FieldValues
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/FieldValues)
-
 (methodical/defmethod t2/table-name :model/FieldValues [_model] :metabase_fieldvalues)
 
 (doto :model/FieldValues
@@ -114,7 +110,7 @@
    :type                  mi/transform-keyword})
 
 (defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
-  (when-not (mc/validate [:maybe [:sequential [:maybe ms/NonBlankString]]] human-readable-values)
+  (when-not (mr/validate [:maybe [:sequential [:maybe ms/NonBlankString]]] human-readable-values)
     (throw (ex-info (tru "Invalid human-readable-values: values must be a sequence; each item must be nil or a string")
                     {:human-readable-values human-readable-values
                      :status-code           400}))))
@@ -150,13 +146,13 @@
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
-  (t2/delete! FieldValues :field_id (u/the-id field-or-id)
+  (t2/delete! :model/FieldValues :field_id (u/the-id field-or-id)
               :type     [:in advanced-field-values-types]))
 
 (defn clear-field-values-for-field!
   "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
   [field-or-id]
-  (t2/delete! FieldValues :field_id (u/the-id field-or-id)))
+  (t2/delete! :model/FieldValues :field_id (u/the-id field-or-id)))
 
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
@@ -376,8 +372,9 @@
   [field]
   (try
     (let [result          (metadata-queries/table-query (:table_id field)
-                                                        {:breakout [[:field (u/the-id field) nil]]
-                                                         :limit    *absolute-max-distinct-values-limit*}
+                                                        {:breakout        [[:field (u/the-id field) nil]]
+                                                         :breakout-idents (lib.ident/indexed-idents 1)
+                                                         :limit           *absolute-max-distinct-values-limit*}
                                                         (limit-max-char-len-rff qp.reducible/default-rff *total-max-length*))
           distinct-values (-> result :data :rows)]
       {:values          distinct-values
@@ -440,68 +437,50 @@
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & {:keys [field-values human-readable-values]}]
-  (let [field-values              (or field-values (get-latest-full-field-values (u/the-id field)))
-        {unwrapped-values :values
-         :keys [has_more_values]} (distinct-values field)
-        ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
-        values                    (map first unwrapped-values)
-        field-name                (or (:name field) (:id field))]
-    (cond
-      ;; If this Field is marked `auto-list`, and the number of values in now over
-      ;; the [[analyze/auto-list-cardinality-threshold]] or the accumulated length of all values exceeded
-      ;; the [[*total-max-length*]] threshold we need to unmark it as `auto-list`. Switch it to `has_field_values` =
-      ;; `nil` and delete the FieldValues; this will result in it getting a Search Widget in the UI when
-      ;; `has_field_values` is automatically inferred by the [[metabase.models.field/infer-has-field-values]] hydration
-      ;; function (see that namespace for more detailed discussion)
-      ;;
-      ;; It would be nicer if we could do this in analysis where it gets marked `:auto-list` in the first place, but
-      ;; Fingerprints don't get updated regularly enough that we could detect the sudden increase in cardinality in a
-      ;; way that could make this work. Thus, we are stuck doing it here :(
-      (and (= :auto-list (keyword (:has_field_values field)))
-           (or has_more_values
-               (> (count values) analyze/auto-list-cardinality-threshold)))
-      (do
-        (log/infof
-         (str "Field %s was previously automatically set to show a list widget, but now has %s values."
-              " Switching Field to use a search widget instead.")
-         field-name
-         (count values))
-        (t2/update! 'Field (u/the-id field) {:has_field_values nil})
-        (clear-field-values-for-field! field)
-        ::fv-deleted)
+  (if (field-should-have-field-values? field)
+    (let [field-values              (or field-values (get-latest-full-field-values (u/the-id field)))
+          {unwrapped-values :values
+           :keys [has_more_values]} (distinct-values field)
+          ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
+          values                    (seq (map first unwrapped-values))
+          field-name                (or (:name field) (:id field))]
+      (cond
+        (and values
+             (= (:values field-values) values)
+             (= (:has_more_values field-values) has_more_values))
+        (do
+          (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
+          ::fv-skipped)
 
-      (and (= (:values field-values) values)
-           (= (:has_more_values field-values) has_more_values))
-      (do
-        (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
-        ::fv-skipped)
+        ;; if the FieldValues object already exists then update values in it
+        (and field-values values)
+        (do
+          (log/debugf "Storing updated FieldValues for Field %s..." field-name)
+          (t2/update! :model/FieldValues (u/the-id field-values)
+                      (m/remove-vals nil?
+                                     {:has_more_values       has_more_values
+                                      :values                values
+                                      :human_readable_values (fixup-human-readable-values field-values values)}))
+          ::fv-updated)
 
-      ;; if the FieldValues object already exists then update values in it
-      (and field-values unwrapped-values)
-      (do
-        (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-        (t2/update! FieldValues (u/the-id field-values)
-                    (m/remove-vals nil?
-                                   {:has_more_values       has_more_values
-                                    :values                values
-                                    :human_readable_values (fixup-human-readable-values field-values values)}))
-        ::fv-updated)
+        ;; if FieldValues object doesn't exist create one
+        values
+        (do
+          (log/debugf "Storing FieldValues for Field %s..." field-name)
+          (mdb.query/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
+                                       (constantly {:has_more_values       has_more_values
+                                                    :values                values
+                                                    :human_readable_values human-readable-values}))
+          ::fv-created)
 
-      ;; if FieldValues object doesn't exist create one
-      unwrapped-values
-      (do
-        (log/debugf "Storing FieldValues for Field %s..." field-name)
-        (mdb.query/select-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
-                                     (constantly {:has_more_values       has_more_values
-                                                  :values                values
-                                                  :human_readable_values human-readable-values}))
-        ::fv-created)
-
-      ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
-      :else
-      (do
-        (clear-field-values-for-field! field)
-        ::fv-deleted))))
+        ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
+        :else
+        (do
+          (clear-field-values-for-field! field)
+          ::fv-deleted)))
+    (do
+      (clear-field-values-for-field! field)
+      ::fv-deleted)))
 
 (defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
@@ -521,10 +500,10 @@
 
           (do
             (when existing
-              (t2/update! FieldValues (:id existing) {:last_used_at :%now}))
+              (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now}))
             (get-latest-full-field-values field-id)))
         (do
-          (t2/update! FieldValues (:id existing) {:last_used_at :%now})
+          (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now})
           existing)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

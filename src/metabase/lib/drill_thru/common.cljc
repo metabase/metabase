@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]))
 
 (defn mbql-stage?
@@ -43,6 +44,18 @@
   (> (count (lib.metadata.calculation/primary-keys query)) 1))
 
 (defn drill-value->js
-  "Convert a drill value to a JS value"
+  "Convert a drill value to a JS value."
   [value]
   (if (= value :null) nil value))
+
+(defn js->drill-value
+  "Convert a JS value to a drill value."
+  [value]
+  (if (nil? value) :null value))
+
+(defn dimensions-from-breakout-columns
+  "Convert `row` data into dimensions for `column`s that come from an aggregation in a previous stage."
+  [query column row]
+  (when (lib.underlying/strictly-underlying-aggregation? query column)
+    (not-empty (filterv #(lib.underlying/breakout-sourced? query (:column %))
+                        row))))

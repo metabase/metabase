@@ -1,4 +1,8 @@
 import type {
+  AutocompleteRequest,
+  AutocompleteSuggestion,
+  CardAutocompleteRequest,
+  CardAutocompleteSuggestion,
   CreateDatabaseRequest,
   Database,
   DatabaseId,
@@ -21,6 +25,8 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideAutocompleteSuggestionListTags,
+  provideCardAutocompleteSuggestionListTags,
   provideDatabaseListTags,
   provideDatabaseTags,
   tag,
@@ -185,12 +191,43 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values")]),
     }),
+    addSampleDatabase: builder.mutation<void, Database>({
+      query: () => ({
+        method: "POST",
+        url: `/api/database/sample_database`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("database")]),
+    }),
+    listAutocompleteSuggestions: builder.query<
+      AutocompleteSuggestion[],
+      AutocompleteRequest
+    >({
+      query: ({ databaseId, ...params }) => ({
+        method: "GET",
+        url: `/api/database/${databaseId}/autocomplete_suggestions`,
+        params,
+      }),
+      providesTags: () => provideAutocompleteSuggestionListTags(),
+    }),
+    listCardAutocompleteSuggestions: builder.query<
+      CardAutocompleteSuggestion[],
+      CardAutocompleteRequest
+    >({
+      query: ({ databaseId, ...params }) => ({
+        method: "GET",
+        url: `/api/database/${databaseId}/card_autocomplete_suggestions`,
+        params,
+      }),
+      providesTags: () => provideCardAutocompleteSuggestionListTags(),
+    }),
   }),
 });
 
 export const {
   useListDatabasesQuery,
   useGetDatabaseQuery,
+  useGetDatabaseMetadataQuery,
   useListDatabaseSchemasQuery,
   useListSyncableDatabaseSchemasQuery,
   useListDatabaseSchemaTablesQuery,
@@ -202,4 +239,8 @@ export const {
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
+  useListAutocompleteSuggestionsQuery,
+  useLazyListAutocompleteSuggestionsQuery,
+  useListCardAutocompleteSuggestionsQuery,
+  useLazyListCardAutocompleteSuggestionsQuery,
 } = databaseApi;

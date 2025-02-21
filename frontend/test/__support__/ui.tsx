@@ -3,38 +3,31 @@ import type { MantineThemeOverride } from "@mantine/core";
 import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher } from "@testing-library/react";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  screen,
+  render as testingLibraryRender,
+  waitFor,
+} from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { KBarProvider } from "kbar";
 import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
-import { mockSettings } from "__support__/settings";
-import {
-  MetabaseProviderInternal,
-  type MetabaseProviderProps,
-} from "embedding-sdk/components/public/MetabaseProvider";
-import { sdkReducers } from "embedding-sdk/store";
-import type { SdkStoreState } from "embedding-sdk/store/types";
-import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
-import type { TokenFeature } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { setupEnterprisePlugins } from "./enterprise";
 import { getStore } from "./entities-store";
 
 type ReducerValue = ReducerObject | Reducer;
@@ -46,7 +39,7 @@ interface ReducerObject {
 export interface RenderWithProvidersOptions {
   // the mode changes the reducers and initial state to be used for
   // public or sdk-specific tests
-  mode?: "default" | "public" | "sdk";
+  mode?: "default" | "public";
   initialRoute?: string;
   storeInitialState?: Partial<State>;
   withRouter?: boolean;
@@ -54,13 +47,7 @@ export interface RenderWithProvidersOptions {
   withKBar?: boolean;
   withDND?: boolean;
   withUndos?: boolean;
-  /** Token features to enable.
-   *
-   * Note: To keep tests isolated from another, don't change token features between tests in the same file. */
-  withFeatures?: TokenFeature[];
-  shouldSetupEnterprisePlugins?: boolean;
   customReducers?: ReducerObject;
-  sdkProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
 }
 
@@ -79,48 +66,17 @@ export function renderWithProviders(
     withKBar = false,
     withDND = false,
     withUndos = false,
-    withFeatures,
-    shouldSetupEnterprisePlugins,
     customReducers,
-    sdkProviderProps = null,
     theme,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  if (withFeatures?.length) {
-    const featuresObject = Object.fromEntries(
-      withFeatures.map(feature => [feature, true]),
-    );
-    storeInitialState.settings = {
-      ...storeInitialState.settings,
-      ...mockSettings({
-        "token-features": createMockTokenFeatures(featuresObject),
-      }),
-    };
-  }
-
-  if (shouldSetupEnterprisePlugins || withFeatures?.length) {
-    setupEnterprisePlugins();
-  }
-
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
     initialState = _.pick(initialState, ...publicReducerNames) as State;
-  } else if (mode === "sdk") {
-    const sdkReducerNames = Object.keys(sdkReducers);
-    initialState = _.pick(
-      { sdk: createMockSdkState(), ...initialState },
-      ...sdkReducerNames,
-    ) as SdkStoreState;
-
-    // Enable the embedding_sdk premium feature by default in SDK tests, unless explicitly disabled.
-    // Without this, SDK components will not render due to missing token features.
-    if (!storeInitialState.settings && initialState.settings) {
-      initialState.settings.values["token-features"].embedding_sdk = true;
-    }
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
@@ -133,9 +89,7 @@ export function renderWithProviders(
 
   let reducers;
 
-  if (mode === "sdk") {
-    reducers = sdkReducers;
-  } else if (mode === "public") {
+  if (mode === "public") {
     reducers = publicReducers;
   } else {
     reducers = mainReducers;
@@ -160,24 +114,7 @@ export function renderWithProviders(
     storeMiddleware,
   ) as unknown as Store<State>;
 
-  if (sdkProviderProps?.config) {
-    // Prevent spamming the console during tests
-    sdkProviderProps.config.allowConsoleLog = false;
-  }
-
   const wrapper = (props: any) => {
-    if (mode === "sdk") {
-      return (
-        <Provider store={store}>
-          <MetabaseProviderInternal
-            {...props}
-            {...sdkProviderProps}
-            store={store}
-          />
-        </Provider>
-      );
-    }
-
     return (
       <TestWrapper
         {...props}
@@ -192,7 +129,7 @@ export function renderWithProviders(
     );
   };
 
-  const utils = render(ui, {
+  const utils = testingLibraryRender(ui, {
     wrapper,
     ...options,
   });
@@ -230,9 +167,12 @@ export function TestWrapper({
   theme?: MantineThemeOverride;
 }): JSX.Element {
   return (
-    <Provider store={store}>
+    <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <ThemeProvider theme={theme}>
+        <ThemeProvider
+          theme={theme}
+          mantineProviderProps={{ withCssVariables: false }}
+        >
           <GlobalStylesForTest />
 
           <MaybeKBar hasKBar={withKBar}>
@@ -243,7 +183,7 @@ export function TestWrapper({
           {withUndos && <UndoListing />}
         </ThemeProvider>
       </MaybeDNDProvider>
-    </Provider>
+    </MetabaseReduxProvider>
   );
 }
 
@@ -408,4 +348,23 @@ export function createMockClipboardData(
   return clipboardData as unknown as DataTransfer;
 }
 
+const ThemeProviderWrapper = ({
+  children,
+  ...props
+}: React.PropsWithChildren) => (
+  <ThemeProvider mantineProviderProps={{ withCssVariables: false }} {...props}>
+    {children}
+  </ThemeProvider>
+);
+
+export function renderWithTheme(children: React.ReactElement) {
+  return testingLibraryRender(children, {
+    wrapper: ThemeProviderWrapper,
+  });
+}
+
+// eslint-disable-next-line import/export -- we're intentionally overriding the render function
+export { renderWithTheme as render };
+
+// eslint-disable-next-line import/export -- we're intentionally overriding the render function
 export * from "@testing-library/react";

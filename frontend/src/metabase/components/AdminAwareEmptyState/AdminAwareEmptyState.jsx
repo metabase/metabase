@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { connect } from "react-redux";
 
 import EmptyState from "metabase/components/EmptyState";
+import { connect } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
 /*

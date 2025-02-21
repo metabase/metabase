@@ -17,7 +17,7 @@ module.exports = {
       {
         vars: "all",
         args: "none",
-        varsIgnorePattern: "^_",
+        varsIgnorePattern: "^_.+$",
         ignoreRestSiblings: true,
       },
     ],
@@ -108,7 +108,6 @@ module.exports = {
           "When",
           "Then",
           "describeWithSnowplow",
-          "describeEE",
         ],
       },
     ],
@@ -220,10 +219,10 @@ module.exports = {
         "@typescript-eslint/no-unused-vars": [
           "error",
           {
-            argsIgnorePattern: "^_",
-            varsIgnorePattern: "^_",
+            argsIgnorePattern: "^_.+$",
+            varsIgnorePattern: "^_.+$",
             ignoreRestSiblings: true,
-            destructuredArrayIgnorePattern: "^_",
+            destructuredArrayIgnorePattern: "^_.+$",
           },
         ],
         // This was introduced in 6.0.0
@@ -252,6 +251,37 @@ module.exports = {
       // Enable jest formatting for cypress tests too, the plugin logic just works
       extends: ["plugin:jest-formatting/recommended"],
       files: ["*.cy.spec.ts", "*.cy.spec.js"],
+    },
+    {
+      files: ["frontend/src/**/*"],
+      rules: {
+        "no-restricted-syntax": [
+          "error",
+          {
+            selector: "Literal[value=/mb-base-color-/]",
+            message:
+              "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
+          },
+        ],
+      },
+    },
+    {
+      files: ["frontend/src/metabase/**/*"],
+      rules: {
+        "no-restricted-syntax": [
+          "error",
+          {
+            selector: "Literal[value=/mb-base-color-/]",
+            message:
+              "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
+          },
+          {
+            selector:
+              "CallExpression[callee.property.name='legacyQuery'] > ObjectExpression > Property[key.name='useStructuredQuery'][value.value=true]",
+            message: "StructuredQuery usage is forbidden. Use MLv2",
+          },
+        ],
+      },
     },
   ],
 };

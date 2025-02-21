@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { addLocale, useLocale } from "ttag";
 
+import { isEmbeddingSdk } from "metabase/env";
 import api from "metabase/lib/api";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
 import MetabaseSettings from "metabase/lib/settings";
@@ -32,26 +33,22 @@ export async function loadLocalization(locale) {
           },
         };
   setLocalization(translationsObject);
+
+  return translationsObject;
 }
 
-// Tell moment.js to use the value of the start-of-week Setting for its current locale
+// Tell moment.js and dayjs to use the value of the start-of-week Setting for its current locale
 // Moment.js dow range Sunday (0) - Saturday (6)
-export function updateMomentStartOfWeek() {
-  const startOfWeekDay = getStartOfWeekDay();
+export function updateStartOfWeek(startOfWeekDayName) {
+  const startOfWeekDay = getStartOfWeekDay(startOfWeekDayName);
   if (startOfWeekDay != null) {
     moment.updateLocale(moment.locale(), { week: { dow: startOfWeekDay } });
-  }
-}
-
-export function updateDayjsStartOfWeek() {
-  const startOfWeekDay = getStartOfWeekDay();
-  if (startOfWeekDay != null) {
     dayjs.updateLocale(dayjs.locale(), { weekStart: startOfWeekDay });
   }
 }
 
 // if the start of week Setting is updated, update the moment start of week
-MetabaseSettings.on("start-of-week", updateMomentStartOfWeek);
+MetabaseSettings.on("start-of-week", updateStartOfWeek);
 
 function setLanguage(translationsObject) {
   const locale = translationsObject.headers.language;
@@ -70,8 +67,7 @@ export function setLocalization(translationsObject) {
   setLanguage(translationsObject);
   updateMomentLocale(language);
   updateDayjsLocale(language);
-  updateMomentStartOfWeek();
-  updateDayjsStartOfWeek();
+  updateStartOfWeek(MetabaseSettings.get("start-of-week"));
 
   if (ARABIC_LOCALES.includes(language)) {
     preverseLatinNumbersInMomentLocale(language);
@@ -129,8 +125,7 @@ function getLocale(language = "") {
   }
 }
 
-function getStartOfWeekDay() {
-  const startOfWeekDayName = MetabaseSettings.get("start-of-week");
+function getStartOfWeekDay(startOfWeekDayName) {
   if (!startOfWeekDayName) {
     return;
   }
@@ -189,4 +184,18 @@ if (window.MetabaseSiteLocalization) {
 // set the initial localization to user locale
 if (window.MetabaseUserLocalization) {
   setLocalization(window.MetabaseUserLocalization);
+}
+
+/**
+ * In static embeddings/public links, there is no user locale, since there is no user in static embeddings/public links.
+ * But we reset the locale to the site locale when `withInstanceLanguage` is called. This breaks static embeddings/public links
+ * since they don't have a user locale. So this function is for them to set the locale from a URL hash as the user locale,
+ * then the translation on some part of FE still works even after `withInstanceLanguage` is called.
+ *
+ * @param {object} translationsObject A translated object with the same structure as the one produced in `loadLocalization` function.
+ */
+export function setUserLocale(translationsObject) {
+  if (!isEmbeddingSdk) {
+    window.MetabaseUserLocalization = translationsObject;
+  }
 }

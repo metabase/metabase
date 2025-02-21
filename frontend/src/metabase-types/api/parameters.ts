@@ -25,17 +25,17 @@ export type DateParameterType =
   | "date/quarter-year"
   | "date/all-options";
 
-export type TemporalUnitParameterType = "temporal-unit";
-
 export type ParameterType =
   | StringParameterType
   | NumberParameterType
   | DateParameterType
-  | TemporalUnitParameterType;
+  | "id"
+  | "category"
+  | "temporal-unit";
 
 export type ParameterId = string;
 
-export type ActionParameterValue = string | number;
+export type ActionParameterValue = string | number | boolean;
 
 export interface Parameter extends ParameterValuesConfig {
   id: ParameterId;
@@ -83,14 +83,27 @@ export type ParameterDimensionTarget =
   | NativeParameterDimensionTarget
   | StructuredParameterDimensionTarget;
 
-export type NativeParameterDimensionTarget = ["dimension", VariableTarget];
+export type DimensionTargetOptions = {
+  "stage-number"?: number;
+};
 
-export type StructuredParameterDimensionTarget = [
-  "dimension",
-  ConcreteFieldReference | ExpressionReference,
-];
+export type NativeParameterDimensionTarget =
+  | ["dimension", VariableTarget]
+  | ["dimension", VariableTarget, DimensionTargetOptions];
 
-export type ParameterValueOrArray = string | number | Array<any>;
+export type StructuredParameterDimensionTarget =
+  | ["dimension", ConcreteFieldReference | ExpressionReference]
+  | [
+      "dimension",
+      ConcreteFieldReference | ExpressionReference,
+      DimensionTargetOptions,
+    ];
+
+export type ParameterValueOrArray =
+  | string
+  | number
+  | boolean
+  | Array<string | number | boolean>;
 
 export type HumanReadableParameterValue = string;
 export type NotRemappedParameterValue = [RowValue];

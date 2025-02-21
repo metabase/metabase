@@ -9,15 +9,13 @@
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definition-test :as dataset-definition-test]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,8 +44,8 @@
             ["33 Taps"]
             ["800 Degrees Neapolitan Pizzeria"]
             ["BCD Tofu House"]]
-           (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                                                    [(t2/select-one Field :id (mt/id :venues :name))]
+           (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+                                                    [(t2/select-one :model/Field :id (mt/id :venues :name))]
                                                     (constantly conj))
                 ;; since order is not guaranteed do some sorting here so we always get the same results
                 (sort-by first)
@@ -62,7 +60,7 @@
             {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
            (for [row (take 5 (sort-by :id (driver/table-rows-seq driver/*driver*
                                                                  (mt/db)
-                                                                 (t2/select-one Table :id (mt/id :venues)))))]
+                                                                 (t2/select-one :model/Table :id (mt/id :venues)))))]
              ;; different DBs use different precisions for these
              (-> (dissoc row :latitude :longitude)
                  (update :price int)
@@ -101,11 +99,10 @@
                      (some-> (.getCause e) recur))))))))))
 
 (defn- test-spliced-count-of [table filter-clause expected]
-  (let [query        {:database (mt/id)
-                      :type     :query
-                      :query    {:source-table (mt/id table)
-                                 :aggregation  [[:count]]
-                                 :filter       filter-clause}}
+  (let [query        (mt/mbql-query nil
+                       {:source-table (mt/id table)
+                        :aggregation  [[:count]]
+                        :filter       filter-clause})
         native-query (qp.compile/compile-with-inline-parameters query)]
     (testing (format "\nnative query =\n%s" (u/pprint-to-str native-query))
       (is (= expected
@@ -191,20 +188,20 @@
             patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
         (testing "syncable-schemas works as expected"
           (testing "with an inclusion filter"
-            (t2.with-temp/with-temp [Database db-filtered {:engine  driver
-                                                           :details (-> (mt/db)
-                                                                        :details
-                                                                        (assoc filter-type-prop "inclusion"
-                                                                               patterns-type-prop "public"))}]
+            (mt/with-temp [:model/Database db-filtered {:engine  driver
+                                                        :details (-> (mt/db)
+                                                                     :details
+                                                                     (assoc filter-type-prop "inclusion"
+                                                                            patterns-type-prop "public"))}]
               (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
                 (is      (contains? syncable "public"))
                 (is (not (contains? syncable fake-schema-name))))))
           (testing "with an exclusion filter"
-            (t2.with-temp/with-temp [Database db-filtered {:engine  driver
-                                                           :details (-> (mt/db)
-                                                                        :details
-                                                                        (assoc filter-type-prop "exclusion"
-                                                                               patterns-type-prop "public"))}]
+            (mt/with-temp [:model/Database db-filtered {:engine  driver
+                                                        :details (-> (mt/db)
+                                                                     :details
+                                                                     (assoc filter-type-prop "exclusion"
+                                                                            patterns-type-prop "public"))}]
               (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
                 (is (not (contains? syncable "public")))
                 (is (not (contains? syncable fake-schema-name)))))))))))

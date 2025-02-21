@@ -11,11 +11,14 @@ import {
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
+  SAMPLE_METADATA,
   columnFinder,
   createQuery,
   createQueryWithClauses,
 } from "metabase-lib/test-helpers";
-import { createMockField } from "metabase-types/api/mocks";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { createMockCard, createMockField } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_FIELD_VALUES,
@@ -26,16 +29,18 @@ import { FilterModal } from "./FilterModal";
 
 interface SetupOpts {
   query: Lib.Query;
+  metadata?: Metadata;
 }
 
-function setup({ query }: SetupOpts) {
+function setup({ query, metadata = SAMPLE_METADATA }: SetupOpts) {
   const onSubmit = jest.fn();
   const onClose = jest.fn();
+  const question = new Question(createMockCard(), metadata).setQuery(query);
 
   setupFieldsValuesEndpoints(SAMPLE_DB_FIELD_VALUES);
 
   renderWithProviders(
-    <FilterModal query={query} onSubmit={onSubmit} onClose={onClose} />,
+    <FilterModal question={question} onSubmit={onSubmit} onClose={onClose} />,
   );
 
   const getNextQuery = () => {
@@ -118,7 +123,10 @@ describe("FilterModal", () => {
       databases: [createSampleDatabase()],
       fields: [unknownField],
     });
-    const { getNextQuery } = setup({ query: createQuery({ metadata }) });
+    const { getNextQuery } = setup({
+      query: createQuery({ metadata }),
+      metadata,
+    });
 
     const columnSection = screen.getByTestId(`filter-column-Unknown`);
     await userEvent.click(within(columnSection).getByLabelText("Is empty"));
@@ -173,7 +181,7 @@ describe("FilterModal", () => {
 
     await userEvent.click(within(ordersSection).getByText("Today"));
     await userEvent.click(within(productsSection).getByText("Yesterday"));
-    await userEvent.click(within(peopleSection).getByText("Last month"));
+    await userEvent.click(within(peopleSection).getByText("Previous month"));
     await userEvent.click(
       screen.getByRole("button", { name: "Apply filters" }),
     );
@@ -266,5 +274,73 @@ describe("FilterModal", () => {
     expect(screen.getAllByLabelText("More info").length).toBeGreaterThanOrEqual(
       1,
     );
+  });
+
+  it("should update column filter state when clearing all filters", async () => {
+    setup({ query: createQuery() });
+    await userEvent.click(screen.getByRole("tab", { name: "Product" }));
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Doohickey" }));
+    expect(screen.getByRole("checkbox", { name: "Doohickey" })).toBeChecked();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear all filters" }),
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Doohickey" }),
+    ).not.toBeChecked();
+  });
+
+  it("does not mix up column filter state when changing search query (metabase#48319)", async () => {
+    setup({ query: createQuery() });
+
+    const searchInput = screen.getByPlaceholderText("Search for a column…");
+    await userEvent.type(searchInput, "category");
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", { name: "Doohickey" }),
+      ).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Doohickey" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Filter operator" }),
+    );
+    await userEvent.click(screen.getByText("Is not"));
+
+    await userEvent.type(
+      searchInput,
+      `${"{backspace}".repeat("category".length)}source`,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", { name: "Affiliate" }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("button", { name: "Filter operator" }),
+    ).toHaveTextContent("is");
+    expect(
+      screen.queryByRole("checkbox", { name: "Doohickey" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Affiliate" }));
+    await userEvent.type(
+      searchInput,
+      `${"{backspace}".repeat("source".length)}category`,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", { name: "Doohickey" }),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByRole("checkbox", { name: "Doohickey" })).toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "Filter operator" }),
+    ).toHaveTextContent("is not");
+    expect(
+      screen.queryByRole("checkbox", { name: "Affiliate" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -19,6 +19,7 @@ export const ButtonBar = ({
   cancelButtonText?: string;
 }) => {
   const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     const handleEnter = (e: KeyboardEvent) => {
       if (canConfirm && e.key === "Enter") {
@@ -63,6 +64,7 @@ export const ButtonBar = ({
             }
           }}
           disabled={!canConfirm}
+          data-testid="entity-picker-select-button"
         >
           {confirmButtonText ?? t`Select`}
         </Button>

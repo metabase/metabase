@@ -30,18 +30,6 @@ export const InfoContainer = styled(Container)`
   padding: 1.1em;
 `;
 
-export const Description = styled.div`
-  white-space: pre-line;
-  max-height: 200px;
-  overflow: auto;
-  margin-bottom: 0.5em;
-`;
-
-export const EmptyDescription = styled(Description)`
-  color: var(--mb-color-text-light);
-  font-weight: 700;
-`;
-
 export const LabelContainer = styled.div`
   display: inline-flex;
   align-items: center;
@@ -60,13 +48,6 @@ export const Label = styled.span`
 export const RelativeSizeIcon = styled(Icon)`
   height: 1em;
   width: 1em;
-`;
-
-export const InvertedColorRelativeSizeIcon = styled(RelativeSizeIcon)`
-  background-color: var(--mb-color-brand);
-  color: var(--mb-color-text-white);
-  border-radius: 0.3em;
-  padding: 0.3em;
 `;
 
 type FadeProps = {

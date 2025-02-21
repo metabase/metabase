@@ -28,6 +28,8 @@
   "Given a datetime, check that it's valid."
   [value]
   (or (datetime?      value)
+      (t/local-date?  value)
+      (t/local-date-time?  value)
       (t/offset-time? value)
       (t/local-time?  value)))
 
@@ -172,14 +174,20 @@
 (defmethod common/number->timestamp :hour-of-day [value _]
   (-> (now) (t/truncate-to :days) (t/plus (t/hours value))))
 
+(defn- number->timestamp [value day-of-week]
+  (-> (now)
+      (t/adjust :previous-or-same-day-of-week day-of-week)
+      (t/truncate-to :days)
+      (t/plus (t/days (dec value)))))
+
 (defmethod common/number->timestamp :day-of-week [value _]
   ;; Metabase uses 1 to mean the start of the week, based on the Metabase setting for the first day of the week.
   ;; Moment uses 0 as the first day of the week in its configured locale.
   ;; For Java, get the first day of the week from the setting, and offset by `(dec value)` for the current day.
-  (-> (now)
-      (t/adjust :previous-or-same-day-of-week (first-day-of-week))
-      (t/truncate-to :days)
-      (t/plus (t/days (dec value)))))
+  (number->timestamp value (first-day-of-week)))
+
+(defmethod common/number->timestamp :day-of-week-iso [value _]
+  (number->timestamp value :monday))
 
 (defmethod common/number->timestamp :day-of-month [value _]
   ;; We force the initial date to be in a month with 31 days.
@@ -221,6 +229,52 @@
   "Parses a time string that has been stripped of any time zone."
   [value]
   (t/local-time value))
+
+;;; ----------------------------------------------- constructors -----------------------------------------------------
+(defn local-time
+  "Constructs a platform time value (eg. Moment, LocalTime) for the given hour and minute, plus optional seconds and
+  milliseconds.
+
+  If called with no arguments, returns the current time."
+  ([]
+   (t/local-time))
+  ([hours minutes]
+   (local-time hours minutes 0 0))
+  ([hours minutes seconds]
+   (local-time hours minutes seconds 0))
+  ([hours minutes seconds millis]
+   (t/local-time hours minutes seconds (* 1000000 millis))))
+
+(defn local-date
+  "Constructs a platform date value (eg. Moment, LocalDate) for the given year, month and day.
+
+  Day is 1-31. January = 1, or you can specify keywords like `:jan`, `:jun`.
+
+  If called with no arguments, returns the current date."
+  ([]
+   (t/local-date))
+  ([year month day]
+   (t/local-date year
+                 (or (common/month-keywords month) month)
+                 day)))
+
+(defn local-date-time
+  "Constructs a platform datetime (eg. Moment, LocalDateTime).
+
+  Accepts either:
+  - no arguments (returns the current datetime)
+  - a local date and local time (see [[local-date]] and [[local-time]]); or
+  - year, month, day, hour, and minute, plus optional seconds and millis."
+  ([]
+   (t/local-date-time))
+  ([a-date a-time]
+   (t/local-date-time a-date a-time))
+  ([year month day hours minutes]
+   (local-date-time (local-date year month day) (local-time hours minutes)))
+  ([year month day hours minutes seconds]
+   (local-date-time (local-date year month day) (local-time hours minutes seconds)))
+  ([year month day hours minutes seconds millis]
+   (local-date-time (local-date year month day) (local-time hours minutes seconds millis))))
 
 ;;; ------------------------------------------------ arithmetic ------------------------------------------------------
 
@@ -274,6 +328,7 @@
 
 (def ^:private unit-formats
   {:day-of-week     "EEEE"
+   :day-of-week-iso "EEEE"
    :month-of-year   "MMM"
    :minute-of-hour  "m"
    :hour-of-day     "h a"
@@ -419,6 +474,20 @@
 
 (defn format-for-base-type
   "Clojure implementation of [[metabase.util.time/format-for-base-type]]; format a temporal value as an ISO-8601
-  string. `base-type` is ignored for the Clojure implementation; this simply calls [[clojure.core/str]]."
-  [t _base-type]
-  (str t))
+  string appropriate for a value of the given `base-type`, e.g. a `:type/Time` gets formatted as a `HH:mm:ss.SSS`
+  string."
+  [t base-type]
+  (if (string? t)
+    t
+    (let [format (condp #(isa? %2 %1) base-type
+                   :type/TimeWithTZ     "HH:mm:ss.SSSZ"
+                   :type/Time           "HH:mm:ss.SSS"
+                   :type/DateTimeWithTZ "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+                   :type/DateTime       "yyyy-MM-dd'T'HH:mm:ss.SSS"
+                   :type/Date           "yyyy-MM-dd")]
+      (t/format format t))))
+
+(defn extract
+  "Extract a field such as `:minute-of-hour` from a temporal value `t`."
+  [t unit]
+  (u.date/extract t unit))

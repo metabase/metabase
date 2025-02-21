@@ -1,23 +1,21 @@
-import type { IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-export interface ColumnItem {
-  column: Lib.ColumnMetadata;
-  displayName: string;
-  stageIndex: number;
-}
+import type { GroupItem } from "../../types";
 
-export interface SegmentItem {
-  segment: Lib.SegmentMetadata;
-  displayName: string;
-  stageIndex: number;
-  filterPositions: number[];
-}
-
-export interface GroupItem {
-  key: string;
-  displayName: string;
-  icon: IconName;
-  columnItems: ColumnItem[];
-  segmentItems: SegmentItem[];
-}
+export type FilterModalResult = {
+  canRemoveFilters: boolean;
+  groupItems: GroupItem[];
+  isChanged: boolean;
+  isSearching: boolean;
+  query: Lib.Query;
+  remountKey: number;
+  searchText: string;
+  tab: string | null;
+  visibleItems: GroupItem[];
+  onInput: () => void;
+  onQueryChange: (query: Lib.Query) => void;
+  onReset: () => void;
+  onSearchTextChange: (searchText: string) => void;
+  onSubmit: () => void;
+  onTabChange: (tab: string | null) => void;
+};

@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [malli.core :as mc]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -22,7 +21,8 @@
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli.registry :as mr]))
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
@@ -246,8 +246,8 @@
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel compile-honeysql-test
   (testing "make sure the generated HoneySQL will compile to the correct SQL"
-    (are [driver expected] (= ["INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\""]
-                              (compile-join driver))
+    (are [driver] (= ["INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\""]
+                     (compile-join driver))
       :sql :h2 :postgres)))
 
 (deftest adjust-start-of-week-test
@@ -414,12 +414,17 @@
                                      ORDERS.PRODUCT_ID                  AS PRODUCT_ID
                                      ORDERS.CREATED_AT                  AS CREATED_AT
                                      ABS (0)                            AS pivot-grouping
-                                     ;; TODO -- I'm not sure if the order here is deterministic
+                                     ;; TODO: The order here is not deterministic!
+                                     ;; It's coming from qp.util/nest-source, which walks the query looking for refs
+                                     ;; in an arbitrary order, and returns `m/distinct-by` over that random order.
+                                     ;; Changing the map keys on the inner query can perturb this order; if you cause
+                                     ;; this test to fail based on shuffling the order of these joined fields, just
+                                     ;; edit the expectation to match the new order.
                                      ;; Tech debt issue: #39396
-                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
-                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
                                      PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
-                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID]
+                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID
+                                     PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
+                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY]
                          :from      [ORDERS]
                          :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID
                                      ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID
@@ -1016,7 +1021,7 @@
                                vec
                                (update 0 #(str/split-lines (driver/prettify-native-form driver/*driver* %))))]
               (testing "this query should not have any parameters"
-                (is (mc/validate [:cat [:sequential :string]] sql-args))))))))))
+                (is (mr/validate [:cat [:sequential :string]] sql-args))))))))))
 
 (deftest ^:parallel binning-optimize-math-expressions-test
   (testing "Don't include nonsense like `+ 0.0` and `- 0.0` when generating expressions for binning"

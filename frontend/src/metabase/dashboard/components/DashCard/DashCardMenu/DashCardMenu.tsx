@@ -2,8 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { isValidElement, useState } from "react";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
+import type { MetabasePluginsConfig } from "embedding-sdk";
+/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
+/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
+import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import CS from "metabase/css/core/index.css";
 import {
   canDownloadResults,
@@ -50,8 +54,8 @@ export type DashCardMenuItem = {
   disabled?: boolean;
 } & MenuItemProps;
 
-function isDashCardMenuEmpty(plugins?: SdkPluginsConfig) {
-  const dashcardMenu = plugins?.dashboard?.dashcardMenu;
+function isDashCardMenuEmpty(plugins?: MetabasePluginsConfig) {
+  const dashcardMenu = plugins?.dashboard?.dashboardCardMenu;
 
   if (!plugins || !dashcardMenu || typeof dashcardMenu !== "object") {
     return false;
@@ -97,12 +101,14 @@ export const DashCardMenu = ({
   }
 
   const getMenuContent = () => {
-    if (typeof plugins?.dashboard?.dashcardMenu === "function") {
-      return plugins.dashboard.dashcardMenu({ question: question.card() });
+    if (typeof plugins?.dashboard?.dashboardCardMenu === "function") {
+      return plugins.dashboard.dashboardCardMenu({
+        question: transformSdkQuestion(question),
+      });
     }
 
-    if (isValidElement(plugins?.dashboard?.dashcardMenu)) {
-      return plugins.dashboard.dashcardMenu;
+    if (isValidElement(plugins?.dashboard?.dashboardCardMenu)) {
+      return plugins.dashboard.dashboardCardMenu;
     }
 
     if (menuView === "download") {

@@ -14,7 +14,6 @@
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models :refer [Database]]
    [metabase.models.table :as table]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -57,6 +56,8 @@
   (let [creds   (bigquery.common/database-details->service-account-credential details)
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds bigquery-scopes)))]
+    (when-let [host (not-empty (:host details))]
+      (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -216,6 +217,10 @@
                         (str/starts-with? raw-data-type "STRUCT") "RECORD" ;; STRUCT<INT64, FLOAT64>
                         (str/starts-with? raw-data-type "INT") "INTEGER" ;; INT64
                         (str/starts-with? raw-data-type "FLOAT") "FLOAT" ;; FLOAT 64
+                        (str/starts-with? raw-data-type "STRING") "STRING" ;; STRING(255)
+                        (str/starts-with? raw-data-type "BYTES") "BYTES" ;; BYTES(255)
+                        (str/starts-with? raw-data-type "NUMERIC") "NUMERIC" ;; NUMERIC(255)
+                        (str/starts-with? raw-data-type "BIGNUMERIC") "BIGNUMERIC" ;; BIGNUMERIC(255)
                         (= raw-data-type "BOOL") "BOOLEAN"
                         :else raw-data-type)]
     [database-type (database-type->base-type database-type)]))
@@ -709,7 +714,7 @@
     (let [updated-db (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
                          (assoc-in [:details :dataset-filters-patterns] dataset-id)
                          (m/dissoc-in [:details :dataset-id]))]
-      (t2/update! Database db-id {:details (:details updated-db)})
+      (t2/update! :model/Database db-id {:details (:details updated-db)})
       updated-db)))
 
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])

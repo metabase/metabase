@@ -1,0 +1,38 @@
+.CloseButton {
+  color: var(--mb-color-text-dark);
+  text-decoration: none;
+  margin-left: auto;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.HeaderTitleContainer {
+  display: flex;
+  align-items: center;
+  font-size: 1.17em;
+  font-weight: bold;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.backButton {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.defaultBackButton {
+  cursor: pointer;
+  color: var(--mb-color-text-medium);
+  font-size: 0.83em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}

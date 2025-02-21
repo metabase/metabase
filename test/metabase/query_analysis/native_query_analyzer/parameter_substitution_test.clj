@@ -5,8 +5,7 @@
    [metabase.lib.native :as lib-native]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-analysis.native-query-analyzer.parameter-substitution :as nqa.sub]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (def ^:private ->sql (comp :query nqa.sub/replace-tags))
 
@@ -197,7 +196,7 @@
 
 (deftest snippet-test
   (testing "With a snippet"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/NativeQuerySnippet {snippet-id :id} {:name    "a lovely snippet"
                                                    :content "where total > 10"}]
       (let [og-query "SELECT total FROM orders {{snippet: a lovely snippet}}"]
@@ -208,7 +207,7 @@
                                                                  snippet-id)}))))))))
 
 (deftest card-ref-test
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [:model/Card {card-id :id} {:type          :model
                                 :dataset_query (mt/native-query {:query "select * from checkins"})}]
     (let [q  (format "SELECT * FROM {{#%s}} LIMIT 3" card-id)

@@ -11,8 +11,8 @@ import EventSandbox from "metabase/components/EventSandbox";
 import Tooltip from "metabase/core/components/Tooltip";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
-import ModelDetailLink from "metabase/models/components/ModelDetailLink";
-import { type IconName, Skeleton } from "metabase/ui";
+import { PLUGIN_MODERATION } from "metabase/plugins";
+import { Flex, type IconName, Skeleton } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -120,7 +120,6 @@ function PinnedItemCard({
           <Header>
             <ItemIcon name={icon as unknown as IconName} />
             <ActionsContainer h={item ? undefined : "2rem"}>
-              {item?.model === "dataset" && <ModelDetailLink model={item} />}
               {hasActions && (
                 // This component is used within a `<Link>` component,
                 // so we must prevent events from triggering the activation of the link
@@ -150,7 +149,14 @@ function PinnedItemCard({
                 <Title
                   onMouseEnter={e => maybeEnableTooltip(e, setShowTitleTooltip)}
                 >
-                  {item.name}
+                  <Flex align="center" gap="0.5rem">
+                    {item.name}
+                    <PLUGIN_MODERATION.ModerationStatusIcon
+                      status={item.moderated_status}
+                      filled
+                      size={14}
+                    />
+                  </Flex>
                 </Title>
               </Tooltip>
               <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>

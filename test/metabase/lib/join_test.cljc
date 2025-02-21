@@ -12,6 +12,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.util :as u]))
 
@@ -20,7 +21,7 @@
 (def ^:private absent-key-marker (symbol "nil #_\"key is not present.\""))
 
 (deftest ^:parallel resolve-join-test
-  (let [query       lib.tu/venues-query
+  (let [query       (lib.tu/venues-query)
         join-clause (-> (lib/join-clause
                          (meta/table-metadata :categories)
                          [(lib/=
@@ -52,7 +53,7 @@
                                                         :join-alias "Categories"}
                                                        (meta/id :categories :id)]]]
                                        :fields      :all}]}]}
-          (let [q lib.tu/venues-query
+          (let [q (lib.tu/venues-query)
                 j (lib/query meta/metadata-provider (meta/table-metadata :categories))]
             (lib/join q (lib/join-clause j [{:lib/type :lib/external-op
                                              :operator :=
@@ -69,7 +70,7 @@
             (lib/join-clause (meta/table-metadata :orders)))))
   (testing "Should allow specifying the join strategy when creating a join clause"
     (is (= [:left-join :right-join :inner-join]
-           (let [query lib.tu/query-with-join
+           (let [query (lib.tu/query-with-join)
                  product-table (meta/table-metadata :products)
                  products-id (meta/id :products :id)
                  orders-product-id (meta/id :orders :product-id)
@@ -81,21 +82,21 @@
                    join-strategies)))))
   (testing "source-card"
     (let [query {:lib/type :mbql/query
-                 :lib/metadata lib.tu/metadata-provider-with-mock-cards
+                 :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
                  :database (meta/id)
                  :stages [{:lib/type :mbql.stage/mbql
-                           :source-card (:id (lib.tu/mock-cards :orders))}]}
-          product-card (lib.tu/mock-cards :products)
+                           :source-card (:id ((lib.tu/mock-cards) :orders))}]}
+          product-card ((lib.tu/mock-cards) :products)
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-card nil nil)
           [products-id] (lib/join-condition-rhs-columns query product-card orders-product-id nil)]
       (is (=? {:stages [{:joins [{:stages [{:source-card (:id product-card)}]}]}]}
               (lib/join query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))))))
   (testing "source-table"
     (let [query {:lib/type :mbql/query
-                 :lib/metadata lib.tu/metadata-provider-with-mock-cards
+                 :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
                  :database (meta/id)
                  :stages [{:lib/type :mbql.stage/mbql
-                           :source-card (:id (lib.tu/mock-cards :orders))}]}
+                           :source-card (:id ((lib.tu/mock-cards) :orders))}]}
           product-table (meta/table-metadata :products)
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-table nil nil)
           [products-id] (lib/join-condition-rhs-columns query product-table orders-product-id nil)]
@@ -124,7 +125,7 @@
                                                        (meta/id :venues :category-id)]]]}]}]}
           (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
               (lib/join (lib/join-clause
-                         (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))
+                         (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues (lib.tu/mock-cards)))
                          [(lib/= (meta/field-metadata :categories :id)
                                  (meta/field-metadata :venues :category-id))]))
               (dissoc :lib/metadata)))))
@@ -132,9 +133,12 @@
 (deftest ^:parallel join-condition-field-metadata-test
   (testing "Should be able to use raw Field metadatas in the join condition"
     (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
-          q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))
+          q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider
+                                                                                  (:venues (lib.tu/mock-cards)))
           venues-category-id-metadata (meta/field-metadata :venues :category-id)
-          categories-id-metadata      (lib.metadata/stage-column q2 "ID")]
+          categories-id-metadata      (m/find-first #(= (:id %) (meta/id :categories :id))
+                                                    (lib/visible-columns q2))]
+
       (let [clause (lib/join-clause q2 [(lib/= categories-id-metadata venues-category-id-metadata)])]
         (is (=? {:lib/type    :mbql/join
                  :lib/options {:lib/uuid string?}
@@ -142,7 +146,10 @@
                                 :source-table (meta/id :venues)}]
                  :conditions  [[:=
                                 {:lib/uuid string?}
-                                [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]
+                                [:field {:base-type    :type/BigInteger
+                                         :lib/uuid     string?
+                                         :source-field (meta/id :venues :category-id)}
+                                 (meta/id :categories :id)]
                                 [:field {:lib/uuid string?} (meta/id :venues :category-id)]]]}
                 clause)))
       (is (=? {:database (meta/id)
@@ -157,7 +164,7 @@
                                                            {:base-type :type/BigInteger
                                                             :lib/uuid string?
                                                             :join-alias absent-key-marker}
-                                                           "ID"]
+                                                           (meta/id :categories :id)]
                                                           [:field
                                                            {:lib/uuid string?
                                                             :join-alias "Venues"}
@@ -195,6 +202,7 @@
                                  :joins        [{:lib/type    :mbql/join
                                                  :lib/options {:lib/uuid "490a5abb-54c2-4e62-9196-7e9e99e8d291"}
                                                  :alias       "CATEGORIES__via__CATEGORY_ID"
+                                                 :ident       "dJbULfDmVAyTENMCo7q1q"
                                                  :conditions  [[:=
                                                                 {:lib/uuid "cc5f6c43-1acb-49c2-aeb5-e3ff9c70541f"}
                                                                 (lib.tu/field-clause :venues :category-id)
@@ -222,16 +230,15 @@
 (deftest ^:parallel join-against-source-card-metadata-test
   (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                            meta/metadata-provider
-                           [{:database (meta/id)
-                             :type     :query
-                             :query    {:source-table (meta/id :checkins)
-                                        :aggregation  [[:count]]
-                                        :breakout     [[:field (meta/id :checkins :user-id) nil]]}}])
+                           [(lib.tu.macros/mbql-query checkins
+                              {:aggregation  [[:count]]
+                               :breakout     [$user-id]})])
         join              {:lib/type    :mbql/join
                            :lib/options {:lib/uuid "d7ebb6bd-e7ac-411a-9d09-d8b18329ad46"}
                            :stages      [{:lib/type    :mbql.stage/mbql
                                           :source-card 1}]
                            :alias       "checkins_by_user"
+                           :ident       "t3Xq_zGttWJ3xht4ROnWv"
                            :conditions  [[:=
                                           {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
                                           [:field
@@ -263,7 +270,7 @@
            (lib.join/joined-thing query join)))))
 
 (deftest ^:parallel joins-source-and-desired-aliases-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/join (-> (lib/join-clause
                                  (meta/table-metadata :categories)
                                  [(lib/=
@@ -343,6 +350,7 @@
                                     :joins        [{:lib/type    :mbql/join
                                                     :lib/options {:lib/uuid "10ee93eb-6749-41ed-a48b-93c66427eb49"}
                                                     :alias       join-alias
+                                                    :ident       "AMaECnokvRTFgTVDTbrKG"
                                                     :fields      [[:field
                                                                    {:join-alias join-alias
                                                                     :lib/uuid   "87ad4bf3-a00b-462a-b9cc-3dde44945d66"}
@@ -373,7 +381,7 @@
             (lib/returned-columns query)))))
 
 (deftest ^:parallel join-strategy-test
-  (let [query  lib.tu/query-with-join
+  (let [query  (lib.tu/query-with-join)
         [join] (lib/joins query)]
     (testing "join without :strategy"
       (is (= :left-join
@@ -400,7 +408,7 @@
                                                          (meta/id :categories :id)]]]
                                           :strategy :right-join
                                           :alias "Categories"}]}]}
-                      (-> lib.tu/venues-query
+                      (-> (lib.tu/venues-query)
                           (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
                                                          [(lib/=
                                                            (meta/field-metadata :venues :category-id)
@@ -413,16 +421,16 @@
   (is (= [{:lib/type :option/join.strategy, :strategy :left-join, :default true}
           {:lib/type :option/join.strategy, :strategy :right-join}
           {:lib/type :option/join.strategy, :strategy :inner-join}]
-         (lib/available-join-strategies lib.tu/query-with-join))))
+         (lib/available-join-strategies (lib.tu/query-with-join)))))
 
 (deftest ^:parallel join-strategy-display-name-test
-  (let [query lib.tu/query-with-join]
+  (let [query (lib.tu/query-with-join)]
     (is (= ["Left outer join" "Right outer join" "Inner join"]
            (map (partial lib/display-name query)
                 (lib/available-join-strategies query))))))
 
 (deftest ^:parallel join-strategy-display-info-test
-  (let [query lib.tu/query-with-join]
+  (let [query (lib.tu/query-with-join)]
     (is (= [{:short-name "left-join", :display-name "Left outer join", :default true}
             {:short-name "right-join", :display-name "Right outer join"}
             {:short-name "inner-join", :display-name "Inner join"}]
@@ -431,7 +439,7 @@
 
 (deftest ^:parallel with-join-alias-update-fields-test
   (testing "with-join-alias should update the alias of columns in :fields"
-    (let [query  lib.tu/query-with-join-with-explicit-fields
+    (let [query  (lib.tu/query-with-join-with-explicit-fields)
           [join] (lib/joins query)]
       (is (=? {:alias  "Cat"
                :fields [[:field {:join-alias "Cat"} (meta/id :categories :name)]]}
@@ -443,7 +451,7 @@
 
 (deftest ^:parallel with-join-alias-update-condition-rhs-test
   (testing "with-join-alias should update the alias of the RHS column(s) in the condition(s)"
-    (let [query  lib.tu/query-with-join
+    (let [query  (lib.tu/query-with-join)
           [join] (lib/joins query)]
       (is (=? {:conditions [[:= {}
                              [:field {} (meta/id :venues :category-id)]
@@ -459,7 +467,7 @@
 
 (deftest ^:parallel with-join-alias-update-condition-rhs-set-alias-for-first-time-test
   (testing "with-join-alias should set the alias of the RHS column(s) when setting the alias for the first time"
-    (let [query  lib.tu/query-with-join
+    (let [query  (lib.tu/query-with-join)
           [join] (lib/joins query)
           join   (-> join
                      (dissoc :alias)
@@ -480,7 +488,7 @@
                 join'))))))
 
 (deftest ^:parallel with-join-conditions-empty-test
-  (let [query  lib.tu/query-with-join
+  (let [query  (lib.tu/query-with-join)
         [join] (lib/joins query)]
     (are [new-conditions] (nil? (lib/join-conditions (lib/with-join-conditions join new-conditions)))
       nil
@@ -488,7 +496,7 @@
 
 (deftest ^:parallel with-join-conditions-add-alias-test
   (testing "with-join-conditions should add join alias to RHS of conditions (#32558)"
-    (let [query      lib.tu/query-with-join
+    (let [query      (lib.tu/query-with-join)
           [join]     (lib/joins query)
           conditions (lib/join-conditions join)]
       (is (=? [[:= {}
@@ -521,7 +529,7 @@
 
 (deftest ^:parallel with-join-conditions-do-not-add-alias-when-already-present-test
   (testing "with-join-conditions should not replace an existing join alias (don't second guess explicit aliases)"
-    (let [query  lib.tu/query-with-join
+    (let [query  (lib.tu/query-with-join)
           [join] (lib/joins query)
           new-conditions [(lib/=
                            (meta/field-metadata :venues :id)
@@ -534,7 +542,7 @@
 
 (deftest ^:parallel with-join-conditions-join-has-no-alias-yet-test
   (testing "with-join-conditions should work if join doesn't yet have an alias"
-    (let [query  lib.tu/query-with-join
+    (let [query  (lib.tu/query-with-join)
           [join] (lib/joins query)
           join   (lib/with-join-alias join nil)]
       (is (nil? (lib.join.util/current-join-alias join)))
@@ -555,7 +563,7 @@
 
 (deftest ^:parallel with-join-conditions-do-not-add-alias-to-complex-conditions
   (testing "with-join-conditions should not add aliases to non-binary filter clauses"
-    (let [query  lib.tu/query-with-join
+    (let [query  (lib.tu/query-with-join)
           [join] (lib/joins query)]
       (testing :between
         (let [new-conditions [(lib/between
@@ -589,7 +597,7 @@
 
 (defn- test-with-join-fields [input expected]
   (testing (pr-str (list 'with-join-fields 'query input))
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
                                    [(lib/=
@@ -641,7 +649,7 @@
        {:fields [(lib/with-join-alias categories-id "Cat")]}))))
 
 (deftest ^:parallel join-condition-lhs-columns-test
-  (let [query lib.tu/venues-query]
+  (let [query (lib.tu/venues-query)]
     (doseq [rhs [nil (lib/with-join-alias (lib.metadata/field query (meta/id :venues :category-id)) "Cat")]]
       (testing (str "rhs = " (pr-str rhs))
         ;; sort PKs then FKs then everything else
@@ -655,7 +663,7 @@
 
 (deftest ^:parallel join-condition-lhs-columns-with-previous-join-test
   (testing "Include columns from previous join(s)"
-    (let [query lib.tu/query-with-join-with-explicit-fields]
+    (let [query (lib.tu/query-with-join-with-explicit-fields)]
       (doseq [rhs [nil (lib/with-join-alias (lib.metadata/field query (meta/id :users :id)) "User")]]
         (testing (str "rhs = " (pr-str rhs))
           (is (=? [{:lib/desired-column-alias "ID"}
@@ -672,7 +680,7 @@
 
 (deftest ^:parallel join-condition-lhs-columns-exclude-columns-from-existing-join-test
   (testing "Ignore columns added by a join or any subsequent joins (#32005)"
-    (let [query                  (-> lib.tu/query-with-join
+    (let [query                  (-> (lib.tu/query-with-join)
                                      (lib.tu/add-joins "C2" "C3"))
           [join-1 join-2 join-3] (lib/joins query)]
       (is (=? {:lib/type :mbql/join
@@ -699,7 +707,7 @@
         ["ID" "Cat__ID" "C2__ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" "Cat__NAME" "C2__NAME"]))))
 
 (def ^:private join-for-query-with-join
-  (first (lib/joins lib.tu/query-with-join)))
+  (first (lib/joins (lib.tu/query-with-join))))
 
 (def ^:private condition-for-query-with-join
   (first (lib/join-conditions join-for-query-with-join)))
@@ -722,22 +730,23 @@
 
 (deftest ^:parallel join-condition-lhs-columns-mark-selected-test
   (testing "#32438"
-    (is (=? [{:long-display-name "ID"}
-             {:long-display-name "Category ID", :selected true}
-             {:long-display-name "Name"}
-             {:long-display-name "Latitude"}
-             {:long-display-name "Longitude"}
-             {:long-display-name "Price"}]
-            (map (partial lib/display-info lib.tu/query-with-join)
-                 (lib/join-condition-lhs-columns lib.tu/query-with-join
-                                                 join-for-query-with-join
-                                                 lhs-for-query-with-join
-                                                 rhs-for-query-with-join))))))
+    (let [query (lib.tu/query-with-join)]
+      (is (=? [{:long-display-name "ID"}
+               {:long-display-name "Category ID", :selected true}
+               {:long-display-name "Name"}
+               {:long-display-name "Latitude"}
+               {:long-display-name "Longitude"}
+               {:long-display-name "Price"}]
+              (map (partial lib/display-info query)
+                   (lib/join-condition-lhs-columns query
+                                                   join-for-query-with-join
+                                                   lhs-for-query-with-join
+                                                   rhs-for-query-with-join)))))))
 
 (deftest ^:parallel join-condition-rhs-columns-join-table-test
   (testing "RHS columns when building a join against a Table"
-    (doseq [query [lib.tu/venues-query
-                   lib.tu/query-with-join]]
+    (doseq [query [(lib.tu/venues-query)
+                   (lib.tu/query-with-join)]]
       (let [cols (lib/join-condition-rhs-columns query (meta/table-metadata :categories) nil nil)]
         (is (=? [{:display-name "ID", :lib/source :source/joins, :table-id (meta/id :categories)}
                  {:display-name "Name", :lib/source :source/joins, :table-id (meta/id :categories)}]
@@ -749,10 +758,11 @@
 
 (deftest ^:parallel join-condition-rhs-columns-join-card-test
   (testing "RHS columns when building a join against"
-    (doseq [query            [lib.tu/venues-query
-                              lib.tu/query-with-join]
-            [card-type card] {"Native" (:categories/native lib.tu/mock-cards)
-                              "MBQL"   (:categories lib.tu/mock-cards)}]
+    (doseq [query            [(lib.tu/venues-query)
+                              (lib.tu/query-with-join)]
+            :let [cards (lib.tu/mock-cards)]
+            [card-type card] {"Native" (:categories/native cards)
+                              "MBQL"   (:categories cards)}]
       (testing (str "a " card-type " Card")
         (let [cols (lib/join-condition-rhs-columns query card nil nil)]
           (is (=? [{:display-name "ID", :lib/source :source/joins, :lib/card-id (:id card)}
@@ -765,7 +775,7 @@
 
 (deftest ^:parallel join-condition-rhs-columns-existing-join-test
   (testing "RHS columns for existing join"
-    (let [cols (lib/join-condition-rhs-columns lib.tu/query-with-join join-for-query-with-join nil nil)]
+    (let [cols (lib/join-condition-rhs-columns (lib.tu/query-with-join) join-for-query-with-join nil nil)]
       (is (=? [{:display-name "ID",   :lib/source :source/joins, ::lib.join/join-alias "Cat"}
                {:display-name "Name", :lib/source :source/joins, ::lib.join/join-alias "Cat"}]
               cols))
@@ -773,13 +783,13 @@
         (is (=? [{:display-name "ID", :is-from-join true}
                  {:display-name "Name", :is-from-join true}]
                 (for [col cols]
-                  (lib/display-info lib.tu/query-with-join col))))))))
+                  (lib/display-info (lib.tu/query-with-join) col))))))))
 
 (deftest ^:parallel join-condition-rhs-columns-test-2
-  (let [query lib.tu/venues-query]
+  (let [query (lib.tu/venues-query)]
     (doseq [lhs          [nil (lib.metadata/field query (meta/id :venues :id))]
             joined-thing [(meta/table-metadata :venues)
-                          (:venues lib.tu/mock-cards)]]
+                          (:venues (lib.tu/mock-cards))]]
       (testing (str "lhs = " (pr-str lhs)
                     "\njoined-thing = " (pr-str joined-thing))
         (is (=? [{:lib/desired-column-alias "ID"}
@@ -792,28 +802,29 @@
 
 (deftest ^:parallel join-condition-rhs-columns-mark-selected-test
   (testing "#32438"
-    (is (=? [{:display-name "ID", :selected true}
-             {:display-name "Name"}]
-            (map (partial lib/display-info lib.tu/query-with-join)
-                 (lib/join-condition-rhs-columns lib.tu/query-with-join
-                                                 join-for-query-with-join
-                                                 lhs-for-query-with-join
-                                                 rhs-for-query-with-join))))))
+    (let [query (lib.tu/query-with-join)]
+      (is (=? [{:display-name "ID", :selected true}
+               {:display-name "Name"}]
+              (map (partial lib/display-info query)
+                   (lib/join-condition-rhs-columns query
+                                                   join-for-query-with-join
+                                                   lhs-for-query-with-join
+                                                   rhs-for-query-with-join)))))))
 
 (deftest ^:parallel join-condition-operators-test
   ;; just make sure that this doesn't barf and returns the expected output given any combination of LHS or RHS fields
   ;; for now until we actually implement filtering there
-  (let [query lib.tu/venues-query]
+  (let [query (lib.tu/venues-query)]
     (doseq [lhs [nil (lib.metadata/field query (meta/id :categories :id))]
             rhs [nil (lib.metadata/field query (meta/id :venues :category-id))]]
-      (testing (pr-str (list `lib/join-condition-operators `lib.tu/venues-query lhs rhs))
+      (testing (pr-str (list `lib/join-condition-operators `(lib.tu/venues-query) lhs rhs))
         (is (=? [{:short :=, :default true}
                  {:short :>}
                  {:short :<}
                  {:short :>=}
                  {:short :<=}
                  {:short :!=}]
-                (lib/join-condition-operators lib.tu/venues-query lhs rhs)))
+                (lib/join-condition-operators query lhs rhs)))
         (is (=? [{:short-name "=", :display-name "=", :long-display-name "Is"}
                  {:short-name ">", :display-name ">", :long-display-name "Greater than"}
                  {:short-name "<", :display-name "<", :long-display-name "Less than"}
@@ -821,9 +832,9 @@
                  {:short-name "<=", :display-name "≤", :long-display-name "Less than or equal to"}
                  {:short-name "!=", :display-name "≠", :long-display-name "Is not"}]
                 (map (partial lib/display-info query)
-                     (lib/join-condition-operators lib.tu/venues-query lhs rhs))))
-        (is (= (lib/join-condition-operators lib.tu/venues-query lhs rhs)
-               (lib/join-condition-operators lib.tu/venues-query -1 lhs rhs))))
+                     (lib/join-condition-operators query lhs rhs))))
+        (is (= (lib/join-condition-operators query lhs rhs)
+               (lib/join-condition-operators query -1 lhs rhs))))
       (testing `lib/display-info
         (is (=? [{:short-name "=", :default true}
                  {:short-name ">"}
@@ -832,21 +843,21 @@
                  {:short-name "<="}
                  {:short-name "!="}]
                 (map (partial lib/display-info query)
-                     (lib/join-condition-operators lib.tu/venues-query lhs rhs))))))))
+                     (lib/join-condition-operators query lhs rhs))))))))
 
 (deftest ^:parallel join-alias-single-table-multiple-times-test
   (testing "joining the same table twice results in different join aliases"
     (is (=? [{:alias "Checkins"}
              {:alias "Checkins_2"}]
             (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
-                (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
-                                               [(lib/=
-                                                 (meta/field-metadata :users :id)
-                                                 (meta/field-metadata :checkins :user-id))])))
-                (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
-                                               [(lib/=
-                                                 (meta/field-metadata :users :id)
-                                                 (meta/field-metadata :checkins :user-id))])))
+                (lib/join (lib/join-clause (meta/table-metadata :checkins)
+                                           [(lib/=
+                                             (meta/field-metadata :users :id)
+                                             (meta/field-metadata :checkins :user-id))]))
+                (lib/join (lib/join-clause (meta/table-metadata :checkins)
+                                           [(lib/=
+                                             (meta/field-metadata :users :id)
+                                             (meta/field-metadata :checkins :user-id))]))
                 :stages first :joins)))))
 
 (deftest ^:parallel suggested-join-conditions-test
@@ -859,10 +870,10 @@
                       query
                       (meta/table-metadata :categories)))
       ;; plain query
-      lib.tu/venues-query
+      (lib.tu/venues-query)
 
       ;; query with an aggregation (FK column is not exported, but is still "visible")
-      (-> lib.tu/venues-query
+      (-> (lib.tu/venues-query)
           (lib/aggregate (lib/count))))))
 
 (deftest ^:parallel suggested-join-conditions-pk->fk-test
@@ -1129,7 +1140,7 @@
                   (sort-conditions (lib/suggested-join-conditions query order)))))))))
 
 (deftest ^:parallel join-conditions-test
-  (let [joins (lib/joins lib.tu/query-with-join)]
+  (let [joins (lib/joins (lib.tu/query-with-join))]
     (is (= 1
            (count joins)))
     (is (=? [[:=
@@ -1145,12 +1156,12 @@
                             {:lib/type :metadata/column, :name "LATITUDE"}
                             {:lib/type :metadata/column, :name "LONGITUDE"}
                             {:lib/type :metadata/column, :name "PRICE"}]
-                           (lib/joinable-columns lib.tu/venues-query -1 table-or-card))
+                           (lib/joinable-columns (lib.tu/venues-query) -1 table-or-card))
     (meta/table-metadata :venues)
-    (:venues lib.tu/mock-cards)))
+    (:venues (lib.tu/mock-cards))))
 
 (deftest ^:parallel joinable-columns-join-test
-  (let [query           lib.tu/query-with-join
+  (let [query           (lib.tu/query-with-join)
         [original-join] (lib/joins query)]
     (is (=? {:lib/type :mbql/join, :alias "Cat", :fields :all}
             original-join))
@@ -1206,14 +1217,14 @@
                     (lib/with-join-fields join cols)))))))))
 
 (deftest ^:parallel join-lhs-display-name-test
-  (doseq [[source-table? query]                {true  lib.tu/venues-query
-                                                false lib.tu/query-with-source-card}
+  (doseq [[source-table? query]                {true  (lib.tu/venues-query)
+                                                false (lib.tu/query-with-source-card)}
           [num-existing-joins query]           {0 query
                                                 1 (lib.tu/add-joins query "J1")
                                                 2 (lib.tu/add-joins query "J1" "J2")}
           [first-join? join? join-or-joinable] (list*
                                                 [(zero? num-existing-joins) false (meta/table-metadata :venues)]
-                                                [(zero? num-existing-joins) false (:venues lib.tu/mock-cards)]
+                                                [(zero? num-existing-joins) false (:venues (lib.tu/mock-cards))]
                                                 [(zero? num-existing-joins) false nil]
                                                 (when-let [[first-join & more] (not-empty (lib/joins query))]
                                                   (cons [true true first-join]
@@ -1429,7 +1440,7 @@
 (deftest ^:parallel suggested-name-include-joins-test
   (testing "Include the names of joined tables in suggested query names (#24703)"
     (is (= "Venues + Categories"
-           (lib/suggested-name lib.tu/query-with-join)))))
+           (lib/suggested-name (lib.tu/query-with-join))))))
 
 (deftest ^:parallel suggested-join-conditions-with-position-test
   (testing "when editing the _i_th join, columns from that and later joins should not be suggested"

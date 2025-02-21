@@ -1,7 +1,9 @@
 import type { FormEvent } from "react";
 import { t } from "ttag";
 
+import type { DatePickerUnit } from "metabase/querying/filters/types";
 import {
+  Box,
   Button,
   Divider,
   Group,
@@ -11,7 +13,6 @@ import {
   Text,
 } from "metabase/ui";
 
-import type { DatePickerUnit } from "../../types";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import {
   formatDateRange,
@@ -20,7 +21,7 @@ import {
   setInterval,
 } from "../utils";
 
-import { PickerGrid } from "./DateOffsetIntervalPicker.styled";
+import S from "./DateOffsetIntervalPicker.module.css";
 import {
   getDirectionText,
   getOffsetInterval,
@@ -33,8 +34,8 @@ import {
 
 interface DateOffsetIntervalPickerProps {
   value: DateOffsetIntervalValue;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
-  isNew: boolean;
+  availableUnits: DatePickerUnit[];
+  submitButtonLabel: string;
   onChange: (value: DateIntervalValue) => void;
   onSubmit: () => void;
 }
@@ -42,7 +43,7 @@ interface DateOffsetIntervalPickerProps {
 export function DateOffsetIntervalPicker({
   value,
   availableUnits,
-  isNew,
+  submitButtonLabel,
   onChange,
   onSubmit,
 }: DateOffsetIntervalPickerProps) {
@@ -90,7 +91,7 @@ export function DateOffsetIntervalPicker({
 
   return (
     <form onSubmit={handleSubmit}>
-      <PickerGrid p="md">
+      <Box className={S.PickerGrid} p="md">
         <Text>{directionText}</Text>
         <NumberInput
           value={interval}
@@ -103,6 +104,10 @@ export function DateOffsetIntervalPicker({
           value={value.unit}
           aria-label={t`Unit`}
           onChange={handleUnitChange}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+          }}
         />
         <div />
         <Text>{t`Starting from`}</Text>
@@ -117,23 +122,27 @@ export function DateOffsetIntervalPicker({
           value={value.offsetUnit}
           aria-label={t`Starting from unit`}
           onChange={handleOffsetUnitChange}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+          }}
         />
         <Button
           c="text-medium"
           variant="subtle"
-          leftIcon={<Icon name="close" />}
+          leftSection={<Icon name="close" />}
           aria-label={t`Remove offset`}
           onClick={handleOffsetRemove}
         />
-      </PickerGrid>
+      </Box>
       <Divider />
-      <Group px="md" py="sm" spacing="sm" position="apart">
-        <Group c="text-medium" spacing="sm">
+      <Group px="md" py="sm" gap="sm" justify="space-between">
+        <Group c="text-medium" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
         <Button variant="filled" type="submit">
-          {isNew ? t`Add filter` : t`Update filter`}
+          {submitButtonLabel}
         </Button>
       </Group>
     </form>

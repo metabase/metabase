@@ -15,6 +15,10 @@ Timestamps and time zones are rather nasty to work with (it's easy to make mista
 
 For example, if you're tracking user logins over time, you probably won't run your business differently if some logins get counted on Mondays instead of Tuesdays. However, if you're using Metabase to do something precise, like your taxes, you (and the government) will probably care a lot more about the difference between transactions that occurred on Dec 31 vs. Jan 1.
 
+## Supported time zones
+
+Metabase supports [tz database time zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
+
 ## Parameters
 
 `column` can be any of:
@@ -87,12 +91,12 @@ For more gory details, see [Limitations](#limitations).
 ## Accepted data types
 
 | [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `convertTimezone` |
-| ------------------------------------------------------------------------------------------------ | ---------------------------- |
-| String                                                                                           | ❌                           |
-| Number                                                                                           | ❌                           |
-| Timestamp                                                                                        | ✅                           |
-| Boolean                                                                                          | ❌                           |
-| JSON                                                                                             | ❌                           |
+| ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------- |
+| String                                                                                                                         | ❌                           |
+| Number                                                                                                                         | ❌                           |
+| Timestamp                                                                                                                      | ✅                           |
+| Boolean                                                                                                                        | ❌                           |
+| JSON                                                                                                                           | ❌                           |
 
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase.
 
@@ -115,6 +119,7 @@ Note that the first part of the timestamp is in UTC (same thing as GMT). The tim
 `convertTimezone` is currently unavailable for the following databases:
 
 - Amazon Athena
+- Databricks
 - Druid
 - MongoDB
 - Presto
@@ -242,5 +247,5 @@ convertTimezone(convertTimezone([Source Time], "UTC"), "Canada/Eastern", "UTC")
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
-- [Time series analysis](https://www.metabase.com/learn/time-series/start)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
+- [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start)

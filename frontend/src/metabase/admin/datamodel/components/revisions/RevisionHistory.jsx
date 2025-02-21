@@ -5,7 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 
@@ -55,6 +55,7 @@ export default class RevisionHistory extends Component {
                   <Revision
                     key={revision.id}
                     revision={revision}
+                    tableId={segment.table_id}
                     objectName={segment.name}
                     currentUser={user}
                     userColor={userColorAssignments[revision.user.id]}

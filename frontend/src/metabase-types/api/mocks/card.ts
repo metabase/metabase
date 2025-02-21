@@ -16,6 +16,7 @@ import {
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
 } from "./query";
+import { createMockUser } from "./user";
 
 const MOCK_CARD_ENTITY_ID = createMockEntityId();
 export const createMockCard = (opts?: Partial<Card>): Card => ({
@@ -24,7 +25,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
   name: "Question",
-  description: null,
+  description: "",
   display: "table",
   public_uuid: null,
   dataset_query: createMockStructuredDatasetQuery(),
@@ -38,6 +39,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   collection: null,
   collection_id: null,
   collection_position: null,
+  dashboard: null,
   last_query_start: null,
   average_query_time: null,
   based_on_upload: null,
@@ -46,6 +48,8 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   embedding_params: null,
   initially_published_at: null,
   can_manage_db: true,
+  dashboard_id: null,
+  dashboard_count: null,
   ...opts,
 });
 
@@ -118,6 +122,7 @@ export const createMockModerationReview = (
   status: "verified",
   created_at: "2015-01-01T20:10:30.200",
   most_recent: true,
+  user: createMockUser({ id: 1 }),
   ...opts,
 });
 

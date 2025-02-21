@@ -41,7 +41,7 @@ Note: you won’t be able to add another saved question to multi-series visualiz
 
 ## Combining two saved questions
 
-If you already have two or more saved questions you’d like to compare, and they share a dimension, they can be combined onto a single dashboard card. You can even compare questions that pull data from different databases. Here’s how:
+If you already have two or more saved questions you’d like to compare, and they have the same first dimension, they can be combined onto a single dashboard card. You can even compare questions that pull data from different databases. Here’s how:
 
 1. Add a question with a dimension like time or category to a dashboard. In practice, these will usually be line charts or bar charts.
 
@@ -101,4 +101,4 @@ Now go forth and start letting your data get to know each other!
 
 ## Further reading
 
-- [Time series comparisons](https://www.metabase.com/learn/questions/time-series-comparisons)
+- [Time series comparisons](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/time-series-comparisons)

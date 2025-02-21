@@ -1,24 +1,30 @@
 import { merge } from "icepick";
+import _ from "underscore";
 
 import { DEFAULT_FONT } from "embedding-sdk/config";
-import type { MantineThemeOverride } from "metabase/ui";
-
 import type {
   MetabaseColor,
   MetabaseComponentTheme,
   MetabaseTheme,
-} from "../../types/theme";
-
-import { colorTuple } from "./color-tuple";
+} from "metabase/embedding-sdk/theme";
 import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
   DEFAULT_SDK_FONT_SIZE,
   getEmbeddingComponentOverrides,
-} from "./default-component-theme";
-import type { MappableSdkColor } from "./embedding-color-palette";
-import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
+} from "metabase/embedding-sdk/theme";
+import type { MappableSdkColor } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import type { MantineThemeOverride } from "metabase/ui";
+
+import { colorTuple } from "./color-tuple";
 
 const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE}px`;
+
+// Strip any key that has the value of "undefined"
+const stripUndefinedKeys = <T>(x: T): unknown =>
+  _.isObject(x)
+    ? _.pick(_.mapObject(x, stripUndefinedKeys), v => !_.isUndefined(v))
+    : x;
 
 /**
  * Transforms a public-facing Metabase theme configuration
@@ -30,7 +36,7 @@ export function getEmbeddingThemeOverride(
 ): MantineThemeOverride {
   const components: MetabaseComponentTheme = merge(
     DEFAULT_EMBEDDED_COMPONENT_THEME,
-    theme.components,
+    stripUndefinedKeys(theme.components),
   );
 
   const override: MantineThemeOverride = {
@@ -45,7 +51,7 @@ export function getEmbeddingThemeOverride(
       fontSize: theme.fontSize ?? SDK_BASE_FONT_SIZE,
     },
 
-    components: getEmbeddingComponentOverrides(theme.components),
+    components: getEmbeddingComponentOverrides(),
   };
 
   if (theme.colors) {
@@ -58,6 +64,15 @@ export function getEmbeddingThemeOverride(
       if (color && typeof color === "string") {
         const themeColorNames =
           SDK_TO_MAIN_APP_COLORS_MAPPING[name as MappableSdkColor];
+
+        // If the sdk color does not exist in the mapping, skip it.
+        if (!themeColorNames) {
+          console.warn(
+            `Color ${name} does not exist in the Embedding SDK. Please remove it from the theme configuration.`,
+          );
+
+          continue;
+        }
 
         for (const themeColorName of themeColorNames) {
           override.colors[themeColorName] = colorTuple(color);

@@ -4,7 +4,7 @@ import { PLUGIN_SELECTORS } from "metabase/plugins";
 import { VisualizationRunningState } from "./QueryVisualization";
 
 type SetupOpts = {
-  customMessage?: (isSlow: boolean) => string;
+  customMessage?: (isSlow?: boolean) => string;
 };
 
 function setup({ customMessage }: SetupOpts = {}) {
@@ -31,7 +31,7 @@ describe("VisualizationRunningState", () => {
   });
 
   it("should only render the custom loading message when it was customized", async () => {
-    const customMessage = (isSlow: boolean) =>
+    const customMessage = (isSlow?: boolean) =>
       isSlow ? `Custom message (slow)...` : `Custom message...`;
 
     setup({ customMessage });

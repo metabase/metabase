@@ -74,13 +74,6 @@ Default: `config.yml`
 
 This feature requires the `config-text-file` feature flag on your token.
 
-### `MB_CUSTOM_GEOJSON_ENABLED`
-
-Type: boolean<br>
-Default: `true`
-
-Whether or not the use of custom GeoJSON is enabled.
-
 ### `MB_DB_AUTOMIGRATE`
 
 Type: boolean<br>
@@ -170,6 +163,15 @@ Default: `null`
 
 Used during development of third-party drivers. Set the value to have that plugin manifest get loaded during startup. Specify multiple plugin manifests by comma-separating them.
 
+### `MB_DISABLE_SCHEDULER`
+
+Type: boolean<br>
+Default: `false`
+
+When `true`, Metabase will turn off Metabase’s scheduled jobs, which include syncs, fingerprinting, and scanning, as well as dashboard subscriptions, alerts, and model caching.
+
+Can be useful for testing, or when setting up a [git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/git-based-workflow).
+
 ### `MB_DISABLE_SESSION_THROTTLE`
 
 Type: boolean<br>
@@ -193,13 +195,6 @@ Default: `null`
 
 When `true`, this will enable `/api/testing` endpoint. **Warning:** This should never be enabled in production system.
 
-### `MB_ENABLE_XRAYS`
-
-Type: boolean<br>
-Default: `true`
-
-Allow users to explore data using X-rays.
-
 ### `MB_ENCRYPTION_SECRET_KEY`
 
 Type: string<br>
@@ -220,6 +215,18 @@ Metabase's query processor will normally kill connections when their queries tim
 This variable affects connections that are severed and undetected by Metabase (that is, in situations where Metabase never receives a connection closed signal and is treating an inactive connection as active). You may want to adjust this variable's value if your connection is unreliable or is a dynamic connections behind a SSH tunnel where the connection to the SSH tunnel host may stay active even after the connection from the SSH tunnel host to your database is severed.
 
 Unless set otherwise, the default production value for `metabase.query-processor.query-timeout-ms` is used which is 1,200,000 ms (i.e. 1,200 seconds or 20 minutes).
+
+### `MB_JDBC_DATA_WAREHOUSE_DEBUG_UNRETURNED_CONNECTION_STACK_TRACES`
+
+Type: boolean<br>
+Default: `false`<br>
+Since: v51.3
+
+If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
+
+In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
+
+To set a timeout for how long Metabase should wait before it kills unreturned connections, see [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
@@ -358,6 +365,13 @@ Default: True
 
 If you want to exclude the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
 
+### `MB_LOAD_SAMPLE_CONTENT`
+
+Type: Boolean<br>
+Default: True
+
+Whether to include the Sample Database in your Metabase. To exclude the Sample Database, set `MB_LOAD_SAMPLE_CONTENT=false`.
+
 ### `MB_NO_SURVEYS`
 
 Type: boolean<br>
@@ -448,29 +462,6 @@ Type: boolean<br>
 Default: `true`
 
 Send email notifications to users in Admin group, when a new SSO users is created on Metabase.
-
-### `MB_SESSION_COOKIE_SAMESITE`
-
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
-Type: string (`"none"`, `"lax"`, `"strict"`)<br>
-Default: `"lax"`
-
-See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
-
-Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
-
-Learn more about SameSite cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite
-
-### `MB_SESSION_COOKIES`
-
-Type: boolean<br>
-Default: `null`
-
-When set to `true`, the user login session will expire when the browser is closed. The user login session will always expire after the amount of time defined in [MAX_SESSION_AGE](#max_session_age) (by default 2 weeks).
-
-This overrides the "Remember me" checkbox when logging in.
-
-Also see the [Changing session expiration](../people-and-groups/changing-session-expiration.md) documentation page.
 
 ### `MB_SETUP_TOKEN`
 

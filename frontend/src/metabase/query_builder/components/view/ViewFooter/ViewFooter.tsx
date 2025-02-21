@@ -10,7 +10,7 @@ import {
 import { Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { ViewFooterRoot } from "../ViewFooter.styled";
+import ViewSection from "../ViewSection";
 
 import { CenterViewFooterButtonGroup } from "./CenterViewFooterButtonGroup";
 import { LeftViewFooterButtonGroup } from "./LeftViewFooterButtonGroup";
@@ -32,15 +32,16 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
     (result.error && !isEditable) || question.isArchived();
 
   return (
-    <ViewFooterRoot
+    <ViewSection
+      py="sm"
       className={cx(className, CS.textMedium, CS.borderTop, CS.fullWidth)}
       data-testid="view-footer"
     >
-      <Group position="apart" pos="relative" noWrap w="100%">
+      <Group justify="space-between" pos="relative" wrap="nowrap" w="100%">
         {!hideChartSettings && <LeftViewFooterButtonGroup />}
         {isVisualized && <CenterViewFooterButtonGroup />}
         <RightViewFooterButtonGroup />
       </Group>
-    </ViewFooterRoot>
+    </ViewSection>
   );
 };

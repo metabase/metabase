@@ -1,5 +1,13 @@
 import { isSafeUrl } from "metabase/lib/formatting/link";
 
+/**
+ * Reconstructs a URL from its parts while preserving parameter placeholders (e.g. {{param}}).
+ * Unlike URL.toString(), this won't encode special characters in the path.
+ */
+const reconstructUrl = (url: URL, path?: string) => {
+  return url.origin + (path ?? url.pathname) + url.search + url.hash;
+};
+
 const embedLinkTransformers: {
   test: (url: URL) => boolean;
   transform: (url: URL) => string;
@@ -7,9 +15,11 @@ const embedLinkTransformers: {
   {
     test: url => ["loom.com", "www.loom.com"].includes(url.hostname),
     transform: url => {
-      const newUrl = new URL(url);
-      newUrl.pathname = newUrl.pathname.replace("/share/", "/embed/");
-      return newUrl.toString();
+      const path = decodeURIComponent(url.pathname).replace(
+        "/share/",
+        "/embed/",
+      );
+      return reconstructUrl(url, path);
     },
   },
   {
@@ -20,7 +30,7 @@ const embedLinkTransformers: {
       let playlistId: string | null;
 
       if (url.hostname.includes("youtu.be")) {
-        videoId = url.pathname.split("/").pop() ?? null;
+        videoId = decodeURIComponent(url.pathname.split("/").pop() ?? "");
         playlistId = url.searchParams.get("list");
       } else {
         videoId = url.searchParams.get("v");
@@ -36,7 +46,7 @@ const embedLinkTransformers: {
       } else if (playlistId) {
         return `https://www.youtube.com/embed/videoseries?list=${playlistId}`;
       } else {
-        return url.toString();
+        return reconstructUrl(url);
       }
     },
   },
@@ -44,10 +54,10 @@ const embedLinkTransformers: {
     test: url =>
       ["vimeo.com", "www.vimeo.com", "player.vimeo.com"].includes(url.hostname),
     transform: url => {
-      const videoId = url.pathname.split("/").pop();
+      const videoId = decodeURIComponent(url.pathname.split("/").pop() ?? "");
       return videoId
         ? `https://player.vimeo.com/video/${videoId}`
-        : url.toString();
+        : reconstructUrl(url);
     },
   },
 ];
@@ -81,6 +91,34 @@ const parseUrlFromIframe = (iframeHtml: string) => {
   }
 
   return "";
+};
+
+const parseAllowedAttribuesFromIframe = (
+  iframeHtml: string,
+): AllowedIframeAttributes | null => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(iframeHtml, "text/html");
+  const iframeEl = doc.querySelector("iframe");
+  const src = iframeEl?.getAttribute("src");
+
+  if (!iframeEl || !src) {
+    return null;
+  }
+
+  const result: AllowedIframeAttributes = {};
+  result.src = src;
+
+  const allow = iframeEl.getAttribute("allow");
+  const allowFullscreen = iframeEl.getAttribute("allowfullscreen");
+
+  if (allow != null) {
+    result.allow = allow;
+  }
+  if (allowFullscreen != null) {
+    result.allowFullscreen = allowFullscreen;
+  }
+
+  return result;
 };
 
 const DEFAULT_PROTOCOL = "https://";
@@ -122,9 +160,15 @@ export const getIframeDomainName = (
   }
 };
 
-export const getIframeUrl = (
+export type AllowedIframeAttributes = {
+  src?: string;
+  allow?: string;
+  allowFullscreen?: string;
+};
+
+export const getAllowedIframeAttributes = (
   iframeOrUrl: string | undefined,
-): string | null => {
+): AllowedIframeAttributes | null => {
   if (!iframeOrUrl) {
     return null;
   }
@@ -132,12 +176,15 @@ export const getIframeUrl = (
   const trimmedInput = iframeOrUrl.trim();
 
   if (isIframeString(trimmedInput)) {
-    return parseUrlFromIframe(trimmedInput);
+    return parseAllowedAttribuesFromIframe(trimmedInput);
   }
 
   const normalizedUrl = normalizeUrl(trimmedInput);
   if (isSafeUrl(normalizedUrl)) {
-    return replaceSharingLinkWithEmbedLink(normalizedUrl);
+    const src = replaceSharingLinkWithEmbedLink(normalizedUrl);
+    if (src) {
+      return { src };
+    }
   }
 
   return null;

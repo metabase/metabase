@@ -1,23 +1,14 @@
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  assertIsEllipsified,
-  expectSearchResultContent,
-  getSearchBar,
-  isScrollableHorizontally,
-  main,
-  restore,
-  updateSetting,
-  visitFullAppEmbeddingUrl,
-} from "e2e/support/helpers";
 
 const { ORDERS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 const visitEmbeddingWithSearch = (url = "/") => {
-  visitFullAppEmbeddingUrl({
+  H.visitFullAppEmbeddingUrl({
     url: url,
     qs: {
       top_nav: true,
@@ -28,7 +19,7 @@ const visitEmbeddingWithSearch = (url = "/") => {
 
 describe("scenarios > search", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.intercept("GET", "/api/search?q=*").as("search");
     cy.signInAsAdmin();
   });
@@ -36,9 +27,9 @@ describe("scenarios > search", () => {
   describe("universal search", () => {
     it("should work for admin (metabase#20018)", () => {
       visitEmbeddingWithSearch("/");
-      getSearchBar().as("searchBox").clear().type("orders count").blur();
+      H.getSearchBar().as("searchBox").clear().type("orders count").blur();
 
-      expectSearchResultContent({
+      H.expectSearchResultContent({
         expectedSearchResults: [
           {
             name: /Orders, Count, Grouped by/i,
@@ -48,11 +39,11 @@ describe("scenarios > search", () => {
         strict: false,
       });
 
-      getSearchBar().clear().type("product").blur();
+      H.getSearchBar().clear().type("product").blur();
 
       cy.wait("@search");
 
-      expectSearchResultContent({
+      H.expectSearchResultContent({
         expectedSearchResults: [
           {
             name: "Products",
@@ -67,7 +58,7 @@ describe("scenarios > search", () => {
       cy.get("@searchBox").type("{enter}");
       cy.wait("@search");
 
-      expectSearchResultContent({
+      H.expectSearchResultContent({
         expectedSearchResults: [
           {
             name: "Products",
@@ -82,7 +73,7 @@ describe("scenarios > search", () => {
     it("should work for user with permissions (metabase#12332)", () => {
       cy.signInAsNormalUser();
       visitEmbeddingWithSearch("/");
-      getSearchBar().type("product{enter}");
+      H.getSearchBar().type("product{enter}");
       cy.wait("@search");
       cy.findByTestId("search-app").within(() => {
         cy.findByText("Products");
@@ -92,7 +83,7 @@ describe("scenarios > search", () => {
     it("should work for user without data permissions (metabase#16855)", () => {
       cy.signIn("nodata");
       visitEmbeddingWithSearch("/");
-      getSearchBar().type("product{enter}");
+      H.getSearchBar().type("product{enter}");
       cy.wait("@search");
       cy.findByTestId("search-app").within(() => {
         cy.findByText("Didn't find anything");
@@ -102,15 +93,18 @@ describe("scenarios > search", () => {
     it("allows to select a search result using keyboard", () => {
       cy.signInAsNormalUser();
       visitEmbeddingWithSearch("/");
-      getSearchBar().type("ord");
+      H.getSearchBar().type("ord");
 
       cy.wait("@search");
 
       cy.findByTestId("app-bar").findByDisplayValue("ord");
       cy.findAllByTestId("search-result-item-name")
         .first()
-        .should("have.text", "Orders");
+        .should("have.text", "Orders in a dashboard");
 
+      cy.realPress("ArrowDown");
+      cy.realPress("ArrowDown");
+      cy.realPress("ArrowDown");
       cy.realPress("ArrowDown");
       cy.realPress("Enter");
 
@@ -123,7 +117,7 @@ describe("scenarios > search", () => {
     });
 
     it("should render a preview of markdown descriptions", () => {
-      cy.createQuestion({
+      H.createQuestion({
         name: "Description Test",
         query: { "source-table": ORDERS_ID },
         description: `![alt](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg)
@@ -140,13 +134,13 @@ describe("scenarios > search", () => {
       }).then(() => {
         cy.signInAsNormalUser();
         visitEmbeddingWithSearch("/");
-        getSearchBar().type("Test");
+        H.getSearchBar().type("Test");
       });
 
       //Enseure that text is ellipsified
       cy.findByTestId("result-description")
         .findByText(/Lorem ipsum dolor sit amet./)
-        .then(el => assertIsEllipsified(el[0]));
+        .then(el => H.assertIsEllipsified(el[0]));
 
       //Ensure that images are not being rendered in the descriptions
       cy.findByTestId("result-description")
@@ -154,8 +148,8 @@ describe("scenarios > search", () => {
         .should("not.exist");
     });
 
-    it("should not overflow container if results contain descriptions with large unborken strings", () => {
-      cy.createQuestion({
+    it("should not overflow container if results contain descriptions with large unbroken strings", () => {
+      H.createQuestion({
         name: "Description Test",
         query: { "source-table": ORDERS_ID },
         description:
@@ -163,7 +157,7 @@ describe("scenarios > search", () => {
       }).then(() => {
         cy.signInAsNormalUser();
         visitEmbeddingWithSearch("/");
-        getSearchBar().type("Test");
+        H.getSearchBar().type("Test");
       });
 
       const resultDescription = cy.findByTestId("result-description");
@@ -186,16 +180,18 @@ describe("scenarios > search", () => {
       visitEmbeddingWithSearch(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
       // Type as soon as possible, before the dashboard has finished loading
-      getSearchBar().type("ord");
+      H.getSearchBar().type("ord");
 
       // Once the dashboard is visible, the search results should not be dismissed
-      main().findByRole("heading", { name: "Loading..." }).should("not.exist");
+      H.main()
+        .findByRole("heading", { name: "Loading..." })
+        .should("not.exist");
       cy.findByTestId("search-results-floating-container").should("exist");
     });
 
     it("should not dismiss when the homepage redirects to a dashboard (metabase#34226)", () => {
-      updateSetting("custom-homepage", true);
-      updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
+      H.updateSetting("custom-homepage", true);
+      H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
       cy.intercept(
         {
           url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
@@ -212,7 +208,7 @@ describe("scenarios > search", () => {
       visitEmbeddingWithSearch("/");
 
       // Type as soon as possible, before the dashboard has finished loading
-      getSearchBar().type("ord");
+      H.getSearchBar().type("ord");
 
       // Once the dashboard is visible, the search results should not be dismissed
       cy.findByTestId("dashboard-parameters-and-cards").should("exist");
@@ -227,7 +223,7 @@ describe("scenarios > search", () => {
 
       visitEmbeddingWithSearch("/");
 
-      getSearchBar().click().type("{enter}");
+      H.getSearchBar().click().type("{enter}");
 
       cy.wait("@getRecentViews");
 
@@ -240,7 +236,7 @@ describe("scenarios > search", () => {
     it("should render full page search when search text is present and user clicks 'Enter'", () => {
       visitEmbeddingWithSearch("/");
 
-      getSearchBar().click().type("orders{enter}");
+      H.getSearchBar().click().type("orders{enter}");
       cy.wait("@search");
 
       cy.findByTestId("search-app").within(() => {
@@ -257,7 +253,7 @@ describe("scenarios > search", () => {
 
 describe.skip("issue 16785", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.request("PUT", "/api/table", {
@@ -280,7 +276,7 @@ describe("issue 28788", () => {
   const LONG_STRING = "01234567890ABCDEFGHIJKLMNOPQRSTUVXYZ0123456789";
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("GET", "/api/search*").as("search");
   });
@@ -295,22 +291,25 @@ describe("issue 28788", () => {
       },
     };
 
-    cy.createCollection({
+    H.createCollection({
       name: `Collection-${LONG_STRING}`,
     }).then(({ body: collection }) => {
-      cy.createQuestion({
+      H.createQuestion({
         ...questionDetails,
         collection_id: collection.id,
       });
     });
 
-    visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: true, search: true } });
+    H.visitFullAppEmbeddingUrl({
+      url: "/",
+      qs: { top_nav: true, search: true },
+    });
     cy.findByPlaceholderText("Search…").type(questionDetails.name);
     cy.wait("@search");
     cy.icon("hourglass").should("not.exist");
 
     cy.findByTestId("search-bar-results-container").then($container => {
-      expect(isScrollableHorizontally($container[0])).to.be.false;
+      expect(H.isScrollableHorizontally($container[0])).to.be.false;
     });
   });
 });

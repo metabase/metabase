@@ -1,8 +1,8 @@
 (ns metabase.driver.athena.hive-parser
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
-   [clojure.walk :as walk]))
+   [clojure.walk :as walk]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -58,5 +58,5 @@
   [schema]
   (-> schema
       parse-to-json-string
-      json/parse-string
+      json/decode
       walk/keywordize-keys))

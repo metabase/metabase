@@ -7,22 +7,24 @@
    [humane-are.core :as humane-are]
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [mb.hawk.init]
-   [mb.hawk.parallel]
    [metabase.actions.test-util :as actions.test-util]
+   [metabase.channel.email-test]
    [metabase.config :as config]
+   [metabase.core.init]
    [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.email-test :as et]
    [metabase.http-client :as client]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.model-persistence.test-util]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.data :as data]
    [metabase.test.data.datasets :as datasets]
@@ -31,22 +33,20 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
-   [metabase.test.persistence :as test.persistence]
    [metabase.test.redefs :as test.redefs]
    [metabase.test.util :as tu]
    [metabase.test.util.async :as tu.async]
-   [metabase.test.util.dynamic-redefs :as tu.dr]
+   [metabase.test.util.dynamic-redefs]
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
-   [metabase.test.util.public-settings :as tu.public-setings]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.log.capture]
    [metabase.util.random :as u.random]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -65,14 +65,17 @@
   data/keep-me
   datasets/keep-me
   driver/keep-me
-  et/keep-me
   i18n.tu/keep-me
   initialize/keep-me
   lib.metadata.jvm/keep-me
   mb.hawk.init/keep-me
-  mb.hawk.parallel/keep-me
+  mdb.test-util/keep-me
+  metabase.channel.email-test/keep-me
+  metabase.core.init/keep-me
+  metabase.model-persistence.test-util/keep-me
+  metabase.request.core/keep-me
+  metabase.test.util.dynamic-redefs/keep-me
   metabase.util.log.capture/keep-me
-  mw.session/keep-me
   perms.test-util/keep-me
   qp.store/keep-me
   qp.test-util/keep-me
@@ -80,25 +83,22 @@
   schema-migrations-test.impl/keep-me
   sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
-  t2.with-temp/keepme
   test-runner.assert-exprs/keep-me
-  test.persistence/keep-me
   test.redefs/keep-me
   test.tz/keep-me
   test.users/keep-me
+  toucan2.tools.with-temp/keep-me
   tu.async/keep-me
   tu.log/keep-me
   tu.misc/keep-me
-  tu.public-setings/keep-me
   tu.thread-local/keep-me
   tu/keep-me
   tx.env/keep-me
   tx/keep-me
-  mdb.test-util/keep-me
   u.random/keep-me)
 
 ;; Add more stuff here as needed
-#_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
+#_{:clj-kondo/ignore [:discouraged-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -117,6 +117,7 @@
   format-name
   id
   mbql-query
+  metadata-provider
   native-query
   query
   run-mbql-query
@@ -134,7 +135,7 @@
  [driver
   with-driver]
 
- [et
+ [metabase.channel.email-test
   email-to
   fake-inbox-email-fn
   inbox
@@ -167,12 +168,24 @@
  [metabase.util.log.capture
   with-log-messages-for-level]
 
- [mw.session
-  with-current-user
-  as-admin]
-
  [mdb.test-util
   with-app-db-timezone-id!]
+
+ [metabase.model-persistence.test-util
+  with-persistence-enabled!]
+
+ [metabase.request.core
+  as-admin
+  with-current-user]
+
+ [metabase.test.util.dynamic-redefs
+  dynamic-value
+  with-dynamic-fn-redefs]
+
+ [premium-features.test-util
+  with-premium-features
+  with-additional-premium-features
+  assert-has-premium-feature-error]
 
  [perms.test-util
   with-restored-data-perms!
@@ -217,9 +230,6 @@
  [test-runner.assert-exprs
   derecordize]
 
- [test.persistence
-  with-persistence-enabled!]
-
  [test.users
   fetch-user
   test-user?
@@ -232,7 +242,7 @@
   with-group-for-user
   with-test-user]
 
- [t2.with-temp
+ [toucan2.tools.with-temp
   with-temp
   with-temp-defaults]
 
@@ -243,9 +253,11 @@
   discard-setting-changes
   doall-recursive
   file->bytes
-  is-uuid-string?
+  file-path->bytes
+  bytes->base64-data-uri
   latest-audit-log-entry
   let-url
+  metric-value
   obj->json->obj
   ordered-subset?
   postwalk-pred
@@ -267,6 +279,7 @@
   with-non-admin-groups-no-collection-perms
   with-all-users-data-perms-graph!
   with-anaphora
+  with-prometheus-system!
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file
@@ -291,11 +304,6 @@
   object-defaults
   with-clock
   with-single-admin-user]
-
- [tu.public-setings
-  with-premium-features
-  with-additional-premium-features
-  assert-has-premium-feature-error]
 
  [u.random
   random-name
@@ -330,11 +338,7 @@
   with-test-drivers]
 
  [schema-migrations-test.impl
-  with-temp-empty-app-db]
-
- [tu.dr
-  dynamic-value
-  with-dynamic-redefs])
+  with-temp-empty-app-db])
 
 ;; Rename this instead of using `import-vars` to make it clear that it's related to `=?`
 (p/import-fn hawk.approx/malli malli=?)

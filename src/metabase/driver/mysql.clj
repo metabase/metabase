@@ -58,6 +58,8 @@
                               ;; server and the columns themselves. Since this isn't something we can really change in
                               ;; the query itself don't present the option to the users in the UI
                               :case-sensitivity-string-filter-options false
+                              :describe-fields                        true
+                              :describe-fks                           true
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :full-join                              false
@@ -265,7 +267,7 @@
   [:length [:cast json-field-identifier :char]])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
-  [:from_unixtime expr])
+  (h2x/with-database-type-info [:from_unixtime expr] "datetime"))
 
 (defmethod sql.qp/cast-temporal-string [:mysql :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]
@@ -273,7 +275,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:mysql :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  [:convert expr [:raw "DATETIME"]])
+  (h2x/with-database-type-info [:convert expr [:raw "DATETIME"]] "datetime"))
 
 (defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
@@ -380,18 +382,6 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str (h2x/->datetime expr))))
 
-(defn- ->date [expr]
-  (if (h2x/is-of-type? expr "date")
-    expr
-    (-> [:date expr]
-        (h2x/with-database-type-info "date"))))
-
-(defn make-date
-  "Create and return a date based on  a year and a number of days value."
-  [year-expr number-of-days]
-  (-> [:makedate year-expr (sql.qp/inline-num number-of-days)]
-      (h2x/with-database-type-info "date")))
-
 (defmethod sql.qp/date [:mysql :minute]
   [_driver _unit expr]
   (let [format-str (if (= (h2x/database-type expr) "time")
@@ -409,43 +399,63 @@
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:mysql :minute-of-hour]  [_ _ expr] (h2x/minute expr))
 (defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (h2x/hour expr))
-(defmethod sql.qp/date [:mysql :day]             [_ _ expr] (->date expr))
 (defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] [:dayofmonth expr])
 (defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] [:dayofyear expr])
 (defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (h2x/month expr))
 (defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (h2x/quarter expr))
-(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (make-date (h2x/year expr) 1))
 
 (defmethod sql.qp/date [:mysql :day-of-week]
   [driver _unit expr]
   (sql.qp/adjust-day-of-week driver [:dayofweek expr]))
 
+(defn- temporal-cast [type expr]
+  ;; mysql does not allow casting to timestamp
+  (if (= "timestamp" (u/lower-case-en type))
+    (h2x/maybe-cast "datetime" expr)
+    (h2x/maybe-cast type expr)))
+
+(defmethod sql.qp/date [:mysql :day]
+  [_ _ expr]
+  (if (h2x/is-of-type? expr "date")
+    expr
+    (->> (h2x/with-database-type-info [:date expr] "date")
+         (temporal-cast (h2x/database-type expr)))))
+
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week
-(defmethod sql.qp/date [:mysql :week] [_ _ expr]
+(defmethod sql.qp/date [:mysql :week]
+  [_ _ expr]
   (let [extract-week-fn (fn [expr]
                           (str-to-date "%X%V %W"
                                        (h2x/concat [:yearweek expr]
                                                    (h2x/literal " Sunday"))))]
-    (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)))
+    (->> (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)
+         (temporal-cast (h2x/database-type expr)))))
 
 (defmethod sql.qp/date [:mysql :week-of-year-iso] [_ _ expr] (h2x/week expr 3))
 
-(defmethod sql.qp/date [:mysql :month] [_ _ expr]
-  (str-to-date "%Y-%m-%d"
-               (h2x/concat (date-format "%Y-%m" expr)
-                           (h2x/literal "-01"))))
+(defmethod sql.qp/date [:mysql :month]
+  [_ _ expr]
+  (->> (str-to-date "%Y-%m-%d" (h2x/concat (date-format "%Y-%m" expr) (h2x/literal "-01")))
+       (temporal-cast (h2x/database-type expr))))
 
 ;; Truncating to a quarter is trickier since there aren't any format strings.
 ;; See the explanation in the H2 driver, which does the same thing but with slightly different syntax.
-(defmethod sql.qp/date [:mysql :quarter] [_ _ expr]
-  (str-to-date "%Y-%m-%d"
-               (h2x/concat (h2x/year expr)
-                           (h2x/literal "-")
-                           (h2x/- (h2x/* (h2x/quarter expr)
-                                         3)
-                                  2)
-                           (h2x/literal "-01"))))
+(defmethod sql.qp/date [:mysql :quarter]
+  [_ _ expr]
+  (->> (str-to-date "%Y-%m-%d"
+                    (h2x/concat (h2x/year expr)
+                                (h2x/literal "-")
+                                (h2x/- (h2x/* (h2x/quarter expr)
+                                              3)
+                                       2)
+                                (h2x/literal "-01")))
+       (temporal-cast (h2x/database-type expr))))
+
+(defmethod sql.qp/date [:mysql :year]
+  [_ _ expr]
+  (->> (h2x/with-database-type-info [:makedate (h2x/year expr) (sql.qp/inline-num 1)] "date")
+       (temporal-cast (h2x/database-type expr))))
 
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
@@ -917,3 +927,57 @@
                   (when-let [privileges (not-empty (set/union all-table-privileges (get table-privileges table-name)))]
                     [table-name privileges])))
           table-names)))
+
+;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
+;; name, but coerces boolean fields since mysql returns them as 0/1 integers
+(defmethod driver/describe-fields :mysql
+  [driver database & args]
+  (eduction
+   (map (fn [col]
+          (-> col
+              (update :pk? pos?)
+              (update :database-required pos?)
+              (update :database-is-auto-increment pos?))))
+   (apply (get-method driver/describe-fields :sql-jdbc) driver database args)))
+
+(defmethod sql-jdbc.sync/describe-fields-sql :mysql
+  [driver & {:keys [table-names details]}]
+  (sql/format {:select [[:c.column_name :name]
+                        [[:- :c.ordinal_position 1] :database-position]
+                        [nil :table-schema]
+                        [:c.table_name :table-name]
+                        (if (some-> details :additional-options (str/includes? "tinyInt1isBit=false"))
+                          [[:upper :c.data_type] :database-type]
+                          [[:if [:= :column_type [:inline "tinyint(1)"]] [:inline "BIT"] [:upper :c.data_type]] :database-type])
+                        [[:= :c.extra [:inline "auto_increment"]] :database-is-auto-increment]
+                        [[:and
+                          [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
+                          [:= :is_nullable [:inline "NO"]]
+                          [:not [:= :c.extra [:inline "auto_increment"]]]]
+                         :database-required]
+                        [[:= :c.column_key [:inline "PRI"]] :pk?]
+                        [[:nullif :c.column_comment [:inline ""]] :field-comment]]
+               :from [[:information_schema.columns :c]]
+               :where
+               [:and [:raw "c.table_schema not in ('information_schema','performance_schema','sys','mysql')"]
+                [:raw "c.table_name not in ('innodb_table_stats', 'innodb_index_stats')"]
+                (when-let [db-name ((some-fn :db :dbname) details)]
+                  [:= :c.table_schema db-name])
+                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]}
+              :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc.sync/describe-fks-sql :mysql
+  [driver & {:keys [table-names]}]
+  (sql/format {:select [[nil :pk-table-schema]
+                        [:a.referenced_table_name :pk-table-name]
+                        [:a.referenced_column_name :pk-column-name]
+                        [nil :fk-table-schema]
+                        [:a.table_name :fk-table-name]
+                        [:a.column_name :fk-column-name]]
+               :from [[:information_schema.key_column_usage :a]]
+               :join [[:information_schema.table_constraints :b] [:using :constraint_schema :constraint_name :table_name]]
+               :where [:and [:= :b.constraint_type [:inline "FOREIGN KEY"]]
+                       [:!= :a.referenced_table_schema nil]
+                       (when (seq table-names) [:in :a.table_name table-names])]
+               :order-by [:a.table_name]}
+              :dialect (sql.qp/quote-style driver)))

@@ -1,7 +1,7 @@
 (ns metabase.lib.metadata.jvm-test
+  #_{:clj-kondo/ignore [:discouraged-namespace]}
   (:require
    [clojure.test :refer :all]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
@@ -12,16 +12,15 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.models.table :as table]
    [metabase.test :as mt]
    [metabase.util :as u]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel fetch-field-test
   (let [field (t2/select-one :metadata/column (mt/id :categories :id))]
-    (is (not (me/humanize (mc/validate ::lib.schema.metadata/column field))))))
+    (is (not (me/humanize (mr/explain ::lib.schema.metadata/column field))))))
 
 (deftest ^:parallel fetch-database-test
   (is (=? {:lib/type :metadata/database, :features set?}
@@ -30,15 +29,11 @@
     (is (nil? (lib.metadata.protocols/database (lib.metadata.jvm/application-database-metadata-provider Integer/MAX_VALUE))))))
 
 (deftest ^:parallel saved-question-metadata-test
-  (let [query  {:database (mt/id)
-                :type     :query
-                :query    {:source-table (mt/id :venues)
-                           :joins        [{:fields       :all
-                                           :source-table (mt/id :categories)
-                                           :condition    [:=
-                                                          [:field (mt/id :venues :category_id) nil]
-                                                          [:field (mt/id :categories :id) {:join-alias "Cat"}]]
-                                           :alias        "Cat"}]}}
+  (let [query  (mt/mbql-query venues
+                 {:joins [{:fields       :all
+                           :source-table $$categories
+                           :condition    [:= $category_id &Cat.categories.id]
+                           :alias        "Cat"}]})
         query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id)) query)]
     (is (=? [{:lib/desired-column-alias "ID"}
              {:lib/desired-column-alias "NAME"}
@@ -99,13 +94,14 @@
 
 (deftest ^:synchronized with-temp-source-question-metadata-test
   (binding [lib.card/*force-broken-card-refs* false]
-    (t2.with-temp/with-temp [:model/Card card {:dataset_query
-                                               (mt/mbql-query venues
-                                                 {:joins
-                                                  [{:source-table $$categories
-                                                    :condition    [:= $category_id &c.categories.id]
-                                                    :fields       :all
-                                                    :alias        "c"}]})}]
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (mt/with-temp [:model/Card card {:dataset_query
+                                     (mt/mbql-query venues
+                                       {:joins
+                                        [{:source-table $$categories
+                                          :condition    [:= $category_id &c.categories.id]
+                                          :fields       :all
+                                          :alias        "c"}]})}]
       (let [query      {:database (mt/id)
                         :type     :query
                         :query    {:source-card (u/the-id card)}}
@@ -186,10 +182,11 @@
              (mt/id :venues :id))))))
 
 (deftest ^:synchronized persisted-info-metadata-test
-  (t2.with-temp/with-temp [:model/Card          {card-id :id} {:dataset_query {:database (mt/id)
-                                                                               :type     :query
-                                                                               :query    {:source-table (mt/id :venues)}}}
-                           :model/PersistedInfo {}            {:card_id card-id, :database_id (mt/id)}]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (mt/with-temp [:model/Card          {card-id :id} {:dataset_query {:database (mt/id)
+                                                                     :type     :query
+                                                                     :query    {:source-table (mt/id :venues)}}}
+                 :model/PersistedInfo {}            {:card_id card-id, :database_id (mt/id)}]
     (is (=? {:lib/type           :metadata/card
              :id                 card-id
              :lib/persisted-info {:active     true
@@ -216,3 +213,27 @@
       (testing "2nd call, card shoudld should be cached by now, but invocation still keeping track of ids"
         (is (some? (lib.metadata/field mp (mt/id :orders :id))))
         (is (= [(mt/id :orders :id) (mt/id :orders :id)] (lib.metadata/invoked-ids mp :metadata/column)))))))
+
+(deftest ^:parallel tables-present-test
+  (testing "`tables` function returns visible tables (the call includes app db call)"
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          display-names ["Checkins" "Categories" "Orders" "People" "Products" "Reviews" "Users" "Venues"]
+          metadata-fns (for [expected-display-name display-names]
+                         (fn [{:keys [id display-name active visibility-type] :as _metadata}]
+                           (and (= display-name expected-display-name)
+                                (true? active)
+                                (nil? visibility-type)
+                                (pos-int? id))))
+          result (lib.metadata/tables mp)]
+      (is (every? #(some % result) metadata-fns)))))
+
+(deftest ^:synchronized tables-not-present-test
+  (testing "Non-visible tables are not returned from `tables` function (includes app db call)"
+    (doseq [visibility-type table/visibility-types]
+      (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type visibility-type}
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+          (testing visibility-type
+            (is (not-any? (fn [{:keys [display-name] :as metadata}]
+                            (when (= "Orders" display-name)
+                              metadata))
+                          (lib.metadata/tables mp)))))))))

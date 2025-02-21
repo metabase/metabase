@@ -1,22 +1,8 @@
 import _ from "underscore";
 
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createQuestion,
-  describeWithSnowplow,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  getNotebookStep,
-  openNotebook,
-  popover,
-  queryBuilderMain,
-  resetSnowplow,
-  restore,
-  rightSidebar,
-  tableHeaderClick,
-  visualize,
-} from "e2e/support/helpers";
 import type { FieldReference, StructuredQuery } from "metabase-types/api";
 
 const { PRODUCTS_ID, PRODUCTS, ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -198,32 +184,32 @@ const CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE = [
 
 // TODO: reenable test when we reenable the "Compare to the past" components.
 describe.skip("scenarios > question", () => {
-  describeWithSnowplow("column compare", () => {
+  H.describeWithSnowplow("column compare", () => {
     beforeEach(() => {
-      restore();
-      resetSnowplow();
+      H.restore();
+      H.resetSnowplow();
       cy.signInAsAdmin();
     });
 
     afterEach(() => {
-      expectNoBadSnowplowEvents();
+      H.expectNoBadSnowplowEvents();
     });
 
     describe("no aggregations", () => {
       it("does not show column compare shortcut", () => {
-        createQuestion(
+        H.createQuestion(
           { query: QUERY_NO_AGGREGATION },
           { visitQuestion: true, wrapId: true, idAlias: "questionId" },
         );
 
         cy.log("chill mode - summarize sidebar");
-        cy.button("Summarize").click();
-        rightSidebar().button("Count").icon("close").click();
-        rightSidebar().button("Add aggregation").click();
+        cy.button(/Summarize/).click();
+        H.rightSidebar().button("Count").icon("close").click();
+        H.rightSidebar().button("Add aggregation").click();
         verifyNoColumnCompareShortcut();
 
         cy.log("chill mode - column drill");
-        tableHeaderClick("Title");
+        H.tableHeaderClick("Title");
         verifyNoColumnCompareShortcut();
 
         cy.log("chill mode - plus button");
@@ -231,8 +217,8 @@ describe.skip("scenarios > question", () => {
         verifyNoColumnCompareShortcut();
 
         cy.log("notebook editor");
-        openNotebook();
-        cy.button("Summarize").click();
+        H.openNotebook();
+        cy.button(/Summarize/).click();
         verifyNoColumnCompareShortcut();
       });
     });
@@ -245,19 +231,19 @@ describe.skip("scenarios > question", () => {
       });
 
       it("no breakout", () => {
-        createQuestion(
+        H.createQuestion(
           { query: QUERY_NO_AGGREGATION },
           { visitQuestion: true, wrapId: true, idAlias: "questionId" },
         );
 
         cy.log("chill mode - summarize sidebar");
-        cy.button("Summarize").click();
-        rightSidebar().button("Count").icon("close").click();
-        rightSidebar().button("Add aggregation").click();
+        cy.button(/Summarize/).click();
+        H.rightSidebar().button("Count").icon("close").click();
+        H.rightSidebar().button("Add aggregation").click();
         verifyNoColumnCompareShortcut();
 
         cy.log("chill mode - column drill");
-        tableHeaderClick("Title");
+        H.tableHeaderClick("Title");
         verifyNoColumnCompareShortcut();
 
         cy.log("chill mode - plus button");
@@ -265,25 +251,25 @@ describe.skip("scenarios > question", () => {
         verifyNoColumnCompareShortcut();
 
         cy.log("notebook editor");
-        openNotebook();
+        H.openNotebook();
         cy.button("Summarize").click();
         verifyNoColumnCompareShortcut();
       });
 
       it("one breakout", () => {
-        createQuestion(
+        H.createQuestion(
           { query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT },
           { visitQuestion: true, wrapId: true, idAlias: "questionId" },
         );
 
         cy.log("chill mode - summarize sidebar");
-        cy.button("Summarize").click();
-        rightSidebar().button("Count").icon("close").click();
-        rightSidebar().button("Add aggregation").click();
+        cy.button(/Summarize/).click();
+        H.rightSidebar().button("Count").icon("close").click();
+        H.rightSidebar().button("Add aggregation").click();
         verifyNoColumnCompareShortcut();
 
         cy.log("chill mode - column drill");
-        tableHeaderClick("Category");
+        H.tableHeaderClick("Category");
         verifyNoColumnCompareShortcut();
 
         cy.log("chill mode - plus button");
@@ -291,7 +277,7 @@ describe.skip("scenarios > question", () => {
         verifyNoColumnCompareShortcut();
 
         cy.log("notebook editor");
-        openNotebook();
+        H.openNotebook();
         cy.button("Summarize").click();
         verifyNoColumnCompareShortcut();
       });
@@ -299,19 +285,20 @@ describe.skip("scenarios > question", () => {
 
     describe("offset", () => {
       it("should be possible to change the temporal bucket through a preset", () => {
-        createQuestion(
+        H.createQuestion(
           { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
           { visitQuestion: true, wrapId: true, idAlias: "questionId" },
         );
 
-        openNotebook();
-        getNotebookStep("summarize")
+        H.openNotebook();
+        // eslint-disable-next-line no-unsafe-element-filtering
+        H.getNotebookStep("summarize")
           .findAllByTestId("aggregate-step")
           .last()
           .icon("add")
           .click();
 
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findByText("Basic functions").click();
           cy.findByText("Compare to the past").click();
 
@@ -337,19 +324,20 @@ describe.skip("scenarios > question", () => {
       });
 
       it("should be possible to change the temporal bucket with a custom offset", () => {
-        createQuestion(
+        H.createQuestion(
           { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
           { visitQuestion: true, wrapId: true, idAlias: "questionId" },
         );
 
-        openNotebook();
-        getNotebookStep("summarize")
+        H.openNotebook();
+        // eslint-disable-next-line no-unsafe-element-filtering
+        H.getNotebookStep("summarize")
           .findAllByTestId("aggregate-step")
           .last()
           .icon("add")
           .click();
 
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findByText("Basic functions").click();
           cy.findByText("Compare to the past").click();
 
@@ -359,9 +347,10 @@ describe.skip("scenarios > question", () => {
           cy.findByLabelText("Unit").click();
         });
 
-        popover().last().findByText("Weeks").click();
+        // eslint-disable-next-line no-unsafe-element-filtering
+        H.popover().last().findByText("Weeks").click();
 
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findByText("Done").click();
         });
 
@@ -384,7 +373,7 @@ describe.skip("scenarios > question", () => {
 
       describe("single aggregation", () => {
         it("no breakout", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -402,10 +391,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -435,7 +424,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on binned datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -449,7 +438,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Created At: Month");
+          H.tableHeaderClick("Created At: Month");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(info);
@@ -457,10 +446,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -495,7 +484,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on non-binned datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_SINGLE_AGGREGATION_NON_BINNED_DATETIME_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -509,7 +498,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Created At: Day");
+          H.tableHeaderClick("Created At: Day");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(info);
@@ -517,10 +506,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -551,7 +540,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on non-datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -565,28 +554,28 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Category");
+          H.tableHeaderClick("Category");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(info);
           verifyPlusButtonText(info);
 
-          openNotebook();
+          H.openNotebook();
 
           cy.button("Summarize").click();
           verifyNoColumnCompareShortcut();
           cy.realPress("Escape");
 
-          cy.button("Show Visualization").click();
-          queryBuilderMain().findByText("42").should("be.visible");
+          cy.button(/Visualization/).click();
+          H.queryBuilderMain().findByText("42").should("be.visible");
 
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -622,7 +611,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on temporal column which is an expression", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_TEMPORAL_EXPRESSION_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -636,7 +625,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Created At plus one month: Month");
+          H.tableHeaderClick("Created At plus one month: Month");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(info);
@@ -644,10 +633,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -683,7 +672,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("multiple breakouts", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_MULTIPLE_BREAKOUTS },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -700,10 +689,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -740,7 +729,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("multiple temporal breakouts", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_MULTIPLE_TEMPORAL_BREAKOUTS },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -757,10 +746,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -798,7 +787,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("one breakout on non-default datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_SINGLE_AGGREGATION_OTHER_DATETIME },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -812,7 +801,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Count");
+          H.tableHeaderClick("Count");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(info);
@@ -820,10 +809,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -864,7 +853,7 @@ describe.skip("scenarios > question", () => {
 
       describe("multiple aggregations", () => {
         it("no breakout", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -883,10 +872,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -915,7 +904,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on binned datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_MULTIPLE_AGGREGATIONS_BINNED_DATETIME_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -930,7 +919,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Created At: Month");
+          H.tableHeaderClick("Created At: Month");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(_.omit(info, "step1Title"));
@@ -938,10 +927,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -972,7 +961,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on non-binned datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_MULTIPLE_AGGREGATIONS_NON_BINNED_DATETIME_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -987,7 +976,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Created At: Day");
+          H.tableHeaderClick("Created At: Day");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(_.omit(info, "step1Title"));
@@ -995,10 +984,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -1029,7 +1018,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on non-datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -1044,7 +1033,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Category");
+          H.tableHeaderClick("Category");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(_.omit(info, "step1Title"));
@@ -1052,10 +1041,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
               database_id: SAMPLE_DB_ID,
@@ -1089,19 +1078,20 @@ describe.skip("scenarios > question", () => {
 
     describe("moving average", () => {
       it("should be possible to change the temporal bucket with a custom offset", () => {
-        createQuestion(
+        H.createQuestion(
           { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
           { visitQuestion: true, wrapId: true, idAlias: "questionId" },
         );
 
-        openNotebook();
-        getNotebookStep("summarize")
+        H.openNotebook();
+        // eslint-disable-next-line no-unsafe-element-filtering
+        H.getNotebookStep("summarize")
           .findAllByTestId("aggregate-step")
           .last()
           .icon("add")
           .click();
 
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findByText("Basic functions").click();
           cy.findByText("Compare to the past").click();
 
@@ -1111,9 +1101,10 @@ describe.skip("scenarios > question", () => {
           cy.findByLabelText("Unit").click();
         });
 
-        popover().last().findByText("Week").click();
+        // eslint-disable-next-line no-unsafe-element-filtering
+        H.popover().last().findByText("Week").click();
 
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findByText("Done").click();
         });
 
@@ -1138,7 +1129,7 @@ describe.skip("scenarios > question", () => {
 
       describe("single aggregation", () => {
         it("no breakout", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -1156,10 +1147,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1196,7 +1187,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on binned datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -1210,7 +1201,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Created At: Month");
+          H.tableHeaderClick("Created At: Month");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(info);
@@ -1218,10 +1209,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1258,7 +1249,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on non-binned datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_SINGLE_AGGREGATION_NON_BINNED_DATETIME_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -1272,7 +1263,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Created At: Day");
+          H.tableHeaderClick("Created At: Day");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(info);
@@ -1280,10 +1271,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1319,7 +1310,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on non-datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -1333,28 +1324,28 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Category");
+          H.tableHeaderClick("Category");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(info);
           verifyPlusButtonText(info);
 
-          openNotebook();
+          H.openNotebook();
 
-          cy.button("Summarize").click();
+          cy.button(/Summarize/).click();
           verifyNoColumnCompareShortcut();
           cy.realPress("Escape");
 
-          cy.button("Show Visualization").click();
-          queryBuilderMain().findByText("42").should("be.visible");
+          cy.button(/Visualization/).click();
+          H.queryBuilderMain().findByText("42").should("be.visible");
 
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1391,7 +1382,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("multiple breakouts", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_MULTIPLE_BREAKOUTS },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -1408,10 +1399,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1449,7 +1440,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("multiple temporal breakouts", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_MULTIPLE_TEMPORAL_BREAKOUTS },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -1466,10 +1457,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1507,7 +1498,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("one breakout on non-default datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_SINGLE_AGGREGATION_OTHER_DATETIME },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -1521,7 +1512,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Count");
+          H.tableHeaderClick("Count");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(info);
@@ -1529,10 +1520,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1574,7 +1565,7 @@ describe.skip("scenarios > question", () => {
 
       describe("multiple aggregations", () => {
         it("no breakout", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -1593,10 +1584,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1632,7 +1623,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on binned datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_MULTIPLE_AGGREGATIONS_BINNED_DATETIME_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -1647,7 +1638,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Created At: Month");
+          H.tableHeaderClick("Created At: Month");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(_.omit(info, "step1Title"));
@@ -1655,10 +1646,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1690,7 +1681,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on non-binned datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_MULTIPLE_AGGREGATIONS_NON_BINNED_DATETIME_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -1705,7 +1696,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Created At: Day");
+          H.tableHeaderClick("Created At: Day");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(_.omit(info, "step1Title"));
@@ -1713,10 +1704,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1748,7 +1739,7 @@ describe.skip("scenarios > question", () => {
         });
 
         it("breakout on non-datetime column", () => {
-          createQuestion(
+          H.createQuestion(
             { query: QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT },
             { visitQuestion: true, wrapId: true, idAlias: "questionId" },
           );
@@ -1764,7 +1755,7 @@ describe.skip("scenarios > question", () => {
 
           verifySummarizeText(info);
 
-          tableHeaderClick("Category");
+          H.tableHeaderClick("Category");
           verifyNoColumnCompareShortcut();
 
           verifyColumnDrillText(_.omit(info, "step1Title"));
@@ -1772,10 +1763,10 @@ describe.skip("scenarios > question", () => {
           verifyNotebookText(info);
 
           toggleColumnPickerItems(["Value difference"]);
-          popover().button("Done").click();
+          H.popover().button("Done").click();
 
           cy.get("@questionId").then(questionId => {
-            expectGoodSnowplowEvent({
+            H.expectGoodSnowplowEvent({
               event: "column_compare_via_shortcut",
               custom_expressions_used: CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE,
               database_id: SAMPLE_DB_ID,
@@ -1821,7 +1812,7 @@ function toggleColumnPickerItems(names: string[]) {
 }
 
 function verifyNoColumnCompareShortcut() {
-  popover()
+  H.popover()
     .findByText(/compare/)
     .should("not.exist");
 }
@@ -1850,10 +1841,10 @@ function selectCustomOffset() {
 }
 
 function verifySummarizeText(options: CheckTextOpts) {
-  cy.button("Summarize").click();
-  rightSidebar().button("Add aggregation").click();
+  cy.button(/Summarize/).click();
+  H.rightSidebar().button("Add aggregation").click();
 
-  popover().within(() => {
+  H.popover().within(() => {
     cy.findByText(options.itemName).should("be.visible").click();
 
     if (options.step1Title) {
@@ -1878,9 +1869,9 @@ function verifySummarizeText(options: CheckTextOpts) {
 }
 
 function verifyColumnDrillText(options: Omit<CheckTextOpts, "step1Title">) {
-  tableHeaderClick("Count");
+  H.tableHeaderClick("Count");
 
-  popover().within(() => {
+  H.popover().within(() => {
     cy.findByText(options.itemName).should("be.visible").click();
     cy.findByText(options.step2Title).should("be.visible");
 
@@ -1901,7 +1892,7 @@ function verifyColumnDrillText(options: Omit<CheckTextOpts, "step1Title">) {
 function verifyPlusButtonText(options: CheckTextOpts) {
   cy.button("Add column").click();
 
-  popover().within(() => {
+  H.popover().within(() => {
     cy.findByText(options.itemName).should("be.visible").click();
 
     if (options.step1Title) {
@@ -1926,14 +1917,15 @@ function verifyPlusButtonText(options: CheckTextOpts) {
 }
 
 function verifyNotebookText(options: CheckTextOpts) {
-  openNotebook();
-  getNotebookStep("summarize")
+  H.openNotebook();
+  // eslint-disable-next-line no-unsafe-element-filtering
+  H.getNotebookStep("summarize")
     .findAllByTestId("aggregate-step")
     .last()
     .icon("add")
     .click();
 
-  popover().within(() => {
+  H.popover().within(() => {
     cy.findByText("Basic functions").click();
     cy.findByText(options.itemName).should("be.visible").click();
 
@@ -1977,7 +1969,7 @@ function verifyAggregations(results: AggregationResult[]) {
 }
 
 function verifyColumns(names: string[]) {
-  visualize();
+  H.visualize();
 
   for (const name of names) {
     cy.findAllByTestId("header-cell").contains(name).should("be.visible");

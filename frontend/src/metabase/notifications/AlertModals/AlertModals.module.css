@@ -1,0 +1,14 @@
+.AlertModalsBorder {
+  border-width: 2px;
+  border-color: var(--mb-color-border);
+}
+
+.AlertModalsTextWidth {
+  width: 162px;
+}
+
+.AlertModalsFooter {
+  justify-content: right;
+  align-items: center;
+  margin-top: 2rem;
+}

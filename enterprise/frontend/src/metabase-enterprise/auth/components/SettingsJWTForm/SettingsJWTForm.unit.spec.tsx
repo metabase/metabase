@@ -23,7 +23,7 @@ const elements = [
     description: "Is JWT authentication configured and enabled?",
     originalValue: null,
     display_name: "JWT Authentication",
-    type: "boolean",
+    type: "boolean" as const,
   },
   {
     key: "jwt-user-provisioning-enabled?",
@@ -41,10 +41,11 @@ const elements = [
     value: null,
     is_env_setting: false,
     env_name: "MB_JWT_IDENTITY_PROVIDER_URI",
-    description: "URL of JWT based login page",
+    description:
+      "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK.",
     originalValue: null,
     display_name: "JWT Identity Provider URI",
-    type: "string",
+    type: "string" as const,
     required: true,
     autoFocus: true,
   },
@@ -57,7 +58,7 @@ const elements = [
       "String used to seed the private key used to validate JWT messages. A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended.",
     originalValue: null,
     display_name: "String used by the JWT signing key",
-    type: "text",
+    type: "text" as const,
     required: true,
   },
   {
@@ -70,7 +71,7 @@ const elements = [
     default: "email",
     originalValue: null,
     display_name: "Email attribute",
-    type: "string",
+    type: "string" as const,
   },
   {
     placeholder: "first_name",
@@ -82,7 +83,7 @@ const elements = [
     default: "first_name",
     originalValue: null,
     display_name: "First name attribute",
-    type: "string",
+    type: "string" as const,
   },
   {
     placeholder: "last_name",
@@ -94,7 +95,7 @@ const elements = [
     default: "last_name",
     originalValue: null,
     display_name: "Last name attribute",
-    type: "string",
+    type: "string" as const,
   },
   {
     key: "jwt-group-sync",
@@ -177,7 +178,7 @@ describe("SettingsJWTForm", () => {
       ATTRS["jwt-attribute-lastname"],
     );
     const groupSchema = await screen.findByTestId("jwt-group-schema");
-    await userEvent.click(within(groupSchema).getByRole("checkbox")); // checkbox for "jwt-group-sync"
+    await userEvent.click(within(groupSchema).getByRole("switch")); // checkbox for "jwt-group-sync"
 
     await userEvent.click(await screen.findByRole("button", { name: /Save/ }));
 

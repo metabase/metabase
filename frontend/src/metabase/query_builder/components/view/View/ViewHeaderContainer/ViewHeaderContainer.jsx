@@ -1,13 +1,15 @@
 /* eslint-disable react/prop-types */
+import { t } from "ttag";
+
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import CS from "metabase/css/core/index.css";
-import NewQuestionHeader from "metabase/query_builder/components/view/NewQuestionHeader";
-import {
-  BorderedViewTitleHeader,
-  QueryBuilderViewHeaderContainer,
-} from "metabase/query_builder/components/view/View/View.styled";
-import { Transition } from "metabase/ui";
+import { Box, Flex, Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { ViewTitleHeader } from "../../ViewHeader";
+import ViewSection, { ViewHeading } from "../../ViewSection";
+
+import ViewHeaderContainerS from "./ViewHeaderContainer.module.css";
 
 const fadeIn = {
   in: { opacity: 1 },
@@ -23,12 +25,12 @@ export const ViewHeaderContainer = props => {
   const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
 
   return (
-    <QueryBuilderViewHeaderContainer>
+    <Box className={ViewHeaderContainerS.QueryBuilderViewHeaderContainer}>
       {card.archived && (
         <ArchivedEntityBanner
           name={card.name}
           entityType={card.type}
-          canWrite={card.can_write}
+          canMove={card.can_write}
           canRestore={card.can_restore}
           canDelete={card.can_delete}
           onUnarchive={() => onUnarchive(question)}
@@ -37,7 +39,8 @@ export const ViewHeaderContainer = props => {
         />
       )}
 
-      <BorderedViewTitleHeader
+      <ViewTitleHeader
+        className={ViewHeaderContainerS.BorderedViewTitleHeader}
         {...props}
         style={{
           transition: "opacity 300ms linear",
@@ -46,8 +49,20 @@ export const ViewHeaderContainer = props => {
       />
       {/*This is used so that the New Question Header is unmounted after the animation*/}
       <Transition mounted={isNewQuestion} transition={fadeIn} duration={300}>
-        {style => <NewQuestionHeader className={CS.spread} style={style} />}
+        {style => (
+          <ViewSection
+            className={CS.spread}
+            style={{
+              ...style,
+              borderBottom: "1px solid var(--mb-color-border)",
+            }}
+          >
+            <Flex direction="column" gap="xs">
+              <ViewHeading>{t`Pick your starting data`}</ViewHeading>
+            </Flex>
+          </ViewSection>
+        )}
       </Transition>
-    </QueryBuilderViewHeaderContainer>
+    </Box>
   );
 };

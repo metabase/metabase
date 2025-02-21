@@ -1,9 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.case-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Card Segment]]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (defn- test-case
   [expr]
@@ -47,21 +45,19 @@
 (deftest ^:parallel test-case-aggregations-in-segments
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use segments in case"
-      (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                         :definition {:source-table (mt/id :venues)
-                                                                      :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                      :definition {:source-table (mt/id :venues)
+                                                                   :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
         (is (=  179.0  (test-case [:sum [:case [[[:segment segment-id] [:field (mt/id :venues :price) nil]]]]])))))))
 
 (deftest ^:parallel test-case-aggregations-in-metric
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use case in metric"
-      (let [dataset-query {:query {:source-table (mt/id :venues)
-                                   :aggregation  [:sum
-                                                  [:case [[[:< [:field (mt/id :venues :price) nil] 4]
-                                                           [:field (mt/id :venues :price) nil]]]]]}
-                           :type :query
-                           :database (mt/id)}]
-        (t2.with-temp/with-temp [Card {metric-id :id} {:type :metric, :dataset_query dataset-query}]
+      (let [dataset-query (mt/mbql-query venues
+                            {:aggregation  [:sum
+                                            [:case [[[:< $price 4]
+                                                     $price]]]]})]
+        (mt/with-temp [:model/Card {metric-id :id} {:type :metric, :dataset_query dataset-query}]
           (is (= 179.0 (some->> (mt/run-mbql-query venues {:aggregation [[:metric metric-id]]
                                                            :source-table (str "card__" metric-id)})
                                 mt/rows

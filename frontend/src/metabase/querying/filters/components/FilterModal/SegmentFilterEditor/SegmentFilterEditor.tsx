@@ -1,7 +1,9 @@
 import { t } from "ttag";
 
-import type { SegmentItem } from "metabase/querying/filters/hooks/use-filter-modal";
+import type { SegmentItem } from "metabase/querying/filters/types";
 import { Flex, Grid, Icon, MultiSelect, Text } from "metabase/ui";
+
+import S from "./SegmentFilterEditor.css";
 
 interface SegmentFilterEditorProps {
   segmentItems: SegmentItem[];
@@ -31,9 +33,9 @@ export function SegmentFilterEditor({
   return (
     <Grid grow>
       <Grid.Col span="auto">
-        <Flex h="100%" align="center" gap="sm">
-          <Icon name="filter" />
-          <Text color="text-dark" weight="bold">
+        <Flex h="100%" align="center" gap="sm" pl="md">
+          <Icon className={S.icon} name="filter" />
+          <Text color="text-dark" fw="bold">
             {t`Filter down to a segment`}
           </Text>
         </Flex>
@@ -43,7 +45,7 @@ export function SegmentFilterEditor({
           data={data}
           value={value}
           placeholder={t`Filter segments`}
-          nothingFound={t`No matching segment found.`}
+          nothingFoundMessage={t`No matching segment found.`}
           aria-label={t`Filter segments`}
           searchable
           onChange={handleChange}

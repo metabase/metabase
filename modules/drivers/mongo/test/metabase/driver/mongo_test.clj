@@ -1,9 +1,9 @@
 (ns ^:mb/driver-tests metabase.driver.mongo-test
   "Tests for Mongo driver."
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.api.downloads-exports-test :as downloads-test]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mongo :as mongo]
@@ -14,16 +14,13 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :as table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mongo :as tdm]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [taoensso.nippy :as nippy]
@@ -95,7 +92,7 @@
              {:dbms_version  {:semantic-version [2 2134234]}
               :expected false}]]
       (testing (str "supports with " dbms_version)
-        (mt/with-temp [Database db {:name "dummy", :engine "mongo", :dbms_version dbms_version}]
+        (mt/with-temp [:model/Database db {:name "dummy", :engine "mongo", :dbms_version dbms_version}]
           (is (= expected
                  (driver/database-supports? :mongo :expressions db))))))
     (is (= #{:collection}
@@ -132,10 +129,10 @@
 (deftest ^:parallel nested-native-query-test
   (mt/test-driver :mongo
     (testing "Mbql query with nested native source query _returns correct results_ (#30112)"
-      (mt/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
-                                                        :native   {:collection    "venues"
-                                                                   :query         native-query}
-                                                        :database (mt/id)}}]
+      (mt/with-temp [:model/Card {:keys [id]} {:dataset_query {:type     :native
+                                                               :native   {:collection    "venues"
+                                                                          :query         native-query}
+                                                               :database (mt/id)}}]
         (let [query (mt/mbql-query nil
                       {:source-table (str "card__" id)
                        :limit        1})]
@@ -158,10 +155,10 @@
                            "    \"longitude\": \"$longitude\",\n"
                            "    \"price\": \"$price\"}\n"
                            "}]")]
-        (mt/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
-                                                          :native   {:collection    "venues"
-                                                                     :query         query-str}
-                                                          :database (mt/id)}}]
+        (mt/with-temp [:model/Card {:keys [id]} {:dataset_query {:type     :native
+                                                                 :native   {:collection    "venues"
+                                                                            :query         query-str}
+                                                                 :database (mt/id)}}]
           (let [query (mt/mbql-query venues
                         {:source-table (str "card__" id)
                          :aggregation [:count]
@@ -297,7 +294,7 @@
                        :base-type         :type/Integer
                        :pk?               true
                        :database-position 0}}}
-           (driver/describe-table :mongo (mt/db) (t2/select-one Table :id (mt/id :venues)))))))
+           (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))))))
 
 (deftest sync-indexes-info-test
   (mt/test-driver :mongo
@@ -487,7 +484,7 @@
               {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}]
              (map
               (partial into {})
-              (t2/select [Field :name :database_type :base_type :semantic_type]
+              (t2/select [:model/Field :name :database_type :base_type :semantic_type]
                          :table_id (mt/id :bird_species)
                          {:order-by [:name]})))))))
 
@@ -514,15 +511,15 @@
                    {:name "max_wingspan",   :database_type "long",   :base_type :type/Integer, :semantic_type nil}}
                  (into #{}
                        (map (partial into {}))
-                       (t2/select [Field :name :database_type :base_type :semantic_type]
+                       (t2/select [:model/Field :name :database_type :base_type :semantic_type]
                                   :table_id (mt/id :bird_species)
                                   {:order-by [:name]})))))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :mongo
     (testing "Should return the latest `nested-field-sample-limit` rows"
-      (let [table (t2/select-one Table :id (mt/id :venues))
-            fields (map #(t2/select-one Field :id (mt/id :venues %)) [:name :category_id])
+      (let [table (t2/select-one :model/Table :id (mt/id :venues))
+            fields (map #(t2/select-one :model/Field :id (mt/id :venues %)) [:name :category_id])
             rff (constantly conj)]
         (with-redefs [metadata-queries/nested-field-sample-limit 5]
           (is (= [["Mohawk Bend" 46]
@@ -543,7 +540,7 @@
             {:active true, :name "reviews"}
             {:active true, :name "users"}
             {:active true, :name "venues"}]
-           (for [field (t2/select [Table :name :active]
+           (for [field (t2/select [:model/Table :name :active]
                                   :db_id (mt/id)
                                   {:order-by [:name]})]
              (into {} field)))
@@ -572,7 +569,7 @@
                {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
                {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
              (vec (for [table-name table-names]
-                    (vec (for [field (t2/select [Field :name :base_type :semantic_type]
+                    (vec (for [field (t2/select [:model/Field :name :base_type :semantic_type]
                                                 :active   true
                                                 :table_id (mt/id table-name)
                                                 {:order-by [:name]})]
@@ -691,7 +688,7 @@
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (empty?
-           (lib.util.match/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
+           (lib.util.match/match-one (->> (magic/automagic-analysis (t2/select-one :model/Field :id (mt/id :venues :price)) {})
                                           :dashcards
                                           (mapcat (comp :breakout :query :dataset_query :card)))
              [:field _ (_ :guard :binning)]))))))
@@ -701,7 +698,7 @@
     (testing (str "if we query a something an there are no values for the Field, the query should still return "
                   "successfully! (#8929 and #8894)")
       ;; add a temporary Field that doesn't actually exist to test data categories
-      (mt/with-temp [Field _ {:name "parent_id", :table_id (mt/id :categories)}]
+      (mt/with-temp [:model/Field _ {:name "parent_id", :table_id (mt/id :categories)}]
         ;; ok, now run a basic MBQL query against categories Table. When implicit Field IDs get added the `parent_id`
         ;; Field will be included
         (testing (str "if the column does not come back in the results for a given document we should fill in the "
@@ -738,7 +735,7 @@
                            :collection  "venues"}})))))))
 
 (defn- create-database-from-row-maps! [database-name collection-name row-maps]
-  (or (t2/select-one Database :engine "mongo", :name database-name)
+  (or (t2/select-one :model/Database :engine "mongo", :name database-name)
       (let [dbdef {:database-name database-name}]
         ;; destroy Mongo database if it already exists.
         (tx/destroy-db! :mongo dbdef)
@@ -757,13 +754,13 @@
               (log/infof "Inserted %d rows into %s collection %s."
                          (count row-maps) (pr-str database-name) (pr-str collection-name))))
           ;; now sync the Database.
-          (let [db (first (t2/insert-returning-instances! Database {:name database-name, :engine "mongo", :details details}))]
+          (let [db (first (t2/insert-returning-instances! :model/Database {:name database-name, :engine "mongo", :details details}))]
             (sync/sync-database! db)
             db)))))
 
 (defn- json-from-file [^String filename]
   (with-open [rdr (java.io.FileReader. (java.io.File. filename))]
-    (json/parse-stream rdr true)))
+    (json/decode+kw rdr)))
 
 (defn- missing-fields-db []
   (create-database-from-row-maps!
@@ -777,7 +774,7 @@
       (sync/sync-database! (missing-fields-db))
       (testing "Test that fields with missing or null values get synced correctly"
         (let [results (map #(into {} %)
-                           (t2/select [Field :id :name :database_type :base_type :semantic_type :parent_id]
+                           (t2/select [:model/Field :id :name :database_type :base_type :semantic_type :parent_id]
                                       :active   true
                                       :table_id (mt/id :coll)
                                       {:order-by [:database_position]}))]
@@ -855,3 +852,26 @@
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0]}
                (driver/dbms-version :mongo (mt/db))))))))
+
+(deftest object-columns-export-as-json
+  (mt/test-driver :mongo
+    (mt/with-db (missing-fields-db)
+      (sync/sync-database! (missing-fields-db))
+      (testing "Objects are formatted correctly as JSON in downloads"
+        (mt/with-temp [:model/Card card {:display       :table
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :query
+                                                         :query    {:source-table (mt/id :coll)}}}]
+          (let [results (downloads-test/card-download card {:export-format :csv :format-rows true})]
+            (is (= [["ID" "A" "B" "C"]
+                    ["1"
+                     "a string"
+                     "{\"b_c\":\"a string\",\"b_d\":42,\"b_e\":{\"b_e_f\":\"a string\"}}"
+                     ""]
+                    ["2"
+                     "a string"
+                     "{\"b_d\":null,\"b_e\":null,\"b_c\":null}"
+                     ""]
+                    ["3" "a string" "{\"b_e\":{}}" ""]
+                    ["4" "a string" "null" ""]]
+                   results))))))))

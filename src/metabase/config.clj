@@ -1,5 +1,6 @@
 (ns metabase.config
   (:require
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -13,6 +14,7 @@
 ;; this existed long before 0.39.0, but that's when it was made public
 (def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?
   (try
+    #_{:clj-kondo/ignore [:metabase/modules]}
     (require 'metabase-enterprise.core)
     true
     (catch Throwable _
@@ -22,6 +24,7 @@
   "Whether code from `./test` is available. This is mainly to facilitate certain things like test QP middleware that we
   want to load only when test code is present."
   (try
+    #_{:clj-kondo/ignore [:metabase/modules]}
     (require 'metabase.test.core)
     true
     (catch Throwable _
@@ -80,6 +83,7 @@
 ;; https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#dont-repeat-namespace-alias-in-function-names
 ;; for discussion
 (defn config-int  "Fetch a configuration key and parse it as an integer." ^Integer [k] (some-> k config-str Integer/parseInt))
+(defn config-long "Fetch a configuration key and parse it as a Long."     ^Long    [k] (some-> k config-str Long/parseLong))
 (defn config-bool "Fetch a configuration key and parse it as a boolean."  ^Boolean [k] (some-> k config-str Boolean/parseBoolean))
 (defn config-kw   "Fetch a configuration key and parse it as a keyword."  ^Keyword [k] (some-> k config-str keyword))
 

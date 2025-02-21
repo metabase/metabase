@@ -58,6 +58,30 @@
     :column-name "QUANTITY"
     :expected    {:type :drill-thru/summarize-column, :aggregations [:distinct :sum :avg]}}))
 
+(deftest ^:parallel summarize-column-not-returned-for-aggregate-or-breakout-cols-test
+  (doseq [column-name ["PRODUCT_ID" "CREATED_AT" "count" "sum" "max"]]
+    (testing (str "summarize-column drill not returned for ORDERS." column-name)
+      (lib.drill-thru.tu/test-drill-not-returned
+       {:drill-type  :drill-thru/summarize-column
+        :click-type  :header
+        :query-kinds [:mbql]
+        :query-type  :aggregated
+        :query-table "ORDERS"
+        :column-name column-name}))))
+
+(deftest ^:parallel summarize-column-not-returned-for-aggregate-or-breakout-cols-for-multi-stage-query-test
+  (doseq [column-name ["PRODUCT_ID" "count"]]
+    (testing (str "summarize-column drill not returned for ORDERS." column-name)
+      (lib.drill-thru.tu/test-drill-not-returned
+       {:drill-type  :drill-thru/summarize-column
+        :click-type  :header
+        :query-kinds [:mbql]
+        :query-type  :aggregated
+        :custom-query #(lib.drill-thru.tu/append-filter-stage % "count")
+        :custom-row   {"PRODUCT_ID" 3
+                       "count"      77}
+        :column-name column-name}))))
+
 (deftest ^:parallel custom-column-test
   (testing "#34957"
     (lib.drill-thru.tu/test-drill-application

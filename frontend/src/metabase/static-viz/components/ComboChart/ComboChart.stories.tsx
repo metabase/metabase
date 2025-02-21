@@ -308,6 +308,14 @@ export const BarLogYScaleStackedNegative = {
   },
 };
 
+export const BarStackedNormalizedCustomMinMax48021 = {
+  render: Template,
+  args: {
+    rawSeries: data.barStackedNormalizedCustomMinMax48021 as any,
+    renderingContext,
+  },
+};
+
 export const BarStackedNormalizedEmptySpace37880 = {
   render: Template,
   args: {

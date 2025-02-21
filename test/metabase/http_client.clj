@@ -1,7 +1,6 @@
 (ns metabase.http-client
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.edn :as edn]
@@ -18,15 +17,17 @@
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.humanize :as mu.humanize]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [peridot.multipart]
    [ring.util.codec :as codec])
   (:import
    (java.io ByteArrayInputStream InputStream)
-   (metabase.async.streaming_response StreamingResponse)))
+   (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 
@@ -71,10 +72,13 @@
       {:body (ByteArrayInputStream. (.getBytes ^String http-body "UTF-8"))}
 
       (= "application/json" content-type)
-      {:body (ByteArrayInputStream. (.getBytes (json/generate-string http-body) "UTF-8"))}
+      {:body (ByteArrayInputStream. (.getBytes (json/encode http-body) "UTF-8"))}
 
       (= "multipart/form-data" content-type)
       (peridot.multipart/build http-body)
+
+      (= "application/x-www-form-urlencoded" content-type)
+      {:body (ByteArrayInputStream. (.getBytes ^String (codec/form-encode http-body) "UTF-8"))}
 
       :else
       (throw (ex-info "If you want this content-type to work, improve me"
@@ -135,7 +139,7 @@
   (if-not (string? body)
     body
     (try
-      (auto-deserialize-dates (json/parse-string body parse-response-key))
+      (auto-deserialize-dates (json/decode body parse-response-key))
       (catch Throwable e
         ;; if this actually looked like some sort of JSON response and we failed to parse it, log it so we can debug it
         ;; more easily in the REPL.
@@ -202,7 +206,7 @@
     (let [message (format "%s %s expected a status code of %d, got %d."
                           method-name url expected-status-code actual-status-code)
           body    (try
-                    (json/parse-string body keyword)
+                    (json/decode+kw body)
                     (catch Throwable _
                       body))]
       (throw (ex-info message {:status-code actual-status-code, :body body}))))
@@ -370,7 +374,7 @@
   [args]
   (let [parsed (http-client-args-parser args)]
     (when (= parsed :malli.core/invalid)
-      (let [explain-data (mc/explain http-client-args args)]
+      (let [explain-data (mr/explain http-client-args args)]
         (throw (ex-info (str "Invalid http-client args: " (mu.humanize/humanize explain-data))
                         explain-data))))
     (cond-> parsed
@@ -435,7 +439,7 @@
    *  `query-params`         Key-value pairs that will be encoded and added to the URL as query params
 
   Note: One benefit of [[client]] over [[real-client]] is the call site and API execution are on the same thread,
-  so it's possible to run a test inside a transaction and bindings will works."
+  so it's possible to run a test inside a transaction and bindings will work."
   {:arglists '([credentials? method expected-status-code? endpoint request-options? http-body-map? & {:as query-params}])}
   [& args]
   (:body (apply client-full-response args)))

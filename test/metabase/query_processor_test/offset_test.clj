@@ -310,3 +310,38 @@
                  (mt/formatted-rows
                   [->local-date 2.0]
                   (qp/process-query query)))))))))
+
+(deftest multiple-limits
+  (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
+                        :data count)
+        result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
+                         :data count)]
+    (is (>= total-count result-count))
+    (is (= 1 result-count))))
+
+(deftest external-remapping-with-offset-test
+  (testing "External remapping works correctly with offset (#45348)"
+    (mt/with-column-remappings [orders.product_id products.title]
+      (doseq [[multiple-breakouts? ofs-col-index]
+              [[false 2] [true 3]]]
+        (testing (format "multiple-breakouts? `%s`" multiple-breakouts?)
+          (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                q (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                    (lib/aggregate $ (lib/offset (lib/sum (m/find-first (comp #{"TOTAL"} :name)
+                                                                        (lib/visible-columns $)))
+                                                 -1))
+                    (lib/aggregate $ (lib/sum (m/find-first (comp #{"TOTAL"} :name)
+                                                            (lib/visible-columns $))))
+                    (lib/breakout $ (m/find-first :lib/external-remap (lib/breakoutable-columns $)))
+                    (cond-> $
+                      multiple-breakouts?
+                      (lib/breakout (m/find-first (comp #{"USER_ID"} :name) (lib/breakoutable-columns $))))
+                    (lib/limit $ 10))
+                rows (mt/rows (qp/process-query q))
+                ofs-ag-col-vals (map #(nth % ofs-col-index) rows)
+                ag-col-vals (map #(nth % (inc ofs-col-index)) rows)]
+            (testing "Sanity: the first row of offset col is nil"
+              (is (nil? (first ofs-ag-col-vals))))
+            (testing "Offset column is correctly shifted according to aggregation column"
+              (is (= (butlast ag-col-vals)
+                     (drop 1 ofs-ag-col-vals))))))))))

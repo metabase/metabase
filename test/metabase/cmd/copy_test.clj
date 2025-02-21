@@ -39,7 +39,9 @@
     :model/QueryExecution
     :model/QueryField
     :model/QueryTable
-    :model/TaskHistory})
+    :model/SearchIndexMetadata
+    :model/TaskHistory
+    :model/UserKeyValue})
 
 (defn- all-model-names []
   (into (sorted-set)

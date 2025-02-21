@@ -12,7 +12,7 @@ import { monospaceFontFamily, space } from "metabase/styled-components/theme";
 
 import type { InputSize } from "../../style/types";
 
-export interface InputProps {
+interface InputProps {
   fieldSize?: InputSize;
   hasError?: boolean;
   fullWidth?: boolean;
@@ -23,7 +23,7 @@ export interface InputProps {
   colorScheme: string;
 }
 
-export interface InputRootProps {
+interface InputRootProps {
   fullWidth?: boolean;
 }
 
@@ -118,7 +118,7 @@ type InputButtonProps = {
   size: InputSize;
 };
 
-export const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
+const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
   position: absolute;
   color: ${props => color(props.onClick != null ? "text-dark" : "text-light")};
   padding: ${props => (props.size === "small" ? "0.5rem" : "0.75rem")};

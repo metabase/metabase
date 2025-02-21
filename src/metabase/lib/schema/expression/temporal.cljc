@@ -61,8 +61,7 @@
   #_:unit [:ref ::temporal-bucketing/unit.date-time.truncate])
 
 (doseq [temporal-extract-op #{:get-second :get-minute :get-hour
-                              :get-day :get-day-of-week
-                              :get-month :get-quarter :get-year}]
+                              :get-day :get-month :get-quarter :get-year}]
   (mbql-clause/define-tuple-mbql-clause temporal-extract-op :- :type/Integer
     #_:datetime [:schema [:ref ::expression/temporal]]))
 
@@ -70,6 +69,12 @@
   [:enum {:decode/normalize common/normalize-keyword} :iso :us :instance])
 
 (mbql-clause/define-catn-mbql-clause :get-week :- :type/Integer
+  [:datetime [:schema [:ref ::expression/temporal]]]
+  ;; TODO : the mode should probably go in the options map in modern MBQL rather than have it be a separate positional
+  ;; argument. But we can't refactor everything in one go, so that will have to be a future refactor.
+  [:mode     [:? [:schema [:ref ::week-mode]]]])
+
+(mbql-clause/define-catn-mbql-clause :get-day-of-week :- :type/Integer
   [:datetime [:schema [:ref ::expression/temporal]]]
   ;; TODO : the mode should probably go in the options map in modern MBQL rather than have it be a separate positional
   ;; argument. But we can't refactor everything in one go, so that will have to be a future refactor.
@@ -195,6 +200,7 @@
    :week-of-year-instance
    :day-of-month
    :day-of-week
+   :day-of-week-iso
    :hour-of-day
    :minute-of-hour
    :second-of-minute])

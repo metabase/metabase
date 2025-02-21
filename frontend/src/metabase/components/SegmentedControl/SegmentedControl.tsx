@@ -93,7 +93,7 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
               <SegmentedControlRadio
                 id={id}
                 name={name}
-                value={option.value}
+                value={option.value ?? ""}
                 checked={isSelected}
                 onChange={() => onChange?.(option.value)}
                 // Workaround for https://github.com/testing-library/dom-testing-library/issues/877

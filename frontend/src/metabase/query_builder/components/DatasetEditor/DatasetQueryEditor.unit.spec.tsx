@@ -1,4 +1,3 @@
-import { screen } from "@testing-library/react";
 import _ from "underscore";
 
 import {
@@ -7,7 +6,7 @@ import {
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card } from "metabase-types/api";
@@ -18,10 +17,6 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-
-const { NativeQueryEditor } = jest.requireActual(
-  "metabase/query_builder/components/NativeQueryEditor",
-);
 
 const TEST_DB = createSampleDatabase();
 
@@ -63,6 +58,7 @@ const setup = async ({
   });
   const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
+  // eslint-disable-next-line no-restricted-syntax
   const query = question.legacyQuery({ useStructuredQuery: true });
   const DatasetQueryEditor = await importDatasetQueryEditor();
   const onSetDatabaseId = jest.fn();
@@ -107,10 +103,6 @@ const importDatasetQueryEditor = async () => {
 describe("DatasetQueryEditor", () => {
   beforeEach(() => {
     jest.unmock("metabase/query_builder/components/NativeQueryEditor");
-
-    jest
-      .spyOn(NativeQueryEditor.prototype, "loadAceEditor")
-      .mockImplementation(_.noop);
   });
 
   it("renders sidebar when query tab is active", async () => {
@@ -133,14 +125,6 @@ describe("DatasetQueryEditor", () => {
     expect(
       screen.queryByTestId("native-query-editor-sidebar"),
     ).not.toBeInTheDocument();
-  });
-
-  it("hides the native query editor container when query tab is inactive", async () => {
-    await setup({ isActive: false });
-
-    expect(
-      screen.getByTestId("native-query-editor-container"),
-    ).not.toBeVisible();
   });
 
   it("re-renders DatasetQueryEditor when height is 0 and isActive prop changes", async () => {

@@ -10,8 +10,8 @@ import { Icon } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 
-import { RawDataBackButton } from "../DataSelector.styled";
 import DataSelectorLoading from "../DataSelectorLoading";
+import { RawDataBackButton } from "../RawDataBackButton";
 
 type DataSelectorDatabaseSchemaPicker = {
   databases: Database[];
@@ -136,6 +136,7 @@ const DataSelectorDatabaseSchemaPicker = ({
       alwaysTogglable={true}
       showSpinner={showSpinner}
       showItemArrows={hasNextStep}
+      maxHeight={Infinity}
     />
   );
 };

@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import CS from "metabase/css/core/index.css";
 import DataSourceSelectors from "metabase/query_builder/components/NativeQueryEditor/DataSourceSelectors";
-import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/constants";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 
 const MockNativeQueryEditor = ({
@@ -32,7 +31,7 @@ const MockNativeQueryEditor = ({
   };
 
   return (
-    <div data-testid="mock-native-query-editor" id={ACE_ELEMENT_ID}>
+    <div data-testid="mock-native-query-editor">
       {canChangeDatabase && (
         <DataSourceSelectors
           isNativeEditorOpen={isNativeEditorOpen}

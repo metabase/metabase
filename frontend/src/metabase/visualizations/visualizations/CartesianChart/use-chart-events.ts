@@ -1,6 +1,12 @@
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import type * as React from "react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 
 import {
   GOAL_LINE_SERIES_ID,
@@ -79,7 +85,14 @@ export const useChartEvents = (
     [chartModel.seriesModels, hovered],
   );
 
-  useEffect(
+  /**
+   * We intentionally use useLayoutEffect here and not useEffect.
+   * This is so that chart.setOption is always called in a different tick than
+   * chart.setOption from useClickedStateTooltipSync. If they're called in the
+   * same tick (which may happen non-deterministically), then the 2nd chart.setOption
+   * call (whichever is 2nd) will throw "Cannot read property 'coordinateSystem' of undefined" error.
+   */
+  useLayoutEffect(
     function updateYAxisVisibility() {
       const hasSingleYAxis = !(
         chartModel.leftAxisModel != null && chartModel.rightAxisModel != null
@@ -94,8 +107,8 @@ export const useChartEvents = (
         const hiddenYAxisIndex = chartModel.leftAxisModel?.seriesKeys.includes(
           hoveredSeriesDataKey,
         )
-          ? 0
-          : 1;
+          ? 1
+          : 0;
 
         yAxisShowOption[hiddenYAxisIndex].show = false;
       }

@@ -2,17 +2,16 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.field-values :as field-values]
    [metabase.models.serialization :as serdes]
-   [metabase.models.table :as table :refer [Table]]
-   [metabase.sync :as sync]
+   [metabase.models.table :as table]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest valid-field-order?-test
   (testing "A valid field ordering is a set IDs  of all active fields in a given table"
@@ -70,14 +69,14 @@
                          "my\\/schema"
                          "my\\\\/schema"]]
       (testing (format "Should be able to create/delete Table with schema name %s" (pr-str schema-name))
-        (t2.with-temp/with-temp [Table {table-id :id} {:schema schema-name}]
+        (mt/with-temp [:model/Table {table-id :id} {:schema schema-name}]
           (is (= schema-name
-                 (t2/select-one-fn :schema Table :id table-id))))))))
+                 (t2/select-one-fn :schema :model/Table :id table-id))))))))
 
 (deftest identity-hash-test
   (testing "Table hashes are composed of the schema name, table name and the database's identity-hash"
-    (mt/with-temp [Database db    {:name "field-db" :engine :h2}
-                   Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+    (mt/with-temp [:model/Database db    {:name "field-db" :engine :h2}
+                   :model/Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
       (let [db-hash (serdes/identity-hash db)]
         (is (= "0395fe49"
                (serdes/raw-hash ["PUBLIC" "widget" db-hash])
@@ -159,6 +158,10 @@
 
 ;; hydration tests
 (deftest field-values-hydration-test
+  ;; Manually activate Field values since they are not created during sync (#53387)
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
+
   (is (=? {(mt/id :venues :price) (mt/malli=? [:sequential {:min 1} :any])
            (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
           (-> (t2/select-one :model/Table (mt/id :venues))

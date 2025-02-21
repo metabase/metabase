@@ -11,22 +11,13 @@
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.db :as mdb]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :as field :refer [Field]]
-   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.segment :refer [Segment]]
+   [metabase.models.field :as field]
    [metabase.models.serialization :as serdes]
-   [metabase.models.table :refer [Table]]
-   [metabase.models.user :refer [User]]
    [metabase.plugins :as plugins]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.setup :as setup]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.setup.core :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
@@ -126,19 +117,19 @@
                    (catch Exception e
                      (reset! err e)))
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
-    (snowplow/track-event! ::snowplow/serialization
-                           {:event         :serialization
-                            :direction     "import"
-                            :source        "cli"
-                            :duration_ms   (int (u/since-ms timer))
-                            :models        (str/join "," imported)
-                            :count         (if (contains? imported "Setting")
-                                             (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
-                                             (count (:seen report)))
-                            :error_count   (count (:errors report))
-                            :success       (nil? @err)
-                            :error_message (when @err
-                                             (u/strip-error @err nil))})
+    (analytics/track-event! :snowplow/serialization
+                            {:event         :serialization
+                             :direction     "import"
+                             :source        "cli"
+                             :duration_ms   (int (u/since-ms timer))
+                             :models        (str/join "," imported)
+                             :count         (if (contains? imported "Setting")
+                                              (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
+                                              (count (:seen report)))
+                             :error_count   (count (:errors report))
+                             :success       (nil? @err)
+                             :error_message (when @err
+                                              (u/strip-error @err nil))})
     (when @err
       (if (:full-stacktrace opts)
         (log/error @err "Error during deserialization")
@@ -166,11 +157,11 @@
   ([tables state]
    (case state
      :all
-     (mapcat #(t2/select Segment :table_id (u/the-id %)) tables)
+     (mapcat #(t2/select :model/Segment :table_id (u/the-id %)) tables)
      :active
      (filter
       #(not (:archived %))
-      (mapcat #(t2/select Segment :table_id (u/the-id %)) tables)))))
+      (mapcat #(t2/select :model/Segment :table_id (u/the-id %)) tables)))))
 
 (defn- select-collections
   "Selects the collections for a given user-id, or all collections without a personal ID if the passed user-id is nil.
@@ -182,14 +173,14 @@
    (let [state-filter     (case state
                             :all nil
                             :active [:= :archived false])
-         base-collections (t2/select Collection {:where [:and [:= :location "/"]
-                                                         [:or [:= :personal_owner_id nil]
-                                                          [:= :personal_owner_id
-                                                           (some-> users first u/the-id)]]
-                                                         state-filter]})]
+         base-collections (t2/select :model/Collection {:where [:and [:= :location "/"]
+                                                                [:or [:= :personal_owner_id nil]
+                                                                 [:= :personal_owner_id
+                                                                  (some-> users first u/the-id)]]
+                                                                state-filter]})]
      (if (empty? base-collections)
        []
-       (-> (t2/select Collection
+       (-> (t2/select :model/Collection
                       {:where [:and
                                (reduce (fn [acc coll]
                                          (conj acc [:like :location (format "/%d/%%" (:id coll))]))
@@ -203,23 +194,23 @@
   (log/infof "BEGIN DUMP to %s via user %s" path user)
   (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
-  (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
+  (t2/select :model/User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [users       (if user
-                      (let [user (t2/select-one User
+                      (let [user (t2/select-one :model/User
                                                 :email        user
                                                 :is_superuser true)]
                         (assert user (trs "{0} is not a valid user" user))
                         [user])
                       [])
         databases   (if (contains? opts :only-db-ids)
-                      (t2/select Database :id [:in (:only-db-ids opts)] {:order-by [[:id :asc]]})
-                      (t2/select Database))
+                      (t2/select :model/Database :id [:in (:only-db-ids opts)] {:order-by [[:id :asc]]})
+                      (t2/select :model/Database))
         tables      (if (contains? opts :only-db-ids)
-                      (t2/select Table :db_id [:in (:only-db-ids opts)] {:order-by [[:id :asc]]})
-                      (t2/select Table))
+                      (t2/select :model/Table :db_id [:in (:only-db-ids opts)] {:order-by [[:id :asc]]})
+                      (t2/select :model/Table))
         fields      (if (contains? opts :only-db-ids)
-                      (t2/select Field :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
-                      (t2/select Field))
+                      (t2/select :model/Field :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
+                      (t2/select :model/Field))
         collections (select-collections users state)]
     (binding [serialize/*include-entity-id* (boolean include-entity-id)]
       (dump/dump! path
@@ -228,10 +219,10 @@
                   (mapcat field/with-values (u/batches-of 32000 fields))
                   (select-segments-in-tables tables state)
                   collections
-                  (select-entities-in-collections NativeQuerySnippet collections state)
-                  (select-entities-in-collections Card collections state)
-                  (select-entities-in-collections Dashboard collections state)
-                  (select-entities-in-collections Pulse collections state)
+                  (select-entities-in-collections :model/NativeQuerySnippet collections state)
+                  (select-entities-in-collections :model/Card collections state)
+                  (select-entities-in-collections :model/Dashboard collections state)
+                  (select-entities-in-collections :model/Pulse collections state)
                   users)))
   (dump/dump-settings! path)
   (dump/dump-dimensions! path)
@@ -243,7 +234,7 @@
   (log/infof "Exporting Metabase to %s" path)
   (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
-  (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
+  (t2/select :model/User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [f (io/file path)]
     (.mkdirs f)
     (when-not (.canWrite f)
@@ -259,23 +250,23 @@
                        (v2.storage/store! path)))
                  (catch Exception e
                    (reset! err e)))]
-    (snowplow/track-event! ::snowplow/serialization
-                           {:event           :serialization
-                            :direction       "export"
-                            :source          "cli"
-                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                            :count           (count (:seen report))
-                            :error_count     (count (:errors report))
-                            :collection      (str/join "," collection-ids)
-                            :all_collections (and (empty? collection-ids)
-                                                  (not (:no-collections opts)))
-                            :data_model      (not (:no-data-model opts))
-                            :settings        (not (:no-settings opts))
-                            :field_values    (boolean (:include-field-values opts))
-                            :secrets         (boolean (:include-database-secrets opts))
-                            :success         (nil? @err)
-                            :error_message   (when @err
-                                               (u/strip-error @err nil))})
+    (analytics/track-event! :snowplow/serialization
+                            {:event           :serialization
+                             :direction       "export"
+                             :source          "cli"
+                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+                             :count           (count (:seen report))
+                             :error_count     (count (:errors report))
+                             :collection      (str/join "," collection-ids)
+                             :all_collections (and (empty? collection-ids)
+                                                   (not (:no-collections opts)))
+                             :data_model      (not (:no-data-model opts))
+                             :settings        (not (:no-settings opts))
+                             :field_values    (boolean (:include-field-values opts))
+                             :secrets         (boolean (:include-database-secrets opts))
+                             :success         (nil? @err)
+                             :error_message   (when @err
+                                                (u/strip-error @err nil))})
     (when @err
       (if (:full-stacktrace opts)
         (log/error @err "Error during serialization")

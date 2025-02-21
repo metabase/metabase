@@ -16,7 +16,3 @@ export const ErrorPageRoot = styled.div<{ bordered?: boolean }>`
   border-radius: 0.5rem;
   overflow: hidden;
 `;
-
-export const ResponsiveSpan = styled.span`
-  overflow: hidden;
-`;

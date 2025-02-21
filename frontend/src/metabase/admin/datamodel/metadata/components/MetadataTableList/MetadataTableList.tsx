@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { ChangeEvent, MouseEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { useAsyncFn } from "react-use";
 import { msgid, ngettext, t } from "ttag";
@@ -11,6 +10,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
+import { connect } from "metabase/lib/redux";
 import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";

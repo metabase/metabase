@@ -514,7 +514,7 @@ export function getYAxisModel(
   seriesKeys: string[],
   seriesNames: string[],
   stackModels: StackModel[],
-  trasnformedDataset: ChartDataset,
+  transformedDataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
   stackType: StackType,
@@ -527,7 +527,7 @@ export function getYAxisModel(
   const extent = getYAxisExtent(
     seriesKeys,
     stackModels,
-    trasnformedDataset,
+    transformedDataset,
     stackType,
   );
   const column = columnByDataKey[seriesKeys[0]];
@@ -923,8 +923,8 @@ export function getScaledMinAndMax(
 
   const { toEChartsAxisValue } = yAxisScaleTransforms;
 
-  const customMin = min ? (toEChartsAxisValue(min) as number) : null;
-  const customMax = max ? (toEChartsAxisValue(max) as number) : null;
+  const customMin = min != null ? (toEChartsAxisValue(min) as number) : null;
+  const customMax = max != null ? (toEChartsAxisValue(max) as number) : null;
 
   return { customMin, customMax };
 }

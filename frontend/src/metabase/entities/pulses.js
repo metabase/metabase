@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
-import { subscriptionApi } from "metabase/api";
+import {
+  subscriptionApi,
+  useGetSubscriptionQuery,
+  useListSubscriptionsQuery,
+} from "metabase/api";
 import { getCollectionType } from "metabase/entities/collections/utils";
 import { color } from "metabase/lib/colors";
 import {
@@ -23,6 +27,13 @@ const Pulses = createEntity({
 
   actionTypes: {
     UNSUBSCRIBE,
+  },
+
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery,
+    }),
+    useListQuery: useListSubscriptionsQuery,
   },
 
   api: {
@@ -90,5 +101,9 @@ const Pulses = createEntity({
     return type && `collection=${type}`;
   },
 });
+
+const useGetQuery = ({ id }, options) => {
+  return useGetSubscriptionQuery(id, options);
+};
 
 export default Pulses;

@@ -207,6 +207,6 @@ We recommend bundling privileges into roles based on use cases per customer. Tha
 
 ## Further reading
 
-- [Permissions strategies](https://www.metabase.com/learn/permissions/strategy)
+- [Permissions strategies](https://www.metabase.com/learn/metabase-basics/administration/permissions/strategy)
 - [Permissions introduction](../permissions/introduction.md)
 - [People overview](../people-and-groups/start.md)

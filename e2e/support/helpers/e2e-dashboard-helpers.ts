@@ -28,10 +28,12 @@ export function getDashboardCards() {
 }
 
 export function getDashboardCard(index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return getDashboardCards().eq(index);
 }
 
 export function ensureDashboardCardHasText(text: string, index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("dashcard").eq(index).should("contain", text);
 }
 
@@ -84,16 +86,20 @@ export function saveDashboard({
   waitMs = 1,
   awaitRequest = true,
 } = {}) {
-  cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
+  cy.intercept("PUT", "/api/dashboard/*").as(
+    "saveDashboard-saveDashboardCards",
+  );
+  cy.intercept("GET", "/api/dashboard/*").as("saveDashboard-getDashboard");
+
+  cy.findByText(editBarText).should("be.visible");
   cy.button(buttonLabel).click();
 
   if (awaitRequest) {
-    cy.wait("@saveDashboardCards").then(() => {
-      cy.findByText(editBarText).should("not.exist");
-    });
-  } else {
-    cy.findByText(editBarText).should("not.exist");
+    cy.wait("@saveDashboard-saveDashboardCards");
+    cy.wait("@saveDashboard-getDashboard");
   }
+
+  cy.findByText(editBarText).should("not.exist");
   cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 
@@ -111,7 +117,7 @@ export function setFilter(type: string, subType?: string, name?: string) {
 
   if (subType) {
     sidebar().findByText("Filter operator").next().click();
-    popover().findByText(subType).click();
+    cy.findByRole("listbox").findByText(subType).click();
   }
 
   if (name) {
@@ -209,7 +215,7 @@ export function addHeadingWhileEditing(
 }
 
 export function openQuestionsSidebar() {
-  cy.findByTestId("dashboard-header").findByLabelText("Add questions").click();
+  dashboardHeader().findByLabelText("Add questions").click();
 }
 
 export function createNewTab() {
@@ -230,8 +236,24 @@ export function duplicateTab(tabName: string) {
   });
 }
 
+export function renameTab(tabName: string, newTabName: string) {
+  cy.findByRole("tab", { name: tabName }).findByRole("button").click();
+  popover().within(() => {
+    cy.findByText("Rename").click();
+  });
+  cy.findByRole("tab", { name: tabName }).type(newTabName + "{Enter}");
+}
+
 export function goToTab(tabName: string) {
   cy.findByRole("tab", { name: tabName }).click();
+}
+
+export function assertTabSelected(tabName: string) {
+  cy.findByRole("tab", { name: tabName }).should(
+    "have.attr",
+    "aria-selected",
+    "true",
+  );
 }
 
 export function moveDashCardToTab({
@@ -286,7 +308,7 @@ export function resizeDashboardCard({
 
 /** Opens the dashboard info sidesheet */
 export function openDashboardInfoSidebar() {
-  dashboardHeader().icon("info").click();
+  dashboardHeader().findByLabelText("More info").click();
   return sidesheet();
 }
 /** Closes the dashboard info sidesheet */
@@ -301,8 +323,12 @@ export const closeDashboardSettingsSidebar = () => {
   sidesheet().findByLabelText("Close").click();
 };
 
-export function openDashboardMenu() {
+export function openDashboardMenu(option?: string) {
   dashboardHeader().findByLabelText("Move, trash, and more…").click();
+
+  if (option) {
+    popover().findByText(option).click();
+  }
 }
 
 export const dashboardHeader = () => {
@@ -323,6 +349,10 @@ export function dashboardParameterSidebar() {
 
 export function dashboardParametersDoneButton() {
   return dashboardParameterSidebar().button("Done");
+}
+
+export function dashboardParametersPopover() {
+  return popover("parameter-value-dropdown");
 }
 
 /**
@@ -359,7 +389,7 @@ export function getTextCardDetails({
       },
       text,
     },
-  };
+  } as const;
 }
 
 export function getHeadingCardDetails({

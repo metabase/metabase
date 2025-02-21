@@ -31,7 +31,6 @@ import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { createRoot } from "react-dom/client";
-import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
 
@@ -39,6 +38,7 @@ import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
 import { captureConsoleErrors } from "metabase/lib/errors";
+import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -71,7 +71,7 @@ function _init(reducers, getRoutes, callback) {
   const root = createRoot(document.getElementById("root"));
 
   root.render(
-    <Provider store={store}>
+    <MetabaseReduxProvider store={store}>
       <EmotionCacheProvider>
         <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
           <ThemeProvider>
@@ -80,7 +80,7 @@ function _init(reducers, getRoutes, callback) {
           </ThemeProvider>
         </DragDropContextProvider>
       </EmotionCacheProvider>
-    </Provider>,
+    </MetabaseReduxProvider>,
   );
 
   registerVisualizations();

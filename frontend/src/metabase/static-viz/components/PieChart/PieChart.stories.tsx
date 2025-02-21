@@ -149,6 +149,14 @@ export const AllNegative = {
   },
 };
 
+export const AllNegativeWithOther = {
+  render: Template,
+  args: {
+    rawSeries: data.allNegativeWithOther as any,
+    renderingContext,
+  },
+};
+
 export const MixedPositiveNegative = {
   render: Template,
   args: {
@@ -410,5 +418,11 @@ LabelsWithPercent.args = {
 export const LabelsOnChart = Template.bind({});
 LabelsOnChart.args = {
   rawSeries: data.labelsOnChart as any,
+  renderingContext,
+};
+
+export const SunburstOtherLabel = Template.bind({});
+SunburstOtherLabel.args = {
+  rawSeries: data.sunburstOtherLabel as any,
   renderingContext,
 };

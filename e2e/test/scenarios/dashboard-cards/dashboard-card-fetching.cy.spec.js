@@ -1,8 +1,8 @@
+const { H } = cy;
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { updateDashboardCards, visitDashboard } from "e2e/support/helpers";
 
 const cards = [
   {
@@ -23,6 +23,7 @@ const cards = [
 
 describe("dashboard card fetching", () => {
   beforeEach(() => {
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
@@ -30,7 +31,7 @@ describe("dashboard card fetching", () => {
   });
 
   it("should pass same dashboard_load_id to every query to enable metadata cache sharing", () => {
-    createDashboardWithCards({ cards }).then(visitDashboard);
+    createDashboardWithCards({ cards }).then(H.visitDashboard);
 
     cy.wait(["@dashcardQuery", "@dashcardQuery"]).then(interceptions => {
       const query1 = interceptions[0].request.body;
@@ -47,14 +48,12 @@ function createDashboardWithCards({
   dashboardName = "test dashboard",
   cards = [],
 } = {}) {
-  return cy
-    .createDashboard({ name: dashboardName })
-    .then(({ body: { id } }) => {
-      updateDashboardCards({
-        dashboard_id: id,
-        cards,
-      });
-
-      cy.wrap(id).as("dashboardId");
+  return H.createDashboard({ name: dashboardName }).then(({ body: { id } }) => {
+    H.updateDashboardCards({
+      dashboard_id: id,
+      cards,
     });
+
+    cy.wrap(id).as("dashboardId");
+  });
 }

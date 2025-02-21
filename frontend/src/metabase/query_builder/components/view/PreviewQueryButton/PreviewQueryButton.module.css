@@ -1,0 +1,13 @@
+.PreviewButton {
+  margin-top: 1.5rem;
+  color: var(--mb-color-text-dark);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.PreviewButtonIcon {
+  width: 1.125rem;
+  height: 1.125rem;
+}

@@ -14,7 +14,7 @@ This page covers the [View data](./data.md#view-data-permissions) permission lev
 
 ## Setting up connection impersonation
 
-> **For impersonation to work for Redshift databases, the user account Metabase uses to [connect to your Redshift database](../databases/connections/redshift.md) must be a superuser, as Metabase will need to be able to run the [SET SESSION AUTHORIZATION](https://docs.aws.amazon.com/redshift/latest/dg/r_SET_SESSION_AUTHORIZATION) command, which can only be run by a database superuser.
+> \*\*For impersonation to work for Redshift databases, the user account Metabase uses to [connect to your Redshift database](../databases/connections/redshift.md) must be a superuser, as Metabase will need to be able to run the [SET SESSION AUTHORIZATION](https://docs.aws.amazon.com/redshift/latest/dg/r_SET_SESSION_AUTHORIZATION) command, which can only be run by a database superuser.
 
 For impersonation access to work, you'll first need to set up roles in your database for Metabase to impersonate, then configure Metabase to impersonate those roles when people view or query data.
 
@@ -53,7 +53,7 @@ If instead you want to give a group SQL access to some, but not all, of the sche
 
 Connection impersonation doesn't apply to people in the Metabase admins group, as their more permissive privileges take precedence.
 
-For more about how to set this up, check out [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/permissions/impersonation).
+For more about how to set this up, check out [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation).
 
 ## Metabase gives people the most permissive access to data across all of their groups
 
@@ -66,4 +66,4 @@ Red group's more permissive access would override the impersonated access.
 
 ## Further reading
 
-- [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/permissions/impersonation)
+- [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation)

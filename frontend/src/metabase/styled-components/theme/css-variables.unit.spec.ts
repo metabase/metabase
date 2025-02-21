@@ -17,7 +17,7 @@ describe("getThemeSpecificCssVariables", () => {
 
     const styles = getThemeSpecificCssVariables(theme).styles;
 
-    expect(styles).toContain("--mb-color-bg-dashboard:red;");
-    expect(styles).toContain("--mb-color-bg-dashboard-card:purple;");
+    expect(styles).toContain("--mb-color-bg-dashboard: red;");
+    expect(styles).toContain("--mb-color-bg-dashboard-card: purple;");
   });
 });

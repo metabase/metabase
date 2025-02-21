@@ -1,6 +1,5 @@
 (ns metabase.integrations.slack
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -10,7 +9,8 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -26,7 +26,8 @@
   :encryption :when-encryption-key-set
   :visibility :settings-manager
   :doc        false
-  :audit      :never)
+  :audit      :never
+  :export?    false)
 
 (defsetting slack-app-token
   (deferred-tru
@@ -63,7 +64,8 @@
   :visibility :internal
   :type       :json
   :doc        false
-  :audit      :never)
+  :audit      :never
+  :export?    false)
 
 (def ^:private zoned-time-epoch (t/zoned-date-time 1970 1 1 0))
 
@@ -74,7 +76,8 @@
   :type       :timestamp
   :default    zoned-time-epoch
   :doc        false
-  :audit      :never)
+  :audit      :never
+  :export?    false)
 
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
@@ -84,6 +87,16 @@
   :audit      :getter
   :setter (fn [channel-name]
             (setting/set-value-of-type! :string :slack-files-channel (process-files-channel-name channel-name))))
+
+(defsetting slack-bug-report-channel
+  (deferred-tru "The name of the channel where bug reports should be posted")
+  :default "metabase-bugs"
+  :encryption :no
+  :visibility :settings-manager
+  :audit      :getter
+  :export?    false
+  :setter (fn [channel-name]
+            (setting/set-value-of-type! :string :slack-bug-report-channel (process-files-channel-name channel-name))))
 
 (defn slack-configured?
   "Is Slack integration configured?"
@@ -105,8 +118,8 @@
 (defn- handle-error [body]
   (let [invalid-token? (slack-token-error-codes (:error body))
         message        (if invalid-token?
-                         (trs "Invalid token")
-                         (trs "Slack API error: {0}" (:error body)))
+                         "Invalid token"
+                         (format "Slack API error: %s" (:error body)))
         error          (if invalid-token?
                          {:error-code (:error body)
                           :errors     {:slack-token message}}
@@ -125,11 +138,11 @@
                                       " update your integration in Admin Settings -> Slack."))))
     (throw (ex-info message error))))
 
-(defn- handle-response [{:keys [status body]}]
+(defn- handle-response [{:keys [headers status body]}]
   (with-open [reader (io/reader body)]
-    (let [body (json/parse-stream reader true)]
+    (let [body (json/decode+kw reader)]
       (if (and (= 200 status) (:ok body))
-        body
+        (assoc body ::headers headers)
         (handle-error body)))))
 
 (defn- do-slack-request [request-fn endpoint request]
@@ -162,6 +175,13 @@
   "Make a POST request to the Slack API."
   [endpoint body]
   (do-slack-request http/post endpoint body))
+
+(defn- oauth-scopes
+  "Returns the set of scopes associated with the current token"
+  []
+  (let [{::keys [headers]} (GET "auth.test")
+        {:strs [x-oauth-scopes]} headers]
+    (set (str/split x-oauth-scopes #","))))
 
 (defn- next-cursor
   "Get a cursor for the next page of results in a Slack API response, if one exists."
@@ -203,9 +223,14 @@
 (defn conversations-list
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages).
   By default only fetches channels, and returns them with their # prefix. Note the call to [[paged-list-request]] will
-  only fetch the first [[max-list-results]] items."
-  [& {:as query-parameters}]
-  (let [params (merge {:exclude_archived true, :types "public_channel"} query-parameters)]
+  only fetch the first [[max-list-results]] items.
+
+  Pass :private-channels true to request private channels (requires the groups:read oauth-scope)."
+  [& {:keys [private-channels query-parameters]}]
+  (let [types  (if private-channels
+                 "public_channel,private_channel"
+                 "public_channel")
+        params (merge {:exclude_archived true, :types types} query-parameters)]
     (paged-list-request "conversations.list"
                         ;; response -> channel names
                         #(->> % :channels (map channel-transform))
@@ -272,7 +297,8 @@
   (when (slack-configured?)
     (log/info "Refreshing slack channels and usernames.")
     (let [users (future (vec (users-list)))
-          conversations (future (vec (conversations-list)))]
+          private-channels? #(contains? (oauth-scopes) "groups:read")
+          conversations (future (vec (conversations-list :private-channels (private-channels?))))]
       (slack-cached-channels-and-usernames! {:channels (concat @conversations @users)})
       (slack-channels-and-usernames-last-updated! (t/zoned-date-time)))))
 
@@ -287,7 +313,7 @@
 (defn files-channel
   "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
   [[slack-files-channel]] setting with an # prefix. If it does, returns the channel details as a map. If it doesn't,
-  throws an error that advices an admin to create it."
+  throws an error that advises an admin to create it."
   []
   (let [channel-name (slack-files-channel)]
     (if (channel-exists? channel-name)
@@ -297,6 +323,22 @@
                          (tru "Please create or unarchive the channel in order to complete the Slack integration.")
                          " "
                          (tru "The channel is used for storing images that are included in dashboard subscriptions."))]
+        (log/error (u/format-color 'red message))
+        (throw (ex-info message {:status-code 400}))))))
+
+(defn bug-report-channel
+  "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
+  [[slack-bug-report-channel]] setting with an # prefix. If it does, returns the channel details as a map. If it doesn't,
+  throws an error that advices an admin to create it."
+  []
+  (let [channel-name (slack-bug-report-channel)]
+    (if (channel-exists? channel-name)
+      channel-name
+      (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)
+                         " "
+                         (tru "Please create or unarchive the channel in order to complete the Slack integration.")
+                         " "
+                         (tru "The channel is used for storing bug reports."))]
         (log/error (u/format-color 'red message))
         (throw (ex-info message {:status-code 400}))))))
 
@@ -345,7 +387,7 @@
   [& {:keys [channel-id file-id filename]}]
   (let [complete! (fn []
                     (POST "files.completeUploadExternal"
-                      {:query-params {:files      (json/generate-string [{:id file-id, :title filename}])
+                      {:query-params {:files      (json/encode [{:id file-id, :title filename}])
                                       :channel_id channel-id}}))
         complete-response (try
                             (complete!)
@@ -399,21 +441,28 @@
         file-url (complete! {:channel-id (maybe-lookup-id channel-id (slack-cached-channels-and-usernames))
                              :file-id    file_id
                              :filename   filename})]
-    (u/prog1 file-url
-      (log/debug "Uploaded image" <>))))
+    (u/prog1 {:url file-url
+              :id file_id}
+      (log/debug "Uploaded image" (:url <>)))))
 
 (mu/defn post-chat-message!
-  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. `attachments` should be serialized
-  JSON."
+  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. `attachments` can be either serialized JSON for notification attachments or a map containing blocks."
   [channel-id  :- ms/NonBlankString
    text-or-nil :- [:maybe :string]
-   & [attachments]]
+   & [message-content]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
-  (POST "chat.postMessage"
-    {:form-params
-     {:channel     channel-id
-      :username    "MetaBot"
-      :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-      :text        text-or-nil
-      :attachments (when (seq attachments)
-                     (json/generate-string attachments))}}))
+  (let [base-params {:channel     channel-id
+                     :username    "MetaBot"
+                     :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
+                     :text        text-or-nil}
+        message-params (cond
+                        ;; If message-content contains :blocks key, it's a new-style message
+                         (:blocks message-content)
+                         {:blocks (json/encode (:blocks message-content))}
+                        ;; Otherwise treat it as notification attachments
+                         (seq message-content)
+                         {:attachments (json/encode message-content)}
+                         :else
+                         {})]
+    (POST "chat.postMessage"
+      {:form-params (merge base-params message-params)})))

@@ -2,7 +2,7 @@ import cx from "classnames";
 import { updateIn } from "icepick";
 import type { Dispatch, SetStateAction } from "react";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { DisplayTheme } from "metabase/public/lib/types";
@@ -58,15 +58,16 @@ export function PublicOrEmbeddedQuestionView({
   downloadsEnabled,
 }: PublicOrEmbeddedQuestionViewProps) {
   const question = new Question(card, metadata);
-  const actionButtons = result && downloadsEnabled && (
-    <QueryDownloadWidget
-      className={cx(CS.m1, CS.textMediumHover)}
-      question={question}
-      result={result}
-      uuid={uuid}
-      token={token}
-    />
-  );
+  const actionButtons =
+    result && downloadsEnabled ? (
+      <QueryDownloadWidget
+        className={cx(CS.m1, CS.textMediumHover)}
+        question={question}
+        result={result}
+        uuid={uuid}
+        token={token}
+      />
+    ) : null;
 
   return (
     <EmbedFrame
@@ -85,6 +86,7 @@ export function PublicOrEmbeddedQuestionView({
       hide_parameters={hide_parameters}
       theme={theme}
       titled={titled}
+      downloadsEnabled={downloadsEnabled}
     >
       <LoadingAndErrorWrapper
         className={CS.flexFull}

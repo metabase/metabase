@@ -189,7 +189,7 @@ describe("data_grid", () => {
         },
         [COLUMN_SPLIT_SETTING]: _.mapObject(
           { columns, rows, values },
-          indexes => indexes.map(index => ["fake field ref", index]),
+          indexes => indexes.map(index => data.cols[index].name),
         ),
         [COLLAPSED_ROWS_SETTING]: { value: collapsedRows },
         "pivot.show_row_totals": showRowTotals,

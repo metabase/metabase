@@ -1,20 +1,29 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { useState } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getAdminPaths } from "metabase/admin/app/selectors";
+import {
+  getAdminPaths,
+  getIsOnboardingSidebarLinkDismissed,
+} from "metabase/admin/app/selectors";
 import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
+import { ErrorDiagnosticModalWrapper } from "metabase/components/ErrorPages/ErrorDiagnosticModal";
+import { trackErrorDiagnosticModalOpened } from "metabase/components/ErrorPages/analytics";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
+import {
+  getCanAccessOnboardingPage,
+  getIsNewInstance,
+} from "metabase/home/selectors";
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
-import { useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { openDiagnostics } from "metabase/redux/app";
 import {
   getApplicationName,
   getIsWhiteLabeling,
@@ -26,11 +35,25 @@ import { useHelpLink } from "./useHelpLink";
 // based on whether they're an admin or not
 const mapStateToProps = state => ({
   adminItems: getAdminPaths(state),
+  canAccessOnboardingPage: getCanAccessOnboardingPage(state),
+  isNewInstance: getIsNewInstance(state),
+  showOnboardingLink: getIsOnboardingSidebarLinkDismissed(state),
 });
 
-export default connect(mapStateToProps)(ProfileLink);
+const mapDispatchToProps = {
+  openDiagnostics,
+};
 
-function ProfileLink({ adminItems, onLogout }) {
+export default connect(mapStateToProps, mapDispatchToProps)(ProfileLink);
+
+function ProfileLink({
+  adminItems,
+  canAccessOnboardingPage,
+  isNewInstance,
+  onLogout,
+  showOnboardingLink,
+  openDiagnostics,
+}) {
   const [modalOpen, setModalOpen] = useState(null);
   const version = useSetting("version");
   const applicationName = useSelector(getApplicationName);
@@ -67,6 +90,24 @@ function ProfileLink({ adminItems, onLogout }) {
         link: helpLink.href,
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
+      },
+      // If the instance is not new, we're removing the link from the sidebar automatically!
+      (!isNewInstance || showOnboardingLink) &&
+        canAccessOnboardingPage && {
+          // eslint-disable-next-line no-literal-metabase-strings -- We don't show this to whitelabelled instances
+          title: t`How to use Metabase`,
+          icon: null,
+          link: "/getting-started",
+          event: `Navbar;Profile Dropdown;Getting Started`,
+        },
+      {
+        title: t`Report an issue`,
+        icon: null,
+        action: () => {
+          trackErrorDiagnosticModalOpened("profile-menu");
+          openDiagnostics();
+        },
+        event: `Navbar;Profile Dropdown;Report Bug`,
       },
       {
         title: t`About ${applicationName}`,
@@ -157,11 +198,18 @@ function ProfileLink({ adminItems, onLogout }) {
           )}
         </Modal>
       ) : null}
+      {modalOpen === "diagnostic" && (
+        <ErrorDiagnosticModalWrapper isModalOpen={true} onClose={closeModal} />
+      )}
     </div>
   );
 }
 
 ProfileLink.propTypes = {
   adminItems: PropTypes.array,
+  canAccessOnboardingPage: PropTypes.bool,
+  isNewInstance: PropTypes.bool,
   onLogout: PropTypes.func.isRequired,
+  showOnboardingLink: PropTypes.bool,
+  openDiagnostics: PropTypes.func.isRequired,
 };

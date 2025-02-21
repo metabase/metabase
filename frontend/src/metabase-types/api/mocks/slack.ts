@@ -5,5 +5,6 @@ export const createMockSlackSettings = (
 ): SlackSettings => ({
   "slack-app-token": null,
   "slack-files-channel": null,
+  "slack-bug-report-channel": null,
   ...opts,
 });

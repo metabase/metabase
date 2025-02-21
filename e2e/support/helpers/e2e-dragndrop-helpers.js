@@ -5,10 +5,12 @@ export function dragField(startIndex, dropIndex) {
 
   const BUTTON_INDEX = 0;
   const SLOPPY_CLICK_THRESHOLD = 10;
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.get("@dragHandle")
     .eq(dropIndex)
     .then($target => {
       const coordsDrop = $target[0].getBoundingClientRect();
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.get("@dragHandle")
         .eq(startIndex)
         .then(subject => {

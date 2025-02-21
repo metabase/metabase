@@ -39,6 +39,22 @@
       (is (some? count-col))
       (is (nil? (lib.drill-thru.distribution/distribution-drill query -1 context))))))
 
+(deftest ^:parallel distribution-not-returned-for-aggregate-or-breakout-cols-test
+  (doseq [column-name ["PRODUCT_ID" "CREATED_AT" "count" "sum" "max"]]
+    (testing (str "distribution drill not returned for ORDERS." column-name)
+      (lib.drill-thru.tu/test-drill-variants-with-merged-args
+       lib.drill-thru.tu/test-drill-not-returned
+       "single-stage query"
+       {:drill-type  :drill-thru/distribution
+        :click-type  :header
+        :query-kinds [:mbql]
+        :query-type  :aggregated
+        :query-table "ORDERS"
+        :column-name column-name}
+
+       "multi-stage query"
+       {:custom-query #(lib.drill-thru.tu/append-filter-stage % "count")}))))
+
 (deftest ^:parallel returns-distribution-test-1
   (lib.drill-thru.tu/test-returns-drill
    {:drill-type  :drill-thru/distribution

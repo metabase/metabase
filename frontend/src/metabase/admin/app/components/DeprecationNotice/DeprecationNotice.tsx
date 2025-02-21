@@ -42,7 +42,7 @@ const getBannerContent = (
   hasDeprecatedDatabase: boolean,
 ) => {
   const databaseListUrl = "/admin/databases";
-  const slackSettingsUrl = "/admin/settings/slack";
+  const slackSettingsUrl = "/admin/settings/notifications/slack";
 
   if (hasSlackBot && hasDeprecatedDatabase) {
     return jt`You’re using a ${(

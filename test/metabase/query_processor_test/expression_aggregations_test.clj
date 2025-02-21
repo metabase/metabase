@@ -2,10 +2,10 @@
   "Tests for expression aggregations and for named aggregations."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [Card]]
+   [metabase.driver :as driver]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test.data.interface :as tx]))
 
 (deftest ^:parallel sum-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
@@ -269,7 +269,7 @@
                                              :source-table $$venues})
                            :type :metric}]
       (testing "check that we can handle Metrics inside expression aggregation clauses"
-        (t2.with-temp/with-temp [Card {metric-id :id} card-definition]
+        (mt/with-temp [:model/Card {metric-id :id} card-definition]
           (is (= [[2 119]
                   [3  40]
                   [4  25]]
@@ -281,7 +281,7 @@
                      :source-table (str "card__" metric-id)}))))))
 
       (testing "check that we can handle Metrics inside an `:aggregation-options` clause"
-        (t2.with-temp/with-temp [Card {metric-id :id} card-definition]
+        (mt/with-temp [:model/Card {metric-id :id} card-definition]
           (is (= {:rows    [[2 118]
                             [3  39]
                             [4  24]]
@@ -296,7 +296,7 @@
                       :source-table (str "card__" metric-id)})))))))
 
       (testing "check that Metrics with a nested aggregation still work inside an `:aggregation-options` clause"
-        (t2.with-temp/with-temp [Card {metric-id :id} card-definition]
+        (mt/with-temp [:model/Card {metric-id :id} card-definition]
           (is (= {:rows    [[2 118]
                             [3  39]
                             [4  24]]
@@ -357,3 +357,15 @@
                   {:aggregation [[:aggregation-options [:sum $rating] {:name "MyCE"}]]
                    :breakout    [$category]
                    :order-by    [[:asc [:aggregation 0]]]}))))))))
+
+(deftest ^:parallel aggregated-array-is-returned-correctly-test
+  (testing "An aggregated array column should be returned in a readable format"
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/array-aggregation)
+      (mt/dataset test-data
+        (is (= [["Chez Jay" "Marlowe" "Musso & Frank Grill" "Pacific Dining Car" "Rush Street" "The Gorbals" "The Misfit Restaurant + Bar" "Yamashiro Hollywood"]
+                ["Greenblatt's Delicatessen & Fine Wine Shop" "Handy Market"]]
+               (->> (mt/native-query {:query (tx/agg-venues-by-category-id driver/*driver*)})
+                    mt/process-query
+                    mt/rows
+                    (map second)
+                    (map sort))))))))

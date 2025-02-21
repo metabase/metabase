@@ -1,26 +1,17 @@
+const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  createQuestion,
-  describeEE,
-  onlyOnOSS,
-  queryWritableDB,
-  resetTestTable,
-  restore,
-  resyncDatabase,
-  setTokenFeatures,
-} from "e2e/support/helpers";
 
 import { createNativeQuestion } from "../../../support/helpers/api/createNativeQuestion";
 
 const SCOREBOARD_TABLE = "scoreboard_actions";
 const COLORS_TABLE = "colors27745";
 
-describeEE("query validator", { tags: "@external" }, () => {
-  describe("feature disbaled", () => {
+describe("query validator", { tags: "@external" }, () => {
+  describe("feature disabled", () => {
     beforeEach(() => {
-      restore("postgres-writable");
+      H.restore("postgres-writable");
       cy.signInAsAdmin();
-      setTokenFeatures("none");
+      H.setTokenFeatures("none");
     });
 
     it("Should not show the page in troubleshooting or the setting in general", () => {
@@ -38,9 +29,10 @@ describeEE("query validator", { tags: "@external" }, () => {
 
   describe("feature enabled", () => {
     beforeEach(() => {
-      restore("postgres-writable");
+      H.restore("postgres-writable");
       cy.signInAsAdmin();
-      setTokenFeatures("all");
+      H.setTokenFeatures("all");
+      H.updateSetting("query-analysis-enabled", true);
     });
 
     it("enable query analysis setting", () => {
@@ -64,10 +56,10 @@ describeEE("query validator", { tags: "@external" }, () => {
     });
 
     it("picks up inactive and unknown fields and tables", () => {
-      resetTestTable({ type: "postgres", table: SCOREBOARD_TABLE });
-      resetTestTable({ type: "postgres", table: COLORS_TABLE });
+      H.resetTestTable({ type: "postgres", table: SCOREBOARD_TABLE });
+      H.resetTestTable({ type: "postgres", table: COLORS_TABLE });
 
-      resyncDatabase({
+      H.resyncDatabase({
         dbId: WRITABLE_DB_ID,
       });
 
@@ -110,7 +102,7 @@ describeEE("query validator", { tags: "@external" }, () => {
                 field => field.name === "team_name",
               );
 
-              createQuestion({
+              H.createQuestion({
                 name: "Structured inactive field",
                 query: {
                   "source-table": scoreboardTable.id,
@@ -134,7 +126,7 @@ describeEE("query validator", { tags: "@external" }, () => {
                 field => field.name === "name",
               );
 
-              createQuestion({
+              H.createQuestion({
                 name: "Structured inactive table",
                 query: {
                   "source-table": colorsTable.id,
@@ -148,13 +140,13 @@ describeEE("query validator", { tags: "@external" }, () => {
         },
       );
 
-      queryWritableDB(
+      H.queryWritableDB(
         `ALTER TABLE ${SCOREBOARD_TABLE} RENAME COLUMN team_name TO team_name_`,
       );
 
-      queryWritableDB(`DROP TABLE ${COLORS_TABLE}`);
+      H.queryWritableDB(`DROP TABLE ${COLORS_TABLE}`);
 
-      resyncDatabase({
+      H.resyncDatabase({
         dbId: WRITABLE_DB_ID,
       });
 
@@ -189,8 +181,7 @@ describeEE("query validator", { tags: "@external" }, () => {
 
 describe("OSS", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    onlyOnOSS();
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 

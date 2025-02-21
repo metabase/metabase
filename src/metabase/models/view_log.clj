@@ -1,7 +1,7 @@
 (ns metabase.models.view-log
   "The ViewLog is used to log an event where a given User views a given object such as a Table or Card (Question)."
   (:require
-   [metabase.analytics.sdk :as sdk]
+   [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.models.view-log-impl :as view-log-impl]
    [metabase.util.malli :as mu]
@@ -10,14 +10,9 @@
    [methodical.core :as m]
    [toucan2.core :as t2]))
 
-(def ViewLog
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/ViewLog)
-
 (m/defmethod t2/table-name :model/ViewLog [_model] :view_log)
 
-(doto ViewLog
+(doto :model/ViewLog
   (derive :metabase/model)
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.always-allow))
@@ -31,7 +26,7 @@
   (let [defaults {:timestamp :%now}]
     (->> log-entry
          (merge defaults)
-         sdk/include-analytics)))
+         analytics/include-sdk-info)))
 
 (t2/deftransforms :model/ViewLog
   {:metadata mi/transform-json

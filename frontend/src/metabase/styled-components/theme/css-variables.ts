@@ -1,21 +1,10 @@
 import { css } from "@emotion/react";
 import { getIn } from "icepick";
 
-import type { MetabaseComponentTheme } from "embedding-sdk";
-import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "embedding-sdk/lib/theme/embedding-color-palette";
+import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
+import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css-vars";
+import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import type { MantineTheme } from "metabase/ui";
-
-// https://www.raygesualdo.com/posts/flattening-object-keys-with-typescript-types/
-type FlattenObjectKeys<
-  T extends Record<string, unknown>,
-  Key = keyof T,
-> = Key extends string
-  ? T[Key] extends Record<string, unknown>
-    ? `${Key}.${FlattenObjectKeys<T[Key]>}`
-    : `${Key}`
-  : never;
-
-type MetabaseComponentThemeKey = FlattenObjectKeys<MetabaseComponentTheme>;
 
 /**
  * Defines the CSS variables used across Metabase.
@@ -26,10 +15,11 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
       --mb-default-font-family: "${theme.fontFamily}";
 
       /* Semantic colors */
-      --mb-color-brand: ${theme.fn.themeColor("brand")};
-      --mb-color-summarize: ${theme.fn.themeColor("summarize")};
-      --mb-color-filter: ${theme.fn.themeColor("filter")};
+      --mb-color-brand: ${theme.colors.brand[0]};
+      --mb-color-summarize: ${theme.colors.summarize[0]};
+      --mb-color-filter: ${theme.colors.filter[0]};
       ${getThemeSpecificCssVariables(theme)}
+      ${getDynamicCssVariables(theme)}
     }
   `;
 }
@@ -40,6 +30,7 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
       --mb-default-font-family: ${font};
       ${getSdkDesignSystemCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}
+      ${getDynamicCssVariables(theme)}
     }
   `;
 }
@@ -57,7 +48,7 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
     /* Semantic colors */
     /* Dynamic colors from SDK */
     ${Object.entries(SDK_TO_MAIN_APP_COLORS_MAPPING).flatMap(
-      ([_, metabaseColorNames]) => {
+      ([_key, metabaseColorNames]) => {
         return metabaseColorNames.map(metabaseColorName => {
           /**
            * Prevent returning the primary color when color is not found,
@@ -68,11 +59,7 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
            *
            * @see SDK_TO_MAIN_APP_COLORS_MAPPING
            */
-          const color = theme.fn.themeColor(
-            metabaseColorName,
-            undefined,
-            false,
-          );
+          const color = theme.fn.themeColor(metabaseColorName);
           const colorExist = color !== metabaseColorName;
 
           if (colorExist) {
@@ -93,28 +80,12 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
  * Keep in sync with [GlobalStyles.tsx].
  * Refer to DEFAULT_METABASE_COMPONENT_THEME for their defaults.
  **/
-export function getThemeSpecificCssVariables(theme: MantineTheme) {
-  // Get value from theme.other, which is typed as MetabaseComponentTheme
-  const getValue = (key: MetabaseComponentThemeKey): string | undefined => {
-    return getIn(theme.other, key.split("."));
-  };
+export const getThemeSpecificCssVariables = (theme: MantineTheme) => css`
+  ${Object.entries(CSS_VARIABLES_TO_SDK_THEME_MAP)
+    .map(([cssVar, themeKey]) => {
+      const value = getIn(theme.other, themeKey.split("."));
 
-  return css`
-    --mb-color-bg-dashboard: ${getValue("dashboard.backgroundColor")};
-    --mb-color-bg-dashboard-card: ${getValue("dashboard.card.backgroundColor")};
-    --mb-color-bg-question: ${getValue("question.backgroundColor")};
-
-    --mb-color-text-collection-browser-expand-button: ${getValue(
-      "collectionBrowser.breadcrumbs.expandButton.textColor",
-    )};
-    --mb-color-bg-collection-browser-expand-button: ${getValue(
-      "collectionBrowser.breadcrumbs.expandButton.backgroundColor",
-    )};
-    --mb-color-text-collection-browser-expand-button-hover: ${getValue(
-      "collectionBrowser.breadcrumbs.expandButton.hoverTextColor",
-    )};
-    --mb-color-bg-collection-browser-expand-button-hover: ${getValue(
-      "collectionBrowser.breadcrumbs.expandButton.hoverBackgroundColor",
-    )};
-  `;
-}
+      return value ? `${cssVar}: ${value};` : "";
+    })
+    .join("\n")}
+`;

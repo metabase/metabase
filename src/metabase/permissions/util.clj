@@ -1,14 +1,15 @@
 (ns metabase.permissions.util
   "Utilities for working with permissions, particularly the permission paths which are stored in the DB. These should
-  typically not be used outside of permissions-related namespaces such as `metabase.models.permissions`."
+  typically not be used outside of permissions-related namespaces such as `metabase.permissions.models.permissions`."
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
    [metabase.api.common :as api]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.regex :as u.regex]
    [toucan2.core :as t2]))
 
@@ -28,11 +29,12 @@
   make sure people don't submit a new graph based on something out of date, which would otherwise stomp over changes
   made in the interim. Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
-  (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ex-info (tru
-                     (str "Looks like someone else edited the permissions and your data is out of date. "
-                          "Please fetch new data and try again."))
-                    {:status-code 409}))))
+  (when-not (:force new-graph)
+    (when (not= (:revision old-graph) (:revision new-graph))
+      (throw (ex-info (tru
+                       (str "Looks like someone else edited the permissions and your data is out of date. "
+                            "Please fetch new data and try again."))
+                      {:status-code 409})))))
 
 (defn save-perms-revision!
   "Save changes made to permission graph for logging/auditing purposes.
@@ -196,7 +198,8 @@
   (into [:enum {:title "Kind"}] (map second rx->kind)))
 
 (mu/defn classify-path :- Kind
-  "Classifies a permission [[metabase.models.permissions/Path]] into a [[metabase.models.permissions/Kind]], or throws."
+  "Classifies a permission [[metabase.permissions.models.permissions/Path]] into
+  a [[metabase.permissions.models.permissions/Kind]], or throws."
   [path :- Path]
   (let [result (keep (fn [[permission-rx kind]]
                        (when (re-matches (u.regex/rx permission-rx) path) kind))
@@ -210,7 +213,8 @@
   [:re (u.regex/rx "^/" v1-data-permissions-rx "$")])
 
 (mu/defn classify-data-path :- DataKind
-  "Classifies data path permissions [[metabase.models.permissions/DataPath]] into a [[metabase.models.permissions/DataKind]]"
+  "Classifies data path permissions [[metabase.permissions.models.permissions/DataPath]] into
+  a [[metabase.permissions.models.permissions/DataKind]]"
   [data-path :- DataPath]
   (let [result (keep (fn [[data-rx kind]]
                        (when (re-matches (u.regex/rx [:and "^/" data-rx]) data-path) kind))
@@ -219,7 +223,7 @@
       (throw (ex-info "Unclassified data path!!" {:data-path data-path :result result})))
     (first result)))
 
-(let [path-validator (mc/validator Path)]
+(let [path-validator (mr/validator Path)]
   (defn valid-path?
     "Is `path` a valid, known permissions path?"
     ^Boolean [^String path]
@@ -231,7 +235,7 @@
    {:error/message "Valid permissions path"}
    (re-pattern (str "^/(" path-char-rx "*/)*$"))])
 
-(let [path-format-validator (mc/validator PathSchema)]
+(let [path-format-validator (mr/validator PathSchema)]
   (defn valid-path-format?
     "Is `path` a string with a valid permissions path format? This is a less strict version of [[valid-path?]] which
   just checks that the path components contain alphanumeric characters or dashes, separated by slashes
@@ -284,3 +288,56 @@
 
       ;; other paths should be unchanged too.
       [path])))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               EE UTILS                                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defenterprise sandboxed-user?
+  "Returns a boolean if the current user uses sandboxing for any database. In OSS this is always false. Will throw an
+  error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.sandbox.api.util
+  []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
+    ;; returning `false` for users who should actually be sandboxes.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have sandboxing. But we throw if no current-user-id so the behavior doesn't change when ee version
+  ;; becomes available
+  false)
+
+(defenterprise impersonated-user?
+  "Returns a boolean if the current user uses connection impersonation for any database. In OSS this is always false.
+  Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.advanced-permissions.api.util
+  []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
+    ;; returning `false` for users who should actually be using impersonations.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have connection impersonation. But we throw if no current-user-id so the behavior doesn't change when
+  ;; ee version becomes available
+  false)
+
+(defenterprise impersonation-enforced-for-db?
+  "Returns a boolean if the current user has an enforced connection impersonation policy for a provided database. In OSS
+  this is always false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.advanced-permissions.api.util
+  [_db-or-id]
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
+    ;; returning `false` for users who should actually be using impersonations.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have connection impersonation. But we throw if no current-user-id so the behavior doesn't change when
+  ;; ee version becomes available
+  false)
+
+(defn sandboxed-or-impersonated-user?
+  "Returns a boolean if the current user uses sandboxing or connection impersonation for any database. In OSS is always
+  false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  []
+  (or (sandboxed-user?)
+      (impersonated-user?)))

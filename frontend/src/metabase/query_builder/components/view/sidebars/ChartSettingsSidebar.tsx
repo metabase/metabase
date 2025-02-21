@@ -15,9 +15,9 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import visualizations from "metabase/visualizations";
-import { ChartSettings } from "metabase/visualizations/components/ChartSettings";
+import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type Question from "metabase-lib/v1/Question";
-import type { Dataset } from "metabase-types/api";
+import type { Dataset, VisualizationSettings } from "metabase-types/api";
 
 interface ChartSettingsSidebarProps {
   question: Question;
@@ -55,6 +55,9 @@ function ChartSettingsSidebarInner({
     ];
   }, [card, result]);
 
+  const onChange = (settings: VisualizationSettings, question?: Question) =>
+    dispatch(onReplaceAllVisualizationSettings(settings, question));
+
   return (
     result && (
       <SidebarContent
@@ -63,14 +66,10 @@ function ChartSettingsSidebarInner({
         {...sidebarContentProps}
       >
         <ErrorBoundary>
-          <ChartSettings
+          <QuestionChartSettings
             question={question}
             series={series}
-            onChange={(settings, question) =>
-              dispatch(onReplaceAllVisualizationSettings(settings, question))
-            }
-            onClose={handleClose}
-            noPreview
+            onChange={onChange}
             initial={initialChartSetting}
             computedSettings={visualizationSettings}
           />

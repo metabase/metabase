@@ -204,7 +204,7 @@ function getCurrentMetricData({ series, insights, settings }) {
 
   const clicked = {
     value,
-    column: cols[dimensionColIndex],
+    column: cols[metricColIndex],
     dimensions: [
       {
         value: rows[latestRowIndex][dimensionColIndex],
@@ -526,18 +526,24 @@ function formatDateStr({ date, dateUnitSettings, options }) {
 }
 
 export const CHANGE_TYPE_OPTIONS = {
-  MISSING: {
-    CHANGE_TYPE: "PREVIOUS_VALUE_MISSING",
-    PERCENT_CHANGE_STR: t`N/A`,
-    COMPARISON_VALUE_STR: t`(No data)`,
+  get MISSING() {
+    return {
+      CHANGE_TYPE: "PREVIOUS_VALUE_MISSING",
+      PERCENT_CHANGE_STR: t`N/A`,
+      COMPARISON_VALUE_STR: t`(No data)`,
+    };
   },
-  SAME: {
-    CHANGE_TYPE: "PREVIOUS_VALUE_SAME",
-    PERCENT_CHANGE_STR: t`No change`,
-    COMPARISON_VALUE_STR: "",
+  get SAME() {
+    return {
+      CHANGE_TYPE: "PREVIOUS_VALUE_SAME",
+      PERCENT_CHANGE_STR: t`No change`,
+      COMPARISON_VALUE_STR: "",
+    };
   },
-  CHANGED: {
-    CHANGE_TYPE: "PREVIOUS_VALUE_CHANGED",
+  get CHANGED() {
+    return {
+      CHANGE_TYPE: "PREVIOUS_VALUE_CHANGED",
+    };
   },
 };
 

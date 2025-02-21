@@ -7,7 +7,7 @@
   for example, running the `migrate` command and passing it `force` can be done using one of the following ways:
 
     clojure -M:run migrate force
-    java -jar metabase.jar migrate force
+    java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate force
 
   Logic below translates resolves the command itself to a function marked with `^:command` metadata and calls the
   function with arguments as appropriate.
@@ -18,11 +18,11 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
-   [environ.core :as env]
    [metabase.config :as config]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
@@ -33,6 +33,7 @@
 (defn- system-exit!
   "Proxy function to System/exit to enable the use of `with-redefs`."
   [return-code]
+  (flush)
   (System/exit return-code))
 
 (defn- cmd->var
@@ -91,13 +92,6 @@
     (catch Throwable e
       (log/error e "Failed to dump application database to H2 file")
       (system-exit! 1))))
-
-(defn ^:command profile
-  "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
-  []
-  ;; override env var that would normally make Jetty block forever
-  (alter-var-root #'env/env assoc :mb-jetty-join "false")
-  (u/profile "start-normally" ((resolve 'metabase.core/start-normally))))
 
 (defn ^:command reset-password
   "Reset the password for a user with `email-address`."
@@ -159,6 +153,13 @@
   (classloader/require 'metabase.cmd.env-var-dox)
   ((resolve 'metabase.cmd.env-var-dox/generate-dox!)))
 
+(defn ^:command config-template
+  "Generates a markdown file with some documentation and an example configuration file in YAML. The YAML template includes Metabase settings and their defaults.
+   Metabase will save the template as `docs/configuring-metabase/config-template.md`."
+  []
+  (classloader/require 'metabase.cmd.config-file-gen)
+  ((resolve 'metabase.cmd.config-file-gen/generate-config-file-doc!)))
+
 (defn ^:command driver-methods
   "Print a list of all multimethods available for a driver to implement, optionally with their docstrings."
   ([]
@@ -207,14 +208,15 @@
   (call-enterprise 'metabase-enterprise.serialization.cmd/v1-dump! path (get-parsed-options #'dump options)))
 
 (defn ^:command export
-  {:doc "Serialize Metabase instance into directory at `path`."
-   :arg-spec [["-c" "--collection ID"            "Export only specified ID(s). Use commas to separate multiple IDs. You can pass entity ids with `eid:<...>` as a prefix."
+  {:doc      "Serialize Metabase instance into directory at `path`."
+   :arg-spec [["-c" "--collection ID"            "Export only specified ID(s). Use commas to separate multiple IDs. Pass either PKs or entity IDs."
                :id        :collection-ids
                :parse-fn  (fn [raw-string] (->> (str/split raw-string #"\s*,\s*")
                                                 (map (fn [v]
-                                                       (if (str/starts-with? v "eid:")
-                                                         v
-                                                         (parse-long v))))))]
+                                                       (cond
+                                                         (str/starts-with? v "eid:") v
+                                                         (= (count v) 21)            v
+                                                         :else                       (parse-long v))))))]
               ["-C" "--no-collections"           "Do not export any content in collections."]
               ["-S" "--no-settings"              "Do not export settings.yaml"]
               ["-D" "--no-data-model"            "Do not export any data model entities; useful for subsequent exports."]
@@ -249,6 +251,22 @@
     (system-exit! 0)
     (catch Throwable e
       (log/error e "ERROR ROTATING KEY.")
+      (system-exit! 1))))
+
+(defn ^:command remove-encryption
+  "Decrypts data in the metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
+  the current key"
+  []
+  (classloader/require 'metabase.cmd.remove-encryption)
+  (when-not (encryption/default-encryption-enabled?)
+    (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
+    (system-exit! 1))
+  (try
+    ((resolve 'metabase.cmd.remove-encryption/remove-encryption!))
+    (log/info "Encryption removed OK.")
+    (system-exit! 0)
+    (catch Throwable e
+      (log/error e "ERROR REMOVING ENCRYPTION.")
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
@@ -297,6 +315,7 @@
   [& messages]
   (doseq [msg messages]
     (println (u/format-color 'red msg)))
+  (flush)
   (System/exit 1))
 
 (defn run-cmd
@@ -315,7 +334,9 @@
       (apply @(cmd->var command-name) args)
       (catch Throwable e
         (when (:cmd/exit (ex-data e)) ;; fast-track for commands that have their own error handling
+          (flush)
           (System/exit 1))
         (.printStackTrace e)
         (fail! (str "Command failed with exception: " (.getMessage e))))))
+  (flush)
   (System/exit 0))

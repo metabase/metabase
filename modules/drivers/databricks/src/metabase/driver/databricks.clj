@@ -1,8 +1,10 @@
 (ns metabase.driver.databricks
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.hive-like :as driver.hive-like]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -45,6 +47,17 @@
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
 
+(defn- catalog-present?
+  [jdbc-spec catalog]
+  (let [sql "select 0 from `system`.`information_schema`.`catalogs` where catalog_name = ?"]
+    (= 1 (count (jdbc/query jdbc-spec [sql catalog])))))
+
+(defmethod driver/can-connect? :databricks
+  [driver details]
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+    (and (catalog-present? jdbc-spec (:catalog details))
+         (sql-jdbc.conn/can-connect-with-spec? jdbc-spec))))
+
 (defn- get-tables-sql
   [catalog]
   (assert (string? (not-empty catalog)))
@@ -54,32 +67,31 @@
      "  TABLE_NAME as name,"
      "  TABLE_SCHEMA as schema,"
      "  COMMENT description"
-     "  from information_schema.tables"
+     "  from system.information_schema.tables"
      "  where TABLE_CATALOG = ?"
      "    AND TABLE_SCHEMA <> 'information_schema'"])
    catalog])
 
-(defn- describe-database-tables
-  [database]
-  (let [[inclusion-patterns
-         exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
-        syncable? (fn [schema]
-                    (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
-    (eduction
-     (filter (comp syncable? :schema))
-     (sql-jdbc.execute/reducible-query database (get-tables-sql (-> database :details :catalog))))))
-
 (defmethod driver/describe-database :databricks
   [driver database]
   (try
-    {:tables (into #{} (describe-database-tables database))}
+    {:tables
+     (let [[inclusion-patterns
+            exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
+           included? (fn [schema]
+                       (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
+       (into
+        #{}
+        (filter (comp included? :schema))
+        (sql-jdbc.execute/reducible-query database (get-tables-sql (-> database :details :catalog)))))}
     (catch Throwable e
       (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
                       {}
                       e)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
-  [driver & {:keys [schema-names table-names]}]
+  [driver & {:keys [schema-names table-names catalog]}]
+  (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
   (sql/format {:select [[:c.column_name :name]
                         [:c.full_data_type :database-type]
                         [:c.ordinal_position :database-position]
@@ -87,7 +99,7 @@
                         [:c.table_name :table-name]
                         [[:case [:= :cs.constraint_type [:inline "PRIMARY KEY"]] true :else false] :pk?]
                         [[:case [:not= :c.comment [:inline ""]] :c.comment :else nil] :field-comment]]
-               :from [[:information_schema.columns :c]]
+               :from [[:system.information_schema.columns :c]]
                ;; Following links contains contains diagram of `information_schema`:
                ;; https://docs.databricks.com/en/sql/language-manual/sql-ref-information-schema.html
                :left-join [[{:select   [[:tc.table_catalog :table_catalog]
@@ -95,8 +107,8 @@
                                         [:tc.table_name :table_name]
                                         [:ccu.column_name :column_name]
                                         [:tc.constraint_type :constraint_type]]
-                             :from     [[:information_schema.table_constraints :tc]]
-                             :join     [[:information_schema.constraint_column_usage :ccu]
+                             :from     [[:system.information_schema.table_constraints :tc]]
+                             :join     [[:system.information_schema.constraint_column_usage :ccu]
                                         [:and
                                          [:= :tc.constraint_catalog :ccu.constraint_catalog]
                                          [:= :tc.constraint_schema :ccu.constraint_schema]
@@ -117,6 +129,7 @@
                             [:= :c.table_name :cs.table_name]
                             [:= :c.column_name :cs.column_name]]]
                :where [:and
+                       [:= :c.table_catalog [:inline catalog]]
                        ;; Ignore `timestamp_ntz` type columns. Columns of this type are not recognizable from
                        ;; `timestamp` columns when fetching the data. This exception should be removed when the problem
                        ;; is resolved by Databricks in underlying jdbc driver.
@@ -127,8 +140,14 @@
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
+(defmethod driver/describe-fields :databricks
+  [driver database & {:as args}]
+  (let [catalog (get-in database [:details :catalog])]
+    (sql-jdbc.sync/describe-fields driver database (assoc args :catalog catalog))))
+
 (defmethod sql-jdbc.sync/describe-fks-sql :databricks
-  [driver & {:keys [schema-names table-names]}]
+  [driver & {:keys [schema-names table-names catalog]}]
+  (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
   (sql/format {:select (vec
                         {:fk_kcu.table_schema  "fk-table-schema"
                          :fk_kcu.table_name    "fk-table-name"
@@ -136,23 +155,29 @@
                          :pk_kcu.table_schema  "pk-table-schema"
                          :pk_kcu.table_name    "pk-table-name"
                          :pk_kcu.column_name   "pk-column-name"})
-               :from [[:information_schema.key_column_usage :fk_kcu]]
-               :join [[:information_schema.referential_constraints :rc]
+               :from [[:system.information_schema.key_column_usage :fk_kcu]]
+               :join [[:system.information_schema.referential_constraints :rc]
                       [:and
                        [:= :fk_kcu.constraint_catalog :rc.constraint_catalog]
                        [:= :fk_kcu.constraint_schema :rc.constraint_schema]
                        [:= :fk_kcu.constraint_name :rc.constraint_name]]
-                      [:information_schema.key_column_usage :pk_kcu]
+                      [:system.information_schema.key_column_usage :pk_kcu]
                       [[:and
                         [:= :pk_kcu.constraint_catalog :rc.unique_constraint_catalog]
                         [:= :pk_kcu.constraint_schema :rc.unique_constraint_schema]
                         [:= :pk_kcu.constraint_name :rc.unique_constraint_name]]]]
                :where [:and
+                       [:= :fk_kcu.table_catalog [:inline catalog]]
                        [:not [:in :fk_kcu.table_schema ["information_schema"]]]
                        (when table-names [:in :fk_kcu.table_name table-names])
                        (when schema-names [:in :fk_kcu.table_schema schema-names])]
                :order-by [:fk-table-schema :fk-table-name]}
               :dialect (sql.qp/quote-style driver)))
+
+(defmethod driver/describe-fks :databricks
+  [driver database & {:as args}]
+  (let [catalog (get-in database [:details :catalog])]
+    (sql-jdbc.sync/describe-fks driver database (assoc args :catalog catalog))))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :databricks
   [_driver]
@@ -174,28 +199,35 @@
     (str/replace-first additional-options #"^(?!;)" ";")))
 
 (defmethod sql-jdbc.conn/connection-details->spec :databricks
-  [_driver {:keys [catalog host http-path log-level token additional-options] :as _details}]
+  [_driver {:keys [catalog host http-path use-m2m token client-id oauth-secret log-level additional-options] :as _details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
-  (merge
-   {:classname        "com.databricks.client.jdbc.Driver"
-    :subprotocol      "databricks"
-    ;; Reading through the changelog revealed `EnableArrow=0` solves multiple problems. Including the exception logged
-    ;; during first `can-connect?` call. Ref:
-    ;; https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.40/docs/release-notes.txt
-    :subname          (str "//" host ":443/;EnableArrow=0"
-                           ";ConnCatalog=" (codec/url-encode catalog)
-                           (preprocess-additional-options additional-options))
-    :transportMode  "http"
-    :ssl            1
-    :AuthMech       3
-    :HttpPath       http-path
-    :uid            "token"
-    :pwd            token
-    :UseNativeQuery 1}
-   ;; Following is used just for tests. See the [[metabase.driver.sql-jdbc.connection-test/perturb-db-details]]
-   ;; and test that is using the function.
-   (when log-level
-     {:LogLevel log-level})))
+  (let [base-spec
+        {:classname      "com.databricks.client.jdbc.Driver"
+         :subprotocol    "databricks"
+         ;; Reading through the changelog revealed `EnableArrow=0` solves multiple problems. Including the exception logged
+         ;; during first `can-connect?` call. Ref:
+         ;; https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.40/docs/release-notes.txt
+         :subname        (str "//" host ":443/;EnableArrow=0"
+                              ";ConnCatalog=" (codec/url-encode catalog)
+                              (preprocess-additional-options additional-options))
+         :transportMode  "http"
+         :ssl            1
+         :HttpPath       http-path
+         :UserAgentEntry (format "Metabase/%s" (:tag config/mb-version-info))
+         :UseNativeQuery 1}]
+    (merge base-spec
+           (when log-level
+             {:LogLevel log-level})
+           (if use-m2m
+             ;; M2M OAuth
+             {:AuthMech 11
+              :Auth_Flow 1
+              :OAuth2ClientId client-id
+              :OAuth2Secret oauth-secret}
+             ;; PAT authentication
+             {:AuthMech 3
+              :uid "token"
+              :pwd token}))))
 
 (defmethod sql.qp/quote-style :databricks
   [_driver]

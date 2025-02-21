@@ -5,9 +5,9 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -23,12 +23,13 @@
           (apply f args))))
 
 (deftest ^:parallel general-filter-clause-test
-  (let [q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))
+  (let [q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues (lib.tu/mock-cards)))
         venues-category-id-metadata (meta/field-metadata :venues :category-id)
         venues-name-metadata        (meta/field-metadata :venues :name)
         venues-latitude-metadata    (meta/field-metadata :venues :latitude)
         venues-longitude-metadata   (meta/field-metadata :venues :longitude)
-        categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
+        categories-id-metadata      (m/find-first #(= (:id %) (meta/id :categories :id))
+                                                  (lib/visible-columns q2))
         checkins-date-metadata      (meta/field-metadata :checkins :date)]
     (testing "comparisons"
       (doseq [[op f] [[:=  lib/=]
@@ -41,7 +42,10 @@
          [op
           {:lib/uuid string?}
           [:field {:lib/uuid string?} (meta/id :venues :category-id)]
-          [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
+          [:field {:base-type    :type/BigInteger
+                   :lib/uuid     string?
+                   :source-field (meta/id :venues :category-id)}
+           (meta/id :categories :id)]]
          f
          venues-category-id-metadata
          categories-id-metadata)))
@@ -52,7 +56,10 @@
         {:lib/uuid string?}
         [:field {:lib/uuid string?} (meta/id :venues :category-id)]
         42
-        [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
+        [:field {:base-type    :type/BigInteger
+                 :lib/uuid     string?
+                 :source-field (meta/id :venues :category-id)}
+         (meta/id :categories :id)]]
        lib/between
        venues-category-id-metadata
        42
@@ -117,7 +124,7 @@
 
 (deftest ^:parallel filter-test
   (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
-        q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))
+        q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues (lib.tu/mock-cards)))
         venues-category-id-metadata (meta/field-metadata :venues :category-id)
         original-filter
         [:between
@@ -213,7 +220,7 @@
   (testing "#29947"
     (is (= "Name ends with t"
            (lib/display-name
-            lib.tu/venues-query
+            (lib.tu/venues-query)
             [:ends-with
              {:lib/uuid "953597df-a96d-4453-a57b-665e845abc69"}
              [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} (meta/id :venues :name)]
@@ -284,7 +291,7 @@
 
 (deftest ^:parallel filterable-columns-excludes-offset-expressions-test
   (testing "filterable-columns should exclude expressions which contain :offset"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/order-by (meta/field-metadata :venues :id) :asc)
                     (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
                     (lib/expression "Nested Offset"
@@ -301,7 +308,7 @@
                 (lib/filterable-columns query)))))))
 
 (deftest ^:parallel filter-clause-test
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users)))
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))
         [first-col] (lib/filterable-columns query)
         new-filter (lib/filter-clause
                     (first (lib/filterable-column-operators first-col))
@@ -312,7 +319,7 @@
                 (lib/filter new-filter)
                 lib/filters))))
   (testing "standalone clause"
-    (let [query lib.tu/venues-query
+    (let [query (lib.tu/venues-query)
           [id-col] (lib/filterable-columns query)
           [eq-op] (lib/filterable-column-operators id-col)
           filter-clause (lib/filter-clause eq-op id-col 123)]
@@ -465,7 +472,7 @@
                (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL (first filter-clauses))))))))))
 
 (deftest ^:parallel find-filterable-column-for-legacy-ref-test
-  (let [query (lib/filter lib.tu/venues-query (lib/= (meta/field-metadata :venues :name) "BBQ"))]
+  (let [query (lib/filter (lib.tu/venues-query) (lib/= (meta/field-metadata :venues :name) "BBQ"))]
     (are [legacy-ref] (=? {:name      "NAME"
                            :id        (meta/id :venues :name)
                            :operators seq}
@@ -509,44 +516,132 @@
     (check-display-names
      [{:clause [:= (created-at-with :year) "2023-10-02T00:00:00.000Z"]
        :name "Created At is Jan 1 – Dec 31, 2023"}
+      {:clause [:during created-at "2023-10-02" :year]
+       :name "Created At is Jan 1 – Dec 31, 2023"}
       {:clause [:= (created-at-with :month) "2023-10-02T00:00:00.000Z"]
+       :name "Created At is Oct 1–31, 2023"}
+      {:clause [:during created-at "2023-10-02T00:00:00" :month]
        :name "Created At is Oct 1–31, 2023"}
       {:clause [:= (created-at-with :day) "2023-10-02T00:00:00.000Z"]
        :name "Created At is Oct 2, 2023"}
+      {:clause [:during created-at "2023-10-02" :day]
+       :name "Created At is Oct 2, 2023"}
       {:clause [:= (created-at-with :hour) "2023-10-02T00:00:00.000Z"]
        :name "Created At is Oct 2, 2023, 12:00 AM – 12:59 AM"}
+      {:clause [:during created-at "2023-10-02T00:00" :hour]
+       :name "Created At is Oct 2, 2023, 12:00 AM – 12:59 AM"}
       {:clause [:= (created-at-with :minute) "2023-10-02T00:00:00.000Z"]
-       :name "Created At is Oct 2, 2023, 12:00 AM"}])))
+       :name "Created At is Oct 2, 2023, 12:00 AM"}
+      {:clause [:during created-at "2023-10-02T03:15:45" :minute]
+       :name "Created At is Oct 2, 2023, 3:15 AM"}])))
 
-(deftest ^:parallel exclude-date-frontend-filter-display-names-test
+(deftest ^:parallel exclude+equal-date-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)
         created-at-with #(lib/with-temporal-bucket created-at %1)]
     (check-display-names
-     [{:clause [:!= (created-at-with :day-of-week) "2023-10-02"],
-       :name "Created At excludes Mondays"}
-      {:clause [:!= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"],
-       :name "Created At excludes 3 day of week selections"}
-      {:clause [:!= (created-at-with :month-of-year) "2023-01-01"],
-       :name "Created At excludes each Jan"}
-      {:clause [:!= (created-at-with :month-of-year) "2023-01-01" "2023-02-01" "2023-03-01"],
-       :name "Created At excludes 3 month of year selections"}
-      {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03"],
-       :name "Created At excludes Q1 each year"}
-      {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03" "2023-04-03" "2023-07-03"],
-       :name "Created At excludes 3 quarter of year selections"}
-      {:clause [:!= (created-at-with :hour-of-day) 0],
+     [{:clause [:= (created-at-with :hour-of-day) 0]
+       :name "Created At: Hour of day is on 12 AM"}
+      {:clause [:= (lib/get-hour created-at) 0]
+       :name "Created At is at 12 AM"}
+      {:clause [:= (created-at-with :hour-of-day) 4]
+       :name "Created At: Hour of day is on 4 AM"}
+      {:clause [:= (lib/get-hour created-at) 4]
+       :name "Created At is at 4 AM"}
+      {:clause [:= (created-at-with :hour-of-day) 12]
+       :name "Created At: Hour of day is on 12 PM"}
+      {:clause [:= (lib/get-hour created-at) 12]
+       :name "Created At is at 12 PM"}
+      {:clause [:= (created-at-with :hour-of-day) 16]
+       :name "Created At: Hour of day is on 4 PM"}
+      {:clause [:= (lib/get-hour created-at) 16]
+       :name "Created At is at 4 PM"}
+      {:clause [:= (created-at-with :hour-of-day) 0 1 2]
+       :name "Created At: Hour of day is 3 selections"}
+      {:clause [:= (lib/get-hour created-at) 0 1 2]
+       :name "Created At is one of 3 hour of day selections"}
+      {:clause [:!= (created-at-with :hour-of-day) 0]
        :name "Created At excludes the hour of 12 AM"}
-      {:clause [:!= (created-at-with :hour-of-day) 4],
+      {:clause [:!= (lib/get-hour created-at) 0]
+       :name "Created At excludes the hour of 12 AM"}
+      {:clause [:!= (created-at-with :hour-of-day) 4]
        :name "Created At excludes the hour of 4 AM"}
-      {:clause [:!= (created-at-with :hour-of-day) 12],
+      {:clause [:!= (lib/get-hour created-at) 4]
+       :name "Created At excludes the hour of 4 AM"}
+      {:clause [:!= (created-at-with :hour-of-day) 12]
        :name "Created At excludes the hour of 12 PM"}
-      {:clause [:!= (created-at-with :hour-of-day) 16],
+      {:clause [:!= (lib/get-hour created-at) 12]
+       :name "Created At excludes the hour of 12 PM"}
+      {:clause [:!= (created-at-with :hour-of-day) 16]
        :name "Created At excludes the hour of 4 PM"}
-      {:clause [:!= (created-at-with :hour-of-day) 0 1 2],
+      {:clause [:!= (lib/get-hour created-at) 16]
+       :name "Created At excludes the hour of 4 PM"}
+      {:clause [:!= (created-at-with :hour-of-day) 0 1 2]
        :name "Created At excludes 3 hour of day selections"}
-      {:clause [:is-null created-at],
+      {:clause [:!= (lib/get-hour created-at) 0 1 2]
+       :name "Created At excludes 3 hour of day selections"}
+      {:clause [:not-in (lib/get-hour created-at) 0 1 2]
+       :name "Created At excludes 3 hour of day selections"}
+
+      {:clause [:= (created-at-with :day-of-week) "2023-10-02"]
+       :name "Created At: Day of week is Monday"}
+      {:clause [:= (lib.expression/get-day-of-week created-at :iso) 1]
+       :name "Created At is on Monday"}
+      {:clause [:= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"]
+       :name "Created At: Day of week is 3 selections"}
+      {:clause [:= (lib.expression/get-day-of-week created-at :iso) 1 2 3]
+       :name "Created At is one of 3 day of week selections"}
+      {:clause [:!= (created-at-with :day-of-week) "2023-10-05"]
+       :name "Created At excludes Thursdays"}
+      {:clause [:!= (lib.expression/get-day-of-week created-at :iso) 4]
+       :name "Created At excludes Thursdays"}
+      {:clause [:!= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"]
+       :name "Created At excludes 3 day of week selections"}
+      {:clause [:!= (lib.expression/get-day-of-week created-at :iso) 1 2 3]
+       :name "Created At excludes 3 day of week selections"}
+      {:clause [:not-in (lib.expression/get-day-of-week created-at :iso) 1 2 3]
+       :name "Created At excludes 3 day of week selections"}
+
+      {:clause [:= (created-at-with :month-of-year) "2023-01-01"]
+       :name "Created At: Month of year is on Jan"}
+      {:clause [:= (lib/get-month created-at) 1]
+       :name "Created At is in Jan"}
+      {:clause [:= (created-at-with :month-of-year) "2023-01-01" "2023-02-01" "2023-03-01"]
+       :name "Created At: Month of year is 3 selections"}
+      {:clause [:= (lib/get-month created-at) 1 2 3]
+       :name "Created At is one of 3 month of year selections"}
+      {:clause [:!= (created-at-with :month-of-year) "2023-01-01"]
+       :name "Created At excludes each Jan"}
+      {:clause [:!= (lib/get-month created-at) 1]
+       :name "Created At excludes each Jan"}
+      {:clause [:!= (created-at-with :month-of-year) "2023-01-01" "2023-02-01" "2023-03-01"]
+       :name "Created At excludes 3 month of year selections"}
+      {:clause [:!= (lib/get-month created-at) 1 2 3]
+       :name "Created At excludes 3 month of year selections"}
+      {:clause [:not-in (lib/get-month created-at) 1 2 3]
+       :name "Created At excludes 3 month of year selections"}
+
+      {:clause [:= (created-at-with :quarter-of-year) "2023-01-03"]
+       :name "Created At: Quarter of year is on Q1"}
+      {:clause [:= (lib/get-quarter created-at) 1]
+       :name "Created At is in Q1"}
+      {:clause [:= (created-at-with :quarter-of-year) "2023-01-03" "2023-04-03" "2023-07-03"]
+       :name "Created At: Quarter of year is 3 selections"}
+      {:clause [:= (lib/get-quarter created-at) 1 2 3]
+       :name "Created At is one of 3 quarter of year selections"}
+      {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03"]
+       :name "Created At excludes Q1 each year"}
+      {:clause [:!= (lib/get-quarter created-at) 1]
+       :name "Created At excludes Q1 each year"}
+      {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03" "2023-04-03" "2023-07-03"]
+       :name "Created At excludes 3 quarter of year selections"}
+      {:clause [:!= (lib/get-quarter created-at) 1 2 3]
+       :name "Created At excludes 3 quarter of year selections"}
+      {:clause [:not-in (lib/get-quarter created-at) 1 2 3]
+       :name "Created At excludes 3 quarter of year selections"}
+
+      {:clause [:is-null created-at]
        :name "Created At is empty"}
-      {:clause [:not-null created-at],
+      {:clause [:not-null created-at]
        :name "Created At is not empty"}])))
 
 (deftest ^:parallel time-frontend-filter-display-names-test
@@ -649,6 +744,21 @@
       {:clause [:<= tax 1], :name "Tax is less than or equal to 1"}
       {:clause [:is-null tax], :name "Tax is empty"}
       {:clause [:not-null tax], :name "Tax is not empty"}])))
+
+(deftest ^:parallel bigint-frontend-filter-display-names-test
+  (let [id        (meta/field-metadata :orders :id)
+        pos-value "9223372036854775808"
+        neg-value "-9223372036854775809"]
+    (check-display-names
+     [{:clause [:= id pos-value], :name (str "ID is " pos-value)}
+      {:clause [:!= id pos-value], :name (str "ID is not " pos-value)}
+      {:clause [:> id pos-value], :name (str "ID is greater than " pos-value)}
+      {:clause [:>= id pos-value], :name (str "ID is greater than or equal to " pos-value)}
+      {:clause [:< id pos-value], :name (str "ID is less than " pos-value)}
+      {:clause [:<= id pos-value], :name (str "ID is less than or equal to " pos-value)}
+      {:clause [:between id 0 pos-value], :name (str "ID is between 0 and " pos-value)}
+      {:clause [:between id neg-value 0], :name (str "ID is between " neg-value " and 0")}
+      {:clause [:between id neg-value pos-value], :name (str "ID is " neg-value " – " pos-value)}])))
 
 (deftest ^:parallel relative-datetime-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]

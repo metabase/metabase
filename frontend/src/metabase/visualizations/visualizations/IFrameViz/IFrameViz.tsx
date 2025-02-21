@@ -1,14 +1,15 @@
 import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
+import { getParameterValues } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
   VirtualDashboardCard,
@@ -22,7 +23,7 @@ import {
   StyledInput,
 } from "./IFrameViz.styled";
 import { settings } from "./IFrameVizSettings";
-import { getIframeUrl, isAllowedIframeUrl } from "./utils";
+import { getAllowedIframeAttributes, isAllowedIframeUrl } from "./utils";
 
 export interface IFrameVizProps {
   dashcard: VirtualDashboardCard;
@@ -43,6 +44,7 @@ export interface IFrameVizProps {
 
 export function IFrameViz({
   dashcard,
+  dashboard,
   isEditing,
   onUpdateVisualizationSettings,
   settings,
@@ -52,11 +54,15 @@ export function IFrameViz({
   isPreviewing,
   onTogglePreviewing,
 }: IFrameVizProps) {
+  const parameterValues = useSelector(getParameterValues);
   const { iframe: iframeOrUrl } = settings;
   const isNew = !!dashcard?.justAdded;
 
   const allowedHosts = useSetting("allowed-iframe-hosts");
-  const iframeUrl = useMemo(() => getIframeUrl(iframeOrUrl), [iframeOrUrl]);
+  const allowedIframeAttributes = useMemo(
+    () => getAllowedIframeAttributes(iframeOrUrl),
+    [iframeOrUrl],
+  );
 
   const handleIFrameChange = useCallback(
     (newIFrame: string) => {
@@ -65,17 +71,28 @@ export function IFrameViz({
     [onUpdateVisualizationSettings],
   );
 
+  const interpolatedSrc = useMemo(
+    () =>
+      fillParametersInText({
+        dashcard,
+        dashboard,
+        parameterValues,
+        text: allowedIframeAttributes?.src,
+      }),
+    [dashcard, dashboard, parameterValues, allowedIframeAttributes?.src],
+  );
+
   if (isEditing && !isEditingParameter && !isPreviewing) {
     return (
       <IFrameEditWrapper>
-        <Stack h="100%" spacing="sm">
-          <Group align="center" noWrap>
+        <Stack h="100%" gap="sm">
+          <Group align="center" wrap="nowrap">
             <Text fw="bold" truncate>
               {t`Paste your snippet here`}
             </Text>{" "}
             <Box ml="auto">
               <Button
-                compact
+                size="compact-md"
                 variant="filled"
                 style={{ pointerEvents: "all" }}
                 onClick={onTogglePreviewing}
@@ -87,7 +104,6 @@ export function IFrameViz({
             <StyledInput
               data-testid="iframe-card-input"
               autoFocus={isNew}
-              size="100%"
               styles={{
                 wrapper: {
                   height: "100%",
@@ -107,13 +123,13 @@ export function IFrameViz({
   }
 
   const hasAllowedIFrameUrl =
-    iframeUrl && isAllowedIframeUrl(iframeUrl, allowedHosts);
+    interpolatedSrc && isAllowedIframeUrl(interpolatedSrc, allowedHosts);
   const hasForbiddenIFrameUrl =
-    iframeUrl && !isAllowedIframeUrl(iframeUrl, allowedHosts);
+    interpolatedSrc && !isAllowedIframeUrl(interpolatedSrc, allowedHosts);
 
   const renderError = () => {
     if (hasForbiddenIFrameUrl && isEditing) {
-      return <ForbiddenDomainError url={iframeUrl} />;
+      return <ForbiddenDomainError url={interpolatedSrc} />;
     }
     return <GenericError />;
   };
@@ -123,11 +139,13 @@ export function IFrameViz({
       {hasAllowedIFrameUrl ? (
         <iframe
           data-testid="iframe-visualization"
-          src={iframeUrl}
           width={width}
           height={height}
           frameBorder={0}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts"
+          referrerPolicy="strict-origin-when-cross-origin"
+          {...allowedIframeAttributes}
+          src={interpolatedSrc}
         />
       ) : (
         renderError()
@@ -171,7 +189,7 @@ function ForbiddenDomainError({ url }: { url: string }) {
           </Text>
         )} can not be embedded in iframe cards.`}
       </Text>
-      <InteractiveText color="text-dark" px="lg" mt="md">
+      <InteractiveText c="text-dark" px="lg" mt="md">
         {renderMessage()}
       </InteractiveText>
     </Box>

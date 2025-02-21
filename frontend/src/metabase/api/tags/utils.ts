@@ -20,6 +20,8 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
+  GetUserKeyValueRequest,
+  Group,
   GroupListQuery,
   ModelCacheRefreshStatus,
   ModelIndex,
@@ -36,6 +38,7 @@ import type {
   Timeline,
   TimelineEvent,
   UserInfo,
+  WritebackAction,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -72,6 +75,18 @@ export function invalidateTags(
 // ----------------------------------------------------------------------- //
 // Keep the below list of entity-specific functions alphabetically sorted. //
 // ----------------------------------------------------------------------- //
+
+export function provideActionListTags(
+  actions: WritebackAction[],
+): TagDescription<TagType>[] {
+  return [listTag("action"), ...actions.flatMap(provideActionTags)];
+}
+
+export function provideActionTags(
+  action: WritebackAction,
+): TagDescription<TagType>[] {
+  return [idTag("action", action.id)];
+}
 
 export function provideActivityItemListTags(
   items: RecentItem[] | PopularItem[],
@@ -121,6 +136,10 @@ export function provideApiKeyTags(apiKey: ApiKey): TagDescription<TagType>[] {
   return [idTag("api-key", apiKey.id)];
 }
 
+export function provideAutocompleteSuggestionListTags(): TagDescription<TagType>[] {
+  return [listTag("table"), listTag("field")];
+}
+
 export function provideBookmarkListTags(
   bookmarks: Bookmark[],
 ): TagDescription<TagType>[] {
@@ -134,6 +153,10 @@ export function provideBookmarkTags(
     idTag("bookmark", bookmark.id),
     idTag(TAG_TYPE_MAPPING[bookmark.type], bookmark.item_id),
   ];
+}
+
+export function provideCardAutocompleteSuggestionListTags(): TagDescription<TagType>[] {
+  return [listTag("card")];
 }
 
 export function provideCardListTags(cards: Card[]): TagDescription<TagType>[] {
@@ -359,14 +382,23 @@ export function providePermissionsGroupListTags(
 ): TagDescription<TagType>[] {
   return [
     listTag("permissions-group"),
-    ...groups.flatMap(providePermissionsGroupTags),
+    ...groups.flatMap(providePermissionsGroupListQueryTags),
   ];
 }
 
-export function providePermissionsGroupTags(
+export function providePermissionsGroupListQueryTags(
   group: GroupListQuery,
 ): TagDescription<TagType>[] {
   return [idTag("permissions-group", group.id)];
+}
+
+export function providePermissionsGroupTags(
+  group: Group,
+): TagDescription<TagType>[] {
+  return [
+    idTag("permissions-group", group.id),
+    ...group.members.map(member => idTag("user", member.user_id)),
+  ];
 }
 
 export function providePersistedInfoListTags(
@@ -386,7 +418,7 @@ export function providePersistedInfoTags(
 
 /**
  * We have to differentiate between the `persisted-info` and `persisted-model` tags
- * because the model cache refresh lives on the card api `/api/card/model/:id/refresh`.
+ * because the model cache refresh lives on the card api `/api/persist/card/:id/refresh`.
  * That endpoint doesn't have information about the persisted info id, so we have to
  * map the model id to the `card_id` on the ModelCacheRefreshStatus.
  */
@@ -539,4 +571,11 @@ export function provideUserListTags(
 
 export function provideUserTags(user: UserInfo): TagDescription<TagType>[] {
   return [idTag("user", user.id)];
+}
+
+export function provideUserKeyValueTags({
+  namespace,
+  key,
+}: GetUserKeyValueRequest) {
+  return [{ type: "user-key-value" as const, id: `${namespace}#${key}` }];
 }

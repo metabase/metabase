@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import { Component, forwardRef } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -14,11 +14,14 @@ const GRID_ASPECT_RATIO = 4 / 3;
 const PADDING = 14;
 
 const DEFAULT_GRID_SIZE = 100;
+export const HIDE_HORIZONTAL_LEGEND_THRESHOLD = 180;
+export const HIDE_SECONDARY_INFO_THRESHOLD = 260;
 
 class ChartWithLegend extends Component {
   static defaultProps = {
     aspectRatio: 1,
     style: {},
+    showLegend: true,
   };
 
   render() {
@@ -57,16 +60,13 @@ class ChartWithLegend extends Component {
     let type;
     let LegendComponent;
     const isHorizontal = gridSize.width > gridSize.height / GRID_ASPECT_RATIO;
-    if (showLegend === false) {
+    if (!showLegend) {
       type = "small";
-    } else if (
-      !gridSize ||
-      (isHorizontal &&
-        (showLegend || gridSize.width > 4 || gridSize.height > 4))
-    ) {
+    } else if (isHorizontal && width > HIDE_HORIZONTAL_LEGEND_THRESHOLD) {
       type = "horizontal";
       LegendComponent = LegendVertical;
-      if (gridSize && gridSize.width < 6) {
+
+      if (width < HIDE_SECONDARY_INFO_THRESHOLD) {
         legendTitles = legendTitles.map(title =>
           Array.isArray(title) ? title.slice(0, 1) : title,
         );
@@ -78,18 +78,14 @@ class ChartWithLegend extends Component {
         chartWidth = desiredWidth;
       }
       chartHeight = height;
-    } else if (
-      !isHorizontal &&
-      (showLegend || (gridSize.height > 3 && gridSize.width > 2))
-    ) {
+    } else if (!isHorizontal && gridSize.height > 3 && gridSize.width > 2) {
       type = "vertical";
       LegendComponent = LegendHorizontal;
       legendTitles = legendTitles.map(title =>
-        Array.isArray(title) ? title.join(" – ") : title,
+        Array.isArray(title) ? title.join(" ") : title,
       );
       const desiredHeight = width * (1 / aspectRatio);
       if (desiredHeight > height * (3 / 4)) {
-        // chartHeight = height * (3 / 4);
         flexChart = true;
       } else {
         chartHeight = desiredHeight;
@@ -98,6 +94,8 @@ class ChartWithLegend extends Component {
     } else {
       type = "small";
     }
+
+    const hasDimensions = width > 0 && height > 0;
 
     const legend = LegendComponent ? (
       <LegendComponent
@@ -128,6 +126,7 @@ class ChartWithLegend extends Component {
           paddingLeft: PADDING,
           paddingRight: PADDING,
         }}
+        ref={this.props.forwardedRef}
       >
         {legend && (
           <div className={cx(styles.LegendWrapper)} data-testid="chart-legend">
@@ -138,7 +137,7 @@ class ChartWithLegend extends Component {
           className={cx(styles.Chart)}
           style={{ width: chartWidth, height: chartHeight }}
         >
-          {children}
+          {hasDimensions ? children : null}
         </div>
         {/* spacer div to balance legend */}
         {legend && (
@@ -156,7 +155,13 @@ class ChartWithLegend extends Component {
   }
 }
 
+const ChartWithLegendRefWrapper = forwardRef(
+  function _ChartWithLegendRefWrapper(props, ref) {
+    return <ChartWithLegend {...props} forwardedRef={ref} />;
+  },
+);
+
 export default ExplicitSize({
   wrapped: true,
   refreshMode: "debounceLeading",
-})(ChartWithLegend);
+})(ChartWithLegendRefWrapper);

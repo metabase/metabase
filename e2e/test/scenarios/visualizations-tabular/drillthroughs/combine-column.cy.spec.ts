@@ -1,33 +1,24 @@
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createQuestion,
-  describeWithSnowplow,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  popover,
-  resetSnowplow,
-  restore,
-  tableHeaderClick,
-} from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
-describeWithSnowplow(
+H.describeWithSnowplow(
   "scenarios > visualizations > drillthroughs > table_drills > combine columns",
   () => {
     beforeEach(() => {
-      restore();
-      resetSnowplow();
+      H.restore();
+      H.resetSnowplow();
       cy.signInAsAdmin();
     });
 
     afterEach(() => {
-      expectNoBadSnowplowEvents();
+      H.expectNoBadSnowplowEvents();
     });
 
     it("should be possible to combine columns from the a table header", () => {
-      createQuestion(
+      H.createQuestion(
         {
           query: {
             "source-table": PEOPLE_ID,
@@ -41,10 +32,10 @@ describeWithSnowplow(
         { visitQuestion: true },
       );
 
-      tableHeaderClick("Email");
-      popover().findByText("Combine columns").click();
+      H.tableHeaderClick("Email");
+      H.popover().findByText("Combine columns").click();
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByTestId("combine-example").should(
           "contain",
           "email@example.com12345",
@@ -52,9 +43,10 @@ describeWithSnowplow(
         cy.findByText("ID").click();
       });
 
-      popover().last().findByText("Name").click();
+      // eslint-disable-next-line no-unsafe-element-filtering
+      H.popover().last().findByText("Name").click();
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("Separated by (empty)").click();
         cy.findByLabelText("Separator").type("__");
         cy.findByTestId("combine-example").should(
@@ -68,12 +60,14 @@ describeWithSnowplow(
           "email@example.com__text__12345",
         );
 
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByRole("textbox").last().clear();
         cy.findByTestId("combine-example").should(
           "have.text",
           "email@example.com__text12345",
         );
 
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByRole("textbox").last().clear().type("+");
         cy.findByTestId("combine-example").should(
           "have.text",
@@ -83,11 +77,12 @@ describeWithSnowplow(
         cy.findByText("Done").click();
       });
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("header-cell")
         .last()
         .should("have.text", "Combined Email, Name, ID");
 
-      expectGoodSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "column_combine_via_column_header",
         custom_expressions_used: ["concat"],
         database_id: SAMPLE_DB_ID,
@@ -95,7 +90,7 @@ describeWithSnowplow(
     });
 
     it("should handle duplicate column names", () => {
-      createQuestion(
+      H.createQuestion(
         {
           query: {
             "source-table": PEOPLE_ID,
@@ -110,14 +105,14 @@ describeWithSnowplow(
       );
 
       // first combine (email + ID)
-      tableHeaderClick("Email");
-      popover().findByText("Combine columns").click();
-      popover().findByText("Done").click();
+      H.tableHeaderClick("Email");
+      H.popover().findByText("Combine columns").click();
+      H.popover().findByText("Done").click();
 
       // second combine (email + ID)
-      tableHeaderClick("Email");
-      popover().findByText("Combine columns").click();
-      popover().findByText("Done").click();
+      H.tableHeaderClick("Email");
+      H.popover().findByText("Combine columns").click();
+      H.popover().findByText("Done").click();
 
       cy.findAllByTestId("header-cell")
         .contains("Combined Email, ID")

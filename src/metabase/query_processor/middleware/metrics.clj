@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.metrics
   (:require
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -251,10 +251,10 @@
    2. Metric source cards can reference themselves.
       A query built from a `:source-card` of `:type :metric` can reference itself."
   [query]
-  (if-not (find-first-metric query)
+  (if-not (find-first-metric (:stages query))
     query
     (do
-      (prometheus/inc! :metabase-query-processor/metrics-adjust)
+      (analytics/inc! :metabase-query-processor/metrics-adjust)
       (try
         (let [query (lib.walk/walk
                      query
@@ -263,8 +263,8 @@
                          (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
           (u/prog1
             (update query :stages #(adjust-metric-stages query nil %))
-            (when-let [metric (find-first-metric <>)]
+            (when-let [metric (find-first-metric (:stages <>))]
               (throw (ex-info "Failed to replace metric" {:metric metric})))))
         (catch Throwable e
-          (prometheus/inc! :metabase-query-processor/metrics-adjust-errors)
+          (analytics/inc! :metabase-query-processor/metrics-adjust-errors)
           (throw e))))))

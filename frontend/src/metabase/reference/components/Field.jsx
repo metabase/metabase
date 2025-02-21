@@ -4,6 +4,7 @@ import { getIn } from "icepick";
 import PropTypes from "prop-types";
 import { memo } from "react";
 import { Link } from "react-router";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import S from "metabase/components/List/List.module.css";
@@ -16,13 +17,16 @@ import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 import F from "./Field.module.css";
 
 const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
-  <div className={cx(S.item, CS.pt1, CS.borderTop)}>
-    <div className={S.itemBody} style={{ maxWidth: "100%", borderTop: "none" }}>
-      <div className={F.field}>
+  <div className={cx(S.item, CS.py1, CS.borderTop)}>
+    <div
+      className={cx(S.itemBody, CS.flexColumn)}
+      style={{ maxWidth: "100%", borderTop: "none" }}
+    >
+      <div className={F.field} style={{ flexGrow: "1" }}>
         <div className={cx(S.itemTitle, F.fieldName)}>
           {isEditing ? (
             <input
-              className={F.fieldNameTextInput}
+              className={F.fieldTextInput}
               type="text"
               placeholder={field.name}
               {...formField.display_name}
@@ -59,7 +63,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               optionSectionFn={o => o.section}
             />
           ) : (
-            <div className={CS.flex}>
+            <div className={cx(CS.flex, CS.alignCenter)}>
               <div className={S.leftIcons}>
                 {icon && <Icon className={S.chartIcon} name={icon} size={20} />}
               </div>
@@ -83,13 +87,14 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         </div>
         <div className={F.fieldDataType}>{field.base_type}</div>
       </div>
-      <div className={cx(S.itemSubtitle, F.fieldSecondary, { [CS.mt1]: true })}>
+      <div className={S.itemSubtitle}>
         <div className={F.fieldForeignKey}>
           {isEditing
             ? (isTypeFK(formField.semantic_type.value) ||
                 (isTypeFK(field.semantic_type) &&
                   formField.semantic_type.value === undefined)) && (
                 <Select
+                  className={CS.mt1}
                   name={formField.fk_target_field_id.name}
                   placeholder={t`Select a target`}
                   value={
@@ -102,18 +107,31 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                 />
               )
             : isTypeFK(field.semantic_type) && (
-                <span>
+                <span className={CS.mt1}>
                   {getIn(foreignKeys, [field.fk_target_field_id, "name"])}
                 </span>
               )}
         </div>
-        <div className={F.fieldOther} />
+
+        {match({ description: field.description, isEditing })
+          .with({ isEditing: true }, () => {
+            return (
+              <input
+                className={cx(F.fieldTextInput, CS.mb2, CS.mt1)}
+                type="text"
+                placeholder={t`No column description yet`}
+                {...formField.description}
+                defaultValue={field.description ?? ""}
+              />
+            );
+          })
+          .with({ description: P.not(P.nullish) }, () => (
+            <div className={cx(F.fieldDescription, CS.mb2, CS.mt1)}>
+              {field.description}
+            </div>
+          ))
+          .otherwise(() => null)}
       </div>
-      {field.description && (
-        <div className={cx(S.itemSubtitle, CS.mb2, { [CS.mt1]: isEditing })}>
-          {field.description}
-        </div>
-      )}
     </div>
   </div>
 );

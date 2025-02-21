@@ -3,6 +3,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
+import { UpsellWhitelabel } from "metabase/admin/upsells/UpsellWhitelabel";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
@@ -463,45 +464,10 @@ export const ADMIN_SETTINGS_SECTIONS = {
     component: SettingsLicense,
     settings: [],
   },
-  metabot: {
-    name: t`Metabot`,
-    order: 130,
-    getHidden: settings => !settings["is-metabot-enabled"],
-    settings: [
-      {
-        key: "openai-api-key",
-        display_name: t`OpenAI API Key`,
-        description: null,
-        type: "string",
-        getHidden: (_, settings) => !settings["is-metabot-enabled"],
-      },
-      {
-        key: "openai-organization",
-        display_name: t`OpenAI Organization ID`,
-        description: null,
-        type: "string",
-        getHidden: (_, settings) => !settings["is-metabot-enabled"],
-      },
-      {
-        key: "openai-model",
-        display_name: t`OpenAI Model`,
-        description: null,
-        type: "select",
-        getProps: (_, settings) => {
-          const models = settings["openai-available-models"] ?? [];
-
-          return {
-            options: models.map(model => ({ name: model.id, value: model.id })),
-            disabled: !models.length,
-          };
-        },
-        getHidden: (_, settings) => !settings["is-metabot-enabled"],
-      },
-    ],
-  },
   llm: {
     name: t`AI Features`,
-    getHidden: () => !PLUGIN_LLM_AUTODESCRIPTION.isEnabled(),
+    getHidden: settings =>
+      !PLUGIN_LLM_AUTODESCRIPTION.isEnabled() || settings["airgap-enabled"],
     order: 131,
     settings: [
       {
@@ -520,13 +486,23 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   cloud: {
     name: t`Cloud`,
-    getHidden: settings => {
-      settings["token-features"]?.hosting === true &&
-        !settings["airgap-enabled"];
-    },
+    getHidden: settings =>
+      settings["token-features"]?.hosting === true ||
+      settings["airgap-enabled"],
     order: 132,
     component: CloudPanel,
     settings: [],
+    isUpsell: true,
+  },
+  whitelabel: {
+    name: t`Appearance`,
+    getHidden: settings => settings["token-features"]?.whitelabel === true,
+    order: 133,
+    component: props => (
+      <UpsellWhitelabel {...props} source="settings-appearance" />
+    ),
+    settings: [],
+    isUpsell: true,
   },
 };
 

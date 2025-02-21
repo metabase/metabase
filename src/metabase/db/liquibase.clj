@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.config :as config]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations]
    [metabase.db.liquibase.h2 :as liquibase.h2]
    [metabase.db.liquibase.mysql :as liquibase.mysql]
@@ -204,15 +205,19 @@
 (defn force-release-locks!
   "(Attempt to) force release Liquibase migration locks."
   [^Liquibase liquibase]
-  (.forceReleaseLocks liquibase))
+  (if-not (= (mdb.connection/db-type) :h2)
+    (throw (ex-info "Database %s does not support forcing migration locks. The lock is always automatically removed when the process performing the migration completes or fails."
+                    {:db-type (mdb.connection/db-type)}))
+    (.forceReleaseLocks liquibase)))
 
 (defn release-lock-if-needed!
-  "Attempts to release the liquibase lock if present. Logs but does not bubble up the exception if one occurs as it's
+  "Attempts to release the liquibase lock on h2 if present. Logs but does not bubble up the exception if one occurs as it's
   intended to be used when a failure has occurred and bubbling up this exception would hide the real exception."
   [^Liquibase liquibase]
   (when (migration-lock-exists? liquibase)
     (try
-      (force-release-locks! liquibase)
+      (when (= (mdb.connection/db-type) :h2)
+        (force-release-locks! liquibase))
       (catch Exception e
         (log/error e "Unable to release the Liquibase lock")))))
 
@@ -233,7 +238,7 @@
           (str
            (trs "Database has migration lock; cannot run migrations.")
            " "
-           (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`."))))))
+           (trs "You can force-release these locks by running `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate release-locks`."))))))
     (if (pos? @retry-counter)
       (log/warnf "Migration lock was acquired after %d retries." @retry-counter)
       (do (log/info "No migration lock found.")

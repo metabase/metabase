@@ -1,10 +1,11 @@
+import cx from "classnames";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/components/Schedule/Schedule";
 import type { FormTextInputProps } from "metabase/forms";
 import {
@@ -33,6 +34,7 @@ import type {
   CacheStrategy,
   CacheStrategyType,
   CacheableModel,
+  DurationStrategy,
   ScheduleSettings,
   ScheduleStrategy,
 } from "metabase-types/api";
@@ -49,8 +51,8 @@ import {
   scheduleSettingsToCron,
 } from "../utils";
 
+import Styles from "./PerformanceApp.module.css";
 import {
-  FormBox,
   FormWrapper,
   LoaderInButton,
   StyledForm,
@@ -207,6 +209,15 @@ const StrategyFormBody = ({
 
   const headingId = "strategy-form-heading";
 
+  const handleSwitchToggle = useCallback(() => {
+    if (values.type === "duration" || values.type === "schedule") {
+      const newValue = !(values as DurationStrategy | ScheduleStrategy)
+        .refresh_automatically;
+      setFieldValue("refresh_automatically", newValue);
+      setStatus("idle");
+    }
+  }, [values, setFieldValue, setStatus]);
+
   return (
     <FormWrapper>
       <StyledForm
@@ -214,10 +225,14 @@ const StrategyFormBody = ({
         aria-labelledby={headingId}
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
-        <FormBox isInSidebar={isInSidebar}>
+        <Box
+          className={cx(Styles.FormBox, {
+            [Styles.FormBoxSidebar]: isInSidebar,
+          })}
+        >
           {shouldShowName && (
             <Box lh="1rem" pt="md" color="text-medium">
-              <Group spacing="sm">
+              <Group gap="sm">
                 {targetModel === "database" && (
                   <FixedSizeIcon name="database" color="inherit" />
                 )}
@@ -227,7 +242,7 @@ const StrategyFormBody = ({
               </Group>
             </Box>
           )}
-          <Stack maw="35rem" pt={targetId === rootId ? "xl" : 0} spacing="xl">
+          <Stack maw="35rem" pt={targetId === rootId ? "xl" : 0} gap="xl">
             <StrategySelector
               targetId={targetId}
               model={targetModel}
@@ -265,13 +280,25 @@ const StrategyFormBody = ({
                   />
                 </Field>
                 <input type="hidden" name="unit" />
+                {["question", "dashboard"].includes(targetModel) && (
+                  <PLUGIN_CACHING.PreemptiveCachingSwitch
+                    handleSwitchToggle={handleSwitchToggle}
+                  />
+                )}
               </>
             )}
             {selectedStrategyType === "schedule" && (
-              <ScheduleStrategyFormFields />
+              <>
+                <ScheduleStrategyFormFields />
+                {["question", "dashboard"].includes(targetModel) && (
+                  <PLUGIN_CACHING.PreemptiveCachingSwitch
+                    handleSwitchToggle={handleSwitchToggle}
+                  />
+                )}
+              </>
             )}
           </Stack>
-        </FormBox>
+        </Box>
         <FormButtons
           targetId={targetId}
           targetModel={targetModel}
@@ -386,14 +413,16 @@ const ScheduleStrategyFormFields = () => {
     );
   }
   return (
-    <Schedule
-      schedule={schedule}
-      scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
-      onScheduleChange={onScheduleChange}
-      verb={c("A verb in the imperative mood").t`Invalidate`}
-      timezone={timezone}
-      aria-label={t`Describe how often the cache should be invalidated`}
-    />
+    <>
+      <Schedule
+        schedule={schedule}
+        scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
+        onScheduleChange={onScheduleChange}
+        verb={c("A verb in the imperative mood").t`Invalidate`}
+        timezone={timezone}
+        aria-label={t`Describe how often the cache should be invalidated`}
+      />
+    </>
   );
 };
 
@@ -418,7 +447,7 @@ const SaveAndDiscardButtons = ({
         h="40px"
         label={buttonLabels.save}
         successLabel={
-          <Group spacing="xs">
+          <Group gap="xs">
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
@@ -452,7 +481,7 @@ const StrategySelector = ({
     <section>
       <FormRadioGroup
         label={
-          <Stack spacing="xs">
+          <Stack gap="xs">
             <Text lh="1rem" color="text-medium" id={headingId}>
               {t`Select the cache invalidation policy`}
             </Text>
@@ -463,7 +492,7 @@ const StrategySelector = ({
         }
         name="type"
       >
-        <Stack mt="md" spacing="md">
+        <Stack mt="md" gap="md">
           {_.map(availableStrategies, (option, name) => {
             const labelString = getLabelString(option.label, model);
             /** Special colon sometimes used in Asian languages */
@@ -538,7 +567,7 @@ const Field = ({
 }) => {
   return (
     <label>
-      <Stack spacing="xs">
+      <Stack gap="xs">
         <div>
           <Title order={4}>{title}</Title>
           {subtitle}

@@ -218,6 +218,7 @@ describe("StrategyEditorForDatabases", () => {
     const strategy: ScheduleStrategy = {
       type: "schedule",
       schedule: "0 0 * * * ?",
+      refresh_automatically: false,
     };
     const result = getShortStrategyLabel(strategy);
     expect(result).toBe("Scheduled: hourly");
@@ -228,6 +229,7 @@ describe("StrategyEditorForDatabases", () => {
       type: "duration",
       duration: 5,
       unit: CacheDurationUnit.Hours,
+      refresh_automatically: false,
     };
     const result = getShortStrategyLabel(strategy);
     expect(result).toBe("Duration: 5h");

@@ -5,7 +5,7 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
-import { getPivotColumnSplit } from "metabase-lib/v1/queries/utils/pivot";
+import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -38,7 +38,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
 
   function wrap(api) {
     return (params, ...rest) => {
-      const { pivot_rows, pivot_cols } = getPivotColumnSplit(question);
+      const { pivot_rows, pivot_cols } = getPivotOptions(question);
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
@@ -137,16 +137,12 @@ export const CardApi = {
     ),
   ),
   create: POST("/api/card"),
-  uploadCSV: POST("/api/card/from-csv", {
-    formData: true,
-    fetch: true,
-  }),
   get: GET("/api/card/:cardId"),
   update: PUT("/api/card/:id"),
   delete: DELETE("/api/card/:id"),
-  persist: POST("/api/card/:id/persist"),
-  unpersist: POST("/api/card/:id/unpersist"),
-  refreshModelCache: POST("/api/card/:id/refresh"),
+  persist: POST("/api/persist/card/:id/persist"),
+  unpersist: POST("/api/persist/card/:id/unpersist"),
+  refreshModelCache: POST("/api/persist/card/:id/refresh"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
   bookmark: {
@@ -206,7 +202,7 @@ export const CollectionsApi = {
   getRoot: GET("/api/collection/root"),
   update: PUT("/api/collection/:id"),
   graph: GET("/api/collection/graph"),
-  updateGraph: PUT("/api/collection/graph"),
+  updateGraph: PUT("/api/collection/graph?skip-graph=true"),
 };
 
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
@@ -277,7 +273,7 @@ export const GoogleApi = {
 
 export const TimelineApi = {
   list: GET("/api/timeline"),
-  listForCollection: GET("/api/collection/:collectionId/timelines"),
+  listForCollection: GET("/api/timeline/collection/:collectionId"),
   get: GET("/api/timeline/:id"),
   create: POST("/api/timeline"),
   update: PUT("/api/timeline/:id"),
@@ -291,7 +287,6 @@ export const TimelineEventApi = {
 };
 
 export const MetabaseApi = {
-  db_add_sample_database: POST("/api/database/sample_database"),
   db_autocomplete_suggestions: GET(
     "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
   ),
@@ -300,8 +295,8 @@ export const MetabaseApi = {
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
-  db_persist: POST("/api/database/:dbId/persist"),
-  db_unpersist: POST("/api/database/:dbId/unpersist"),
+  db_persist: POST("/api/persist/database/:dbId/persist"),
+  db_unpersist: POST("/api/persist/database/:dbId/unpersist"),
   db_usage_info: GET("/api/database/:dbId/usage_info"),
   table_list: GET("/api/table"),
   table_get: GET("/api/table/:tableId"),
@@ -382,7 +377,7 @@ export const RevisionApi = {
 };
 
 export const RevisionsApi = {
-  get: GET("/api/:entity/:id/revisions"),
+  get: GET("/api/revision/:entity/:id"),
 };
 
 export const SessionApi = {
@@ -545,10 +540,6 @@ function setDashboardParameterValuesEndpoint(prefix) {
 }
 
 export const ActionsApi = {
-  list: GET("/api/action"),
-  get: GET("/api/action/:id"),
-  create: POST("/api/action"),
-  update: PUT("/api/action/:id"),
   execute: POST("/api/action/:id/execute"),
   prefetchValues: GET("/api/action/:id/execute"),
   prefetchDashcardValues: GET(
@@ -557,16 +548,6 @@ export const ActionsApi = {
   executeDashcardAction: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
-  createPublicLink: POST("/api/action/:id/public_link"),
-  deletePublicLink: DELETE("/api/action/:id/public_link"),
-  listPublic: GET("/api/action/public"),
-};
-
-export const MetabotApi = {
-  modelPrompt: POST("/api/metabot/model/:modelId"),
-  databasePrompt: POST("/api/metabot/database/:databaseId"),
-  databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
-  sendFeedback: POST("/api/metabot/feedback"),
 };
 
 export const CacheConfigApi = {

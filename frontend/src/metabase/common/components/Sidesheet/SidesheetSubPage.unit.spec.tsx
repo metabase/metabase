@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import { render, screen } from "__support__/ui";
 
 import { SidesheetSubPage } from "./SidesheetSubPage";
 
@@ -94,6 +95,7 @@ describe("Sidesheet", () => {
         title="Subpage title"
         onClose={closeSpy}
         onBack={jest.fn()}
+        withOverlay
       >
         hello world
       </SidesheetSubPage>,

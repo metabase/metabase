@@ -73,7 +73,8 @@ export const computeInitialTabId = <
   }
 
   const initialValueTab =
-    initialValue?.model && tabs.find(tab => tab.model === initialValue.model);
+    initialValue?.model &&
+    tabs.find(tab => tab.models.includes(initialValue.model as Model));
 
   if (initialValueTab) {
     return initialValueTab.id;
@@ -111,8 +112,8 @@ export const getSearchModels = <
 >(
   tabs: EntityPickerTab<Id, Model, Item>[],
 ): SearchModel[] => {
-  return tabs.flatMap(({ model }) => {
-    return model && isSearchModel(model) ? [model] : [];
+  return tabs.flatMap(({ models }) => {
+    return models && isArrayOfSearchModels(models) ? models : [];
   });
 };
 
@@ -141,6 +142,10 @@ const isSearchModel = (model: string): model is SearchModel => {
   return SEARCH_MODELS.some(searchModel => searchModel === model);
 };
 
+const isArrayOfSearchModels = (models: string[]): models is SearchModel[] => {
+  return models.every(isSearchModel);
+};
+
 export const getSearchInputPlaceholder = <
   Id extends SearchResultId,
   Model extends string,
@@ -163,6 +168,10 @@ export const getSearchInputPlaceholder = <
     }
 
     return t`Search this schema or everywhere…`;
+  }
+
+  if (folder?.model === "dashboard") {
+    return t`Search this dashboard or everywhere…`;
   }
 
   return t`Search…`;

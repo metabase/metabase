@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.legacy-mbql.normalize-test
+(ns metabase.legacy-mbql.normalize-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.set :as set]
@@ -253,172 +253,190 @@
                    :target [:dimension [:template-tag "names_list"]]
                    :value  ["=" 10 20]}]}}))
 
+(defn- query-with-template-tags
+  [template-tags]
+  {:type   :native
+   :native {:query         "SELECT COUNT(*) FROM \"PUBLIC\".\"CHECKINS\" WHERE {{checkin_date}}"
+            :template-tags template-tags}})
+
 (t/deftest ^:parallel normalize-template-tags-test
-  (letfn [(query-with-template-tags [template-tags]
-            {:type   :native
-             :native {:query         "SELECT COUNT(*) FROM \"PUBLIC\".\"CHECKINS\" WHERE {{checkin_date}}"
-                      :template-tags template-tags}})]
-    (normalize-tests
-     "`:template-tags` key should get normalized"
-     {{:type   :native
-       :native {:query          "SELECT COUNT(*) FROM \"PUBLIC\".\"CHECKINS\" WHERE {{checkin_date}}"
-                "template_tags" {"checkin_date" {:name         "checkin_date"
-                                                 :display-name "Checkin Date"
-                                                 :type         :dimension
-                                                 :dimension    [:field 14 nil]}}}}
-      {:type   :native
-       :native {:query         "SELECT COUNT(*) FROM \"PUBLIC\".\"CHECKINS\" WHERE {{checkin_date}}"
-                :template-tags {"checkin_date" {:name         "checkin_date"
-                                                :display-name "Checkin Date"
-                                                :type         :dimension
-                                                :dimension    [:field 14 nil]
-                                                :widget-type  :category}}}}}
+  (normalize-tests
+   "`:template-tags` key should get normalized"
+   {{:type   :native
+     :native {:query          "SELECT COUNT(*) FROM \"PUBLIC\".\"CHECKINS\" WHERE {{checkin_date}}"
+              "template_tags" {"checkin_date" {:name         "checkin_date"
+                                               :display-name "Checkin Date"
+                                               :type         :dimension
+                                               :dimension    [:field 14 nil]}}}}
+    {:type   :native
+     :native {:query         "SELECT COUNT(*) FROM \"PUBLIC\".\"CHECKINS\" WHERE {{checkin_date}}"
+              :template-tags {"checkin_date" {:name         "checkin_date"
+                                              :display-name "Checkin Date"
+                                              :type         :dimension
+                                              :dimension    [:field 14 nil]
+                                              :widget-type  :category}}}}}))
 
-     "Don't try to normalize template-tag name/display name. Names should get converted to strings."
-     {(query-with-template-tags
-       {"checkin_date" {:name         "checkin_date"
-                        :display_name "looks/like-a-keyword"
-                        :type         :dimension
-                        :dimension    [:field 14 nil]}})
-      (query-with-template-tags
-       {"checkin_date" {:name         "checkin_date"
-                        :display-name "looks/like-a-keyword"
-                        :type         :dimension
-                        :dimension    [:field 14 nil]
-                        :widget-type  :category}})
-
-      (query-with-template-tags
-       {:checkin_date {:name         :checkin_date
-                       :display-name "Checkin Date"
-                       :type         :dimension
-                       :dimension    [:field 14 nil]}})
-      (query-with-template-tags
-       {"checkin_date" {:name         "checkin_date"
-                        :display-name "Checkin Date"
-                        :type         :dimension
-                        :dimension    [:field 14 nil]
-                        :widget-type  :category}})}
-
-     "Actually, `:name` should just get copied over from the map key if it's missing or different"
-     {(query-with-template-tags
-       {"checkin_date" {:display_name "Checkin Date"
-                        :type         :dimension
-                        :dimension    [:field 14 nil]}})
-      (query-with-template-tags
-       {"checkin_date" {:name         "checkin_date"
-                        :display-name "Checkin Date"
-                        :type         :dimension
-                        :dimension    [:field 14 nil]
-                        :widget-type  :category}})
-
-      (query-with-template-tags
-       {"checkin_date" {:name         "something_else"
-                        :display_name "Checkin Date"
-                        :type         :dimension
-                        :dimension    [:field 14 nil]}})
-      (query-with-template-tags
-       {"checkin_date" {:name         "checkin_date"
-                        :display-name "Checkin Date"
-                        :type         :dimension
-                        :dimension    [:field 14 nil]
-                        :widget-type  :category}})}
-
-     "`:type` should get normalized"
-     {(query-with-template-tags
-       {:names_list {:name         "names_list"
-                     :display_name "Names List"
-                     :type         "dimension"
-                     :dimension    ["field-id" 49]}})
-      (query-with-template-tags
-       {"names_list" {:name         "names_list"
-                      :display-name "Names List"
+(t/deftest ^:parallel normalize-template-tags-test-2
+  (normalize-tests
+   "Don't try to normalize template-tag name/display name. Names should get converted to strings."
+   {(query-with-template-tags
+     {"checkin_date" {:name         "checkin_date"
+                      :display_name "looks/like-a-keyword"
                       :type         :dimension
-                      :dimension    [:field-id 49]
-                      :widget-type  :category}})}
+                      :dimension    [:field 14 nil]}})
+    (query-with-template-tags
+     {"checkin_date" {:name         "checkin_date"
+                      :display-name "looks/like-a-keyword"
+                      :type         :dimension
+                      :dimension    [:field 14 nil]
+                      :widget-type  :category}})
 
-     "`:widget-type` should get normalized"
-     {(query-with-template-tags
-       {:names_list {:name         "names_list"
-                     :display_name "Names List"
-                     :type         "dimension"
-                     :widget-type  "string/="
-                     :dimension    ["field-id" 49]}})
-      (query-with-template-tags
-       {"names_list" {:name         "names_list"
-                      :display-name "Names List"
+    (query-with-template-tags
+     {:checkin_date {:name         :checkin_date
+                     :display-name "Checkin Date"
+                     :type         :dimension
+                     :dimension    [:field 14 nil]}})
+    (query-with-template-tags
+     {"checkin_date" {:name         "checkin_date"
+                      :display-name "Checkin Date"
+                      :type         :dimension
+                      :dimension    [:field 14 nil]
+                      :widget-type  :category}})}))
+
+(t/deftest ^:parallel normalize-template-tags-test-3
+  (normalize-tests
+   "Actually, `:name` should just get copied over from the map key if it's missing or different"
+   {(query-with-template-tags
+     {"checkin_date" {:display_name "Checkin Date"
+                      :type         :dimension
+                      :dimension    [:field 14 nil]}})
+    (query-with-template-tags
+     {"checkin_date" {:name         "checkin_date"
+                      :display-name "Checkin Date"
+                      :type         :dimension
+                      :dimension    [:field 14 nil]
+                      :widget-type  :category}})
+
+    (query-with-template-tags
+     {"checkin_date" {:name         "something_else"
+                      :display_name "Checkin Date"
+                      :type         :dimension
+                      :dimension    [:field 14 nil]}})
+    (query-with-template-tags
+     {"checkin_date" {:name         "checkin_date"
+                      :display-name "Checkin Date"
+                      :type         :dimension
+                      :dimension    [:field 14 nil]
+                      :widget-type  :category}})}))
+
+(t/deftest ^:parallel normalize-template-tags-test-4
+  (normalize-tests
+   "`:type` should get normalized"
+   {(query-with-template-tags
+     {:names_list {:name         "names_list"
+                   :display_name "Names List"
+                   :type         "dimension"
+                   :dimension    ["field-id" 49]}})
+    (query-with-template-tags
+     {"names_list" {:name         "names_list"
+                    :display-name "Names List"
+                    :type         :dimension
+                    :dimension    [:field-id 49]
+                    :widget-type  :category}})}))
+
+(t/deftest ^:parallel normalize-template-tags-test-5
+  (normalize-tests
+   "`:widget-type` should get normalized"
+   {(query-with-template-tags
+     {:names_list {:name         "names_list"
+                   :display_name "Names List"
+                   :type         "dimension"
+                   :widget-type  "string/="
+                   :dimension    ["field-id" 49]}})
+    (query-with-template-tags
+     {"names_list" {:name         "names_list"
+                    :display-name "Names List"
+                    :type         :dimension
+                    :widget-type  :string/=
+                    :dimension    [:field-id 49]}})}))
+
+(t/deftest ^:parallel normalize-template-tags-test-6
+  (normalize-tests
+   "`:dimension` should get normalized"
+   ;; doesn't get converted to `:field` here because that happens during the canonicalization step.
+   {(query-with-template-tags
+     {"checkin_date" {:name         "checkin_date"
+                      :display_name "Checkin Date"
+                      :type         :dimension
+                      :dimension    ["field_id" 14]}})
+    (query-with-template-tags
+     {"checkin_date" {:name         "checkin_date"
+                      :display-name "Checkin Date"
+                      :type         :dimension
+                      :dimension    [:field-id 14]
+                      :widget-type  :category}})}))
+
+(t/deftest ^:parallel normalize-template-tags-test-7
+  (normalize-tests
+   "Don't normalize `:default` values"
+   {(query-with-template-tags
+     {"checkin_date" {:name         "checkin_date"
+                      :display-name "Checkin Date"
                       :type         :dimension
                       :widget-type  :string/=
-                      :dimension    [:field-id 49]}})}
+                      :dimension    [:field 1 nil]
+                      :default      ["a" "b"]}})
+    (query-with-template-tags
+     {"checkin_date" {:name         "checkin_date"
+                      :display-name "Checkin Date"
+                      :type         :dimension
+                      :widget-type  :string/=
+                      :dimension    [:field 1 nil]
+                      :default      ["a" "b"]}})}))
 
-     "`:dimension` should get normalized"
-     ;; doesn't get converted to `:field` here because that happens during the canonicalization step.
-     {(query-with-template-tags
-       {"checkin_date" {:name         "checkin_date"
-                        :display_name "Checkin Date"
-                        :type         :dimension
-                        :dimension    ["field_id" 14]}})
-      (query-with-template-tags
-       {"checkin_date" {:name         "checkin_date"
-                        :display-name "Checkin Date"
-                        :type         :dimension
-                        :dimension    [:field-id 14]
-                        :widget-type  :category}})}
+(t/deftest ^:parallel normalize-template-tags-test-8
+  (normalize-tests
+   "Don't keywordize keys that aren't present in template tag maps"
+   {{:database 1
+     :type     :native
+     :native   {:template-tags {"x" {}}}}
 
-     "Don't normalize `:default` values"
-     {(query-with-template-tags
-       {"checkin_date" {:name         "checkin_date"
-                        :display-name "Checkin Date"
-                        :type         :dimension
-                        :widget-type  :string/=
-                        :dimension    [:field 1 nil]
-                        :default      ["a" "b"]}})
-      (query-with-template-tags
-       {"checkin_date" {:name         "checkin_date"
-                        :display-name "Checkin Date"
-                        :type         :dimension
-                        :widget-type  :string/=
-                        :dimension    [:field 1 nil]
-                        :default      ["a" "b"]}})}
+    ;; `:name` still gets copied over from the map key.
+    {:database 1
+     :type     :native
+     :native   {:template-tags {"x" {:name "x"}}}}}))
 
-     "Don't keywordize keys that aren't present in template tag maps"
-     {{:database 1
-       :type     :native
-       :native   {:template-tags {"x" {}}}}
-
-      ;; `:name` still gets copied over from the map key.
-      {:database 1
-       :type     :native
-       :native   {:template-tags {"x" {:name "x"}}}}}
-
-     ":dimension (Field filter) template tags with no :widget-type should get :category as a default type (#20643)"
-     {{:database 1
-       :type     :native
-       :native   {:template-tags {"x" {:name "x", :type :dimension}}}}
-      {:database 1
-       :type     :native
-       :native   {:template-tags {"x" {:name        "x"
-                                       :type        :dimension
-                                       :widget-type :category}}}}
-      ;; don't add if there's already an existing `:widget-type`
-      {:database 1
-       :type     :native
-       :native   {:template-tags {"x" {:name        "x"
-                                       :type        :dimension
-                                       :widget-type :string/=}}}}
-      {:database 1
-       :type     :native
-       :native   {:template-tags {"x" {:name        "x"
-                                       :type        :dimension
-                                       :widget-type :string/=}}}}
-      ;; don't add if this isn't a Field filter (`:type` is not `:dimension`)
-      {:database 1
-       :type     :native
-       :native   {:template-tags {"x" {:name "x"
-                                       :type :nonsense}}}}
-      {:database 1
-       :type     :native
-       :native   {:template-tags {"x" {:name "x"
-                                       :type :nonsense}}}}})))
+(t/deftest ^:parallel normalize-template-tags-test-9
+  (normalize-tests
+   ":dimension (Field filter) template tags with no :widget-type should get :category as a default type (#20643)"
+   {{:database 1
+     :type     :native
+     :native   {:template-tags {"x" {:name "x", :type :dimension}}}}
+    {:database 1
+     :type     :native
+     :native   {:template-tags {"x" {:name        "x"
+                                     :type        :dimension
+                                     :widget-type :category}}}}
+    ;; don't add if there's already an existing `:widget-type`
+    {:database 1
+     :type     :native
+     :native   {:template-tags {"x" {:name        "x"
+                                     :type        :dimension
+                                     :widget-type :string/=}}}}
+    {:database 1
+     :type     :native
+     :native   {:template-tags {"x" {:name        "x"
+                                     :type        :dimension
+                                     :widget-type :string/=}}}}
+    ;; don't add if this isn't a Field filter (`:type` is not `:dimension`)
+    {:database 1
+     :type     :native
+     :native   {:template-tags {"x" {:name "x"
+                                     :type :nonsense}}}}
+    {:database 1
+     :type     :native
+     :native   {:template-tags {"x" {:name "x"
+                                     :type :nonsense}}}}}))
 
 ;;; ------------------------------------------------- source queries -------------------------------------------------
 
@@ -1023,6 +1041,88 @@
                     :fields   [[:field 3 nil]]}}}}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              REPLACE LEGACY FILTERS                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(t/deftest ^:parallel replace-relative-date-filters-test
+  (tests 'replace-relative-date-filters #'mbql.normalize/replace-relative-date-filters
+         {"date range in the past"
+          {[:between
+            [:+ [:field 1 nil] [:interval 7 :year]]
+            [:relative-datetime -30 :day]
+            [:relative-datetime 0 :day]]
+           [:relative-time-interval [:field 1 nil] -30 :day -7 :year]}
+
+          "date range in the future"
+          {[:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime 0 :day]
+            [:relative-datetime 30 :day]]
+           [:relative-time-interval [:field 1 nil] 30 :day 7 :year]}
+
+          "date range that is not entirely in the past or in the future should be skipped"
+          {[:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime -5 :day]
+            [:relative-datetime 30 :day]]
+           [:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime -5 :day]
+            [:relative-datetime 30 :day]]}
+
+          "date range with different units for start and end of the interval should be skipped"
+          {[:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime 0 :day]
+            [:relative-datetime 30 :quarter]]
+           [:between
+            [:+ [:field 1 nil] [:interval -7 :year]]
+            [:relative-datetime 0 :day]
+            [:relative-datetime 30 :quarter]]}}))
+
+(t/deftest ^:parallel replace-exclude-date-filters-test
+  (tests 'replace-exclude-date-filters #'mbql.normalize/replace-exclude-date-filters
+         {"`:hour-of-day`"
+          {[:!= [:field 1 {:temporal-unit :hour-of-day}] 0 23]
+           [:!= [:get-hour [:field 1 nil]] 0 23]}
+
+          "`:day-of-week`"
+          {[:!= [:field 1 {:temporal-unit :day-of-week}] "2024-12-02" "2024-12-08"]
+           [:!= [:get-day-of-week [:field 1 nil] :iso] 1 7]}
+
+          "`:month-of-year`"
+          {[:!= [:field 1 {:temporal-unit :month-of-year}] "2024-01-02" "2024-12-08"]
+           [:!= [:get-month [:field 1 nil]] 1 12]}
+
+          "`:quarter-of-year`"
+          {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "2024-12-08"]
+           [:!= [:get-quarter [:field 1 nil]] 1 4]}
+
+          "field options should be preserved"
+          {[:!= [:field 1 {:base-type :type/DateTime :temporal-unit :hour-of-day}] 10]
+           [:!= [:get-hour [:field 1 {:base-type :type/DateTime}]] 10]}
+
+          "filters with invalid dates should be ignored"
+          {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-99" "2024-12-08"]
+           [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-99" "2024-12-08"]}
+
+          "filters with non-date string arguments should be ignored"
+          {[:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "abc"]
+           [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "abc"]}}))
+
+(t/deftest ^:parallel replace-legacy-filters-test
+  (tests 'replace-legacy-filters-test #'mbql.normalize/replace-legacy-filters
+         {"exclude date filters"
+          {{:type  :query,
+            :query {:filters [:and
+                              [:!= [:field 1 {:temporal-unit :hour-of-day}] 0 23]
+                              [:!= [:field 1 {:temporal-unit :quarter-of-year}] "2024-01-02" "2024-12-08"]]}}
+           {:type  :query,
+            :query {:filters [:and
+                              [:!= [:get-hour [:field 1 nil]] 0 23]
+                              [:!= [:get-quarter [:field 1 nil]] 1 4]]}}}}))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              REMOVE EMPTY CLAUSES                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -1502,3 +1602,52 @@
                1
                {"base-type" "type/Float", "effective-type" "type/Float"}]
               -1]))))
+
+(t/deftest ^:parallel normalize-legacy-filters-test
+  (t/is (= {:database 1
+            :type     :query
+            :query   {:filters [:and
+                                [:!= [:get-hour [:field 1 nil]] 0 23]
+                                [:between [:field 1 nil] "2024-10-05" "2024-12-08"]]}}
+           (mbql.normalize/normalize {:database 1
+                                      :type     :query
+                                      :query   {:filters [:and
+                                                          [:!= [:field 1 {:temporal-unit :hour-of-day}] 0 23]
+                                                          [:between [:field 1 nil] "2024-10-05" "2024-12-08"]]}}))))
+
+(t/deftest ^:parallel normalizing-idents-test
+  (let [ident0 "ident0_______________"
+        ident1 "ident1_______________"
+        ident2 "ident2_______________"
+        ident3 "ident3_______________"
+        ident4 "ident4_______________"]
+    (t/testing ":aggregation-idents is normalized to have integer keys"
+      (t/is (=? {:query {:aggregation-idents {0 ident0
+                                              1 ident1
+                                              2 ident2}}}
+                (mbql.normalize/normalize
+                 {:query {:aggregation [[:count] [:count] [:count]]
+                          :aggregation-idents {0   ident0
+                                               "1" ident1
+                                               :2  ident2}}}))))
+    (t/testing ":breakout-idents is normalized to have integer keys"
+      (t/is (=? {:query {:breakout-idents {0 ident0
+                                           1 ident1
+                                           2 ident2}}}
+                (mbql.normalize/normalize
+                 {:query {:breakout [[:field 1 {}] [:field 2 {}] [:field 3 {}]]
+                          :breakout-idents {0   ident0
+                                            "1" ident1
+                                            :2  ident2}}}))))
+    (t/testing ":expression-idents is normalized to have string keys, even if they got keywordized"
+      (t/is (=? {:query {:expression-idents {"regular string"     ident0
+                                             "string/with slash"  ident1
+                                             "keyword-name"       ident2
+                                             "keyword/with-slash" ident3
+                                             "namespaced/keyword" ident4}}}
+                (mbql.normalize/normalize
+                 {:query {:expression-idents {"regular string"                 ident0
+                                              "string/with slash"              ident1
+                                              :keyword-name                    ident2
+                                              (keyword "keyword/with-slash")   ident3
+                                              (keyword "namespaced" "keyword") ident4}}}))))))

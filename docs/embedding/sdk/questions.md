@@ -6,14 +6,13 @@ title: "Embedded analytics SDK - components"
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 There are different ways you can embed questions:
 
-- [`StaticQuestion`](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
-- [`InteractiveQuestion`](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
-- [`CreateQuestion`]()
-- [`ModifyQuestion`](#embedding-an-editable-question). Embeds the interactive question and the query builder.
+- [Static question](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
+- [Interactive question](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
+- [Query builder](#embedding-the-query-builder). Embeds the graphical query builder without a pre-defined query.
 
 ## Embedding a static question
 
@@ -21,81 +20,86 @@ You can embed a static question using the `StaticQuestion` component.
 
 The component has a default height, which can be customized by using the `height` prop. To inherit the height from the parent container, you can pass `100%` to the height prop.
 
-```typescript jsx
+```typescript
 import React from "react";
 import {MetabaseProvider, StaticQuestion} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     const questionId = 1; // This is the question ID you want to embed
 
     return (
-        <MetabaseProvider config={config}>
-            <StaticQuestion questionId={questionId} showVisualizationSelector={false}/>
+        <MetabaseProvider authConfig={authConfig}>
+            <StaticQuestion questionId={questionId} withChartTypeSelector={false}/>
         </MetabaseProvider>
     );
 }
-```
-
-You can pass parameter values to questions defined with SQL via `parameterValues` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
-
-```jsx
-{% raw %}
-<StaticQuestion questionId={questionId} parameterValues={{ product_id: 50 }} />
-{% endraw %}
 ```
 
 ## Embedding an interactive question
 
 You can embed an interactive question using the `InteractiveQuestion` component.
 
-```typescript jsx
+```typescript
 import React from "react";
 import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     const questionId = 1; // This is the question ID you want to embed
 
     return (
-        <MetabaseProvider config={config}>
+        <MetabaseProvider authConfig={authConfig}>
             <InteractiveQuestion questionId={questionId}/>
         </MetabaseProvider>
     );
 }
-const questionId = 1; // This is the question ID you want to embed
 ```
 
 ## Question props
 
-| Prop             | Type                                               | Description                                                                                                                                                                                                                                                                                                        |
-| ---------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| questionId       | `number \| string`                                 | (required) The ID of the question. This is either:<br>- The numerical ID when accessing a question link, e.g., `http://localhost:3000/question/1-my-question` where the ID is `1`.<br>- The `entity_id` key of the question object. You can find a question's entity ID in the info panel when viewing a question. |
-| plugins          | `{ mapQuestionClickActions: Function } \| null`    | Additional mapper function to override or add drill-down menu.                                                                                                                                                                                                                                                     |
-| height           | `number \| string`                                 | (optional) A number or string specifying a CSS size value that specifies the height of the component                                                                                                                                                                                                               |
-| entityTypeFilter | `("table" \| "question" \| "model" \| "metric")[]` | (optional) An array that specifies which entity types are available in the data picker                                                                                                                                                                                                                             |
-| isSaveEnabled    | `boolean`                                          | (optional) Whether people can save the question.                                                                                                                                                                                                                                                                   |
-| withResetButton  | `boolean`                                          | (optional, default: `true`) Determines whether a reset button is displayed. Only relevant when using the default layout                                                                                                                                                                                            |
-| withTitle        | `boolean`                                          | (optional, default: `false`) Determines whether the question title is displayed. Only relevant when using the default layout.                                                                                                                                                                                      |
-| customTitle      | `string \| undefined`                              | (optional) Allows a custom title to be displayed instead of the default question title. Only relevant when using the default layout.                                                                                                                                                                               |
-| onBeforeSave     | `() => void`                                       | (optional) A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                                             |
-| onSave           | `() => void`                                       | (optional) A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                            |
+| Prop                    | Type                                                                 | Description                                                                                                                                                                                                                                                                                                        |
+| ----------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `entityTypeFilter`      | string array; options include "table", "question", "model", "metric" | (optional) An array that specifies which entity types are available in the data picker                                                                                                                                                                                                                             |
+| `height`                | number or string                                                     | (optional) A number or string specifying a CSS size value that specifies the height of the component                                                                                                                                                                                                               |
+| `initialSqlParameters`  | `Record<string, string \| string[]>`                                 | (optional) For SQL questions only. A mapping of [SQL parameter names to parameter values](#pass-sql-parameters-to-sql-questions-with-initialsqlparameters), such as `{ product_id: "42"}`.                                                                                                                         |
+| `isSaveEnabled`         | boolean                                                              | (optional) Whether people can save the question.                                                                                                                                                                                                                                                                   |
+| `onBeforeSave`          | `() => void`                                                         | (optional) A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                                             |
+| `onSave`                | `() => void`                                                         | (optional) A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                            |
+| `plugins`               | `{ mapQuestionClickActions: Function }` or null                      | Additional mapper function to override or add drill-down menu.                                                                                                                                                                                                                                                     |
+| `questionId`            | number or string                                                     | (required) The ID of the question. This is either:<br>- The numerical ID when accessing a question link, e.g., `http://localhost:3000/question/1-my-question` where the ID is `1`.<br>- The `entity_id` key of the question object. You can find a question's Entity ID in the info panel when viewing a question. |
+| `saveToCollectionId`    | number                                                               | (optional) The target collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.                                                                                                                                                      |
+| `title`                 | boolean or string or `ReactNode` or `() => ReactNode`                | (optional) Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default. Only Only applicable to interactive questions when using the default layout.                                                                     |
+| `withChartTypeSelector` | boolean                                                              | (optional, default: `true`) Determines whether the chart type selector and corresponding settings button are shown. Only relevant when using the default layout.                                                                                                                                                   |
+| `withResetButton`       | boolean                                                              | (optional, default: `true`) Determines whether a reset button is displayed. Only relevant when using the default layout                                                                                                                                                                                            |
+
+## Pass SQL parameters to SQL questions with `initialSqlParameters`
+
+You can pass parameter values to questions defined with SQL via the `initialSqlParameters` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
+
+```typescript
+{% raw %}
+<StaticQuestion questionId={questionId} initialSqlParameters={{ product_id: 50 }} />
+{% endraw %}
+```
+
+`initialSqlParameters` can't be used with questions built using the query builder.
 
 ## Customizing interactive questions
 
-By default, the Embedded Analytics SDK provides a default layout for interactive questions that allows you to view your questions, apply filters and aggregations, and access functionality within the query builder.
+By default, the Embedded analytics SDK provides a default layout for interactive questions that allows you to view your questions, apply filters and aggregations, and access functionality within the query builder.
 
 Here's an example of using the `InteractiveQuestion` component with its default layout:
 
-```typescript jsx
+```typescript
 <InteractiveQuestion questionId={95} />
 ```
 
 To customize the layout, use namespaced components within the `InteractiveQuestion` component. For example:
 
-```typescript jsx
+```typescript
 {% raw %}
 <InteractiveQuestion questionId={95}>
   <div
@@ -137,30 +141,197 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 
 These components are available via the `InteractiveQuestion` namespace (e.g., `<InteractiveQuestion.Filter />`).
 
-| Component               | Info                                                                                                                         |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
-| `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
-| `Filter`                | The Filter pane containing all possible filters                                                                              |
-| `FilterButton`          | The button used in the default layout to open the Filter pane. You can replace this button with your own implementation.     |
-| `ResetButton`           | The button used to reset the question after the question has been modified with filters/aggregations/etc                     |
-| `Title`                 | The question's title                                                                                                         |
-| `SaveButton`            | Button for saving the question.                                                                                              |
-| `Summarize`             | The Summarize pane containing all possible aggregations                                                                      |
-| `SummarizeButton`       | The button used in the default layout to open the Summarize pane. You can replace this button with your own implementation.  |
-| `Notebook`              | The Notebook editor that allows for more filter, aggregation, and custom steps                                               |
-| `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
-| `QuestionVisualization` | The chart visualization for the question                                                                                     |
+_\* signifies a required prop_
+
+#### `InteractiveQuestion.BackButton`
+
+A navigation button that returns to the previous view. Only renders when `onNavigateBack` prop from InteractiveQuestion is available.
+
+Uses [Mantine ActionIcon props](https://v6.mantine.dev/core/action-icon/) under the hood, as well as:
+| Prop | Type | Description |
+|------|------|-------------|
+| className | string | Custom CSS class name for styling the component |
+| style | React.CSSProperties | Inline styles to apply to the component |
+
+#### `InteractiveQuestion.Filter`
+
+A set of interactive filter badges that allow adding, editing, and removing filters. Displays current filters as badges with an "Add another filter" option.
+
+| Prop               | Type    | Description                                          |
+| ------------------ | ------- | ---------------------------------------------------- |
+| withColumnItemIcon | boolean | Whether to show column icons in the filter interface |
+
+#### `InteractiveQuestion.FilterDropdown`
+
+A dropdown button for the Filter component.
+
+| Prop               | Type    | Description                                          |
+| ------------------ | ------- | ---------------------------------------------------- |
+| withColumnItemIcon | boolean | Whether to show column icons in the filter interface |
+
+#### `InteractiveQuestion.ResetButton`
+
+Button to reset question modifications. Only appears when there are unsaved changes to the question.
+
+Uses [Mantine Button props](https://v6.mantine.dev/core/button/?t=props) under the hood, as well as:
+| Prop | Type | Description |
+|------|------|-------------|
+| className | string | Custom CSS class name for styling the component |
+| style | React.CSSProperties | Inline styles to apply to the component |
+
+#### `InteractiveQuestion.Title`
+
+Displays a title based on the question's state. Shows:
+
+- The question's display name if it's saved
+- An auto-generated description for ad-hoc questions (non-native queries)
+- "New question" as fallback or for new/native queries
+
+| Prop      | Type          | Description                                     |
+| --------- | ------------- | ----------------------------------------------- |
+| className | string        | Custom CSS class name for styling the component |
+| style     | CSSProperties | Inline styles to apply to the component         |
+
+#### `InteractiveQuestion.SaveButton`
+
+Button for saving question changes. Only enabled when there are unsaved modifications to the question.
+
+_Note_: Currently, in custom layouts, the `SaveButton` must have an `onClick` handler or the button will not do anything when clicked.
+
+Uses [Mantine Button props](https://v6.mantine.dev/core/button/?t=props) under the hood, as well as:
+| Prop | Type | Description |
+|------|------|-------------|
+| className | string | Custom CSS class name for styling the component |
+| style | React.CSSProperties | Inline styles to apply to the component |
+
+#### `InteractiveQuestion.Breakout`
+
+A set of badges for managing data groupings (breakouts).
+
+No props. Uses question context for breakout functionality.
+
+#### `InteractiveQuestion.BreakoutDropdown`
+
+Dropdown button for the Breakout component.
+
+Uses [Popover props](https://v6.mantine.dev/core/popover/?t=props) except `onClose`, `children`, and `opened` under the hood, as well as:
+| Prop | Type | Description |
+|------|------|-------------|
+| className | string | Custom CSS class name for styling the component |
+| style | React.CSSProperties | Inline styles to apply to the component |
+
+#### `InteractiveQuestion.Summarize`
+
+Interface for adding and managing data summaries (like counts, sums, averages). Displays as a set of badges.
+
+No props. Uses question context for summarization functionality.
+
+#### `InteractiveQuestion.SummarizeDropdown`
+
+Dropdown button for the Summarize component.
+
+Uses [Popover props](https://v6.mantine.dev/core/popover/?t=props) except `onClose`, `children`, and `opened` under the hood, as well as:
+| Prop | Type | Description |
+|------|------|-------------|
+| className | string | Custom CSS class name for styling the component |
+| style | React.CSSProperties | Inline styles to apply to the component |
+
+#### `InteractiveQuestion.Editor`
+
+Advanced query editor that provides full access to question configuration. Includes filtering, aggregation, custom expressions, and joins.
+
+_Replaces deprecated `InteractiveQuestion.Notebook`_
+
+| Prop    | Type       | Description                                         |
+| ------- | ---------- | --------------------------------------------------- |
+| onApply | () => void | Callback function executed when changes are applied |
+
+#### `InteractiveQuestion.EditorButton`
+
+Toggle button for showing/hiding the Editor interface.
+
+_Replaces deprecated `InteractiveQuestion.NotebookButton`_
+
+_Note_: Currently, in custom layouts, the `EditorButton` must have an `onClick` handler or the button will not do anything when clicked.
+
+Uses [Mantine ActionIcon props](https://v6.mantine.dev/core/action-icon/) under the hood, as well as:
+| Prop | Type | Description |
+|------|------|-------------|
+| isOpen | boolean | Whether the editor is currently open |
+| className | string | Custom CSS class name for styling the component |
+| style | React.CSSProperties | Inline styles to apply to the component |
+
+#### `InteractiveQuestion.QuestionVisualization`
+
+The main visualization component that renders the question results as a chart, table, or other visualization type.
+
+| Prop      | Type                | Description                                     |
+| --------- | ------------------- | ----------------------------------------------- |
+| height    | number \| string    | Height for visualization                        |
+| width     | number \| string    | Width for visualization                         |
+| className | string              | Custom CSS class name for styling the component |
+| style     | React.CSSProperties | Inline styles to apply to the component         |
+
+#### `InteractiveQuestion.QuestionSettings`
+
+Settings panel for configuring visualization options like axes, colors, and formatting.
+
+No props. Uses question context for settings.
+
+#### `InteractiveQuestion.QuestionSettingsDropdown`
+
+Dropdown button that contains the QuestionSettings component.
+
+Uses [Popover props](https://v6.mantine.dev/core/popover/?t=props) except `onClose` and `opened` under the hood, as well as:
+| Prop | Type | Description |
+|------|------|-------------|
+| height | React.CSSProperties["height"] | Height for the dropdown menu |
+| className | string | Custom CSS class name for styling the component |
+| style | React.CSSProperties | Inline styles to apply to the component |
+
+#### `InteractiveQuestion.ChartTypeSelector`
+
+Detailed chart type selection interface with recommended visualization options.
+
+Uses [Mantine Stack props](https://v6.mantine.dev/core/stack/?t=props) under the hood, as well as:
+| Prop | Type | Description |
+|------|------|-------------|
+| className | string | Custom CSS class name for styling the component |
+| style | React.CSSProperties | Inline styles to apply to the component |
+
+#### `InteractiveQuestion.ChartTypeDropdown`
+
+Dropdown for selecting the visualization type (bar chart, line chart, table, etc.). Automatically updates to show recommended visualization types for the current data.
+
+Uses [Mantine Menu props](https://v6.mantine.dev/core/menu/?t=props) under the hood, as well as:
+| Prop | Type | Description |
+|------|------|-------------|
+| className | string | Custom CSS class name for styling the component |
+| style | React.CSSProperties | Inline styles to apply to the component |
+
+#### `InteractiveQuestion.SaveQuestionForm`
+
+Form for saving a question, including title and description. When saved:
+
+- For new questions: Calls `onCreate` prop from InteractiveQuestion
+- For existing questions: Calls `onSave` prop from InteractiveQuestion
+- Both callbacks receive the updated question object
+- Form can be cancelled via the `onCancel` prop
+
+| Prop     | Type       | Description                                       |
+| -------- | ---------- | ------------------------------------------------- |
+| onCancel | () => void | Callback function executed when save is cancelled |
 
 ## Interactive question plugins
 
+You can use plugins to add custom functionality to your questions.
+
 ### `mapQuestionClickActions`
 
-This plugin allows you to add custom actions to
-the click-through menu of an interactive question. You can add and
+This plugin allows you to add custom actions to the click-through menu of an interactive question. You can add and
 customize the appearance and behavior of the custom actions.
 
-```typescript jsx
+```typescript
 // You can provide a custom action with your own `onClick` logic.
 const createCustomAction = clicked => ({
   buttonType: "horizontal",
@@ -210,45 +381,49 @@ const plugins = {
 const questionId = 1; // This is the question ID you want to embed
 
 return (
-  <MetabaseProvider config={config} pluginsConfig={plugins}>
+  <MetabaseProvider authConfig={authConfig} pluginsConfig={plugins}>
     <InteractiveQuestion questionId={questionId} />
   </MetabaseProvider>
 );
 ```
 
-## Creating a question
+## Embedding an editable interactive question
 
-With the `CreateQuestion` component, you can create a new question from scratch with Metabase's query builder.
+You can edit an existing question using the query builder by passing the `isSaveEnabled` prop on the `InteractiveQuestion` component.
 
 ```tsx
 import React from "react";
-import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     return (
-        <MetabaseProvider config={config}>
-            <CreateQuestion/>
+        <MetabaseProvider authConfig={authConfig}>
+            <InteractiveQuestion questionId={1} isSaveEnabled />
         </MetabaseProvider>
     );
 }
 ```
 
-## Embedding an editable question
+## Embedding the query builder
 
-With the `ModifyQuestion` component, you can edit an existing question using the query builder by passing the question's ID.
+With the `CreateQuestion` component, you can embed the query builder without a pre-defined question.
+
+This component is built on top of the `InteractiveQuestion` component with [namespaced components](#interactive-question-components). It [shares the same props as InteractiveQuestion](#question-props), except it lacks the `questionId` prop and the ability to pass custom children.
+
+To customize the question editor's layout, use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).
 
 ```tsx
 import React from "react";
-import {MetabaseProvider, ModifyQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const authConfig = {...}
 
 export default function App() {
     return (
-        <MetabaseProvider config={config}>
-            <ModifyQuestion questionId={1}/>
+        <MetabaseProvider authConfig={authConfig}>
+            <CreateQuestion />
         </MetabaseProvider>
     );
 }

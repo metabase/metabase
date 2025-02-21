@@ -1,18 +1,16 @@
 (ns metabase-enterprise.advanced-config.api.pulse-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Card]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util :as u]))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 
 (deftest test-pulse-endpoint-should-respect-email-domain-allow-list-test
   (testing "POST /api/pulse/test"
-    (t2.with-temp/with-temp [Card card {:name          "Test card"
-                                        :dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card card {:name          "Test card"
+                                     :dataset_query (mt/mbql-query venues)}]
       ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
       ;; technically allow either right now
       (doseq [channel [{:details {:emails ["test@metabase.com"]}}

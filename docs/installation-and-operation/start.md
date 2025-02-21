@@ -8,7 +8,7 @@ The birth, care, and feeding of your Metabase.
 
 ## [Installing Metabase](./installing-metabase.md)
 
-Start here.
+Options for installing Metabase.
 
 ## [Migrating to a production database](./migrating-from-h2.md)
 
@@ -50,6 +50,6 @@ We collect anonymous Metabase usage data to improve the product. We don't collec
 
 Metabase's CLI.
 
-***
+---
 
 If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).

@@ -1,9 +1,10 @@
 (ns metabase.lib.schema.util-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [malli.core :as mc]
    [malli.error :as me]
-   [metabase.lib.schema.util :as lib.schema.util]))
+   [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- query [uuid-1 uuid-2]
   {:lib/type :mbql/query
@@ -79,10 +80,10 @@
   (is (not (lib.schema.util/unique-uuids? query-with-duplicate-uuids))))
 
 (deftest ^:parallel unique-uuids-schema-test
-  (is (not (mc/explain ::lib.schema.util/unique-uuids query-with-no-duplicate-uuids)))
-  (is (mc/explain ::lib.schema.util/unique-uuids query-with-duplicate-uuids))
+  (is (not (mr/explain ::lib.schema.util/unique-uuids query-with-no-duplicate-uuids)))
+  (is (mr/explain ::lib.schema.util/unique-uuids query-with-duplicate-uuids))
   (is (= ["Duplicate :lib/uuid #{\"00000000-0000-0000-0000-000000000001\"}"]
-         (me/humanize (mc/explain ::lib.schema.util/unique-uuids query-with-duplicate-uuids)))))
+         (me/humanize (mr/explain ::lib.schema.util/unique-uuids query-with-duplicate-uuids)))))
 
 (deftest ^:parallel distinct-refs-test
   (are [refs] (not (lib.schema.util/distinct-refs? refs))
@@ -98,15 +99,20 @@
     [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Integer} 1]
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]))
 
-(deftest ^:parallel remove-lib-uuids-test
-  (are [x expected] (= (lib.schema.util/remove-lib-uuids x) expected)
+(deftest ^:parallel remove-randomized-idents-test
+  (are [x expected] (= expected
+                       (lib.schema.util/remove-randomized-idents x))
     {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+    {}
+
+    {:ident "arbitrary string"}
     {}
 
     {:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
     {:a 1}
 
-    [{:lib/uuid "00000000-0000-0000-0000-000000000000"}]
+    [{:lib/uuid "00000000-0000-0000-0000-000000000000"
+      :ident    "9qXy7eADqYbU2ET9ZWFbp"}]
     [{}]
 
     [:a {:lib/uuid "00000000-0000-0000-0000-000000000000"}]
@@ -117,7 +123,8 @@
 
     [:a {:b [:c
              {:d 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
-             {:lib/uuid "00000000-0000-0000-0000-000000000001"}]
+             {:lib/uuid "00000000-0000-0000-0000-000000000001"
+              :ident    "mje0fGVMd7QtI_s_HkSRk"}]
          :lib/uuid "00000000-0000-0000-0000-000000000002"}]
     [:a {:b [:c {:d 1} {}]}]
 
@@ -126,6 +133,7 @@
      {:lib/uuid "81fdaa28-0af3-4168-b4a2-1afe43c389e7"}
      [:field
       {:lib/uuid "92d6d8d3-5685-4e41-93ce-f83d63c4156d"
+       :ident    (u/generate-nano-id)
        :base-type :type/BigInteger
        :effective-type :type/BigInteger}
       63400]]
@@ -144,7 +152,7 @@
 
 (deftest ^:parallel distinct-ignoring-uuids-schema-test
   (testing "distinct values ignoring uuids"
-    (are [x] (not (mc/explain ::lib.schema.util/distinct-ignoring-uuids x))
+    (are [x] (not (mr/explain ::lib.schema.util/distinct-ignoring-uuids x))
       [1 2 3]
       [{:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
        {:b 2, :lib/uuid "00000000-0000-0000-0000-000000000000"}]
@@ -164,7 +172,7 @@
          63401]]]))
 
   (testing "non-distinct values ignoring uuids"
-    (are [x] (mc/explain ::lib.schema.util/distinct-ignoring-uuids x)
+    (are [x] (mr/explain ::lib.schema.util/distinct-ignoring-uuids x)
       [1 2 1 3]
       [{:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
        {:a 1, :lib/uuid "00000000-0000-0000-0000-000000000001"}]
@@ -185,6 +193,6 @@
 
   (testing "humanized error message"
     (is (= ["Duplicate values ignoring uuids in: [{:a 1} {:a 1}]"]
-           (me/humanize (mc/explain ::lib.schema.util/distinct-ignoring-uuids
+           (me/humanize (mr/explain ::lib.schema.util/distinct-ignoring-uuids
                                     [{:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
                                      {:a 1, :lib/uuid "00000000-0000-0000-0000-000000000001"}]))))))

@@ -36,6 +36,9 @@
   "A small dataset with users and a set of messages between them. Each message has *2* foreign keys to user -- sender
   and receiver -- allowing us to test situations where multiple joins for a *single* table should occur.")
 
+(tx/defdataset-edn uuid-dogs
+  "A small dataset with users and dogs, with uuid primary keys")
+
 (tx/defdataset-edn daily-bird-counts
   "A small dataset that includes an integer column with some NULL and ZERO values, meant for testing things like
   expressions to make sure they behave correctly.

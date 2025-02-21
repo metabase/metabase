@@ -1,14 +1,14 @@
 (ns metabase.models.audit-log-test
-  (:require [clojure.test :refer :all]
-            [clojure.test.check.clojure-test :as ct :refer [defspec]]
-            [clojure.test.check.generators :as gen]
-            [clojure.test.check.properties :as prop]
-            [malli.generator :as mg]
-            [metabase.models.audit-log :as audit-log]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan2.core :as t2]
-            [toucan2.tools.with-temp :as t2.with-temp]))
+  (:require
+   [clojure.test :refer :all]
+   [clojure.test.check.clojure-test :refer [defspec]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
+   [malli.generator :as mg]
+   [metabase.models.audit-log :as audit-log]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (derive :event/test-event :metabase/event)
 
@@ -46,7 +46,7 @@
   (mt/with-premium-features #{:audit-app}
     (mt/with-test-user :rasta
       (testing "Test that `record-event!` succesfully records basic card events"
-        (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
+        (mt/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
           (audit-log/record-event! :event/card-create {:object card})
           ;; Not an exhaustive match since we're mainly testing that the event is recorded
           (is (partial=
@@ -58,7 +58,7 @@
                (t2/select-one :model/AuditLog :model_id card-id)))))
 
       (testing "Test that `record-event!` succesfully records basic card events with the user, model, and model ID specified"
-        (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
+        (mt/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
           (audit-log/record-event! :event/card-create
                                    {:object card
                                     :user-id (mt/user->id :rasta)

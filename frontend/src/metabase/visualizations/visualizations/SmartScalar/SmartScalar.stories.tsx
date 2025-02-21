@@ -4,12 +4,12 @@ import {
   SdkVisualizationWrapper,
   VisualizationWrapper,
 } from "__support__/storybook";
-import type { MetabaseTheme } from "embedding-sdk";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { SmartScalar } from "./SmartScalar";
-import { mockSeries } from "./test-mocks";
+import { mockSeries } from "./tests/test-mocks";
 
 export default {
   title: "viz/SmartScalar",

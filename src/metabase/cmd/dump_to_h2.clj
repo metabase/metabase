@@ -7,7 +7,7 @@
 
   or
 
-    java -jar metabase.jar dump-to-h2
+    java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar dump-to-h2
 
   Validate with:
 

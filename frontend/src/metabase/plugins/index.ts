@@ -1,3 +1,4 @@
+import type React from "react";
 import type {
   ComponentType,
   Dispatch,
@@ -6,7 +7,6 @@ import type {
   SetStateAction,
 } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -37,10 +37,11 @@ import type { LinkProps } from "metabase/core/components/Link";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
-import type { GroupProps, IconName, IconProps } from "metabase/ui";
+import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  BaseUser,
   Bookmark,
   CacheableDashboard,
   CacheableModel,
@@ -58,7 +59,6 @@ import type {
   ModelCacheRefreshStatus,
   Revision,
   User,
-  UserListResult,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 
@@ -87,9 +87,7 @@ export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
 ) => AdminPathKey[])[] = [];
 
 export const PLUGIN_ADMIN_TOOLS = {
-  INDEX_ROUTE: "model-caching",
-  EXTRA_ROUTES_INFO: [],
-  EXTRA_ROUTES: [],
+  COMPONENT: null,
 };
 
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
@@ -225,7 +223,7 @@ const defaultLoginPageIllustration = {
   isDefault: true,
 };
 
-const getLoadingMessage = (isSlow: boolean) =>
+const getLoadingMessage = (isSlow: boolean = false) =>
   isSlow ? t`Waiting for results...` : t`Doing science...`;
 
 // selectors that customize behavior between app versions
@@ -278,18 +276,6 @@ const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   icon: "folder",
 };
 
-type AuthorityLevelMenuItem = {
-  title: string;
-  icon: string;
-  action: () => void;
-};
-
-type CleanUpMenuItem = {
-  title: string;
-  icon: string;
-  link: string;
-};
-
 export type ItemWithCollection = { collection: CollectionEssentials };
 
 type GetCollectionIdType = (
@@ -308,9 +294,9 @@ export const PLUGIN_COLLECTIONS = {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
-  isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
+  isRegularCollection: (_data: Partial<Collection> | Bookmark) => true,
   getCollectionType: (
-    _: Partial<Collection>,
+    _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
@@ -319,20 +305,22 @@ export const PLUGIN_COLLECTIONS = {
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
-  ): AuthorityLevelMenuItem[] => [],
+  ): React.ReactNode[] => [],
   getIcon: getIconBase,
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items as Item[],
-  canCleanUp: false,
-  getCleanUpMenuItems: (
-    _itemCount: number,
-    _url: string,
-    _isInstanceAnalyticsCustom: boolean,
-    _isTrashed: boolean,
-    _canWrite: boolean,
-  ): CleanUpMenuItem[] => [],
+  canCleanUp: (_collection: Collection) => false as boolean,
+  useGetCleanUpMenuItems: (
+    _collection: Collection,
+  ): { menuItems: JSX.Element[]; showIndicator: boolean } => ({
+    menuItems: [],
+    showIndicator: false,
+  }),
   cleanUpRoute: null as React.ReactElement | null,
+  cleanUpAlert: (() => null) as (props: {
+    collection: Collection;
+  }) => JSX.Element | null,
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<
@@ -375,25 +363,19 @@ export type RevisionOrModerationEvent = {
 
 export const PLUGIN_MODERATION = {
   isEnabled: () => false,
-  QuestionModerationIcon: PluginPlaceholder,
+  EntityModerationIcon: PluginPlaceholder,
   QuestionModerationSection: PluginPlaceholder,
-  QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
-  ModerationReviewText: PluginPlaceholder,
+  ModerationReviewTextForQuestion: PluginPlaceholder,
+  ModerationReviewTextForDashboard: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
   getQuestionIcon: PluginPlaceholder,
   getStatusIcon: (_moderated_status?: string): string | IconProps | undefined =>
     undefined,
-  getModerationTimelineEvents: (
-    _reviews: any,
-    _usersById: Record<string, UserListResult>,
-    _currentUser: User | null,
-  ) => [] as RevisionOrModerationEvent[],
-  useMenuItems: (
-    _question?: Question,
-    _isModerator?: boolean,
-    _reload?: () => void,
-  ) => [],
+  getModerationTimelineEvents: (_reviews: any, _currentUser: BaseUser | null) =>
+    [] as RevisionOrModerationEvent[],
+  useDashboardMenuItems: (_model?: Dashboard, _reload?: () => void) => [],
+  useQuestionMenuItems: (_model?: Question, _reload?: () => void) => [],
 };
 
 export type InvalidateNowButtonProps = {
@@ -413,7 +395,11 @@ export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
   onClose: () => void;
-} & GroupProps;
+} & StackProps;
+
+export type PreemptiveCachingSwitchProps = {
+  handleSwitchToggle: () => void;
+};
 
 export const PLUGIN_CACHING = {
   isGranularCachingEnabled: () => false,
@@ -433,6 +419,8 @@ export const PLUGIN_CACHING = {
   DashboardAndQuestionCachingTab: PluginPlaceholder as any,
   StrategyEditorForQuestionsAndDashboards: PluginPlaceholder as any,
   getTabMetadata: getPerformanceTabMetadata,
+  PreemptiveCachingSwitch:
+    PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
 };
 
 export const PLUGIN_REDUCERS: {
@@ -485,6 +473,7 @@ export const PLUGIN_APPLICATION_PERMISSIONS = {
   getRoutes: (): ReactNode => null,
   tabs: [] as any,
   selectors: {
+    canAccessSettings: (_state: any) => false,
     canManageSubscriptions: (_state: any) => true,
   },
 };
@@ -538,14 +527,6 @@ export const PLUGIN_CONTENT_VERIFICATION = {
     verified: false,
   }),
   MetricFilterControls: (_props: MetricFilterControlsProps) => null,
-};
-
-export const PLUGIN_DASHBOARD_HEADER = {
-  extraButtons: (_dashboard: Dashboard) => [],
-};
-
-export const PLUGIN_QUERY_BUILDER_HEADER = {
-  extraButtons: (_question: Question) => [],
 };
 
 export type InsightsLinkProps = (

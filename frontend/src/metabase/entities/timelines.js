@@ -2,7 +2,14 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { timelineApi, timelineEventApi } from "metabase/api";
+import {
+  skipToken,
+  timelineApi,
+  timelineEventApi,
+  useGetTimelineQuery,
+  useListCollectionTimelinesQuery,
+  useListTimelinesQuery,
+} from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   createEntity,
@@ -22,6 +29,13 @@ const Timelines = createEntity({
   nameOne: "timeline",
   path: "/api/timeline",
   schema: TimelineSchema,
+
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery: useGetTimelineQuery,
+    }),
+    useListQuery,
+  },
 
   api: {
     list: ({ collectionId, ...params } = {}, dispatch) =>
@@ -139,5 +153,19 @@ const Timelines = createEntity({
     return state;
   },
 });
+
+function useListQuery({ collectionId, ...params } = {}, options) {
+  const collectionTimelines = useListCollectionTimelinesQuery(
+    collectionId ? { id: collectionId, ...params } : skipToken,
+    options,
+  );
+
+  const timelines = useListTimelinesQuery(
+    collectionId ? skipToken : params,
+    options,
+  );
+
+  return collectionId ? collectionTimelines : timelines;
+}
 
 export default Timelines;

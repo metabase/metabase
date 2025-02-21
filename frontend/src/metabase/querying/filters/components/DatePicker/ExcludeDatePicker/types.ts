@@ -1,7 +1,7 @@
 import type {
   DatePickerExtractionUnit,
   ExcludeDatePickerOperator,
-} from "../types";
+} from "metabase/querying/filters/types";
 
 export interface ExcludeUnitOption {
   unit: DatePickerExtractionUnit;

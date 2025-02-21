@@ -1,8 +1,6 @@
-// these tests use ChartSettings directly, but logic we're testing logic in ChartSettingFieldPicker
-import { within } from "@testing-library/react";
-
-import { renderWithProviders, screen } from "__support__/ui";
-import { ChartSettings } from "metabase/visualizations/components/ChartSettings";
+// these tests use QuestionChartSettings directly, but logic we're testing logic in ChartSettingFieldPicker
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -48,18 +46,22 @@ function getSeries(metricColumnProps) {
 const setup = seriesDisplay => {
   const series = getSeries(seriesDisplay);
   return renderWithProviders(
-    <ChartSettings series={series} initial={{ section: "Data" }} />,
+    <QuestionChartSettings series={series} initial={{ section: "Data" }} />,
   );
 };
 
 describe("ChartSettingFieldPicker", () => {
-  it("should not show ellipsis when a colum has no settings", () => {
+  it("should not show ellipsis when a column has no settings", () => {
     setup();
 
     const fields = screen.getAllByTestId("chartsettings-field-picker");
 
-    expect(fields[0]).toHaveTextContent("FOO");
-    expect(fields[1]).toHaveTextContent("BAR");
+    expect(
+      within(fields[0]).getByTestId("chart-setting-select"),
+    ).toHaveDisplayValue("FOO");
+    expect(
+      within(fields[1]).getByTestId("chart-setting-select"),
+    ).toHaveDisplayValue("BAR");
 
     expect(
       within(fields[0]).queryByRole("img", { name: /ellipsis/i }),

@@ -55,28 +55,29 @@
    [clojure.test]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
+   [dev.memory :as dev.memory]
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
+   [dev.render-png :as render-png]
    [hashp.core :as hashp]
    [honey.sql :as sql]
    [java-time.api :as t]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
+   [metabase.channel.email :as email]
    [metabase.config :as config]
-   [metabase.core :as mbc]
+   [metabase.core.core :as mbc]
    [metabase.db :as mdb]
    [metabase.db.env :as mdb.env]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.email :as email]
-   [metabase.models.database :refer [Database]]
    [metabase.models.setting :as setting]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.server :as server]
    [metabase.server.handler :as handler]
-   [metabase.sync :as sync]
+   [metabase.server.instance :as server]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test-runner]
    [metabase.test.data.impl :as data.impl]
@@ -108,6 +109,13 @@
   migrate!
   rollback!
   migration-sql-by-id]
+ [dev.memory
+  with-memory-logging
+  measuring-thread-allocations]
+ [render-png
+  open-html
+  open-png-bytes
+  open-hiccup-as-html]
  [model-tracking
   track!
   untrack!
@@ -238,8 +246,8 @@
      [:sqlserver 'time-test-data]
      [\"SELECT * FROM dbo.users WHERE dbo.users.last_login_time > ?\" (java-time/offset-time \"16:00Z\")])"
   {:arglists '([driver sql]            [[driver dataset] sql]
-               [driver honeysql-form]  [[driver dataset] honeysql-form]
-               [driver [sql & params]] [[driver dataset] [sql & params]])}
+                                       [driver honeysql-form]  [[driver dataset] honeysql-form]
+                                       [driver [sql & params]] [[driver dataset] [sql & params]])}
   [driver-or-driver+dataset sql-args]
   (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)
         [sql & params]   (if (map? sql-args)
@@ -337,20 +345,20 @@
         (let [res (maybe-realize (next-method model strategy k instances))]
           ;; only throws an exception if the simple hydration makes a DB call
           (when (pos-int? (call-count))
-              (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
-                              {:model model :strategy strategy :k k :items-count (count instances) :db-calls (call-count)})))
+            (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
+                            {:model model :strategy strategy :k k :items-count (count instances) :db-calls (call-count)})))
           res)))))
 
 (defn app-db-as-data-warehouse
   "Add the application database as a Database. Currently only works if your app DB uses broken-out details!"
   []
   (binding [t2.connection/*current-connectable* nil]
-    (or (t2/select-one Database :name "Application Database")
+    (or (t2/select-one :model/Database :name "Application Database")
         #_:clj-kondo/ignore
         (let [details (#'metabase.db.env/broken-out-details
                        (mdb/db-type)
                        @#'metabase.db.env/env)
-              app-db  (first (t2/insert-returning-instances! Database
+              app-db  (first (t2/insert-returning-instances! :model/Database
                                                              {:name    "Application Database"
                                                               :engine  (mdb/db-type)
                                                               :details details}))]
@@ -372,6 +380,13 @@
   See https://github.com/weavejester/hashp"
   [form]
   (hashp/p* form))
+
+#_:clj-kondo/ignore
+(defn tap
+  "#tap, but to use in pipelines like `(-> 1 inc dev/tap prn inc)`."
+  [form]
+  (u/prog1 form
+    (tap> <>)))
 
 (defn- tests-in-var-ns [test-var]
   (->> test-var meta :ns ns-interns vals
@@ -401,7 +416,6 @@
           (throw (ex-info (format "Test failed after running: `%s`" test)
                           {:test test})))))))
 
-
 (defn setup-email!
   "Set up email settings for sending emails from Metabase. This is useful for testing email sending in the REPL."
   [& settings]
@@ -422,3 +436,12 @@
                                      :sender-name :email-from-name,
                                      :sender      :email-from-address,
                                      :reply-to    :email-reply-to}))))
+
+(defn seed-instance!
+  "Seed an empty instance with test users and test db.
+  This is useful for bootstrapping an instance in the REPL."
+  []
+  ;; seed test users
+  (mt/initialize-if-needed! :test-users)
+  ;; seed test db
+  (mt/id))

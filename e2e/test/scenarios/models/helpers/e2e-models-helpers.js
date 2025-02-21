@@ -1,4 +1,5 @@
 import {
+  NativeEditor,
   entityPickerModal,
   entityPickerModalTab,
   interceptIfNotPreviouslyDefined,
@@ -73,7 +74,7 @@ export function assertIsModel() {
 
   // For native
   cy.findByText("This question is written in SQL.").should("not.exist");
-  cy.get("ace_content").should("not.exist");
+  NativeEditor.get().should("not.exist");
 }
 
 // Requires question actions to be open
@@ -102,6 +103,7 @@ export function turnIntoModel() {
 }
 
 export function selectFromDropdown(option, clickOpts) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   popover().last().findByText(option).click(clickOpts);
 }
 
@@ -109,7 +111,7 @@ export function startQuestionFromModel(modelName) {
   cy.findByTestId("app-bar").findByText("New").click();
   popover().findByText("Question").should("be.visible").click();
   entityPickerModal().within(() => {
-    entityPickerModalTab("Models").click();
+    entityPickerModalTab("Collections").click();
     cy.findByText(modelName).click();
   });
 }

@@ -1,6 +1,5 @@
-import { connect } from "react-redux";
-
 import Collections from "metabase/entities/collections";
+import { connect } from "metabase/lib/redux";
 import { uploadFile } from "metabase/redux/uploads";
 import type { Collection } from "metabase-types/api";
 

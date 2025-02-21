@@ -5,6 +5,7 @@ import slugg from "slugg";
 import _ from "underscore";
 
 import { utf8_to_b64url } from "metabase/lib/encoding";
+import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -16,14 +17,6 @@ import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import {
-  applyFilterParameter,
-  applyTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/mbql";
-import {
-  isFilterParameter,
-  isTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/parameter-type";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
@@ -42,19 +35,22 @@ import type {
   CardType,
   CollectionId,
   DashCardId,
+  Dashboard,
   DashboardId,
   DatabaseId,
   DatasetData,
   DatasetQuery,
   Field,
   LastEditInfo,
+  ParameterDimensionTarget,
   ParameterId,
   Parameter as ParameterObject,
-  ParameterValues,
+  ParameterValuesMap,
   TableId,
   UserInfo,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isDimensionTarget } from "metabase-types/guards";
 
 import type { Query } from "../types";
 
@@ -63,8 +59,9 @@ export type QuestionCreatorOpts = {
   cardType?: CardType;
   tableId?: TableId;
   collectionId?: CollectionId;
+  dashboardId?: DashboardId;
   metadata?: Metadata;
-  parameterValues?: ParameterValues;
+  parameterValues?: ParameterValuesMap;
   type?: "query" | "native";
   name?: string;
   display?: CardDisplayType;
@@ -93,7 +90,7 @@ class Question {
    * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
    * They are in the grey area between UI state and question state, but having them in Question wrapper is convenient.
    */
-  _parameterValues: ParameterValues;
+  _parameterValues: ParameterValuesMap;
 
   private __mlv2Query: Lib.Query | undefined;
 
@@ -105,7 +102,7 @@ class Question {
   constructor(
     card: any,
     metadata?: Metadata,
-    parameterValues?: ParameterValues,
+    parameterValues?: ParameterValuesMap,
   ) {
     this._card = card;
     this._metadata =
@@ -492,6 +489,26 @@ class Question {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 
+  dashboard(): Dashboard | undefined {
+    return this._card.dashboard;
+  }
+
+  dashboardId(): DashboardId | null {
+    return this._card.dashboard_id;
+  }
+
+  dashboardName(): string | undefined {
+    return this._card?.dashboard?.name ?? undefined;
+  }
+
+  dashboardCount(): number {
+    return this._card.dashboard_count;
+  }
+
+  setDashboardId(dashboardId: DashboardId | null | undefined) {
+    return this.setCard(assoc(this.card(), "dashboard_id", dashboardId));
+  }
+
   id(): number {
     return this._card && this._card.id;
   }
@@ -712,6 +729,7 @@ class Question {
       name: this._card.name,
       description: this._card.description,
       collection_id: this._card.collection_id,
+      dashboard_id: this._card.dashboard_id,
       dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       ...(_.isEmpty(this._card.parameters)
@@ -745,30 +763,49 @@ class Question {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  _convertParametersToMbql(): Question {
+  _convertParametersToMbql({ isComposed }: { isComposed: boolean }): Question {
     const query = this.query();
-    const stageIndex = -1;
     const { isNative } = Lib.queryDisplayInfo(query);
 
     if (isNative) {
       return this;
     }
 
-    const newQuery = this.parameters().reduce((query, parameter) => {
-      if (isFilterParameter(parameter)) {
-        return applyFilterParameter(query, stageIndex, parameter);
-      } else if (isTemporalUnitParameter(parameter)) {
-        return applyTemporalUnitParameter(query, stageIndex, parameter);
-      } else {
-        return query;
-      }
-    }, query);
-    const newQuestion = this.setQuery(newQuery)
+    // If the query is composed (models or metrics) we cannot add filters to the underlying query since that query is used for data source.
+    // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations.
+    const queryWithExtraStage =
+      !isComposed && this.display() !== "pivot"
+        ? Lib.ensureFilterStage(query)
+        : query;
+    const queryWithFilters = this.parameters().reduce((newQuery, parameter) => {
+      const stageIndex =
+        isDimensionTarget(parameter.target) && !isComposed
+          ? getParameterDimensionTargetStageIndex(parameter.target)
+          : -1;
+      return applyParameter(
+        newQuery,
+        stageIndex,
+        parameter.type,
+        parameter.target,
+        parameter.value,
+      );
+    }, queryWithExtraStage);
+    const queryWithFiltersWithoutExtraStage =
+      Lib.dropEmptyStages(queryWithFilters);
+
+    const newQuestion = this.setQuery(queryWithFiltersWithoutExtraStage)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    const hasQueryBeenAltered = query !== newQuery;
+    const hasQueryBeenAltered = queryWithExtraStage !== queryWithFilters;
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
+
+    function getParameterDimensionTargetStageIndex(
+      target: ParameterDimensionTarget,
+    ) {
+      const [_type, _variableTarget, options] = target;
+      return options?.["stage-number"] ?? -1;
+    }
   }
 
   query(): Query {
@@ -825,6 +862,17 @@ class Question {
     return this.card().can_manage_db || false;
   }
 
+  /** Applies the template tag parameters from the card to the question. */
+  applyTemplateTagParameters(): Question {
+    const { isNative } = Lib.queryDisplayInfo(this.query());
+
+    if (!isNative) {
+      return this;
+    }
+
+    return this.setParameters(getTemplateTagParametersFromCard(this.card()));
+  }
+
   /**
    * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
@@ -833,6 +881,7 @@ class Question {
     databaseId,
     tableId,
     collectionId,
+    dashboardId,
     metadata,
     parameterValues,
     type = "query",
@@ -847,6 +896,7 @@ class Question {
     let card: CardObject = {
       name,
       collection_id: collectionId,
+      dashboard_id: dashboardId,
       display,
       visualization_settings,
       dataset_query,

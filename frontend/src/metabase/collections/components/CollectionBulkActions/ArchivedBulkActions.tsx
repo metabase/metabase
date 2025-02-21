@@ -112,6 +112,8 @@ export const ArchivedBulkActions = ({
         {t`Delete permanently`}
       </BulkActionDangerButton>
 
+      {/* This should probably be external so that we can hide 
+          the bar when any other modals are displayed */}
       {hasSelectedItems && selectedAction === "delete" && (
         <BulkDeleteConfirmModal
           selectedItemCount={selectedItemCount}

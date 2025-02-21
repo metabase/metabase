@@ -21,6 +21,7 @@ import { MoveCollectionModal } from "metabase/collections/components/MoveCollect
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import { Unauthorized } from "metabase/components/ErrorPages";
+import { MoveQuestionsIntoDashboardsModal } from "metabase/components/MoveQuestionsIntoDashboardsModal";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/containers/Unsubscribe";
 import { UserCollectionList } from "metabase/containers/UserCollectionList";
@@ -32,13 +33,12 @@ import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardAp
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
+import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
-import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
-import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { PLUGIN_COLLECTIONS, PLUGIN_LANDING_PAGE } from "metabase/plugins";
-import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
+import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
@@ -58,12 +58,13 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import {
-  CanAccessMetabot,
+  CanAccessOnboarding,
   CanAccessSettings,
   IsAdmin,
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
+import { createEntityIdRedirect } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
@@ -130,13 +131,34 @@ export const getRoutes = store => {
             }}
           />
 
+          <Route
+            path="getting-started"
+            title={t`Getting Started`}
+            component={CanAccessOnboarding}
+          >
+            <IndexRoute component={Onboarding} />
+          </Route>
+
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
-          <Redirect path="archive" to="trash" replace />
+          <Redirect from="archive" to="trash" replace />
           <Route
             path="trash"
             title={t`Trash`}
             component={TrashCollectionLanding}
+          />
+
+          <Route
+            path="collection/entity/:entity_id(**)"
+            component={createEntityIdRedirect({
+              parametersToTranslate: [
+                {
+                  name: "entity_id",
+                  resourceType: "collection",
+                  type: "param",
+                },
+              ],
+            })}
           />
 
           <Route path="collection/users" component={IsAdmin}>
@@ -147,9 +169,31 @@ export const getRoutes = store => {
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+            <ModalRoute
+              path="move-questions-dashboard"
+              modal={MoveQuestionsIntoDashboardsModal}
+            />
             {PLUGIN_COLLECTIONS.cleanUpRoute}
             {getCollectionTimelineRoutes()}
           </Route>
+
+          <Route
+            path="dashboard/entity/:entity_id(**)"
+            component={createEntityIdRedirect({
+              parametersToTranslate: [
+                {
+                  name: "entity_id",
+                  resourceType: "dashboard",
+                  type: "param",
+                },
+                {
+                  name: "tab",
+                  resourceType: "dashboard-tab",
+                  type: "search",
+                },
+              ],
+            })}
+          />
 
           <Route
             path="dashboard/:slug"
@@ -166,17 +210,24 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="/question">
+            <Route
+              path="/question/entity/:entity_id(**)"
+              component={createEntityIdRedirect({
+                parametersToTranslate: [
+                  {
+                    name: "entity_id",
+                    resourceType: "card",
+                    type: "param",
+                  },
+                ],
+              })}
+            />
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />
             <Route path=":slug/:objectId" component={QueryBuilder} />
-          </Route>
-
-          <Route path="/metabot" component={CanAccessMetabot}>
-            <Route path="database/:databaseId" component={DatabaseMetabotApp} />
-            <Route path="model/:slug" component={ModelMetabotApp} />
           </Route>
 
           {/* MODELS */}

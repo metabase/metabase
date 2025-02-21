@@ -1,11 +1,4 @@
-import {
-  clearFilterWidget,
-  editDashboard,
-  restore,
-  saveDashboard,
-  sidebar,
-  visitDashboard,
-} from "e2e/support/helpers";
+const { H } = cy;
 
 const questionDetails = {
   name: "Return input value",
@@ -41,10 +34,10 @@ const dashboardDetails = {
 
 describe("scenarios > dashboard > filters > SQL > simple filter > required ", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: dashboardCard }) => {
@@ -60,9 +53,9 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
         ],
       };
 
-      cy.editDashboardCard(dashboardCard, mapFilterToCard);
+      H.editDashboardCard(dashboardCard, mapFilterToCard);
 
-      visitDashboard(dashboard_id);
+      H.visitDashboard(dashboard_id);
     });
   });
 
@@ -74,14 +67,12 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
     cy.findByDisplayValue("Bar");
 
-    clearFilterWidget();
+    H.clearFilterWidget();
 
     cy.location("search").should("eq", "?text=");
 
     // SQL question defaults
-    cy.findByTestId("dashcard").contains(
-      "There was a problem displaying this chart.",
-    );
+    cy.findByTestId("dashcard").contains("Foo");
 
     // The empty filter widget
     cy.findByPlaceholderText("Text");
@@ -91,9 +82,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     // This part confirms that the issue metabase#13960 has been fixed
     cy.location("search").should("eq", "?text=");
 
-    cy.findByTestId("dashcard").contains(
-      "There was a problem displaying this chart.",
-    );
+    cy.findByTestId("dashcard").contains("Foo");
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");
@@ -103,15 +92,15 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     cy.location("search").should("eq", "?text=Bar");
 
     // Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder
-    editDashboard();
+    H.editDashboard();
 
     openFilterOptions("Text");
 
-    sidebar().within(() => {
+    H.sidebar().within(() => {
       removeDefaultFilterValue("Bar");
     });
 
-    saveDashboard();
+    H.saveDashboard();
 
     // The URL query params should include the value from the dashboard filter default
     cy.location("search").should("eq", "?text=");

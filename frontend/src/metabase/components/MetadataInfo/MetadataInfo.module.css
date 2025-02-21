@@ -1,0 +1,11 @@
+.Description {
+  white-space: pre-line;
+  max-height: 200px;
+  overflow: auto;
+  margin-bottom: 0.5em;
+}
+
+.EmptyDescription {
+  color: var(--mb-color-text-light);
+  font-weight: 700;
+}

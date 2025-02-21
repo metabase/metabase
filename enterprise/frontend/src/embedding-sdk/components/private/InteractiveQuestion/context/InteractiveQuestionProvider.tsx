@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 
 import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
+import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
@@ -42,7 +43,7 @@ const mapEntityTypeFilterToDataPickerModels = (
 };
 
 export const InteractiveQuestionProvider = ({
-  cardId: initId,
+  cardId: initialQuestionId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -52,10 +53,16 @@ export const InteractiveQuestionProvider = ({
   onSave,
   isSaveEnabled = true,
   entityTypeFilter,
+  saveToCollectionId,
+  initialSqlParameters,
 }: InteractiveQuestionProviderProps) => {
-  const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
+  const {
+    id: cardId,
+    isLoading: isLoadingValidatedId,
+    isError: isCardIdError,
+  } = useValidatedEntityId({
     type: "card",
-    id: initId,
+    id: initialQuestionId,
   });
 
   const handleCreateQuestion = useCreateQuestion();
@@ -63,16 +70,32 @@ export const InteractiveQuestionProvider = ({
 
   const handleSave = async (question: Question) => {
     if (isSaveEnabled) {
-      await onBeforeSave?.(question);
+      const saveContext = { isNewQuestion: false };
+      const sdkQuestion = transformSdkQuestion(question);
+
+      await onBeforeSave?.(sdkQuestion, saveContext);
       await handleSaveQuestion(question);
-      onSave?.(question);
-      await loadQuestion();
+      onSave?.(sdkQuestion, saveContext);
+      await loadAndQueryQuestion();
     }
   };
 
-  const handleCreate = async (question: Question) => {
-    await handleCreateQuestion(question);
-    await loadQuestion();
+  const handleCreate = async (question: Question): Promise<Question> => {
+    if (isSaveEnabled) {
+      const saveContext = { isNewQuestion: true };
+      const sdkQuestion = transformSdkQuestion(question);
+
+      await onBeforeSave?.(sdkQuestion, saveContext);
+
+      const createdQuestion = await handleCreateQuestion(question);
+      onSave?.(sdkQuestion, saveContext);
+
+      // Set the latest saved question object to update the question title.
+      replaceQuestion(createdQuestion);
+      return createdQuestion;
+    }
+
+    return question;
   };
 
   const {
@@ -84,14 +107,16 @@ export const InteractiveQuestionProvider = ({
     isQuestionLoading,
     isQueryRunning,
 
-    runQuestion,
-    loadQuestion,
+    queryQuestion,
+    replaceQuestion,
+    loadAndQueryQuestion,
     updateQuestion,
     navigateToNewCard,
   } = useLoadQuestion({
     cardId,
     options,
     deserializedCard,
+    initialSqlParameters,
   });
 
   const globalPlugins = useSdkSelector(getPlugins);
@@ -105,12 +130,14 @@ export const InteractiveQuestionProvider = ({
   }, [question, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
+    originalId: initialQuestionId,
     isQuestionLoading: isQuestionLoading || isLoadingValidatedId,
     isQueryRunning,
-    resetQuestion: loadQuestion,
-    onReset: loadQuestion,
+    resetQuestion: loadAndQueryQuestion,
+    onReset: loadAndQueryQuestion,
     onNavigateBack,
-    runQuestion,
+    queryQuestion,
+    replaceQuestion,
     updateQuestion,
     navigateToNewCard,
     plugins: combinedPlugins,
@@ -120,13 +147,15 @@ export const InteractiveQuestionProvider = ({
     mode,
     onSave: handleSave,
     onCreate: handleCreate,
-    isSaveEnabled,
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
+    isSaveEnabled,
+    saveToCollectionId,
+    isCardIdError,
   };
 
   useEffect(() => {
-    loadQuestion();
-  }, [loadQuestion]);
+    loadAndQueryQuestion();
+  }, [loadAndQueryQuestion]);
 
   return (
     <InteractiveQuestionContext.Provider value={questionContext}>

@@ -7,7 +7,6 @@ import { isNotNull } from "metabase/lib/types";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_ADMIN_NAV_ITEMS,
-  PLUGIN_ADMIN_TOOLS,
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import type { AdminPath, AdminPathKey } from "metabase-types/store";
@@ -46,17 +45,12 @@ export const getAdminPaths: () => AdminPath[] = () => {
       path: "/admin/performance",
       key: "performance",
     },
-  ];
-
-  const isModelPersistenceEnabled = Settings.get("persisted-models-enabled");
-
-  if (isModelPersistenceEnabled || PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0) {
-    items.push({
+    {
       name: t`Tools`,
       path: "/admin/tools",
       key: "tools",
-    });
-  }
+    },
+  ];
 
   items.push(...PLUGIN_ADMIN_NAV_ITEMS, {
     name: t`Troubleshooting`,

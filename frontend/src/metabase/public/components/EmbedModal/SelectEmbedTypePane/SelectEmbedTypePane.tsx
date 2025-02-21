@@ -1,8 +1,9 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { t } from "ttag";
 
-import { useDocsUrl, useUrlWithUtm } from "metabase/common/hooks";
+import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
@@ -16,7 +17,7 @@ import type {
 } from "metabase/public/lib/types";
 import { getSetting } from "metabase/selectors/settings";
 import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
-import { Group, Icon, List, Stack, Text } from "metabase/ui";
+import { Flex, Group, Icon, List, Stack, Text } from "metabase/ui";
 
 import { PublicEmbedCard } from "./PublicEmbedCard";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
@@ -48,8 +49,6 @@ export function SelectEmbedTypePane({
   const utmTags = {
     utm_content: "embed-modal",
   };
-
-  const sdkUrl = useUrlWithUtm("https://metaba.se/sdk", utmTags);
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
   const { url: embeddingUrl } = useDocsUrl("embedding/introduction", {
@@ -89,20 +88,31 @@ export function SelectEmbedTypePane({
     }
   };
 
+  const isInteractiveEmbeddingAvailable = useSelector(
+    PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled,
+  );
+  const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
+  const isInteractiveEmbeddingEnabled = useSetting(
+    "enable-embedding-interactive",
+  );
+  const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
+
   return (
     <Stack
       display={"inline-flex"}
       p="lg"
-      spacing="lg"
+      gap="lg"
       data-testid="sharing-pane-container"
       align="stretch"
     >
-      <Group spacing="lg" maw="100%" align="stretch">
+      <Group gap="lg" maw="100%" align="stretch">
         {/* STATIC EMBEDDING*/}
         <SharingPaneButton
           title={t`Static embedding`}
           illustration={<StaticEmbeddingIllustration />}
-          onClick={goToNextStep}
+          onClick={isStaticEmbeddingEnabled ? goToNextStep : undefined}
+          isDisabled={!isStaticEmbeddingEnabled}
+          disabledLink="/admin/settings/embedding-in-other-applications/standalone"
         >
           <List>
             <List.Item>{t`Embedded, signed charts in iframes.`}</List.Item>
@@ -112,16 +122,25 @@ export function SelectEmbedTypePane({
         </SharingPaneButton>
 
         {/* INTERACTIVE EMBEDDING */}
-        <Link
+        <MaybeLink
           to={interactiveEmbeddingCta.url}
           target={interactiveEmbeddingCta.target}
           rel="noreferrer"
-          style={{ height: "100%" }}
+          shouldRenderLink={
+            !isInteractiveEmbeddingAvailable || isInteractiveEmbeddingEnabled
+          }
+          aria-label={t`Interactive embedding`}
         >
           <SharingPaneButton
             title={t`Interactive embedding`}
             badge={<Badge color="brand">{t`Pro`}</Badge>}
             illustration={<InteractiveEmbeddingIllustration />}
+            isDisabled={
+              isInteractiveEmbeddingAvailable && !isInteractiveEmbeddingEnabled
+            }
+            disabledLink={
+              "/admin/settings/embedding-in-other-applications/full-app"
+            }
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
@@ -129,26 +148,33 @@ export function SelectEmbedTypePane({
               <List.Item>{t`Let people can click on to explore.`}</List.Item>
               <List.Item>{t`Customize appearance with your logo, font, and colors.`}</List.Item>
             </List>
+            {!isInteractiveEmbeddingAvailable && (
+              <ExternalLink>
+                <Flex align="center">
+                  {t`Learn more`}
+                  <Icon name="share" ml="xs" />
+                </Flex>
+              </ExternalLink>
+            )}
           </SharingPaneButton>
-        </Link>
+        </MaybeLink>
 
         {/* REACT SDK */}
-        <a
-          href={sdkUrl}
-          style={{ height: "100%" }}
-          target="_blank"
-          rel="noreferrer"
+        <MaybeLink
+          to="/admin/settings/embedding-in-other-applications/sdk"
+          shouldRenderLink={isEmbeddingSdkEnabled}
+          aria-label={t`Embedded analytics SDK`}
         >
           <SharingPaneButton
             title={t`Embedded analytics SDK`}
             badge={
               <>
-                <Badge color="gray">{t`Beta`}</Badge>
                 <Badge color="brand">{t`Pro`}</Badge>
               </>
             }
             illustration={<SdkIllustration />}
-            externalLink
+            isDisabled={!isEmbeddingSdkEnabled}
+            disabledLink={"/admin/settings/embedding-in-other-applications/sdk"}
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- visible only to admin */}
@@ -157,9 +183,9 @@ export function SelectEmbedTypePane({
               <List.Item>{t`Advanced customization options for styling`}</List.Item>
             </List>
           </SharingPaneButton>
-        </a>
+        </MaybeLink>
       </Group>
-      <Group position="apart">
+      <Group justify="space-between">
         {/* PUBLIC EMBEDDING */}
         {isPublicSharingEnabled ? (
           <PublicEmbedCard
@@ -177,13 +203,13 @@ export function SelectEmbedTypePane({
             >{t`Settings`}</Link>
           </Text>
         )}
-        <a
+        <ExternalLink
           className={cx(CS.link, CS.textBold)}
           style={{ display: "flex", alignItems: "center", gap: 4 }}
           href={embeddingUrl}
         >
-          {t`Compare options`} <Icon name="share" />
-        </a>
+          {t`Compare options`} <Icon name="share" aria-hidden />
+        </ExternalLink>
       </Group>
     </Stack>
   );
@@ -215,3 +241,14 @@ export const useInteractiveEmbeddingCta = () => {
     target: "_blank",
   };
 };
+
+interface MaybeLinkProps extends ComponentProps<typeof Link> {
+  shouldRenderLink?: boolean;
+}
+function MaybeLink({ shouldRenderLink, ...props }: MaybeLinkProps) {
+  if (shouldRenderLink) {
+    return <Link {...props} />;
+  }
+
+  return props.children;
+}

@@ -1,13 +1,12 @@
 (ns metabase-enterprise.advanced-permissions.api.application-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [PermissionsGroup]]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.test :as mt]))
 
 (deftest application-permissions-test
-  (t2.with-temp/with-temp [PermissionsGroup _]
+  (mt/with-temp [:model/PermissionsGroup _]
     (testing "GET /api/ee/advanced-permissions/application/graph"
       (mt/with-premium-features #{}
         (testing "Should require a token with `:advanced-permissions`"
@@ -33,7 +32,7 @@
                           groups))))))))
 
 (deftest application-permissions-test-2
-  (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
+  (mt/with-temp [:model/PermissionsGroup {group-id :id}]
     (testing "PUT /api/ee/advanced-permissions/application/graph"
       (let [current-graph (mt/with-premium-features #{:advanced-permissions}
                             (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/application/graph"))
@@ -63,4 +62,21 @@
                            {:monitoring   "no"
                             :setting      "yes"
                             :subscription "no"}}
-                          (:groups (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph" new-graph))))))))))
+                          (:groups (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph" new-graph)))))
+
+          (testing "omits graph in response when skip-graph=true"
+            (let [result (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph?skip-graph=true"
+                                               (a-perms/graph))]
+              (is (int? (:revision result)))
+              (is (nil? (:groups result)))))
+
+          (testing "omits revision ID check when force=true"
+            (let [result (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph?force=true"
+                                               (-> (a-perms/graph)
+                                                   (update :revision dec)
+                                                   (assoc-in [:groups group-id :monitoring] "yes")))]
+              (is (partial= {group-id
+                             {:monitoring   "yes"
+                              :setting      "yes"
+                              :subscription "no"}}
+                            (:groups result))))))))))

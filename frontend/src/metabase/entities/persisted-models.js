@@ -1,6 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { cardApi, persistApi } from "metabase/api";
+import {
+  cardApi,
+  persistApi,
+  skipToken,
+  useGetPersistedInfoByCardQuery,
+  useGetPersistedInfoQuery,
+  useListPersistedInfoQuery,
+} from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { PersistedModelSchema } from "metabase/schema";
 
@@ -20,6 +27,13 @@ const PersistedModels = createEntity({
   nameOne: "persistedModel",
   path: "/api/persist",
   schema: PersistedModelSchema,
+
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery,
+    }),
+    useListQuery: useListPersistedInfoQuery,
+  },
 
   api: {
     get: ({ id, type }, options, dispatch) => {
@@ -83,5 +97,19 @@ const PersistedModels = createEntity({
     return state;
   },
 });
+
+const useGetQuery = ({ id, type }, options) => {
+  const persistedInfoByCard = useGetPersistedInfoByCardQuery(
+    type === "byModelId" ? id : skipToken,
+    options,
+  );
+
+  const persistedInfo = useGetPersistedInfoQuery(
+    type === "byModelId" ? skipToken : id,
+    options,
+  );
+
+  return type === "byModelId" ? persistedInfoByCard : persistedInfo;
+};
 
 export default PersistedModels;

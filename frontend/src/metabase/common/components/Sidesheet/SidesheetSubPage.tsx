@@ -16,6 +16,8 @@ interface SidesheetSubPageProps {
   onBack: () => void;
   children: React.ReactNode;
   size?: SidesheetSize;
+  /** Whether to show a translucent backdrop */
+  withOverlay?: boolean;
 }
 
 export const SidesheetSubPageTitle = ({
@@ -23,7 +25,7 @@ export const SidesheetSubPageTitle = ({
   onClick,
 }: SidesheetSubPageTitleProps) => {
   return (
-    <Button variant="unstyled" onClick={onClick} p={0}>
+    <Button variant="subtle" onClick={onClick} p={0}>
       <Flex align="center" justify="center" gap="md">
         <Icon name="chevronleft" />
         <Title order={2}>{title}</Title>
@@ -39,12 +41,14 @@ export const SidesheetSubPage = ({
   children,
   isOpen,
   size,
+  withOverlay = false,
 }: SidesheetSubPageProps) => (
   <Sidesheet
     isOpen={isOpen}
     title={<SidesheetSubPageTitle title={title} onClick={onBack} />}
     onClose={onClose}
     size={size}
+    withOverlay={withOverlay}
   >
     {children}
   </Sidesheet>

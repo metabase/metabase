@@ -10,12 +10,11 @@ The overall goal of a code review is to serve as a safety net for other people o
 
 ## Goals
 
-* Catch bugs
-* Catch non-obvious consequences of an approach - will this PR make future code harder to secure or more buggy.
-* For situations where things were coded without being discussed, a code review serves as a sanity check to make sure a correct approach is being taken
-* Point out implications of the PR for parts of Metabase that a PR doesn’t touch
-* Point out places where a good approach or style was used. Code reviews are not a hatefest. Unless a PR is completely horrific there should be an equal number of good and bad points brought up.
-
+- Catch bugs
+- Catch non-obvious consequences of an approach - will this PR make future code harder to secure or more buggy.
+- For situations where things were coded without being discussed, a code review serves as a sanity check to make sure a correct approach is being taken
+- Point out implications of the PR for parts of Metabase that a PR doesn’t touch
+- Point out places where a good approach or style was used. Code reviews are not a hatefest. Unless a PR is completely horrific there should be an equal number of good and bad points brought up.
 
 ## Mindset giving a code review
 
@@ -35,29 +34,28 @@ When a reviewer disagrees with an approach you took, seek to understand why. The
 
 If someone slaps a strong :-1: on your PR, be especially patient. Dig into why they think the PR is flawed. Approach the conversation with an intent of making the PR better, not defending your approach. You get no points for being a better debater, but you do get points for shipping better code and a better product, no matter where the inspiration or ideas came from.
 
-
 ## Process
 
-* Every PR of significant complexity needs to be :+1:’d by at least one other engineer on the team (or @salsakran) to merge
-* Add people you think should review your PR to the PR’s assignees. The reviewer can remove themselves once they have reviewed it, or decided they aren’t an appropriate reviewer
-* Code that impacts other engineer’s work should be reviewed by those engineers
-* A :+1: is the default “I’m ok with this"
-* A :+0: (I made that up) is “I’m not thrilled with this, but other people saying “+1” means it can be merged
-* A :-1: is a hard veto. This should be used sparingly in run of the mill PRs, and only for things that are missing tests, flagrant violations of a style guide, or break assumptions another part of the code base depends on.
-* If you cut a major branch without discussing design, or talking through implications with other engineers whose work might be impacted, you should expect a :-1:, and not be hung up on reworking controversial sections.
-* Any PR that has a :-1: CANNOT be merged until it is resolved.
-* The owner of the PR and the person casting a :-1: should resolve the differences in approach.
-* If there's an impasse, @salsakran casts a tie-breaking vote. Impasses should be rare.
+- Every PR of significant complexity needs to be :+1:’d by at least one other engineer on the team (or @salsakran) to merge
+- Add people you think should review your PR to the PR’s assignees. The reviewer can remove themselves once they have reviewed it, or decided they aren’t an appropriate reviewer
+- Code that impacts other engineer’s work should be reviewed by those engineers
+- A :+1: is the default “I’m ok with this"
+- A :+0: (I made that up) is “I’m not thrilled with this, but other people saying “+1” means it can be merged
+- A :-1: is a hard veto. This should be used sparingly in run of the mill PRs, and only for things that are missing tests, flagrant violations of a style guide, or break assumptions another part of the code base depends on.
+- If you cut a major branch without discussing design, or talking through implications with other engineers whose work might be impacted, you should expect a :-1:, and not be hung up on reworking controversial sections.
+- Any PR that has a :-1: CANNOT be merged until it is resolved.
+- The owner of the PR and the person casting a :-1: should resolve the differences in approach.
+- If there's an impasse, @salsakran casts a tie-breaking vote. Impasses should be rare.
 
 Note that these :+1:, :+0:, and :-1:’s should be explicitly stated in a comment, and not a reaction on the main description of the PR on github. A change from :-1: to :+1: should also be stated explicitly on a comment.
 
 ## Timing
 
-* PRs for high priority issues should be code reviewed as soon as they are available.
-* PRs for issues in a milestone can wait a few days.
-* If there are no :+1:'s on a PR, it is the responsibility of the PR creator to follow up with others and get their code reviewed. To re-iterate, a PR needs to be :+1:’d to be merged, and if it has not been reviewed, it is on the opener of the PR to round up a reviewer.
-* If there's a :-1: + no clear resolution, both the creator of the PR and the :-1: voter should plan on spending an hour over the next day or two to discuss the issue, and plan on how to resolve it.
-* In the event of no movement on a PR with a :-1: after a week, @salsakran will chime in.
+- PRs for high priority issues should be code reviewed as soon as they are available.
+- PRs for issues in a milestone can wait a few days.
+- If there are no :+1:'s on a PR, it is the responsibility of the PR creator to follow up with others and get their code reviewed. To re-iterate, a PR needs to be :+1:’d to be merged, and if it has not been reviewed, it is on the opener of the PR to round up a reviewer.
+- If there's a :-1: + no clear resolution, both the creator of the PR and the :-1: voter should plan on spending an hour over the next day or two to discuss the issue, and plan on how to resolve it.
+- In the event of no movement on a PR with a :-1: after a week, @salsakran will chime in.
 
 ## How to improve the quality of the code review
 
@@ -65,8 +63,8 @@ For a summary of research on code reviews, check out [How code review works (and
 
 ### What PR authors can do to get a better review
 
-- Guide reviewers by commenting on the important sections of the code. 
-- If you need someone's expertise/opinion, tag that person. 
+- Guide reviewers by commenting on the important sections of the code.
+- If you need someone's expertise/opinion, tag that person.
 - Enhance PR descriptions by using [Notes and Warnings](https://github.com/github-community/community/discussions/16925) - these can be effective tools if you want a certain piece of information to stand out.
 
 ### What PR reviewers can do to give a better review

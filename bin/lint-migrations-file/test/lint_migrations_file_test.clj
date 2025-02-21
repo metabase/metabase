@@ -188,11 +188,11 @@
 
     (testing "invalid date components should throw an error"
       (are [msg id]
-          (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Invalid change set\."
-           (validate-id "v49.2024-30-01T10:30:00")
-           msg)
+           (thrown-with-msg?
+            clojure.lang.ExceptionInfo
+            #"Invalid change set\."
+            (validate-id "v49.2024-30-01T10:30:00")
+            msg)
         "invalid month"  "v49.2024-13-01T10:30:00"
         "invalid day"    "v49.2024-01-32T10:30:00"
         "invalid hour"   "v49.2024-01-01T25:30:00"
@@ -314,8 +314,8 @@
                                     (when (= (:val problem) bad-value)
                                       problem))))]
         (is (not= :ok ex-info))
-        (is (= (take-last 2 (:via specific))
-               [:change.strict/customChange :custom-change/class]))))))
+        (is (= [:change.strict/customChange :custom-change/class]
+               (take-last 2 (:via specific))))))))
 
 (deftest forbidden-new-types-test
   (testing "should throw if changes contains text type"

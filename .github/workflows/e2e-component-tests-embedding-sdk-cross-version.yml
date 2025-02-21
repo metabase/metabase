@@ -1,0 +1,254 @@
+name: E2E Cross-version Component Tests for Embedding SDK
+
+on:
+  push:
+    branches:
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - "release-**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  # if this is a test on a release branch, we need to check the build requirements
+  get-build-requirements:
+    if: |
+      !cancelled()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
+      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Get build dependencies
+        uses: actions/github-script@v7
+        id: dependencies
+        with:
+          script: | # js
+            const {
+              getBuildRequirements,
+              getVersionFromReleaseBranch,
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const targetBranchName = '${{ github.base_ref || github.ref }}';
+
+            const version = getVersionFromReleaseBranch(targetBranchName);
+            const requirements = getBuildRequirements(version);
+
+            return {
+              java_version: requirements.java,
+              node_version: requirements.node,
+            };
+
+  build:
+    needs: [files-changed, get-build-requirements]
+    if: |
+      !cancelled() &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      MB_EDITION: ee
+      INTERACTIVE: false
+      # make sure that builds on release branches get licenses, because we use them for releases
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+        with:
+          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: uberjar
+          java-version: "${{ needs.get-build-requirements.outputs.java_version || 11 }}"
+
+      - name: Build uberjar with ./bin/build.sh
+        run: ./bin/build.sh
+
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
+        with:
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
+  resolve-sdk-version:
+    if: |
+      !cancelled()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      sdk_version: ${{ fromJson(steps.dependencies.outputs.result).sdk_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Get latest SDK release for this branch
+        uses: actions/github-script@v7
+        id: dependencies
+        with:
+          script: | # js
+            const { getSdkVersionFromReleaseBranchName } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const branchName = '${{ github.base_ref || github.ref }}';
+
+            const sdk_version = await getSdkVersionFromReleaseBranchName({
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branchName,
+            });
+
+            return {
+              sdk_version,
+            };
+
+  e2e-tests:
+    needs: [get-build-requirements, build, resolve-sdk-version]
+    if: |
+      !cancelled() && needs.build.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    name: e2e-tests-embedding-sdk
+    env:
+      MB_EDITION: ee
+      DISPLAY: ""
+      # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
+      # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
+      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
+      TZ: US/Pacific # to make node match the instance tz
+      CYPRESS_CI: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Needed to omit newly added tests for functionality that is not yet released
+      - name: Sparse checkout tests from SDK release commit
+        uses: actions/checkout@v4
+        with:
+          ref: embedding-sdk-${{ needs.resolve-sdk-version.outputs.sdk_version }}
+          path: sdk-release-e2e
+          sparse-checkout: e2e
+
+      - name: Move tests from the release commit into the repo
+        run: |
+          rm -rf ./e2e/support/*
+          mv ./sdk-release-e2e/e2e/support/* ./e2e/support
+
+          rm -rf ./e2e/test-component/*
+          mv ./sdk-release-e2e/e2e/test-component/* ./e2e/test-component
+        shell: bash
+
+      - name: Retrieve uberjar artifact for ee
+        uses: actions/download-artifact@v4
+        with:
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare JDK ${{ needs.get-build-requirements.outputs.java_version || 11 }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ needs.get-build-requirements.outputs.java_version || 11 }}
+          distribution: "temurin"
+
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      - name: Install Embedding SDK package v${{ needs.resolve-sdk-version.outputs.sdk_version }}
+        run: yarn add @metabase/embedding-sdk-react@${{ needs.resolve-sdk-version.outputs.sdk_version }}
+
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Make app db snapshot
+        run: node e2e/runner/run_cypress_ci.js snapshot --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Run component tests for Embedding SDK
+        run: node e2e/runner/run_cypress_ci.js component --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit
+          output-name: e2e-embedding-sdk
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-recording-embedding-sdk-cross-version
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore
+
+      - name: Publish Summary
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: | #js
+            const {
+               generateReport,
+               parseReport,
+               formatSummary
+             } = require("./.github/scripts/handle-mochawesome-report.js");
+
+             const report = await generateReport();
+             const results = parseReport(report);
+             const summary = formatSummary(results);
+
+             await core.summary.addRaw(summary).write();
+
+  e2e-tests-skipped-stub:
+    needs: [e2e-tests]
+    if: |
+      !cancelled() &&
+      needs.e2e-tests.result == 'skipped'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    name: e2e-component-tests-embedding-sdk-cross-version
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"

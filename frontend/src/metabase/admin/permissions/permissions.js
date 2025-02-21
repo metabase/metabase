@@ -1,7 +1,6 @@
 import { assocIn, merge } from "icepick";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   inferAndUpdateEntityPermissions,
@@ -240,7 +239,6 @@ export const saveCollectionPermissions = createThunkAction(
       namespace,
       revision: collectionPermissionsRevision,
       groups: modifiedPermissions,
-      skip_graph: true,
     });
 
     return {

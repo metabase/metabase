@@ -1,25 +1,23 @@
 (ns metabase-enterprise.advanced-permissions.api.util-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.api.util
-    :as advanced-perms.api.u]
+   [metabase-enterprise.advanced-permissions.api.util :as advanced-perms.api.u]
    [metabase-enterprise.sandbox.test-util :as met]
    [metabase.api.common :as api]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.users :as test.users]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util :as u]))
 
 (defn- do-with-conn-impersonation-defs
   [group [{:keys [db-id attribute] :as impersonation-def} & more] f]
   (if-not impersonation-def
     (f)
-    (t2.with-temp/with-temp [:model/ConnectionImpersonation _ {:db_id db-id
-                                                               :group_id (u/the-id group)
-                                                               :attribute attribute}]
+    (mt/with-temp [:model/ConnectionImpersonation _ {:db_id db-id
+                                                     :group_id (u/the-id group)
+                                                     :attribute attribute}]
       (do-with-conn-impersonation-defs group more f))))
 
 (defn do-with-impersonations-for-user!
@@ -42,7 +40,7 @@
                        (if (keyword? test-user-name-or-user-id)
                          (test.users/with-test-user test-user-name-or-user-id
                            (f group))
-                         (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
+                         (request/with-current-user (u/the-id test-user-name-or-user-id)
                            (f group))))))))))]
     (thunk)))
 

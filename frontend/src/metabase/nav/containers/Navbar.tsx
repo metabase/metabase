@@ -1,11 +1,11 @@
 import type { Location } from "history";
 import { useMemo } from "react";
-import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import Database from "metabase/entities/databases";
+import { connect } from "metabase/lib/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
 import type { User } from "metabase-types/api";

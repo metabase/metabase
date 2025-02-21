@@ -49,7 +49,8 @@ interface IOpenUrlOptions {
 }
 
 export const openUrl =
-  (url: string, options: IOpenUrlOptions) => (dispatch: Dispatch) => {
+  (url: string, options: IOpenUrlOptions = {}) =>
+  (dispatch: Dispatch) => {
     if (shouldOpenInBlankWindow(url, options)) {
       openInBlankWindow(url);
     } else {

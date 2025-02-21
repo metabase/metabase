@@ -14,7 +14,7 @@ export const CaptionTitle = styled(EditableText)`
   font-weight: 900;
 `;
 
-export interface CaptionDescriptionProps {
+interface CaptionDescriptionProps {
   isVisible: boolean;
 }
 

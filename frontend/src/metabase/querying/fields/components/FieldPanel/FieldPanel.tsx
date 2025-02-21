@@ -84,7 +84,7 @@ export const FieldPanel = ({
                   label={
                     <Flex ml="0.25rem" align="center">
                       <Icon name={getColumnIcon(columnItem.column)} />
-                      <Text span ml="0.5rem" lh="1rem" fw={400}>
+                      <Text component="span" ml="0.5rem" lh="1rem" fw={400}>
                         {columnItem.displayName}
                       </Text>
                     </Flex>

@@ -2,15 +2,16 @@ import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
-import type { DashCardId, DashboardId } from "./dashboard";
+import type { DashCardId, Dashboard, DashboardId } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
+import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
-import type { Table } from "./table";
+import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
@@ -25,7 +26,7 @@ type CreatorInfo = Pick<
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
   id: CardId;
-  entity_id: CardEntityId;
+  entity_id: BaseEntityId;
   created_at: string;
   updated_at: string;
   name: string;
@@ -46,6 +47,9 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   collection?: Collection | null;
   collection_id: number | null;
   collection_position: number | null;
+  dashboard: Pick<Dashboard, "id" | "name"> | null;
+  dashboard_id: DashboardId | null;
+  dashboard_count: number | null;
 
   result_metadata: Field[];
   moderation_reviews?: ModerationReview[];
@@ -55,7 +59,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   last_query_start: string | null;
   average_query_time: number | null;
   cache_ttl: number | null;
-  based_on_upload?: number | null; // table id of upload table, if any
+  based_on_upload?: TableId | null; // table id of upload table, if any
 
   archived: boolean;
 
@@ -118,15 +122,42 @@ export type ColumnFormattingSetting = {
   highlight_row?: boolean;
 };
 
-export type PivotTableCollapsedRowsSetting = {
-  rows: FieldReference[];
+export type ColumnNameColumnSplitSetting = {
+  rows: string[];
+  columns: string[];
+  values: string[];
+};
+
+export type FieldRefColumnSplitSetting = {
+  rows: (FieldReference | null)[];
+  columns: (FieldReference | null)[];
+  values: (FieldReference | null)[];
+};
+
+// Field ref-based visualization settings are considered legacy and are not used
+// for new questions. To not break existing questions we need to support both
+// old- and new-style settings until they are fully migrated.
+export type PivotTableColumnSplitSetting =
+  | ColumnNameColumnSplitSetting
+  | FieldRefColumnSplitSetting;
+
+export type ColumnNameCollapsedRowsSetting = {
+  rows: string[];
   value: string[]; // identifiers for collapsed rows
 };
+
+export type FieldRefCollapsedRowsSetting = {
+  rows: (FieldReference | null)[];
+  value: string[];
+};
+
+export type PivotTableCollapsedRowsSetting =
+  | ColumnNameCollapsedRowsSetting
+  | FieldRefCollapsedRowsSetting;
 
 export type TableColumnOrderSetting = {
   name: string;
   enabled: boolean;
-  fieldRef?: FieldReference;
 };
 
 export type StackType = "stacked" | "normalized" | null;
@@ -216,6 +247,7 @@ export type VisualizationSettings = {
   "funnel.rows"?: SeriesOrderSetting[];
 
   "table.column_formatting"?: ColumnFormattingSetting[];
+  "pivot_table.column_split"?: PivotTableColumnSplitSetting;
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
   // Scalar Settings
@@ -239,6 +271,14 @@ export type VisualizationSettings = {
   "pie.slice_threshold"?: number;
   "pie.colors"?: Record<string, string>;
 
+  // Sankey settings
+  "sankey.source"?: string;
+  "sankey.target"?: string;
+  "sankey.value"?: string;
+  "sankey.node_align"?: "left" | "right" | "justify";
+  "sankey.show_edge_labels"?: boolean;
+  "sankey.label_value_formatting"?: "auto" | "full" | "compact";
+
   [key: string]: any;
 } & EmbedVisualizationSettings;
 
@@ -246,16 +286,9 @@ export type EmbedVisualizationSettings = {
   iframe?: string;
 };
 
-export interface ModerationReview {
-  status: ModerationReviewStatus;
-  moderator_id: number;
-  created_at: string;
-  most_recent?: boolean;
-}
+export type VisualizationSettingKey = keyof VisualizationSettings;
 
 export type CardId = number;
-export type CardEntityId = BaseEntityId;
-export type ModerationReviewStatus = "verified" | null;
 
 export type CardFilterOption =
   | "all"
@@ -281,6 +314,7 @@ export interface ListCardsRequest {
 
 export interface GetCardRequest {
   id: CardId;
+  context?: "collection";
   ignore_view?: boolean;
   ignore_error?: boolean;
 }
@@ -300,6 +334,11 @@ export interface CreateCardRequest {
   cache_ttl?: number;
 }
 
+export interface CreateCardFromCsvRequest {
+  collection_id?: CollectionId;
+  file: File;
+}
+
 export interface UpdateCardRequest {
   id: CardId;
   name?: string;
@@ -312,11 +351,13 @@ export interface UpdateCardRequest {
   archived?: boolean;
   enable_embedding?: boolean;
   embedding_params?: EmbeddingParameters;
-  collection_id?: CollectionId;
+  collection_id?: CollectionId | null;
+  dashboard_id?: DashboardId | null;
   collection_position?: number;
   result_metadata?: Field[];
   cache_ttl?: number;
   collection_preview?: boolean;
+  delete_old_dashcards?: boolean;
 }
 
 export type UpdateCardKeyRequest<PropertyKey extends keyof UpdateCardRequest> =

@@ -1,4 +1,5 @@
 import type Database from "metabase-lib/v1/metadata/Database";
+import type { DatabaseFeature } from "metabase-types/api";
 
 export interface HelpText {
   name: string;
@@ -36,7 +37,7 @@ export type MBQLClauseFunctionConfig = {
   displayName: string;
   type: MBQLClauseFunctionReturnType;
   args: string[];
-  requiresFeature?: string;
+  requiresFeature?: DatabaseFeature;
   hasOptions?: boolean;
   multiple?: boolean;
   tokenName?: string;
@@ -50,4 +51,11 @@ export type ErrorWithMessage = {
   message: string;
   pos?: number | null;
   len?: number | null;
+};
+
+export type Token = {
+  type: number;
+  op?: string;
+  start: number;
+  end: number;
 };

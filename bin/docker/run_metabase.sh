@@ -10,6 +10,7 @@ JAVA_OPTS="${JAVA_OPTS} -Dfile.encoding=UTF-8"
 JAVA_OPTS="${JAVA_OPTS} -Dlogfile.path=target/log"
 JAVA_OPTS="${JAVA_OPTS} -XX:+CrashOnOutOfMemoryError"
 JAVA_OPTS="${JAVA_OPTS} -server"
+JAVA_OPTS="${JAVA_OPTS} --add-opens java.base/java.nio=ALL-UNNAMED"
 
 if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"
@@ -168,5 +169,5 @@ else
     # Launch the application
     # exec is here twice on purpose to  ensure that metabase runs as PID 1 (the init process)
     # and thus receives signals sent to the container. This allows it to shutdown cleanly on exit
-    exec su metabase -s /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar $@"
+    exec su metabase -s /bin/sh -c "export JAVA_HOME=/opt/java/openjdk && export PATH=\$JAVA_HOME/bin:\$PATH && exec java $JAVA_OPTS -jar /app/metabase.jar $@"
 fi

@@ -2,18 +2,18 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as g-perms]
-   [metabase.models :refer [ApplicationPermissionsRevision PermissionsGroup]]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.application-permissions-revision :as a-perm-revision]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (deftest application-permissions-graph-test
-  (mt/with-temp [PermissionsGroup {group-id :id} {}]
+  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
     ;; clear the graph revisions
-    (t2/delete! ApplicationPermissionsRevision)
+    (t2/delete! :model/ApplicationPermissionsRevision)
     (testing "group should be in graph if one of application permission is enabled"
       (let [graph (g-perms/graph)]
         (is (= 0 (:revision graph)))
@@ -36,20 +36,22 @@
 (defmacro ^:private with-new-group-and-current-graph
   "Create a new group-id and bind it with the `current-graph`."
   [group-id-binding current-graph-binding & body]
-  `(mt/with-temp [PermissionsGroup {group-id# :id} {}]
+  `(mt/with-temp [:model/PermissionsGroup {group-id# :id} {}]
      (mt/with-current-user (mt/user->id :crowberto)
        ((fn [~group-id-binding ~current-graph-binding] ~@body) group-id# (g-perms/graph)))))
 
 (deftest application-permissions-update-graph!-test
   (testing "Grant successfully and increase revision"
-    (with-new-group-and-current-graph group-id current-graph
-      (let [new-graph     (assoc-in current-graph [:groups group-id] {:setting      :yes
-                                                                      :monitoring   :no
-                                                                      :subscription :no})
-            _             (g-perms/update-graph! new-graph)
-            updated-graph (g-perms/graph)]
-        (is (partial= (:groups new-graph) (:groups updated-graph)))
-        (is (= (inc (:revision current-graph)) (:revision updated-graph))))))
+    (let [initial-revision (a-perm-revision/latest-id)]
+      (with-new-group-and-current-graph group-id current-graph
+        (let [new-graph (assoc-in current-graph [:groups group-id] {:setting      :yes
+                                                                    :monitoring   :no
+                                                                    :subscription :no})
+              _ (g-perms/update-graph! new-graph)
+              updated-graph (g-perms/graph)]
+          (is (partial= (:groups new-graph) (:groups updated-graph)))
+          (is (= (inc (:revision current-graph)) (:revision updated-graph)))
+          (is (< initial-revision (a-perm-revision/latest-id)))))))
 
   (testing "Revoke successfully and increase revision"
     (with-new-group-and-current-graph group-id current-graph

@@ -3,12 +3,11 @@
   (:require
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.common :as api]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
    [metabase.events.notification :as events.notification]
-   [metabase.integrations.common :as integrations.common]
-   [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
+   [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -60,14 +59,14 @@
   reuse it."
   [user :- UserAttributes]
   (try
-    (u/prog1 (t2/insert-returning-instance! User (merge user {:password (str (random-uuid))}))
+    (u/prog1 (t2/insert-returning-instance! :model/User (merge user {:password (str (random-uuid))}))
       (log/infof "New SSO user created: %s (%s)" (:common_name <>) (:email <>))
       ;; publish user-invited event for audit logging
       ;; skip sending user invited emails for sso users
       (binding [events.notification/*skip-sending-notification?* true]
         (events/publish-event! :event/user-invited {:object (assoc <> :sso_source (:sso_source user))}))
       ;; send an email to everyone including the site admin if that's set
-      (when (integrations.common/send-new-sso-user-admin-email?)
+      (when (sso/send-new-sso-user-admin-email?)
         (messages/send-user-joined-admin-notification-email! <>, :google-auth? true)))
     (catch ExceptionInfo e
       (log/error e "Error creating new SSO user")
@@ -78,15 +77,15 @@
   "Update `:first_name`, `:last_name`, and `:login_attributes` for the user at `email`.
   This call is a no-op if the mentioned key values are equal."
   [{:keys [email] :as user-from-sso}]
-  (when-let [{:keys [id] :as user} (t2/select-one User :%lower.email (u/lower-case-en email))]
+  (when-let [{:keys [id] :as user} (t2/select-one :model/User :%lower.email (u/lower-case-en email))]
     (let [user-keys (keys user-from-sso)
           ;; remove keys with `nil` values
           user-data (into {} (filter second user-from-sso))]
       (if (= (select-keys user user-keys) user-data)
         user
         (do
-          (t2/update! User id user-data)
-          (t2/select-one User :id id))))))
+          (t2/update! :model/User id user-data)
+          (t2/select-one :model/User :id id))))))
 
 (defn relative-uri?
   "Checks that given `uri` is not an absolute (so no scheme and no host)."

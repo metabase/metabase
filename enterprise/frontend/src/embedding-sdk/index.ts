@@ -10,20 +10,21 @@ import "jspdf";
 
 export * from "./hooks/public";
 export * from "./components/public";
-export * from "./lib/plugins";
+export * from "metabase/embedding-sdk/types/plugins";
 
-export type { SDKConfig } from "./types";
+export type { MetabaseAuthConfig } from "./types";
+
+export type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 
 export type {
-  FetchRequestTokenFn,
-  EmbeddingSessionToken,
+  MetabaseFetchRequestTokenFn,
+  MetabaseEmbeddingSessionToken,
 } from "./types/refresh-token";
 
 export type {
   MetabaseTheme,
   MetabaseColors,
   MetabaseComponentTheme,
-} from "./types/theme";
+} from "metabase/embedding-sdk/theme";
 
-export type { Dashboard } from "metabase-types/api";
-export { FlexibleSizeComponent } from "embedding-sdk/components/private/util/FlexibleSizeComponent";
+export type { Dashboard as MetabaseDashboard } from "metabase-types/api";

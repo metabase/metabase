@@ -1,14 +1,16 @@
-import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Icon, Popover, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { NotebookCellItem } from "../../NotebookCell";
+import { CONTAINER_PADDING } from "../../NotebookCell/constants";
 import { NotebookDataPicker } from "../../NotebookDataPicker";
 
-import { ColumnPickerButton } from "./JoinTablePicker.styled";
+import S from "./JoinTablePicker.module.css";
 
 interface JoinTablePickerProps {
   query: Lib.Query;
@@ -29,7 +31,6 @@ export function JoinTablePicker({
   columnPicker,
   onChange,
 }: JoinTablePickerProps) {
-  const databaseId = useMemo(() => Lib.databaseID(query), [query]);
   const isDisabled = isReadOnly;
 
   return (
@@ -52,8 +53,9 @@ export function JoinTablePicker({
         query={query}
         stageIndex={stageIndex}
         table={table}
-        databaseId={databaseId ?? undefined}
         placeholder={t`Pick data…`}
+        canChangeDatabase={false}
+        hasMetrics={false}
         isDisabled={isDisabled}
         onChange={onChange}
       />
@@ -72,13 +74,19 @@ function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
     <Popover opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
         <Tooltip label={t`Pick columns`}>
-          <ColumnPickerButton
+          <IconButtonWrapper
+            className={S.ColumnPickerButton}
+            style={
+              {
+                "--notebook-cell-container-padding": CONTAINER_PADDING,
+              } as CSSProperties
+            }
             onClick={() => setIsOpened(!isOpened)}
             aria-label={t`Pick columns`}
             data-testid="fields-picker"
           >
             <Icon name="chevrondown" />
-          </ColumnPickerButton>
+          </IconButtonWrapper>
         </Tooltip>
       </Popover.Target>
       <Popover.Dropdown>{columnPicker}</Popover.Dropdown>
@@ -92,6 +100,6 @@ const CONTAINER_STYLE = {
 
 const RIGHT_CONTAINER_STYLE = {
   width: 37,
-  height: 37,
+  height: "100%",
   padding: 0,
 };

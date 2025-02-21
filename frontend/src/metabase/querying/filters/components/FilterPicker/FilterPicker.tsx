@@ -5,11 +5,15 @@ import { ExpressionWidget } from "metabase/query_builder/components/expressions/
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import * as Lib from "metabase-lib";
 
-import { FilterColumnPicker } from "./FilterColumnPicker";
+import {
+  FilterColumnPicker,
+  type FilterColumnPickerProps,
+} from "./FilterColumnPicker";
 import { FilterPickerBody } from "./FilterPickerBody";
 import type { ColumnListItem, SegmentListItem } from "./types";
 
-export interface FilterPickerProps {
+export type FilterPickerProps = {
+  className?: string;
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
@@ -17,15 +21,24 @@ export interface FilterPickerProps {
 
   onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
-}
+  onBack?: () => void;
+} & Pick<
+  FilterColumnPickerProps,
+  "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
+>;
 
 export function FilterPicker({
+  className,
   query,
   stageIndex,
   filter: initialFilter,
   filterIndex,
   onSelect,
   onClose,
+  onBack,
+  withColumnItemIcon,
+  withColumnGroupIcon,
+  withCustomExpression,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
 
@@ -47,6 +60,11 @@ export function FilterPicker({
   const handleChange = (filter: Lib.Filterable) => {
     onSelect(filter);
     onClose?.();
+  };
+
+  const handleBack = () => {
+    setColumn(undefined);
+    onBack?.();
   };
 
   const handleColumnSelect = (column: Lib.ColumnMetadata) => {
@@ -90,12 +108,16 @@ export function FilterPicker({
   if (!column) {
     return (
       <FilterColumnPicker
+        className={className}
         query={query}
         stageIndex={stageIndex}
         checkItemIsSelected={checkItemIsSelected}
         onColumnSelect={handleColumnSelect}
         onSegmentSelect={handleChange}
         onExpressionSelect={openExpressionEditor}
+        withColumnGroupIcon={withColumnGroupIcon}
+        withColumnItemIcon={withColumnItemIcon}
+        withCustomExpression={withCustomExpression}
       />
     );
   }
@@ -108,7 +130,7 @@ export function FilterPicker({
       filter={filter}
       isNew={isNewFilter}
       onChange={handleChange}
-      onBack={() => setColumn(undefined)}
+      onBack={handleBack}
     />
   );
 }

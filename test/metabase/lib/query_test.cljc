@@ -12,7 +12,6 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.lib.util :as lib.util]
    [metabase.types :as types]
@@ -24,7 +23,7 @@
          lib.metadata.calculation/keep-me)
 
 (deftest ^:parallel describe-query-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
         ;; wrong arity: there's a bug in our Kondo config, see
         ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1679022185079739?thread_ts=1679022025.317059&cid=C04DN5VRQM6
@@ -55,12 +54,12 @@
                                              :query    {:source-query {:source-query {:source-table (meta/id :venues)}}}}))))
 
 (deftest ^:parallel with-different-table-test
-  (let [query (-> (lib/query lib.tu/metadata-provider-with-mock-cards (meta/table-metadata :venues))
+  (let [query (-> (lib/query (lib.tu/metadata-provider-with-mock-cards) (meta/table-metadata :venues))
                   (lib/filter (lib/= (meta/field-metadata :venues :name) "Toucannery"))
                   (lib/breakout (meta/field-metadata :venues :category-id))
                   (lib/limit 100)
                   (lib/append-stage))
-        card-id (:id (lib.tu/mock-cards :orders))]
+        card-id (:id ((lib.tu/mock-cards) :orders))]
     (is (= [{:lib/type :mbql.stage/mbql :source-table (meta/id :orders)}]
            (:stages (lib/with-different-table query (meta/id :orders)))))
     (is (= [{:lib/type :mbql.stage/mbql :source-card card-id}]
@@ -80,10 +79,10 @@
                                          :fields [[:field (meta/id :venues :id) nil]]
                                          :filters [[:= [:expression "math"] 2]]}}))))
   (testing "filling in works for nested join queries"
-    (let [clause (as-> (lib/expression lib.tu/venues-query "CC" (lib/+ 1 1)) $q
+    (let [clause (as-> (lib/expression (lib.tu/venues-query) "CC" (lib/+ 1 1)) $q
                    (lib/join-clause $q [(lib/= (meta/field-metadata :venues :id)
                                                (lib/expression-ref $q "CC"))]))
-          query (lib/join lib.tu/venues-query clause)
+          query (lib/join (lib.tu/venues-query) clause)
           ;; Make a legacy query but don't put types in :field and :expression
           converted-query (lib.convert/->pMBQL
                            (walk/postwalk
@@ -129,9 +128,9 @@
                                                          :lib/type :metadata/results}))))))
 
 (deftest ^:parallel stage-count-test
-  (is (= 1 (lib/stage-count lib.tu/venues-query)))
-  (is (= 2 (lib/stage-count (lib/append-stage lib.tu/venues-query))))
-  (is (= 3 (lib/stage-count (lib/append-stage (lib/append-stage lib.tu/venues-query))))))
+  (is (= 1 (lib/stage-count (lib.tu/venues-query))))
+  (is (= 2 (lib/stage-count (lib/append-stage (lib.tu/venues-query)))))
+  (is (= 3 (lib/stage-count (lib/append-stage (lib/append-stage (lib.tu/venues-query)))))))
 
 (deftest ^:parallel native?-test
   (testing "MBQL queries are not native"
@@ -180,8 +179,11 @@
              :stages       [{:lib/type    :mbql.stage/mbql
                              :source-card 1}]
              :info         {:card-id 1000}}
-            (lib.query/query meta/metadata-provider (assoc (lib.tu.macros/mbql-query nil {:source-table "card__1"})
-                                                           :info {:card-id 1000}))))))
+            (lib.query/query meta/metadata-provider
+                             {:database (meta/id)
+                              :type     :query
+                              :query    {:source-table "card__1"}
+                              :info     {:card-id 1000}})))))
 
 (deftest ^:parallel convert-from-legacy-remove-type-test
   (testing "legacy keys like :type and :query should get removed"
@@ -197,14 +199,14 @@
   (mu/disable-enforcement
     (are [can-run? card-type query]
          (= can-run? (lib.query/can-run query card-type))
-      true  :question lib.tu/venues-query
-      false :question (assoc lib.tu/venues-query :database nil)           ; database unknown - no permissions
+      true  :question (lib.tu/venues-query)
+      false :question (assoc (lib.tu/venues-query) :database nil)           ; database unknown - no permissions
       true  :question (lib/native-query meta/metadata-provider "SELECT")
       false :question (lib/native-query meta/metadata-provider "")
-      false :metric   lib.tu/venues-query
-      true  :metric   (-> lib.tu/venues-query
+      false :metric   (lib.tu/venues-query)
+      true  :metric   (-> (lib.tu/venues-query)
                           (lib/aggregate (lib/count)))
-      false :metric   (-> lib.tu/venues-query
+      false :metric   (-> (lib.tu/venues-query)
                           (lib/aggregate (lib/count))
                           (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
       true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
@@ -226,7 +228,7 @@
       false :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
                           (lib/breakout (meta/field-metadata :people :name)))
-      false  :metric  (-> lib.tu/venues-query
+      false  :metric  (-> (lib.tu/venues-query)
                           (lib/aggregate (lib/count))
                           (lib/append-stage)
                           (lib/aggregate (lib/count))))))
@@ -235,12 +237,12 @@
   (mu/disable-enforcement
     (are [can-save? card-type query]
          (= can-save? (lib.query/can-save query card-type))
-      true  :question lib.tu/venues-query
-      false :question (assoc lib.tu/venues-query :database nil)           ; database unknown - no permissions
+      true  :question (lib.tu/venues-query)
+      false :question (assoc (lib.tu/venues-query) :database nil)           ; database unknown - no permissions
       true  :question (lib/native-query meta/metadata-provider "SELECT")
       false :question (lib/native-query meta/metadata-provider "")
-      false :metric   lib.tu/venues-query
-      true  :metric   (-> lib.tu/venues-query
+      false :metric   (lib.tu/venues-query)
+      true  :metric   (-> (lib.tu/venues-query)
                           (lib/aggregate (lib/count)))
       true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
@@ -261,7 +263,7 @@
       false :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
                           (lib/breakout (meta/field-metadata :people :id)))
-      false  :metric  (-> lib.tu/venues-query
+      false  :metric  (-> (lib.tu/venues-query)
                           (lib/aggregate (lib/count))
                           (lib/append-stage)
                           (lib/aggregate (lib/count))))))
@@ -269,9 +271,9 @@
 (deftest ^:parallel can-preview-test
   (mu/disable-enforcement
     (testing "can-preview"
-      (is (= true (lib/can-preview lib.tu/venues-query)))
+      (is (= true (lib/can-preview (lib.tu/venues-query))))
       (testing "with an offset expression"
-        (let [offset-query (lib/expression lib.tu/venues-query "prev_price"
+        (let [offset-query (lib/expression (lib.tu/venues-query) "prev_price"
                                            (lib/offset (meta/field-metadata :venues :price) -1))]
           (testing "without order-by = false"
             (is (= false (lib/can-preview offset-query))))
@@ -280,7 +282,7 @@
                              (lib/order-by (meta/field-metadata :venues :latitude))
                              lib/can-preview))))))
       (testing "with an offset expression in an earlier stage"
-        (let [offset-query (-> lib.tu/venues-query
+        (let [offset-query (-> (lib.tu/venues-query)
                                (lib/expression "prev_price" (lib/offset (meta/field-metadata :venues :price) -1))
                                (lib/breakout (lib.options/ensure-uuid [:expression {} "prev_price"]))
                                (lib/aggregate (lib/count))
@@ -479,36 +481,36 @@
     (are [x] (=? {:lib/type :mbql/query
                   :database (meta/id)
                   :stages   [{:lib/type     :mbql.stage/mbql
-                              :source-table 1
+                              :source-table (meta/id :orders)
                               :aggregation  [[:count {:lib/uuid string?}]]
                               :filters      [[:=
                                               {:lib/uuid string?}
-                                              [:field {:lib/uuid string?} 1]
+                                              [:field {:lib/uuid string?} (meta/id :orders :quantity)]
                                               4]]}]}
                  (lib/query meta/metadata-provider x))
       {"lib/type" "mbql/query"
        "database" (meta/id)
        "stages"   [{"lib/type"     "mbql.stage/mbql"
-                    "source-table" 1
+                    "source-table" (meta/id :orders)
                     "aggregation"  [["count" {}]]
-                    "filters"      [["=" {} ["field" {} 1] 4]]}]}
+                    "filters"      [["=" {} ["field" {} (meta/id :orders :quantity)] 4]]}]}
 
       {:lib/type :mbql/query
        :database (meta/id)
        :stages   [{:lib/type     :mbql.stage/mbql
-                   :source-table 1
+                   :source-table (meta/id :orders)
                    :aggregation  [[:count {}]]
                    :filters      [[:=
                                    {}
-                                   [:field {} 1]
+                                   [:field {} (meta/id :orders :quantity)]
                                    4]]}]}
 
       ;; denormalized legacy query
       {"type"     "query"
        "database" (meta/id)
-       "query"    {"source-table" 1
+       "query"    {"source-table" (meta/id :orders)
                    "aggregation"  [["count"]]
-                   "filter"       ["=" ["field" 1 nil] 4]}})))
+                   "filter"       ["=" ["field" (meta/id :orders :quantity) nil] 4]}})))
 
 (deftest ^:parallel coerced-fields-effective-type-test
   (let [effective-type (types/effective-type-for-coercion :Coercion/UNIXSeconds->DateTime)
@@ -607,7 +609,7 @@
                    :database-id (meta/id)
                    :table-id    (meta/id :venues)
                    :dataset-query
-                   (-> lib.tu/venues-query
+                   (-> (lib.tu/venues-query)
                        (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
                        (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
                        (lib/breakout (meta/field-metadata :venues :category-id))

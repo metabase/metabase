@@ -1,28 +1,22 @@
-import {
-  enterCustomColumnDetails,
-  openProductsTable,
-  popover,
-  restore,
-  summarize,
-} from "e2e/support/helpers";
+const { H } = cy;
 
 describe("scenarios > question > custom column > typing suggestion", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
-    openProductsTable({ mode: "notebook" });
+    H.openProductsTable({ mode: "notebook" });
   });
 
   it("should not suggest arithmetic operators", () => {
     addCustomColumn();
-    enterCustomColumnDetails({ formula: "[Price] " });
+    H.enterCustomColumnDetails({ formula: "[Price] " });
     cy.findByTestId("expression-suggestions-list").should("not.exist");
   });
 
   it("should correctly accept the chosen field suggestion", () => {
     addCustomColumn();
-    enterCustomColumnDetails({
+    H.enterCustomColumnDetails({
       formula: "[Rating]{leftarrow}{leftarrow}{leftarrow}",
       blur: false,
     });
@@ -38,7 +32,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should correctly accept the chosen function suggestion", () => {
     addCustomColumn();
-    enterCustomColumnDetails({ formula: "LTRIM([Title])", blur: false });
+    H.enterCustomColumnDetails({ formula: "LTRIM([Title])", blur: false });
 
     // Place the cursor between "is" and "empty"
     cy.get("@formula").type("{leftarrow}".repeat(13));
@@ -52,7 +46,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should correctly insert function suggestion with the opening parenthesis", () => {
     addCustomColumn();
-    enterCustomColumnDetails({ formula: "BET{enter}" });
+    H.enterCustomColumnDetails({ formula: "BET{enter}" });
 
     cy.findByTestId("expression-editor-textfield").should(
       "contain",
@@ -62,7 +56,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should show expression function helper if a proper function is typed", () => {
     addCustomColumn();
-    enterCustomColumnDetails({ formula: "lower(", blur: false });
+    H.enterCustomColumnDetails({ formula: "lower(", blur: false });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("lower(text)");
@@ -84,11 +78,34 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   });
 
   it("should not show suggestions for an unfocused field (metabase#31643)", () => {
-    summarize({ mode: "notebook" });
-    popover().findByText("Custom Expression").click();
-    enterCustomColumnDetails({ formula: "Count{enter}" });
-    popover().findByLabelText("Name").focus();
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({ formula: "Count{enter}" });
+    H.popover().findByLabelText("Name").focus();
     cy.findByTestId("expression-suggestions-list").should("not.exist");
+  });
+
+  it("should always show the help text popover on top of the custom expression widget (metabase#52711)", () => {
+    addCustomColumn();
+    H.enterCustomColumnDetails({ formula: "endsWith(", blur: false });
+
+    /* It seems like cypress considers that this popover and its contents are visible,
+     * even when it's under its parent popover because it is in a portal, so technically it's not being clipped by any element.
+     * Weirdly enough, it refuses to click `Learn more` because it's covered, but should("be.visible") passes.
+     *
+     * So, the (hacky) solution for now is to click all 5 elements of the popover, and we will check if the
+     * popover is still there at the end. Since the popover has onClickOutside behavior, the popover will
+     * close if the user clicks on anything outside it, so we can use that to our advantage.
+     * */
+    cy.findByTestId("expression-helper-popover").within(() => {
+      cy.findByTestId("expression-helper-popover-structure").click();
+      cy.findByTestId("expression-helper-popover-arguments").click();
+      cy.findByText("Example").click();
+
+      // We want to trigger the "covered element" error if this is true without actually clicking the external link
+      cy.findByText("Learn more").trigger("mousemove");
+    });
+    cy.findByTestId("expression-helper-popover").should("exist");
   });
 });
 

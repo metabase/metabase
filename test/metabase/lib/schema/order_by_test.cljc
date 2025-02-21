@@ -2,10 +2,10 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
-   [malli.core :as mc]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (def ^:private valid-order-bys
   [[:asc
@@ -42,23 +42,23 @@
   (testing "valid order-by conforms to schema"
     (doseq [order-by valid-order-bys]
       (testing (u/pprint-to-str order-by)
-        (is (not (mc/explain ::lib.schema.order-by/order-by order-by)))))))
+        (is (not (mr/explain ::lib.schema.order-by/order-by order-by)))))))
 
 (deftest ^:parallel invalid-order-by-schema-test
   (testing "invalid order-by does not conform to schema"
     (doseq [invalid-order-by invalid-order-bys]
       (testing (u/pprint-to-str invalid-order-by)
         (binding [lib.schema.expression/*suppress-expression-type-check?* nil]
-          (is (mc/explain ::lib.schema.order-by/order-by invalid-order-by)))))))
+          (is (mr/explain ::lib.schema.order-by/order-by invalid-order-by)))))))
 
 (deftest ^:parallel valid-order-bys-schema-test
   (testing "valid order-bys conform to schema"
-    (is (not (mc/explain ::lib.schema.order-by/order-bys valid-order-bys)))))
+    (is (not (mr/explain ::lib.schema.order-by/order-bys valid-order-bys)))))
 
 (deftest ^:parallel invalid-order-bys-schema-test
   (testing "invalid order-bys do not conform to schema"
     (binding [lib.schema.expression/*suppress-expression-type-check?* nil]
-      (is (mc/explain ::lib.schema.order-by/order-bys invalid-order-bys))))
+      (is (mr/explain ::lib.schema.order-by/order-bys invalid-order-bys))))
 
   (testing "non-distinct order-bys do not conform to schema"
-    (is (mc/explain ::lib.schema.order-by/order-bys (conj valid-order-bys (first valid-order-bys))))))
+    (is (mr/explain ::lib.schema.order-by/order-bys (conj valid-order-bys (first valid-order-bys))))))

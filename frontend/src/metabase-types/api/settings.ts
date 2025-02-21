@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { InputSettingType } from "./actions";
+
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -129,12 +131,52 @@ export type LoadingMessage =
 
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
+const tokenStatusFeatures = [
+  "advanced-config",
+  "advanced-permissions",
+  "audit-app",
+  "cache-granular-controls",
+  "collection-cleanup",
+  "config-text-file",
+  "content-management",
+  "content-verification",
+  "dashboard-subscription-filters",
+  "database-auth-providers",
+  "disable-password-login",
+  "email-allow-list",
+  "email-restrict-recipients",
+  "embedding-sdk",
+  "embedding",
+  "hosting",
+  "metabase-store-managed",
+  "metabot-v3",
+  "no-upsell",
+  "official-collections",
+  "query-reference-validation",
+  "question-error-logs",
+  "sandboxes",
+  "scim",
+  "serialization",
+  "session-timeout-config",
+  "snippet-collections",
+  "sso-google",
+  "sso-jwt",
+  "sso-ldap",
+  "sso-saml",
+  "sso",
+  "upload-management",
+  "whitelabel",
+] as const;
+
+export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
+
 export interface TokenStatus {
-  status?: TokenStatusStatus;
+  status: TokenStatusStatus;
   valid: boolean;
   "valid-thru"?: string;
   "error-details"?: string;
-  trial: boolean;
+  trial?: boolean;
+  features?: TokenStatusFeature[];
 }
 
 export type DayOfWeekId =
@@ -174,6 +216,7 @@ export const tokenFeatures = [
   "upload_management",
   "collection_cleanup",
   "query_reference_validation",
+  "cache_preemptive",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -192,7 +235,9 @@ export interface SettingDefinition<Key extends SettingKey = SettingKey> {
   is_env_setting?: boolean;
   value?: SettingValue<Key>;
   default?: SettingValue<Key>;
+  display_name?: string;
   description?: string | ReactNode | null;
+  type?: InputSettingType;
 }
 
 export type UpdateChannel = "latest" | "beta" | "nightly";
@@ -203,6 +248,8 @@ export interface OpenAiModel {
 }
 
 export type HelpLinkSetting = "metabase" | "hidden" | "custom";
+
+export type AutocompleteMatchStyle = "off" | "prefix" | "substring";
 
 export interface UploadsSettings {
   db_id: number | null;
@@ -225,6 +272,7 @@ interface InstanceSettings {
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;
+  "instance-creation": string;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -266,6 +314,7 @@ interface AdminSettings {
   "version-info": VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
+  "show-sdk-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
@@ -279,6 +328,7 @@ interface SettingsManagerSettings {
   "openai-organization": string | null;
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
+  "slack-bug-report-channel": string | null;
   "slack-files-channel": string | null;
   "slack-token": string | null;
   "slack-token-valid?": boolean;
@@ -292,8 +342,10 @@ interface PublicSettings {
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "application-name": string;
+  "application-favicon-url": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
@@ -306,6 +358,7 @@ interface PublicSettings {
   "embedding-app-origins-interactive": string | null;
   "enable-enhancements?": boolean;
   "enable-password-login": boolean;
+  "enable-pivoted-exports": boolean;
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
@@ -314,13 +367,13 @@ interface PublicSettings {
   "help-link-custom-destination": string;
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
-  "is-metabot-enabled": boolean;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "ldap-port": number;
   "ldap-group-membership-filter": string;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
+  "native-query-autocomplete-match-style": AutocompleteMatchStyle;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
@@ -344,8 +397,10 @@ interface PublicSettings {
 }
 
 export type UserSettings = {
+  "dismissed-collection-cleanup-banner"?: boolean;
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
+  "dismissed-onboarding-sidebar-link"?: boolean;
   "last-used-native-database-id"?: number | null;
   "notebook-native-preview-shown"?: boolean;
   "notebook-native-preview-sidebar-width"?: number | null;
@@ -355,8 +410,38 @@ export type UserSettings = {
   "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
+  "trial-banner-dismissal-timestamp"?: string | null;
 };
 
+/**
+ * Important distinction between `null` and `undefined` settings values.
+ *  - `null` means that the setting actually has a value of `null`.
+ *  - `undefined` means that the setting is not available in a certain context.
+ *
+ * Further longer explanation:
+ *
+ * Clojure doesn't have `undefined`. It uses `nil` to set (the default) value to (JS) `null`.
+ * This can backfire on frontend if we are not aware of this distinction!
+ *
+ * Do not use `undefined` when checking for a setting value! Use `null` instead.
+ * Use `undefined` only when checking does the setting (key) exist in a certain context.
+ *
+ * Contexts / Scopes:
+ * Settings types are divided into contexts to make this more explicit:
+ *  - `PublicSettings` will always be available to everyone.
+ *  - `InstanceSettings` are settings that are available to all **authenticated** users.
+ *  - `AdminSettings` are settings that are available only to **admins**.
+ *  - `SettingsManagerSettings` are settings that are available only to **settings managers**.
+ *  - `UserSettings` are settings that are available only to **regular users**.
+ *
+ * Each new scope is more strict than the previous one.
+ *
+ * To further complicate things, there are two endpoints for fetching settings:
+ *  - `GET /api/setting` that _can only be used by admins!_
+ *  - `GET /api/session/properties` that can be used by any user, but some settings might be omitted (unavailable).
+ *
+ * SettingsApi will return `403` for non-admins, while SessionApi will return `200`!
+ */
 export type Settings = InstanceSettings &
   PublicSettings &
   UserSettings &

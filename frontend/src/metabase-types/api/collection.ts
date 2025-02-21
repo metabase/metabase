@@ -2,12 +2,14 @@ import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName, IconProps } from "metabase/ui";
 import type {
   CollectionEssentials,
+  Dashboard,
+  DashboardId,
   PaginationRequest,
   PaginationResponse,
   VisualizationDisplay,
 } from "metabase-types/api";
 
-import type { CardType } from "./card";
+import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
@@ -69,6 +71,7 @@ export interface Collection {
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
   is_personal?: boolean;
+  is_sample?: boolean; // true if the collection part of the sample content
 
   location: string | null;
   effective_location?: string; // location path containing only those collections that the user has permission to access
@@ -122,11 +125,17 @@ export interface CollectionItem {
   location?: string;
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
+  dashboard_count?: number | null;
   getIcon: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
-  setArchived?: (isArchived: boolean, opts?: Record<string, unknown>) => void;
+  setArchived?: (
+    isArchived: boolean,
+    opts?: Record<string, unknown>,
+  ) => Promise<void>;
   setPinned?: (isPinned: boolean) => void;
-  setCollection?: (collection: Pick<Collection, "id">) => void;
+  setCollection?: (
+    collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
+  ) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
 }
 
@@ -191,4 +200,34 @@ export interface ListCollectionsTreeRequest {
 
 export interface DeleteCollectionRequest {
   id: RegularCollectionId;
+}
+
+export interface DashboardQuestionCandidate {
+  id: CardId;
+  name: string;
+  description: string | null;
+  sole_dashboard_info: {
+    id: DashboardId;
+    name: string;
+    description: string | null;
+  };
+}
+
+export interface GetCollectionDashboardQuestionCandidatesRequest
+  extends PaginationRequest {
+  collectionId: CollectionId;
+}
+
+export interface GetCollectionDashboardQuestionCandidatesResult {
+  total: number;
+  data: DashboardQuestionCandidate[];
+}
+
+export interface MoveCollectionDashboardCandidatesRequest {
+  collectionId: CollectionId;
+  cardIds: CardId[];
+}
+
+export interface MoveCollectionDashboardCandidatesResult {
+  moved: CardId[];
 }

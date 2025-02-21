@@ -3,7 +3,6 @@
   `resources/frontend_client/index_template.html`; when the frontend is built (e.g. via `./bin/build.sh frontend`)
   different versions that include the FE app are created as `index.html`, `public.html`, and `embed.html`."
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [hiccup.util]
@@ -12,6 +11,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [ring.util.response :as response]
    [stencil.core :as stencil])
@@ -30,7 +30,7 @@
   (str/replace s #"(?i)</script" "</scr\\\\ipt"))
 
 (defn- fallback-localization [locale-or-name]
-  (json/generate-string
+  (json/encode
    {"headers"
     {"language"     (str locale-or-name)
      "plural-forms" "nplurals=2; plural=(n != 1);"}
@@ -78,13 +78,15 @@
 (defn- load-entrypoint-template [entrypoint-name embeddable? {:keys [uri params nonce]}]
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
-   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})]
+   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})
+         ;; We disable `locale` parameter on static embeds/public links (metabase#50313)
+         should-load-locale-params? (not embeddable?)]
      {:bootstrapJS          (load-inline-js "index_bootstrap")
-      :bootstrapJSON        (escape-script (json/generate-string public-settings))
+      :bootstrapJSON        (escape-script (json/encode public-settings))
       :assetOnErrorJS       (load-inline-js "asset_loading_error")
-      :userLocalizationJSON (escape-script (load-localization (:locale params)))
+      :userLocalizationJSON (escape-script (load-localization (when should-load-locale-params? (:locale params))))
       :siteLocalizationJSON (escape-script (load-localization (public-settings/site-locale)))
-      :nonceJSON            (escape-script (json/generate-string nonce))
+      :nonceJSON            (escape-script (json/encode nonce))
       :language             (hiccup.util/escape-html (public-settings/site-locale))
       :favicon              (hiccup.util/escape-html (public-settings/application-favicon-url))
       :applicationName      (hiccup.util/escape-html (public-settings/application-name))

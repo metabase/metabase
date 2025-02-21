@@ -1,0 +1,6 @@
+.DataStepIconButton {
+  color: var(--mb-color-text-white);
+  padding: var(--notebook-cell-container-padding);
+  opacity: 0.5;
+  height: 100%;
+}

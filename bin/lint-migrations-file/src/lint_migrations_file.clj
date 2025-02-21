@@ -51,13 +51,13 @@
 (defn- require-change-set-ids-in-order [change-log]
   (let [ids (change-set-ids change-log)
         out-of-order-ids (->> ids
-                             (partition 2 1)
-                             (filter (fn [[id1 id2]]
-                                       (pos? (compare id1 id2)))))]
+                              (partition 2 1)
+                              (filter (fn [[id1 id2]]
+                                        (pos? (compare id1 id2)))))]
 
     (when (seq out-of-order-ids)
       (throw (validation-error "Change set IDs are not in order"
-                              {:out-of-order-ids out-of-order-ids})))))
+                               {:out-of-order-ids out-of-order-ids})))))
 
 (defn- check-change-use-types?
   "Return `true` if change use any type in `types`."
@@ -67,16 +67,16 @@
                               (contains? types (str/lower-case ttype)))]
     (cond
      ;; a createTable or addColumn change; see if it adds a target-type col
-     (or (:createTable change) (:addColumn change))
-     (let [op (cond (:createTable change) :createTable (:addColumn change) :addColumn)]
-       (some (fn [col-def]
-               (match-target-types? (get-in col-def [:column :type] "")))
-             (get-in change [op :columns])))
+      (or (:createTable change) (:addColumn change))
+      (let [op (cond (:createTable change) :createTable (:addColumn change) :addColumn)]
+        (some (fn [col-def]
+                (match-target-types? (get-in col-def [:column :type] "")))
+              (get-in change [op :columns])))
 
      ;; a modifyDataType change; see if it change a column to target-type
-     (and (:modifyDataType change)
-          (match-target-types? (get-in change [:modifyDataType :newDataType] "")))
-     true)))
+      (and (:modifyDataType change)
+           (match-target-types? (get-in change [:modifyDataType :newDataType] "")))
+      true)))
 
 (defn- check-change-set-use-types?
   "Return true if `change-set` doesn't contain usage of any type in `types`."
@@ -163,9 +163,9 @@
     (assert (.exists file) (format "%s does not exist" filename))
     (letfn [(fix-vals [x]
                       ;; convert any lazy seqs to regular vectors and maps
-                      (cond (map? x)        (update-vals x fix-vals)
-                            (sequential? x) (mapv fix-vals x)
-                            :else           x))]
+              (cond (map? x)        (update-vals x fix-vals)
+                    (sequential? x) (mapv fix-vals x)
+                    :else           x))]
       (fix-vals (yaml/parse-string (slurp file))))))
 
 (defn- validate-all []

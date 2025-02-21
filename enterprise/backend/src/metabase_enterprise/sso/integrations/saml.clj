@@ -39,12 +39,11 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.api.common :as api]
-   [metabase.api.session :as api.session]
-   [metabase.integrations.common :as integrations.common]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.middleware.session :as mw.session]
-   [metabase.server.request.util :as req.util]
+   [metabase.request.core :as request]
+   [metabase.session.models.session :as session]
+   [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -79,9 +78,9 @@
   [user group-names]
   (when (sso-settings/saml-group-sync)
     (when group-names
-      (integrations.common/sync-group-memberships! user
-                                                   (group-names->ids group-names)
-                                                   (all-mapped-group-ids)))))
+      (sso/sync-group-memberships! user
+                                   (group-names->ids group-names)
+                                   (all-mapped-group-ids)))))
 
 (mu/defn- fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
   "Returns a Session for the given `email`. Will create the user if needed."
@@ -105,7 +104,7 @@
                         (sso-utils/check-user-provisioning :saml)
                         (sso-utils/create-new-sso-user! new-user))]
       (sync-groups! user group-names)
-      (api.session/create-session! :sso user device-info))))
+      (session/create-session! :sso user device-info))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -223,9 +222,9 @@
                           :email           email
                           :group-names     groups
                           :user-attributes attrs
-                          :device-info     (req.util/device-info request)})
+                          :device-info     (request/device-info request)})
           response      (response/redirect (or continue-url (public-settings/site-url)))]
-      (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
+      (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
 
 (def ^:private saml2-success-status "urn:oasis:names:tc:SAML:2.0:status:Success")
 
@@ -236,11 +235,11 @@
     (walk/postwalk
      (fn [x]
        (when (and (map? x)
-                  (= (:tag x) :StatusCode)
+                  (= (:tag x) :samlp:StatusCode)
                   (= (get-in x [:attrs :Value]) saml2-success-status))
          (reset! *success? true))
        x)
-     (xml/parse-str xml-str))
+     (xml/parse-str xml-str {:namespace-aware false}))
     @*success?))
 
 (defmethod sso.i/sso-handle-slo :saml
@@ -248,8 +247,8 @@
   (if (sso-settings/saml-slo-enabled)
     (let [xml-str (base64-decode (:SAMLResponse params))
           success? (slo-success? xml-str)]
-      (if-let [metabase-session-id (and success? (get-in cookies [mw.session/metabase-session-cookie :value]))]
+      (if-let [metabase-session-id (and success? (get-in cookies [request/metabase-session-cookie :value]))]
         (do (t2/delete! :model/Session :id metabase-session-id)
-            (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
+            (request/clear-session-cookie (response/redirect (urls/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

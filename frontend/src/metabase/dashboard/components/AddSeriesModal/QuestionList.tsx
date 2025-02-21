@@ -4,10 +4,12 @@ import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { CardApi } from "metabase/services";
+import { Box, Flex, Icon, TextInput } from "metabase/ui";
 import type {
   Card,
   CardId,
@@ -15,15 +17,7 @@ import type {
   QuestionDashboardCard,
 } from "metabase-types/api";
 
-import {
-  EmptyStateContainer,
-  LoadMoreButton,
-  LoadMoreRow,
-  QuestionListContainer,
-  QuestionListWrapper,
-  SearchContainer,
-  SearchInput,
-} from "./QuestionList.styled";
+import S from "./QuestionList.module.css";
 import { QuestionListItem } from "./QuestionListItem";
 
 const PAGE_SIZE = 50;
@@ -70,10 +64,17 @@ export const QuestionList = memo(function QuestionList({
         payload.query = searchText;
       }
 
-      const cards = await CardApi.compatibleCards({
-        ...payload,
-        cardId: dashcard.card_id,
-      });
+      //We want to ensure that we don't allow combining cards from other dashboards with this one
+      const cards = (
+        await CardApi.compatibleCards({
+          ...payload,
+          cardId: dashcard.card_id,
+        })
+      ).filter(
+        (card: Card) =>
+          card.dashboard_id === null ||
+          card.dashboard_id === dashcard.dashboard_id,
+      );
 
       setCards(prev => [...prev, ...cards]);
       setHasMore(cards.length === PAGE_SIZE);
@@ -96,21 +97,27 @@ export const QuestionList = memo(function QuestionList({
 
   return (
     <>
-      <SearchContainer>
-        <SearchInput
-          fullWidth
+      <Flex align="center" className={S.SearchContainer}>
+        <TextInput
+          w="100%"
           value={searchText}
-          leftIcon="search"
+          radius={0}
+          leftSection={<Icon className={S.SearchInputIcon} name="search" />}
           placeholder={t`Search for a question`}
           onChange={e => setSearchText(e.target.value)}
         />
-      </SearchContainer>
-      <QuestionListWrapper
-        className={cx(CS.flex, CS.flexFull, CS.overflowAuto)}
+      </Flex>
+      <LoadingAndErrorWrapper
+        className={cx(
+          S.QuestionListWrapper,
+          CS.flex,
+          CS.flexFull,
+          CS.overflowAuto,
+        )}
         error={error}
         noBackground
       >
-        <QuestionListContainer>
+        <Box m={0} p={0} w="100%">
           {hasQuestionsToShow && (
             <div>
               {cards.map(card => (
@@ -123,22 +130,26 @@ export const QuestionList = memo(function QuestionList({
               ))}
 
               {hasMore && (
-                <LoadMoreRow>
-                  <LoadMoreButton onClick={handleLoadNext} disabled={loading}>
+                <Box component="li" className={S.LoadMoreRow}>
+                  <button
+                    className={S.LoadMoreButton}
+                    onClick={handleLoadNext}
+                    disabled={loading}
+                  >
                     {loading ? t`Loading` : t`Load more`}
-                  </LoadMoreButton>
-                </LoadMoreRow>
+                  </button>
+                </Box>
               )}
             </div>
           )}
 
           {!hasQuestionsToShow && (
-            <EmptyStateContainer>
+            <Flex align="center" justify="center" w="100%" h="100%">
               <EmptyState message={t`Nothing here`} icon="folder" />
-            </EmptyStateContainer>
+            </Flex>
           )}
-        </QuestionListContainer>
-      </QuestionListWrapper>
+        </Box>
+      </LoadingAndErrorWrapper>
     </>
   );
 });

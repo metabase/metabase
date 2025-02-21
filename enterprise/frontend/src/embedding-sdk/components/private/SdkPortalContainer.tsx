@@ -1,9 +1,10 @@
 import styled from "@emotion/styled";
 
+import ZIndex from "metabase/css/core/z-index.module.css";
 import {
   EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID,
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
-} from "embedding-sdk/config";
+} from "metabase/embedding-sdk/config";
 
 import { PublicComponentStylesWrapper } from "./PublicComponentStylesWrapper";
 
@@ -15,6 +16,7 @@ import { PublicComponentStylesWrapper } from "./PublicComponentStylesWrapper";
 export const FullPagePortalContainer = () => (
   <PublicComponentStylesWrapper>
     <FixedPosition
+      className={ZIndex.Overlay}
       id={EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}
     ></FixedPosition>
   </PublicComponentStylesWrapper>
@@ -31,7 +33,4 @@ const FixedPosition = styled.div`
   position: fixed;
   left: 0;
   top: 0;
-
-  // TODO: allow users to change this and document the behaviour
-  z-index: 1000;
 `;

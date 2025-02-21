@@ -1,17 +1,11 @@
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  addOrUpdateDashboardCard,
-  popover,
-  restore,
-  visitDashboard,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > question > view", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -27,9 +21,9 @@ describe("scenarios > question > view", () => {
       cy.findByText("Yes").click();
 
       // Native query saved in dasbhoard
-      cy.createDashboard({}, { wrapId: true });
+      H.createDashboard({}, { wrapId: true });
 
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "Question",
           native: {
@@ -59,7 +53,7 @@ describe("scenarios > question > view", () => {
 
       cy.get("@questionId").then(questionId => {
         cy.get("@dashboardId").then(dashboardId => {
-          addOrUpdateDashboardCard({
+          H.addOrUpdateDashboardCard({
             dashboard_id: dashboardId,
             card_id: questionId,
           });
@@ -68,10 +62,10 @@ describe("scenarios > question > view", () => {
     });
 
     it("should show filters by search for Vendor", () => {
-      visitQuestion("@questionId");
+      H.visitQuestion("@questionId");
 
       cy.findAllByText("VENDOR").first().click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByPlaceholderText("Search the list");
         cy.findByText("Search the list").should("not.exist");
       });
@@ -79,23 +73,24 @@ describe("scenarios > question > view", () => {
 
     it("should be able to filter Q by Category as no data user (from Q link) (metabase#12654)", () => {
       cy.signIn("nodata");
-      visitQuestion("@questionId");
+      H.visitQuestion("@questionId");
 
       // Filter by category and vendor
       // TODO: this should show values and allow searching
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
-      popover().within(() => {
-        cy.findByPlaceholderText("Enter some text").type("Balistreri-Muller");
+      H.dashboardParametersPopover().within(() => {
+        H.fieldValuesInput().type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
       cy.findAllByText("CATEGORY").first().click();
-      popover().within(() => {
-        cy.findByPlaceholderText("Enter some text").type("Widget");
+      H.dashboardParametersPopover().within(() => {
+        H.fieldValuesInput().type("Widget");
         cy.findByText("Add filter").click();
       });
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("run-button").last().click();
 
       cy.findAllByText("Widget");
@@ -105,7 +100,7 @@ describe("scenarios > question > view", () => {
     it("should be able to filter Q by Vendor as user (from Dashboard) (metabase#12654)", () => {
       // Navigate to Q from Dashboard
       cy.signIn("nodata");
-      visitDashboard("@dashboardId");
+      H.visitDashboard("@dashboardId");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").click();
@@ -115,7 +110,7 @@ describe("scenarios > question > view", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByPlaceholderText("Enter some text")
           .focus()
           .clear()
@@ -124,13 +119,14 @@ describe("scenarios > question > view", () => {
       });
       cy.findAllByTestId("run-button").first().click();
       cy.findAllByText("CATEGORY").first().click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByPlaceholderText("Enter some text")
           .click()
           .clear()
           .type("Widget");
         cy.findByText("Add filter").click();
       });
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("run-button").last().click();
 
       cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(

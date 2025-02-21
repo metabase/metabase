@@ -8,7 +8,7 @@ import { JoinConditionOperatorPicker } from "../JoinConditionOperatorPicker";
 import { JoinConditionRemoveButton } from "../JoinConditionRemoveButton";
 import { updateTemporalBucketing } from "../utils";
 
-import { JoinConditionRoot } from "./JoinConditionDraft.styled";
+import S from "./JoinConditionDraft.module.css";
 import { getDefaultJoinConditionOperator } from "./utils";
 
 interface JoinConditionDraftProps {
@@ -87,7 +87,7 @@ export function JoinConditionDraft({
   }, [rhsTable]);
 
   return (
-    <JoinConditionRoot>
+    <Flex className={S.JoinConditionRoot}>
       <Flex align="center" gap="xs" mih="47px" p="xs">
         <Box ml={!lhsColumn ? "xs" : undefined}>
           <JoinConditionColumnPicker
@@ -134,6 +134,6 @@ export function JoinConditionDraft({
           onClick={onRemove}
         />
       )}
-    </JoinConditionRoot>
+    </Flex>
   );
 }

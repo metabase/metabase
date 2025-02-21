@@ -17,7 +17,7 @@ To enable dashboard subscriptions, your administrators will need to have set up 
 
 ## Setting up a dashboard subscription
 
-To set up a subscription to a dashboard, click on the **Subscriptions** icon (mail icon with a plus symbol). Metabase will slide out a sidebar on the right, with an option to set up a subscription via email or Slack:
+To set up a subscription to a dashboard, click on the **Sharing** icon and select **Subscriptions**. Metabase will slide out a sidebar on the right, with an option to set up a subscription via email or Slack:
 
 ![Set up a dashboard subscription with email or slack](./images/email-or-slack.png)
 
@@ -80,7 +80,7 @@ If you check this box, Metabase will drop any visualization settings applied to 
 
 Here you can specify which questions Metabase should attach results for.
 
-The attached files will include up to 2000 rows by default. If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [MB_UNAGGREGATED_QUERY_ROW_LIMIT](../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit).
+The attached files will include up to 2000 rows by default. If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [MB_UNAGGREGATED_QUERY_ROW_LIMIT](../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). To change this row limit on your Metabase Cloud instance, you can [contact us](https://www.metabase.com/help/premium) and request a different row limit.
 
 ## Slack subscription options
 
@@ -134,7 +134,7 @@ See [Notification permissions](../permissions/notifications.md).
 
 ## Further reading
 
-- [Alerts](../questions/sharing/alerts.md)
+- [Alerts](../questions/alerts.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)

@@ -1,5 +1,6 @@
 (ns i18n.create-artifacts.frontend
   (:require
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -14,8 +15,7 @@
 (defn- frontend-message?
   "Whether this i18n `message` comes from a frontend source file."
   [{:keys [source-references]}]
-  (some #(str/includes? % "frontend")
-        source-references))
+  (some #(re-find #"frontend|cljs|cljc" %) source-references))
 
 (defn- ->ttag-reference
   "Replace an xgettext `{0}` style reference with a ttag `${ 0 }` style reference."

@@ -15,12 +15,12 @@ import {
   isDashcardLoading,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
+import { isEmbeddingSdk } from "metabase/env";
 import { color } from "metabase/lib/colors";
 import { useSelector, useStore } from "metabase/lib/redux";
-import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { Box } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -36,7 +36,7 @@ import type {
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
 
-import { DashCardRoot } from "./DashCard.styled";
+import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
 import type {
@@ -69,9 +69,11 @@ export interface DashCardProps {
   isXray?: boolean;
   withTitle?: boolean;
 
+  /** Bool if removing the dashcard will queue the card to be trashed on dashboard save */
+  isTrashedOnRemove: boolean;
+  onRemove: (dashcard: StoreDashcard) => void;
   onAddSeries: (dashcard: StoreDashcard) => void;
   onReplaceCard: (dashcard: StoreDashcard) => void;
-  onRemove: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
@@ -88,6 +90,13 @@ export interface DashCardProps {
   onChangeLocation: (location: LocationDescriptor) => void;
 
   downloadsEnabled: boolean;
+
+  /** Auto-scroll to this card on mount */
+  autoScroll: boolean;
+  /** Callback to execute when the dashcard has auto-scrolled to itself */
+  reportAutoScrolledToDashcard: () => void;
+
+  className?: string;
 }
 
 function DashCardInner({
@@ -106,9 +115,10 @@ function DashCardInner({
   isEditingParameter,
   clickBehaviorSidebarDashcard,
   withTitle = true,
+  isTrashedOnRemove,
+  onRemove,
   onAddSeries,
   onReplaceCard,
-  onRemove,
   navigateToNewCardFromDashboard,
   markNewCardSeen,
   showClickBehaviorSidebar,
@@ -116,11 +126,13 @@ function DashCardInner({
   onUpdateVisualizationSettings,
   onReplaceAllDashCardVisualizationSettings,
   downloadsEnabled,
+  autoScroll,
+  reportAutoScrolledToDashcard,
+  className,
 }: DashCardProps) {
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const store = useStore();
   const getHref = useCallback(
     () => getDashcardHref(store.getState(), dashcard.id),
@@ -135,10 +147,13 @@ function DashCardInner({
 
   useMount(() => {
     if (dashcard.justAdded) {
-      cardRootRef?.current?.scrollIntoView({
-        block: "nearest",
-      });
+      cardRootRef?.current?.scrollIntoView({ block: "nearest" });
       markNewCardSeen(dashcard.id);
+    }
+
+    if (autoScroll) {
+      cardRootRef?.current?.scrollIntoView({ block: "nearest" });
+      reportAutoScrolledToDashcard();
     }
   });
 
@@ -190,7 +205,6 @@ function DashCardInner({
   );
 
   const isAction = isActionCard(mainCard);
-  const isEmbed = isEmbeddingSdk || isJWT(dashcard.dashboard_id);
 
   const { expectedDuration, isSlow } = useMemo(() => {
     const expectedDuration = Math.max(
@@ -293,10 +307,12 @@ function DashCardInner({
 
   return (
     <ErrorBoundary>
-      <DashCardRoot
+      <Box
         data-testid="dashcard"
         data-dashcard-key={dashcard.id}
         className={cx(
+          S.DashboardCardRoot,
+          S.DashCardRoot,
           DashboardS.Card,
           EmbedFrameS.Card,
           CS.relative,
@@ -305,15 +321,31 @@ function DashCardInner({
           CS.flexColumn,
           CS.hoverParent,
           CS.hoverVisibility,
+          {
+            [S.hasHiddenBackground]: hasHiddenBackground,
+            [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
+            [S.isNightMode]: isNightMode,
+            [S.isUsuallySlow]: isSlow === "usually-slow",
+            [S.isEmbeddingSdk]: isEmbeddingSdk,
+          },
+          className,
         )}
-        hasHiddenBackground={hasHiddenBackground}
-        shouldForceHiddenBackground={shouldForceHiddenBackground}
-        isNightMode={isNightMode}
-        isUsuallySlow={isSlow === "usually-slow"}
+        style={theme => {
+          const { border } = theme.other.dashboard.card;
+
+          return {
+            "--slow-card-border-color": theme.fn.themeColor("accent4"),
+            ...(border && { border }),
+            ...(!border && {
+              boxShadow: "0 1px 3px var(--mb-color-shadow)",
+            }),
+          };
+        }}
         ref={cardRootRef}
       >
         {isEditingDashboardLayout && (
           <DashCardActionsPanel
+            className={S.DashCardActionsPanel}
             onMouseDown={preventDragging}
             onLeftEdge={dashcard.col === 0}
             series={series}
@@ -331,6 +363,7 @@ function DashCardInner({
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
+            isTrashedOnRemove={isTrashedOnRemove}
           />
         )}
         <DashCardVisualization
@@ -346,7 +379,6 @@ function DashCardInner({
           error={error}
           getHref={navigateToNewCardFromDashboard ? getHref : undefined}
           isAction={isAction}
-          isEmbed={isEmbed}
           isXray={isXray}
           isEditing={isEditing}
           isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
@@ -369,11 +401,9 @@ function DashCardInner({
           onTogglePreviewing={handlePreviewToggle}
           downloadsEnabled={downloadsEnabled}
         />
-      </DashCardRoot>
+      </Box>
     </ErrorBoundary>
   );
 }
 
-export const DashCard = Object.assign(memo(DashCardInner), {
-  root: DashCardRoot,
-});
+export const DashCard = memo(DashCardInner);

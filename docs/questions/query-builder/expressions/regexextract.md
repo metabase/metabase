@@ -16,17 +16,17 @@ Use `regexextract` to create custom columns with shorter, more readable labels f
 - chart labels, or
 - embedding parameters.
 
-| Syntax                                                        | Example                                 |
-|---------------------------------------------------------------|-----------------------------------------|
-| `regexextract(text, regular_expression)`                      | `regexextract("regexextract", "ex(.*)")`|
-| Gets a specific part of your text using a regular expression. | "extract"                               |
+| Syntax                                                        | Example                                  |
+| ------------------------------------------------------------- | ---------------------------------------- |
+| `regexextract(text, regular_expression)`                      | `regexextract("regexextract", "ex(.*)")` |
+| Gets a specific part of your text using a regular expression. | "extract"                                |
 
 ## Searching and cleaning text
 
 Let's say that you have web data with a lot of different URLs, and you want to map each URL to a shorter, more readable campaign name.
 
 | URL                                                   | Campaign Name |
-|-------------------------------------------------------|---------------|
+| ----------------------------------------------------- | ------------- |
 | https://www.metabase.com/docs/?utm_campaign=alice     | alice         |
 | https://www.metabase.com/learn/?utm_campaign=neo      | neo           |
 | https://www.metabase.com/glossary/?utm_campaign=candy | candy         |
@@ -39,17 +39,17 @@ regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 
 Here, the regex pattern [`^[^?#]+\?` matches all valid URL strings](https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch07s13.html). You can replace `utm_campaign=` with whatever query parameter you like. At the end of the regex pattern, the [capturing group](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Groups_and_Backreferences) `(.*)` gets all of the characters that appear after the query parameter `utm_campaign=`.
 
-Now, you can use **Campaign Name** in places where you need clean labels, such as [filter dropdown menus](../../../dashboards/filters.md), [charts](../../sharing/visualizing-results.md), and [embedding parameters](../../../embedding/static-embedding-parameters.md).
+Now, you can use **Campaign Name** in places where you need clean labels, such as [filter dropdown menus](../../../dashboards/filters.md), [charts](../../visualizations/visualizing-results.md), and [embedding parameters](../../../embedding/static-embedding-parameters.md).
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `regexextract`  |
-| ----------------------- | -------------------- |
-| String                  | ✅                   |
-| Number                  | ❌                   |
-| Timestamp               | ❌                   |
-| Boolean                 | ❌                   |
-| JSON                    | ❌                   |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `regexextract` |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
+| String                                                                                                                         | ✅                        |
+| Number                                                                                                                         | ❌                        |
+| Timestamp                                                                                                                      | ❌                        |
+| Boolean                                                                                                                        | ❌                        |
+| JSON                                                                                                                           | ❌                        |
 
 ## Limitations
 
@@ -139,4 +139,4 @@ regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)

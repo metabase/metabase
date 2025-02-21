@@ -14,36 +14,37 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import type { NumberOrEmptyValue } from "./types";
 import { useNumberFilter } from "./use-number-filter";
 
 interface CreateFilterCase {
-  operator: Lib.NumberFilterOperatorName;
+  operator: Lib.NumberFilterOperator;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
-  operator: Lib.NumberFilterOperatorName;
+  operator: Lib.NumberFilterOperator;
   expression: Lib.ExpressionClause;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface CoerceFilterCase {
-  operator: Lib.NumberFilterOperatorName;
-  values: (number | "")[];
+  operator: Lib.NumberFilterOperator;
+  values: NumberOrEmptyValue[];
   expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
-  operator: Lib.NumberFilterOperatorName;
-  values: (number | "")[];
+  operator: Lib.NumberFilterOperator;
+  values: NumberOrEmptyValue[];
 }
 
 interface DefaultOperatorCase {
   title: string;
   column: Lib.ColumnMetadata;
-  expectedOperator: Lib.NumberFilterOperatorName;
+  expectedOperator: Lib.NumberFilterOperator;
 }
 
 const METADATA = createMockMetadata({
@@ -163,12 +164,12 @@ describe("useNumberFilter", () => {
     },
     {
       operator: "between",
-      values: [10, ""],
+      values: [10, null],
       expectedDisplayName: "Total is greater than or equal to 10",
     },
     {
       operator: "between",
-      values: ["", 10],
+      values: [null, 10],
       expectedDisplayName: "Total is less than or equal to 10",
     },
   ])(
@@ -199,11 +200,11 @@ describe("useNumberFilter", () => {
     },
     {
       operator: ">",
-      values: [""],
+      values: [null],
     },
     {
       operator: "between",
-      values: ["", ""],
+      values: [null, null],
     },
   ])(
     'should validate values for "$operator" operator',

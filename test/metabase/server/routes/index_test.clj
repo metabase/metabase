@@ -1,9 +1,9 @@
 (ns metabase.server.routes.index-test
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.server.routes.index :as index]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util.i18n :as i18n]
+   [metabase.util.json :as json]))
 
 (deftest ^:parallel localization-json-file-name-test
   (is (= "frontend_client/app/locales/es.json"
@@ -25,7 +25,7 @@
            (some->
             (binding [i18n/*user-locale* "es"]
               (#'index/load-localization nil))
-            json/parse-string
+            json/decode
             (update "translations" select-keys [""])
             (update-in ["translations" ""] select-keys ["Your database has been added!"]))))))
 
@@ -36,7 +36,7 @@
            (some->
             (binding [i18n/*user-locale* "xx"]
               (#'index/load-localization nil))
-            json/parse-string)))))
+            json/decode)))))
 
 (deftest ^:parallel english-test
   (testing "english should return the fallback localization (english)"
@@ -45,7 +45,7 @@
            (some->
             (binding [i18n/*user-locale* "en"]
               (#'index/load-localization nil))
-            json/parse-string)))))
+            json/decode)))))
 
 (deftest ^:parallel override-localization-test
   (testing "a valid override is honored no matter what the user locale is"
@@ -61,7 +61,7 @@
            (some->
             (binding [i18n/*user-locale* "xx"]
               (#'index/load-localization "es"))
-            json/parse-string
+            json/decode
             (update "translations" select-keys [""])
             (update-in ["translations" ""] select-keys ["Your database has been added!"])))))
 
@@ -71,4 +71,4 @@
            (some->
             (binding [i18n/*user-locale* "xx"]
               (#'index/load-localization "yy"))
-            json/parse-string)))))
+            json/decode)))))

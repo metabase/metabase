@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import NoResults from "assets/img/metrics_bot.svg";
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
@@ -45,10 +46,11 @@ export function BrowseMetrics() {
   const { isLoading, error, metrics, hasVerifiedMetrics } =
     useFilteredMetrics(metricFilters);
 
-  const isEmpty = !isLoading && !metrics?.length;
+  const isEmpty = !isLoading && !error && !metrics?.length;
+  const titleId = useMemo(() => _.uniqueId("browse-metrics"), []);
 
   return (
-    <BrowseContainer>
+    <BrowseContainer aria-labelledby={titleId}>
       <BrowseHeader role="heading" data-testid="browse-metrics-header">
         <BrowseSection>
           <Flex
@@ -58,8 +60,8 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
-            <Title order={1} color="text-dark">
-              <Group spacing="sm">
+            <Title order={1} c="text-dark" id={titleId}>
+              <Group gap="sm">
                 <Icon
                   size={24}
                   color="var(--mb-color-icon-primary)"
@@ -79,7 +81,7 @@ export function BrowseMetrics() {
       </BrowseHeader>
       <BrowseMain>
         <BrowseSection>
-          <Stack mb="lg" spacing="md" w="100%">
+          <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
               <MetricsEmptyState />
             ) : (

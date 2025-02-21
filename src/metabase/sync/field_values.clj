@@ -4,8 +4,7 @@
    [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.field-values :as field-values :refer [FieldValues]]
+   [metabase.models.field-values :as field-values]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -15,7 +14,7 @@
 
 (mu/defn- clear-field-values-for-field!
   [field :- i/FieldInstance]
-  (when (t2/exists? FieldValues :field_id (u/the-id field))
+  (when (t2/exists? :model/FieldValues :field_id (u/the-id field))
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
                "Deleting FieldValues...")
@@ -26,9 +25,16 @@
   [field :- i/FieldInstance]
   (log/debug (u/format-color 'green "Looking into updating FieldValues for %s" (sync-util/name-for-logging field)))
   (let [field-values (field-values/get-latest-full-field-values (u/the-id field))]
-    (if (field-values/inactive? field-values)
-      (log/debugf "Field %s has not been used since %s. Skipping..."
-                  (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values))))
+    (cond
+      (not field-values)
+      (log/infof "Field %s does not have FieldValues. Skipping..."
+                 (sync-util/name-for-logging field))
+
+      (field-values/inactive? field-values)
+      (log/infof "Field %s has not been used since %s. Skipping..."
+                 (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values))))
+
+      :else
       (field-values/create-or-update-full-field-values! field :field-values field-values))))
 
 (defn- update-field-value-stats-count [counts-map result]
@@ -46,7 +52,7 @@
 
 (defn- table->fields-to-scan
   [table]
-  (t2/select Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
+  (t2/select :model/Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
 
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`."
@@ -82,8 +88,8 @@
                                        :%now
                                        (- (t/as field-values/advanced-field-values-max-age :days))
                                        :day)]]
-          rows-count (apply t2/count FieldValues conditions)]
-      (apply t2/delete! FieldValues conditions)
+          rows-count (apply t2/count :model/FieldValues conditions)]
+      (apply t2/delete! :model/FieldValues conditions)
       rows-count)))
 
 (mu/defn delete-expired-advanced-field-values-for-table!

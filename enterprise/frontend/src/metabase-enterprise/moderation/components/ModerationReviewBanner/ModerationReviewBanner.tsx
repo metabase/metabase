@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { alpha, color } from "metabase/lib/colors";
@@ -12,7 +10,7 @@ import {
   getTextForReviewBanner,
 } from "metabase-enterprise/moderation/service";
 import type Question from "metabase-lib/v1/Question";
-import type { ModerationReview } from "metabase-types/api";
+import type { Dashboard, ModerationReview } from "metabase-types/api";
 
 import Styles from "./ModerationReview.module.css";
 import {
@@ -64,11 +62,39 @@ export const ModerationReviewBanner = ({
   );
 };
 
-export const ModerationReviewText = ({ question }: { question: Question }) => {
+export const ModerationReviewTextForQuestion = ({
+  question,
+}: {
+  question: Question;
+}) => {
   const latestModerationReview = getLatestModerationReview(
     question.getModerationReviews(),
   );
 
+  return (
+    <ModerationReviewText latestModerationReview={latestModerationReview} />
+  );
+};
+
+export const ModerationReviewTextForDashboard = ({
+  dashboard,
+}: {
+  dashboard: Dashboard;
+}) => {
+  const latestModerationReview = getLatestModerationReview(
+    dashboard.moderation_reviews || [],
+  );
+
+  return (
+    <ModerationReviewText latestModerationReview={latestModerationReview} />
+  );
+};
+
+const ModerationReviewText = ({
+  latestModerationReview,
+}: {
+  latestModerationReview?: ModerationReview;
+}) => {
   const { data: moderator } = useGetUserQuery(
     latestModerationReview?.moderator_id ?? skipToken,
   );

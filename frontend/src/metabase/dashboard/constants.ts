@@ -53,6 +53,8 @@ export const DASHBOARD_SLOW_TIMEOUT = 15 * 1000;
 
 export const DASHBOARD_PDF_EXPORT_ROOT_ID =
   "Dashboard-Parameters-And-Cards-Container";
+export const DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID =
+  "Dashboard-Parameters-Content";
 
 export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
   background: true,
@@ -63,4 +65,5 @@ export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
   font: null,
   theme: "light",
   downloadsEnabled: true,
+  withFooter: true,
 };

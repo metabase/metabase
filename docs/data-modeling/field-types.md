@@ -27,11 +27,11 @@ Common field types are text/varchar types.
 
 ## Location
 
-Marking fields as locations tell Metabase that it can use the field to display data on a [map chart](../questions/sharing/visualizations/map.md).
+Marking fields as locations tell Metabase that it can use the field to display data on a [map chart](../questions/visualizations/map.md).
 
 - **City**
 - **Country**
-- **Latitude**: Tells Metabase that the data could be plotted on a [pin map](../questions/sharing/visualizations/map.md).
+- **Latitude**: Tells Metabase that the data could be plotted on a [pin map](../questions/visualizations/map.md).
 - **Longitude**: Did you know that you can use the moons of Jupiter to calculate longitude?
 - **State**
 - **Zip Code**
@@ -47,18 +47,18 @@ Financial field types tell Metabase to treat the field's values as money. If you
 - **Income**
 - **Price**
 
-See [Currency formatting options](../questions/sharing/visualizations/table.md#currency-formatting-options).
+See [Currency formatting options](../questions/visualizations/table.md#currency-formatting-options).
 
 ## Numeric
 
-Metabase will treat numeric field types as [numbers](../questions/sharing/visualizations/table.md#number-formatting-options).
+Metabase will treat numeric field types as [numbers](../questions/visualizations/table.md#number-formatting-options).
 
 - **Percentage**: Displays the number as a percentage by default.
 - **Quantity**: Displays the number as normal by default.
 - **Score**: Displays the number as normal by default.
 - **Share**: The same as percentage, so prefer "Percentage".
 
-See [Number formatting options](../questions/sharing/visualizations/table.md#number-formatting-options).
+See [Number formatting options](../questions/visualizations/table.md#number-formatting-options).
 
 ## Profile
 
@@ -95,7 +95,7 @@ If your database stores datetimes as a number or string, you can [cast that colu
 - **UNIX Timestamp (Milliseconds)**
 - **UNIX Timestamp (Seconds)**
 
-See [Date formatting options](../questions/sharing/visualizations/table.md#date-formatting-options).
+See [Date formatting options](../questions/visualizations/table.md#date-formatting-options).
 
 ## Categorical
 
@@ -130,7 +130,7 @@ When you [X-ray](../exploration-and-organization/x-rays.md) a table, model, or e
 
 ### Field Filters
 
-Knowing what field types are and how they work is helpful when using [field filters](https://www.metabase.com/learn/sql-questions/field-filters.html), as you can only create field filters for [certain field types](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
+Knowing what field types are and how they work is helpful when using [field filters](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters), as you can only create field filters for [certain field types](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
 
 ### Editing types in the Table Metadata page
 
@@ -144,8 +144,12 @@ While data types themselves can't be edited in Metabase, admins can manually [ca
 
 See [Working with JSON](./json-unfolding.md).
 
+### Arrays
+
+Metabase currently does not support array types with any database. You'll only be able to use **Is empty** or **Is not empty** filters on columns containing arrays.
+
 ## Further Reading
 
-- [Exploring data with Metabase's data browser](https://www.metabase.com/learn/getting-started/data-browser.html).
+- [Exploring data with Metabase's data browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser).
 - [The Table Metadata page: editing metadata](./metadata-editing.md).
-- [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/learn/sql-questions/field-filters.html).
+- [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters).

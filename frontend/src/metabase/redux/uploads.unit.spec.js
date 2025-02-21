@@ -1,5 +1,10 @@
 import fetchMock from "fetch-mock";
 
+import { getStore } from "__support__/entities-store";
+import { Api } from "metabase/api";
+import { mainReducers } from "metabase/reducers-main";
+import { createMockState } from "metabase-types/store/mocks";
+
 import {
   MAX_UPLOAD_STRING,
   UPLOAD_FILE_CLEAR,
@@ -48,7 +53,13 @@ const mockReplaceCSV = (valid = true) => {
 
 describe("csv uploads", () => {
   describe("actions", () => {
-    let dispatch;
+    const store = getStore(
+      { ...mainReducers, [Api.reducerPath]: Api.reducer },
+      createMockState(),
+      [Api.middleware],
+    );
+    const dispatch = jest.spyOn(store, "dispatch");
+
     const file = new File(
       [new Blob(["col1, col2 \n val1, val2"])],
       "test.csv",
@@ -58,7 +69,6 @@ describe("csv uploads", () => {
     );
 
     beforeEach(() => {
-      dispatch = jest.fn();
       jest.useFakeTimers({ advanceTimers: true }).setSystemTime(now);
     });
 

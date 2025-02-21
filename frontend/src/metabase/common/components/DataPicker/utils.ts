@@ -7,6 +7,7 @@ import type {
   CollectionItemModel,
   Database,
   DatabaseId,
+  RecentItem,
   SchemaName,
   Table,
   TableId,
@@ -19,6 +20,7 @@ import type {
   DataPickerItem,
   DataPickerValue,
   DataPickerValueItem,
+  MetricItem,
   ModelItem,
   QuestionItem,
   TablePickerValue,
@@ -116,6 +118,12 @@ export const getSchemaDisplayName = (schemaName: SchemaName | undefined) => {
   return titleize(humanize(schemaName));
 };
 
+export const isCollectionItem = (
+  value: DataPickerValue | undefined,
+): value is QuestionItem | ModelItem | MetricItem => {
+  return isQuestionItem(value) || isModelItem(value) || isMetricItem(value);
+};
+
 export const isQuestionItem = (
   value: DataPickerValue | undefined,
 ): value is QuestionItem => {
@@ -130,7 +138,7 @@ export const isModelItem = (
 
 export const isMetricItem = (
   value: DataPickerValue | undefined,
-): value is ModelItem => {
+): value is MetricItem => {
   return value?.model === "metric";
 };
 
@@ -156,22 +164,26 @@ export const createShouldShowItem = (
   models: CollectionItemModel[],
   databaseId?: DatabaseId,
 ) => {
-  return (item: QuestionPickerItem) => {
+  return (item: QuestionPickerItem & { database_id?: DatabaseId }) => {
     if (item.model === "collection") {
+      if (item.id === "root" || item.is_personal) {
+        return true;
+      }
+
       const below = item.below ?? [];
       const here = item.here ?? [];
       const contents = [...below, ...here];
-      const hasCards = models.some(model => contents.includes(model));
+      const hasCards = models.some(model =>
+        contents.includes(model as CollectionItemModel),
+      );
 
-      if (item.id !== "root" && !item.is_personal && !hasCards) {
-        return false;
-      }
+      return hasCards;
     }
-
     if (
-      isNullOrUndefined(databaseId) ||
-      !hasDatabaseId(item) ||
-      isNullOrUndefined(item.database_id)
+      (isNullOrUndefined(databaseId) ||
+        !hasDatabaseId(item) ||
+        isNullOrUndefined(item.database_id)) &&
+      models.includes(item.model)
     ) {
       return true;
     }
@@ -201,3 +213,11 @@ export const createQuestionPickerItemSelectHandler = (
     onItemSelect(item);
   };
 };
+
+export function getRecentItemDatabaseId(item: RecentItem) {
+  if (item.model === "table") {
+    return item.database.id;
+  } else {
+    return item.database_id;
+  }
+}

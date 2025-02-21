@@ -9,7 +9,11 @@ ARG VERSION
 
 WORKDIR /home/node
 
-RUN apt-get update && apt-get upgrade -y && apt-get install openjdk-11-jdk curl git -y \
+RUN apt-get update && apt-get upgrade -y && apt-get install wget apt-transport-https gpg curl git -y \
+    && wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor | tee /etc/apt/trusted.gpg.d/adoptium.gpg > /dev/null \
+    && echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list \
+    && apt-get update \
+    && apt install temurin-21-jdk -y \
     && curl -O https://download.clojure.org/install/linux-install-1.11.1.1262.sh \
     && chmod +x linux-install-1.11.1.1262.sh \
     && ./linux-install-1.11.1.1262.sh
@@ -32,7 +36,7 @@ RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VER
 ## jar from the previous stage rather than the local build
 ## we're not yet there to provide an ARM runner till https://github.com/adoptium/adoptium/issues/96 is ready
 
-FROM --platform=linux/amd64 eclipse-temurin:11-jre-alpine as runner
+FROM eclipse-temurin:21-jre-alpine as runner
 
 ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 

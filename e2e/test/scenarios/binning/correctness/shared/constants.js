@@ -94,4 +94,16 @@ export const LONGITUDE_OPTIONS = {
     selected: "20°",
     representativeValues: ["180° W", "160° W", "100° W", "80° W", "60° W"],
   },
+  "Bin every 0.05 degrees": {
+    selected: "0.05°",
+    representativeValues: null,
+  },
+  "Bin every 0.01 degrees": {
+    selected: "0.01°",
+    representativeValues: null,
+  },
+  "Bin every 0.005 degrees": {
+    selected: "0.005°",
+    representativeValues: null,
+  },
 };

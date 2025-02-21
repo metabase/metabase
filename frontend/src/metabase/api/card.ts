@@ -3,7 +3,10 @@ import type {
   CardId,
   CardQueryMetadata,
   CardQueryRequest,
+  CollectionItem,
+  CreateCardFromCsvRequest,
   CreateCardRequest,
+  DashboardId,
   Dataset,
   GetCardRequest,
   GetEmbeddableCard,
@@ -88,18 +91,54 @@ export const cardApi = Api.injectEndpoints({
         }),
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
       }),
-      updateCard: builder.mutation<Card, UpdateCardRequest>({
-        query: ({ id, ...body }) => ({
-          method: "PUT",
-          url: `/api/card/${id}`,
-          body,
-        }),
-        invalidatesTags: (_, error, { id }) =>
+      createCardFromCsv: builder.mutation<Card, CreateCardFromCsvRequest>({
+        query: ({ file, collection_id }) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("collection_id", String(collection_id));
+
+          return {
+            method: "POST",
+            url: "/api/card/from-csv",
+            body: { formData },
+            formData: true,
+            fetch: true,
+          };
+        },
+        invalidatesTags: (_, error) =>
           invalidateTags(error, [
             listTag("card"),
-            idTag("card", id),
-            idTag("table", `card__${id}`),
+            listTag("schema"),
+            listTag("table"),
           ]),
+      }),
+      updateCard: builder.mutation<Card, UpdateCardRequest>({
+        query: ({ id, delete_old_dashcards, ...body }) => ({
+          method: "PUT",
+          url:
+            `/api/card/${id}` +
+            (delete_old_dashcards !== undefined
+              ? `?delete_old_dashcards=${delete_old_dashcards}`
+              : ""),
+          body,
+        }),
+        invalidatesTags: (_, error, payload) => {
+          const tags = [
+            listTag("card"),
+            idTag("card", payload.id),
+            idTag("table", `card__${payload.id}`),
+          ];
+
+          if (payload.dashboard_id != null) {
+            tags.push(idTag("dashboard", payload.dashboard_id));
+          }
+
+          if (payload.collection_id != null) {
+            tags.push(idTag("collection", payload.collection_id));
+          }
+
+          return invalidateTags(error, tags);
+        },
       }),
       deleteCard: builder.mutation<void, CardId>({
         query: id => ({
@@ -123,7 +162,7 @@ export const cardApi = Api.injectEndpoints({
       persistModel: builder.mutation<void, CardId>({
         query: id => ({
           method: "POST",
-          url: `/api/card/${id}/persist`,
+          url: `/api/persist/card/${id}/persist`,
         }),
         async onQueryStarted(id, { dispatch, queryFulfilled }) {
           await queryFulfilled;
@@ -142,7 +181,7 @@ export const cardApi = Api.injectEndpoints({
       unpersistModel: builder.mutation<void, CardId>({
         query: id => ({
           method: "POST",
-          url: `/api/card/${id}/unpersist`,
+          url: `/api/persist/card/${id}/unpersist`,
         }),
         invalidatesTags: (_, error, id) =>
           invalidateTags(error, [
@@ -154,7 +193,7 @@ export const cardApi = Api.injectEndpoints({
       refreshModelCache: builder.mutation<void, CardId>({
         query: id => ({
           method: "POST",
-          url: `/api/card/${id}/refresh`,
+          url: `/api/persist/card/${id}/refresh`,
         }),
         async onQueryStarted(id, { dispatch, queryFulfilled }) {
           await queryFulfilled;
@@ -220,6 +259,30 @@ export const cardApi = Api.injectEndpoints({
         updateCardPropertyMutation<"enable_embedding">(),
       updateCardEmbeddingParams:
         updateCardPropertyMutation<"embedding_params">(),
+      getCardDashboards: builder.query<
+        { id: DashboardId; name: string }[],
+        Pick<Card, "id">
+      >({
+        query: ({ id }) => ({
+          method: "GET",
+          url: `/api/card/${id}/dashboards`,
+        }),
+        forceRefetch: () => true,
+      }),
+      getMultipleCardsDashboards: builder.query<
+        {
+          card_id: CollectionItem["id"];
+          dashboards: { id: DashboardId; name: string; error?: string }[];
+        }[],
+        { card_ids: CollectionItem["id"][] }
+      >({
+        query: body => ({
+          method: "POST",
+          url: `/api/cards/dashboards`,
+          body,
+        }),
+        forceRefetch: () => true,
+      }),
     };
   },
 });
@@ -227,6 +290,7 @@ export const cardApi = Api.injectEndpoints({
 export const {
   useListCardsQuery,
   useGetCardQuery,
+  useLazyGetCardQuery,
   useGetCardQueryMetadataQuery,
   useGetCardQueryQuery,
   useCreateCardMutation,
@@ -242,10 +306,13 @@ export const {
   useDeleteCardPublicLinkMutation,
   useUpdateCardEmbeddingParamsMutation,
   useUpdateCardEnableEmbeddingMutation,
+  useGetCardDashboardsQuery,
+  useGetMultipleCardsDashboardsQuery,
   endpoints: {
     createCardPublicLink,
     deleteCardPublicLink,
     updateCardEnableEmbedding,
     updateCardEmbeddingParams,
+    getCardDashboards,
   },
 } = cardApi;

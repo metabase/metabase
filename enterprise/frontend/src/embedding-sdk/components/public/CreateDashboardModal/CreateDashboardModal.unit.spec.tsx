@@ -1,4 +1,3 @@
-import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -6,9 +5,10 @@ import {
   setupCollectionByIdEndpoint,
   setupDashboardCreateEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
+import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import {
   createMockCollection,
@@ -104,15 +104,28 @@ describe("CreateDashboardModal", () => {
     expect(onCreate).toHaveBeenCalledTimes(1);
     expect(onCreate).toHaveBeenLastCalledWith(mockResponseDashboard);
   });
+
+  it('should support "isOpen" prop', () => {
+    const { rerender } = setup({
+      props: {
+        isOpen: false,
+      },
+    });
+
+    expect(screen.queryByText("New dashboard")).not.toBeInTheDocument();
+
+    rerender(<CreateDashboardModal isOpen />);
+
+    expect(screen.getByText("New dashboard")).toBeInTheDocument();
+  });
 });
 
 function setup({ props }: { props?: Partial<CreateDashboardModalProps> } = {}) {
   setupCollectionByIdEndpoint({ collections: COLLECTIONS });
 
-  renderWithProviders(<CreateDashboardModal {...props} />, {
-    mode: "sdk",
+  return renderWithSDKProviders(<CreateDashboardModal {...props} />, {
     sdkProviderProps: {
-      config: createMockJwtConfig(),
+      authConfig: createMockAuthProviderUriConfig(),
     },
     storeInitialState: {
       currentUser: CURRENT_USER,

@@ -1,0 +1,41 @@
+.filterButton {
+  color: var(--mb-color-brand);
+  margin: 0.5rem;
+}
+
+.StyledParametersList {
+  margin: 0 1rem;
+}
+
+.ParametersListContainer {
+  background-color: var(--mb-color-bg-light);
+
+  &.isSmallScreen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border-bottom: 1px solid var(--mb-color-border);
+    overflow-y: auto;
+    bottom: 100%;
+    padding-bottom: 0.5rem;
+    opacity: 0;
+    transition: opacity 250ms;
+
+    .StyledParametersList {
+      position: relative;
+      top: 15px;
+      transition: top 250ms;
+    }
+
+    &.isShowingMobile {
+      bottom: 0;
+      padding-bottom: 0.5rem;
+      opacity: 1;
+
+      .StyledParametersList {
+        top: 0;
+      }
+    }
+  }
+}

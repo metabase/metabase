@@ -80,6 +80,7 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
         </Confirm>
       ) : (
         <Button
+          className={CS.flexNoShrink}
           variant="filled"
           onClick={generateToken}
         >{t`Generate key`}</Button>

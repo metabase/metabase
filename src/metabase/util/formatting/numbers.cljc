@@ -35,7 +35,9 @@
                                   (merge options {:minimum-fraction-digits 1 :maximum-fraction-digits 1}))
                    suffix)))))
 
-(defmulti ^:private format-number-compact* (fn [_ {:keys [number-style]}] number-style))
+(defmulti ^:private format-number-compact*
+  {:arglists '([number options])}
+  (fn [_ {:keys [number-style]}] number-style))
 
 (defmethod format-number-compact* :default [number options]
   (format-number-compact-basic number options))

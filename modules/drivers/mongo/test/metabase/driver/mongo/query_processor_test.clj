@@ -6,7 +6,6 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
    [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
@@ -245,8 +244,8 @@
                     {:aggregation [[:count]]
                      :breakout    [$tips.source.username]}))))
           (testing "Parent fields are removed from projections when child fields are included (#19135)"
-            (let [table       (t2/select-one Table :db_id (mt/id))
-                  fields      (t2/select Field :table_id (u/the-id table))
+            (let [table       (t2/select-one :model/Table :db_id (mt/id))
+                  fields      (t2/select :model/Field :table_id (u/the-id table))
                   projections (-> (mongo.qp/mbql->native
                                    (mt/mbql-query tips {:fields (mapv (fn [f]
                                                                         [:field (u/the-id f) nil])

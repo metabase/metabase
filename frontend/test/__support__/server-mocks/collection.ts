@@ -12,6 +12,7 @@ import type {
   Collection,
   CollectionItem,
   Dashboard,
+  DashboardQuestionCandidate,
 } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
@@ -113,6 +114,32 @@ export function setupCollectionItemsEndpoint({
   });
 }
 
+export function setupDashboardItemsEndpoint({
+  dashboard,
+  dashboardItems,
+  models: modelsParam,
+}: {
+  dashboard: Dashboard;
+  dashboardItems: CollectionItem[];
+  models?: string[];
+}) {
+  fetchMock.get(`path:/api/dashboard/${dashboard.id}/items`, uri => {
+    const url = new URL(uri);
+    const models = modelsParam ?? url.searchParams.getAll("models") ?? ["card"];
+    const limit =
+      Number(url.searchParams.get("limit")) || dashboardItems.length;
+    const offset = Number(url.searchParams.get("offset")) || 0;
+
+    return {
+      data: dashboardItems.slice(offset, offset + limit),
+      total: dashboardItems.length,
+      models,
+      limit,
+      offset,
+    };
+  });
+}
+
 export function setupCollectionsWithError({
   error,
   status = 500,
@@ -194,5 +221,20 @@ export function setupDashboardCollectionItemsEndpoint(dashboards: Dashboard[]) {
       total: dashboardsOfCollection.length,
       data: dashboardsOfCollection,
     };
+  });
+}
+
+export function setupDashboardQuestionCandidatesEndpoint(
+  dashboardQuestionCandidates: DashboardQuestionCandidate[],
+) {
+  fetchMock.get("express:/api/collection/:id/dashboard-question-candidates", {
+    total: dashboardQuestionCandidates.length,
+    data: dashboardQuestionCandidates,
+  });
+}
+
+export function setupStaleItemsEndpoint(total: number) {
+  fetchMock.get("express:/api/ee/stale/:id", {
+    total,
   });
 }

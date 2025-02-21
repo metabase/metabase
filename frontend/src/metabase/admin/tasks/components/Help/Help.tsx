@@ -4,6 +4,7 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { UpsellBetterSupport } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
 import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
@@ -12,6 +13,7 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
+import { Box, Flex } from "metabase/ui";
 
 import {
   HelpBody,
@@ -109,25 +111,35 @@ export const Help = () => {
 
   return (
     <HelpRoot>
-      <AdminHeader title={t`Help`} className={CS.mb2} />
-      <HelpLinks>
-        <ol>
-          <HelpLink
-            title={t`Get Help`}
-            description={t`Resources and support`}
-            link={
-              isPaidPlan
-                ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}&diag=${compactDetailStringForUrl}`
-                : `https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}`
-            }
-          />
-          <HelpLink
-            title={t`File a bug report`}
-            description={t`Create a GitHub issue (includes the diagnostic info below)`}
-            link={githubIssueLink(detailString)}
-          />
-        </ol>
-      </HelpLinks>
+      <Flex
+        align="flex-start"
+        justify="space-between"
+        direction={{ base: "column", md: "row" }}
+        gap={{ base: 0, md: "md" }}
+      >
+        <Box>
+          <AdminHeader title={t`Help`} className={CS.mb2} />
+          <HelpLinks>
+            <ol>
+              <HelpLink
+                title={t`Get Help`}
+                description={t`Resources and support`}
+                link={
+                  isPaidPlan
+                    ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}&diag=${compactDetailStringForUrl}`
+                    : `https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}`
+                }
+              />
+              <HelpLink
+                title={t`Report an issue`}
+                description={t`Create a GitHub issue (includes the diagnostic info below)`}
+                link={githubIssueLink(detailString)}
+              />
+            </ol>
+          </HelpLinks>
+        </Box>
+        <UpsellBetterSupport source="settings-troubleshooting" />
+      </Flex>
 
       <HelpBody>
         <AdminHeader title={t`Diagnostic Info`} className={CS.mb2} />

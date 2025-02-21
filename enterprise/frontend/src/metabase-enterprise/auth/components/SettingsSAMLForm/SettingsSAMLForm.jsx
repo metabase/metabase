@@ -1,7 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -23,6 +22,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
+import { connect } from "metabase/lib/redux";
 import { Stack } from "metabase/ui";
 
 import {
@@ -100,7 +100,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               >{t`documentation`}</ExternalLink>
             )}.`}
           </SAMLFormCaption>
-          <Stack spacing="0.75rem" m="2.5rem 0">
+          <Stack gap="0.75rem" m="2.5rem 0">
             <SettingHeader
               id="saml-user-provisioning-enabled?"
               setting={settings["saml-user-provisioning-enabled?"]}

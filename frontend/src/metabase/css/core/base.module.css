@@ -3,6 +3,14 @@
   pointer-events: none;
 }
 
+.pointerEventsAll {
+  pointer-events: all;
+}
+
+.pointerEventsAuto {
+  pointer-events: auto;
+}
+
 .disabled {
   pointer-events: none;
   opacity: 0.4;

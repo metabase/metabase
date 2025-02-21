@@ -1,9 +1,8 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/testing-library";
-import { type ComponentProps, useEffect } from "react";
-import { Provider } from "react-redux";
+import { userEvent, within } from "@storybook/test";
+import { type ComponentProps, useEffect, useMemo } from "react";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
@@ -13,12 +12,14 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
-import { waitTimeContext } from "metabase/context/wait-time";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import PivotTable from "metabase/visualizations/visualizations/PivotTable";
 import { PIVOT_TABLE_MOCK_DATA } from "metabase/visualizations/visualizations/PivotTable/pivot-table-test-mocks";
+import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
 import {
   createMockCard,
   createMockColumn,
@@ -37,13 +38,16 @@ import {
 
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(PivotTable);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(SmartScalar);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(BarChart);
 
 export default {
   title: "embed/PublicOrEmbeddedQuestionView",
   component: PublicOrEmbeddedQuestionView,
   decorators: [
     ReduxDecorator,
-    FasterExplicitSizeUpdateDecorator,
     WaitForResizeToStopDecorator,
     MockIsEmbeddingDecorator,
   ],
@@ -54,30 +58,29 @@ export default {
 
 function ReduxDecorator(Story: StoryFn) {
   return (
-    <Provider store={store}>
+    <MetabaseReduxProvider store={store}>
       <Story />
-    </Provider>
-  );
-}
-
-function FasterExplicitSizeUpdateDecorator(Story: StoryFn) {
-  return (
-    <waitTimeContext.Provider value={0}>
-      <Story />
-    </waitTimeContext.Provider>
+    </MetabaseReduxProvider>
   );
 }
 
 /**
  * This is an arbitrary number, it should be big enough to pass CI tests.
- * This value works together with FasterExplicitSizeUpdateDecorator which
- * make sure we finish resizing any ExplicitSize components the fastest.
+ * This works because we set delays for ExplicitSize to 0 in storybook.
  */
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
 function WaitForResizeToStopDecorator(Story: StoryFn) {
-  const asyncCallback = createAsyncCallback();
+  const asyncCallback = useMemo(() => createAsyncCallback(), []);
+
   useEffect(() => {
-    setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
+    const timeoutId = setTimeout(
+      asyncCallback,
+      TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING,
+    );
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [asyncCallback]);
 
   return <Story />;
@@ -374,7 +377,9 @@ const downloadQuestionAsPng = async (
   const documentElement = within(document.documentElement);
   const pngButton = await documentElement.findByText(".png");
   await userEvent.click(pngButton);
-  await userEvent.click(documentElement.getByTestId("download-results-button"));
+  await userEvent.click(
+    await documentElement.findByTestId("download-results-button"),
+  );
   await canvas.findByTestId("image-downloaded");
   asyncCallback();
 };

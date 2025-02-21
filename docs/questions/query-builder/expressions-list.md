@@ -33,6 +33,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [between](#between)
     - [case](./expressions/case.md)
     - [coalesce](./expressions/coalesce.md)
+    - [if](./expressions/case.md)
     - [isnull](./expressions/isnull.md)
     - [notnull](#notnull)
 
@@ -52,7 +53,10 @@ For an introduction to expressions, check out the [overview of custom expression
     - [concat](./expressions/concat.md)
     - [contains](#contains)
     - [doesNotContain](#doesnotcontain)
+    - [domain](#domain)
     - [endsWith](#endswith)
+    - [host](#host)
+    - [in](#in)
     - [isempty](./expressions/isempty.md)
     - [ltrim](#ltrim)
     - [length](#length)
@@ -62,6 +66,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [replace](#replace)
     - [rtrim](#rtrim)
     - [startsWith](#startswith)
+    - [subdomain](#subdomain)
     - [substring](./expressions/substring.md)
     - [trim](#trim)
     - [upper](#upper)
@@ -73,12 +78,15 @@ For an introduction to expressions, check out the [overview of custom expression
     - [datetimeDiff](./expressions/datetimediff.md)
     - [datetimeSubtract](./expressions/datetimesubtract.md)
     - [day](#day)
+    - [dayName](#dayname)
     - [hour](#hour)
     - [interval](#interval)
     - [minute](#minute)
     - [month](#month)
+    - [monthName](#monthname)
     - [now](./expressions/now.md)
     - [quarter](#quarter)
+    - [quarterName](#quartername)
     - [relativeDateTime](#relativedatetime)
     - [second](#second)
     - [week](#week)
@@ -86,6 +94,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [year](#year)
 
   - [Window functions](#window-functions)
+
     - [Offset](./expressions/offset.md)
     - [CumulativeCount](./expressions/cumulative.md)
     - [CumulativeSum](./expressions/cumulative.md)
@@ -147,7 +156,7 @@ Syntax: `Median(column)`.
 
 Example: `Median([Age])` would find the midpoint age where half of the ages are older, and half of the ages are younger.
 
-Databases that don't support `median`: MariaDB, MySQL, SQLite, Vertica, and SQL Server. Presto only provides approximate results.
+Databases that don't support `median`: Druid, MariaDB, MongoDB, MySQL, SQLite, Vertica, and SQL Server. Presto only provides approximate results.
 
 Related: [Min](#min), [Max](#max), [Average](#average).
 
@@ -169,7 +178,7 @@ Syntax: `Percentile(column, percentile-value)`
 
 Example: `Percentile([Score], 0.9)` would return the value at the 90th percentile for all values in that column.
 
-Databases that don't support `percentile`: H2, MariaDB, MySQL, SQL Server, SQLite, Vertica. Presto only provides approximate results.
+Databases that don't support `percentile`: Druid, H2, MariaDB, MySQL, MongoDB, SQL Server, SQLite, Vertica. Presto only provides approximate results.
 
 ### Share
 
@@ -186,6 +195,8 @@ Calculates the standard deviation of the column, which is a measure of the varia
 Syntax: `StandardDeviation(column)`
 
 Example: `StandardDeviation([Population])` would return the SD for the values in the `Population` column.
+
+Databases that don't support `StandardDeviation`: Druid, SQLite.
 
 ### Sum
 
@@ -213,6 +224,8 @@ Example: `Variance([Temperature])` will return a measure of the dispersion from 
 
 Related: [StandardDeviation](#standarddeviation), [Average](#average).
 
+Databases that don't support `Variance`: Druid, SQLite.
+
 ## Functions
 
 Function expressions apply to each individual value. They can be used to alter or filter values in a column, or create new, custom columns.
@@ -223,17 +236,17 @@ Logical functions determine if a condition is satisfied or determine what value 
 
 ### between
 
-Checks a date or number column's values to see if they're within the specified range.
+Returns true if the value of a date or number column falls within a specified range. Otherwise returns false.
 
 Syntax: `between(column, start, end)`
 
-Example: `between([Created At], "2019-01-01", "2020-12-31")` would return rows where `Created At` date fell within the range of January 1, 2019 and December 31, 2020.
+Example: If you filtered with the expression `between([Created At], "2019-01-01", "2020-12-31")`, Metabase would return rows that returned true for that expression, in this case where the `Created At` date fell _within_ the range of January 1, 2019 and December 31, 2020, including the start (`2019-01-01`) and end (`2020-12-31`) dates.
 
 Related: [interval](#interval).
 
 ### [case](./expressions/case.md)
 
-Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.
+`case` (alias `if`) tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.
 
 Syntax: `case(condition, output, …)`
 
@@ -246,6 +259,14 @@ Looks at the values in each argument in order and returns the first non-null val
 Syntax: `coalesce(value1, value2, …)`
 
 Example: `coalesce([Comments], [Notes], "No comments")`. If both the `Comments` and `Notes` columns are null for that row, the expression will return the string "No comments".
+
+### [if](./expressions/case.md)
+
+`if` is an alias for [case](./expressions/case.md). Tests an expression against a list of conditionals and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.
+
+Syntax: `if(condition, output, ...)`
+
+Example: `if([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a `Weight` is 250, the expression would return "Large". In this case, the default value is "Small", so any `Weight` 150 or less would return "Small".
 
 ### [isnull](./expressions/isnull.md)
 
@@ -395,6 +416,16 @@ Example: `doesNotContain([Status], "Class")`. If `Status` were "Classified", the
 
 Related: [contains](#contains), [regexextract](#regexextract).
 
+### domain
+
+Extracts the domain name from a URL or email.
+
+Syntax: `domain(urlOrEmail)`.
+
+Example: `domain([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `domain([Page URL])` would return `metabase`. `domain([Email])` would extract `metabase` from `hello@metabase.com`.
+
+Related: [host](#host), [subdomain](#subdomain).
+
 ### endsWith
 
 Returns true if the end of the text matches the comparison text.
@@ -409,6 +440,30 @@ Syntax: `endsWith(text, comparison)` for case-sensitive match.
 Example: `endsWith([Appetite], "hungry")`
 
 Related: [startsWith](#startswith), [contains](#contains), [doesNotContain](#doesnotcontain).
+
+### host
+
+Extracts the host, which is the domain and the TLD, from a URL or email.
+
+Syntax: `host(urlOrEmail)`.
+
+Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `host([Page URL])` would return `metabase.com`. `host([Email])` would extract `metabase.com` from `hello@metabase.com`.
+
+Related: [domain](#domain), [subdomain](#subdomain).
+
+### [in](./expressions/in.md)
+
+Returns true if `value1` equals `value2` (or `value3`, etc., if specified).
+
+```
+in(value1, value2, ...)
+```
+
+`value1` is the column or value to check.
+
+`value2, ...` is the list of columns or values to check.
+
+Related: [contains](#contains), [startsWith](#startswith), [endsWith](#endswith).
 
 ### [isempty](./expressions/isempty.md)
 
@@ -507,6 +562,16 @@ It would return false for "Computer **s**cience 201: Data structures" because th
 
 Related: [endsWith](#endswith), [contains](#contains), [doesNotContain](#doesnotcontain).
 
+### subdomain
+
+Extracts the subdomain from a URL. Ignores `www` (returns a blank string).
+
+Syntax: `subdomain(url)`.
+
+Example: `subdomain([Page URL])`. If the `[Page URL]` column had a value of `https://status.metabase.com`, `subdomain([Page URL])` would return `status`.
+
+Related: [host](#host), [domain](#domain).
+
 ### [substring](./expressions/substring.md)
 
 Returns a portion of the supplied text, specified by a starting position and a length.
@@ -567,6 +632,8 @@ Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
 
 Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
 
+See the [database limitations](./expressions/datetimediff.md#limitations) for `datetimediff`.
+
 ### [datetimeSubtract](./expressions/datetimesubtract.md)
 
 Subtracts some unit of time from a date or timestamp value.
@@ -586,6 +653,16 @@ Takes a datetime and returns the day of the month as an integer.
 Syntax: `day([datetime column])`.
 
 Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
+
+### dayName
+
+Returns the localized name of a day of the week, given the day's number (1-7). Respects the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
+
+Syntax: `dayName(dayNumber)`.
+
+Example: `dayName(1)` would return `Sunday`, unless you change the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
+
+Related: [quarterName](#quartername), [monthName](#monthname).
 
 ### hour
 
@@ -623,6 +700,16 @@ Syntax: `month([datetime column])`.
 
 Example: `month("2021-03-25T12:52:37")` would return the month as an integer, `3`.
 
+### monthName
+
+Returns the localized short name for the given month.
+
+Syntax: `monthName([Birthday Month])`
+
+Example: `monthName(10)` would return `Oct` for October.
+
+Related: [dayName](#dayname), [quarterName](#quartername).
+
 ### [now](./expressions/now.md)
 
 Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
@@ -636,6 +723,16 @@ Takes a datetime and returns the number of the quarter in a year (1-4) as an int
 Syntax: `quarter([datetime column])`.
 
 Example: `quarter("2021-03-25T12:52:37")` would return `1` for the first quarter.
+
+### quarterName
+
+Given the quarter number (1-4), returns a string like `Q1`.
+
+Syntax: `quarterName([Fiscal Quarter])`.
+
+Example: `quarterName(3)` would return `Q3`.
+
+Related: [dayName](#dayname), [monthName](#monthname).
 
 ### relativeDateTime
 
@@ -673,7 +770,7 @@ Syntax: `timeSpan(number, text)`.
 
 Example: `[Orders → Created At] + timeSpan(7, "day")` will return the date 7 days after the `Created At` date.
 
-### week
+### [week](./expressions/week.md)
 
 Takes a datetime and returns the week as an integer.
 
@@ -686,6 +783,8 @@ Example: `week("2021-03-25T12:52:37")` would return the week as an integer, `12`
   - ISO: (default) Week 1 starts on the Monday before the first Thursday of January.
   - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
   - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
+
+Note that summarizing by week of year in the query builder uses a different mode of determining the first week, see [Week of year](./expressions/week.md) for more information.
 
 ### weekday
 
@@ -744,7 +843,7 @@ Related: [Sum](#sum) and [SumIf](#sumif).
 
 ### Offset
 
-> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB.
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, MongoDB, and Druid.
 
 For more info, check out our page on [Offset](./expressions/offset.md).
 
@@ -761,40 +860,39 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 ## Limitations
 
 - [Aggregation expressions](#aggregations) can only be used in the **Summarize** section of the query builder.
-- Functions that return a boolean value, like [isempty](#isempty) or [contains](#contains), cannot be used to create a custom column. To create a custom column based on one of these functions, you must combine them with another function, like `case`.
-
-  For example, to create a new custom column that contains `true` if `[Title]` contain `'Wallet'`, you can use the custom expression
-
-  ```
-  case(contains([Title], 'Wallet'), true, false)
-  ```
 
 ## Database limitations
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
-**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`
+**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`.
 
-**Druid**: `regexextract` is only available for the Druid-JDBC driver.
+**Athena**: `convertTimezone`.
 
-**MongoDB**: `regexextract`
+**Databricks**: `convertTimezone`.
+
+**Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`. Function `regexextract` is only available for the Druid-JDBC driver.
+
+**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexextract`
 
 **MariaDB**: `Median`, `Percentile`, `Offset`.
 
 **MySQL**: `Median`, `Percentile`, `Offset`.
 
-**Presto**: Only provides _approximate_ results for `Median` and `Percentile`.
+**Presto**: `convertTimezone`. Only provides _approximate_ results for `Median` and `Percentile`.
 
 **Redshift**: `Average` will return [integer results for integer columns](https://docs.aws.amazon.com/redshift/latest/dg/r_AVG.html#r_AVG-data-types).
 
-**SQL Server**: `Median`, `Percentile` and `regexextract`
+**SparkSQL**: `convertTimezone`.
 
-**SQLite**: `log`, `Median`, `Percentile`, `power`, `regexextract`, `StandardDeviation`, `sqrt` and `Variance`
+**SQL Server**: `Median`, `Percentile` and `regexextract`.
 
-**Vertica**: `Median` and `Percentile`
+**SQLite**: `exp`, `log`, `Median`, `Percentile`, `power`, `regexextract`, `StandardDeviation`, `sqrt` and `Variance`.
+
+**Vertica**: `Median` and `Percentile`.
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 
-Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/questions/custom-expressions) to learn more.
+Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions) to learn more.
 
 [expressions]: ./expressions.md

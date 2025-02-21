@@ -7,6 +7,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]
    [metabase.xrays.domain-entities.specs :refer [MBQL]]))
 
@@ -25,7 +26,7 @@
   [:sequential
    {:decode/transform-spec (fn [breakouts]
                              (for [breakout (u/one-or-many breakouts)]
-                               (if-not (mc/validate MBQL breakout)
+                               (if-not (mr/validate MBQL breakout)
                                  [:dimension breakout]
                                  breakout)))}
    MBQL])

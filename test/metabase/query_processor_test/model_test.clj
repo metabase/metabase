@@ -53,12 +53,12 @@
                                                              (-> (m/find-first (comp #{"Reviews → Created At: Month"} :display-name)
                                                                                (lib/breakoutable-columns $q))
                                                                  (lib/with-temporal-bucket :month))
-                                                             (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                                                             (-> (m/find-first (comp #{"Reviews → Created At: Month"} :display-name)
                                                                                (lib/breakoutable-columns
                                                                                 (lib/query mp (lib.metadata/card mp (:id consumer-model)))))
                                                                  (lib/with-temporal-bucket :month)))])
                                           (lib/with-join-fields :all))))]
-          (is (= ["Reviews → Created At"
+          (is (= ["Reviews → Created At: Month"
                   "Average of Rating"
                   "Products+Reviews Summary - Reviews → Created At: Month → Created At"
                   "Products+Reviews Summary - Reviews → Created At: Month → Sum"]

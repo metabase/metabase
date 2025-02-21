@@ -1,7 +1,8 @@
+import type { CollectionId } from "./collection";
+import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { ModerationReviewStatus } from "./moderation";
 import type { CardDisplayType } from "./visualization";
-
-import type { Collection } from ".";
 
 export const ACTIVITY_MODELS = [
   "table",
@@ -32,31 +33,47 @@ export type BaseRecentItem = {
   timestamp: string;
 };
 
+export type RecentTableDatabaseInfo = {
+  id: number;
+  name: string;
+  initial_sync_status: InitialSyncStatus;
+};
+
 export type RecentTableItem = BaseRecentItem & {
   model: "table";
   display_name: string;
   table_schema: string;
-  database: {
-    id: number;
-    name: string;
-    initial_sync_status: InitialSyncStatus;
-  };
+  database: RecentTableDatabaseInfo;
 };
 
 export type RecentCollectionItem = BaseRecentItem & {
   model: "collection" | "dashboard" | "card" | "dataset" | "metric";
   can_write: boolean;
   database_id?: DatabaseId; // for models and questions
-  parent_collection: Pick<Collection, "id" | "name" | "authority_level">;
+  parent_collection: {
+    id: CollectionId | null;
+    name: string;
+    authority_level?: "official" | null;
+  };
   authority_level?: "official" | null; // for collections
-  moderated_status?: "verified" | null; // for models
+  moderated_status?: "verified" | null; // for cards / models / dashboards
   display?: CardDisplayType; // for questions
+  dashboard?: {
+    name: string;
+    id: DashboardId;
+    moderation_status: ModerationReviewStatus;
+  };
 };
 
 export type RecentItem = RecentTableItem | RecentCollectionItem;
 
 export const isRecentTableItem = (item: RecentItem): item is RecentTableItem =>
   item.model === "table";
+
+export const isRecentCollectionItem = (
+  item: RecentItem,
+): item is RecentCollectionItem =>
+  ["collection", "dashboard", "card", "dataset", "metric"].includes(item.model);
 
 export interface RecentItemsResponse {
   recent_views: RecentItem[];

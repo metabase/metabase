@@ -1,13 +1,13 @@
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { leftSidebar, restore, trendLine } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > question > trendline", () => {
   function setup(questionDetails) {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
   }
 
   it("displays trendline when there are multiple numeric outputs (for simple question) (metabase#12781)", () => {
@@ -25,8 +25,8 @@ describe("scenarios > question > trendline", () => {
     });
 
     // Change settings to trendline
-    cy.findByTestId("viz-settings-button").click();
-    leftSidebar().within(() => {
+    H.openVizSettingsSidebar();
+    H.leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByText("Trend line").click();
     });
@@ -35,9 +35,10 @@ describe("scenarios > question > trendline", () => {
     cy.get("rect");
 
     // Remove sum of total
-    leftSidebar().within(() => {
+    H.leftSidebar().within(() => {
       cy.findByText("Data").click();
-      cy.icon("close").last().click();
+      // eslint-disable-next-line no-unsafe-element-filtering
+      cy.icon("close").last().click({ force: true });
       cy.findByText("Done").click();
     });
 
@@ -56,14 +57,14 @@ describe("scenarios > question > trendline", () => {
       },
       display: "bar",
     });
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     // stack 100%, then enable trend line
-    leftSidebar().within(() => {
+    H.leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByText("Stack - 100%").click();
       cy.findByText("Trend line").click();
     });
     // ensure that two trend lines are present
-    trendLine().should("have.length", 2);
+    H.trendLine().should("have.length", 2);
   });
 });

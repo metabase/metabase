@@ -19,7 +19,7 @@ To spin up a development environment, run:
 yarn dev
 ```
 
-This runs both the [frontend](#frontend) and [backend](#backend).  Alternatively, you can run them separately in two terminal sessions below.
+This runs both the [frontend](#frontend) and [backend](#backend). Alternatively, you can run them separately in two terminal sessions below.
 
 ### Frontend
 
@@ -39,7 +39,6 @@ yarn build-hot
 See [Frontend development](#frontend-development).
 
 ### Backend
-
 
 Run your backend development server with
 
@@ -88,14 +87,6 @@ We exclude ESLint loader in dev mode for seven times quicker initial builds by d
 $ USE_ESLINT=true yarn build-hot
 ```
 
-By default, these build processes rely on a memory cache. The build process with ESLint loader enabled uses a large amount of memory and may take a considerable amount of time to start (1 - 2 minutes or more). FE developers (or anyone else who frequently restarts FE builds) are encouraged to use webpack's filesystem cache option for much better start-up performance:
-
-```sh
-$ FS_CACHE=true yarn build-hot
-```
-
-When using `FS_CACHE=true` you may need to remove the `node_modules/.cache` directory to fix scenarios where the build may be improperly cached, and you must run `rm -rf node_modules/.cache` in order for the build to work correctly when alternating between open source and enterprise builds of the codebase.
-
 ### Frontend testing
 
 Run all unit and Cypress end-to-end tests with
@@ -105,8 +96,6 @@ yarn test
 ```
 
 Cypress tests and some unit tests are located in `frontend/test` directory. New unit test files are added next to the files they test.
-
-If you are using `FS_CACHE=true`, you can also use `FS_CACHE=true` with `yarn test`.
 
 ### Frontend debugging
 
@@ -192,7 +181,7 @@ This approach requires creating a `.lein-env` file within your project directory
  :mb-db-pass   ""}
 ```
 
-Despite the name, this file works fine with `deps.edn` projects. An advantage of this approach versus the global `deps.edn` approach is that it is scoped to this project only. 
+Despite the name, this file works fine with `deps.edn` projects. An advantage of this approach versus the global `deps.edn` approach is that it is scoped to this project only.
 
 Only use this for development, it is not supported for production use. There is already entry in `.gitignore` to prevent you accidentally committing this file.
 
@@ -240,10 +229,10 @@ or a specific test (or test namespace) with
 
 ```
 # run tests in only one namespace (pass in a symbol)
-clojure -X:dev:test :only metabase.api.session-test
+clojure -X:dev:test :only metabase.session.api-test
 
 # run one specific test (pass in a qualified symbol)
-clojure -X:dev:test :only metabase.api.session-test/my-test
+clojure -X:dev:test :only metabase.session.api-test/my-test
 
 # run tests in one specific folder (test/metabase/util in this example)
 # pass arg in double-quotes so Clojure CLI interprets it as a string;
@@ -351,6 +340,7 @@ Here's the one for postgres in `metabase.test.data.postgres`:
 ```
 
 You can see that this looks in the environment for:
+
 - host (defaults to "localhost")
 - port (defaults to 5432)
 - user
@@ -373,7 +363,6 @@ some-ns=> (take 10 (keys environ.core/env))
  :mb-oracle-test-service-name
  :sun-management-compiler)
 ```
-
 
 ### Running the linters
 

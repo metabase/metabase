@@ -15,6 +15,7 @@
    [metabase.lib.database.methods :as lib.database.methods]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.ident :as lib.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -94,7 +95,8 @@
          clause])
       (lib.options/update-options (fn [opts]
                                     (-> opts
-                                        (assoc :lib/expression-name a-name)
+                                        (assoc :lib/expression-name a-name
+                                               :ident (lib.ident/random-ident))
                                         (dissoc :name :display-name))))))
 
 (defmulti custom-name-method
@@ -122,8 +124,10 @@
   [stage location target-clause new-clause]
   {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
   (let [new-clause (if (= :expressions (first location))
-                     (top-level-expression-clause new-clause (or (custom-name new-clause)
-                                                                 (expression-name target-clause)))
+                     (-> new-clause
+                         (top-level-expression-clause (or (custom-name new-clause)
+                                                          (expression-name target-clause)))
+                         (lib.common/preserve-ident-of target-clause))
                      new-clause)]
     (m/update-existing-in
      stage
@@ -346,10 +350,10 @@
 
 (defn native-stage?
   "Is this query stage a native stage?"
-  [query stage-number]
-  (-> (query-stage query stage-number)
-      :lib/type
-      (= :mbql.stage/native)))
+  ([stage]
+   (= (:lib/type stage) :mbql.stage/native))
+  ([query stage-number]
+   (native-stage? (query-stage query stage-number))))
 
 (mu/defn ensure-mbql-final-stage :- ::lib.schema/query
   "Convert query to a pMBQL (pipeline) query, and make sure the final stage is an `:mbql` one."
@@ -538,7 +542,7 @@
 
 (mu/defn add-summary-clause :- ::lib.schema/query
   "If the given stage has no summary, it will drop :fields, :order-by, and :join :fields from it,
-   as well as any subsequent stages."
+   as well as dropping any subsequent stages."
   [query :- ::lib.schema/query
    stage-number :- :int
    location :- [:enum :breakout :aggregation]
@@ -551,7 +555,10 @@
                    query stage-number
                    update location
                    (fn [summary-clauses]
-                     (conj (vec summary-clauses) (lib.common/->op-arg a-summary-clause))))]
+                     (->> a-summary-clause
+                          lib.common/->op-arg
+                          lib.common/ensure-ident
+                          (conj (vec summary-clauses)))))]
     (if new-summary?
       (-> new-query
           (update-query-stage
@@ -560,8 +567,7 @@
              (-> stage
                  (dissoc :order-by :fields)
                  (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
-          ;; subvec holds onto references, so create a new vector
-          (update :stages (comp #(into [] %) subvec) 0 (inc (canonical-stage-index query stage-number))))
+          (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
 
 (defn fresh-uuids

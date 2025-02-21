@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
@@ -68,7 +67,10 @@
           :base-type           (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
           :lib/source          :source/expressions}
          (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-           {:metabase.lib.field/temporal-unit unit})))
+           {:metabase.lib.field/temporal-unit unit})
+         (when lib.metadata.calculation/*propagate-binning-and-bucketing*
+           (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
+             {:inherited-temporal-unit unit}))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :expression
   [query stage-number [_expression opts _expr-name, :as expr-clause]]
@@ -295,7 +297,7 @@
 (lib.common/defop get-minute [t])
 (lib.common/defop get-second [t])
 (lib.common/defop get-quarter [t])
-(lib.common/defop get-day-of-week [t])
+(lib.common/defop get-day-of-week [t] [t mode])
 (lib.common/defop datetime-add [t i unit])
 (lib.common/defop datetime-subtract [t i unit])
 (lib.common/defop concat [s1 s2 & more])
@@ -413,7 +415,7 @@
         lib.ref/ref)))
 
 (def ^:private expression-validator
-  (mc/validator ::lib.schema.expression/expression))
+  (mr/validator ::lib.schema.expression/expression))
 
 (defn expression-clause?
   "Returns true if `expression-clause` is indeed an expression clause, false otherwise."

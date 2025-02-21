@@ -1,8 +1,6 @@
 (ns metabase.models.dashboard
   (:require
-   [clojure.data :refer [diff]]
    [clojure.set :as set]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
@@ -10,48 +8,44 @@
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.card :as card :refer [Card]]
-   [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
+   [metabase.models.collection :as collection]
+   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
-   [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as models.pulse]
-   [metabase.models.pulse-card :as pulse-card]
-   [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
-   [metabase.public-settings :as public-settings]
+   [metabase.permissions.core :as perms]
+   [metabase.public-sharing.core :as public-sharing]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.pulse.core :as pulse]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :as i18n :refer [deferred-tru deferred-trun tru]]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.xrays :as xrays]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
-
-(def Dashboard
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model
-  name. We'll keep this till we replace all the Dashboard symbol in our codebase."
-  :model/Dashboard)
+   [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
 
+(methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :dashboard]
+  [_original-model _k]
+  :model/Dashboard)
+
 (doto :model/Dashboard
   (derive :metabase/model)
-  (derive ::perms/use-parent-collection-perms)
+  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defmethod mi/can-write? Dashboard
+(defmethod mi/can-write? :model/Dashboard
   ([instance]
    ;; Dashboards in audit collection should be read only
    (if (and
@@ -65,21 +59,21 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
 
-(defmethod mi/can-read? Dashboard
+(defmethod mi/can-read? :model/Dashboard
   ([instance]
    (perms/can-read-audit-helper :model/Dashboard instance))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Dashboard :id pk))))
 
 (t2/deftransforms :model/Dashboard
-  {:parameters       mi/transform-parameters-list
+  {:parameters       mi/transform-card-parameters-list
    :embedding_params mi/transform-json})
 
 (t2/define-before-delete :model/Dashboard
   [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
     (parameter-card/delete-all-for-parameterized-object! "dashboard" dashboard-id)
-    (t2/delete! 'Revision :model "Dashboard" :model_id dashboard-id)))
+    (t2/delete! :model/Revision :model "Dashboard" :model_id dashboard-id)))
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
@@ -87,7 +81,7 @@
         dashboard (merge defaults dashboard)]
     (u/prog1 dashboard
       (params/assert-valid-parameters dashboard)
-      (collection/check-collection-namespace Dashboard (:collection_id dashboard)))))
+      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
 
 (t2/define-after-insert :model/Dashboard
   [dashboard]
@@ -101,58 +95,14 @@
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
-      (collection/check-collection-namespace Dashboard (:collection_id dashboard))
+      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
       (when (:archived changes)
         (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
-(defn- update-dashboard-subscription-pulses!
-  "Updates the pulses' names and collection IDs, and syncs the PulseCards"
-  [dashboard]
-  (let [dashboard-id (u/the-id dashboard)
-        affected     (mdb.query/query
-                      {:select-distinct [[:p.id :pulse-id] [:pc.card_id :card-id]]
-                       :from            [[:pulse :p]]
-                       :join            [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
-                       :where           [:= :p.dashboard_id dashboard-id]})]
-    (when-let [pulse-ids (seq (distinct (map :pulse-id affected)))]
-      (let [correct-card-ids     (->> (mdb.query/query
-                                       {:select-distinct [:dc.card_id]
-                                        :from            [[:report_dashboardcard :dc]]
-                                        :where           [:and
-                                                          [:= :dc.dashboard_id dashboard-id]
-                                                          [:not= :dc.card_id nil]]})
-                                      (map :card_id)
-                                      set)
-            stale-card-ids       (->> affected
-                                      (keep :card-id)
-                                      set)
-            cards-to-add         (set/difference correct-card-ids stale-card-ids)
-            card-id->dashcard-id (when (seq cards-to-add)
-                                   (t2/select-fn->pk :card_id DashboardCard :dashboard_id dashboard-id
-                                                     :card_id [:in cards-to-add]))
-            positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
-                                                      (range)))
-            new-pulse-cards      (for [pulse-id                         pulse-ids
-                                       [[card-id dashcard-id] position] (map vector
-                                                                             card-id->dashcard-id
-                                                                             (positions-for pulse-id))]
-                                   {:pulse_id          pulse-id
-                                    :card_id           card-id
-                                    :dashboard_card_id dashcard-id
-                                    :position          position})]
-        (t2/with-transaction [_conn]
-          (binding [models.pulse/*allow-moving-dashboard-subscriptions* true]
-            (t2/update! :model/Pulse {:dashboard_id dashboard-id}
-                        ;; TODO we probably don't need this anymore
-                        ;; pulse.name is no longer used for generating title.
-                        ;; pulse.collection_id is a thing for the old "Pulse" feature, but it was removed
-                        {:name (:name dashboard)
-                         :collection_id (:collection_id dashboard)})
-            (pulse-card/bulk-create! new-pulse-cards)))))))
-
 (t2/define-after-update :model/Dashboard
   [dashboard]
-  (update-dashboard-subscription-pulses! dashboard))
+  ; TODO -- should this be done on `:event/dashboard-update` ?
+  (pulse/update-dashboard-subscription-pulses! dashboard))
 
 (defn- migrate-parameter [p]
   (cond-> p
@@ -181,7 +131,7 @@
   [dashboard]
   (-> dashboard
       migrate-parameters-list
-      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
+      public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
 
 (defmethod serdes/hash-fields :model/Dashboard
   [_dashboard]
@@ -212,7 +162,14 @@
                           :where     [:and
                                       [:in :dashcard.dashboard_id (map :id dashboards)]
                                       [:or
+                                       ;; show it if:
+                                       ;; - the card isn't archived
                                        [:= :card.archived false]
+
+                                       ;; - the card is archived BUT it's a dashboard question that wasn't archived by itself
+                                       [:and
+                                        [:not= :card.dashboard_id nil]
+                                        [:= :card.archived_directly false]]
                                        [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
                           :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc]]}))
    :id
@@ -234,156 +191,25 @@
 
 (comment moderation/keep-me)
 
-;;; --------------------------------------------------- Revisions ----------------------------------------------------
-
-(def ^:private excluded-columns-for-dashboard-revision
-  [:id :created_at :updated_at :creator_id :points_of_interest :caveats :show_in_getting_started :entity_id
-   ;; not sure what position is for, from the column remark:
-   ;; > The position this Dashboard should appear in the Dashboards list,
-   ;;   lower-numbered positions appearing before higher numbered ones.
-   ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
-   :public_uuid :made_public_by_id
-   :position :initially_published_at :view_count
-   :last_viewed_at])
-
-(def ^:private excluded-columns-for-dashcard-revision
-  [:entity_id :created_at :updated_at :collection_authority_level])
-
-(def ^:private excluded-columns-for-dashboard-tab-revision
-  [:created_at :updated_at :entity_id])
-
-(defmethod revision/serialize-instance :model/Dashboard
-  [_model _id dashboard]
-  (let [dashcards (or (:dashcards dashboard)
-                      (:dashcards (t2/hydrate dashboard :dashcards)))
-        dashcards (when (seq dashcards)
-                    (if (contains? (first dashcards) :series)
-                      dashcards
-                      (t2/hydrate dashcards :series)))
-        tabs  (or (:tabs dashboard)
-                  (:tabs (t2/hydrate dashboard :tabs)))]
-    (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
-        (assoc :cards (vec (for [dashboard-card dashcards]
-                             (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
-                                 (assoc :series (mapv :id (:series dashboard-card)))))))
-        (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) tabs)))))
-
-(defn- revert-dashcards
-  [dashboard-id serialized-cards]
-  (let [current-cards    (t2/select-fn-vec #(apply dissoc (t2.realize/realize %) excluded-columns-for-dashcard-revision)
-                                           :model/DashboardCard
-                                           :dashboard_id dashboard-id)
-        id->current-card (zipmap (map :id current-cards) current-cards)
-        {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
-    (when (seq to-delete)
-      (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
-    (when (seq to-create)
-      (dashboard-card/create-dashboard-cards! (map #(assoc % :dashboard_id dashboard-id) to-create)))
-    (when (seq to-update)
-      (doseq [update-card to-update]
-        (dashboard-card/update-dashboard-card! update-card (id->current-card (:id update-card)))))))
-
-(defn- remove-invalid-dashcards
-  "Given a list of dashcards, remove any dashcard that references cards that are either archived or not exist."
-  [dashcards]
-  (let [card-ids          (set (keep :card_id dashcards))
-        active-card-ids   (when-let [card-ids (seq card-ids)]
-                            (t2/select-pks-set :model/Card :id [:in card-ids] :archived false))
-        inactive-card-ids (set/difference card-ids active-card-ids)]
-    (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
-
-(defmethod revision/revert-to-revision! :model/Dashboard
-  [model dashboard-id user-id serialized-dashboard]
-  ;; Update the dashboard description / name / permissions
-  ((get-method revision/revert-to-revision! :default) model dashboard-id user-id (dissoc serialized-dashboard :cards :tabs))
-  ;; Now update the tabs and cards as needed
-  (let [serialized-dashcards      (:cards serialized-dashboard)
-        current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
-                                                    :model/DashboardTab :dashboard_id dashboard-id)
-        {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
-        serialized-dashcards      (cond->> serialized-dashcards
-                                    true
-                                    remove-invalid-dashcards
-                                    ;; in case reverting result in new tabs being created,
-                                    ;; we need to remap the tab-id
-                                    (seq old->new-tab-id)
-                                    (map (fn [card]
-                                           (if-let [new-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
-                                             (assoc card :dashboard_tab_id new-tab-id)
-                                             card))))]
-    (revert-dashcards dashboard-id serialized-dashcards))
-  serialized-dashboard)
-
-(defmethod revision/diff-strings :model/Dashboard
-  [_model prev-dashboard dashboard]
-  (let [[removals changes]  (diff prev-dashboard dashboard)
-        check-series-change (fn [idx card-changes]
-                              (when (and (:series card-changes)
-                                         (get-in prev-dashboard [:cards idx :card_id]))
-                                (let [num-series₁ (count (get-in prev-dashboard [:cards idx :series]))
-                                      num-series₂ (count (get-in dashboard [:cards idx :series]))]
-                                  (cond
-                                    (< num-series₁ num-series₂)
-                                    (deferred-tru "added some series to card {0}" (get-in prev-dashboard [:cards idx :card_id]))
-
-                                    (> num-series₁ num-series₂)
-                                    (deferred-tru "removed some series from card {0}" (get-in prev-dashboard [:cards idx :card_id]))
-
-                                    :else
-                                    (deferred-tru "modified the series on card {0}" (get-in prev-dashboard [:cards idx :card_id]))))))]
-    (-> [(when-let [default-description (u/build-sentence ((get-method revision/diff-strings :default) Dashboard prev-dashboard dashboard))]
-           (cond-> default-description
-             (str/ends-with? default-description ".") (subs 0 (dec (count default-description)))))
-         (when (:cache_ttl changes)
-           (cond
-             (nil? (:cache_ttl prev-dashboard)) (deferred-tru "added a cache ttl")
-             (nil? (:cache_ttl dashboard)) (deferred-tru "removed the cache ttl")
-             :else (deferred-tru "changed the cache ttl from \"{0}\" to \"{1}\""
-                                 (:cache_ttl prev-dashboard) (:cache_ttl dashboard))))
-         (when (or (:cards changes) (:cards removals))
-           (let [prev-card-ids  (set (map :id (:cards prev-dashboard)))
-                 num-prev-cards (count prev-card-ids)
-                 new-card-ids   (set (map :id (:cards dashboard)))
-                 num-new-cards  (count new-card-ids)
-                 num-cards-diff (abs (- num-prev-cards num-new-cards))
-                 keys-changes   (set (flatten (concat (map keys (:cards changes))
-                                                      (map keys (:cards removals)))))]
-             (cond
-               (and
-                (set/subset? prev-card-ids new-card-ids)
-                (< num-prev-cards num-new-cards))                     (deferred-trun "added a card" "added {0} cards" num-cards-diff)
-               (and
-                (set/subset? new-card-ids prev-card-ids)
-                (> num-prev-cards num-new-cards))                     (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
-               (set/subset? keys-changes #{:row :col :size_x :size_y}) (deferred-tru "rearranged the cards")
-               :else                                                   (deferred-tru "modified the cards"))))
-
-         (when (or (:tabs changes) (:tabs removals))
-           (let [prev-tabs     (:tabs prev-dashboard)
-                 new-tabs      (:tabs dashboard)
-                 prev-tab-ids  (set (map :id prev-tabs))
-                 num-prev-tabs (count prev-tab-ids)
-                 new-tab-ids   (set (map :id new-tabs))
-                 num-new-tabs  (count new-tab-ids)
-                 num-tabs-diff (abs (- num-prev-tabs num-new-tabs))]
-             (cond
-               (and
-                (set/subset? prev-tab-ids new-tab-ids)
-                (< num-prev-tabs num-new-tabs))              (deferred-trun "added a tab" "added {0} tabs" num-tabs-diff)
-
-               (and
-                (set/subset? new-tab-ids prev-tab-ids)
-                (> num-prev-tabs num-new-tabs))              (deferred-trun "removed a tab" "removed {0} tabs" num-tabs-diff)
-
-               (= (set (map #(dissoc % :position) prev-tabs))
-                  (set (map #(dissoc % :position) new-tabs))) (deferred-tru "rearranged the tabs")
-
-               :else                                          (deferred-tru "modified the tabs"))))
-         (let [f (comp boolean :auto_apply_filters)]
-           (when (not= (f prev-dashboard) (f dashboard))
-             (deferred-tru "set auto apply filters to {0}" (str (f dashboard)))))]
-        (concat (map-indexed check-series-change (:cards changes)))
-        (->> (filter identity)))))
+(defn archive-or-unarchive-internal-dashboard-questions!
+  "When updating dashboard cards, if we're removing all references to a Dashboard Question (which is internal to the
+  dashboard, not displayed as part of a collection) we want to archive it. Similarly, we want to mark any Dashboard
+  Questions that *are* on the Dashboard as *not* archived. This function takes a dashboard and the set of dashcards
+  about to be saved, and ensures that all DQs that appear on the dashboard are unarchived and all DQs that DON'T
+  appear on the dashboard are archived."
+  [dashboard-id new-cards]
+  (let [;; the set of ALL Dashboard Questions (internal to the dashboard) for this Dashboard
+        internal-dashboard-question-ids (t2/select-pks-set :model/Card :dashboard_id dashboard-id)
+        ;; the set of all card IDs that are present on the dashboard
+        used-card-ids (into #{} (map :card_id new-cards))
+        ;; DQs that aren't used get archived
+        internal-dashboard-questions-to-archive (set/difference internal-dashboard-question-ids used-card-ids)
+        ;; DQs that ARE used get unarchived
+        internal-dashboard-questions-to-unarchive (set/intersection internal-dashboard-question-ids used-card-ids)]
+    (when-let [ids (seq internal-dashboard-questions-to-archive)]
+      (t2/update! :model/Card :id [:in ids] {:archived true :archived_directly true}))
+    (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
+      (t2/update! :model/Card :id [:in ids] {:archived false :archived_directly false}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
@@ -392,7 +218,7 @@
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
-  (let [dash (-> (t2/select-one Dashboard :id (u/the-id dashboard-or-id))
+  (let [dash (-> (t2/select-one :model/Dashboard :id (u/the-id dashboard-or-id))
                  (t2/hydrate [:dashcards :card]))]
     (params/dashcards->param-field-ids (:dashcards dash))))
 
@@ -466,13 +292,13 @@
   [card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (t2/select-one Card :id (:id card)))
+    (and (integer? (:id card)) (t2/select-one :model/Card :id (:id card)))
     card
 
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
     (let [card (first (t2/insert-returning-instances!
-                       Card
+                       :model/Card
                        (-> card
                            (update :result_metadata #(or % (-> card
                                                                :dataset_query
@@ -482,43 +308,32 @@
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
       (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
 
-(defn- ensure-unique-collection-name
-  [collection-name parent-collection-id]
-  (let [c (t2/count Collection
-                    :name     [:like (format "%s%%" collection-name)]
-                    :location (collection/children-location (t2/select-one [Collection :location :id]
-                                                                           :id parent-collection-id)))]
-    (if (zero? c)
-      collection-name
-      (format "%s %s" collection-name (inc c)))))
-
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
   (let [{dashcards      :dashcards
          tabs           :tabs
-         dashboard-name :name
          :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
-        collection (xrays/create-collection!
-                    (ensure-unique-collection-name dashboard-name parent-collection-id)
-                    "Automatically generated cards."
-                    parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!
                            :model/Dashboard
                            (-> dashboard
                                (dissoc :dashcards :tabs :rule :related
                                        :transient_name :transient_filters :param_fields :more)
                                (assoc :description description
-                                      :collection_id (:id collection)
-                                      :collection_position 1))))
+                                      :collection_id parent-collection-id))))
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
     (add-dashcards! dashboard
                     (for [dashcard dashcards]
-                      (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
-                            series   (some->> dashcard :series (map (fn [card]
-                                                                      (-> card
-                                                                          (assoc :collection_id (:id collection))
-                                                                          save-card!))))
+                      (let [card     (some-> dashcard :card
+                                             (assoc :dashboard_id (:id dashboard)
+                                                    :collection_id parent-collection-id)
+                                             save-card!)
+                            series   (some->> dashcard
+                                              :series
+                                              (mapv (fn [card]
+                                                      (-> card
+                                                          (assoc :collection_id parent-collection-id)
+                                                          save-card!))))
                             dashcard (-> dashcard
                                          (dissoc :card :id :creator_id)
                                          (update :parameter_mappings
@@ -612,9 +427,9 @@
        (set/union (serdes/parameters-deps parameters))))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id]
-  (let [dashcards (t2/select ['DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
+  (let [dashcards (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
                              :dashboard_id id)
-        dashboard (t2/select-one Dashboard :id id)
+        dashboard (t2/select-one :model/Dashboard :id id)
         dash-id   id]
     (merge-with
      merge
@@ -645,7 +460,7 @@
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 
-(defmethod audit-log/model-details Dashboard
+(defmethod audit-log/model-details :model/Dashboard
   [dashboard event-type]
   (case event-type
     (:dashboard-create :dashboard-delete :dashboard-read)
@@ -655,8 +470,48 @@
     (-> (select-keys dashboard [:description :name :parameters :dashcards])
         (update :dashcards (fn [dashcards]
                              (for [{:keys [id card_id]} dashcards]
-                               (-> (t2/select-one [Card :name :description], :id card_id)
+                               (-> (t2/select-one [:model/Card :name :description], :id card_id)
                                    (assoc :id id)
                                    (assoc :card_id card_id))))))
 
     {}))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search/define-spec "dashboard"
+  {:model        :model/Dashboard
+   :attrs        {:archived       true
+                  :collection-id  true
+                  :creator-id     true
+                  :database-id    false
+                  :last-editor-id :r.user_id
+                  :last-edited-at :r.timestamp
+                  :last-viewed-at true
+                  :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                  :view-count     true
+                  :created-at     true
+                  :updated-at     true}
+   :search-terms [:name :description]
+   :render-terms {:archived-directly          true
+                  :collection-authority_level :collection.authority_level
+                  :collection-name            :collection.name
+                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
+                  :collection-position        true
+                  :collection-type            :collection.type
+                  :moderated-status           :mr.status}
+   :where        []
+   :bookmark     [:model/DashboardBookmark [:and
+                                            [:= :bookmark.dashboard_id :this.id]
+                                            ;; a magical alias, or perhaps this clause can be implicit
+                                            [:= :bookmark.user_id :current_user/id]]]
+   :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
+                  :r          [:model/Revision [:and
+                                                [:= :r.model_id :this.id]
+                                                ;; Interesting for inversion, another condition on whether to update.
+                                                ;; For now, let's just swallow the extra update (2x amplification)
+                                                [:= :r.most_recent true]
+                                                [:= :r.model "Dashboard"]]]
+                  :mr         [:model/ModerationReview [:and
+                                                        [:= :mr.moderated_item_type "dashboard"]
+                                                        [:= :mr.moderated_item_id :this.id]
+                                                        [:= :mr.most_recent true]]]}})

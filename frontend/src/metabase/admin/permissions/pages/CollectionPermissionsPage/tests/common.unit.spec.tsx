@@ -1,8 +1,7 @@
-import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 
 import { defaultPermissionsGraph, setup } from "./setup";
 
@@ -104,7 +103,6 @@ describe("Admin > CollectionPermissionsPage", () => {
             3: "read",
           },
         },
-        skip_graph: true,
       });
     });
 
@@ -161,7 +159,6 @@ describe("Admin > CollectionPermissionsPage", () => {
             3: "write",
           },
         },
-        skip_graph: true,
       });
     });
 

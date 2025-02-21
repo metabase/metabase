@@ -139,7 +139,11 @@ const RowChartVisualization = ({
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
   const stackOffset = getStackOffset(settings);
-  const theme = useRowChartTheme(fontFamily, isDashboard, isFullscreen);
+  const theme = useRowChartTheme(
+    `${fontFamily}, Arial, sans-serif`,
+    isDashboard,
+    isFullscreen,
+  );
 
   const chartWarnings = useMemo(
     () => getChartWarnings(chartColumns, data.rows),

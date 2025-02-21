@@ -133,7 +133,13 @@
             (is (= expected-units
                    (into #{} (map :unit) options)))
             (is (= (assoc-in expected-defaults [0 :unit] unit)
-                   (filter :default options)))))))))
+                   (filter :default options)))))))
+    (testing "inherited-temporal-unit other than default disables a default bucket"
+      (is (not-any? :default (lib.temporal-bucket/available-temporal-buckets-method
+                              nil -1 (assoc column :inherited-temporal-unit :day)))))
+    (testing "default inherited-temporal-unit does not disable a default bucket"
+      (is (some :default (lib.temporal-bucket/available-temporal-buckets-method
+                          nil -1 (assoc column :inherited-temporal-unit :default)))))))
 
 (deftest ^:parallel temporal-bucketing-options-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
@@ -205,14 +211,14 @@
 
 (deftest ^:parallel option-raw-temporal-bucket-test
   (let [option (m/find-first #(= (:unit %) :month)
-                             (lib.temporal-bucket/available-temporal-buckets lib.tu/venues-query (meta/field-metadata :checkins :date)))]
+                             (lib.temporal-bucket/available-temporal-buckets (lib.tu/venues-query) (meta/field-metadata :checkins :date)))]
     (is (=? {:lib/type :option/temporal-bucketing}
             option))
     (is (= :month
            (lib.temporal-bucket/raw-temporal-bucket option)))))
 
 (deftest ^:parallel short-name-display-info-test
-  (let [query lib.tu/venues-query]
+  (let [query (lib.tu/venues-query)]
     (is (= {"minute"          false
             "hour"            false
             "day"             false

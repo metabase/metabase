@@ -5,10 +5,10 @@
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.models :refer [Card Dashboard DashboardCard FieldValues]]
-   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.field-values :as field-values]
    [metabase.models.params.chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -22,24 +22,29 @@
       (mt/with-no-data-perms-for-all-users!
         (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
         (data-perms/set-table-permission! &group (mt/id :categories) :perms/create-queries :query-builder)
-        (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
-                       Card          {card-id :id}      {:name "Dashboard Test Card"}
-                       DashboardCard {_ :id}            {:dashboard_id       dashboard-id
-                                                         :card_id            card-id
-                                                         :parameter_mappings [{:card_id      card-id
-                                                                               :parameter_id "foo"
-                                                                               :target       [:dimension
-                                                                                              [:field (mt/id :venues :name) nil]]}
-                                                                              ;; should be returned normally since user has non-sandbox perms
-                                                                              {:card_id      card-id
-                                                                               :parameter_id "bar"
-                                                                               :target       [:dimension
-                                                                                              [:field (mt/id :categories :name) nil]]}
-                                                                              ;; shouldn't be returned since user has no perms
-                                                                              {:card_id      card-id
-                                                                               :parameter_id "bax"
-                                                                               :target       [:dimension
-                                                                                              [:field (mt/id :users :name) nil]]}]}]
+        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
+                       :model/Card          {card-id :id}      {:name "Dashboard Test Card"}
+                       :model/DashboardCard {_ :id}            {:dashboard_id       dashboard-id
+                                                                :card_id            card-id
+                                                                :parameter_mappings [{:card_id      card-id
+                                                                                      :parameter_id "foo"
+                                                                                      :target       [:dimension
+                                                                                                     [:field (mt/id :venues :name) nil]]}
+                                                                                     ;; should be returned normally since user has non-sandbox perms
+                                                                                     {:card_id      card-id
+                                                                                      :parameter_id "bar"
+                                                                                      :target       [:dimension
+                                                                                                     [:field (mt/id :categories :name) nil]]}
+                                                                                     ;; shouldn't be returned since user has no perms
+                                                                                     {:card_id      card-id
+                                                                                      :parameter_id "bax"
+                                                                                      :target       [:dimension
+                                                                                                     [:field (mt/id :users :name) nil]]}]}]
+          ;; Manually activate Field values since they are not created during sync (#53387)
+          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
+          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
+          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :users :name)))
+
           (is (= {(mt/id :venues :name) {:values   ["Garaje"
                                                     "Gordo Taqueria"
                                                     "La Tortilla"]
@@ -58,7 +63,9 @@
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain filter endpoints would normally return cached FieldValues (#13832), make sure sandboxing is respected"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
-      (mt/with-temp-vals-in-db FieldValues (u/the-id (t2/select-one-pk FieldValues :field_id (mt/id :categories :name))) {:values ["Good" "Bad"]}
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
+      (mt/with-temp-vals-in-db :model/FieldValues (u/the-id (t2/select-one-pk :model/FieldValues :field_id (mt/id :categories :name))) {:values ["Good" "Bad"]}
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
           (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
             (testing "GET /api/dashboard/:id/params/:param-key/values"
@@ -104,22 +111,21 @@
            (data-perms/set-table-permission! &group (mt/id :venues) :perms/create-queries :query-builder)
            (update-mappings! 200)
            (is (= new-mappings
-                  (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
+                  (t2/select-one-fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "dashboard with a parameter that has source is a card, it should respects sandboxing"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp
-        [Card      {card-id         :id} (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories))
-                                                {:database_id     (mt/id)
-                                                 :table_id        (mt/id :categories)})
-         Dashboard {dashboard-id :id}    {:parameters [{:id                   "abc"
-                                                        :type                 "category"
-                                                        :name                 "CATEGORY"
-                                                        :values_source_type   "card"
-                                                        :values_source_config {:card_id     card-id
-                                                                               :value_field (mt/$ids $categories.name)}}]}]
-
+        [:model/Card      {card-id         :id} (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories))
+                                                       {:database_id     (mt/id)
+                                                        :table_id        (mt/id :categories)})
+         :model/Dashboard {dashboard-id :id}    {:parameters [{:id                   "abc"
+                                                               :type                 "category"
+                                                               :name                 "CATEGORY"
+                                                               :values_source_type   "card"
+                                                               :values_source_config {:card_id     card-id
+                                                                                      :value_field (mt/$ids $categories.name)}}]}]
         (testing "when getting values"
           (let [get-values (fn [user]
                              (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-values-url dashboard-id "abc")))]

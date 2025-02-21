@@ -9,6 +9,7 @@ import {
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -456,6 +457,16 @@ describe("ActionViz > ActionDashcardSettings", () => {
     ).toBeInTheDocument();
   });
 
+  it("should be valid and not crash when the action does not have parameters (metabase#32665)", async () => {
+    const { closeSpy } = setup({
+      dashcard: createMockActionDashboardCard({
+        action: createMockQueryAction(),
+      }),
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(closeSpy).toHaveBeenCalled();
+  });
+
   it("shows parameters for an action", async () => {
     setup({
       dashcard: actionDashcardWithAction,
@@ -470,6 +481,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
     });
 
     await waitForLoaderToBeRemoved();
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`action-item-${actions2[0].name}`),
+      ).toBeInTheDocument();
+    });
 
     const queryAction = screen.getByTestId(`action-item-${actions2[0].name}`);
     const implicitAction = screen.getByTestId(

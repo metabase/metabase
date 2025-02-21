@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-export interface FooterProps {
+interface FooterProps {
   hasPadding?: boolean;
 }
 

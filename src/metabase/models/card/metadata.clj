@@ -1,16 +1,15 @@
 (ns metabase.models.card.metadata
   "Code related to Card metadata (re)calculation and saving updated metadata asynchronously."
   (:require
-   [malli.core :as mc]
-   [metabase.analyze :as analyze]
+   [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
-   [metabase.compatibility :as compatibility]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util :as qp.util]
-   [metabase.server.middleware.session :as mw.session]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -70,6 +69,14 @@ saved later when it is ready."
       {:metadata-future futur}
       {:metadata result})))
 
+(defn normalize-dataset-query
+  "Normalize the query `dataset-query` received via an HTTP call.
+  Handles both (legacy) MBQL and pMBQL queries."
+  [dataset-query]
+  (if (= (lib/normalized-query-type dataset-query) :mbql/query)
+    (lib/normalize dataset-query)
+    (mbql.normalize/normalize dataset-query)))
+
 (mu/defn maybe-async-result-metadata :- ::maybe-async-result-metadata
   "Return result metadata for the passed in `query`. If metadata needs to be recalculated, waits up to
   [[metadata-sync-wait-ms]] for it to be recalcuated; if not recalculated by then, returns a map with
@@ -84,12 +91,12 @@ saved later when it is ready."
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
   [{:keys [original-query query metadata original-metadata model?], :as options}]
-  (let [valid-metadata? (and metadata (mc/validate analyze/ResultsMetadata metadata))]
+  (let [valid-metadata? (and metadata (mr/validate analyze/ResultsMetadata metadata))]
     (cond
       (or
        ;; query didn't change, preserve existing metadata
-       (and (= (compatibility/normalize-dataset-query original-query)
-               (compatibility/normalize-dataset-query query))
+       (and (= (normalize-dataset-query original-query)
+               (normalize-dataset-query query))
             valid-metadata?)
        ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
        (and (nil? query)
@@ -190,7 +197,7 @@ saved later when it is ready."
     :else
     (do
       (log/debug "Attempting to infer result metadata for Card")
-      (let [inferred-metadata (not-empty (mw.session/with-current-user nil
+      (let [inferred-metadata (not-empty (request/with-current-user nil
                                            (u/ignore-exceptions
                                              (qp.preprocess/query->expected-cols query))))]
         (assoc card :result_metadata inferred-metadata)))))

@@ -2,12 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { FlexibleSizeComponent } from "embedding-sdk";
 import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Button, Group, Icon, Stack, Tabs } from "metabase/ui";
 
 import type { InteractiveQuestionProps } from "../../public/InteractiveQuestion";
+import { FlexibleSizeComponent } from "../FlexibleSizeComponent";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
 import QuestionEditorS from "./QuestionEditor.module.css";
@@ -15,7 +15,7 @@ import QuestionEditorS from "./QuestionEditor.module.css";
 const QuestionEditorInner = () => {
   const {
     queryResults,
-    runQuestion,
+    queryQuestion,
     isSaveEnabled,
     question,
     originalQuestion,
@@ -31,7 +31,7 @@ const QuestionEditorInner = () => {
 
   const onOpenVisualizationTab = async () => {
     setActiveTab("visualization");
-    await runQuestion();
+    await queryQuestion();
   };
 
   const [isVisualizationSelectorOpen, { toggle: toggleVisualizationSelector }] =
@@ -41,13 +41,13 @@ const QuestionEditorInner = () => {
     <FlexibleSizeComponent>
       <Tabs
         value={activeTab}
-        onTabChange={setActiveTab}
+        onChange={setActiveTab}
         defaultValue="editor"
         h="100%"
         display="flex"
         style={{ flexDirection: "column", overflow: "hidden" }}
       >
-        <Group position="apart">
+        <Group justify="space-between">
           <Tabs.List>
             <Tabs.Tab value="editor">{t`Editor`}</Tabs.Tab>
             {queryResults && (
@@ -86,7 +86,7 @@ const QuestionEditorInner = () => {
           <Stack h="100%">
             <Box>
               <Button
-                compact
+                size="compact-md"
                 radius="xl"
                 py="sm"
                 px="md"
@@ -120,7 +120,7 @@ const QuestionEditorInner = () => {
       </Tabs>
 
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
-      {isSaveModalOpen && question && (
+      {isSaveEnabled && isSaveModalOpen && question && (
         <SaveQuestionModal
           question={question}
           originalQuestion={originalQuestion ?? null}
@@ -135,6 +135,7 @@ const QuestionEditorInner = () => {
   );
 };
 
+/** @deprecated this is only used in the deprecated `ModifyQuestion` component - to be removed in a future release */
 export const QuestionEditor = ({
   questionId,
   isSaveEnabled = true,
@@ -142,6 +143,7 @@ export const QuestionEditor = ({
   onSave,
   plugins,
   entityTypeFilter,
+  saveToCollectionId,
 }: InteractiveQuestionProps) => (
   <InteractiveQuestion
     questionId={questionId}
@@ -150,6 +152,7 @@ export const QuestionEditor = ({
     onBeforeSave={onBeforeSave}
     isSaveEnabled={isSaveEnabled}
     entityTypeFilter={entityTypeFilter}
+    saveToCollectionId={saveToCollectionId}
   >
     <QuestionEditorInner />
   </InteractiveQuestion>

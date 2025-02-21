@@ -4,7 +4,6 @@
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -59,8 +58,13 @@
               (lib.tu/mock-metadata-provider
                {:cards [metric]}))])))
 
-(def adjust
-  (comp #'metrics/adjust #'fetch-source-query/resolve-source-cards))
+(defn- adjust
+  [query]
+  (-> query
+      (assoc-in [:info :pivot/original-query] query)
+      (#'fetch-source-query/resolve-source-cards)
+      (#'metrics/adjust)
+      (dissoc :info)))
 
 (defn- check-prometheus-metrics!
   [& {expected-metrics-count  :metabase-query-processor/metrics-adjust
@@ -71,13 +75,11 @@
   (let [[source-metric mp] (or metric-and-mp (mock-metric))
         query              (if query-fn
                              (query-fn mp source-metric)
-                             (lib/query mp source-metric))
-        metrics              (atom {})
-        read-metric          #(% @metrics 0)]
-    (with-redefs [prometheus/inc! #(swap! metrics update % (fnil inc 0))]
+                             (lib/query mp source-metric))]
+    (mt/with-prometheus-system! [_ system]
       (check-fn query)
-      (is (= expected-metrics-count (read-metric :metabase-query-processor/metrics-adjust)))
-      (is (= expected-metrics-errors (read-metric :metabase-query-processor/metrics-adjust-errors))))))
+      (is (== expected-metrics-count (mt/metric-value system :metabase-query-processor/metrics-adjust)))
+      (is (== expected-metrics-errors (mt/metric-value system :metabase-query-processor/metrics-adjust-errors))))))
 
 (deftest adjust-prometheus-metrics-test
   (testing "adjustment of query with no metrics does not increment either counter"
@@ -121,7 +123,7 @@
     (check-prometheus-metrics!
      :metabase-query-processor/metrics-adjust 1
      :metabase-query-processor/metrics-adjust-errors 1
-     :metric-and-mp (mock-metric (-> (lib/query meta/metadata-provider (meta/table-metadata :products))))
+     :metric-and-mp (mock-metric (lib/query meta/metadata-provider (meta/table-metadata :products)))
      :query-fn (fn [mp metric]
                  (-> (lib/query mp (meta/table-metadata :products))
                      (lib/aggregate (lib/+ (lib.options/ensure-uuid
@@ -298,8 +300,9 @@
          (adjust query)))))
 
 (deftest ^:parallel adjust-mixed-multi-source-test
-  (let [[first-metric mp] (mock-metric lib.tu/metadata-provider-with-mock-cards
-                                       (-> (lib/query lib.tu/metadata-provider-with-mock-cards (:products lib.tu/mock-cards))
+  (let [mp                (lib.tu/metadata-provider-with-mock-cards)
+        [first-metric mp] (mock-metric mp
+                                       (-> (lib/query mp (:products (lib.tu/mock-cards)))
                                            (lib/aggregate (update (lib/avg (meta/field-metadata :products :rating)) 1 assoc :name (u/slugify "Mock metric")))
                                            (lib/filter (lib/> (meta/field-metadata :products :price) 1))))
         [second-metric mp] (mock-metric mp (-> (lib/query mp first-metric)
@@ -428,7 +431,7 @@
 (deftest ^:parallel metric-question-on-native-model-test
   (let [mp meta/metadata-provider
         sum-pred (comp #{"sum"} :name)
-        query lib.tu/native-query
+        query (lib.tu/native-query)
         question (model-based-metric-question mp query sum-pred)]
     (is (=? {:stages
              [{:lib/type :mbql.stage/native,
@@ -646,12 +649,13 @@
       (testing "inside :joins inside :source-query"
         (is (=? (lib.tu.macros/mbql-query nil
                   {:source-query {:source-table (meta/id :checkins)
-                                  :joins        [{:condition    [:= [:field 1 nil] 2]
+                                  :joins        [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
                                                   :source-query after}]}})
                 (expand-macros (lib.tu.macros/mbql-query nil
                                  {:source-query {:source-table (meta/id :checkins)
-                                                 :joins        [{:condition    [:= [:field 1 nil] 2]
-                                                                 :source-query before}]}}))))))))
+                                                 :joins
+                                                 [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
+                                                   :source-query before}]}}))))))))
 
 (deftest ^:parallel model-based-metric-use-test
   (let [model {:lib/type :metadata/card
@@ -728,10 +732,10 @@
 (deftest ^:parallel metric-with-explicit-join-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                         (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :people))
-                                                        [(lib/=
-                                                          (lib.metadata/field mp (mt/id :orders :user_id))
-                                                          (lib.metadata/field mp (mt/id :people :id)))])))
+                         (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :people))
+                                                    [(lib/=
+                                                      (lib.metadata/field mp (mt/id :orders :user_id))
+                                                      (lib.metadata/field mp (mt/id :people :id)))]))
                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
                          (lib/breakout (lib.metadata/field mp (mt/id :orders :created_at))))]
     (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
@@ -813,7 +817,7 @@
         (is (= 2162
                (ffirst (mt/rows (qp/process-query query)))))))))
 
-(deftest ^:parallel ^:mb/once fetch-referenced-metrics-test
+(deftest ^:parallel fetch-referenced-metrics-test
   (testing "Metric's aggregation `:name` is used in expanded aggregation (#48625)"
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))

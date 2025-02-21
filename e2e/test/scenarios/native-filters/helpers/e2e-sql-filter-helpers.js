@@ -1,4 +1,8 @@
-import { filterWidget, focusNativeEditor, popover } from "e2e/support/helpers";
+import {
+  NativeEditor,
+  filterWidget,
+  selectDropdown,
+} from "e2e/support/helpers";
 
 // FILTER TYPES
 
@@ -31,7 +35,7 @@ export function openTypePickerFromDefaultFilterType() {
  * chooseType("Date");
  */
 export function chooseType(filterType) {
-  popover().within(() => {
+  selectDropdown().within(() => {
     cy.findByText(filterType).click();
   });
 }
@@ -92,9 +96,7 @@ export function runQuery(xhrAlias = "dataset") {
  * @param {string} query
  */
 export function enterParameterizedQuery(query, options = {}) {
-  focusNativeEditor();
-  cy.get("@editor").type(query, {
-    parseSpecialCharSequences: false,
+  NativeEditor.focus().type(query, {
     ...options,
   });
 }

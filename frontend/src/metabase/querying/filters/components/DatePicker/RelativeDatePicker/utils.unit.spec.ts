@@ -1,7 +1,7 @@
 import type {
   DatePickerTruncationUnit,
   RelativeDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
 
 import { setDirection } from "./utils";
 

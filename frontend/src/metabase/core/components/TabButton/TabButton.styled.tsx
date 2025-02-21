@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 
-export interface TabButtonProps {
+interface TabButtonProps {
   isSelected?: boolean;
   disabled?: boolean;
 }

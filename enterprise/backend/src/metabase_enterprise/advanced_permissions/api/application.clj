@@ -3,13 +3,15 @@
   Implements the Permissions routes needed for application permission - a class of permissions that control access to features
   like access Setting pages, access monitoring tools ... etc"
   (:require
-   [compojure.core :refer [GET PUT]]
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
-   [metabase.api.common :as api]))
+   [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
+   [metabase.models.application-permissions-revision :as a-perm-revision]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
-(api/defendpoint GET "/graph"
+(api.macros/defendpoint :get "/graph"
   "Fetch a graph of Application Permissions."
   []
   (api/check-superuser)
@@ -32,13 +34,18 @@
   [graph]
   (update graph :groups dejsonify-groups))
 
-(api/defendpoint PUT "/graph"
+(api.macros/defendpoint :put "/graph"
   "Do a batch update of Application Permissions by passing a modified graph."
-  [:as {:keys [body]}]
+  [_route-params
+   {skip-graph? :skip-graph
+    force? :force} :- [:map
+                       [:skip-graph {:default false} [:maybe ms/BooleanValue]]
+                       [:force      {:default false} [:maybe ms/BooleanValue]]]
+   body :- :map]
   (api/check-superuser)
   (-> body
       dejsonify-graph
-      a-perms/update-graph!)
-  (a-perms/graph))
-
-(api/define-routes)
+      (a-perms/update-graph! force?))
+  (if skip-graph?
+    {:revision (a-perm-revision/latest-id)}
+    (a-perms/graph)))

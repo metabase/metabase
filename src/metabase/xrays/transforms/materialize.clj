@@ -1,8 +1,8 @@
 (ns metabase.xrays.transforms.materialize
   (:require
    [metabase.api.common :as api]
-   [metabase.models.card :as card :refer [Card]]
-   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.card :as card]
+   [metabase.models.collection :as collection]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [toucan2.core :as t2]))
 
@@ -11,7 +11,7 @@
 (defn- root-container-location
   []
   (collection/children-location
-   (t2/select-one [Collection :location :id]
+   (t2/select-one [:model/Collection :location :id]
                   :id (get-or-create-root-container-collection!))))
 
 (defn get-collection
@@ -20,7 +20,7 @@
   ([collection-name]
    (get-collection collection-name (root-container-location)))
   ([collection-name location]
-   (t2/select-one-pk Collection
+   (t2/select-one-pk :model/Collection
                      :name     collection-name
                      :location location)))
 
@@ -28,7 +28,7 @@
   ([collection-name description]
    (create-collection! collection-name description (root-container-location)))
   ([collection-name description location]
-   (first (t2/insert-returning-pks! Collection
+   (first (t2/insert-returning-pks! :model/Collection
                                     {:name        collection-name
                                      :description description
                                      :location    location}))))
@@ -46,7 +46,7 @@
    exists."
   [{:keys [name description]}]
   (if-let [collection-id (get-collection name)]
-    (t2/delete! Card :collection_id collection-id)
+    (t2/delete! :model/Card :collection_id collection-id)
     (create-collection! name description)))
 
 (defn make-card-for-step!
@@ -61,5 +61,5 @@
         :visualization_settings {}
         :display                :table}
        card/populate-query-fields
-       (t2/insert-returning-instances! Card)
+       (t2/insert-returning-instances! :model/Card)
        first))

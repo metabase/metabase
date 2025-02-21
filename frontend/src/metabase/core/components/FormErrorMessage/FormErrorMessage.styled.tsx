@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-export interface ErrorMessageRootProps {
+interface ErrorMessageRootProps {
   inline?: boolean;
 }
 

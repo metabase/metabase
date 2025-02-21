@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -19,6 +18,7 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
+import { connect } from "metabase/lib/redux";
 import { Flex, Stack, rem } from "metabase/ui";
 import type { SettingValue } from "metabase-types/api";
 
@@ -89,7 +89,7 @@ export const SettingsJWTForm = ({
               [t`JWT`],
             ]}
           />
-          <Stack spacing={rem(12)} m={`${rem(40)} 0`}>
+          <Stack gap={rem(12)} m={`${rem(40)} 0`}>
             <SettingHeader
               id="jwt-user-provisioning-enabled?"
               setting={settings["jwt-user-provisioning-enabled?"]}
@@ -100,7 +100,7 @@ export const SettingsJWTForm = ({
             />
           </Stack>
           <FormSection title={"Server Settings"}>
-            <Stack spacing="md">
+            <Stack gap="md">
               <FormTextInput {...fields["jwt-identity-provider-uri"]} />
               <FormSecretKey
                 {...fields["jwt-shared-secret"]}
@@ -115,7 +115,7 @@ export const SettingsJWTForm = ({
             title={"User attribute configuration (optional)"}
             collapsible
           >
-            <Stack spacing="md">
+            <Stack gap="md">
               <FormTextInput {...fields["jwt-attribute-email"]} />
               <FormTextInput {...fields["jwt-attribute-firstname"]} />
               <FormTextInput {...fields["jwt-attribute-lastname"]} />

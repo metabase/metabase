@@ -54,10 +54,11 @@
     timezone-id
     (str (t/zone-id))))
 
+;; TODO -- we really need to decouple this stuff and use an event for this
+
 (defn- update-send-pulse-triggers-timezone!
   []
-  (classloader/require 'metabase.task.send-pulses)
-  ((resolve 'metabase.task.send-pulses/update-send-pulse-triggers-timezone!)))
+  ((requiring-resolve 'metabase.pulse.task.send-pulses/update-send-pulse-triggers-timezone!)))
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
@@ -187,8 +188,12 @@
 (defn the-initialized-driver
   "Like [[the-driver]], but also initializes the driver if not already initialized."
   [driver]
-  (let [driver (the-driver driver)]
-    (driver.impl/initialize-if-needed! driver initialize!)
+  (let [driver (keyword driver)]
+    ;; Fastpath: an initialized driver `driver` is always already registered. Checking for `initialized?` is faster
+    ;; than doing the `registered?` check inside `load-driver-namespace-if-needed!`.
+    (when-not (driver.impl/initialized? driver)
+      (driver.impl/load-driver-namespace-if-needed! driver)
+      (driver.impl/initialize-if-needed! driver initialize!))
     driver))
 
 (defn dispatch-on-initialized-driver
@@ -345,6 +350,20 @@
   Currently we only sync single column indexes or the first column of a composite index.
   Results should match the [[metabase.sync.interface/TableIndexMetadata]] schema."
   {:added "0.49.0" :arglists '([driver database table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti describe-indexes
+  "Returns a reducible collection of maps, each containing information about the indexes of a database.
+  Currently we only sync single column indexes or the first column of a composite index. We currently only support
+   indexes on unnested fields (i.e., where parent_id is null).
+
+  Takes keyword arguments to narrow down the results to a set of
+  `schema-names` or `table-names`.
+
+  Results match [[metabase.sync.interface/FieldIndexMetadata]].
+  Results are optionally filtered by `schema-names` and `table-names` provided."
+  {:added "0.51.4" :arglists '([driver database & {:keys [schema-names table-names]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -656,6 +675,10 @@
     ;; if so, `metabase.driver/describe-fields` must be implemented instead of `metabase.driver/describe-table`
     :describe-fields
 
+    ;; Does the driver support a faster `sync-indexes` step by fetching all index metadata in a single collection?
+    ;; If true, `metabase.driver/describe-indexes` must be implemented instead of `metabase.driver/describe-table-indexes`
+    :describe-indexes
+
     ;; Does the driver support automatically adding a primary key column to a table for uploads?
     ;; If so, Metabase will add an auto-incrementing primary key column called `_mb_row_id` for any table created or
     ;; updated with CSV uploads, and ignore any `_mb_row_id` column in the CSV file.
@@ -695,7 +718,15 @@
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
-    :test/dynamic-dataset-loading})
+    :test/dynamic-dataset-loading
+
+    ;; Some DBs allow you to connect to a DB that doesn't exist by creating it for you.
+    ;; This is to allow such DBs to opt out of tests that rely on not being able to connect to non-existent DBs.
+    :test/creates-db-on-connect
+
+    ;; For some cloud DBs the test database is never created, and can't or shouldn't be destroyed.
+    ;; This is to allow avoiding destroying the test DBs of such cloud DBs.
+    :test/cannot-destroy-db})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -1019,6 +1050,26 @@
   ;; no normalization by default
   database)
 
+(defmulti db-details-to-test-and-migrate
+  "When `details` are in an ambiguous state, this should return a sequence of modified `details` of the
+   possible, normalized, unambiguous states.
+
+   The result of this function will be used to test each new `details`, in order,
+   and the first one that succeeds will be saved in the database.
+
+   If none of the details succeed, nothing will change.
+   Returning `nil` will skip the test.
+
+   This should, in practice, supersede `normalize-db-details`."
+  {:added "0.52.12" :arglists '([driver details])}
+  dispatch-on-initialized-driver-safe-keys
+  :hierarchy #'hierarchy)
+
+(defmethod db-details-to-test-and-migrate ::driver
+  [_ _database]
+  ;; nothing by default
+  nil)
+
 (defmulti superseded-by
   "Returns the driver that supersedes the given `driver`.  A non-nil return value means that the given `driver` is
   deprecated in Metabase and will eventually be replaced by the returned driver, in some future version (at which point
@@ -1036,7 +1087,7 @@
   nil)
 
 (defmulti execute-write-query!
-  "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.models.action]]).
+  "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.actions.models]]).
   Drivers that support `:actions/custom` must implement this method."
   {:changelog-test/ignore true, :added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
@@ -1195,3 +1246,17 @@
   {:added "0.48.0", :arglists '([driver database & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti dynamic-database-types-lookup
+  "Generate mapping of `database-types` to base types for dynamic database types (eg. defined by user; postgres enums).
+
+  The `sql-jdbc.sync/database-type->base-type` is used as simple look-up, while this method is expected to do database
+  calls when necessary. At the time it was added, its purpose was to check for postgres enum types. Its meant to
+  be extended also for other dynamic types when necessary."
+  {:added "0.53.0" :arglists '([driver database database-types])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod dynamic-database-types-lookup ::driver
+  [_driver _database _database-types]
+  nil)

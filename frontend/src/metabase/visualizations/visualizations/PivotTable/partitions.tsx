@@ -6,7 +6,7 @@ import type { DatasetColumn } from "metabase-types/api";
 
 import { PivotTableSettingLabel } from "./PivotTable.styled";
 
-interface Partition {
+export interface Partition {
   name: "rows" | "columns" | "values";
   columnFilter: (col: DatasetColumn | undefined) => boolean;
   title: React.ReactNode;

@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is are testing]]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -13,7 +12,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (comment lib/keep-me)
 
@@ -27,7 +27,7 @@
                      :expressions [[:+ {:lib/uuid string? :lib/expression-name "myadd"}
                                     1
                                     [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id)))
               (dissoc :lib/metadata)))))
 
@@ -80,11 +80,12 @@
                          (lib/upper string-field) :type/Text
                          (lib/lower string-field) :type/Text])]
       (testing (str "expression: " (pr-str expr))
-        (let [query (-> lib.tu/venues-query
+        (let [query (-> (lib.tu/venues-query)
                         (lib/expression "myexpr" expr))
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (testing (pr-str resolved)
-            (is (mc/validate ::lib.schema/query query))
+            (is (mr/validate ::lib.schema/query query))
+            (is (string? (-> resolved lib.options/ident not-empty)))
             (is (= typ (lib.schema.expression/type-of resolved)))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
@@ -93,7 +94,7 @@
            :display-name "double-price"
            :lib/source   :source/expressions}
           (lib/metadata
-           (-> lib.tu/venues-query
+           (-> (lib.tu/venues-query)
                (lib/expression "double-price"
                                (lib/* (lib.tu/field-clause :venues :price {:base-type :type/Integer}) 2)))
            -1
@@ -103,7 +104,8 @@
   (let [query (lib.tu/venues-query-with-last-stage
                {:expressions [[:+
                                {:lib/uuid (str (random-uuid))
-                                :lib/expression-name "prev_month"}
+                                :lib/expression-name "prev_month"
+                                :ident               (u/generate-nano-id)}
                                (lib.tu/field-clause :users :last-login)
                                [:interval {:lib/uuid (str (random-uuid))} -1 :month]]]
                 :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
@@ -120,12 +122,12 @@
                 -1
                 :day]]
     (is (= "DATE_minus_1_day"
-           (lib/column-name lib.tu/venues-query -1 clause)))
+           (lib/column-name (lib.tu/venues-query) -1 clause)))
     (is (= "Date - 1 day"
-           (lib/display-name lib.tu/venues-query -1 clause)))))
+           (lib/display-name (lib.tu/venues-query) -1 clause)))))
 
 (deftest ^:parallel expression-reference-names-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/expression "double-price"
                                   (lib/*
                                    (lib.tu/field-clause :venues :price {:base-type :type/Integer})
@@ -141,14 +143,14 @@
 (deftest ^:parallel coalesce-names-test
   (let [clause [:coalesce {} (lib.tu/field-clause :venues :name) "<Venue>"]]
     (is (= "NAME"
-           (lib/column-name lib.tu/venues-query -1 clause)))
+           (lib/column-name (lib.tu/venues-query) -1 clause)))
     (is (= "Name"
-           (lib/display-name lib.tu/venues-query -1 clause)))))
+           (lib/display-name (lib.tu/venues-query) -1 clause)))))
 
 (defn- infer-first
   [expr]
   (lib/metadata
-   (-> lib.tu/venues-query
+   (-> (lib.tu/venues-query)
        (lib/expression "expr" expr))
    -1
    [:expression {:lib/uuid (str (random-uuid))} "expr"]))
@@ -195,7 +197,7 @@
            :display-name "last-login-plus-2"
            :lib/source   :source/expressions}
           (lib/metadata
-           (-> lib.tu/venues-query
+           (-> (lib.tu/venues-query)
                (lib/expression "last-login-plus-2"
                                [:datetime-add
                                 {:lib/uuid (str (random-uuid))}
@@ -211,7 +213,7 @@
          #?(:clj Throwable :cljs js/Error)
          #"No expression named \"double-price\""
          (lib/metadata
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/expression "one-hundred" (lib/+ 100 0)))
           -1
           [:expression {:lib/uuid (str (random-uuid))} "double-price"])))))
@@ -230,7 +232,7 @@
           (is (= (condp = arg-2
                    1   :type/Integer
                    1.0 :type/Float)
-                 (lib/type-of lib.tu/venues-query clause)))))
+                 (lib/type-of (lib.tu/venues-query) clause)))))
       (testing "/ should always return type/Float"
         (doseq [arg-2 [1 1.0]
                 :let  [clause [:/ {:lib/uuid (str (random-uuid))} field arg-2]]]
@@ -238,21 +240,21 @@
             (is (= :type/Float
                    (lib.schema.expression/type-of clause)))
             (is (= :type/Float
-                   (lib/type-of lib.tu/venues-query clause)))))))))
+                   (lib/type-of (lib.tu/venues-query) clause)))))))))
 
 (deftest ^:parallel expressions-names-test
   (testing "expressions should include the original expression name"
     (is (=? [{:name         "expr"
               :display-name "expr"}]
-            (-> lib.tu/venues-query
+            (-> (lib.tu/venues-query)
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                 lib/expressions-metadata)))
     (is (=? [{:display-name "expr"
               :named? true}]
-            (-> lib.tu/venues-query
+            (-> (lib.tu/venues-query)
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                 lib/expressions
-                (->> (map (fn [expr] (lib/display-info lib.tu/venues-query expr))))))))
+                (->> (map (fn [expr] (lib/display-info (lib.tu/venues-query) expr))))))))
   ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
   ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by the
   ;; QP code, and it should be powered by MLv2 in due course.
@@ -276,15 +278,15 @@
             :name "expr",
             :display-name "expr",
             :lib/source :source/expressions}]
-          (-> lib.tu/venues-query
+          (-> (lib.tu/venues-query)
               (lib/expression "expr" 100)
               (lib/expressions-metadata))))
-  (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Integer} 100]]
-          (-> lib.tu/venues-query
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Integer, :ident string?} 100]]
+          (-> (lib.tu/venues-query)
               (lib/expression "expr" 100)
               (lib/expressions))))
-  (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Text} "value"]]
-          (-> lib.tu/venues-query
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Text, :ident string?} "value"]]
+          (-> (lib.tu/venues-query)
               (lib/expression "expr" "value")
               (lib/expressions)))))
 
@@ -306,7 +308,7 @@
 
 (deftest ^:parallel expressionable-columns-exclude-expressions-containing-offset
   (testing "expressionable-columns should filter out expressions which contain :offset"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/order-by (meta/field-metadata :venues :id) :asc)
                     (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
                     (lib/expression "Nested Offset"
@@ -324,7 +326,7 @@
 
 (deftest ^:parallel infix-display-name-with-expressions-test
   (testing "#32063"
-    (let [query (lib/query lib.tu/metadata-provider-with-mock-cards (:orders lib.tu/mock-cards))
+    (let [query (lib/query (lib.tu/metadata-provider-with-mock-cards) (:orders (lib.tu/mock-cards)))
           query (-> query
                     (lib/expression "Unit price" (lib//
                                                   (lib.tu/field-literal-ref query "SUBTOTAL")
@@ -338,7 +340,7 @@
     (testing "various pemutations on venues"
       (let [query (reduce (fn [query [label expr]]
                             (lib/expression query -1 label expr))
-                          lib.tu/venues-query
+                          (lib.tu/venues-query)
                           [["name+price" (lib/concat (meta/field-metadata :venues :name)
                                                      (meta/field-metadata :venues :price))]
                            ["$price"     (lib/concat "$" (meta/field-metadata :venues :price))]
@@ -385,7 +387,7 @@
         (is (empty? (lib/expressions dropped)))))))
 
 (deftest ^:parallel with-expression-name-test
-  (let [query         (-> lib.tu/venues-query
+  (let [query         (-> (lib.tu/venues-query)
                           (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                           (lib/aggregate (lib/count))
                           (lib/filter (lib/< (meta/field-metadata :venues :price) 4)))
@@ -414,7 +416,9 @@
       (is (= "newly-named-expression"
              (lib/display-name query expr)))
       (is (not= (lib.options/uuid orig-expr)
-                (lib.options/uuid expr))))
+                (lib.options/uuid expr)))
+      (is (= (lib.options/ident orig-expr)
+             (lib.options/ident expr))))
     (testing "aggregation expressions can be renamed"
       (is (= "my count"
              (lib/display-name query agg)))
@@ -430,7 +434,9 @@
       (is (= "my count"
              (lib/display-name query agg)))
       (is (not= (lib.options/uuid orig-agg)
-                (lib.options/uuid agg))))
+                (lib.options/uuid agg)))
+      (is (= (lib.options/ident orig-expr)
+             (lib.options/ident expr))))
     (testing "filter expressions can be renamed"
       (is (= "my filter"
              (lib/display-name query new-filter)))
@@ -453,12 +459,12 @@
     (let [expr (lib/with-expression-name 0 "zero")]
       (is (=? [:value {:name "zero", :display-name "zero", :effective-type :type/Integer} 0]
               expr))
-      (is (= "zero" (lib/display-name lib.tu/venues-query expr))))))
+      (is (= "zero" (lib/display-name (lib.tu/venues-query) expr))))))
 
 (deftest ^:parallel diagnose-expression-test
   (testing "correct expression are accepted silently"
     (are [mode expr] (nil? (lib.expression/diagnose-expression
-                            lib.tu/venues-query 0 mode
+                            (lib.tu/venues-query) 0 mode
                             (lib.convert/->pMBQL expr)
                             #?(:clj nil :cljs js/undefined)))
       :expression  [:/ [:field 1 nil] 100]
@@ -471,7 +477,7 @@
       (binding [lib.schema.expression/*suppress-expression-type-check?* false]
         (are [mode expr] (=? {:message #"Type error: .*"}
                              (lib.expression/diagnose-expression
-                              lib.tu/venues-query 0 mode
+                              (lib.tu/venues-query) 0 mode
                               (lib.convert/->pMBQL expr)
                               #?(:clj nil :cljs js/undefined)))
           :expression  [:/ [:field 1 {:base-type :type/Address}] 100]
@@ -495,7 +501,7 @@
                                lib.convert/->pMBQL)
             query (reduce-kv (fn [query expr-name expr]
                                (lib/expression query 0 expr-name expr))
-                             lib.tu/venues-query
+                             (lib.tu/venues-query)
                              exprs)
             expressions (lib/expressions query)
             c-pos (some (fn [[i e]]

@@ -29,6 +29,7 @@ Once you've confirmed that you're looking at a non-cached view of your tables an
        "your_schema"."your_table_or_view"
    LIMIT 1
    ```
+
 4. [Manually re-sync](../databases/sync-scan.md#manually-syncing-tables-and-columns) the table or view if needed.
 
 ### Special cases
@@ -42,9 +43,9 @@ A sync query should show up like this in your database's query execution table (
 ```sql
 SELECT
     TRUE
-FROM 
+FROM
     "your_schema"."your_table_or_view"
-WHERE 
+WHERE
     1 <> 1
 LIMIT 0
 ```
@@ -52,7 +53,7 @@ LIMIT 0
 To run the sync query, Metabase must:
 
 - successfully connect to your database, and
-- be [granted privileges](../databases/users-roles-privileges.md) to query that database. 
+- be [granted privileges](../databases/users-roles-privileges.md) to query that database.
 
 If the [connection is failing](./db-connection.md) or the database privileges are wrong, the sync query won't be able to run. If Metabase can't sync with your database after you first set it up, then the initial scan and fingerprinting queries won't run either.
 
@@ -85,13 +86,13 @@ If you're waiting for the initial scan to run after connecting a database, make 
 Scan queries are run against your database to sample column values from the first 1,000 rows in a table or view:
 
 ```sql
-SELECT 
+SELECT
     "your_table_or_view"."column" AS "column"
-FROM 
+FROM
     "your_schema"."your_table_or_view"
-GROUP BY 
+GROUP BY
     "your_table_or_view"."column"
-ORDER BY 
+ORDER BY
     "your_table_or_view"."column" ASC
 LIMIT 1000
 ```
@@ -101,7 +102,7 @@ A failed scan is caused by a failed scan query---you can look at the logs to deb
 Note that when you [change a search box filter to a dropdown filter](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from the Table Metadata, you'll trigger a scan query for that field. If you have a dropdown filter that isn't picking up all the values in a field, remember that Metabase only samples the first 1,000 unique values per field, and stores a maximum of 100 kilobytes of text. If you've got more than 1,000 unique values in a column, or a lot of text-heavy data (like long URLs or survey responses), you can:
 
 - Use a search box filter for that field.
-- Clean up the data further in your [ETL or ELT](https://www.metabase.com/learn/analytics/etl-landscape) process.
+- Clean up the data further in your [ETL or ELT](https://www.metabase.com/learn/grow-your-data-skills/data-landscape/etl-landscape) process.
 
 ## Fingerprinting
 
@@ -127,16 +128,16 @@ If you're using MongoDB, Metabase fingerprints the first 10,000 documents per co
 The initial fingerprinting query looks at the first 10,000 rows from a given table or view in your database:
 
 ```sql
-SELECT 
+SELECT
     *
-FROM 
+FROM
     "your_schema"."your_table_or_view"
 LIMIT 10000
 ```
 
 If the first 10,000 rows aren't representative of the data in a table (for example, if you've got sparse data with a lot of blanks or nulls), you could see issues such as:
 
-- Incorrect [filter types](../questions/query-builder/introduction.md#filter-types), such as a category when you want a calendar.
+- Incorrect [filter types](../questions/query-builder/filters.md#filter-types), such as a category when you want a calendar.
 - Histogram visualizations that don't work (since Metabase needs a min and max value to generate the bins).
 
 Metabase doesn't have a built-in option to trigger manual fingerprinting queries. You can "reset" a field's settings using the steps above to try and force a fingerprinting query, but it's not guaranteed to work on all versions of Metabase.
@@ -144,12 +145,14 @@ Metabase doesn't have a built-in option to trigger manual fingerprinting queries
 ## Syncing or scanning is taking a long time
 
 To speed up **syncs**:
-   - Restrict the privileges used to connect to the database so that Metabase only syncs a limited subset of schemas or tables.
-   - [Reduce the frequency of sync queries](../databases/sync-scan.md#scheduling-database-syncs).
+
+- Restrict the privileges used to connect to the database so that Metabase only syncs a limited subset of schemas or tables.
+- [Reduce the frequency of sync queries](../databases/sync-scan.md#scheduling-database-syncs).
 
 To speed up **scans**:
-   - [Reduce the frequency of scans, or disable scans entirely](../databases/sync-scan.md#scheduling-database-scans).
-   - Reduce the number of columns being scanned by going to **Admin** > **Table Metadata** and setting **Filtering on this field** to **Search box** or **Plain input box**.
+
+- [Reduce the frequency of scans, or disable scans entirely](../databases/sync-scan.md#scheduling-database-scans).
+- Reduce the number of columns being scanned by going to **Admin** > **Table Metadata** and setting **Filtering on this field** to **Search box** or **Plain input box**.
 
 **Explanation**
 

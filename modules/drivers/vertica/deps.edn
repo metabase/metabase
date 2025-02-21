@@ -2,7 +2,8 @@
  ["src" "resources-ee"]
 
  :deps
- {com.vertica.jdbc/vertica-jdbc {:mvn/version "23.4.0-0"}}
+ {com.vertica.jdbc/vertica-jdbc ^:antq/exclude ; update to 24.3 breaks the date tests
+  {:mvn/version "23.4.0-0"}}
 
  :aliases
  {:oss

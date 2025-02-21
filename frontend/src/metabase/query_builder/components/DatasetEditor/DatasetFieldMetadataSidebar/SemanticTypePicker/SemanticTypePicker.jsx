@@ -1,14 +1,15 @@
+import cx from "classnames";
 import { useField } from "formik";
 import PropTypes from "prop-types";
 import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import Select from "metabase/core/components/Select";
-import SelectButon from "metabase/core/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import { Text } from "metabase/ui";
+import { Icon, Text } from "metabase/ui";
 
-import { FieldTypeIcon } from "./SemanticTypePicker.styled";
+import SemanticTypePickerS from "./SemanticTypePicker.module.css";
 
 const propTypes = {
   name: PropTypes.string,
@@ -17,6 +18,7 @@ const propTypes = {
   onKeyDown: PropTypes.func,
   options: PropTypes.array,
   onChange: PropTypes.func,
+  className: PropTypes.string,
 };
 
 function SemanticTypePicker({
@@ -26,8 +28,9 @@ function SemanticTypePicker({
   options,
   label,
   onChange,
+  className,
 }) {
-  const [field, _, { setValue }] = useField(name);
+  const [field, _meta, { setValue }] = useField(name);
 
   const selectButtonRef = useRef();
 
@@ -55,17 +58,26 @@ function SemanticTypePicker({
   const renderSelectButton = useCallback(() => {
     const icon = getSemanticTypeIcon(field.value, "ellipsis");
     return (
-      <SelectButon
+      <SelectButton
+        className={className}
         hasValue={!!field.value}
         onKeyDown={onKeyDown}
         tabIndex={tabIndex}
         ref={selectButtonRef}
-        left={<FieldTypeIcon name={icon} />}
+        left={
+          <Icon
+            className={cx(SemanticTypePickerS.FieldTypeIcon, {
+              [SemanticTypePickerS.ellipsis]: icon === "ellipsis",
+            })}
+            size={14}
+            name={icon}
+          />
+        }
       >
         {pickerLabel}
-      </SelectButon>
+      </SelectButton>
     );
-  }, [field, tabIndex, pickerLabel, onKeyDown]);
+  }, [field.value, className, onKeyDown, tabIndex, pickerLabel]);
 
   return (
     <>
@@ -73,6 +85,7 @@ function SemanticTypePicker({
         {label}
       </Text>
       <Select
+        className={className}
         value={field.value}
         options={options}
         onChange={onSelectValue}

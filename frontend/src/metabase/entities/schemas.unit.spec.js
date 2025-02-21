@@ -32,7 +32,7 @@ describe("schema entity", () => {
     const { schemas, tables } = store.getState().entities;
     expect(schemas).toEqual({
       "1:public": {
-        database: "1",
+        database: 1,
         id: "1:public",
         name: "public",
         tables: [123, 234],
@@ -73,7 +73,7 @@ describe("schema entity", () => {
     const { schemas, tables } = store.getState().entities;
     expect(schemas).toEqual({
       "1:": {
-        database: "1",
+        database: 1,
         id: "1:",
         name: "",
         tables: [123, 234],

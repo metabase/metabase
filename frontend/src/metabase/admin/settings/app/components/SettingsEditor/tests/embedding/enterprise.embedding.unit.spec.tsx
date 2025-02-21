@@ -71,12 +71,14 @@ describe("[EE, no token] embedding settings", () => {
           }),
         );
         expect(
-          withinStaticEmbeddingCard.getByText("upgrade to a paid plan"),
+          withinStaticEmbeddingCard.getByText(
+            "upgrade to a specific paid plan",
+          ),
         ).toBeInTheDocument();
 
         expect(
           withinStaticEmbeddingCard.getByRole("link", {
-            name: "upgrade to a paid plan",
+            name: "upgrade to a specific paid plan",
           }),
         ).toHaveProperty(
           "href",
@@ -129,7 +131,9 @@ describe("[EE, no token] embedding settings", () => {
             name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
-        expect(withinEmbeddingSdkCard.getByText("Beta")).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.queryByText("Beta"),
+        ).not.toBeInTheDocument();
         expect(
           withinEmbeddingSdkCard.getByText(
             /Interactive embedding with full, granular control./,
@@ -281,12 +285,14 @@ describe("[EE, no token] embedding settings", () => {
           }),
         );
         expect(
-          withinStaticEmbeddingCard.getByText("upgrade to a paid plan"),
+          withinStaticEmbeddingCard.getByText(
+            "upgrade to a specific paid plan",
+          ),
         ).toBeInTheDocument();
 
         expect(
           withinStaticEmbeddingCard.getByRole("link", {
-            name: "upgrade to a paid plan",
+            name: "upgrade to a specific paid plan",
           }),
         ).toHaveProperty(
           "href",
@@ -339,7 +345,9 @@ describe("[EE, no token] embedding settings", () => {
             name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
-        expect(withinEmbeddingSdkCard.getByText("Beta")).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.queryByText("Beta"),
+        ).not.toBeInTheDocument();
         expect(
           withinEmbeddingSdkCard.getByText(
             /Interactive embedding with full, granular control./,
@@ -463,7 +471,7 @@ describe("[EE, no token] embedding settings", () => {
     expect(getInteractiveEmbeddingQuickStartLink()).toBeInTheDocument();
     expect(getInteractiveEmbeddingQuickStartLink()).toHaveProperty(
       "href",
-      "https://www.metabase.com/docs/v0.49/embedding/interactive-embedding-quick-start-guide.html?utm_source=oss&utm_media=embed-settings",
+      "https://www.metabase.com/docs/v0.49/embedding/interactive-embedding-quick-start-guide.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-interactive&utm_content=embedding-admin&source_plan=oss",
     );
   });
 

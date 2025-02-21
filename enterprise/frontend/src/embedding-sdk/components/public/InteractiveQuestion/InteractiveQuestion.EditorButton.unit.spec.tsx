@@ -8,8 +8,9 @@ import {
   setupDatabaseEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import { screen } from "__support__/ui";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
+import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import {
@@ -76,16 +77,15 @@ const setup = ({
 
   const clickSpy = jest.fn();
 
-  renderWithProviders(
+  renderWithSDKProviders(
     <InteractiveQuestion questionId={TEST_CARD.id}>
       <div>Look! A Button! 👇</div>
-      <InteractiveQuestion.NotebookButton onClick={clickSpy} isOpen={isOpen} />
+      <InteractiveQuestion.EditorButton onClick={clickSpy} isOpen={isOpen} />
     </InteractiveQuestion>,
     {
-      mode: "sdk",
       sdkProviderProps: {
-        config: createMockJwtConfig({
-          jwtProviderUri: "http://TEST_URI/sso/metabase",
+        authConfig: createMockAuthProviderUriConfig({
+          authProviderUri: "http://TEST_URI/sso/metabase",
         }),
       },
       storeInitialState: state,

@@ -1,4 +1,8 @@
-import { segmentApi } from "metabase/api";
+import {
+  segmentApi,
+  useGetSegmentQuery,
+  useListSegmentsQuery,
+} from "metabase/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
@@ -13,6 +17,13 @@ const Segments = createEntity({
   nameOne: "segment",
   path: "/api/segment",
   schema: SegmentSchema,
+
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery,
+    }),
+    useListQuery: useListSegmentsQuery,
+  },
 
   api: {
     list: (entityQuery, dispatch) =>
@@ -71,5 +82,9 @@ const Segments = createEntity({
     getIcon: segment => ({ name: "segment" }),
   },
 });
+
+const useGetQuery = ({ id }, options) => {
+  return useGetSegmentQuery(id, options);
+};
 
 export default Segments;

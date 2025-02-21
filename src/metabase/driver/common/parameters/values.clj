@@ -17,7 +17,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.limit :as limit]
@@ -31,7 +30,6 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.text NumberFormat)
    (java.util UUID)))
 
 (set! *warn-on-reflection* true)
@@ -95,13 +93,28 @@
     #{[target-type [:template-tag (:name tag)]]
       [target-type [:template-tag {:id (:id tag)}]]}))
 
+(defn- tag-target-pred
+  "Returns a predicate recognizing parameter targets pointing to `tag`."
+  [tag]
+  (let [targets (tag-targets tag)]
+    (fn tag-target? [param-target]
+      (and (vector? param-target)
+           (> (count param-target) 1)
+           (targets (subvec param-target 0 2))
+           ;; legacy dimension params come without stage-number, 0 is the default
+           (= (get-in param-target [2 :stage-number] 0)
+              ;; Currently, we have no multi-stage native queries, so the stage-number is always 0.
+              ;; If in the future we introduce such queries, we can specify the stage-number of tags
+              ;; and they should match the stage-number of the parameter target.
+              (get tag :stage-number 0))))))
+
 (mu/defn- tag-params
   "Return params from the provided `params` list targeting the provided `tag`."
   [tag    :- mbql.s/TemplateTag
    params :- [:maybe [:sequential mbql.s/Parameter]]]
-  (let [targets (tag-targets tag)]
+  (let [tag-target? (tag-target-pred tag)]
     (seq (for [param params
-               :when (contains? targets (:target param))]
+               :when (tag-target? (:target param))]
            param))))
 
 ;;; FieldFilter Params (Field Filters) (e.g. WHERE {{x}})
@@ -153,9 +166,13 @@
       ;; so that this filter can be substituted with "1 = 1" regardless of whether or not this tag has default value
       (and (not (:required tag)) nil-value?)
       params/no-value
-      ;; When a FieldFilter has value=nil and is required, throw an exception
+      ;; When a FieldFilter has value=nil and is required, use the default value or throw an exception
       (and (:required tag) nil-value?)
-      (throw (missing-required-param-exception (:display-name tag)))
+      (if-let [tag-default (:default tag)]
+        (cond-> {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
+                 :value   tag-default}
+          tag-opts (assoc :options tag-opts))
+        (throw (missing-required-param-exception (:display-name tag))))
       ;; otherwise, attempt to fall back to the default value specified as part of the template tag.
       (some? (:default tag))
       (cond-> {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
@@ -220,7 +237,7 @@
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
-        snippet    (or (t2/select-one NativeQuerySnippet :id snippet-id)
+        snippet    (or (t2/select-one :model/NativeQuerySnippet :id snippet-id)
                        (throw (ex-info (tru "Snippet {0} {1} not found." snippet-id (pr-str snippet-name))
                                        {:snippet-id   snippet-id
                                         :snippet-name snippet-name
@@ -250,8 +267,6 @@
     ;; If the param is not present in `params` use a default from either the tag or the Dashboard parameter.
     ;; If both the tag and Dashboard parameter specify a default value, prefer the default value from the tag.
     (or (:value matching-param)
-        (when (and nil-value? (:required tag))
-          (throw (missing-required-param-exception (:display-name tag))))
         (when (and nil-value? (not (:required tag)))
           params/no-value)
         (:default tag)
@@ -276,9 +291,12 @@
 
 (mu/defn- parse-number :- number?
   "Parse a string like `1` or `2.0` into a valid number. Done mostly to keep people from passing in
-   things that aren't numbers, like SQL identifiers."
+  things that aren't numbers, like SQL identifiers. When the value is an integer outside the Long range, BigInteger
+  is returned."
   [s :- :string]
-  (.parse (NumberFormat/getInstance) ^String s))
+  (if (re-find #"\." s)
+    (Double/parseDouble s)
+    (or (parse-long s) (biginteger s))))
 
 (mu/defn- value->number :- [:or number? [:sequential {:min 1} number?]]
   "Parse a 'numeric' param value. Normally this returns an integer or floating-point number, but as a somewhat

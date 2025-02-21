@@ -1,4 +1,3 @@
-import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
@@ -10,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  fireEvent,
   mockGetBoundingClientRect,
   mockScrollBy,
   renderWithProviders,
@@ -20,7 +20,7 @@ import {
 } from "__support__/ui";
 import { METAKEY } from "metabase/lib/browser";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import { createQuery, getJoinQueryHelpers } from "metabase-lib/test-helpers";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
 import {
   createMockCollectionItem,
@@ -66,43 +66,6 @@ const metadata = createMockMetadata({
   questions: [MODEL, QUESTION],
 });
 
-function getJoinQueryHelpers(query: Lib.Query) {
-  const table = Lib.tableOrCardMetadata(query, PRODUCTS_ID);
-
-  const findLHSColumn = columnFinder(
-    query,
-    Lib.joinConditionLHSColumns(query, 0),
-  );
-  const findRHSColumn = columnFinder(
-    query,
-    Lib.joinConditionRHSColumns(query, 0, table),
-  );
-
-  const defaultStrategy = Lib.availableJoinStrategies(query, 0).find(
-    strategy => Lib.displayInfo(query, 0, strategy).default,
-  );
-
-  if (!defaultStrategy) {
-    throw new Error("No default strategy found");
-  }
-
-  const defaultOperator = Lib.joinConditionOperators(query, 0).find(
-    operator => Lib.displayInfo(query, 0, operator).default,
-  );
-
-  if (!defaultOperator) {
-    throw new Error("No default operator found");
-  }
-
-  return {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  };
-}
-
 function getJoinedQuery() {
   const query = createQuery({ metadata });
 
@@ -112,7 +75,7 @@ function getJoinedQuery() {
     defaultOperator,
     findLHSColumn,
     findRHSColumn,
-  } = getJoinQueryHelpers(query);
+  } = getJoinQueryHelpers(query, 0, PRODUCTS_ID);
 
   const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
   const productsId = findRHSColumn("PRODUCTS", "ID");
@@ -136,8 +99,11 @@ function getJoinedQuery() {
 
 function getJoinedQueryWithMultipleConditions() {
   const query = getJoinedQuery();
-  const { defaultOperator, findLHSColumn, findRHSColumn } =
-    getJoinQueryHelpers(query);
+  const { defaultOperator, findLHSColumn, findRHSColumn } = getJoinQueryHelpers(
+    query,
+    0,
+    PRODUCTS_ID,
+  );
 
   const [currentJoin] = Lib.joins(query, 0);
   const currentConditions = Lib.joinConditions(currentJoin);
@@ -272,13 +238,14 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(
       within(screen.getByLabelText("Right table")).getByRole("button"),
     );
-    const modal = await screen.findByTestId("entity-picker-modal");
 
     await waitForLoaderToBeRemoved();
 
-    expect(within(modal).getByText("Products")).toBeInTheDocument();
-    expect(within(modal).getByText("People")).toBeInTheDocument();
-    expect(within(modal).getByText("Reviews")).toBeInTheDocument();
+    const modal = await screen.findByTestId("entity-picker-modal");
+
+    expect(await within(modal).findByText("Products")).toBeInTheDocument();
+    expect(await within(modal).findByText("People")).toBeInTheDocument();
+    expect(await within(modal).findByText("Reviews")).toBeInTheDocument();
   });
 
   it("should not allow picking a right table from another database", async () => {
@@ -287,9 +254,10 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(
       within(screen.getByLabelText("Right table")).getByRole("button"),
     );
-    const modal = await screen.findByTestId("entity-picker-modal");
 
     await waitForLoaderToBeRemoved();
+
+    const modal = await screen.findByTestId("entity-picker-modal");
 
     expect(
       within(modal).queryByText(ANOTHER_DATABASE.name),
@@ -322,17 +290,18 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(
       within(screen.getByLabelText("Right table")).getByRole("button"),
     );
-    const modal = await screen.findByTestId("entity-picker-modal");
 
     await waitForLoaderToBeRemoved();
 
-    expect(within(modal).getByText("Recents")).toBeInTheDocument();
+    const modal = await screen.findByTestId("entity-picker-modal");
+
+    expect(await within(modal).findByText("Recents")).toBeInTheDocument();
     expect(
-      within(modal).getByRole("tab", { name: /Recents/i }),
+      await within(modal).findByRole("tab", { name: /Recents/i }),
     ).toHaveAttribute("aria-selected", "true");
 
     expect(within(modal).queryByText(QUESTION.name)).not.toBeInTheDocument();
-    expect(within(modal).getByText(MODEL.name)).toBeInTheDocument();
+    expect(await within(modal).findByText(MODEL.name)).toBeInTheDocument();
   });
 
   it("should open the LHS column picker after right table is selected and the RHS picker after it", async () => {
@@ -565,19 +534,26 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(within(rhsTablePicker).getByRole("button"));
     const entityPickerModal = await screen.findByTestId("entity-picker-modal");
     await waitForLoaderToBeRemoved();
-    await userEvent.click(within(entityPickerModal).getByText("Reviews"));
+    await userEvent.click(
+      await within(entityPickerModal).findByText("Reviews"),
+    );
     const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
-    await userEvent.click(within(lhsColumnPicker).getByText("ID"));
-
+    await userEvent.click(await within(lhsColumnPicker).findByText("ID"));
     const newRhsTablePicker = screen.getByLabelText("Right table");
-    await userEvent.click(within(newRhsTablePicker).getByText("Reviews"));
+    await userEvent.click(
+      await within(newRhsTablePicker).findByText("Reviews"),
+    );
     const newEntityPickerModal = await screen.findByTestId(
       "entity-picker-modal",
     );
     await waitForLoaderToBeRemoved();
-    await userEvent.click(within(newEntityPickerModal).getByText("Orders"));
+    await userEvent.click(
+      await within(newEntityPickerModal).findByText("Orders"),
+    );
     const lhsColumn = screen.getByLabelText("Left column");
-    expect(within(lhsColumn).getByText("Pick a column…")).toBeInTheDocument();
+    expect(
+      await within(lhsColumn).findByText("Pick a column…"),
+    ).toBeInTheDocument();
     expect(within(lhsColumn).queryByText("ID")).not.toBeInTheDocument();
   });
 
@@ -1203,17 +1179,15 @@ describe("Notebook Editor > Join Step", () => {
     it("should show the tooltip on hover only for the actual data source (right table)", async () => {
       setup({ step: createMockNotebookStep({ query: getJoinedQuery() }) });
 
-      await expect(
-        userEvent.hover(
-          within(screen.getByLabelText("Left table")).getByText("Orders"),
-        ),
-      ).rejects.toThrow(/pointer-events: none/);
+      userEvent.hover(
+        within(screen.getByLabelText("Left table")).getByText("Orders"),
+      );
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
 
       await userEvent.hover(
         within(screen.getByLabelText("Right table")).getByText("Products"),
       );
-      expect(screen.getByRole("tooltip")).toHaveTextContent(
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
         `${METAKEY}+click to open in new tab`,
       );
     });

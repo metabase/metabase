@@ -86,7 +86,11 @@ export const ClickActionControl = ({
     case "sort":
       return (
         <Tooltip tooltip={action.tooltip}>
-          <SortControl onlyIcon onClick={handleClick}>
+          <SortControl
+            onlyIcon
+            onClick={handleClick}
+            data-testid={`click-actions-sort-control-${action.name}`}
+          >
             {typeof action.icon === "string" && (
               <Icon size={14} name={action.icon as unknown as IconName} />
             )}
@@ -108,21 +112,22 @@ export const ClickActionControl = ({
     case "horizontal":
       return (
         <Button
+          size="xs"
+          p="0.5rem"
+          mx="-0.5rem"
+          variant="inverse"
           classNames={{
             root: styles.horizontalButton,
             label: styles.label,
             inner: styles.inner,
           }}
-          leftIcon={
+          leftSection={
             action.iconText ? (
-              <ClickActionButtonTextIcon className={styles.nested}>
+              <ClickActionButtonTextIcon>
                 {action.iconText}
               </ClickActionButtonTextIcon>
             ) : action.icon ? (
-              <ClickActionButtonIcon
-                name={action.icon}
-                className={styles.nested}
-              />
+              <ClickActionButtonIcon name={action.icon} />
             ) : null
           }
           onClick={handleClick}
@@ -137,6 +142,4 @@ export const ClickActionControl = ({
     case "info":
       return <InfoControl>{action.title}</InfoControl>;
   }
-
-  return null;
 };

@@ -1,11 +1,10 @@
 import type { MouseEvent, ReactNode } from "react";
 import { useCallback, useState } from "react";
 
+import Animation from "metabase/css/core/animation.module.css";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";
-
-const POPOVER_TRANSITION_DURATION = 150;
 
 // Initially, the user will have to hover for this long to open the popover
 const POPOVER_SLOW_OPEN_DELAY = 250;
@@ -22,11 +21,7 @@ const POPOVER_FAST_OPEN_DELAY = 150;
 // we don't close immediately but delay by a short amount to avoid flicker.
 const POPOVER_CLOSE_DELAY = POPOVER_FAST_OPEN_DELAY + 30;
 
-import {
-  Dropdown,
-  HackyInvisibleTargetFiller,
-  WidthBound,
-} from "./Popover.styled";
+import { Dropdown, WidthBound } from "./Popover.styled";
 
 export type PopoverProps = Pick<
   HoverCardProps,
@@ -71,10 +66,8 @@ export function Popover({
       closeDelay={POPOVER_CLOSE_DELAY}
       onOpen={handleOpen}
       onClose={handleClose}
-      transitionProps={{
-        duration: group.shouldDelay ? POPOVER_TRANSITION_DURATION : 0,
-      }}
       middlewares={{
+        size: true,
         shift: true,
         flip: false,
       }}
@@ -84,10 +77,8 @@ export function Popover({
         onClick={stopPropagation}
         onMouseDown={stopPropagation}
         onMouseUp={stopPropagation}
+        className={group.shouldDelay ? Animation.fadeIn : null}
       >
-        {/* HACK: adds an element between the target and the card */}
-        {/* to avoid the card from disappearing */}
-        <HackyInvisibleTargetFiller />
         <WidthBound
           width={width}
           ref={node => {

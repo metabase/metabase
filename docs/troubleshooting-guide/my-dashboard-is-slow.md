@@ -14,13 +14,13 @@ First, you'll want to make sure your browser is on friendly terms with Metabase:
 1. Create a new dashboard for each group of cards that are related to the same time period or segment.
    - For example, create new dashboards for weekly vs. monthly metrics, or new vs. returning customers.
 2. Move your cards to the new dashboard(s) until each dashboard has 10 or fewer cards.
-3. Use [custom destinations](https://www.metabase.com/learn/dashboards/custom-destinations) to link related cards on different dashboards.
+3. Use [custom destinations](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) to link related cards on different dashboards.
 
 **Explanation**
 
 A dashboard with 50 cards is almost always going to be slower than 5 dashboards with 10 cards. Metabase displays a dashboard by refreshing all of the questions on it (that is, re-executing all of the queries against your database). Your data warehouse may try to run these queries at the same time to return the results faster, however, these queries can actually compete with each other and slow things down (like having too many programs open on your computer at once).
 
-Aside from running faster, a small and focused dashboard is also easier for people to understand without getting overwhelmed. For more tips, check out our article on [BI dashboard best practices](https://www.metabase.com/learn/dashboards/bi-dashboard-best-practices).
+Aside from running faster, a small and focused dashboard is also easier for people to understand without getting overwhelmed. For more tips, check out our article on [BI dashboard best practices](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/bi-dashboard-best-practices).
 
 ## Dashboard used by many people at the same time
 
@@ -49,15 +49,15 @@ When someone loads a question or a dashboard in a static embed, however, that qu
 ## Dashboard is slow compared to similar dashboards
 
 1. Remove fields (columns) that you don't need in the final result.
-2. Add a [filter](../questions/query-builder/introduction.md#filtering) to reduce the amount of data being queried. For example:
+2. Add a [filter](../questions/query-builder/filters.md) to reduce the amount of data being queried. For example:
    - Narrow down the time frame to the reporting period that you care about.
    - Exclude invalid records, such as: blanks, nulls, or rows with values like "cancelled", "expired", "invalid", and so on.
-3. Remove [joins](../questions/query-builder/introduction.md#joining-data) to tables that aren't being used.
+3. Remove [joins](../questions/query-builder/join.md) to tables that aren't being used.
 4. If you're aggregating data from the query builder, ask your database admin if there's a pre-aggregated [view](https://www.metabase.com/glossary/view) that you can use instead.
 
 **Explanation**
 
-When you update your question to use a minimal number of rows or columns (or switch your question to use a smaller table, such as a summary table) your database can spend less time scanning those records in order to return your results. Narrowing the scope of your question is especially important to think about if you're [starting from someone else's saved question or model](../questions/query-builder/introduction.md#play-around-with-saved-questions), because you might not need all of the data that the original creator decided to include.
+When you update your question to use a minimal number of rows or columns (or switch your question to use a smaller table, such as a summary table) your database can spend less time scanning those records in order to return your results. Narrowing the scope of your question is especially important to think about if you're starting from someone else's saved question or model, because you might not need all of the data that the original creator decided to include.
 
 If all of your dashboards are slow, you might be limited by the performance of a particular data source. In that case, we recommend teaming up with your database admin to [Troubleshoot database performance](./db-performance.md).
 

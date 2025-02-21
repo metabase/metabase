@@ -1,10 +1,12 @@
-(ns ^:mb/once metabase.driver.mysql-test
+(ns metabase.driver.mysql-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase.actions.error :as actions.error]
+   [metabase.actions.models :as action]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
@@ -15,16 +17,13 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.action :as action]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test.string-extracts-test
-    :as string-extracts-test]
+   [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.sync :as sync]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -32,8 +31,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,13 +67,29 @@
                      "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
           (jdbc/execute! spec [sql]))
         ;; create & sync MB DB
-        (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
+        (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
           (sync/sync-database! database)
           (mt/with-db database
             ;; run the query
             (is (= [[1 nil]]
                    (mt/rows
                     (mt/run-mbql-query exciting-moments-in-history))))))))))
+
+(deftest multiple-schema-test
+  (testing "Make sure that we filter databases (schema) with :db or :dbname (#50072)"
+    (mt/test-driver :mysql
+      (drop-if-exists-and-create-db! "dbone")
+      (drop-if-exists-and-create-db! "dbtwo")
+      (doseq [dbname ["dbone" "dbtwo"]
+              :let [details (tx/dbdef->connection-details :mysql :db {:database-name dbname})
+                    spec    (sql-jdbc.conn/connection-details->spec :mysql details)]]
+        (jdbc/execute! spec [(format "CREATE TABLE same_table_name (%s_a integer, %s_b integer, %s_c integer);" dbname dbname dbname)]))
+      (doseq [details [(tx/dbdef->connection-details :mysql :db {:database-name "dbone"})
+                       (set/rename-keys (tx/dbdef->connection-details :mysql :db {:database-name "dbone"}) {:db :dbname})]]
+        (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
+          (sync/sync-database! database)
+          (is (= #{"dbone_a" "dbone_b" "dbone_c"}
+                 (into #{} (map :name) (driver/describe-fields :mysql database)))))))))
 
 (deftest date-test
   ;; make sure stuff at least compiles. Even if the result probably isn't as concise as it could be.
@@ -130,8 +144,8 @@
 (defn db->fields
   "Given a DB return its fields as a set."
   [db]
-  (let [table-ids (t2/select-pks-set Table :db_id (u/the-id db))]
-    (set (map (partial into {}) (t2/select [Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
+  (let [table-ids (t2/select-pks-set :model/Table :db_id (u/the-id db))]
+    (set (map (partial into {}) (t2/select [:model/Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
 
 (deftest tiny-int-1-test
   (mt/test-driver :mysql
@@ -145,9 +159,9 @@
                (db->fields (mt/db)))))
 
       (testing "if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead"
-        (t2.with-temp/with-temp [Database db {:engine  "mysql"
-                                              :details (assoc (:details (mt/db))
-                                                              :additional-options "tinyInt1isBit=false")}]
+        (mt/with-temp [:model/Database db {:engine  "mysql"
+                                           :details (assoc (:details (mt/db))
+                                                           :additional-options "tinyInt1isBit=false")}]
           (sync/sync-database! db)
           (is (= #{{:name "number-of-cans", :base_type :type/Integer, :semantic_type :type/Quantity}
                    {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
@@ -166,8 +180,8 @@
         (is (= #{{:name "year_column", :base_type :type/Integer, :semantic_type nil}
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}}
                (db->fields (mt/db)))))
-      (let [table  (t2/select-one Table :db_id (u/id (mt/db)))
-            fields (t2/select Field :table_id (u/id table) :name "year_column")]
+      (let [table  (t2/select-one :model/Table :db_id (u/id (mt/db)))
+            fields (t2/select :model/Field :table_id (u/id table) :name "year_column")]
         (testing "Can select from this table"
           (is (= [[2001] [2002] [1999]]
                  (metadata-queries/table-rows-sample table fields (constantly conj)))))
@@ -336,7 +350,7 @@
                           false
                           (throw se))))]
         (when compat
-          (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
+          (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
             (sync/sync-database! database)
             (is (= [{:name   "src1"
                      :fields [{:name      "id"
@@ -348,7 +362,7 @@
                                :base_type :type/Integer}
                               {:name      "t"
                                :base_type :type/Text}]}]
-                   (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
+                   (->> (t2/hydrate (t2/select :model/Table :db_id (:id database) {:order-by [:name]}) :fields)
                         (map table-fingerprint))))))))))
 
 (defn- create-enums-table! [db]
@@ -497,7 +511,7 @@
                                                                        [4 6 "{\"int_turn_string\":5}"]]]
                                         (format "INSERT INTO `json_table` (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json)))]
               (jdbc/execute! spec [statement]))
-            (t2.with-temp/with-temp
+            (mt/with-temp
               [:model/Database database {:name "composite_pks_test" :engine driver/*driver* :details details}]
               (mt/with-db database
                 (sync-tables/sync-tables-and-database! database)
@@ -511,22 +525,21 @@
                        (sql-jdbc.sync/describe-nested-field-columns
                         driver/*driver*
                         database
-                        (t2/select-one Table :db_id (mt/id) :name "json_table"))))))))))))
+                        (t2/select-one :model/Table :db_id (mt/id) :name "json_table"))))))))))))
 
 (deftest json-alias-test
   (mt/test-driver :mysql
     (when (not (mysql/mariadb? (mt/db)))
       (testing "json breakouts and order bys have alias coercion"
         (mt/dataset json
-          (let [table  (t2/select-one Table :db_id (u/id (mt/db)) :name "json")]
+          (let [table  (t2/select-one :model/Table :db_id (u/id (mt/db)) :name "json")]
             (sync/sync-table! table)
-            (let [field (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")
+            (let [field (t2/select-one :model/Field :table_id (u/id table) :name "json_bit → 1234")
                   compile-res (qp.compile/compile
-                               {:database (u/the-id (mt/db))
-                                :type     :query
-                                :query    {:source-table (u/the-id table)
-                                           :aggregation  [[:count]]
-                                           :breakout     [[:field (u/the-id field) nil]]}})]
+                               (mt/mbql-query nil
+                                 {:source-table (u/the-id table)
+                                  :aggregation  [[:count]]
+                                  :breakout     [[:field (u/the-id field) nil]]}))]
               (is (= ["SELECT"
                       "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) AS `json_bit → 1234`,"
                       "  COUNT(*) AS `count`"
@@ -545,9 +558,9 @@
       (testing "Deal with complicated identifier (#22967, but for mysql)"
         (mt/dataset json
           (let [database (mt/db)
-                table    (t2/select-one Table :db_id (u/id database) :name "json")]
+                table    (t2/select-one :model/Table :db_id (u/id database) :name "json")]
             (sync/sync-table! table)
-            (let [field    (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")]
+            (let [field    (t2/select-one :model/Field :table_id (u/id table) :name "json_bit → 1234")]
               (mt/with-metadata-provider (mt/id)
                 (let [field-clause [:field (u/the-id field) {:binning
                                                              {:strategy :num-bins,
@@ -580,16 +593,17 @@
 
 ;;; ------------------------------------------------ Actions related ------------------------------------------------
 
-;; API tests are in [[metabase.api.action-test]]
-(deftest actions-maybe-parse-sql-error-test
+;; API tests are in [[metabase.actions.api-test]]
+(deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (= {:type :metabase.actions.error/violate-not-null-constraint
             :message "F1 must have values."
             :errors {"f1" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :mysql actions.error/violate-not-null-constraint nil nil
-            "Column 'f1' cannot be null"))))
+            "Column 'f1' cannot be null")))))
 
+(deftest actions-maybe-parse-sql-error-test-2
   (testing "violate unique constraint"
     (with-redefs [mysql.actions/constraint->column-names (constantly ["PRIMARY"])]
       (is (= {:type :metabase.actions.error/violate-unique-constraint,
@@ -597,31 +611,37 @@
               :errors {"PRIMARY" "This Primary value already exists."}}
              (sql-jdbc.actions/maybe-parse-sql-error
               :mysql actions.error/violate-unique-constraint nil nil
-              "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'")))))
+              "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'"))))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-test-3
   (testing "incorrect type"
     (is (= {:type :metabase.actions.error/incorrect-value-type,
             :message "Some of your values aren’t of the correct type for the database."
             :errors {"id" "This value should be of type Integer."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :mysql actions.error/incorrect-value-type nil nil
-            "(conn=183) Incorrect integer value: 'STRING' for column `table`.`id` at row 1"))))
+            "(conn=183) Incorrect integer value: 'STRING' for column `table`.`id` at row 1")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-test-4
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint
             :message "Unable to create a new record."
             :errors {"group-id" "This Group-id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :mysql actions.error/violate-foreign-key-constraint nil :row/create
-            "(conn=45) Cannot add or update a child row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))
+            "(conn=45) Cannot add or update a child row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-test-5
+  (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to update the record.",
             :errors {"group" "This Group does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :mysql actions.error/violate-foreign-key-constraint nil :row/update
-            "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))
+            "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-test-6
+  (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint
             :message "Other tables rely on this row so it cannot be deleted."
             :errors {}}
@@ -645,7 +665,7 @@
                       "INSERT INTO mytable (id, column1, column2)
                       VALUES  (1, 'A', 'A'), (2, 'B', 'B');"]]
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details) [stmt]))
-        (t2.with-temp/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+        (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
           (mt/with-db database
             (sync/sync-database! database)
             (mt/with-actions-enabled
@@ -734,11 +754,11 @@
         (let [details          (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
               spec             (sql-jdbc.conn/connection-details->spec :mysql details)
               get-privileges   (fn []
-                                 (let [new-connection-details (cond-> (assoc details
-                                                                             :user "table_privileges_test_user",
-                                                                             :password "password"
-                                                                             :ssl true
-                                                                             :additional-options "trustServerCertificate=true"))]
+                                 (let [new-connection-details (assoc details
+                                                                     :user "table_privileges_test_user",
+                                                                     :password "password"
+                                                                     :ssl true
+                                                                     :additional-options "trustServerCertificate=true")]
                                    (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                     [spec [:mysql new-connection-details]]
                                      (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
@@ -747,7 +767,7 @@
             (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
                           "CREATE TABLE `baz` (id INTEGER);"
                           "CREATE USER 'table_privileges_test_user' IDENTIFIED BY 'password';"
-                          (str "GRANT SELECT ON table_privileges_test.`bar` TO 'table_privileges_test_user'")]]
+                          "GRANT SELECT ON table_privileges_test.`bar` TO 'table_privileges_test_user'"]]
               (jdbc/execute! spec stmt))
             (testing "should return privileges on the table"
               (is (= [{:role   nil
@@ -759,13 +779,13 @@
                        :delete false}]
                      (get-privileges))))
             (testing "should return privileges on the database"
-              (jdbc/execute! spec (str "GRANT UPDATE ON `table_privileges_test`.* TO 'table_privileges_test_user'"))
+              (jdbc/execute! spec "GRANT UPDATE ON `table_privileges_test`.* TO 'table_privileges_test_user'")
               (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert false, :delete false}
                       {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
                      (get-privileges))))
             (testing "should return privileges on roles that the user has been granted"
               (doseq [stmt ["CREATE ROLE 'table_privileges_test_role'"
-                            (str "GRANT INSERT ON `bar` TO 'table_privileges_test_role'")
+                            "GRANT INSERT ON `bar` TO 'table_privileges_test_role'"
                             "GRANT 'table_privileges_test_role' TO 'table_privileges_test_user'"]]
                 (jdbc/execute! spec stmt))
               (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
@@ -777,3 +797,21 @@
                             "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
                             "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
                 (jdbc/execute! spec stmt)))))))))
+
+(deftest ^:parallel temporal-column-with-binning-keeps-type
+  (mt/test-driver :mysql
+    (let [mp (mt/metadata-provider)]
+      (doseq [[field bins] [[:birth_date [:year :quarter :month :week :day]]
+                            [:created_at [:year :quarter :month :week :day :hour :minute]]]
+              bin bins]
+        (testing (str "field " (name field) " for temporal bucket " (name bin))
+          (let [field-md (lib.metadata/field mp (mt/id :people field))
+                unbinned-query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                                   (lib/with-fields [field-md])
+                                   (lib/limit 1))
+                binned-query (-> unbinned-query
+                                 (lib/breakout (lib/with-temporal-bucket field-md bin)))]
+            ;; mysql has no way to cast to TIMESTAMP, so if you do anything to it, it becomes a DATETIME
+            (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type)
+                        (map #(get {"TIMESTAMP" "DATETIME"} % %)))
+                   (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))

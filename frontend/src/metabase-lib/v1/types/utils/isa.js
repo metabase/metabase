@@ -106,6 +106,7 @@ export const isNumeric = isFieldType.bind(null, NUMBER);
 export const isInteger = isFieldType.bind(null, INTEGER);
 export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
+export const isStringLike = isFieldType.bind(null, STRING_LIKE);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isScope = isFieldType.bind(null, SCOPE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
@@ -153,7 +154,9 @@ export const isDateWithoutTime = field => {
 export const isNumber = field =>
   field &&
   isNumericBaseType(field) &&
-  (field.semantic_type == null || isa(field.semantic_type, TYPE.Number));
+  (field.semantic_type == null ||
+    isa(field.semantic_type, TYPE.Number) ||
+    isa(field.semantic_type, TYPE.Category));
 
 export const isTime = field => {
   if (!field) {

@@ -7,7 +7,6 @@ import { useMergedRef } from "@mantine/hooks";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
-import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import {
@@ -17,6 +16,7 @@ import {
 } from "../NotebookCell";
 
 import { ClausePopover } from "./ClausePopover";
+import S from "./ClauseStep.module.css";
 
 type RenderItemOpts<T> = {
   item: T;
@@ -67,7 +67,7 @@ export const ClauseStep = <T,>({
         {renderName(item, index)}
         {hasRemoveButton && (
           <Icon
-            className={CS.ml1}
+            className={S.closeIcon}
             name="close"
             onClick={e => {
               e.stopPropagation();

@@ -96,8 +96,7 @@
 
   A string `:date-format` is converted to a `date-builder` structure.
   If `:date-format` is provided in either form, `:date-style` is ignored.
-  See [[resolve-date-style]] for the details of how the `:date-style` is transformed to a format structure.
-  "
+  See [[resolve-date-style]] for the details of how the `:date-style` is transformed to a format structure."
   [{:keys [date-separator weekday-enabled] :as options}]
   (let [date-format (-> options normalize-date-format resolve-date-style)]
     (cond-> date-format

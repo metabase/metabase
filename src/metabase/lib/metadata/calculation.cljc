@@ -7,6 +7,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -221,6 +222,7 @@
   [query stage-number x]
   (try
     {:lib/type     :metadata/column
+     :ident        (lib.options/ident x)
      ;; TODO -- effective-type
      :base-type    (type-of query stage-number x)
      :name         (column-name query stage-number x)
@@ -466,6 +468,23 @@
   [query _stage-number stage-number options]
   (returned-columns-method query stage-number (lib.util/query-stage query stage-number) options))
 
+(def ^:dynamic *propagate-binning-and-bucketing*
+  "Enable propagation of ref's `:temporal-unit` into `:inherited-temporal-unit` of a column or setting of
+  the `:was-binned` option.
+
+  Temporal unit should be conveyed into `:inherited-temporal-unit` only when _column is created from ref_ that contains
+  that has temporal unit set and column's metadata is generated _under `returned-columns` call_.
+
+  Point is, that `:inherited-temporal-unit` should be added only to column metadata that's generated for use on next
+  stages.
+
+  `:was-binned` is used similarly as `:inherited-temporal-unit`. It helps to identify fields that were binned on
+  previous stages. Thanks to that, it is possible to avoid presetting binning for previously binned fields when
+  breakout column popover is opened in query builder.
+
+  The value is used in [[metabase.lib.field/resolve-field-metadata]]."
+  false)
+
 (mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
   join, and include the `:lib/source` of where they came from. This should only include columns that will be present
@@ -486,7 +505,8 @@
     x
     options        :- [:maybe ReturnedColumnsOptions]]
    (let [options (merge (default-returned-columns-options query) options)]
-     (returned-columns-method query stage-number x options))))
+     (binding [*propagate-binning-and-bucketing* true]
+       (returned-columns-method query stage-number x options)))))
 
 (def VisibleColumnsOptions
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."
@@ -595,17 +615,23 @@
           (comp (filter :fk-target-field-id)
                 (filter :id)
                 (filter (comp number? :id))
-                (map (fn [{source-field-id :id, :keys [fk-target-field-id] :as source}]
+                (map (fn [{source-field-id :id
+                           fk-ident       :ident
+                           :keys [fk-target-field-id]
+                           :as   source}]
                        (-> (lib.metadata/field query fk-target-field-id)
-                           (assoc ::source-field-id source-field-id
-                                  ::source-join-alias (:metabase.lib.join/join-alias source)))))
+                           (assoc ::source-field-id   source-field-id
+                                  ::source-join-alias (:metabase.lib.join/join-alias source)
+                                  ::fk-ident          fk-ident))))
                 (remove #(contains? existing-table-ids (:table-id %)))
-                (mapcat (fn [{:keys [table-id], ::keys [source-field-id source-join-alias]}]
+                (mapcat (fn [{:keys [table-id], ::keys [fk-ident source-field-id source-join-alias]}]
                           (let [table-metadata (lib.metadata/table query table-id)
                                 options        {:unique-name-fn               unique-name-fn
                                                 :include-implicitly-joinable? false}]
                             (for [field (visible-columns-method query stage-number table-metadata options)
-                                  :let  [field (assoc field
+                                  :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)
+                                         field (assoc field
+                                                      :ident                    ident
                                                       :fk-field-id              source-field-id
                                                       :fk-join-alias            source-join-alias
                                                       :lib/source               :source/implicitly-joinable

@@ -1,6 +1,14 @@
 import { assocIn, updateIn } from "icepick";
+import { useMemo } from "react";
 
-import { databaseApi } from "metabase/api";
+import {
+  databaseApi,
+  skipToken,
+  useListDatabaseSchemaTablesQuery,
+  useListDatabaseSchemasQuery,
+  useListSyncableDatabaseSchemasQuery,
+  useListVirtualDatabaseTablesQuery,
+} from "metabase/api";
 import Questions from "metabase/entities/questions";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { SchemaSchema } from "metabase/schema";
@@ -24,6 +32,14 @@ import {
 export default createEntity({
   name: "schemas",
   schema: SchemaSchema,
+
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery,
+    }),
+    useListQuery,
+  },
+
   api: {
     list: async ({ dbId, getAll = false, ...args }, dispatch) => {
       if (!dbId) {
@@ -179,4 +195,74 @@ function addTableAvoidingDuplicates(tables, tableId) {
     return [tableId];
   }
   return tables.includes(tableId) ? tables : [...tables, tableId];
+}
+
+const useGetQuery = (query, options) => {
+  const { id, ...args } = query;
+  const [dbId, schemaName, schemaOptions] = parseSchemaId(id);
+
+  if (query !== skipToken && (!dbId || schemaName === undefined)) {
+    throw new Error("Schemas ID is of the form dbId:schemaName");
+  }
+
+  const finalQuery =
+    query === skipToken ? skipToken : { id: dbId, schema: schemaName, ...args };
+
+  const virtualDatabaseTables = useListVirtualDatabaseTablesQuery(
+    schemaOptions?.isDatasets ? finalQuery : skipToken,
+    options,
+  );
+
+  const databaseSchemaTables = useListDatabaseSchemaTablesQuery(
+    schemaOptions?.isDatasets ? skipToken : finalQuery,
+    options,
+  );
+
+  const tables = schemaOptions?.isDatasets
+    ? virtualDatabaseTables
+    : databaseSchemaTables;
+
+  const data = useMemo(() => {
+    if (tables.isLoading || tables.error) {
+      return tables.data;
+    }
+
+    return {
+      id,
+      name: schemaName,
+      tables: tables.data,
+      database: { id: dbId },
+    };
+  }, [id, schemaName, tables, dbId]);
+
+  const result = useMemo(() => ({ ...tables, data }), [data, tables]);
+
+  return result;
+};
+
+function useListQuery({ dbId, getAll = false, ...args }, options) {
+  const syncableDatabaseSchemas = useListSyncableDatabaseSchemasQuery(
+    getAll ? dbId : skipToken,
+    options,
+  );
+
+  const databaseSchemas = useListDatabaseSchemasQuery(
+    getAll ? skipToken : { id: dbId, ...args },
+    options,
+  );
+
+  const schemas = getAll ? syncableDatabaseSchemas : databaseSchemas;
+
+  const data = useMemo(() => {
+    return schemas.data?.map(schemaName => ({
+      // NOTE: needs unique IDs for entities to work correctly
+      id: generateSchemaId(dbId, schemaName),
+      name: schemaName,
+      database: { id: dbId },
+    }));
+  }, [dbId, schemas]);
+
+  const result = useMemo(() => ({ ...schemas, data }), [data, schemas]);
+
+  return result;
 }

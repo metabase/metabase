@@ -1,29 +1,6 @@
+const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  addOrUpdateDashboardCard,
-  addSummaryField,
-  assertEChartsTooltip,
-  cartesianChartCircle,
-  cartesianChartCircleWithColor,
-  chartPathWithFillColor,
-  echartsContainer,
-  echartsTriggerBlur,
-  entityPickerModal,
-  entityPickerModalTab,
-  openOrdersTable,
-  pieSliceWithColor,
-  popover,
-  queryBuilderMain,
-  restore,
-  startNewQuestion,
-  summarize,
-  tableHeaderClick,
-  visitDashboard,
-  visitQuestion,
-  visitQuestionAdhoc,
-  visualize,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -31,12 +8,12 @@ const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should allow brush date filter", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Brush Date Temporal Filter",
         query: {
@@ -56,9 +33,9 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    queryBuilderMain().within(() => {
+    H.queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
-      echartsContainer().findByText("January 2023").should("exist");
+      H.echartsContainer().findByText("January 2023").should("exist");
     });
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
@@ -74,8 +51,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       "Product → Created At is",
     );
 
-    queryBuilderMain().within(() => {
-      echartsContainer().findByText("June 2022"); // more granular axis labels
+    H.queryBuilderMain().within(() => {
+      H.echartsContainer().findByText("June 2022"); // more granular axis labels
 
       // confirm that product category is still broken out
       cy.findByLabelText("Legend").within(() => {
@@ -105,11 +82,11 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         display: "line",
       };
 
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
 
-      queryBuilderMain().within(() => {
+      H.queryBuilderMain().within(() => {
         cy.findByLabelText("Legend").findByText("Gadget").should("exist");
-        echartsContainer().findByText(/Count/).should("exist");
+        H.echartsContainer().findByText(/Count/).should("exist");
       });
       cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
 
@@ -129,12 +106,12 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           .should("exist");
       }
 
-      cartesianChartCircle();
+      H.cartesianChartCircle();
     });
   });
 
   it("should correctly drill through on a card with multiple series (metabase#11442)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "11442_Q1",
       query: {
         "source-table": ORDERS_ID,
@@ -143,7 +120,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "line",
     }).then(({ body: { id: Q1_ID } }) => {
-      cy.createQuestion({
+      H.createQuestion({
         name: "11442_Q2",
         query: {
           "source-table": PRODUCTS_ID,
@@ -154,11 +131,11 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         },
         display: "line",
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.createDashboard({ name: "11442D" }).then(
+        H.createDashboard({ name: "11442D" }).then(
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add the first question to the dashboard");
 
-            addOrUpdateDashboardCard({
+            H.addOrUpdateDashboardCard({
               card_id: Q1_ID,
               dashboard_id: DASHBOARD_ID,
               card: {
@@ -174,10 +151,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               },
             });
 
-            visitDashboard(DASHBOARD_ID);
+            H.visitDashboard(DASHBOARD_ID);
 
             cy.log("The first series line");
-            cartesianChartCircleWithColor("#509EE3").eq(0).click();
+            H.cartesianChartCircleWithColor("#509EE3").eq(0).click();
             cy.findByText("See this year by quarter");
             cy.findByText("See these Orders");
 
@@ -186,7 +163,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
             // Second line from the second question
             cy.log("The second series line");
-            cartesianChartCircleWithColor("#98D9D9").eq(0).click();
+            H.cartesianChartCircleWithColor("#98D9D9").eq(0).click();
             cy.findByText("See this year by quarter");
             cy.findByText("See these Products");
           },
@@ -196,7 +173,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should allow drill-through on combined cards with different amount of series (metabase#13457)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "13457_Q1",
       query: {
         "source-table": ORDERS_ID,
@@ -205,7 +182,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "line",
     }).then(({ body: { id: Q1_ID } }) => {
-      cy.createQuestion({
+      H.createQuestion({
         name: "13457_Q2",
         query: {
           "source-table": ORDERS_ID,
@@ -217,11 +194,11 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         },
         display: "line",
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.createDashboard({ name: "13457D" }).then(
+        H.createDashboard({ name: "13457D" }).then(
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add the first question to the dashboard");
 
-            addOrUpdateDashboardCard({
+            H.addOrUpdateDashboardCard({
               card_id: Q1_ID,
               dashboard_id: DASHBOARD_ID,
               card: {
@@ -237,10 +214,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               },
             });
 
-            visitDashboard(DASHBOARD_ID);
+            H.visitDashboard(DASHBOARD_ID);
 
             cy.log("The first series line");
-            cartesianChartCircleWithColor("#509EE3").eq(0).click();
+            H.cartesianChartCircleWithColor("#509EE3").eq(0).click();
             cy.findByText("See this year by quarter");
             cy.findByText("See these Orders");
 
@@ -249,7 +226,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
             // Second line from the second question
             cy.log("The third series line");
-            cartesianChartCircleWithColor("#EF8C8C").eq(0).click();
+            H.cartesianChartCircleWithColor("#EF8C8C").eq(0).click();
             cy.findByText("See this year by quarter");
             cy.findByText("See these Orders");
           },
@@ -261,22 +238,22 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   it("should drill through a nested query", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion({
+    H.createQuestion({
       name: "CA People",
       query: { "source-table": PEOPLE_ID, limit: 5 },
     });
     // Build a new question off that grouping by City
-    startNewQuestion();
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Saved questions").click();
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
       cy.contains("CA People").click();
     });
 
-    addSummaryField({ metric: "Count of rows" });
+    H.addSummaryField({ metric: "Count of rows" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("City").click();
     });
 
@@ -287,7 +264,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by City");
 
-    chartPathWithFillColor("#509EE3").first().click();
+    H.chartPathWithFillColor("#509EE3").first().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("See this CA Person").click();
 
@@ -298,7 +275,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it.skip("should drill through a with date filter (metabase#12496)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "Orders by Created At: Week",
       query: {
         "source-table": ORDERS_ID,
@@ -316,6 +293,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("January 2025");
 
     // drill into a recent week
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get(".dot").eq(-4).click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("See these Orders").click();
@@ -331,8 +309,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
-    openOrdersTable({ mode: "notebook" });
-    summarize({ mode: "notebook" });
+    H.openOrdersTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -343,7 +321,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // add filter: Count > 1
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Count").click();
       cy.findByText("Equal to").click();
     });
@@ -353,7 +331,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
-    visualize();
+    H.visualize();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
@@ -383,7 +361,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display correct value in a tooltip for unaggregated data (metabase#11907)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "11907",
         native: {
@@ -396,8 +374,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cartesianChartCircle().eq(0).realHover();
-    assertEChartsTooltip({
+    H.cartesianChartCircle().eq(0).realHover();
+    H.assertEChartsTooltip({
       header: "January 1, 2026",
       rows: [
         {
@@ -408,10 +386,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       ],
     });
 
-    echartsTriggerBlur();
+    H.echartsTriggerBlur();
 
-    cartesianChartCircle().eq(1).realHover();
-    assertEChartsTooltip({
+    H.cartesianChartCircle().eq(1).realHover();
+    H.assertEChartsTooltip({
       header: "January 2, 2026",
       rows: [
         {
@@ -424,7 +402,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display correct value in a tooltip for unaggregated data with breakouts (metabase#15785)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -440,8 +418,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
     });
 
-    chartPathWithFillColor("#7172AD").first().trigger("mousemove");
-    assertEChartsTooltip({
+    H.chartPathWithFillColor("#7172AD").first().trigger("mousemove");
+    H.assertEChartsTooltip({
       header: "2",
       rows: [
         {
@@ -477,14 +455,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
     );
 
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "14495_SQL",
       native: { query: "SELECT * FROM ORDERS", "template-tags": {} },
     }).then(({ body: { id: SQL_ID } }) => {
       const ALIAS = `Question ${SQL_ID}`;
 
       // Create a QB question and join it with the previously created native question
-      cy.createQuestion({
+      H.createQuestion({
         name: "14495",
         query: {
           "source-table": PEOPLE_ID,
@@ -515,7 +493,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
         // Switch to the normal user who has restricted SQL access
         cy.signInAsNormalUser();
-        visitQuestion(QUESTION_ID);
+        H.visitQuestion(QUESTION_ID);
 
         // Initial visualization has rendered and we can now drill-through
         cy.findByTestId("query-visualization-root")
@@ -534,7 +512,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("count of rows from drill-down on binned results should match the number of records (metabase#15324)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       name: "15324",
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -566,7 +544,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should drill through on a bin of null values (#11345)", () => {
-    visitQuestionAdhoc({
+    H.visitQuestionAdhoc({
       name: "11345",
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -589,7 +567,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("See these Orders").click();
 
     // count number of distinct values in the Discount column
-    tableHeaderClick("Discount ($)");
+    H.tableHeaderClick("Discount ($)");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Distinct values").click();
 
@@ -598,7 +576,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should parse value on click through on the first row of pie chart (metabase#15250)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "15250",
       query: {
         "source-table": PRODUCTS_ID,
@@ -607,8 +585,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "pie",
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-        addOrUpdateDashboardCard({
+      H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+        H.addOrUpdateDashboardCard({
           card_id: QUESTION_ID,
           dashboard_id: DASHBOARD_ID,
           card: {
@@ -624,16 +602,16 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           },
         });
 
-        visitDashboard(DASHBOARD_ID);
+        H.visitDashboard(DASHBOARD_ID);
       });
     });
 
-    pieSliceWithColor("#88BF4D")
+    H.pieSliceWithColor("#88BF4D")
       .first()
       .as("doohickeyChart")
       .trigger("mousemove");
 
-    assertEChartsTooltip({
+    H.assertEChartsTooltip({
       header: "Category",
       rows: [
         {
@@ -685,11 +663,12 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         },
       };
 
-      visitQuestionAdhoc(questionDetails);
+      H.visitQuestionAdhoc(questionDetails);
 
       // Drill-through the last bar (Widget)
-      chartPathWithFillColor("#509EE3").last().click();
-      popover().findByTextEnsureVisible("See these Products").click();
+      // eslint-disable-next-line no-unsafe-element-filtering
+      H.chartPathWithFillColor("#509EE3").last().click();
+      H.popover().findByTextEnsureVisible("See these Products").click();
     });
 
     it("should result in a correct query result", () => {
@@ -712,7 +691,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display proper drills on chart click for line chart", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Line chart drills",
         query: {
@@ -732,8 +711,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cartesianChartCircle().eq(2).click();
-    popover().within(() => {
+    H.cartesianChartCircle().eq(2).click();
+    H.popover().within(() => {
       cy.findByText("See these Orders").should("be.visible");
 
       cy.findByText("See this month by week").should("be.visible");
@@ -756,7 +735,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display proper drills on chart click for bar chart", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Line chart drills",
         query: {
@@ -778,13 +757,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     cy.findAllByTestId("legend-item").first().click();
 
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("See these Orders").should("be.visible");
       cy.findByText("Automatic insights…").should("be.visible");
     });
 
-    chartPathWithFillColor("#A989C5").first().click();
-    popover().within(() => {
+    H.chartPathWithFillColor("#A989C5").first().click();
+    H.popover().within(() => {
       cy.findByText("See these Orders").should("be.visible");
 
       cy.findByText("See this month by week").should("be.visible");
@@ -807,7 +786,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display proper drills on chart click for query grouped by state", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Line chart drills",
         query: {
@@ -822,7 +801,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     cy.findAllByTestId("choropleth-feature").first().click();
 
-    popover().within(() => {
+    cy.findByTestId("click-actions-popover-content-for-Count").within(() => {
       cy.findByText("See these People").should("be.visible");
       cy.findByText("Zoom in").should("be.visible");
 

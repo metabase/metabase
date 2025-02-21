@@ -2,9 +2,6 @@
   "Impls for JSON-based QP streaming response types. `:json` streams a simple array of maps as opposed to the full
   response with all the metadata for `:api`."
   (:require
-   [cheshire.core :as json]
-   [cheshire.factory :as json.factory]
-   [cheshire.generate :as json.generate]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.formatter :as formatter]
@@ -12,7 +9,8 @@
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.date-2 :as u.date])
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.json :as json])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -41,8 +39,6 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
                    :or   {format-rows? true}} :data} viz-settings]
-        ;; TODO -- wouldn't it make more sense if the JSON downloads used `:name` preferentially? Seeing how JSON is
-        ;; probably going to be parsed programmatically
         (let [cols           (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
               pivot-grouping (qp.pivot.postprocess/pivot-grouping-key cols)]
           (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
@@ -50,9 +46,7 @@
                         pivot-grouping (m/remove-nth pivot-grouping))]
             (vreset! col-names names))
           (vreset! ordered-formatters
-                   (if format-rows?
-                     (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
-                     (vec (repeat (count ordered-cols) identity))))
+                   (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
           (.write writer "[\n")))
 
       (write-row! [_ row row-num _ {:keys [output-order]}]
@@ -71,7 +65,7 @@
                     (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
             (when-not (zero? row-num)
               (.write writer ",\n"))
-            (json/generate-stream
+            (json/encode-to
              (zipmap
               @col-names
               (map (fn [formatter r]
@@ -84,7 +78,7 @@
                          num-str
                          res)))
                    @ordered-formatters cleaned-row))
-             writer)
+             writer {})
             (.flush writer))))
 
       (finish! [_ _]
@@ -104,7 +98,7 @@
               (.writeFieldName jg (if (keyword? k)
                                     (subs (str k) 1)
                                     (str k)))
-              (json.generate/generate jg v json.factory/default-date-format nil nil)
+              (json/generate jg v json/default-date-format nil nil)
               jg))
           jgen maplike))
 
@@ -139,7 +133,7 @@
           (.writeStartArray)))
 
       (write-row! [_ row _ _ _]
-        (json.generate/generate jgen row json.factory/default-date-format nil nil))
+        (json/generate jgen row json/default-date-format nil nil))
 
       (finish! [_ {:keys [data], :as metadata}]
         (.writeEndArray jgen)

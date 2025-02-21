@@ -1,46 +1,62 @@
+import { type CSSProperties, type ReactNode, useEffect } from "react";
 import _ from "underscore";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
-  SdkError,
+  DashboardNotFoundError,
   SdkLoader,
-  withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
+import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/InteractiveDashboard.styled";
 import { useCommonDashboardParams } from "embedding-sdk/components/public/InteractiveDashboard/use-common-dashboard-params";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
-import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
-import { Box } from "metabase/ui";
+import { setErrorPage } from "metabase/redux/app";
+import { getErrorPage } from "metabase/selectors/app";
 
 import { InteractiveDashboardProvider } from "./context";
 
 export type InteractiveDashboardProps = {
-  questionHeight?: number;
-  plugins?: SdkPluginsConfig;
   className?: string;
+  style?: CSSProperties;
+  plugins?: MetabasePluginsConfig;
+
+  /**
+   * A custom React component to render the question layout.
+   * Use namespaced InteractiveQuestion components to build the layout.
+   *
+   * @todo pass the question context to the question view component,
+   *       once we have a public-facing question context.
+   */
+  renderDrillThroughQuestion?: () => ReactNode;
+  drillThroughQuestionHeight?: number;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
 const InteractiveDashboardInner = ({
   dashboardId,
-  initialParameterValues = {},
+  initialParameters = {},
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
+  withFooter = true,
   hiddenParameters = [],
-  questionHeight,
+  drillThroughQuestionHeight,
   plugins,
   onLoad,
   onLoadWithoutCards,
   className,
+  style,
+  renderDrillThroughQuestion: AdHocQuestionView,
 }: InteractiveDashboardProps) => {
   const {
     displayOptions,
@@ -54,8 +70,9 @@ const InteractiveDashboardInner = ({
     dashboardId,
     withDownloads,
     withTitle,
+    withFooter,
     hiddenParameters,
-    initialParameterValues,
+    initialParameters,
   });
 
   const {
@@ -68,18 +85,19 @@ const InteractiveDashboardInner = ({
   });
 
   const { theme } = useEmbedTheme();
-  const { font } = useEmbedFont();
 
   return (
-    <Box w="100%" h="100%" ref={ref} className={className}>
+    <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
-          withTitle={withTitle}
-          height={questionHeight}
+          title={withTitle}
+          height={drillThroughQuestionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
-        />
+        >
+          {AdHocQuestionView && <AdHocQuestionView />}
+        </InteractiveAdHocQuestion>
       ) : (
         <InteractiveDashboardProvider
           plugins={plugins}
@@ -88,18 +106,18 @@ const InteractiveDashboardInner = ({
         >
           <PublicOrEmbeddedDashboard
             dashboardId={dashboardId}
-            parameterQueryParams={initialParameterValues}
+            parameterQueryParams={initialParameters}
             hideParameters={displayOptions.hideParameters}
             background={displayOptions.background}
             titled={displayOptions.titled}
             cardTitled={withCardTitle}
+            withFooter={displayOptions.withFooter}
             theme={theme}
             isFullscreen={isFullscreen}
             onFullscreenChange={onFullscreenChange}
             refreshPeriod={refreshPeriod}
             onRefreshPeriodChange={onRefreshPeriodChange}
             setRefreshElapsedHook={setRefreshElapsedHook}
-            font={font}
             bordered={displayOptions.bordered}
             navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
             onLoad={onLoad}
@@ -111,26 +129,44 @@ const InteractiveDashboardInner = ({
           />
         </InteractiveDashboardProvider>
       )}
-    </Box>
+    </StyledPublicComponentWrapper>
   );
 };
 
-export const InteractiveDashboard =
-  withPublicComponentWrapper<InteractiveDashboardProps>(
-    ({ dashboardId, ...rest }) => {
-      const { id, isLoading } = useValidatedEntityId({
-        type: "dashboard",
-        id: dashboardId,
-      });
+export const InteractiveDashboard = renderOnlyInSdkProvider(
+  ({ dashboardId: initialDashboardId, ...rest }: InteractiveDashboardProps) => {
+    const { id: resolvedDashboardId, isLoading } = useValidatedEntityId({
+      type: "dashboard",
+      id: initialDashboardId,
+    });
 
-      if (isLoading) {
-        return <SdkLoader />;
+    const errorPage = useSdkSelector(getErrorPage);
+    const dispatch = useSdkDispatch();
+    useEffect(() => {
+      if (resolvedDashboardId) {
+        dispatch(setErrorPage(null));
       }
+    }, [dispatch, resolvedDashboardId]);
 
-      if (!id) {
-        return <SdkError message="ID not found" />;
-      }
+    const { style, className } = rest;
+    if (isLoading) {
+      return (
+        <StyledPublicComponentWrapper className={className} style={style}>
+          <SdkLoader />
+        </StyledPublicComponentWrapper>
+      );
+    }
 
-      return <InteractiveDashboardInner dashboardId={id} {...rest} />;
-    },
-  );
+    if (!resolvedDashboardId || errorPage?.status === 404) {
+      return (
+        <StyledPublicComponentWrapper className={className} style={style}>
+          <DashboardNotFoundError id={initialDashboardId} />
+        </StyledPublicComponentWrapper>
+      );
+    }
+
+    return (
+      <InteractiveDashboardInner dashboardId={resolvedDashboardId} {...rest} />
+    );
+  },
+);

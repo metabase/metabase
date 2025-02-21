@@ -48,6 +48,7 @@ export function getPersonalCollectionName(
 }
 
 export function openCollectionItemMenu(item: string, index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByText(item).eq(index).closest("tr").icon("ellipsis").click();
 }
 
@@ -80,7 +81,7 @@ export const moveOpenedCollectionTo = (newParent: string) => {
 
   entityPickerModal().within(() => {
     cy.findByRole("tab", { name: /Collections/ }).click();
-    cy.findByText(newParent).click();
+    cy.findByTestId("nested-item-picker").findByText(newParent).click();
     cy.button("Move").click();
   });
 
@@ -109,6 +110,6 @@ export function pickEntity({
   }
 
   if (select) {
-    cy.findByTestId("entity-picker-modal").button("Select").click();
+    cy.findByTestId("entity-picker-select-button").click();
   }
 }

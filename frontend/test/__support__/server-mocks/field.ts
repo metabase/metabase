@@ -19,11 +19,11 @@ export function setupFieldValuesEndpoints(fieldValues: GetFieldValuesResponse) {
   fetchMock.get(`path:/api/field/${fieldValues.field_id}/values`, fieldValues);
 }
 
-export function setupFieldValuesGeneralEndpoint() {
-  fetchMock.get(
-    { url: /\/api\/field\/\d+\/values/, overwriteRoutes: false },
-    [],
-  );
+export function setupUnauthorizedFieldEndpoint(field: Field) {
+  fetchMock.get(`path:/api/field/${field.id}`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
 }
 
 export function setupUnauthorizedFieldValuesEndpoints(

@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.log :as log]
@@ -27,25 +26,17 @@
   "Default card height"
   6)
 
-(defn create-collection!
-  "Create and return a new collection."
-  [title description parent-collection-id]
-  (first (t2/insert-returning-instances!
-          'Collection
-          (merge
-           {:name        title
-            :description description}
-           (when parent-collection-id
-             {:location (collection/children-location (t2/select-one ['Collection :location :id]
-                                                                     :id parent-collection-id))})))))
-
-(defn get-or-create-root-container-collection
-  "Get or create container collection for automagic dashboards in the root collection."
-  []
-  (or (t2/select-one 'Collection
-                     :name     "Automatically Generated Dashboards"
-                     :location "/")
-      (create-collection! "Automatically Generated Dashboards" nil nil)))
+(defn get-or-create-container-collection
+  "Get or create container collection for automagic dashboards in a given location."
+  [location]
+  (or (t2/select-one :model/Collection
+                     :name "Automatically Generated Dashboards"
+                     :archived false
+                     :location location)
+      (t2/insert-returning-instance!
+       :model/Collection
+       {:name "Automatically Generated Dashboards"
+        :location location})))
 
 (defn colors
   "A vector of colors used for coloring charts. Uses [[public-settings/application-colors]] for user choices."

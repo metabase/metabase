@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
@@ -8,6 +7,7 @@ import _ from "underscore";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Schemas from "metabase/entities/schemas";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Icon } from "metabase/ui";

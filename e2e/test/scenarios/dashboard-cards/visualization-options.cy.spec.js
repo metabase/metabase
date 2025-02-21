@@ -1,82 +1,122 @@
+const { H } = cy;
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  editDashboard,
-  getDashboardCard,
-  getDashboardCardMenu,
-  getDraggableElements,
-  modal,
-  moveDnDKitElement,
-  popover,
-  restore,
-  saveDashboard,
-  showDashboardCardActions,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 describe("scenarios > dashboard cards > visualization options", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should allow empty card title (metabase#12013, metabase#36788)", () => {
     const originalCardTitle = "Orders";
-    visitDashboard(ORDERS_DASHBOARD_ID);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.findByTestId("legend-caption")
       .should("contain", originalCardTitle)
       .and("be.visible");
 
-    editDashboard();
-    showDashboardCardActions();
+    H.editDashboard();
+    H.showDashboardCardActions();
     cy.icon("palette").click();
 
-    modal().within(() => {
+    H.modal().within(() => {
       cy.findByDisplayValue(originalCardTitle).click().clear().blur();
       cy.button("Done").click();
     });
 
     cy.findByTestId("legend-caption").should("not.contain", originalCardTitle);
-    saveDashboard();
-    getDashboardCard().realHover();
-    getDashboardCardMenu().click();
-    popover()
+    H.saveDashboard();
+    H.getDashboardCard().realHover();
+    H.getDashboardCardMenu().click();
+    H.popover()
       .should("contain", "Edit question")
       .and("contain", "Download results");
   });
 
-  it("column reordering should work (metabase#16229)", () => {
-    visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.findByLabelText("Edit dashboard").click();
-    getDashboardCard().realHover();
-    cy.findByLabelText("Show visualization options").click();
-    cy.findByTestId("chartsettings-sidebar").within(() => {
-      moveDnDKitElement(getDraggableElements().contains("ID"), {
-        vertical: 100,
-      });
+  it("should show the ellipsis even with an empty card title on visualizations with noHeader (metabase#46897)", () => {
+    const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-      /**
-       * When this issue gets fixed, it should be safe to uncomment the following assertion.
-       * It currently doesn't work in UI at all, but Cypress somehow manages to move the "ID" column.
-       * However, it leaves an empty column in its place (thus, making it impossible to use this assertion).
-       */
-      cy.findAllByTestId(/draggable-item/)
-        .as("sidebarColumns") // Out of all the columns in the sidebar...
-        .first() // ...pick the fist one and make sure it's not "ID" anymore
-        .should("contain", "User ID");
-    });
+    const QUESTION_LINE_CHART = {
+      name: "Line chart",
+      display: "line",
+      query: {
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            { "base-type": "type/DateTime", "temporal-unit": "month" },
+          ],
+        ],
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+    };
 
-    // The table preview should get updated immediately, reflecting the changes in columns ordering.
-    modal().findAllByTestId("column-header").first().contains("User ID");
+    H.createQuestionAndDashboard({ questionDetails: QUESTION_LINE_CHART }).then(
+      ({ body: card }) => {
+        H.visitDashboard(card.dashboard_id);
+
+        cy.findByTestId("legend-caption")
+          .should("contain", QUESTION_LINE_CHART.name)
+          .and("be.visible");
+
+        H.editDashboard();
+        H.showDashboardCardActions();
+        cy.icon("palette").click();
+
+        H.modal().within(() => {
+          cy.findByDisplayValue(QUESTION_LINE_CHART.name)
+            .click()
+            .clear()
+            .blur();
+          cy.button("Done").click();
+        });
+
+        cy.findByTestId("legend-caption").should(
+          "not.contain",
+          QUESTION_LINE_CHART.name,
+        );
+        H.saveDashboard();
+        H.getDashboardCard().realHover();
+        H.getDashboardCardMenu().click();
+        H.popover()
+          .should("contain", "Edit question")
+          .and("contain", "Download results");
+      },
+    );
   });
 
-  it("should refelct column settings accurately when changing (metabase#30966)", () => {
-    visitDashboard(ORDERS_DASHBOARD_ID);
+  it("column reordering should work (metabase#16229)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByLabelText("Edit dashboard").click();
-    getDashboardCard().realHover();
+    H.getDashboardCard().realHover();
+    cy.findByLabelText("Show visualization options").click();
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      H.moveDnDKitElement(H.getDraggableElements().contains("ID"), {
+        vertical: 100,
+      });
+      const idButton = cy
+        .get('[data-testid="draggable-item-ID"]')
+        .closest("[role=button]");
+      const userIdButton = cy
+        .get('[data-testid="draggable-item-User ID"]')
+        .closest("[role=button]");
+      // The ID column should be below the User ID column.
+      expect(idButton.prev()[0]).to.equal(userIdButton[0]);
+    });
+    // The table preview should get updated immediately, reflecting the changes in columns ordering.
+    H.modal().findAllByTestId("column-header").first().contains("User ID");
+  });
+
+  it("should reflect column settings accurately when changing (metabase#30966)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.findByLabelText("Edit dashboard").click();
+    H.getDashboardCard().realHover();
     cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("Subtotal-settings-button").click();
-    popover().findByLabelText("Show a mini bar chart").click();
-    cy.findAllByTestId("mini-bar").should("have.length.above", 0);
+    H.popover().findByLabelText("Show a mini bar chart").click({ force: true });
+    cy.findAllByTestId("mini-bar-container").should("have.length.above", 0);
   });
 });

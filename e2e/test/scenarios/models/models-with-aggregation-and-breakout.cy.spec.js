@@ -1,17 +1,17 @@
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore } from "e2e/support/helpers";
 
 import { turnIntoModel } from "./helpers/e2e-models-helpers";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > models with aggregation and breakout", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "model with aggregation & breakout",
         display: "line",

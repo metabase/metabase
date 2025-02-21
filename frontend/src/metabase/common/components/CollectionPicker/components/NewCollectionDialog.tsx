@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useCreateCollectionMutation } from "metabase/api";
-import FormFooter from "metabase/core/components/FormFooter";
+import { FormFooter } from "metabase/core/components/FormFooter";
 import {
   Form,
   FormErrorMessage,
@@ -12,7 +12,6 @@ import {
 import { Button, Flex, Modal } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
-import { ENTITY_PICKER_Z_INDEX } from "../../EntityPicker";
 import type { CollectionPickerItem } from "../types";
 
 interface NewCollectionDialogProps {
@@ -51,7 +50,6 @@ export const NewCollectionDialog = ({
       data-testid="create-collection-on-the-go"
       trapFocus={true}
       withCloseButton={false}
-      zIndex={ENTITY_PICKER_Z_INDEX}
     >
       <FormProvider
         initialValues={{ name: "" }}

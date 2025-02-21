@@ -77,6 +77,18 @@ describe("getLoadingMessage", () => {
 
     expect(getLoadingMessage(states)(false)).toBe(expectedLoadingMessage);
   });
+
+  it('should show no loading message when "loading-message" is set to an invalid enum value', () => {
+    const states = createMockState({
+      settings: createMockSettingsState({
+        "loading-message": "bad-enum-bad" as any,
+      }),
+    });
+
+    const expectedLoadingMessage = "";
+
+    expect(getLoadingMessage(states)(false)).toBe(expectedLoadingMessage);
+  });
 });
 
 describe("getIsWhiteLabeling", () => {

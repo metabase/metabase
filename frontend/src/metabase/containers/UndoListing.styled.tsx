@@ -15,7 +15,6 @@ export const UndoList = styled.ul`
   left: 0;
   bottom: 0;
   margin: ${LIST_H_MARGINS};
-  z-index: 999;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -52,11 +51,11 @@ export const CardContentSide = styled(Box)<BoxProps>`
   display: flex;
   align-items: center;
   overflow: hidden;
-`;
+` as unknown as typeof Box;
 
 export const ControlsCardContent = styled(CardContentSide)`
   flex-shrink: 0;
-`;
+` as unknown as typeof Box;
 
 export const CardIcon = styled(Icon)`
   margin-right: ${space(1)};

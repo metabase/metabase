@@ -13,7 +13,7 @@ const END_DATE_TIME = new Date(2020, 1, 9, 20, 30);
 
 interface SetupOpts {
   value?: DateRangePickerValue;
-  isNew?: boolean;
+  submitButtonLabel?: string;
   hasTimeToggle?: boolean;
 }
 
@@ -23,7 +23,7 @@ const userEvent = _userEvent.setup({
 
 function setup({
   value = { dateRange: [START_DATE, END_DATE], hasTime: false },
-  isNew = false,
+  submitButtonLabel = "Apply",
   hasTimeToggle = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
@@ -32,7 +32,7 @@ function setup({
   renderWithProviders(
     <DateRangePicker
       value={value}
-      isNew={isNew}
+      submitButtonLabel={submitButtonLabel}
       hasTimeToggle={hasTimeToggle}
       onChange={onChange}
       onSubmit={onSubmit}

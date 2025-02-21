@@ -6,31 +6,19 @@
    [clojure.string :as str]
    [clojure.tools.namespace.find :as ns.find]
    [metabase.util.format :as u.format]
-   [metabase.util.log :as log]
-   [nano-id.core :as nano-id])
+   [metabase.util.log :as log])
   (:import
    (java.net InetAddress InetSocketAddress Socket)
-   (java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue Random)
+   (java.nio.charset StandardCharsets)
+   (java.util
+    Base64
+    Base64$Decoder
+    Base64$Encoder
+    Locale
+    PriorityQueue)
    (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
-
-(defn generate-nano-id
-  "Generates a random NanoID string. Usually these are used for the entity_id field of various models.
-  If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
-  producing the same value every time."
-  ([] (nano-id/nano-id))
-  ([seed-str]
-   (let [seed (Long/parseLong seed-str 16)
-         rnd  (Random. seed)
-         gen  (nano-id/custom
-               "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-               21
-               (fn [len]
-                 (let [ba (byte-array len)]
-                   (.nextBytes rnd ba)
-                   ba)))]
-     (gen))))
 
 (defmacro varargs
   "Make a properly-tagged Java interop varargs argument. This is basically the same as `into-array` but properly tags
@@ -58,7 +46,7 @@
     (catch Throwable _ false)))
 
 (defn host-up?
-  "Returns true if the host given by hostname is reachable, false otherwise "
+  "Returns true if the host given by hostname is reachable, false otherwise"
   [^String hostname]
   (try
     (let [host-addr (InetAddress/getByName hostname)]
@@ -116,8 +104,7 @@
   (=
     (take-last 2 (sort-by identity kompare coll))
     (transduce (map identity) (u/sorted-take 2 kompare) coll))
-  But the entire collection is not in memory, just at most
-  "
+  But the entire collection is not in memory, just at most"
   [size kompare]
   (fn bounded-heap-acc
     ([] (PriorityQueue. size kompare))
@@ -199,25 +186,39 @@
   "A shared Base64 decoder instance."
   (Base64/getDecoder))
 
+(defn bytes-to-string
+  "Converts UTF-8 bytes into a string."
+  ^String [^bytes bs]
+  (String. bs StandardCharsets/UTF_8))
+
 (defn decode-base64-to-bytes
   "Decodes a Base64 string into bytes."
   ^bytes [^String string]
   (.decode base64-decoder string))
 
-;;; TODO -- this is only used [[metabase.analytics.snowplow-test]] these days
 (defn decode-base64
   "Decodes the Base64 string `input` to a UTF-8 string."
   [input]
-  (new java.lang.String (decode-base64-to-bytes input) "UTF-8"))
+  (bytes-to-string (decode-base64-to-bytes input)))
 
 (def ^:private ^Base64$Encoder base64-encoder
   "A shared Base64 encoder instance."
   (Base64/getEncoder))
 
+(defn string-to-bytes
+  "Converts a string into UTF-8 bytes"
+  ^bytes [^String input]
+  (.getBytes input StandardCharsets/UTF_8))
+
 (defn encode-base64
   "Encodes the UTF-8 encoding of the string `input` to a Base64 string."
   ^String [^String input]
-  (.encodeToString base64-encoder (.getBytes input "UTF-8")))
+  (.encodeToString base64-encoder (string-to-bytes input)))
+
+(defn encode-base64-bytes
+  "Encodes the bytes `input` to a Base64 string."
+  ^String [^bytes input]
+  (.encodeToString base64-encoder input))
 
 (def ^:private do-with-us-locale-lock (Object.))
 
@@ -268,8 +269,12 @@
 ;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
 (defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended
   for use by various routines that load related namespaces, such as task and events
-  initialization."}
-  metabase-namespace-symbols
+  initialization.
+
+  DEPRECATED: Using this is an anti-pattern, it messes up our ability to analyze the code and find dependencies between
+  namespaces or to topographically sort them correctly during compilation. See
+  https://metaboat.slack.com/archives/CKZEMT1MJ/p1734635053499399 or ask Cam for more info."}
+  ^:deprecated metabase-namespace-symbols
   (vec (sort (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
                    :when   (and (str/starts-with? ns-symb "metabase")
                                 (not (str/includes? ns-symb "test")))]

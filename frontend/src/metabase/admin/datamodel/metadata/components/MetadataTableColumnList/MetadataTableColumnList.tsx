@@ -4,7 +4,6 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,6 +14,7 @@ import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { SortableList } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
+import { connect } from "metabase/lib/redux";
 import { Icon } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";

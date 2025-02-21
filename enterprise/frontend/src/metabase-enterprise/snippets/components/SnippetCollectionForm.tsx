@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
@@ -8,7 +7,7 @@ import FormCollectionPicker from "metabase/collections/containers/FormCollection
 import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormFooter from "metabase/core/components/FormFooter";
+import { FormFooter } from "metabase/core/components/FormFooter";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormTextArea from "metabase/core/components/FormTextArea";
@@ -17,6 +16,7 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import { Form, FormProvider } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
+import { connect } from "metabase/lib/redux";
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

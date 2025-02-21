@@ -1,16 +1,7 @@
 import Color from "color";
 
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  cartesianChartCircle,
-  createNativeQuestion,
-  menu,
-  popover,
-  queryBuilderMain,
-  restore,
-  rightSidebar,
-  summarize,
-} from "e2e/support/helpers";
 import { colors } from "metabase/lib/colors";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -29,12 +20,12 @@ const AGGREGATIONS = [
 
 describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should allow data settings to be changed and display should reflect changes", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13710",
         query: {
@@ -49,25 +40,28 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").findByText("Data").click();
 
     // primary number
     cy.findByTestId("scalar-container").findByText("344");
-    cy.findByTestId("chartsettings-sidebar").findByText("Count").click();
-    popover().within(() => {
+    cy.findByTestId("chartsettings-sidebar")
+      .findByDisplayValue("Count")
+      .click();
+    H.popover().within(() => {
       cy.findAllByRole("option").should("have.length", AGGREGATIONS.length);
 
       // selected should be highlighted
-      cy.findByLabelText("Count").should("have.attr", "aria-selected", "true");
-
-      // should not be highlighted b/c not selected
-      cy.findByLabelText("Sum of Total").should(
+      cy.findByRole("option", { name: "Count" }).should(
         "have.attr",
         "aria-selected",
-        "false",
+        "true",
       );
-      cy.findByText("Sum of Total").click();
+
+      // unselected item should not be highlighted
+      cy.findByRole("option", { name: "Sum of Total" })
+        .should("have.attr", "aria-selected", "false")
+        .click();
     });
 
     // comparisons
@@ -82,7 +76,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("chartsettings-sidebar")
       .findByText("Previous month")
       .click();
-    menu().findByText("Previous value").click();
+    H.menu().findByText("Previous value").click();
     cy.findByTestId("scalar-previous-value").within(() => {
       cy.findByText("vs. Mar:");
       cy.findByText("45,683.68");
@@ -92,7 +86,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("chartsettings-sidebar")
       .findByText("Previous value")
       .click();
-    menu().within(() => {
+    H.menu().within(() => {
       // should clamp over input to maxPeriodsAgo
       cy.get("input").click().type("100");
       cy.get("input").should("have.value", 48);
@@ -115,7 +109,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // static number
     cy.findByTestId("chartsettings-sidebar").findByText("3 months ago").click();
-    menu().within(() => {
+    H.menu().within(() => {
       cy.findByText("Custom value…").click();
 
       // Test the back button
@@ -132,7 +126,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.findByText("26.76%").should("exist"); // down percentage
     });
     cy.findByTestId("chartsettings-sidebar").findByText("(My Goal)").click();
-    menu().within(() => {
+    H.menu().within(() => {
       cy.findByLabelText("Back").should("exist");
       cy.findByLabelText("Label").should("have.value", "My Goal");
       cy.findByLabelText("Value").should("have.value", "42000");
@@ -140,9 +134,9 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     });
 
     // another column
-    menu().findByText("Value from another column…").click();
-    popover().findByText("Mega Count").click();
-    menu().button("Done").click();
+    H.menu().findByText("Value from another column…").click();
+    H.selectDropdown().findByText("Mega Count").click();
+    H.menu().button("Done").click();
 
     cy.findByTestId("scalar-previous-value").within(() => {
       cy.findByText("vs. Mega Count:").should("exist");
@@ -151,9 +145,9 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     });
 
     cy.findByTestId("chartsettings-sidebar").findByText("(Mega Count)").click();
-    menu().findByLabelText("Column").click();
-    popover().findByText("Count").click();
-    menu().button("Done").click();
+    H.menu().findByRole("textbox", { name: "Column" }).click();
+    H.popover().findByText("Count").click();
+    H.menu().button("Done").click();
 
     cy.findByTestId("scalar-previous-value").within(() => {
       cy.findByText("vs. Count:").should("exist");
@@ -163,7 +157,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should handle up to 3 comparisons", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -177,7 +171,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("comparison-list").children().should("have.length", 1);
 
     cy.findByTestId("scalar-previous-value").within(() => {
@@ -188,7 +182,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     cy.button("Add comparison").click();
     cy.findByTestId("comparison-list").children().should("have.length", 2);
-    menu().findByText("months ago").click();
+    H.menu().findByText("months ago").click();
     cy.findAllByTestId("scalar-previous-value")
       .children()
       .should("have.length", 2)
@@ -201,7 +195,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     cy.button("Add comparison").click();
     cy.findByTestId("comparison-list").children().should("have.length", 3);
-    menu().findByText("Previous value").click();
+    H.menu().findByText("Previous value").click();
     cy.findAllByTestId("scalar-previous-value")
       .children()
       .should("have.length", 3)
@@ -214,6 +208,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     cy.button("Add comparison").should("be.disabled");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findByTestId("comparison-list")
       .children()
       .last()
@@ -236,7 +231,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   it("should reset 'another column' comparison when it becomes invalid", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -267,15 +262,15 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // Selecting the main column ("Mega Count") to be the comparison column
     // The "Another column (Mega Count)" comparison should disappear
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("(Mega Count)").should("exist");
-      cy.findByText("Count").click();
+      cy.findByDisplayValue("Count").click();
     });
-    popover().findByText("Mega Count").click();
+    H.popover().findByText("Mega Count").click();
 
     cy.findByTestId("scalar-value").should("have.text", "3,440,000");
     cy.findByTestId("scalar-previous-value").within(() => {
@@ -290,13 +285,17 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("chartsettings-sidebar")
       .findByText(/Custom value/)
       .click();
-    menu().button("Back").click();
-    menu().findByText("Value from another column…").click();
-    popover().findByText("Count").click();
-    popover().button("Done").click();
+    H.menu().button("Back").click();
+    H.menu().findByText("Value from another column…").click();
+    H.popover().findByText("Count").click();
+    H.popover().button("Done").click();
 
-    cy.findByTestId("chartsettings-sidebar").findByText("Mega Count").click();
-    popover().findByText("Count").click();
+    cy.findByTestId("chartsettings-field-picker")
+      .findByRole("textbox")
+      .should("have.value", "Mega Count")
+      .click();
+
+    H.popover().findByText("Count").click();
 
     cy.findByTestId("scalar-value").should("have.text", "344");
     cy.findByTestId("scalar-previous-value").within(() => {
@@ -308,17 +307,19 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("chartsettings-sidebar")
       .findByText("Previous month")
       .click();
-    menu().findByText("Value from another column…").click();
-    popover().findByText("Sum of Total").click();
-    popover().button("Done").click();
+    H.menu().findByText("Value from another column…").click();
+    H.popover().findByText("Sum of Total").click();
+    H.popover().button("Done").click();
 
-    cy.findByTestId("chartsettings-sidebar").findByText("Count").click();
-    popover().findByText("Mega Count").click();
+    cy.findByTestId("chartsettings-sidebar")
+      .findByDisplayValue("Count")
+      .click();
+    H.popover().findByText("Mega Count").click();
 
     // Removing the comparison column ("Sum of Total") from the query
     // The comparison should be reset to "previous period"
-    summarize();
-    rightSidebar().findByLabelText("Sum of Total").icon("close").click();
+    H.summarize();
+    H.rightSidebar().findByLabelText("Sum of Total").icon("close").click();
     cy.wait("@dataset");
 
     cy.findByTestId("scalar-value").should("have.text", "3,440,000");
@@ -330,22 +331,22 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // Removing the remaining numeric column, so only Count is left
     // to ensure we no longer offer the "Value from another column…" option
-    rightSidebar().within(() => {
+    H.rightSidebar().within(() => {
       cy.findByLabelText("Count").icon("close").click();
       cy.button("Done").click();
     });
     cy.wait("@dataset");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("Sum of Total").should("not.exist");
       cy.findByText("Previous month").should("exist").click();
     });
-    menu().findByText("Value from another column…").should("not.exist");
+    H.menu().findByText("Value from another column…").should("not.exist");
   });
 
   it("should allow display settings to be changed and display should reflect changes", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13710",
         query: {
@@ -364,12 +365,14 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.icon("arrow_down").should(
       "have.css",
       "color",
-      Color(colors.error).string(),
+      Color(colors.error).rgb().string(),
     );
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("Display").click();
-      cy.findByLabelText("Switch positive / negative colors?").click();
+      cy.findByLabelText("Switch positive / negative colors?").click({
+        force: true,
+      });
     });
     cy.icon("arrow_down").should(
       "have.css",
@@ -380,12 +383,12 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     // style
     cy.findByTestId("scalar-container").findByText("344");
     cy.findByLabelText("Style").click();
-    popover().findByText("Percent").click();
+    H.popover().findByText("Percent").click();
     cy.findByTestId("scalar-container").findByText("34,400%");
 
     // separator style
     cy.findByLabelText("Separator style").click();
-    popover().findByText("100’000.00").click();
+    H.popover().findByText("100’000.00").click();
     cy.findByTestId("scalar-container").findByText("34’400%");
 
     // decimal places
@@ -407,9 +410,9 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     // scalar.compact_primary_number setting
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("Data").click();
-      cy.findByText("Count").click();
+      cy.findByDisplayValue("Count").click();
     });
-    popover().findByRole("option", { name: "Mega Count" }).click();
+    H.popover().findByRole("option", { name: "Mega Count" }).click();
     cy.findByTestId("chartsettings-sidebar").findByText("Display").click();
 
     cy.findByTestId("scalar-container").findByText("3,440,000");
@@ -417,19 +420,19 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     cy.findByTestId("chartsettings-sidebar")
       .findByLabelText("Compact number")
-      .click();
+      .click({ force: true });
     cy.findByTestId("scalar-container").findByText("3.4M");
     cy.findByTestId("scalar-previous-value").findByText("5.3M");
 
     cy.findByTestId("chartsettings-sidebar")
       .findByLabelText("Compact number")
-      .click();
+      .click({ force: true });
     cy.findByTestId("scalar-container").findByText("3,440,000");
     cy.findByTestId("scalar-previous-value").findByText("5,270,000");
   });
 
   it("should work regardless of column order (metabase#13710)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13710",
         query: {
@@ -451,7 +454,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should gracefully handle errors (metabase#42948)", () => {
-    createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "42948",
         native: {
@@ -476,21 +479,61 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // check that error/warning is showing up
     cy.icon("warning").realHover();
-    queryBuilderMain().findByText(
+    H.queryBuilderMain().findByText(
       "No integer value supplied for periods ago comparison.",
     );
 
     // check that we can switch to the table view and the data is shown
     cy.findByLabelText("Switch to data").click();
-    queryBuilderMain().within(() => {
+    H.queryBuilderMain().within(() => {
       cy.findByText("CREATED_AT").should("be.visible");
       cy.findByText("V").should("be.visible");
     });
 
     // check that we can switch visualizations and no longer have the error show
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Line-button").click();
     cy.icon("warning").should("not.exist");
-    cartesianChartCircle().should("have.length", 3);
+    H.cartesianChartCircle().should("have.length", 3);
+  });
+
+  it("should support quick-filter drill thru (metabase#46168)", () => {
+    H.createQuestion(
+      {
+        name: "46168",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: AGGREGATIONS,
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        display: "smartscalar",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("scalar-period")
+      .findByText("Apr 2026")
+      .should("be.visible");
+    cy.findByTestId("scalar-container").findByText("344").click();
+
+    H.popover().within(() => {
+      // Validate expected filter options
+      cy.findByText("Filter by this value").should("be.visible");
+      cy.findByText(">").should("be.visible");
+      cy.findByText("<").should("be.visible");
+      cy.findByText("=").should("be.visible");
+      cy.findByText("≠").should("be.visible");
+
+      // Apply the drill
+      cy.findByText(">").click();
+    });
+
+    // Validate that the filter was applied
+    cy.findByTestId("scalar-period")
+      .findByText("Mar 2026")
+      .should("be.visible");
+    cy.findByTestId("scalar-container").findByText("527").should("be.visible");
   });
 });

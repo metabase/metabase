@@ -10,6 +10,8 @@ import {
 } from "./BaseBucketPickerPopover";
 import type { CommonBucketPickerProps } from "./types";
 
+export const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
+
 function checkBucketIsSelected(item: BucketListItem) {
   return !!item.selected;
 }
@@ -53,6 +55,7 @@ export function TemporalBucketPickerPopover({
       items={items}
       selectedBucket={selectedBucket}
       triggerLabel={t`Temporal bucket`}
+      initiallyVisibleItemsCount={INITIALLY_VISIBLE_ITEMS_COUNT}
       checkBucketIsSelected={checkBucketIsSelected}
       renderTriggerContent={renderTriggerContent}
       onSelect={handleBucketSelect}

@@ -2,7 +2,6 @@
   "Middleware that adds `:join-alias` info to `:field` clauses where needed."
   (:require
    [clojure.data :as data]
-   [malli.core :as mc]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -12,7 +11,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (def ^:private InnerQuery
   [:and
@@ -97,7 +97,7 @@
   [form]
   ;; look for any form that has `:joins`, then wrap stuff as needed
   (lib.util.match/replace form
-    (m :guard (every-pred map? (mc/validator InnerQuery)))
+    (m :guard (every-pred map? (mr/validator InnerQuery)))
     (cond-> m
       ;; recursively wrap stuff in nested joins or source queries in the form
       (:source-query m)

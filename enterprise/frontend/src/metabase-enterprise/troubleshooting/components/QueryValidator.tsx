@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
 import {
@@ -98,8 +97,11 @@ export const QueryValidator = () => {
     },
   );
 
-  const handleCollectionChange = (collection: CollectionPickerValueItem) => {
-    setCollectionId(collection.id);
+  const handleCollectionChange = (item: CollectionPickerValueItem) => {
+    if (item.model !== "collection") {
+      throw new Error("QueryValidator requires a collection as a filter");
+    }
+    setCollectionId(item.id);
     setCollectionPickerOpen(false);
   };
 
@@ -129,7 +131,7 @@ export const QueryValidator = () => {
         <Flex mb="2rem" justify="space-between" align="center">
           <Title>{t`Questions with invalid references`}</Title>
           <Button
-            rightIcon={<Icon name="chevrondown" size={14} />}
+            rightSection={<Icon name="chevrondown" size={14} />}
             miw="235px"
             styles={{
               inner: {
