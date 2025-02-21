@@ -102,6 +102,7 @@
   align-items: center;
   margin-left: auto;
   gap: 0.5rem;
+  position: relative;
 
   @media screen and (max-width: 40em) {
     margin-left: 0;

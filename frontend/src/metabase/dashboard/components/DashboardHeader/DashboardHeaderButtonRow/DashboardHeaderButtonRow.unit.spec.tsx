@@ -7,7 +7,6 @@ import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
-import { checkNotNull } from "metabase/lib/types";
 import type { IconName } from "metabase/ui";
 import {
   createMockDashboard,
@@ -77,8 +76,8 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     tooltip: "Auto-refresh",
   },
   [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE]: {
-    icon: "moon",
-    tooltip: "Nighttime mode",
+    icon: "sun",
+    tooltip: "Daytime mode",
   },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
     icon: "expand",
@@ -99,7 +98,7 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   },
   [DASHBOARD_ACTION.FULLSCREEN_ANALYTICS_DASHBOARD]: {
     icon: "expand",
-    tooltip: "Enter Fullscreen",
+    tooltip: null,
   },
 };
 
@@ -205,17 +204,26 @@ const expectButtonInHeader = async ({
       `${DASHBOARD_EXPECTED_DATA_MAP[action].icon} icon`,
     ),
   );
+
   const { tooltip } = DASHBOARD_EXPECTED_DATA_MAP[action];
-  expect(await screen.findByText(checkNotNull(tooltip))).toBeInTheDocument();
+  if (tooltip) {
+    expect(await screen.findByText(tooltip)).toBeInTheDocument();
+  }
 };
 
-const expectButtonsToBeInHeader = async ({
+const expectButtonsToStrictMatchHeader = async ({
   expectedButtons,
+  checkLength,
 }: {
   expectedButtons: DashboardActionKey[];
+  checkLength?: boolean;
 }) => {
   const buttons = screen.getAllByTestId("dashboard-header-row-button");
-  expect(buttons).toHaveLength(expectedButtons.length);
+
+  if (checkLength) {
+    expect(buttons).toHaveLength(expectedButtons.length);
+  }
+
   for (let i = 0; i < buttons.length; i++) {
     const button = buttons[i];
     const action = expectedButtons[i];
@@ -226,21 +234,44 @@ const expectButtonsToBeInHeader = async ({
   }
 };
 
+const expectButtonsToExistInHeader = async ({
+  expectedButtons,
+}: {
+  expectedButtons: DashboardActionKey[];
+}) => {
+  for (const action of expectedButtons) {
+    const button = screen.getByLabelText(
+      `${DASHBOARD_EXPECTED_DATA_MAP[action].icon} icon`,
+    );
+
+    expect(button).toBeInTheDocument();
+
+    await userEvent.hover(button);
+
+    const { tooltip } = DASHBOARD_EXPECTED_DATA_MAP[action];
+    if (tooltip) {
+      expect(await screen.findByText(tooltip)).toBeInTheDocument();
+    }
+  }
+};
+
 describe("DashboardHeaderButtonRow", () => {
   describe("when editing", () => {
     it("should show all edit-related buttons", async () => {
       setup({ isEditing: true, hasModelActionsEnabled: true });
-      await expectButtonsToBeInHeader({
+      await expectButtonsToStrictMatchHeader({
         expectedButtons: DASHBOARD_EDITING_ACTIONS,
+        checkLength: true,
       });
     });
 
     it("should not show `Add action element` when model actions are disabled", async () => {
       setup({ isEditing: true, hasModelActionsEnabled: false });
-      await expectButtonsToBeInHeader({
+      await expectButtonsToStrictMatchHeader({
         expectedButtons: DASHBOARD_EDITING_ACTIONS.filter(
           action => action !== DASHBOARD_ACTION.ADD_ACTION_ELEMENT,
         ),
+        checkLength: true,
       });
     });
 
@@ -268,7 +299,7 @@ describe("DashboardHeaderButtonRow", () => {
         hasNightModeToggle: true,
         isAdmin: true,
       });
-      await expectButtonsToBeInHeader({
+      await expectButtonsToStrictMatchHeader({
         expectedButtons: [
           DASHBOARD_ACTION.EDIT_DASHBOARD,
           DASHBOARD_ACTION.DASHBOARD_SHARING,
@@ -278,6 +309,7 @@ describe("DashboardHeaderButtonRow", () => {
           DASHBOARD_ACTION.DASHBOARD_INFO,
           DASHBOARD_ACTION.DASHBOARD_ACTION_MENU,
         ],
+        checkLength: true,
       });
     });
 
@@ -300,30 +332,31 @@ describe("DashboardHeaderButtonRow", () => {
       }
     });
 
-    it("should show fullscreen toggle when dashboard is public", () => {
+    it("should show fullscreen toggle when dashboard is public", async () => {
       setup({ isEditing: false, isPublic: true });
-      expectButtonsToBeInHeader({
+      await expectButtonsToExistInHeader({
         expectedButtons: [DASHBOARD_ACTION.FULLSCREEN_TOGGLE],
       });
     });
 
-    it("should show night mode toggle when in fullscreen", () => {
+    it("should show night mode toggle when in fullscreen", async () => {
       setup({
         isEditing: false,
         isFullscreen: true,
         hasNightModeToggle: true,
         isNightMode: true,
       });
-      expectButtonsToBeInHeader({
+
+      await expectButtonsToExistInHeader({
         expectedButtons: [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE],
       });
     });
   });
 
   describe("when viewing analytics dashboard", () => {
-    it("should show analytics-specific buttons with correct icons and tooltips", () => {
+    it("should show analytics-specific buttons with correct icons and tooltips", async () => {
       setup({ isEditing: false, isAnalyticsDashboard: true });
-      expectButtonsToBeInHeader({
+      await expectButtonsToExistInHeader({
         expectedButtons: [
           DASHBOARD_ACTION.COPY_ANALYTICS_DASHBOARD,
           DASHBOARD_ACTION.FULLSCREEN_ANALYTICS_DASHBOARD,
@@ -333,9 +366,12 @@ describe("DashboardHeaderButtonRow", () => {
 
     it("should not show regular dashboard action menu", () => {
       setup({ isEditing: false, isAnalyticsDashboard: true });
-      expectButtonsToBeInHeader({
-        expectedButtons: [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU],
-      });
+
+      expect(
+        screen.queryByLabelText(
+          `${DASHBOARD_EXPECTED_DATA_MAP[DASHBOARD_ACTION.DASHBOARD_ACTION_MENU].icon} icon`,
+        ),
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -6,7 +6,6 @@ import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import * as CardLib from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
-import * as alert from "metabase/notifications/redux/alert";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -320,17 +319,6 @@ describe("QB Actions > initializeQB", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
-        it("fetches alerts", async () => {
-          const fetchAlertsForQuestionSpy = jest.spyOn(
-            alert,
-            "fetchAlertsForQuestion",
-          );
-
-          await setup({ card: card });
-
-          expect(fetchAlertsForQuestionSpy).toHaveBeenCalledWith(card.id);
-        });
-
         it("passes object ID from params correctly", async () => {
           const params = getQueryParamsForCard(card, { objectId: 123 });
           const { result } = await setup({ card: card, params });
@@ -480,17 +468,6 @@ describe("QB Actions > initializeQB", () => {
         it("does not lock question display", async () => {
           const { result } = await setup({ card: card });
           expect(result.card.displayIsLocked).toBeFalsy();
-        });
-
-        it("does not try to fetch alerts", async () => {
-          const fetchAlertsForQuestionSpy = jest.spyOn(
-            alert,
-            "fetchAlertsForQuestion",
-          );
-
-          await setup({ card: card });
-
-          expect(fetchAlertsForQuestionSpy).not.toHaveBeenCalled();
         });
 
         it("does not show qbnewb modal", async () => {
@@ -770,17 +747,6 @@ describe("QB Actions > initializeQB", () => {
     it("does not lock question display", async () => {
       const { result } = await setupOrdersTable();
       expect(result.card.displayIsLocked).toBeFalsy();
-    });
-
-    it("does not try to fetch alerts", async () => {
-      const fetchAlertsForQuestionSpy = jest.spyOn(
-        alert,
-        "fetchAlertsForQuestion",
-      );
-
-      await setupOrdersTable();
-
-      expect(fetchAlertsForQuestionSpy).not.toHaveBeenCalled();
     });
 
     it("does not show qbnewb modal", async () => {

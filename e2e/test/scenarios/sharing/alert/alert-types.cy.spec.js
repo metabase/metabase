@@ -41,12 +41,11 @@ const rawTestCases = [
 
 describe("scenarios > alert > types", { tags: "@external" }, () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/alert").as("savedAlert");
+    cy.intercept("POST", "/api/notification").as("updateAlert");
     cy.intercept("GET", "/api/channel").as("channel");
 
     H.restore();
     cy.signInAsAdmin();
-    cy.setCookie("metabase.SEEN_ALERT_SPLASH", "true");
 
     H.setupSMTP();
   });
@@ -56,16 +55,21 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       it(`should be supported for ${questionType}`, () => {
         H.visitQuestion(questionId);
 
-        H.openSharingMenu("Create alert");
+        H.openSharingMenu("Create an alert");
         cy.wait("@channel");
 
         H.modal().within(() => {
-          cy.findByText("Let's set up your alert").should("be.visible");
+          cy.findByText("New alert").should("be.visible");
+
+          cy.findByTestId("alert-goal-select")
+            .should("be.disabled")
+            .should("have.value", "When this question has results");
+
           cy.findByText("Done").click();
         });
 
-        cy.wait("@savedAlert").then(({ response: { body } }) => {
-          expect(body.alert_condition).to.equal("rows");
+        cy.wait("@updateAlert").then(({ response: { body } }) => {
+          expect(body.payload?.send_condition).to.equal("has_result");
         });
       });
     });
@@ -86,43 +90,54 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       H.visitQuestion(timeSeriesQuestionId);
       cy.findByTestId("chart-container").should("contain", "Goal");
 
-      H.openSharingMenu("Create alert");
+      H.openSharingMenu("Create an alert");
       cy.wait("@channel");
 
-      cy.findByTestId("alert-create").within(() => {
-        cy.findByText("Reaches the goal line").click();
-        cy.findByText("The first time").click();
+      H.modal().findByTestId("alert-goal-select").should("be.enabled").click();
+
+      H.popover().within(() => {
+        cy.findByText("When results go above the goal line").should(
+          "be.visible",
+        );
+        cy.findByText("When results go below the goal line").should(
+          "be.visible",
+        );
+
+        cy.findByText("When results go above the goal line").click();
+      });
+
+      H.modal().within(() => {
+        cy.findByText("Only send this alert once").click();
+
         cy.button("Done").click();
       });
 
       cy.log("Check the API response");
-      cy.wait("@savedAlert").then(({ response: { body } }) => {
-        expect(body.alert_condition).to.equal("goal");
-        expect(body.alert_above_goal).to.equal(true);
-        expect(body.alert_first_only).to.equal(true);
+      cy.wait("@updateAlert").then(({ response: { body } }) => {
+        expect(body.payload?.send_condition).to.equal("goal_above");
+        expect(body.payload?.send_once).to.equal(true);
       });
     });
 
     it("should not be possible to create goal based alert for a multi-series question", () => {
       H.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
 
-      H.openSharingMenu("Create alert");
+      H.openSharingMenu("Create an alert");
       cy.wait("@channel");
 
-      // *** The warning below is not showing when we try to make an alert (Issue #???)
-      // cy.contains(
-      //   "Goal-based alerts aren't yet supported for charts with more than one line",
-      // );
-
       H.modal().within(() => {
-        cy.findByText("Let's set up your alert").should("be.visible");
+        cy.findByText("New alert").should("be.visible");
+
+        cy.findByTestId("alert-goal-select")
+          .should("be.disabled")
+          .should("have.value", "When this question has results");
+
         cy.findByText("Done").click();
       });
 
       // The alert condition should fall back to rows
-      cy.wait("@savedAlert").then(({ response: { body } }) => {
-        expect(body.alert_condition).to.equal("rows");
-        expect(body.alert_above_goal).to.equal(null);
+      cy.wait("@updateAlert").then(({ response: { body } }) => {
+        expect(body.payload?.send_condition).to.equal("has_result");
       });
     });
   });

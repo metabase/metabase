@@ -2,7 +2,7 @@
 import { Component } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/ui";
 
 const defaultTitleForState = {
   default: t`Save`,
@@ -50,8 +50,8 @@ export default class ButtonWithStatus extends Component {
     return (
       <Button
         className={this.props.className}
-        primary={!disabled}
-        success={progressState === "completed"}
+        variant={disabled ? "outline" : "filled"}
+        color={progressState === "completed" ? "success" : "brand"}
         disabled={disabled}
         onClick={this.onClick}
       >

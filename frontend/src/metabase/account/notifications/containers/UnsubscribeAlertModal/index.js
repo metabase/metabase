@@ -1,1 +1,1 @@
-export { default } from "./UnsubscribeAlertModal";
+export { UnsubscribeAlertModal } from "./UnsubscribeAlertModal";

@@ -1,5 +1,4 @@
 import type {
-  NormalizedAlert,
   NormalizedCard,
   NormalizedCollection,
   NormalizedDashboard,
@@ -16,7 +15,6 @@ import type {
 
 export interface EntitiesState {
   actions: Record<string, NormalizedWritebackAction>;
-  alerts: Record<string, NormalizedAlert>;
   collections: Record<string, NormalizedCollection>;
   dashboards: Record<string, NormalizedDashboard>;
   databases: Record<string, NormalizedDatabase>;
