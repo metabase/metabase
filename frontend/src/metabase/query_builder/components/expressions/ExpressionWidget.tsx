@@ -192,6 +192,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
         expressionIndex={expressionIndex}
         reportTimezone={reportTimezone}
         shortcuts={shortcuts}
+        error={error}
       />
 
       <Flex gap="xs" align="center" justify="end" p="0" pr="sm">

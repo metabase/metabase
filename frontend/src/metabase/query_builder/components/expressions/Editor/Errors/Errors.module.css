@@ -1,0 +1,8 @@
+.errors {
+  background-color: var(--mb-color-bg-error);
+  color: var(--mb-color-text-primary);
+}
+
+.icon {
+  color: var(--mb-color-error);
+}

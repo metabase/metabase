@@ -29,6 +29,9 @@ const lint = (options: LintOptions) =>
   linter(
     (view: EditorView): Diagnostic[] => {
       const source = view.state.doc.toString();
+      if (source === "") {
+        return [];
+      }
       const { error } = diagnoseAndCompileExpression(source, options);
 
       if (!error) {
