@@ -3,10 +3,11 @@ import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useRef, useState } from "react";
 import { useMount } from "react-use";
+import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box } from "metabase/ui";
+import { Box, Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { format } from "metabase-lib/v1/expressions";
 import type { Shortcut } from "metabase-lib/v1/expressions/complete";
@@ -60,10 +61,11 @@ export function Editor<S extends StartRule = "expression">(
   const ref = useRef<ReactCodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
 
-  const { source, onSourceChange, isFormatting } = useExpression({
-    ...props,
-    metadata,
-  });
+  const { source, onSourceChange, formatExpression, isFormatting } =
+    useExpression({
+      ...props,
+      metadata,
+    });
 
   const [customTooltip, portal] = useCustomTooltip({
     getPosition: getTooltipPosition,
@@ -110,6 +112,16 @@ export function Editor<S extends StartRule = "expression">(
         hide={isFormatting || source.trim() !== ""}
       />
 
+      <Box className={S.toolbar} p="xs">
+        <Button
+          title={t`Format`}
+          onClick={formatExpression}
+          variant="subtle"
+          leftSection={<Icon name="snippet" />}
+          size="xs"
+        />
+      </Box>
+
       {portal}
     </Box>
   );
@@ -130,9 +142,7 @@ function useExpression<S extends StartRule = "expression">({
   const [source, setSource] = useState("");
   const [isFormatting, setIsFormatting] = useState(true);
 
-  useMount(() => {
-    // format the source when the component mounts
-
+  const formatExpression = useCallback(() => {
     const expression =
       clause &&
       Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
@@ -156,10 +166,10 @@ function useExpression<S extends StartRule = "expression">({
         setSource("");
         setIsFormatting(false);
       });
-  });
+  }, [clause, query, stageIndex, expressionIndex]);
 
   const handleUpdate = useCallback(
-    function (source: string) {
+    (source: string) => {
       setSource(source);
       const { clause, error } = diagnoseAndCompileExpression(source, {
         startRule,
@@ -174,9 +184,15 @@ function useExpression<S extends StartRule = "expression">({
     [name, query, stageIndex, startRule, metadata, expressionIndex, onChange],
   );
 
+  useMount(() => {
+    // format the source when the component mounts
+    formatExpression();
+  });
+
   return {
     source,
     onSourceChange: handleUpdate,
+    formatExpression,
     isFormatting,
   };
 }
