@@ -206,14 +206,16 @@
               {"k" "$$item.k",
                "object"
                {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
-               "type" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
-                                    "args" ["$$item.v" {"$type" "$$item.v"}]
-                                    "lang" "js"}}}}}}}
+               "type"       {"$type" "$$item.v"},
+               "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
+                                          "args" ["$$item.v" {"$type" "$$item.v"}]
+                                          "lang" "js"}}}}}}}
           {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
           {"$project"
            {"path" "$kvs.k",
             "result" {"$literal" false},
             "type" "$kvs.type",
+            "type-alias" "$kvs.type-alias"
             "index" 1,
             "object" "$kvs.object"}}
           {"$facet"
@@ -221,12 +223,12 @@
             "newResults"
             [{"$match" {"result" false}}
              {"$group"
-              {"_id" {"type" "$type", "path" "$path"},
+              {"_id" {"type" "$type", "type-alias" "$type-alias", "path" "$path"},
                "count" {"$sum" {"$cond" {"if" {"$eq" ["$type" "null"]}, "then" 0, "else" 1}}},
                "index" {"$min" "$index"}}}
              {"$sort" {"count" -1}}
-             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "index" {"$min" "$index"}}}
-             {"$project" {"path" "$_id", "type" 1, "result" {"$literal" true}, "object" nil, "index" 1}}],
+             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "type-alias" {"$first" "$_id.type-alias"}, "index" {"$min" "$index"}}}
+             {"$project" {"path" "$_id", "type" 1, "type-alias" 1, "result" {"$literal" true}, "object" nil, "index" 1}}],
             "nextItems"
             [{"$match" {"result" false, "object" {"$ne" nil}}}
              {"$project"
@@ -239,13 +241,15 @@
                  {"k" "$$item.k",
                   "object"
                   {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
-                  "type" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
-                                       "args" ["$$item.v" {"$type" "$$item.v"}]
-                                       "lang" "js"}}}}}}}
+                  "type"       {"$type" "$$item.v"},
+                  "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
+                                             "args" ["$$item.v" {"$type" "$$item.v"}]
+                                             "lang" "js"}}}}}}}
              {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
              {"$project"
               {"path" {"$concat" ["$path" "." "$kvs.k"]},
                "type" "$kvs.type",
+               "type-alias" "$kvs.type-alias",
                "result" {"$literal" false},
                "index" 1,
                "object" "$kvs.object"}}]}}
@@ -257,16 +261,16 @@
             "newResults"
             [{"$match" {"result" false}}
              {"$group"
-              {"_id" {"type" "$type", "path" "$path"},
+              {"_id" {"type" "$type",  "type-alias" "$type-alias", "path" "$path"},
                "count" {"$sum" {"$cond" {"if" {"$eq" ["$type" "null"]}, "then" 0, "else" 1}}},
                "index" {"$min" "$index"}}}
              {"$sort" {"count" -1}}
-             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "index" {"$min" "$index"}}}
-             {"$project" {"path" "$_id", "type" 1, "result" {"$literal" true}, "object" nil, "index" 1}}]}}
+             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "type-alias" {"$first" "$_id.type-alias"}, "index" {"$min" "$index"}}}
+             {"$project" {"path" "$_id", "type" 1, "type-alias" 1, "result" {"$literal" true}, "object" nil, "index" 1}}]}}
           {"$project" {"acc" {"$concatArrays" ["$results" "$newResults"]}}}
           {"$unwind" "$acc"}
           {"$replaceRoot" {"newRoot" "$acc"}}
-          {"$project" {"_id" 0, "index" "$index", "path" "$path", "type" "$type"}}]
+          {"$project" {"_id" 0, "index" "$index", "path" "$path", "type" "$type", "type-alias" "$type-alias"}}]
          (#'mongo/describe-table-query :collection-name "collection-name" :sample-size 1000 :max-depth 1))))
 
 (deftest describe-table-test
