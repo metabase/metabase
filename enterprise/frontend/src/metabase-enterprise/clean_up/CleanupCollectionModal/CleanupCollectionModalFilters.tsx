@@ -37,6 +37,7 @@ export const CleanupCollectionModalFilters = ({
             option && isDateFilter(option) && onDateFilterChange(option);
           }}
           mx=".5rem"
+          styles={{ wrapper: { marginTop: 0 } }}
           data-testid="cleanup-date-filter"
         />
       )}`}
