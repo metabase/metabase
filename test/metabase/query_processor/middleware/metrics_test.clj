@@ -1039,31 +1039,104 @@
                                       (lib/aggregate (lib.metadata/metric mp mid-cnt))
                                       (lib/aggregate (lib.metadata/metric mp mid-sum))))))))))
 
-(deftest incompatible-filters-test-x
+(deftest conflicting-filters-in-metrics-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (mt/with-temp
+      [:model/Card
+       {model-id :id}
+       {:type :model
+        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib.convert/->legacy-MBQL))}]
+      (doseq [[query-base-type query-base] [[:table (lib.metadata/table mp (mt/id :orders))]
+                                            [:model (lib.metadata/card mp model-id)]]]
+        (let [metric-query-fn (fn [filter-op]
+                                (as-> (lib/query mp query-base) $
+                                  (lib/filter $ (filter-op (m/find-first (comp #{"Total"} :display-name)
+                                                                         (lib/filterable-columns $))
+                                                           10))
+                                  (lib/aggregate $ (lib/count))
+                                  (lib.convert/->legacy-MBQL $)))]
+          (mt/with-temp
+            [:model/Card
+             {mid-gt :id}
+             {:type :metric
+              :dataset_query (metric-query-fn lib/>)}
+
+             :model/Card
+             {mid-lt :id}
+             {:type :metric
+              :dataset_query (metric-query-fn lib/<)}]
+            (testing (format "Processing of query (%s based) referencing metrics with conflicting filters throws"
+                             query-base-type)
+              (is (thrown-with-msg?
+                   Throwable #"Metrics `\d+` and `\d+` have incompatible filters"
+                   (qp/process-query (-> (lib/query mp query-base)
+                                         (lib/aggregate (lib.metadata/metric mp mid-gt))
+                                         (lib/aggregate (lib.metadata/metric mp mid-lt)))))))))))))
+
+;; ok
+(deftest one-metric-with-filter-other-without-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (mt/with-temp
+      [:model/Card
+       {model-id :id}
+       {:type :model
+        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib.convert/->legacy-MBQL))}]
+      (doseq [[query-base-type query-base] [[:table (lib.metadata/table mp (mt/id :orders))]
+                                            [:model (lib.metadata/card mp model-id)]]]
+        (mt/with-temp
+          [:model/Card
+           {with-filter-id :id}
+           {:type :metric
+            :dataset_query (as-> (lib/query mp query-base) $
+                             (lib/filter $ (lib/> (m/find-first (comp #{"Total"} :display-name)
+                                                                (lib/filterable-columns $))
+                                                  10))
+                             (lib/aggregate $ (lib/count))
+                             (lib.convert/->legacy-MBQL $))}
+
+           :model/Card
+           {no-filter-id :id}
+           {:type :metric
+            :dataset_query (-> (lib/query mp query-base)
+                               (lib/aggregate (lib/count))
+                               (lib.convert/->legacy-MBQL))}]
+          (testing (format "Processing of query (%s based) referencing metrics with incompatible filters provokes an excpetion"
+                           query-base-type)
+            (is (thrown-with-msg?
+                 Throwable #"Metrics `\d+` and `\d+` have incompatible filters"
+                 (qp/process-query (-> (lib/query mp query-base)
+                                       (lib/aggregate (lib.metadata/metric mp no-filter-id))
+                                       (lib/aggregate (lib.metadata/metric mp with-filter-id))))))))))))
+
+(deftest compatible-filters-in-metrics-with-different-ordering-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-        metric-query-fn (fn [filter-op]
+        metric-query-fn (fn [filter-op1 filter-op2]
                           (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-                            (lib/filter $ (filter-op (m/find-first (comp #{"Total"} :display-name)
-                                                                   (lib/filterable-columns $))
-                                                     10))
+                            (lib/filter $ (filter-op1 (m/find-first (comp #{"Total"} :display-name)
+                                                                    (lib/filterable-columns $))
+                                                      10))
+                            (lib/filter $ (filter-op2 (m/find-first (comp #{"Total"} :display-name)
+                                                                    (lib/filterable-columns $))
+                                                      10))
                             (lib/aggregate $ (lib/count))
                             (lib.convert/->legacy-MBQL $)))]
     (mt/with-temp
       [:model/Card
        {mid-gt :id}
        {:type :metric
-        :dataset_query (metric-query-fn lib/>)}
-  
+        :dataset_query (metric-query-fn lib/> lib/=)}
+
        :model/Card
        {mid-lt :id}
        {:type :metric
-        :dataset_query (metric-query-fn lib/<)}]
-      (testing "Processing of query referencing metrics with compatible filters "
-        (is (thrown-with-msg?
-             Throwable #"Metrics `\d+` and `\d+` have incompatible filters"
-             (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                   (lib/aggregate (lib.metadata/metric mp mid-gt))
-                                   (lib/aggregate (lib.metadata/metric mp mid-lt))))))))))
+        :dataset_query (metric-query-fn lib/= lib/>)}]
+      (testing "Processing of query referencing metrics with same filters with different ordering should complete"
+        (is (=? {:status :completed}
+                (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                      (lib/aggregate (lib.metadata/metric mp mid-gt))
+                                      (lib/aggregate (lib.metadata/metric mp mid-lt))))))))))
 
 (def efs @#'metrics/equal-filter?)
 
