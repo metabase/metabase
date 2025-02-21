@@ -31,13 +31,12 @@ export function enterCustomColumnDetails({
    *   Because CodeMirror uses a contenteditable div, and it is not possible to use cy.type() on it, we emulate .type with realPress.
    *   This does not always work, since realPress() does not support all characters. Setting this to true will enable an escape hatch
    *   that uses cy.invoke('text') under the hood, to allow for formulas that contain unsupported characters.
-   *   This has some other sideeffects however, so use it sparingly.
+   *   This has some other side effects, like not triggering change handlers or not triggering autocomplte, so use it sparingly.
    */
   allowFastSet?: boolean;
 }) {
   CustomExpressionEditor.get().as("formula");
   CustomExpressionEditor.clear();
-  cy.wait(100);
   CustomExpressionEditor.type(formula, { allowFastSet });
 
   if (blur) {
