@@ -10,27 +10,27 @@
         "paths": [
           {
             "name": "@mantine/core",
-            "message": "Please import from `metabase/ui` instead."
+            "message": "Please import from `metabase/ui` instead.",
           },
           {
             "name": "moment",
-            "message": "Moment is deprecated, please use dayjs"
+            "message": "Moment is deprecated, please use dayjs",
           },
           {
             "name": "moment-timezone",
-            "message": "Moment is deprecated, please use dayjs"
+            "message": "Moment is deprecated, please use dayjs",
           },
           {
-            "name": "@storybook/testing-library",
-            "message": "Please use `testing-library/react` or `@testing-library/user-event`"
+            "name": "@storybook/test",
+            "message": "Please use `testing-library/react` or `@testing-library/user-event`",
           },
           {
             "name": "react-redux",
             "importNames": ["useSelector", "useDispatch", "connect"],
-            "message": "Please import from `metabase/lib/redux` instead."
-          }
-        ]
-      }
-    ]
-  }
+            "message": "Please import from `metabase/lib/redux` instead.",
+          },
+        ],
+      },
+    ],
+  },
 }
