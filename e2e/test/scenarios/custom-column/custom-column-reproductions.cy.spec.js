@@ -1,4 +1,5 @@
 const { H } = cy;
+
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -1071,35 +1072,33 @@ describe("issue 49882", () => {
 
   it("does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)", () => {
     // This test used to use keyboard shortcuts to cut and paste but this
-    // seem impossible to emulate with CodeMirror in Cypress, so it's using allowFastSet
-    // instead.
+    // seem impossible to emulate with CodeMirror in Cypress, so it's using
+    // a synthetic paste event instead.
+    // Copy is impossible to emulate so far, but it's not crucial to test the issue.
 
     H.enterCustomColumnDetails({
       formula:
         'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])',
       blur: false,
-      allowFastSet: true,
     });
 
-    // Cut [Tax]
-    H.CustomExpressionEditor.type(
-      'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), )',
-      {
-        allowFastSet: true,
-      },
-    );
+    // "Cut" [Tax]
+    H.CustomExpressionEditor.type("{end}{leftarrow}", { focus: false });
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Backspace"]);
+
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(43));
 
     // Paste [Tax] before case
-    H.CustomExpressionEditor.type(
-      'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )',
-      {
-        allowFastSet: true,
-      },
-    );
+    H.CustomExpressionEditor.paste("[Tax]");
 
     H.CustomExpressionEditor.value().should(
       "equal",
-      'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )',
+      'case([Tax] > 1,[Tax] case([Total] > 200, [Total], "Nothing"), )',
     );
     H.CustomExpressionEditor.blur();
 

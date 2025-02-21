@@ -236,4 +236,18 @@ export const CustomExpressionEditor = {
   helpText() {
     return cy.findByTestId("expression-helper");
   },
+  paste(content: string) {
+    CustomExpressionEditor.textbox().then(el => {
+      const clipboardData = new DataTransfer();
+      clipboardData.setData("text/plain", content);
+
+      const pasteEvent = new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData,
+      });
+
+      el[0].dispatchEvent(pasteEvent);
+    });
+  },
 };
