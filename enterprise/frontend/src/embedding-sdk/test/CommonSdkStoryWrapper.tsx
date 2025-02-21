@@ -3,9 +3,6 @@ import * as jose from "jose";
 
 import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
 
-import "@mantine/core/styles.css"; // TODO: how to use in embedding?
-import "@mantine/dates/styles.css";
-
 import { USERS } from "../../../../../e2e/support/cypress_data";
 
 import { storybookThemes } from "./storybook-themes";
