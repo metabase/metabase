@@ -4,9 +4,8 @@ import { t } from "ttag";
 import EmptyStateIcon from "assets/img/empty-states/collection.svg";
 import { isRootTrashCollection } from "metabase/collections/utils";
 import NewItemMenu from "metabase/containers/NewItemMenu";
-import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
-import { Box, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
+import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 export interface CollectionEmptyStateProps {
@@ -63,7 +62,13 @@ const DefaultCollectionEmptyState = ({
       </EmptyStateSubtitle>
       {canWrite && (
         <NewItemMenu
-          trigger={<Button icon="add">{t`Create a new…`}</Button>}
+          trigger={
+            <Button
+              variant="outline"
+              leftSection={<Icon name="add" />}
+              w="12.5rem"
+            >{t`New`}</Button>
+          }
           collectionId={collection?.id}
         />
       )}
