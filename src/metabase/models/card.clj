@@ -508,7 +508,7 @@
                                 (into {}))]
     (when (and (:dashboard_id changes) (seq dashboard-id->name))
       (throw (ex-info
-              (tru "Can't move question into dashboard. Questions saved in dashboards can't appear in other dashboards.")
+              (tru "Can''t move question into dashboard. Questions saved in dashboards can''t appear in other dashboards.")
               {:status-code 400
                :other-dashboards dashboard-id->name}))))
   (when-let [reason (invalid-dashboard-internal-card-update-reason? card changes)]
