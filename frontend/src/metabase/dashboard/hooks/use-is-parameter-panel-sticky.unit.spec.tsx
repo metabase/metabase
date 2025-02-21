@@ -105,6 +105,11 @@ describe("useIsParameterPanelSticky", () => {
 
   it("sets isStickyStateChanging to true and false before and after isSticky is changed", async () => {
     const { result } = setup();
+    const originalRaf = global.requestAnimationFrame;
+
+    (global as any).requestAnimationFrame = jest.fn(cb => {
+      setTimeout(cb, 0);
+    });
 
     await waitFor(() => {
       expect(mockObserve).toHaveBeenCalledTimes(1);
@@ -121,6 +126,8 @@ describe("useIsParameterPanelSticky", () => {
     await waitFor(() => {
       expect(result.current.isStickyStateChanging).toBe(false);
     });
+
+    (global as any).requestAnimationFrame = originalRaf;
   });
 
   it("disconnects the observer on unmount", () => {
