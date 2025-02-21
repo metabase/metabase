@@ -89,6 +89,23 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({ formula: "concat(", blur: false });
 
+    /**
+     * It seems like cypress considers that this popover and its contents
+     * are visible, even when it's under its parent popover because it is
+     * in a portal, so technically it's not being clipped by any element.
+     * Weirdly enough, it refuses to click `Learn more` because it's covered,
+     * but should("be.visible") passes.
+     *
+     * So, the (hacky) solution for now is to click all 5 elements of the popover,
+     * and we will check if the popover is still there at the end.
+     * Since the popover has onClickOutside behavior, the popover will
+     * close if the user clicks on anything outside it, so we can use
+     * that to our advantage.
+     *
+     * This has the advantage of also testing the click behaviour of popover,
+     * which should not close when it is being clicked on.
+     */
+
     H.CustomExpressionEditor.helpText().within(() => {
       cy.findByText(
         "Combine two or more strings of text together.",
