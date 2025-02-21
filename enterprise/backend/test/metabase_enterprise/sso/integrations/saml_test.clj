@@ -221,7 +221,7 @@
               redirect-url (get-in result [:headers "Location"])]
           (is (str/starts-with? redirect-url default-idp-uri)))))))
 
-(deftest redirect-append-paramters-test
+(deftest redirect-append-parameters-test
   (testing (str "When the identity provider already includes a query parameter, the SAML code should spot that and "
                 "append more parameters onto the query string (rather than always include a `?newparam=here`).")
     (with-other-sso-types-disabled!
