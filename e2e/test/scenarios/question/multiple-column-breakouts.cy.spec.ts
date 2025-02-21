@@ -305,6 +305,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.popover()
             .findByLabelText(columnName)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
           // eslint-disable-next-line no-unsafe-element-filtering
           H.popover().last().findByText(bucket1Name).click();
