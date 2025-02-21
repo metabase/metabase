@@ -2,10 +2,10 @@
 # STAGE 1: builder
 ###################
 
-FROM node:18-bullseye as builder
+FROM node:22-bullseye as builder
 
 ARG MB_EDITION=oss
-ARG VERSION
+ARG VERSION=eet-1.0.0
 
 WORKDIR /home/node
 
