@@ -127,7 +127,7 @@
   (if (contains? query :native)
     (let [source-query (-> (:native query)
                            (set/rename-keys {:query :native})
-                           (assoc :parameters (:parameters query)))]
+                           (cond-> (:parameters query) (assoc :parameters (:parameters query))))]
       {:database (:database query)
        :type     :query
        :query    {:source-query source-query}})
@@ -150,15 +150,16 @@
   (let [id-or-name' (int-or-string id-or-name)]
     [:field id-or-name' (when (string? id-or-name') {:base-type :type/Float})]))
 
-(defn- query->tiles-query
+(defn- tiles-query
   "Transform a card's query into a query finding coordinates in a particular region.
 
   - transform native queries into nested mbql queries from that native query
   - add [:inside lat lon bounding-region coordings] filter
   - limit query results to `tile-coordinate-limit` number of results
   - only select lat and lon fields rather than entire query's fields"
-  [query {:keys [zoom x y lat-field lon-field]}]
-  (let [lat-field-ref (field-ref lat-field)
+  [query zoom x y lat-field lon-field]
+  (let [query         (mbql.normalize/normalize query)
+        lat-field-ref (field-ref lat-field)
         lon-field-ref (field-ref lon-field)]
     (-> query
         native->source-query
@@ -172,13 +173,6 @@
 ;;; that handles that.
 (mr/def ::field-id-or-name
   [:string {:api/regex #"[^/]+"}])
-
-(defn- tiles-query
-  [query zoom x y lat-field lon-field]
-  (let [query (mbql.normalize/normalize query)]
-    (query->tiles-query query {:zoom zoom :x x :y y
-                               :lat-field lat-field
-                               :lon-field lon-field})))
 
 (defn- result->points
   [{{:keys [rows cols]} :data} lat-field lon-field]
@@ -230,8 +224,7 @@
 (defn process-tiles-query-for-card
   "Generates a single tile image for a dashcard and returns a Ring response that contains the data as a PNG"
   [card-id parameters zoom x y lat-field lon-field]
-  (let [parameters (json/decode+kw parameters)
-        result
+  (let [result
         (qp.card/process-query-for-card
          card-id
          :api
@@ -250,8 +243,7 @@
 (defn process-tiles-query-for-dashcard
   "Generates a single tile image for a dashcard and returns a Ring response that contains the data as a PNG"
   [dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field]
-  (let [parameters (json/decode+kw parameters)
-        result
+  (let [result
         (qp.dashboard/process-query-for-dashcard
          :dashboard-id  dashboard-id
          :dashcard-id   dashcard-id

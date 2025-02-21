@@ -157,7 +157,7 @@
                      :parameters (json/encode [{:id "_STATE_"
                                                 :value ["CA"]}])))))))))
 
-(deftest query->tiles-query-test
+(deftest tiles-query-test
   (letfn [(clean [q]
             (-> q
                 (update-in [:query :filter] #(take 3 %))))]
@@ -178,10 +178,8 @@
                           :limit 2000
                           :filter [:inside [:field 574 nil] [:field 576 nil]]}
                   :type :query}
-                 (clean (#'api.tiles/query->tiles-query query
-                                                        {:zoom 2 :x 3 :y 1
-                                                         :lat-field [:field 574 nil]
-                                                         :lon-field [:field 576 nil]})))))))
+                 (clean (#'api.tiles/tiles-query query 2 3 1 "574" "576")))))))
+
     (testing "native"
       (testing "nests the query, selects fields"
         (let [query {:type :native
@@ -197,10 +195,7 @@
                                    [:field "longitude" {:base-type :type/Float}]]
                           :limit  2000}
                   :type :query}
-                 (clean (@#'api.tiles/query->tiles-query query
-                                                         {:zoom 2 :x 2 :y 1
-                                                          :lat-field [:field "latitude" {:base-type :type/Float}]
-                                                          :lon-field [:field "longitude" {:base-type :type/Float}]})))))))))
+                 (clean (@#'api.tiles/tiles-query query 2 2 1 "latitude" "longitude")))))))))
 
 (deftest breakout-query-test
   (testing "the appropriate lat/lon fields are selected from the results, if the query contains a :breakout clause (#20182)"
