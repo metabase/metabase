@@ -1,21 +1,9 @@
 import type { StoryFn } from "@storybook/react";
 import * as jose from "jose";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import type { MetabaseAuthConfig } from "embedding-sdk";
 import * as sdk_live_code from "embedding-sdk";
-
-import { sdk_52_stable, sdk_53_stable } from "./SDK_FROM_NPM";
-
-console.log("sdk_52_stable", sdk_52_stable); // <-- this breaks it, probably because it makes the import stay, so it's the import that's breaking stuff
-
-export const SDK_VERSIONS = {
-  live_code: sdk_live_code,
-  // sdk_53_stable,
-  // sdk_52_stable,
-};
-
-console.log("SDK_VERSIONS", SDK_VERSIONS);
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
 
@@ -64,14 +52,9 @@ export const getStorybookSdkAuthConfigForUser = (
 export const storybookSdkAuthDefaultConfig =
   getStorybookSdkAuthConfigForUser("normal");
 
-export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
-  // useEffect(() => {
-  //   console.log("CommonSdkStoryWrapper mounted");
-  //   return () => {
-  //     console.log("CommonSdkStoryWrapper unmounted");
-  //   };
-  // }, []);
+let firstSdkVersion: string | null = null;
 
+export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
   const sdkTheme = context.globals.sdkTheme || "default";
   const theme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
 
@@ -81,21 +64,40 @@ export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
     return getStorybookSdkAuthConfigForUser(user);
   }, [user]);
 
-  const sdkVersion = (context.globals.sdkVersion ||
-    "live_code") as keyof typeof SDK_VERSIONS;
-  const sdk = SDK_VERSIONS[sdkVersion];
+  const sdkVersion = (context.globals.sdkVersion || "live_code") as
+    | "live_code"
+    | "npm_53_stable"
+    | "npm_52_stable";
 
-  console.log("CommonSdkStoryWrapper", { sdk });
+  useEffect(() => {
+    if (firstSdkVersion === null) {
+      firstSdkVersion = sdkVersion;
+    } else {
+      if (sdkVersion !== firstSdkVersion) {
+        // alert("This requires a refresh, still WIP");
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
+      }
+    }
+  }, [sdkVersion]);
 
-  const { MetabaseProvider, StaticQuestion } = sdk;
+  const sdk = useMemo(() => {
+    switch (sdkVersion) {
+      case "live_code":
+        return sdk_live_code;
+      default:
+        return require(`./SDK_FROM_NPM`)[sdkVersion];
+    }
+  }, [sdkVersion]);
 
-  const key = `sdk-${sdkVersion}-${sdkTheme}`;
+  const { MetabaseProvider } = sdk;
 
-  console.log("KEY", key);
+  const key = `sdk-${sdkVersion}-${sdkTheme}-${user}`;
 
   return (
-    <MetabaseProvider authConfig={authConfig} theme={theme} key={user}>
-      <Story />
+    <MetabaseProvider authConfig={authConfig} theme={theme} key={key}>
+      <Story sdk={sdk} />
     </MetabaseProvider>
   );
 };

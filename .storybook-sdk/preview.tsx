@@ -47,7 +47,7 @@ export const globalTypes: GlobalTypes = {
     defaultValue: "live_code",
     toolbar: {
       icon: "paintbrush",
-      items: ["live_code", "53_stable", "52_stable"],
+      items: ["live_code", "npm_53_stable", "npm_52_stable"],
       showName: true,
       dynamicTitle: true,
     },
