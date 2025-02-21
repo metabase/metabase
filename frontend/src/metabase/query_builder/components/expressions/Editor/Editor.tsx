@@ -10,7 +10,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { format } from "metabase-lib/v1/expressions";
-import type { Shortcut } from "metabase-lib/v1/expressions/complete";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
@@ -20,6 +19,7 @@ import type { ClauseType, StartRule } from "../types";
 
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
+import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
 import { Tooltip } from "./Tooltip";
 import { useCustomTooltip } from "./custom-tooltip";
