@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.tools.cli :refer [parse-opts]]
    [mage.color :as c]
+   [mage.util :as u]
    [table.core :as t]))
 
 (set! *warn-on-reflection* true)
@@ -13,7 +14,7 @@
   [x]
   (t/table x
            :fields [:short :long :msg :default :options :id :prompt]
-           :style :unicode-3d))
+           :style :github-markdown))
 
 (defn- ->cli-tools-option [{:keys [msg short long id default parse-fn update-fn validate] :as _opt}]
   (vec (concat [short long msg]
@@ -28,16 +29,9 @@
             (get (set args) "--help"))
     (println (c/green (str "  " (:doc current-task))))
     (doseq [opt options]
-      (println (c/cyan (str " " (:short opt) " " (:long opt) " " (:msg opt))))
-      (let [table (-> opt
-                      (dissoc :id :short :long :msg :parse-fn)
-                      ((fn [m] (if (delay? (:choices m))
-                                 (-> m
-                                     (assoc :choices (:choices-doc m ""))
-                                     (dissoc :choices-doc))
-                                 m)))
-                      not-empty)]
-        (when table (println (str/join \newline (drop 3 (str/split-lines (with-out-str (tbl table)))))))))
+      (println (c/cyan " " (:short opt) " " (:long opt) " " (:msg opt)
+                       (when-let [more (-> opt (dissoc :id :short :long :msg :parse-fn) not-empty)]
+                         (c/uncolor "| "  more)))))
     (when-let [examples (:examples current-task)]
       (println "\n\nExamples:")
       (doseq [[cmd effect] examples]
@@ -71,15 +65,19 @@
   (let [answered-ids (set (keys cli-options))
         unanswered (remove #(or (nil? (:prompt %)) (answered-ids (:id %))) all-options)
         to-ask (mapv ->ask unanswered)]
+    (u/debug "to-ask:" to-ask)
     (if (empty? to-ask)
       cli-options
-      (throw (Exception. "no bask allowed anymore")))))
+      (throw (ex-info (str "Missing cli args:\n"
+                           (pr-str to-ask))
+                      {})))))
 
 (defn- menu-cli
   "Gets required cli options through a menu when not provided by users."
   [current-task opts args]
   (check-print-help current-task opts args)
   (let [options (mapv ->cli-tools-option opts)
+        _ (u/debug "options:" options)
         {:keys [error summary arguments] parsed-opts :options} (try (parse-opts args options)
                                                                     (catch Throwable _t {:error "parse-opts threw."}))
         _ (when error (println "WARNING:" "args, " args  "options," options " | " error "|" summary))

@@ -11,21 +11,27 @@
   cljfmt-staged
   {:doc      "Runs cljfmt on staged files"
    :requires [[mage.format :as format]]
-   :examples [["./bin/mage cljfmt-staged" "Format staged files"]]
-   :task     (do (cli/menu! (current-task)) (format/staged))}
+   :examples [["./bin/mage cljfmt-staged" "Format staged files"]
+              ["./bin/mage cljfmt-staged -c" "Check staged files"]]
+   :options [{:id :check :short "-c" :long "--force-check" :default false}]
+   :task     (format/staged (cli/menu! (current-task)))}
 
   cljfmt-file
   {:doc      "Runs cljfmt on the given files/directories"
    :requires [[mage.format :as format]]
    :examples [["./bin/mage format-file src/metabase/events.clj" "Format events.clj"]
-              ["./bin/mage format-file src" "Format all files in src"]]
-   :task     (format/files (:args (cli/menu! (current-task))))}
+              ["./bin/mage format-file src" "Format all files in src"]
+              ["./bin/mage format-file -c src" "Check all files in src"]]
+   :options [{:id :check :short "-c" :long "--force-check" :default false}]
+   :task (let [{:keys [args check]} (cli/menu! (current-task))]
+           (format/files {:check check} args))}
 
   cljfmt-all
   {:doc      "Runs cljfmt on all (clojure) files"
    :requires [[mage.format :as format]]
    :examples [["./bin/mage cljfmt-all" "Format all files"]]
-   :task     (do (cli/menu! (current-task)) (format/all))}
+   :options [{:id :check :short "-c" :long "--force-check" :default false}]
+   :task     (format/all (cli/menu! (current-task)))}
 
   kondo
   {:doc      "Runs Kondo against a file, directory, or everything we usually lint"

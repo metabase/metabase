@@ -637,17 +637,23 @@
    ;; different port from `:test` so you can run it at the same time as `:test`.
    :jvm-opts ["-Dmb.jetty.port=3002"]}
 
-  ;; to fix indentation in source files:
+  ;; To fix indentation in all source files
   ;;
-  ;;     clj -T:cljfmt fix
+  ;;     ./bin/mage cljfmt-all
   ;;
   ;; to fix errors in specific source files:
   ;;
-  ;;     clj -T:cljfmt fix '{:paths ["src/metabase/query_processor/card.clj"]}'
+  ;;     ./bin/mage cljfmt-file file1.clj file2.clj
+  ;;
+  ;; - and you can mix in directories:
+  ;;
+  ;;     ./bin/mage cljfmt-file test file1.clj
   ;;
   ;; to check for errors without fixing them:
   ;;
-  ;;    clj -T:cljfmt check
+  ;;    ./bin/mage cljfmt-all
+  ;;
+  ;; ./bin/mage cljfmt-all -h for more info
   :cljfmt
   {:deps       {io.github.weavejester/cljfmt {:git/sha "fc3340da3c8344b3fbb336d190ce696ef40e42d4"}}
    :ns-default cljfmt.tool
