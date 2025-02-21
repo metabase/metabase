@@ -16,7 +16,6 @@ import { suggestFunctions } from "./functions";
 import { suggestLiterals } from "./literals";
 import { suggestMetrics } from "./metrics";
 import { suggestSegments } from "./segments";
-import { suggestShortcuts } from "./shortcuts";
 import type { Shortcut } from "./types";
 
 export function suggestions(options: SuggestOptions) {
@@ -31,7 +30,6 @@ export function suggestions(options: SuggestOptions) {
       suggestFields(options),
       suggestMetrics(options),
       suggestSegments(options),
-      suggestShortcuts(options),
     ].filter(isNotNull),
   });
 }
