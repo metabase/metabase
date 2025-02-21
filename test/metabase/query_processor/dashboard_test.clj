@@ -465,7 +465,7 @@
 
 
 (deftest resolve-param-for-card-test
-  (testing "When param-id->param is null and request-param is not null, use request-param. (#49319)"
+  (testing "When matching-param is null and request-param is not null, use request-param. (#49319)"
     (let [card-id 1
           dashcard-id 2
           param-id->param {}
