@@ -5,6 +5,9 @@ import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import { Icon } from "metabase/ui";
 
 export const SkeletonRoot = styled.div`
+  display: flex;
+  flex-flow: column;
+  align-items: flex-start;
   position: relative;
 `;
 
