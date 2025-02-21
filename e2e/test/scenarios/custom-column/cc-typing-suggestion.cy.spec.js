@@ -47,7 +47,10 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   it("should correctly insert function suggestion with the template", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({ formula: "bet{enter}" });
-    H.CustomExpressionEditor.shouldContain("between(column, start, end)");
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      "between(column, start, end)",
+    );
   });
 
   it("should show expression function helper if a proper function is typed", () => {

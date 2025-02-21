@@ -201,13 +201,12 @@ export const CustomExpressionEditor = {
     cy.realPress(["Backspace"]);
     return CustomExpressionEditor;
   },
-  shouldContain(formula: string) {
-    return CustomExpressionEditor.get()
-      .get("[role='textbox']")
-      .invoke("text")
-      .should("contain", formula);
+  textbox() {
+    return CustomExpressionEditor.get().get("[role='textbox']");
   },
-
+  value() {
+    return CustomExpressionEditor.textbox().invoke("text");
+  },
   completions() {
     return cy.findByTestId("custom-expression-editor-suggestions");
   },

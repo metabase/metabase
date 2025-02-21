@@ -548,7 +548,7 @@ describe("scenarios > question > custom column", () => {
       cy.icon("chevronleft").click();
       cy.findByText("Custom Expression").click();
     });
-    H.CustomExpressionEditor.shouldContain("Sum([MyCC \\[2027\\]]");
+    H.CustomExpressionEditor.value().should("equal", "Sum([MyCC \\[2027\\]])");
   });
 
   it.skip("should work with `isNull` function (metabase#15922)", () => {
@@ -661,13 +661,13 @@ describe("scenarios > question > custom column", () => {
     cy.realPress(["Shift", "Tab"]);
 
     // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
-    H.CustomExpressionEditor.shouldContain("1 + 1");
+    H.CustomExpressionEditor.value().should("equal", "1 + 1");
     H.CustomExpressionEditor.type("2");
 
     // Fix needed will prevent display value from being `1 +2 1`.
     // That's because the caret position after refocusing on textarea
     // would still be after the 3rd character
-    H.CustomExpressionEditor.shouldContain("1 + 1");
+    H.CustomExpressionEditor.value().should("equal", "1 + 12");
   });
 
   it("should allow choosing a suggestion with Tab", () => {

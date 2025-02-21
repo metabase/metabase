@@ -170,7 +170,8 @@ describe("scenarios > question > summarize sidebar", () => {
       });
     });
 
-    H.CustomExpressionEditor.shouldContain(
+    H.CustomExpressionEditor.value().should(
+      "equal",
       "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
     );
   });

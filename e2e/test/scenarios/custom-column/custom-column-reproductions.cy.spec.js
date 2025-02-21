@@ -1060,7 +1060,10 @@ describe("issue 49882", () => {
     H.CustomExpressionEditor.completions().should("be.visible");
     cy.realPress("Enter", { pressDelay: 10 });
 
-    H.CustomExpressionEditor.shouldContain('case([Total] > 200, [Total], "X")');
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      'case([Total] > 200, [Total], "X")',
+    );
     H.popover()
       .findByText("Expecting a closing parenthesis")
       .should("not.exist");
@@ -1094,7 +1097,8 @@ describe("issue 49882", () => {
       },
     );
 
-    H.CustomExpressionEditor.shouldContain(
+    H.CustomExpressionEditor.value().should(
+      "equal",
       'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )',
     );
     H.CustomExpressionEditor.blur();
@@ -1111,7 +1115,8 @@ describe("issue 49882", () => {
         'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax]){leftarrow}{leftarrow}{uparrow}x{downarrow}y',
     });
 
-    H.CustomExpressionEditor.shouldContain(
+    H.CustomExpressionEditor.value().should(
+      "equal",
       'case([Tax] > 1, xcase([Total] > 200, [Total], "Nothing"), [Tax]y)',
     );
   });
@@ -1129,7 +1134,7 @@ describe("issue 49882", () => {
     );
     cy.realPress("Tab");
 
-    H.CustomExpressionEditor.shouldContain("[Product → Rating]");
+    H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
   });
 });
 
@@ -1165,7 +1170,8 @@ describe("issue 49304", () => {
     H.clauseStepPopover().within(() => {
       cy.button("Back").click();
       cy.findByText("Custom Expression").click();
-      H.CustomExpressionEditor.shouldContain(
+      H.CustomExpressionEditor.value().should(
+        "equal",
         'contains([Category], "gadget", "widget", "case-insensitive")',
       );
     });
@@ -1203,7 +1209,8 @@ describe("issue 49304", () => {
     H.popover().within(() => {
       cy.button("Back").click();
       cy.findByText("Custom Expression").click();
-      H.CustomExpressionEditor.shouldContain(
+      H.CustomExpressionEditor.value().should(
+        "equal",
         'contains([Category], "gadget", "widget", "gizmo")',
       );
     });
@@ -1277,9 +1284,9 @@ describe("issue 50925", () => {
     H.CustomExpressionEditor.completions().should("be.visible");
     H.CustomExpressionEditor.get().realPress("Enter", { pressDelay: 10 });
 
-    H.CustomExpressionEditor.blur().shouldContain(
-      "case([ID] = 1, [Price] * 1.21, [Price] [Price])",
-    );
+    H.CustomExpressionEditor.blur()
+      .value()
+      .should("equal", "case([ID] = 1, [Price] * 1.21, [Price] [Price])");
 
     cy.log("incomplete bracket identifier is followed by bracket identifier");
     H.popover().button("Cancel").click();
@@ -1293,8 +1300,8 @@ describe("issue 50925", () => {
     H.CustomExpressionEditor.completions().should("be.visible");
     H.CustomExpressionEditor.get().realPress("Enter", { pressDelay: 10 });
 
-    H.CustomExpressionEditor.blur().shouldContain(
-      "case([ID] = 1, [Price] * 1.21, [Price] [Price])",
-    );
+    H.CustomExpressionEditor.blur()
+      .value()
+      .should("equal", "case([ID] = 1, [Price] * 1.21, [Price] [Price])");
   });
 });

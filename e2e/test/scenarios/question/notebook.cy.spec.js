@@ -845,7 +845,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       H.getNotebookStep("summarize").contains("Revenue").click();
 
-      H.CustomExpressionEditor.shouldContain("[Revenue]");
+      H.CustomExpressionEditor.value().should("equal", "[Revenue]");
     });
   });
 
