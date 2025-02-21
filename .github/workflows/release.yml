@@ -57,6 +57,8 @@ jobs:
     outputs:
       ee: ${{ fromJson(steps.canonical_version.outputs.result).ee }}
       oss: ${{ fromJson(steps.canonical_version.outputs.result).oss }}
+      ee_tag: ${{ fromJson(steps.canonical_version.outputs.result).ee_tag }}
+      oss_tag: ${{ fromJson(steps.canonical_version.outputs.result).oss_tag }}
     steps:
     - name: Fail early on the incorrect version format
       if: ${{ !(startsWith(inputs.version,'v0.') || startsWith(inputs.version,'v1.')) }}
@@ -88,6 +90,11 @@ jobs:
             oss: getCanonicalVersion(version, 'oss'),
           };
 
+          const tags = {
+            ee_tag: `${{vars.DOCKERHUB_REPO}}-enterprise:${versions.ee}`,
+            oss_tag: `${{vars.DOCKERHUB_REPO}}:${versions.oss}`,
+          };
+
           const released = await hasBeenReleased({
             github,
             owner: context.repo.owner,
@@ -99,7 +106,15 @@ jobs:
             throw new Error("This version has already been released!", version);
           }
 
-          return versions;
+          console.log({
+            versions,
+            tags,
+          });
+
+          return {
+            ...versions,
+            ...tags,
+          };
 
   publish-start-message:
     runs-on: ubuntu-22.04
@@ -247,7 +262,6 @@ jobs:
         --distribution-id ${{ vars.AWS_CLOUDFRONT_DOWNLOADS_ID }} \
         --paths /${{ steps.version_path.outputs.result }}/metabase.jar
 
-
   verify-s3-download:
     runs-on: ubuntu-22.04
     needs: upload-to-s3
@@ -288,6 +302,9 @@ jobs:
     strategy:
       matrix:
         edition: [oss, ee]
+    env:
+      OSS_TAG: ${{ needs.check-version.outputs.oss_tag }}
+      EE_TAG: ${{ needs.check-version.outputs.ee_tag }}
     services:
       registry:
         image: registry:2
@@ -298,118 +315,112 @@ jobs:
       with:
         # checkout the commit that was tagged so we get the right dockerfile
         ref: ${{ inputs.commit }}
-        fetch-depth: 0  # IMPORTANT! to get all the tags
-    - name: prepare release scripts
-      run: cd release && yarn && yarn build
     - name: Determine the docker version tag
       uses: actions/github-script@v7
-      id: canonical_version
+      id: get_tag
       with:
         result-encoding: string
-        script: |
-          const version = '${{ inputs.version }}';
-          const edition = '${{ matrix.edition }}';
+        script: | # js
+          const tag = '${{ matrix.edition }}' === 'ee'
+            ? '${{ needs.check-version.outputs.ee_tag }}'
+            : '${{ needs.check-version.outputs.oss_tag }}';
 
-          const canonical_version = edition === 'ee'
-            ? '${{ needs.check-version.outputs.ee }}'
-            : '${{ needs.check-version.outputs.oss }}';
+          console.log("The docker tag for this ", edition, "edition is", tag);
 
-          console.log("The canonical version of this Metabase", edition, "edition is", canonical_version);
+          return tag;
 
-          return canonical_version;
     - uses: actions/download-artifact@v4
       name: Retrieve previously downloaded Uberjar
       with:
         name: metabase-${{ matrix.edition }}-uberjar
     - name: Move the Uberjar to the context dir
       run: mv ./metabase.jar bin/docker/.
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@v2
-      with:
-        driver-opts: network=host
+      uses: docker/setup-buildx-action@v3
     - name: Build ${{ matrix.edition }} container
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       with:
         context: bin/docker/.
-        platforms: linux/amd64
+        platforms: linux/amd64,linux/arm64
         network: host
-        tags: localhost:5000/local-metabase:${{ steps.canonical_version.outputs.result }}
+        tags: ${{ steps.get_tag.outputs.result }}
         no-cache: true
         push: true
 
-    - name: Launch container
-      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ steps.canonical_version.outputs.result }}
-      timeout-minutes: 5
-    - name: Wait for Metabase to start
-      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-      timeout-minutes: 3
-
-    - name: Determine the target Docker Hub repository
-      run: |
-        if [[ "${{ matrix.edition }}" == "ee" ]]; then
-          echo "Metabase EE: image is going to be pushed to ${{ github.repository_owner }}/metabase-enterprise"
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise" >> $GITHUB_ENV
-        else
-          echo "Metabase OSS: image is going to be pushed to ${{ github.repository_owner }}/metabase"
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase" >> $GITHUB_ENV
-        fi
-
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
-    - name: Retag and push container image to Docker Hub
-      run: |
-        echo "Pushing ${{ steps.canonical_version.outputs.result }} to ${{ env.DOCKERHUB_REPO }} ..."
-        docker tag localhost:5000/local-metabase:${{ steps.canonical_version.outputs.result }} ${{ env.DOCKERHUB_REPO }}:${{ steps.canonical_version.outputs.result }}
-        docker push ${{ env.DOCKERHUB_REPO }}:${{ steps.canonical_version.outputs.result }}
-        echo "Finished!"
-
   verify-docker-pull:
     runs-on: ubuntu-22.04
-    needs: containerize
+    needs: [check-version, containerize]
     timeout-minutes: 15
     strategy:
       matrix:
         edition: [oss, ee]
     steps:
+    - name: Determine the docker version tag
+      uses: actions/github-script@v7
+      id: get_tag
+      with:
+        result-encoding: string
+        script: | # js
+          const tag = '${{ matrix.edition }}' === 'ee'
+            ? '${{ needs.check-version.outputs.ee_tag }}'
+            : '${{ needs.check-version.outputs.oss_tag }}';
+
+          console.log("The docker tag for this ", edition, "edition is", tag);
+
+          return tag;
     - name: Login to Docker Hub # authenticated, to avoid being rate-throttled
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
-    - name: Determine the container image to pull
-      run: |
-        if [[ "${{ matrix.edition }}" = "ee" ]]; then
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise" >> $GITHUB_ENV
-        else
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase" >> $GITHUB_ENV
-        fi
-    - name: Determine the docker version tag
-      uses: actions/github-script@v7
-      id: canonical_version
-      with:
-        result-encoding: string
-        script: |
-          const version = '${{ inputs.version }}';
-          const edition = '${{ matrix.edition }}';
-
-          const canonical_version = edition === "ee"
-            ? version.replace(/^v0\./, "v1.") // always e.g. v1.47.2
-            : version.replace(/^v1\./, "v0."); // always e.g. v0.47.2
-
-          console.log("The canonical version of this Metabase", edition, "edition is", canonical_version);
-
-          return canonical_version;
     - name: Pull the container image
       run: |
-        echo "Pulling container image ${{ env.DOCKERHUB_REPO }}:${{ steps.canonical_version.outputs.result }} ..."
-        docker pull ${{ env.DOCKERHUB_REPO }}:${{ steps.canonical_version.outputs.result }}
+        echo "Pulling container image ${{ vars.DOCKERHUB_OWNER }}:${{ steps.get_tag.outputs.result }} ..."
+        docker pull ${{ vars.DOCKERHUB_OWNER }}:${{ steps.get_tag.outputs.result }}
         echo "Successful!"
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 ${{ env.DOCKERHUB_REPO }}:${{ steps.canonical_version.outputs.result }}
+      run: docker run --rm -dp 3000:3000 ${{ vars.DOCKERHUB_OWNER }}:${{ steps.get_tag.outputs.result }}
+      timeout-minutes: 5
+    - name: Wait for Metabase to start
+      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      timeout-minutes: 3
+
+  verify-docker-pull-arm:
+    runs-on: arm-ubuntu-24-2core
+    needs: [check-version, containerize]
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    steps:
+    - name: Determine the docker version tag
+      uses: actions/github-script@v7
+      id: get_tag
+      with:
+        result-encoding: string
+        script: | # js
+          const tag = '${{ matrix.edition }}' === 'ee'
+            ? '${{ needs.check-version.outputs.ee_tag }}'
+            : '${{ needs.check-version.outputs.oss_tag }}';
+
+          console.log("The docker tag for this ", edition, "edition is", tag);
+
+          return tag;
+    - name: Login to Docker Hub # authenticated, to avoid being rate-throttled
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+    - name: Pull the container image
+      run: |
+        echo "Pulling container image ${{ vars.DOCKERHUB_OWNER }}:${{ steps.get_tag.outputs.result }} ..."
+        docker pull ${{ vars.DOCKERHUB_OWNER }}:${{ steps.get_tag.outputs.result }}
+        echo "Successful!"
+    - name: Launch container
+      run: docker run --rm -dp 3000:3000 ${{ vars.DOCKERHUB_OWNER }}:${{ steps.get_tag.outputs.result }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
