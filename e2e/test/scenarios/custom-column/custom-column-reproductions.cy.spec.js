@@ -1132,7 +1132,7 @@ describe("issue 49882", () => {
     H.CustomExpressionEditor.completion("Product → Rating").should(
       "be.visible",
     );
-    cy.realPress("Tab");
+    H.CustomExpressionEditor.acceptCompletion("tab");
 
     H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
   });
