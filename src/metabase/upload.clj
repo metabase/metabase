@@ -755,7 +755,7 @@
                             seq)]
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
     (model-persistence/invalidate! {:card_id [:in model-ids]})
-    ;; Also purge the metadata, so that newly added columns are visible, and types are updated.
+    ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
     (doseq [id model-ids]
       (let [card     (t2/select-one [:model/Card :dataset_query :result_metadata] id)
             ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
