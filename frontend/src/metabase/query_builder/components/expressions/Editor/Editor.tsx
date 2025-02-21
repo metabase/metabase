@@ -7,7 +7,7 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Button, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { format } from "metabase-lib/v1/expressions";
 import type { Shortcut } from "metabase-lib/v1/expressions/complete";
@@ -19,6 +19,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ClauseType, StartRule } from "../types";
 
 import S from "./Editor.module.css";
+import { Errors } from "./Errors";
 import { Shortcuts } from "./Shortcuts";
 import { Tooltip } from "./Tooltip";
 import { useCustomTooltip } from "./custom-tooltip";
@@ -35,6 +36,7 @@ type EditorProps<S extends StartRule> = {
   expressionIndex?: number;
   reportTimezone?: string;
   readOnly?: boolean;
+  error?: ErrorWithMessage | Error | null;
 
   onChange: (
     clause: ClauseType<S> | null,
@@ -54,6 +56,7 @@ export function Editor<S extends StartRule = "expression">(
     query,
     expressionIndex,
     readOnly,
+    error,
     reportTimezone,
     shortcuts,
   } = props;
@@ -92,7 +95,10 @@ export function Editor<S extends StartRule = "expression">(
   });
 
   return (
-    <Box className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
+    <Flex
+      className={cx(S.wrapper, { [S.formatting]: isFormatting })}
+      direction="column"
+    >
       <CodeMirror
         id={id}
         ref={ref}
@@ -106,6 +112,7 @@ export function Editor<S extends StartRule = "expression">(
         width="100%"
         indentWithTab={false}
       />
+      <Errors error={source !== "" ? error : null} />
 
       <Shortcuts
         shortcuts={shortcuts}
@@ -123,7 +130,7 @@ export function Editor<S extends StartRule = "expression">(
       </Box>
 
       {portal}
-    </Box>
+    </Flex>
   );
 }
 

@@ -1,10 +1,7 @@
 .wrapper {
-  border-bottom: 1px solid var(--mb-color-border);
-  transition: border-color 100ms ease;
   position: relative;
-  overflow: auto;
-  display: flex;
-  direction: column;
+  height: 200px;
+  border-bottom: 1px solid var(--mb-color-border);
 
   &.formatting {
     background-color: var(--mb-color-bg-medium);
@@ -24,8 +21,9 @@
 }
 
 .editor {
+  overflow: auto;
   width: 100%;
-  height: 200px;
+  height: 100%;
   color: var(--mb-color-text-dark);
 
   :global {
