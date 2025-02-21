@@ -306,8 +306,8 @@
                 :fields
                 #{{:name "_id", :database-type "long", :base-type :type/Integer, :pk? true, :database-position 0}
                   {:name "name", :database-type "string", :base-type :type/Text, :database-position 2}
-                  {:name "person_id", :database-type "uuid", :base-type :type/UUID, :database-position 3}
-                  {:name "id", :database-type "uuid", :base-type :type/UUID, :database-position 1}}}
+                  {:name "person_id", :database-type "binData", :base-type :type/UUID, :database-position 3}
+                  {:name "id", :database-type "binData", :base-type :type/UUID, :database-position 1}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :dogs)))))))))
 
 (deftest sync-indexes-info-test
