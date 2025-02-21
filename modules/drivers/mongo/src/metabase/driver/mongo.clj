@@ -188,7 +188,9 @@
                                                                 "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
                                                                                    "then" "$$item.v"
                                                                                    "else" nil}}
-                                                                "type"   {"$type" "$$item.v"}}}}}}
+                                                                "type"   {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
+                                                                                       "args" ["$$item.v" {"$type" "$$item.v"}]
+                                                                                       "lang" "js"}}}}}}}
                           {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
                           {"$project" {"path"   {"$concat" ["$path" "." "$kvs.k"]}
                                        "type"   "$kvs.type"
@@ -219,7 +221,9 @@
                                                             "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
                                                                                "then" "$$item.v"
                                                                                "else" nil}}
-                                                            "type"   {"$type" "$$item.v"}}}}}}
+                                                            "type" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
+                                                                                 "args" ["$$item.v" {"$type" "$$item.v"}]
+                                                                                 "lang" "js"}}}}}}}
                        {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
                        {"$project" {"path"   "$kvs.k"
                                     "result" {"$literal" false}
@@ -319,6 +323,9 @@
         "object"     :type/Dictionary
         "array"      :type/Array
         "binData"    :type/*
+        ;; "uuid" is not a database type like the rest here
+        ;; it's determined by the subtype of binData fields in describe-table
+        "uuid"       :type/UUID
         "objectId"   :type/MongoBSONID
         "bool"       :type/Boolean
         ;; Mongo's date type is actually a date time so we can't map it to :type/Date
