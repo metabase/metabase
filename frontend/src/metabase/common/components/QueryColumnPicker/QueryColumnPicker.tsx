@@ -147,7 +147,6 @@ export function QueryColumnPicker({
           <BucketPickerPopover
             classNames={{
               root: S.itemWrapper,
-              triggerButton: S.triggerButton,
               /*
               isEditing controls "selected" state of the item, so if a row is selected, we want to show icon
               otherwise we show chevron down icon only when we hover over a row, to control this behavior

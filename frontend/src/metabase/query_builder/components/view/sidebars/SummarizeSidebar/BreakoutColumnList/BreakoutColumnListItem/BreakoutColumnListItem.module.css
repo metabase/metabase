@@ -62,7 +62,6 @@
     .BucketTriggerButton {
       opacity: 1;
       color: color-mix(in srgb, var(--mb-color-text-white), transparent 35%);
-      visibility: visible;
 
       &:hover {
         color: var(--mb-color-text-white);
@@ -91,7 +90,6 @@
       .BucketTriggerButton {
         opacity: 1;
         color: var(--mb-color-text-light);
-        visibility: visible;
 
         &:hover {
           color: var(--mb-color-text-medium);

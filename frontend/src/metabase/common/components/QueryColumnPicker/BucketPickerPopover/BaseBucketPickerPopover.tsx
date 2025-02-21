@@ -6,14 +6,14 @@ import { t } from "ttag";
 import SelectList from "metabase/components/SelectList";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { ColorName } from "metabase/lib/colors/types";
-import { Popover } from "metabase/ui";
+import { Button, type ButtonProps, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import S from "./BaseBucketPickerPopover.module.css";
 import {
   ChevronDown,
   MoreButton,
   SelectListItem,
-  TriggerButton,
   TriggerIcon,
 } from "./BaseBucketPickerPopover.styled";
 
@@ -123,7 +123,7 @@ function _BaseBucketPickerPopover({
     >
       <Popover.Target>
         <TriggerButton
-          className={cx(classNames.root, classNames.triggerButton, className)}
+          className={cx(classNames.root, className)}
           aria-label={triggerLabel}
           data-testid="dimension-list-item-binning"
           onClick={event => {
@@ -214,6 +214,10 @@ export function getBucketListItem(
     ...Lib.displayInfo(query, stageIndex, bucket),
     bucket,
   };
+}
+
+function TriggerButton({ className, ...props }: ButtonProps) {
+  return <Button className={cx(S.triggerButton, className)} {...props} />;
 }
 
 export const BaseBucketPickerPopover = Object.assign(_BaseBucketPickerPopover, {

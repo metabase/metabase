@@ -119,9 +119,6 @@ export function BreakoutColumnListItem({
         </Flex>
         <BucketPickerPopover
           className={BreakoutColumnListItemS.BucketTriggerButton}
-          classNames={{
-            triggerButton: BreakoutColumnListItemS.BucketTriggerButton,
-          }}
           query={query}
           stageIndex={stageIndex}
           column={item.column}

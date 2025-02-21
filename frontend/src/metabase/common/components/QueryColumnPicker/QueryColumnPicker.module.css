@@ -1,8 +1,4 @@
 .itemWrapper:hover {
-  .triggerButton {
-    visibility: visible;
-  }
-
   .chevronDown {
     visibility: visible;
   }

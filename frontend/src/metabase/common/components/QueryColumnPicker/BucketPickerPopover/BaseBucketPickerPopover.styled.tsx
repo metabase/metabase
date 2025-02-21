@@ -18,16 +18,6 @@ export const ChevronDown = styled(Icon)`
   opacity: 0.75;
 `;
 
-export const TriggerButton = styled(Button)<ButtonProps>`
-  border-radius: 0;
-
-  /** we hide the trigger button by default, and show it on hover */
-  visibility: hidden;
-  color: color-mix(in srgb, var(--mb-color-text-white), transparent 40%);
-  border-left: 2px solid
-    color-mix(in srgb, var(--mb-color-border), transparent 80%);
-`;
-
 export const SelectListItem = styled(BaseSelectList.Item)<{
   activeColor: ColorName;
 }>`
