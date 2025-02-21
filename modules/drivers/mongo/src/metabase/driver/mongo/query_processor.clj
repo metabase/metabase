@@ -422,15 +422,6 @@
         java.util.UUID/fromString
         uuid->bsonbinary)
 
-    ;; check for equality here because we don't want
-    ;; to cast to uuid when doing type/Text comparison
-    (= base-type :type/*)
-    (try (-> (str value)
-             java.util.UUID/fromString
-             uuid->bsonbinary)
-         (catch Exception _
-           value))
-
     :else value))
 
 (defn- $date-from-string [s]
