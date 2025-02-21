@@ -1,3 +1,4 @@
+import { BaseCell } from "./BaseCell";
 import S from "./RowIdHeaderCell.module.css";
 
 export interface RowIdHeaderCellProps {
@@ -5,5 +6,9 @@ export interface RowIdHeaderCellProps {
 }
 
 export const RowIdHeaderCell = ({ name = "" }: RowIdHeaderCellProps) => {
-  return <div className={S.root}>{name}</div>;
+  return (
+    <BaseCell className={S.root} align="right">
+      {name}{" "}
+    </BaseCell>
+  );
 };

@@ -21,6 +21,7 @@ const getDefaultCellTemplate = <TRow, TValue>(
     formatter,
     cellVariant,
     wrap,
+    headerClickTargetSelector,
   }: ColumnOptions<TRow, TValue>,
   isTruncated: boolean,
   onExpand: (columnName: string, content: React.ReactNode) => void,
@@ -31,6 +32,7 @@ const getDefaultCellTemplate = <TRow, TValue>(
 
     return (
       <BodyCell
+        rowIndex={row.index}
         columnId={id}
         value={value}
         align={align}
@@ -71,7 +73,8 @@ export const getDataColumn = <TRow, TValue>(
   truncateWidth: number,
   onExpand: (columnName: string, content: React.ReactNode) => void,
 ): ColumnDef<TRow, TValue> => {
-  const { id, accessorFn, wrap, cell, header } = columnOptions;
+  const { id, accessorFn, wrap, cell, header, headerClickTargetSelector } =
+    columnOptions;
   const columnWidth = columnSizing[id] ?? 0;
   const measuredColumnWidth = measuredColumnSizing[id] ?? 0;
 
@@ -99,6 +102,7 @@ export const getDataColumn = <TRow, TValue>(
     meta: {
       wrap,
       enableReordering: true,
+      headerClickTargetSelector,
     },
   };
 

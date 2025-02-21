@@ -27,17 +27,9 @@ export const HeaderCellWithColumnInfo = memo(
     question,
     timezone,
     column,
-    onClick,
   }: HeaderCellWithColumnInfoProps) => {
     const query = question?.query();
     const stageIndex = -1;
-
-    const handleClick = useCallback(
-      (event: React.MouseEvent<HTMLDivElement>) => {
-        onClick?.(event, column?.name);
-      },
-      [column],
-    );
 
     return (
       <HeaderCellWrapper variant={variant} align={align}>
@@ -52,7 +44,7 @@ export const HeaderCellWithColumnInfo = memo(
           showFingerprintInfo
         >
           <div className={S.headerPillWrapper}>
-            <HeaderCellPill name={name} sort={sort} onClick={handleClick} />
+            <HeaderCellPill name={name} sort={sort} />
           </div>
         </QueryColumnInfoPopover>
       </HeaderCellWrapper>

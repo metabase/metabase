@@ -7,7 +7,7 @@ import { ROW_ID_COLUMN_ID } from "../constants";
 import type { RowIdVariant } from "../types";
 
 export const getRowIdColumnSize = (variant: RowIdVariant) =>
-  variant === "expandButton" ? 36 : 42;
+  variant === "expandButton" ? 36 : 46;
 
 export const getRowIdColumn = <TRow, TValue>(
   variant: RowIdVariant,

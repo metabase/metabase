@@ -18,24 +18,23 @@ export const HeaderCell = memo(function HeaderCell({
   align,
   sort,
   variant = "light",
-  onClick,
 }: HeaderCellProps) {
   return (
     <HeaderCellWrapper variant={variant} align={align}>
-      <HeaderCellPill name={name} sort={sort} onClick={onClick} />
+      <HeaderCellPill name={name} sort={sort} />
     </HeaderCellWrapper>
   );
 });
 
 export const HeaderCellPill = forwardRef<HTMLDivElement, HeaderCellBaseProps>(
-  function HeaderCellPill({ name, sort, onClick }: HeaderCellBaseProps, ref) {
+  function HeaderCellPill({ name, sort }: HeaderCellBaseProps, ref) {
     return (
       <div
         ref={ref}
         data-grid-header-cell-content
+        data-header-click-target
         className={S.content}
         data-testid="cell-data"
-        onClick={onClick}
       >
         {sort != null ? (
           <Icon

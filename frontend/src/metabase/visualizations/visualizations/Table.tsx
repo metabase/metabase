@@ -54,6 +54,7 @@ import type {
   ComputedVisualizationSettings,
   VisualizationProps,
 } from "../types";
+import { OptionsType } from "metabase/lib/formatting/types";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
@@ -247,11 +248,21 @@ class Table extends Component<TableProps, TableState> {
     }
 
     if (isString(column)) {
+      const canWrapText = (columnSettings: OptionsType) => {
+        return (
+          columnSettings["view_as"] === null ||
+          columnSettings["view_as"] === "auto"
+        );
+      };
+
       settings["text_wrapping"] = {
         title: t`Wrap text`,
         default: false,
         widget: "toggle",
         inline: true,
+        getHidden: (_column, columnSettings) => {
+          return !canWrapText(columnSettings);
+        },
       };
     }
 

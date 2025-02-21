@@ -158,8 +158,9 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   props?: TProps;
   inline?: boolean;
   readDependencies?: string[];
-  getDefault?: (col: DatasetColumn) => TValue;
+  getDefault?: (col: DatasetColumn, settings: OptionsType) => TValue;
   getHidden?: (col: DatasetColumn, settings: OptionsType) => boolean;
+  isValid?: (col: DatasetColumn, settings: OptionsType) => boolean;
   getProps?: (
     col: DatasetColumn,
     settings: OptionsType,

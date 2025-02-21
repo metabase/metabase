@@ -16,6 +16,7 @@ declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
     wrap?: boolean;
     enableReordering?: boolean;
+    headerClickTargetSelector?: string;
   }
 }
 
@@ -23,10 +24,6 @@ export type HeaderCellBaseProps = {
   name?: React.ReactNode;
   align?: CellAlign;
   sort?: "asc" | "desc";
-  onClick?: (
-    event: React.MouseEvent<HTMLDivElement>,
-    columnId?: string,
-  ) => void;
 };
 
 export type BodyCellBaseProps<TValue> = {
@@ -37,6 +34,7 @@ export type BodyCellBaseProps<TValue> = {
   wrap?: boolean;
   canExpand?: boolean;
   columnId: string;
+  rowIndex: number;
   onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
   onExpand?: (id: string, formattedValue: React.ReactNode) => void;
 };
@@ -49,6 +47,7 @@ export interface ColumnOptions<TRow extends RowData, TValue> {
   header?: ColumnDefTemplate<HeaderContext<TRow, TValue>>;
   cellVariant?: BodyCellVariant;
   headerVariant?: HeaderCellVariant;
+  headerClickTargetSelector?: string;
   align?: CellAlign;
   wrap?: boolean;
   sortDirection?: "asc" | "desc";
@@ -90,6 +89,7 @@ export interface TableInstance<TData> {
     columnId: string,
   ) => void;
   onAddColumnClick?: MouseEventHandler<HTMLButtonElement>;
+  onScroll?: () => void;
 }
 
 export type ExpandedColumnsState = Record<string, boolean>;
@@ -97,4 +97,8 @@ export type CellAlign = "left" | "right" | "middle";
 export type BodyCellVariant = "text" | "pill";
 export type HeaderCellVariant = "light" | "outline";
 export type RowIdVariant = "expandButton" | "indexOnly" | "indexExpand";
-export type CellFormatter<TValue> = (value: TValue) => React.ReactNode;
+export type CellFormatter<TValue> = (
+  value: TValue,
+  rowIndex: number,
+  columnId: string,
+) => React.ReactNode;

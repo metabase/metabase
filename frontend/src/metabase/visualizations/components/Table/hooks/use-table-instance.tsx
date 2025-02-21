@@ -136,6 +136,10 @@ export const useTableInstance = <TData, TValue>({
     handleExpandButtonClick,
   ]);
 
+  const wrappedColumnsOptions = useMemo(() => {
+    return columnsOptions.filter(column => column.wrap);
+  }, [columnsOptions]);
+
   const table = useReactTable({
     data,
     columns,
@@ -151,15 +155,14 @@ export const useTableInstance = <TData, TValue>({
 
   const measureRowHeight = useCallback(
     (rowIndex: number) => {
-      const wrappedColumns = columnsOptions.filter(column => column.wrap);
-      if (wrappedColumns.length === 0) {
+      if (wrappedColumnsOptions.length === 0) {
         return defaultRowHeight;
       }
 
       const height = Math.max(
-        ...wrappedColumns.map(column => {
+        ...wrappedColumnsOptions.map(column => {
           const value = column.accessorFn(data[rowIndex]);
-          const formattedValue = column.formatter?.(value);
+          const formattedValue = column.formatter?.(value, rowIndex, column.id);
           if (
             value == null ||
             typeof formattedValue !== "string" ||
@@ -180,7 +183,14 @@ export const useTableInstance = <TData, TValue>({
 
       return height;
     },
-    [columnsOptions, data, defaultRowHeight, measureBodyCellDimensions, table],
+    [
+      columnsOptions,
+      data,
+      defaultRowHeight,
+      measureBodyCellDimensions,
+      table,
+      wrappedColumnsOptions,
+    ],
   );
 
   const virtualGrid = useVirtualGrid({
@@ -199,15 +209,25 @@ export const useTableInstance = <TData, TValue>({
   );
 
   const prevColumnSizing = useRef<ColumnSizingState>();
+  const prevWrappedColumns = useRef<string[]>();
   useEffect(() => {
-    if (
+    const didColumnSizingChange =
       prevColumnSizing.current != null &&
-      !_.isEqual(prevColumnSizing.current, columnSizing)
-    ) {
+      !_.isEqual(prevColumnSizing.current, columnSizing);
+
+    const didColumnWrappingChange =
+      prevWrappedColumns.current != null &&
+      !_.isEqual(
+        wrappedColumnsOptions.map(column => column.id),
+        prevWrappedColumns.current,
+      );
+
+    if (didColumnSizingChange || didColumnWrappingChange) {
       virtualGrid.measureGrid();
     }
 
     prevColumnSizing.current = columnSizing;
+    prevWrappedColumns.current = wrappedColumnsOptions.map(column => column.id);
   }, [columnSizing, virtualGrid]);
 
   const handleColumnResize = useCallback(
@@ -233,11 +253,7 @@ export const useTableInstance = <TData, TValue>({
 
   useColumnResizeObserver(table.getState(), handleColumnResize);
 
-  const columnsReordering = useColumnsReordering(
-    gridRef,
-    table,
-    onColumnReorder,
-  );
+  const columnsReordering = useColumnsReordering(table, onColumnReorder);
 
   return {
     table,

@@ -22,10 +22,13 @@ export const BodyCell = memo(function BodyCell<TValue>({
   wrap = false,
   canExpand = false,
   columnId,
+  rowIndex,
   onClick,
   onExpand,
 }: BodyCellProps<TValue>) {
-  const formattedValue = formatter ? formatter(value) : String(value);
+  const formattedValue = formatter
+    ? formatter(value, rowIndex, columnId)
+    : String(value);
 
   const handleExpandClick: MouseEventHandler<HTMLButtonElement> = useCallback(
     e => {

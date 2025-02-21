@@ -274,12 +274,32 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const columnFormatters = useMemo(() => {
     return cols.map(col => {
       const columnSettings = settings.column?.(col);
+
+      const columnIndex = data.cols.findIndex(c => c.name === col.name);
+      const clickedRowData = getTableClickedObjectRowData(
+        series as any,
+        0,
+        columnIndex,
+        isPivoted,
+        data,
+      );
+
+      const clicked = getTableCellClickedObject(
+        data,
+        settings,
+        0,
+        columnIndex,
+        isPivoted,
+        clickedRowData,
+      );
+
       return cachedFormatter(value =>
         formatValue(value, {
           ...columnSettings,
           type: "cell",
           jsx: true,
           rich: true,
+          clicked,
           // add clicked????
         }),
       );
@@ -328,10 +348,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               align={align}
               sort={sortDirection}
               variant={headerVariant}
-              onClick={handleHeaderCellClick}
             />
           );
         },
+        headerClickTargetSelector: "[data-header-click-target]",
         align,
         wrap,
         sortDirection,
@@ -372,6 +392,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isPivoted,
     rows,
     settings,
+    clicked,
   ]);
 
   const handleColumnResize = useCallback(
@@ -426,6 +447,14 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cols, tableProps.measureColumnWidths]);
 
+  const handleScroll = useCallback(() => {
+    if (clicked === null) {
+      return;
+    }
+
+    onVisualizationClick(undefined);
+  }, [clicked]);
+
   if (!width || !height) {
     return <div ref={ref} className={className} />;
   }
@@ -443,8 +472,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       <Table
         {...tableProps}
         onBodyCellClick={handleBodyCellClick}
-        // onHeaderCellClick={handleHeaderCellClick}
         onAddColumnClick={handleAddColumnButtonClick}
+        onHeaderCellClick={handleHeaderCellClick}
+        onScroll={handleScroll}
       />
     </div>
   );

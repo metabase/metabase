@@ -26,6 +26,7 @@ export const Table = forwardRef(function Table<TData>(
     onBodyCellClick,
     onHeaderCellClick,
     onAddColumnClick,
+    onScroll,
   }: TableProps<TData>,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -42,7 +43,6 @@ export const Table = forwardRef(function Table<TData>(
       sensors: columnsReordering.sensors,
       collisionDetection: pointerWithin,
       modifiers: [restrictToHorizontalAxis],
-      onDragStart: columnsReordering.onDragStart,
       onDragOver: columnsReordering.onDragOver,
       onDragEnd: columnsReordering.onDragEnd,
     }),
@@ -77,6 +77,7 @@ export const Table = forwardRef(function Table<TData>(
           className={S.tableGrid}
           ref={refs.gridRef}
           style={{ paddingRight: isAddColumnButtonSticky ? "36px" : 0 }}
+          onScroll={onScroll}
         >
           <div className={S.headerContainer}>
             {table.getHeaderGroups().map(headerGroup => (
