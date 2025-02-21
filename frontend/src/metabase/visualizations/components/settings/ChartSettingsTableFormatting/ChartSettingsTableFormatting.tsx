@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { arrayMove } from "@dnd-kit/sortable";
 import { useState } from "react";
 
