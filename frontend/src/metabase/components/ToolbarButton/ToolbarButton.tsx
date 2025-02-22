@@ -2,12 +2,12 @@ import type { ButtonHTMLAttributes, MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 
 import type { ActionIconProps, IconName } from "metabase/ui";
-import { ActionIcon, Box, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Icon, Tooltip, type TooltipProps } from "metabase/ui";
 
 export type ToolbarButtonProps = {
   icon?: IconName;
   "aria-label": string;
-  tooltipLabel?: string;
+  tooltipLabel?: TooltipProps["label"];
   visibleOnSmallScreen?: boolean;
   isActive?: boolean;
   hasBackground?: boolean;

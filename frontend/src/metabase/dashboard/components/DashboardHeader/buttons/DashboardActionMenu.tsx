@@ -9,6 +9,9 @@ import type { HeaderButtonProps } from "metabase/dashboard/components/DashboardH
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
+import { useRegisterActions } from "kbar";
+import { useDispatch } from "metabase/lib/redux";
+import { push } from "react-router-redux";
 
 // Fixes this bug: https://github.com/mantinedev/mantine/issues/5571#issue-2082430353
 // Hover states get weird when using Link directly. Since Link does not take the standard
@@ -30,6 +33,7 @@ const DashboardActionMenuInner = ({
   location,
   openSettingsSidebar,
 }: HeaderButtonProps & WithRouterProps): JSX.Element => {
+  const dispatch = useDispatch();
   const [opened, setOpened] = useState(false);
 
   const { refreshDashboard } = useRefreshDashboard({
@@ -41,6 +45,30 @@ const DashboardActionMenuInner = ({
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
     dashboard,
     refreshDashboard,
+  );
+
+  useRegisterActions(
+    [
+      {
+        name: "Copy dashboard",
+        id: "copy-dashboard",
+        shortcut: ["$mod+c"],
+        perform: () => dispatch(push(`${location?.pathname}/copy`)),
+      },
+      {
+        name: "Move dashboard",
+        id: "move-dashboard",
+        shortcut: ["$mod+m"],
+        perform: () => canEdit && dispatch(push(`${location?.pathname}/move`)),
+      },
+      {
+        name: "Send tashboard to trash",
+        id: "trash-dashboard",
+        shortcut: ["$mod+backspace"],
+        perform: () => dispatch(push(`${location?.pathname}/archive`)),
+      },
+    ],
+    [location.pathname],
   );
 
   return (

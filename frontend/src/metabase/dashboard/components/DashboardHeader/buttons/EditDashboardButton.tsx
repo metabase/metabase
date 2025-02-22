@@ -5,6 +5,7 @@ import { setEditingDashboard } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import type { DashboardRefreshPeriodControls } from "metabase/dashboard/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterActions } from "kbar";
 
 export const EditDashboardButton = ({
   onRefreshPeriodChange,
@@ -17,6 +18,18 @@ export const EditDashboardButton = ({
       dispatch(setEditingDashboard(dashboard));
     }
   };
+
+  useRegisterActions(
+    [
+      {
+        id: "edit-dashboard",
+        name: "Edit Dashboard",
+        shortcut: ["e"],
+        perform: onBeginEditing,
+      },
+    ],
+    [dashboard],
+  );
 
   return (
     <ToolbarButton

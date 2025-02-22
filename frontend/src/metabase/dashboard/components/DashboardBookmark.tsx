@@ -4,6 +4,7 @@ import { getDashboard } from "metabase/dashboard/selectors";
 import Bookmark from "metabase/entities/bookmarks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { DashboardId, Bookmark as IBookmark } from "metabase-types/api";
+import { useRegisterActions } from "kbar";
 
 export interface DashboardBookmarkProps {
   isBookmarked: boolean;
@@ -36,6 +37,19 @@ export const DashboardBookmark = (): JSX.Element | null => {
       dispatch(Bookmark.actions.delete({ id, type: "dashboard" }));
     }
   };
+
+  useRegisterActions(
+    [
+      {
+        name: "Bookmark Dashboard",
+        id: "bookmark-dashboard",
+        shortcut: ["b"],
+        perform: () =>
+          isBookmarked ? handleDeleteBookmark() : handleCreateBookmark(),
+      },
+    ],
+    [isBookmarked],
+  );
 
   return (
     <BookmarkToggle

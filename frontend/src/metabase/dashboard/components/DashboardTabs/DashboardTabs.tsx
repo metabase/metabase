@@ -9,6 +9,7 @@ import type { SelectedTabId } from "metabase-types/store";
 
 import { Container, CreateTabButton } from "./DashboardTabs.styled";
 import { useDashboardTabs } from "./use-dashboard-tabs";
+import { useRegisterActions } from "kbar";
 
 export type DashboardTabsProps = {
   dashboardId: DashboardId;
@@ -52,6 +53,16 @@ export function DashboardTabs({
     });
   }
 
+  useRegisterActions(
+    tabs.map((tab, index) => ({
+      id: `dashboard-tab-${index}`,
+      name: `Dashboard Tab ${index}`,
+      shortcut: [`${index + 1}`],
+      perform: () => selectTab(tab.id),
+    })),
+    [tabs],
+  );
+
   return (
     <Container className={className}>
       <TabRow<SelectedTabId>
@@ -68,7 +79,7 @@ export function DashboardTabs({
             menuItems={menuItems}
           />
         ) : (
-          tabs.map(tab => (
+          tabs.map((tab, index) => (
             <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
               <TabButton.Renameable
                 value={tab.id}
@@ -77,6 +88,7 @@ export function DashboardTabs({
                 canRename={isEditing && hasMultipleTabs}
                 showMenu={isEditing}
                 menuItems={menuItems}
+                tabIndex={index}
               />
             </Sortable>
           ))

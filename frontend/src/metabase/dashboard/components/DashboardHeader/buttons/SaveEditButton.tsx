@@ -12,6 +12,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { Tooltip } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { useRegisterActions } from "kbar";
 
 export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
   const dispatch = useDispatch();
@@ -36,6 +37,15 @@ export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
 
     handleDoneEditing();
   };
+
+  useRegisterActions([
+    {
+      id: "save-edit",
+      name: "Save Edit Dashboard",
+      shortcut: ["s"],
+      perform: onSave,
+    },
+  ]);
 
   return (
     <Tooltip key="save" label={disabledSaveTooltip} disabled={!isSaveDisabled}>

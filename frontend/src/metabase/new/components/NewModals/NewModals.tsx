@@ -10,9 +10,11 @@ import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashbo
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { closeModal } from "metabase/redux/ui";
+import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { currentOpenModal } from "metabase/selectors/ui";
 import type { WritebackAction } from "metabase-types/api";
+import { PaletteShortcutsModal } from "metabase/palette/components/PaltteShortcutsModal";
+import { useRegisterActions } from "kbar";
 
 export const NewModals = withRouter((props: WithRouterProps) => {
   const currentNewModal = useSelector(currentOpenModal);
@@ -32,6 +34,29 @@ export const NewModals = withRouter((props: WithRouterProps) => {
   const handleModalClose = useCallback(() => {
     dispatch(closeModal());
   }, [dispatch]);
+
+  useRegisterActions(
+    [
+      {
+        name: "Toggle Shortcuts Modal",
+        id: "shortcuts-modal",
+        shortcut: ["?"],
+        perform: () => {
+          console.log("performing", currentNewModal);
+          if (currentNewModal) {
+            handleModalClose();
+          } else {
+            dispatch(setOpenModal("help"));
+          }
+        },
+      },
+    ],
+    [currentNewModal],
+  );
+
+  console.log({
+    currentNewModal,
+  });
 
   switch (currentNewModal) {
     case "collection":
@@ -59,6 +84,8 @@ export const NewModals = withRouter((props: WithRouterProps) => {
           />
         </Modal>
       );
+    case "help":
+      return <PaletteShortcutsModal onClose={handleModalClose} />;
     default:
       return null;
   }
