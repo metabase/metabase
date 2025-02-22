@@ -5,7 +5,12 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(defn with-sample-data [f]
+(defn with-sample-data!
+  "Run f in a context where a specific set of 5 rows exist in the application db and every row for a given model that
+  isn't in that sample data has been added to failed-rows."
+  [model f]
+  (doseq [{:keys [id]} (t2/select model)]
+    (backfill-entity-ids/add-failed-row! id))
   (mt/with-temp
     [:model/Database {db-id :id :as db} {}
      :model/Table {table-id :id :as table} {}
@@ -23,27 +28,33 @@
         :field2 field2
         :field3 field3})))
 
-(deftest ^:parallel backfill-databases-test
+(defn reset-failed-rows-fixture! [f]
+  (f)
+  (backfill-entity-ids/reset-failed-rows!))
+
+(clojure.test/use-fixtures :each reset-failed-rows-fixture!)
+
+(deftest ^:synchronized backfill-databases-test
   (testing "Can backfill databases"
-    (with-sample-data
+    (with-sample-data! :model/Database
       (fn [{:keys [db-id table-id field1-id]}]
         (backfill-entity-ids/backfill-entity-ids!-inner :model/Database)
         (is (not (nil? (:entity_id (t2/select-one :model/Database :id db-id)))))
         (is (nil? (:entity_id (t2/select-one :model/Table :id table-id))))
         (is (nil? (:entity_id (t2/select-one :model/Field :id field1-id))))))))
 
-(deftest ^:parallel backfill-tables-test
+(deftest ^:synchronized backfill-tables-test
   (testing "Can backfill tables"
-    (with-sample-data
+    (with-sample-data! :model/Table
       (fn [{:keys [db-id table-id field1-id]}]
         (backfill-entity-ids/backfill-entity-ids!-inner :model/Table)
         (is (not (nil? (:entity_id (t2/select-one :model/Table :id table-id)))))
         (is (nil? (:entity_id (t2/select :model/Database :id db-id))))
         (is (nil? (:entity_id (t2/select :model/Field :id field1-id))))))))
 
-(deftest ^:parallel backfill-fields-test
+(deftest ^:synchronized backfill-fields-test
   (testing "Can backfill fields"
-    (with-sample-data
+    (with-sample-data! :model/Field
       (fn [{:keys [db-id table-id field1-id field2-id field3-id]}]
         (backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
         (is (not (nil? (:entity_id (t2/select-one :model/Field :id field1-id)))))
@@ -53,10 +64,10 @@
         (is (nil? (:entity_id (t2/select :model/Database :id db-id))))
         (is (nil? (:entity_id (t2/select :model/Table :id table-id))))))))
 
-(deftest ^:parallel backfill-limit-test
+(deftest ^:synchronized backfill-limit-test
   (testing "Only backfills up to batch-size records"
     (binding [backfill-entity-ids/*batch-size* 1]
-      (with-sample-data
+      (with-sample-data! :model/Field
         (fn [{:keys [field1-id field2-id field3-id]}]
           (backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
           (let [fields (t2/select :model/Field
@@ -70,12 +81,13 @@
             (is (= 2 (count (filter #(not (nil? (:entity_id %))) fields))))))))))
 
 (deftest ^:synchronized backfill-ignores-failed-rows-test
+  ;; Technically, this test is a bit redundant, since we are relying on this functionality to make other tests work,
+  ;; but explicitly testing it is nice
   (testing "Doesn't backfill failed rows"
-    (with-sample-data
+    (with-sample-data! :model/Field
       (fn [{:keys [field1-id field2-id field3-id]}]
         (backfill-entity-ids/add-failed-row! field2-id)
         (backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
-        (backfill-entity-ids/reset-failed-rows!)
         (is (not (nil? (:entity_id (t2/select-one :model/Field :id field1-id)))))
         (is (nil? (:entity_id (t2/select-one :model/Field :id field2-id))))
         (is (=? {:entity_id "an entity id_________"}
@@ -83,12 +95,12 @@
 
 (deftest ^:synchronized backfill-adds-failures-to-failed-rows-test
   (testing "Adds t2/update! failures to failed rows"
-    (with-sample-data
+    (with-sample-data! :model/Field
       (fn [{:keys [field1-id field2-id]}]
         (with-redefs [t2/update! (fn [& _] (throw (Exception. "an exception")))]
           (backfill-entity-ids/backfill-entity-ids!-inner :model/Field)
-          (is (= #{field1-id field2-id}
-                 @backfill-entity-ids/failed-rows))
+          (is (contains? @backfill-entity-ids/failed-rows field1-id))
+          (is (contains? @backfill-entity-ids/failed-rows field2-id))
           (is (nil? (:entity_id (t2/select-one :model/Field :id field1-id))))
 
           (is (nil? (:entity_id (t2/select-one :model/Field :id field2-id))))
