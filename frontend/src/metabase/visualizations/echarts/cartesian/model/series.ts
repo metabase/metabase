@@ -44,10 +44,10 @@ import {
   POSITIVE_STACK_TOTAL_DATA_KEY,
 } from "../constants/dataset";
 import { CHART_STYLE } from "../constants/style";
-import { cachedFormatter } from "../utils/formatter";
 import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
 
 import { getFormattingOptionsWithoutScaling } from "./util";
+import { memoize } from "metabase/hooks/use-memoized-callback";
 
 export const getSeriesVizSettingsKey = (
   column: DatasetColumn,
@@ -634,7 +634,7 @@ const createSeriesLabelsFormatter = (
   formattingOptions: OptionsType,
   settings: ComputedVisualizationSettings,
 ) =>
-  cachedFormatter<RowValue, string>(value => {
+  memoize(value => {
     if (typeof value !== "number") {
       return "";
     }
