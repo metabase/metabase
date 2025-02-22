@@ -36,7 +36,7 @@ export const useTableInstance = <TData, TValue>({
   columnOrder: controlledColumnOrder = [],
   columnSizing: controlledColumnSizing = {},
   defaultRowHeight = 36,
-  rowIdColumn,
+  rowId,
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
   columnsOptions,
   onColumnResize,
@@ -47,7 +47,7 @@ export const useTableInstance = <TData, TValue>({
 > => {
   const gridRef = useRef<HTMLDivElement>(null);
   const refs = useMemo(() => ({ gridRef }), [gridRef]);
-  const hasRowIdColumn = rowIdColumn != null;
+  const hasRowIdColumn = rowId != null;
 
   const [columnOrder, setColumnOrder] = useState<string[]>(
     getColumnOrder(controlledColumnOrder, hasRowIdColumn),
@@ -112,7 +112,7 @@ export const useTableInstance = <TData, TValue>({
 
   const columns = useMemo(() => {
     const rowIdColumnDefinition =
-      rowIdColumn != null ? getRowIdColumn<TData, TValue>(rowIdColumn) : null;
+      rowId != null ? getRowIdColumn<TData, TValue>(rowId) : null;
 
     const dataColumns = columnsOptions.map(options =>
       getDataColumn<TData, TValue>(
@@ -127,7 +127,7 @@ export const useTableInstance = <TData, TValue>({
 
     return [rowIdColumnDefinition, ...dataColumns].filter(isNotNull);
   }, [
-    rowIdColumn,
+    rowId,
     columnsOptions,
     columnSizing,
     measuredColumnSizing,
@@ -146,6 +146,7 @@ export const useTableInstance = <TData, TValue>({
     state: {
       columnSizing,
       columnOrder,
+      columnPinning: { left: [ROW_ID_COLUMN_ID] },
     },
     getCoreRowModel: getCoreRowModel(),
     columnResizeMode: "onChange",

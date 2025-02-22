@@ -28,9 +28,8 @@ import { ROW_ID_COLUMN_ID } from "metabase/visualizations/components/Table/const
 import type {
   BodyCellVariant,
   ColumnOptions,
-  RowIdVariant,
+  RowIdColumnOptions,
 } from "metabase/visualizations/components/Table/types";
-import { cachedFormatter } from "metabase/visualizations/echarts/cartesian/utils/formatter";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -55,6 +54,10 @@ import S from "./TableInteractive.module.css";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { HeaderCellWithColumnInfo } from "./cells/HeaderCellWithColumnInfo";
+import {
+  memoize,
+  useMemoizedCallback,
+} from "metabase/hooks/use-memoized-callback";
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -143,6 +146,30 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
   const onOpenObjectDetail = useObjectDetail(data);
 
+  const getCellClickedObject = useMemoizedCallback(
+    (datasetColumnIndex: number, rowIndex: number) => {
+      const clickedRowData = getTableClickedObjectRowData(
+        series as any,
+        rowIndex,
+        datasetColumnIndex,
+        isPivoted,
+        data,
+      );
+
+      const clicked = getTableCellClickedObject(
+        data,
+        settings,
+        rowIndex,
+        datasetColumnIndex,
+        isPivoted,
+        clickedRowData,
+      );
+
+      return clicked;
+    },
+    [series, isPivoted, data, settings],
+  );
+
   const handleBodyCellClick = useCallback(
     (
       event: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -159,22 +186,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       }
 
       const columnIndex = data.cols.findIndex(col => col.name === columnId);
-      const clickedRowData = getTableClickedObjectRowData(
-        series as any,
-        rowIndex,
-        columnIndex,
-        isPivoted,
-        data,
-      );
 
-      const clicked = getTableCellClickedObject(
-        data,
-        settings,
-        rowIndex,
-        columnIndex,
-        isPivoted,
-        clickedRowData,
-      );
+      const clicked = getCellClickedObject(columnIndex, rowIndex);
 
       onVisualizationClick?.({
         ...clicked,
@@ -188,6 +201,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       onVisualizationClick,
       series,
       settings,
+      getCellClickedObject,
     ],
   );
 
@@ -274,37 +288,20 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const columnFormatters = useMemo(() => {
     return cols.map(col => {
       const columnSettings = settings.column?.(col);
-
       const columnIndex = data.cols.findIndex(c => c.name === col.name);
-      const clickedRowData = getTableClickedObjectRowData(
-        series as any,
-        0,
-        columnIndex,
-        isPivoted,
-        data,
-      );
 
-      const clicked = getTableCellClickedObject(
-        data,
-        settings,
-        0,
-        columnIndex,
-        isPivoted,
-        clickedRowData,
-      );
-
-      return cachedFormatter(value =>
-        formatValue(value, {
+      return memoize((value, rowIndex) => {
+        const clicked = getCellClickedObject(columnIndex, rowIndex);
+        return formatValue(value, {
           ...columnSettings,
           type: "cell",
           jsx: true,
           rich: true,
           clicked,
-          // add clicked????
-        }),
-      );
+        });
+      });
     });
-  }, [cols, settings]);
+  }, [cols, settings, getCellClickedObject]);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((col, columnIndex) => {
@@ -314,8 +311,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
       const headerVariant = mode != null ? "light" : "outline";
-      const getBackgroundColor = (value: RowValue, rowIndex: number) =>
-        settings["table._cell_background_getter"]?.(value, rowIndex, col.name);
+      const getBackgroundColor = memoize((value: RowValue, rowIndex: number) =>
+        settings["table._cell_background_getter"]?.(value, rowIndex, col.name),
+      );
 
       const formatter = columnFormatters[columnIndex];
       const columnName = getColumnTitle(columnIndex);
@@ -384,6 +382,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       return options;
     });
   }, [
+    hasMetadataPopovers,
+    data.requested_timezone,
+    question,
     mode,
     cols,
     columnFormatters,
@@ -392,7 +393,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isPivoted,
     rows,
     settings,
-    clicked,
   ]);
 
   const handleColumnResize = useCallback(
@@ -405,7 +405,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [cols, onUpdateVisualizationSettings],
   );
 
-  const rowIdColumn: RowIdVariant | undefined = useMemo(() => {
+  const rowId: RowIdColumnOptions | undefined = useMemo(() => {
+    const getBackgroundColor = memoize((rowIndex: number) =>
+      settings["table._cell_background_getter"]?.(null, rowIndex),
+    );
+
     const hasAggregation = cols.some(column => column.source === "aggregation");
     const isNotebookPreview = queryBuilderMode === "notebook";
     const isModelEditor = queryBuilderMode === "dataset";
@@ -415,16 +419,19 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
     const shouldShowRowIndex =
       settings["table.row_index"] && !isNotebookPreview && !isModelEditor;
-    if (!hasObjectDetail) {
-      return shouldShowRowIndex ? "indexOnly" : undefined;
+    if (!hasObjectDetail && !shouldShowRowIndex) {
+      return undefined;
     }
 
-    return shouldShowRowIndex ? "indexExpand" : "expandButton";
+    return {
+      variant: shouldShowRowIndex ? "indexExpand" : "expandButton",
+      getBackgroundColor,
+    };
   }, [cols, isEmbeddingSdk, isPivoted, queryBuilderMode, settings]);
 
   const tableProps = useTableInstance({
     data: rows,
-    rowIdColumn,
+    rowId,
     columnOrder,
     columnSizing,
     columnsOptions,
@@ -453,7 +460,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     }
 
     onVisualizationClick(undefined);
-  }, [clicked]);
+  }, [clicked, onVisualizationClick]);
 
   if (!width || !height) {
     return <div ref={ref} className={className} />;

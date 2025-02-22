@@ -56,12 +56,17 @@ export interface ColumnOptions<TRow extends RowData, TValue> {
   formatter?: CellFormatter<TValue>;
 }
 
+export interface RowIdColumnOptions {
+  variant: RowIdVariant;
+  getBackgroundColor: (rowIndex: number) => string;
+}
+
 export interface TableOptions<TData, TValue> {
   data: TData[];
   columnOrder?: string[];
   columnSizing?: ColumnSizingState;
   defaultRowHeight?: number;
-  rowIdColumn?: RowIdVariant;
+  rowId?: RowIdColumnOptions;
   truncateLongCellWidth?: number;
   columnsOptions: ColumnOptions<TData, TValue>[];
   onColumnResize?: (columnSizing: ColumnSizingState) => void;

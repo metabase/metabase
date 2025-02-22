@@ -25,7 +25,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   children,
   onClick,
 }: SortableHeaderProps<TData, TValue>) {
-  const canSort = header.column.columnDef.meta?.enableReordering;
+  const isPinned = header.column.getIsPinned();
   const canResize = header.column.columnDef.enableResizing;
   const headerClickTargetSelector =
     header.column.columnDef.meta?.headerClickTargetSelector;
@@ -34,13 +34,13 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useSortable({
       id,
-      disabled: !canSort,
+      disabled: !!isPinned,
     });
 
   const dragStartPosition = useRef<DragPosition | null>(null);
 
   const style = useMemo<CSSProperties>(() => {
-    if (!canSort) {
+    if (isPinned) {
       return {};
     }
     return {
@@ -52,10 +52,10 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       cursor: isDragging ? "grabbing" : "pointer",
       outline: "none",
     };
-  }, [isDragging, transform, canSort]);
+  }, [isDragging, transform, isPinned]);
 
   const nodeAttributes = useMemo(() => {
-    if (!canSort) {
+    if (isPinned) {
       return {};
     }
 
@@ -63,7 +63,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       ...listeners,
       ...attributes,
     };
-  }, [attributes, canSort, listeners]);
+  }, [attributes, isPinned, listeners]);
 
   const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     dragStartPosition.current = { x: e.clientX, y: e.clientY };
