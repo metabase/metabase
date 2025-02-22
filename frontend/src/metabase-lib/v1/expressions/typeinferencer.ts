@@ -1,4 +1,13 @@
+import type { Expression, FieldReference } from "metabase-types/api";
+
 import { MBQL_CLAUSES } from "./config";
+import {
+  isCaseOrIf,
+  isDimension,
+  isFunction,
+  isOffset,
+  isOptionsObject,
+} from "./matchers";
 import { OPERATOR as OP } from "./tokenizer";
 
 export const MONOTYPE = {
@@ -9,7 +18,10 @@ export const MONOTYPE = {
   DateTime: "datetime",
 };
 
-export function infer(mbql, env) {
+export function infer(
+  mbql: Expression,
+  env: (ref: FieldReference) => string,
+): string {
   if (!Array.isArray(mbql)) {
     return typeof mbql;
   }
@@ -34,32 +46,41 @@ export function infer(mbql, env) {
       return MONOTYPE.Boolean;
   }
 
-  switch (op) {
-    case "case":
-    case "if":
-      return infer(mbql[1][0][1], env);
-    case "coalesce":
-      return infer(mbql[1], env);
-    case "offset":
-      return infer(mbql[2], env);
+  if (isCaseOrIf(mbql)) {
+    return infer(mbql[1][0][1], env);
+  }
+  if (isOffset(mbql)) {
+    return infer(mbql[2], env);
+  }
+
+  if (isFunction(mbql) && op === "coalesce") {
+    const [, ...args] = mbql;
+    const expressionArgs = args.filter(
+      (arg): arg is Expression => !isOptionsObject(arg),
+    );
+    return infer(expressionArgs[0], env);
   }
 
   const func = MBQL_CLAUSES[op];
   if (func) {
     const returnType = func.type;
     switch (returnType) {
-      case "datetime":
-        return MONOTYPE.DateTime;
-      case "object":
-        return MONOTYPE.Undefined;
       case "aggregation":
         return MONOTYPE.Number;
+      case "any":
+        return MONOTYPE.Undefined;
+      case "boolean":
+        return MONOTYPE.Boolean;
+      case "datetime":
+        return MONOTYPE.DateTime;
+      case "string":
+        return MONOTYPE.String;
       default:
         return returnType;
     }
   }
 
-  if (op === "field" && env) {
+  if (isDimension(mbql) && op === "field" && env) {
     return env(mbql);
   }
 
