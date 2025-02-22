@@ -5,10 +5,12 @@ description: "This guide walks you through how to set up the Embedded analytics 
 
 # Embedded analytics SDK - quickstart
 
-This guide walks you through how to set up the Embedded analytics SDK in your application with your Metabase using API keys. This setup:
+This guide walks you through how to set up the Embedded analytics SDK in your application with your Metabase using API keys.
 
-- Is only for evaluation and local development so you can see how the SDK works.
-- Works on any version of Metabase, including open source, but it only works in localhost.
+This setup:
+
+- Is only for evaluation and local development (so you can see how the SDK works).
+- Works on both the Enterprise and Open Source editions of Metabase, but it only works on localhost. If you want to use the SDK in production including, you'll need to also [set up JWT SSO authentication](./authentication.md), which is only available in the Enterprise Edition.
 
 ## Prerequisites
 
@@ -99,4 +101,4 @@ Run your app and visit the page with the embedded dashboard.
 ## Next steps
 
 - Explore [theming to change the look and feel](../embedding/sdk/appearance).
-- Continue by setting up JWT SSO in order to sign people in and be able to deploy your app to a server (API keys only work on localhost)
+- Continue by [setting up JWT SSO in Metabase and your app](./authentication.md) in order to sign people in, manage permissions, and deploy your app in production.
