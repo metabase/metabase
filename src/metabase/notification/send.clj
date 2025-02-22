@@ -134,7 +134,7 @@
 (defmethod prometheus/known-labels :metabase-notification/channel-send-ok [_] payload-channel-labels)
 (defmethod prometheus/known-labels :metabase-notification/channel-send-error [_] payload-channel-labels)
 
-(defn- time-since-trigger-time
+(defn- ms-since-trigger-time
   [notification-info]
   (some-> notification-info meta :notification/triggered-at-ns u/since-ms))
 
@@ -145,7 +145,7 @@
     ;; TODO: write a hook for this
     #_{:clj-kondo/ignore [:unresolved-symbol]}
     [duration-ms-fn]
-    (when-let [wait-time (time-since-trigger-time notification-info)]
+    (when-let [wait-time (ms-since-trigger-time notification-info)]
       (prometheus/observe! :metabase-notification/wait-duration-ms {:payload-type payload_type} wait-time))
     (try
       (log/infof "[Notification %d] Sending" id)
@@ -184,7 +184,7 @@
       (finally
         (prometheus/dec! :metabase-notification/concurrent-tasks)))
     (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
-    (when-let [total-time (time-since-trigger-time notification-info)]
+    (when-let [total-time (ms-since-trigger-time notification-info)]
       (prometheus/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
     nil))
 
