@@ -33,10 +33,6 @@ const PublicComponentStylesWrapperInner = styled.div`
   transition: var(--transition-theme-change);
 
   ${saveDomImageStyles}
-
-  :where(svg) {
-    display: inline;
-  }
 `;
 
 export const PublicComponentStylesWrapper = (
@@ -45,6 +41,7 @@ export const PublicComponentStylesWrapper = (
   return (
     <PublicComponentStylesWrapperInner
       {...props}
+      dir="ltr"
       // eslint-disable-next-line react/prop-types -- className is in div props :shrugs:
       className={`mb-wrapper ${props.className}`}
     />
@@ -71,5 +68,9 @@ export const SCOPED_CSS_RESET = css`
   :where(.mb-wrapper) *:where(ul) {
     padding: 0;
     margin: 0;
+  }
+
+  :where(.mb-wrapper) *:where(svg) {
+    display: inline;
   }
 `;

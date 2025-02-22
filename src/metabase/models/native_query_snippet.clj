@@ -28,7 +28,7 @@
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
 (t2/define-before-update :model/NativeQuerySnippet
-  [{:keys [creator_id id], :as snippet}]
+  [{:keys [id], :as snippet}]
   (u/prog1 (t2/changes snippet)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? <> :creator_id)

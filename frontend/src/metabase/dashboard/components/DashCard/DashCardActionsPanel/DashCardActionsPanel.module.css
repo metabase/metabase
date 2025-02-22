@@ -1,0 +1,36 @@
+.DashCardActionButtonsContainer {
+  display: flex;
+  align-items: center;
+  color: var(--mb-color-text-medium);
+  line-height: 1px;
+  gap: 0.5rem;
+}
+
+.DashCardActionsPanelContainer {
+  padding: 0.125em 0.25em;
+  background: var(--mb-color-bg-dashboard-card);
+  transform: translateY(-50%);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 13%);
+  cursor: default;
+  transition: opacity 200ms;
+
+  /* react-resizable covers panel, we have to override it */
+  z-index: 2;
+
+  /* left align on small cards on the left edge to not make the actions go out of the viewport */
+  &.onLeftEdge {
+    @container DashboardCard (max-width: 12rem) {
+      right: unset;
+      left: 20px;
+    }
+  }
+
+  pointer-events: none;
+  opacity: 0;
+
+  &.isDashCardTabMenuOpen {
+    pointer-events: all;
+    opacity: 1;
+  }
+}

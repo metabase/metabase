@@ -40,7 +40,6 @@ import type { State } from "metabase-types/store";
 import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
 
-import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import S from "./ValuesSourceTypeModal.module.css";
 import {
   ModalBodyWithPane,
@@ -48,11 +47,12 @@ import {
   ModalErrorMessage,
   ModalHelpMessage,
   ModalLabel,
+  ModalLoadingAndErrorWrapper,
   ModalMain,
   ModalPane,
   ModalSection,
   ModalTextArea,
-} from "./ValuesSourceTypeModal.styled";
+} from "./ValuesSourceTypeModalComponents";
 import { getStaticValues, getValuesText } from "./utils";
 
 interface ModalOwnProps {
