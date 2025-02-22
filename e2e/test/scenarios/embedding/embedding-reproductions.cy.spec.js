@@ -570,40 +570,36 @@ describe("issue 27643", { tags: "@external" }, () => {
         });
     });
 
-    it(
-      "in static embedding and in public dashboard scenarios (metabase#27643-1)",
-      { tags: "@flaky" },
-      () => {
-        cy.log("Test the dashboard");
-        H.visitDashboard("@dashboardId");
+    it("in static embedding and in public dashboard scenarios (metabase#27643-1)", () => {
+      cy.log("Test the dashboard");
+      H.visitDashboard("@dashboardId");
+      H.getDashboardCard().should("contain", "true");
+      H.toggleFilterWidgetValues(["false"]);
+      H.getDashboardCard().should("contain", "false");
+
+      cy.log("Test the embedded dashboard");
+      cy.get("@dashboardId").then(dashboard => {
+        H.visitEmbeddedPage({
+          resource: { dashboard },
+          params: {},
+        });
+
         H.getDashboardCard().should("contain", "true");
         H.toggleFilterWidgetValues(["false"]);
         H.getDashboardCard().should("contain", "false");
+      });
 
-        cy.log("Test the embedded dashboard");
-        cy.get("@dashboardId").then(dashboard => {
-          H.visitEmbeddedPage({
-            resource: { dashboard },
-            params: {},
-          });
+      cy.log("Test the public dashboard");
+      cy.get("@dashboardId").then(dashboardId => {
+        // We were signed out due to the previous visitEmbeddedPage
+        cy.signInAsAdmin();
+        H.visitPublicDashboard(dashboardId);
 
-          H.getDashboardCard().should("contain", "true");
-          H.toggleFilterWidgetValues(["false"]);
-          H.getDashboardCard().should("contain", "false");
-        });
-
-        cy.log("Test the public dashboard");
-        cy.get("@dashboardId").then(dashboardId => {
-          // We were signed out due to the previous visitEmbeddedPage
-          cy.signInAsAdmin();
-          H.visitPublicDashboard(dashboardId);
-
-          H.getDashboardCard().should("contain", "true");
-          H.toggleFilterWidgetValues(["false"]);
-          H.getDashboardCard().should("contain", "false");
-        });
-      },
-    );
+        H.getDashboardCard().should("contain", "true");
+        H.toggleFilterWidgetValues(["false"]);
+        H.getDashboardCard().should("contain", "false");
+      });
+    });
   });
 
   describe("should allow a native question filter to map to a boolean field filter parameter (metabase#27643)", () => {

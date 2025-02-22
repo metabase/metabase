@@ -1,6 +1,6 @@
-(ns macros.metabase-enterprise.advanced-permissions.api.util-test
-  (:require [macros.common]))
+(ns macros.metabase-enterprise.advanced-permissions.api.util-test)
 
 (defmacro with-impersonations! [impersonations-and-attributes-map & body]
-  `(let [~(macros.common/ignore-unused '&group) ~impersonations-and-attributes-map]
+  `(let [~'&group ~impersonations-and-attributes-map]
+     ~'&group
      ~@body))

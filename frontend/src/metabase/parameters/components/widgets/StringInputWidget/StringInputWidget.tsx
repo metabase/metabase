@@ -4,13 +4,9 @@ import { isEmpty, isString } from "underscore";
 
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
-import {
-  Footer,
-  TokenFieldWrapper,
-  WidgetLabel,
-  WidgetRoot,
-} from "metabase/parameters/components/widgets/Widget.styled";
 import type { Parameter } from "metabase-types/api";
+
+import { Footer, TokenFieldWrapper, WidgetLabel, WidgetRoot } from "../Widget";
 
 type StringInputWidgetProps = {
   value: string[] | undefined;

@@ -134,6 +134,10 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
 
   it.each([
     {
+      source: "contains(B, 'case-insensitive')",
+      expression: ["contains", B, "case-insensitive"],
+    },
+    {
       source: "contains(B, C, 'case-insensitive')",
       expression: ["contains", B, C, { "case-sensitive": false }],
     },

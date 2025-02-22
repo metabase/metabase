@@ -1,0 +1,36 @@
+.SearchContainer {
+  flex: 0;
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.LoadMoreRow {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0;
+  width: 100%;
+}
+
+.QuestionListWrapper {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.LoadMoreButton {
+  align-items: center;
+  color: var(--mb-color-brand);
+  cursor: pointer;
+  display: flex;
+  font-family: var(--mb-default-font-family);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0.25rem 1.5rem;
+}
+
+.SearchInputIcon {
+  color: var(--mb-color-text-light);
+}

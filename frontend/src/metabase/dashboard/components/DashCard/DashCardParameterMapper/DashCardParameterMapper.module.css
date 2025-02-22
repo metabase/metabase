@@ -1,0 +1,86 @@
+.MapperSettingsContainer {
+  z-index: 1;
+  overflow: auto;
+}
+
+.TextCardDefault {
+  color: var(--mb-color-text-dark);
+  margin: 0.5rem 0;
+  align-items: baseline;
+  line-height: 1.5rem;
+}
+
+.CardLabel {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.Header {
+  color: var(--mb-color-text-medium);
+}
+
+.TargetButton {
+  background-color: var(--mb-color-bg-white);
+  cursor: pointer;
+  border: 2px solid var(--mb-color-brand);
+  border-radius: 8px;
+  min-height: 30px;
+  color: var(--mb-color-text-medium);
+
+  &.disabled {
+    pointer-events: none;
+    opacity: 0.4;
+    border-color: inherit;
+  }
+
+  &.mapped {
+    border-color: var(--mb-color-brand);
+    background-color: var(--mb-color-brand);
+    color: var(--mb-color-text-white);
+  }
+
+  &.unauthed {
+    pointer-events: none;
+    border-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-bg-light);
+    color: var(--mb-color-text-medium);
+  }
+
+  &.invalid {
+    border-color: var(--mb-color-error);
+    background-color: var(--mb-color-error);
+    color: var(--mb-color-text-white);
+  }
+}
+
+.TargetButtonText {
+  overflow: hidden;
+}
+
+.CloseIconButton {
+  color: var(--mb-color-text-white);
+  background-color: transparent;
+  border: none;
+  padding: 0.25rem !important;
+
+  &:hover {
+    color: var(--mb-color-text-white);
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-bg-white),
+      transparent 80%
+    );
+  }
+}
+
+.KeyIcon {
+  flex: 1;
+}
+
+.Warning {
+  margin-top: 0.5rem;
+  margin-bottom: -0.5rem;
+  padding: 2rem 0;
+  text-align: center;
+}

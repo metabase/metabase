@@ -244,5 +244,10 @@ export const getReferencedCardIds = createSelector(
       .filter(tag => tag.type === "card")
       .map(tag => tag["card-id"])
       .filter(isNotNull),
-  { argsMemoizeOptions: { resultEqualityCheck: shallowEqual } },
+  {
+    argsMemoizeOptions: { resultEqualityCheck: shallowEqual },
+    memoizeOptions: {
+      resultEqualityCheck: shallowEqual,
+    },
+  },
 );

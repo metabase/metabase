@@ -352,8 +352,8 @@
 
 (deftest partitioned-table-test
   (mt/test-driver :postgres
-    (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are
-                   synced properly (#15049)")
+    (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are"
+                  " synced properly (#15049)")
       (let [db-name "partitioned_table_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -1667,13 +1667,6 @@
                 :type :native
                 :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))
 
-(defn- type-query [query field]
-  (mt/native-query {:query (str "SELECT pg_typeof(" (name field) ") "
-                                "FROM ( "
-                                (-> query qp.compile/compile :query)
-                                " ) AS subquery "
-                                "LIMIT 1")}))
-
 (deftest ^:parallel temporal-column-with-binning-keeps-type
   (mt/test-driver :postgres
     (let [mp (mt/metadata-provider)]
@@ -1685,24 +1678,7 @@
                 unbinned-query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                                    (lib/with-fields [field-md])
                                    (lib/limit 1))
-                unbinned-type-query (type-query unbinned-query field)
                 binned-query (-> unbinned-query
-                                 (lib/breakout (lib/with-temporal-bucket field-md bin)))
-                binned-type-query (type-query binned-query field)]
-            (is (= (-> unbinned-type-query qp/process-query mt/rows)
-                   (-> binned-type-query   qp/process-query mt/rows)))))))))
-
-(deftest ^:parallel aggregated-array-is-returned-correctly-test
-  (testing "An aggregated array column should be returned in a readable format"
-    (mt/test-driver :postgres
-      (mt/dataset test-data
-        (is (= [["The Gorbals" "The Misfit Restaurant + Bar" "Marlowe" "Yamashiro Hollywood" "Musso & Frank Grill" "Pacific Dining Car" "Chez Jay" "Rush Street"]
-                ["Greenblatt's Delicatessen & Fine Wine Shop" "Handy Market"]]
-               (->> (mt/native-query {:query "select category_id, array_agg(name)
-                                              from venues
-                                              group by category_id
-                                              order by 1 asc
-                                              limit 2;"})
-                    mt/process-query
-                    mt/rows
-                    (map second))))))))
+                                 (lib/breakout (lib/with-temporal-bucket field-md bin)))]
+            (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type))
+                   (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))

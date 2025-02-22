@@ -9,7 +9,6 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dashboard :as api.dashboard]
-   [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation :as eid-translation]
    [metabase.models.card :as card]
@@ -17,6 +16,7 @@
    [metabase.models.resolution :as models.resolution]
    [metabase.models.setting :refer [defsetting]]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.public-sharing.api :as api.public]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
@@ -172,7 +172,7 @@
   (-> (merge user-params token-params)
       (update-vals (fn [v]
                      (if (and (not (string? v)) (seqable? v))
-                       (seq v)
+                       (not-empty v)
                        v)))))
 
 (mu/defn- param-values-merged-params :- [:map-of ms/NonBlankString :any]

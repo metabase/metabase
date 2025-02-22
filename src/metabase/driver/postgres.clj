@@ -484,7 +484,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")])
+  (h2x/with-database-type-info [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")] "timestamptz"))
 
 (defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
@@ -983,9 +983,6 @@
     (let [obj (.getObject rs i)]
       (cond (instance? org.postgresql.util.PGobject obj)
             (.getValue ^org.postgresql.util.PGobject obj)
-
-            (instance? org.postgresql.jdbc.PgArray obj)
-            (vec (.getArray ^org.postgresql.jdbc.PgArray obj)) ;; TODO -- we should probably be careful of very large arrays
 
             :else
             obj))))

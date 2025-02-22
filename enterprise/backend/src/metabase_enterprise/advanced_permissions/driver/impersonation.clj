@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -60,14 +61,19 @@
                (enforce-impersonations? db-or-id conn-impersonations group-ids))
       conn-impersonations)))
 
-(defn connection-impersonation-role
+(defn- connection-impersonation-role
   "Fetches the database role that should be used for the current user, if connection impersonation is in effect.
   Returns `nil` if connection impersonation should not be used for the current user. Throws an exception if multiple
   conflicting connection impersonation policies are found, or the role is not a single string."
   [database-or-id]
   (when (and database-or-id (not api/*is-superuser?*))
-    (let [conn-impersonations (enforced-impersonations-for-db database-or-id)
-          role-attributes     (set (map :attribute conn-impersonations))]
+    (let [conn-impersonations  (enforced-impersonations-for-db database-or-id)
+          role-attributes      (set (map :attribute conn-impersonations))
+          conflicting-sandbox? (when api/*current-user-id* (sandbox.api.util/sandboxed-user-for-db? (u/id database-or-id)))]
+      (when conflicting-sandbox?
+        (throw (ex-info (tru "Conflicting sandboxing and impersonation policies found.")
+                        {:user-id api/*current-user-id*
+                         :database-id (u/id database-or-id)})))
       (when conn-impersonations
         (when (> (count role-attributes) 1)
           (throw (ex-info (tru "Multiple conflicting connection impersonation policies found for current user")
@@ -115,7 +121,7 @@
         (when (and enabled? (not default-role))
           (throw (ex-info (tru "Connection impersonation is enabled for this database, but no default role is found")
                           {:user-id api/*current-user-id*
-                           :database-id (u/the-id database)})))
+                           :database-id (u/id database)})))
         (when-let [role (or impersonation-role default-role)]
           ;; If impersonation is not enabled for any groups but we have a default role, we should still set it, just
           ;; in case impersonation used to be enabled and the connection still uses an impersonated role.
