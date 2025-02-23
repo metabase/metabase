@@ -26,7 +26,7 @@
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2])
   (:import
-   (org.bson.types ObjectId)))
+   (org.bson.types Binary ObjectId)))
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
@@ -273,6 +273,20 @@
           {"$project" {"_id" 0, "index" "$index", "path" "$path", "type" "$type", "type-alias" "$type-alias"}}]
          (#'mongo/describe-table-query :collection-name "collection-name" :sample-size 1000 :max-depth 1))))
 
+(tx/defdataset nested-bindata-coll
+  (let [md5-hash (Binary. (byte 0x05) (.getBytes "5d41402abc4b2a76b9719d911017c592"))
+        some-uuid #uuid "11111111-1111-1111-1111-111111111111"]
+    [["nested-bindata"
+      [{:field-name "mixed_uuid", :base-type :type/*}
+       {:field-name "mixed_not_uuid", :base-type :type/*}
+       {:field-name "nested_mixed_uuid", :base-type :type/*}
+       {:field-name "nested_mixed_not_uuid", :base-type :type/*}]
+      [[some-uuid md5-hash {"nested_data" some-uuid} {"nested_data_2" md5-hash}]
+       [some-uuid md5-hash {"nested_data" some-uuid} {"nested_data_2" md5-hash}]
+       [some-uuid md5-hash {"nested_data" some-uuid} {"nested_data_2" md5-hash}]
+       [md5-hash some-uuid {"nested_data" md5-hash} {"nested_data_2" some-uuid}]
+       [md5-hash some-uuid {"nested_data" md5-hash} {"nested_data_2" some-uuid}]]]]))
+
 (deftest describe-table-test
   (mt/test-driver :mongo
     (is (= {:schema nil
@@ -312,7 +326,18 @@
                   {:name "name", :database-type "string", :base-type :type/Text, :database-position 2}
                   {:name "person_id", :database-type "binData", :base-type :type/UUID, :database-position 3}
                   {:name "id", :database-type "binData", :base-type :type/UUID, :database-position 1}}}
-               (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :dogs)))))))))
+               (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :dogs)))))))
+    (mt/dataset nested-bindata-coll
+      (testing "nested fields with mixed binData subtypes are correctly identified as type/UUID"
+        (is (= {:schema nil, :name "nested-bindata",
+                :fields #{{:name "_id", :database-type "long", :base-type :type/Integer, :pk? true, :database-position 0}
+                          {:name "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 5,
+                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/*, :database-position 6}}}
+                          {:name "mixed_not_uuid", :database-type "binData", :base-type :type/*, :database-position 2}
+                          {:name "mixed_uuid", :database-type "binData", :base-type :type/UUID, :database-position 1}
+                          {:name "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 3,
+                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/UUID, :database-position 4}}}}}
+               (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
 (deftest sync-indexes-info-test
   (mt/test-driver :mongo
