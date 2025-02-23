@@ -26,7 +26,7 @@
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)
-   (org.bson.types ObjectId)))
+   (org.bson.types Binary ObjectId)))
 
 (set! *warn-on-reflection* true)
 
@@ -504,6 +504,49 @@
     (let [mongo-opts {:limit    metadata-queries/nested-field-sample-limit
                       :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
       (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts)))))
+
+(defn encode-mongo
+  "Converts a Clojure representation of a Mongo aggregation pipeline to a formatted JSON-like string"
+  ([mgo] (encode-mongo mgo 0))
+  ([mgo indent-level]
+   (let [indent (apply str (repeat indent-level "  "))
+         next-indent (str indent "  ")]
+     (letfn [(encode-map [m next-indent]
+               (if (empty? m) "{}"
+                   (str "{\n"
+                        (->> m
+                             (map (fn [[k v]] (str next-indent "\"" (name k) "\": " (encode-mongo v (inc indent-level)))))
+                             (clojure.string/join ",\n"))
+                        "\n" indent "}")))
+             (encode-vector [v next-indent]
+               (if (empty? v) "[]"
+                   (str "[\n"
+                        (->> v
+                             (map #(str next-indent (encode-mongo % (inc indent-level))))
+                             (clojure.string/join ",\n"))
+                        "\n" indent "]")))
+             (encode-binary [bin]
+               (if (= (.getType ^Binary bin) 4)
+                 (let [buffer (java.nio.ByteBuffer/wrap (.getData ^Binary bin))
+                       most-sig-bits (.getLong buffer)
+                       least-sig-bits (.getLong buffer)
+                       uuid (java.util.UUID. most-sig-bits least-sig-bits)]
+                   (str "UUID(\"" uuid "\")"))
+                 (json/encode bin)))
+             (encode-object-id [oid] (str "ObjectId(\"" (.toString ^ObjectId oid) "\")"))]
+       (cond
+         (map? mgo) (encode-map mgo next-indent)
+         (vector? mgo) (encode-vector mgo next-indent)
+         (instance? org.bson.types.ObjectId mgo) (encode-object-id mgo)
+         (instance? org.bson.types.Binary mgo) (encode-binary mgo)
+         :else (json/encode mgo))))))
+
+(defmethod driver/prettify-native-form :mongo
+  [_driver native-form]
+  (try
+    (encode-mongo native-form)
+    (catch Exception _
+      native-form)))
 
 ;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need
 ;; for ssl experiments.
