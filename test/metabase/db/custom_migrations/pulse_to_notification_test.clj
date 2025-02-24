@@ -193,7 +193,7 @@
                                :entity_id notification-id)
                        expected-views)
                   (map #(-> %
-                            (update :archivedd bit->boolean)
+                            (update :archived bit->boolean)
                             (update :recipients (fn [recipients]
                                                   (some-> recipients
                                                           (str/split #",")
