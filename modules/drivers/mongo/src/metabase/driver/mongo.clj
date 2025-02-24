@@ -516,14 +516,14 @@
                    (str "{\n"
                         (->> m
                              (map (fn [[k v]] (str next-indent "\"" (name k) "\": " (encode-mongo v (inc indent-level)))))
-                             (clojure.string/join ",\n"))
+                             (str/join ",\n"))
                         "\n" indent "}")))
              (encode-vector [v next-indent]
                (if (empty? v) "[]"
                    (str "[\n"
                         (->> v
                              (map #(str next-indent (encode-mongo % (inc indent-level))))
-                             (clojure.string/join ",\n"))
+                             (str/join ",\n"))
                         "\n" indent "]")))
              (encode-binary [bin]
                (if (= (.getType ^Binary bin) 4)
