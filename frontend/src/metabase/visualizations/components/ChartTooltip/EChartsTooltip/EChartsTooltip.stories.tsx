@@ -23,7 +23,7 @@ const DefaultTemplate = () => (
 );
 
 export default {
-  title: "viz/EChartsTooltip",
+  title: "Viz/Components/EChartsTooltip",
   component: EChartsTooltip,
 };
 

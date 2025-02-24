@@ -77,7 +77,7 @@ const scenarioDefaults: Scenario = {
 export const AllOverlays: Scenario = scenarioDefaults;
 
 export default {
-  title: "Design System/Overlays",
+  title: "Patterns/Overlays",
   component: (...args: any) => {
     return <OverlaysDemo {...args} />;
   },

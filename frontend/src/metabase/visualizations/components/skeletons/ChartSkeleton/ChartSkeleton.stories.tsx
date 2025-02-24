@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import ChartSkeleton, { type ChartSkeletonProps } from "./ChartSkeleton";
 
 export default {
-  title: "Visualizations/ChartSkeleton",
+  title: "Viz/Components/ChartSkeleton",
   component: ChartSkeleton,
 };
 

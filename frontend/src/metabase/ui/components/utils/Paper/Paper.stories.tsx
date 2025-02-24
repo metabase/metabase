@@ -63,7 +63,7 @@ const GridTemplate = (args: PaperProps) => (
 );
 
 export default {
-  title: "Utils/Paper",
+  title: "Components/Utils/Paper",
   component: Paper,
   args,
   argTypes,

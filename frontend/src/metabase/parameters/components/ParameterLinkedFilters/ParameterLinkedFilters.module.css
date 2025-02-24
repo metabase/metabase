@@ -1,0 +1,41 @@
+.SectionMessage {
+  color: var(--mb-color-text-medium);
+}
+
+.SectionMessageLink {
+  color: var(--mb-color-brand);
+  cursor: pointer;
+}
+
+.ParameterRoot {
+  border-radius: 0.5rem;
+  background-color: var(--mb-color-bg-light);
+}
+
+.ParameterName {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--mb-color-border);
+  font-weight: bold;
+}
+
+.FieldListHeader {
+  border-top: 1px solid var(--mb-color-border);
+}
+
+.FieldListTitle {
+  color: var(--mb-color-brand);
+  width: 50%;
+  padding: 0.5rem 1rem 0;
+}
+
+.FieldListItem {
+  display: flex;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+}
+
+.FieldLabel {
+  color: var(--mb-color-text-medium);
+}

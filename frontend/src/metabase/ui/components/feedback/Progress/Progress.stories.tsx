@@ -12,7 +12,7 @@ const argTypes = {
 };
 
 export default {
-  title: "Feedback/Progress",
+  title: "Components/Feedback/Progress",
   component: Progress,
   args,
   argTypes,

@@ -66,7 +66,7 @@ const IconTemplate = (args: NumberInputProps) => (
 );
 
 export default {
-  title: "Inputs/NumberInput",
+  title: "Components/Inputs/NumberInput",
   component: NumberInput,
   args,
   argTypes,

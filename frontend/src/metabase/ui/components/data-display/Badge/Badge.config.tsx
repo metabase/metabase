@@ -1,4 +1,5 @@
 import { Badge } from "@mantine/core";
+export type { BadgeProps } from "@mantine/core";
 
 import BadgeStyles from "./Badge.module.css";
 

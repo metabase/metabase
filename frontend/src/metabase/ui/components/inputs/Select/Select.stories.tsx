@@ -66,7 +66,14 @@ const args: Partial<SelectProps<string>> = {
   disabled: false,
   readOnly: false,
   withAsterisk: false,
-  comboboxProps: { middlewares: { flip: true, shift: true, inline: false } },
+  comboboxProps: {
+    middlewares: {
+      flip: true,
+      size: true,
+      shift: true,
+      inline: false,
+    },
+  },
 };
 
 const sampleArgs = {
@@ -117,7 +124,7 @@ const VariantTemplate = (args: SelectProps<string>) => (
 );
 
 export default {
-  title: "Inputs/Select",
+  title: "Components/Inputs/Select",
   component: Select,
   args,
   argTypes,

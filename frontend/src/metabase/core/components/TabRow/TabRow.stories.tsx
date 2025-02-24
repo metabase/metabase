@@ -14,7 +14,7 @@ import TabLink from "../TabLink";
 import { TabRow } from "./TabRow";
 
 export default {
-  title: "Core/TabRow",
+  title: "Deprecated/Components/TabRow",
   component: TabRow,
 };
 

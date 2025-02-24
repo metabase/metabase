@@ -5,7 +5,7 @@ import { Form, FormProvider } from "metabase/forms";
 import FormFileInput from "./FormFileInput";
 
 export default {
-  title: "Core/FormFileInput",
+  title: "Components/Ask Before Using/FormFileInput",
   component: FormFileInput,
 };
 

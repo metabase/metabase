@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import StaticSkeleton from "./StaticSkeleton";
 
 export default {
-  title: "Visualizations/StaticSkeleton",
+  title: "Viz/Static Viz/StaticSkeleton",
   component: StaticSkeleton,
 };
 

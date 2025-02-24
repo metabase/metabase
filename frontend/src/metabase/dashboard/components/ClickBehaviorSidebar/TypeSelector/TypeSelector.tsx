@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
 import CS from "metabase/css/core/index.css";
@@ -15,7 +16,7 @@ import { SidebarItem } from "../SidebarItem";
 import { useClickBehaviorOptionName } from "../hooks";
 import { clickBehaviorOptions } from "../utils";
 
-import { BehaviorOptionIcon } from "./TypeSelector.styled";
+import S from "./TypeSelector.module.css";
 
 interface BehaviorOptionProps {
   value: ClickBehaviorType;
@@ -43,10 +44,12 @@ export const BehaviorOption = ({
       onClick={onClick}
       disabled={disabled}
     >
-      <BehaviorOptionIcon
+      <SidebarItem.Icon
+        className={cx(S.BehaviorOptionIcon, {
+          [S.isSelected]: selected,
+        })}
         name={selected ? "check" : icon}
         color={selected ? color("text-white") : color("brand")}
-        isSelected={selected}
       />
       <SidebarItem.Content>
         <SidebarItem.Name>{behaviorOptionName}</SidebarItem.Name>
