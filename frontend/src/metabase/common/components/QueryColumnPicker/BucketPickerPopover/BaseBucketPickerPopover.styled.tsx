@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import BaseSelectList from "metabase/components/SelectList";
-import { alpha, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import { Button, type ButtonProps, Icon } from "metabase/ui";
 
@@ -16,12 +16,6 @@ export const ChevronDown = styled(Icon)`
   margin-left: 0.25em;
   color: currentColor;
   opacity: 0.75;
-`;
-
-export const TriggerButton = styled(Button)<ButtonProps>`
-  color: ${() => alpha(color("text-white"), 0.5)};
-  border-radius: 0;
-  border-left: 2px solid ${() => alpha(color("border"), 0.1)};
 `;
 
 export const SelectListItem = styled(BaseSelectList.Item)<{

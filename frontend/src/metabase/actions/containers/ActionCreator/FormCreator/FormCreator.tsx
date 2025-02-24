@@ -11,6 +11,7 @@ import _ from "underscore";
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import { Form, FormProvider } from "metabase/forms";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { Flex, Icon, UnstyledButton } from "metabase/ui";
 import type {
   ActionFormSettings,
   FieldSettings,
@@ -44,6 +45,7 @@ interface FormCreatorProps {
   isEditable: boolean;
   actionType: WritebackAction["type"];
   onChange: (formSettings: ActionFormSettings) => void;
+  onClose?: () => void;
 }
 
 export function FormCreator({
@@ -52,6 +54,7 @@ export function FormCreator({
   isEditable,
   actionType,
   onChange,
+  onClose,
 }: FormCreatorProps) {
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
     passedFormSettings?.fields ? passedFormSettings : getDefaultFormSettings(),
@@ -128,6 +131,20 @@ export function FormCreator({
     return (
       <SidebarContent>
         <FormContainer>
+          {onClose && (
+            /* We want to avoid absolute positioning, so we use margin with z-index since 
+               it's covered by the next element with padding */
+            <Flex
+              justify="flex-end"
+              mt="1.5rem"
+              mb="-3rem"
+              style={{ zIndex: 1 }}
+            >
+              <UnstyledButton onClick={onClose}>
+                <Icon name="close" size={18} />
+              </UnstyledButton>
+            </Flex>
+          )}
           <EmptyFormPlaceholder />
         </FormContainer>
       </SidebarContent>
@@ -157,7 +174,7 @@ export function FormCreator({
   });
 
   return (
-    <SidebarContent title={t`Action parameters`}>
+    <SidebarContent title={t`Action parameters`} onClose={onClose}>
       <FormContainer>
         <Description />
         {showWarning && (

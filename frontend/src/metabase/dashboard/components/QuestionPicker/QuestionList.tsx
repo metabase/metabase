@@ -17,13 +17,10 @@ import { usePagination } from "metabase/hooks/use-pagination";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { Box, Flex } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
-import {
-  EmptyStateContainer,
-  PaginationControlsContainer,
-  QuestionListItem,
-} from "./QuestionList.styled";
+import S from "./QuestionList.module.css";
 
 interface QuestionListProps {
   searchText: string;
@@ -117,9 +114,9 @@ export function QuestionList({
 
   if (shouldShowEmptyState) {
     return (
-      <EmptyStateContainer>
+      <Box my="4rem">
         <EmptyState message={t`Nothing here`} icon="folder" />
-      </EmptyStateContainer>
+      </Box>
     );
   }
 
@@ -127,13 +124,15 @@ export function QuestionList({
     <>
       <SelectList>
         {list.map(item => (
-          <QuestionListItem
+          <SelectList.Item
+            className={S.QuestionListItem}
             key={item.id}
             id={item.id}
             name={item.getName()}
             icon={{
               name: item.getIcon().name,
               size: item.model === "dataset" ? 18 : 16,
+              className: S.QuestionListItemIcon,
             }}
             onSelect={onSelect}
             rightIcon={PLUGIN_MODERATION.getStatusIcon(
@@ -142,7 +141,7 @@ export function QuestionList({
           />
         ))}
       </SelectList>
-      <PaginationControlsContainer>
+      <Flex justify="flex-end">
         <PaginationControls
           showTotal
           total={data?.total}
@@ -152,7 +151,7 @@ export function QuestionList({
           onNextPage={handleClickNextPage}
           onPreviousPage={handleClickPreviousPage}
         />
-      </PaginationControlsContainer>
+      </Flex>
     </>
   );
 }

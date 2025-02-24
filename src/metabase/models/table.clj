@@ -125,7 +125,7 @@
 
 (defmethod serdes/hash-fields :model/Table
   [_table]
-  [:schema :name (serdes/hydrated-hash :db)])
+  [:schema :name (serdes/hydrated-hash :db :db_id)])
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 

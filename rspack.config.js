@@ -290,11 +290,6 @@ const config = {
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new rspack.ProvidePlugin({ process: "process/browser.js" }),
-    // https://github.com/metabase/metabase/issues/35374
-    new rspack.NormalModuleReplacementPlugin(
-      /.\/use-popover.js/,
-      `${SRC_PATH}/ui/components/overlays/Popover/use-popover`,
-    ),
   ],
 };
 

@@ -19,7 +19,7 @@ import Questions from "metabase/entities/questions";
 import { useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Icon, Select } from "metabase/ui";
+import { Flex, Icon, Select } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardId,
@@ -31,13 +31,9 @@ import type {
   EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
 
-import { Heading } from "../../ClickBehaviorSidebar.styled";
+import { Heading } from "../../ClickBehaviorSidebarComponents";
 import { SidebarItem } from "../../SidebarItem";
-import {
-  LinkTargetEntityPickerContent,
-  SelectedEntityPickerContent,
-  SelectedEntityPickerIcon,
-} from "../LinkOptions.styled";
+import S from "../LinkOptions.module.css";
 
 const LINK_TARGETS = {
   question: {
@@ -80,13 +76,16 @@ function PickerControl({
 
   return (
     <SidebarItem.Selectable isSelected padded={false}>
-      <LinkTargetEntityPickerContent onClick={onClick}>
-        <SelectedEntityPickerIcon name={pickerIcon} />
-        <SelectedEntityPickerContent>
+      <Flex align="center" w="100%" p="8px 12px" onClick={onClick}>
+        <SidebarItem.Icon
+          className={S.SelectedEntityPickerIcon}
+          name={pickerIcon}
+        />
+        <SidebarItem.Content className={S.SelectedEntityPickerContent}>
           {renderLabel()}
           <Icon name="chevrondown" size={12} className={CS.mlAuto} />
-        </SelectedEntityPickerContent>
-      </LinkTargetEntityPickerContent>
+        </SidebarItem.Content>
+      </Flex>
       <SidebarItem.CloseIcon onClick={onCancel} />
     </SidebarItem.Selectable>
   );

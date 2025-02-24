@@ -66,7 +66,14 @@ const args: Partial<SelectProps<string>> = {
   disabled: false,
   readOnly: false,
   withAsterisk: false,
-  comboboxProps: { middlewares: { flip: true, shift: true, inline: false } },
+  comboboxProps: {
+    middlewares: {
+      flip: true,
+      size: true,
+      shift: true,
+      inline: false,
+    },
+  },
 };
 
 const sampleArgs = {
