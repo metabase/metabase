@@ -61,7 +61,9 @@ export const TableBrowser = ({
             <TableCard hoverable={!isSyncInProgress(table)}>
               <TableLink
                 to={
-                  !isSyncInProgress(table) ? getTableUrl(table, metadata) : ""
+                  !isSyncInProgress(table)
+                    ? getTableUrl(table, metadata, dbId)
+                    : ""
                 }
                 onClick={() => trackTableClick(table.id)}
               >
