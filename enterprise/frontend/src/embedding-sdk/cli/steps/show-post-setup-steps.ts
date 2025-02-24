@@ -6,17 +6,13 @@ import {
   getMetabaseInstanceSetupCompleteMessage,
 } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
+import { getExampleComponentImportPath } from "../utils/get-example-component-import-path";
 import { getNextJsSetupMessages } from "../utils/get-nextjs-setup-message";
-import { getSuggestedImportPath } from "../utils/get-suggested-import-path";
-import {
-  checkIfNextJsProjectUsesSrcDirectory,
-  checkIsInNextJsProject,
-} from "../utils/nextjs-helpers";
+import { checkIsInNextJsProject } from "../utils/nextjs-helpers";
 import { printEmptyLines, printWithPadding } from "../utils/print";
 
 export const showPostSetupSteps: CliStepMethod = async state => {
   const isNextJs = await checkIsInNextJsProject();
-  const isUsingSrcDirectory = checkIfNextJsProjectUsesSrcDirectory();
 
   const START_SERVER_STEP = `
   Generated an example Express.js server directory in "${state.mockServerPath}".
@@ -26,15 +22,9 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   ${green("npm run start")}
 `;
 
-  const importPath = getSuggestedImportPath({
-    isNextJs,
-    isUsingSrcDirectory,
-    componentPath: state.reactComponentPath,
-  });
-
   const REACT_COMPONENT_IMPORT_STEP = `
   Import the component in your React frontend. For example:
-  ${green(`import { AnalyticsPage } from "${importPath}";`)}
+  ${green(`import { AnalyticsPage } from "${getExampleComponentImportPath(state.reactComponentPath)}";`)}
 
   Make sure the import path is valid.
   Depending on your app's directory structure, you may need to move the components to a new directory.
