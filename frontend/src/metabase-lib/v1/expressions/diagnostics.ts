@@ -25,17 +25,6 @@ import { resolve } from "./resolver";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, Token } from "./types";
 
-// e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
-export function countMatchingParentheses(tokens: Token[]) {
-  const isOpen = (t: Token) =>
-    t.type === TOKEN.Operator && t.op === OPERATOR.OpenParenthesis;
-  const isClose = (t: Token) =>
-    t.type === TOKEN.Operator && t.op === OPERATOR.CloseParenthesis;
-  const count = (c: number, token: Token) =>
-    isOpen(token) ? c + 1 : isClose(token) ? c - 1 : c;
-  return tokens.reduce(count, 0);
-}
-
 export function diagnose({
   source,
   startRule,
@@ -62,40 +51,14 @@ export function diagnose({
     return errors[0];
   }
 
-  for (let i = 0; i < tokens.length - 1; ++i) {
-    const token = tokens[i];
-    if (token.type === TOKEN.Identifier && source[token.start] !== "[") {
-      const functionName = source.slice(token.start, token.end);
-      const fn = getMBQLName(functionName);
-      const clause = fn ? MBQL_CLAUSES[fn] : null;
-      if (clause && clause.args.length > 0) {
-        const next = tokens[i + 1];
-        if (
-          next.type !== TOKEN.Operator ||
-          next.op !== OPERATOR.OpenParenthesis
-        ) {
-          return {
-            message: t`Expecting an opening parenthesis after function ${functionName}`,
-          };
-        }
-      }
-    }
+  let error = checkOpenParenthesisAfterFunction(source, tokens);
+  if (error) {
+    return error;
   }
 
-  const mismatchedParentheses = countMatchingParentheses(tokens);
-  const message =
-    mismatchedParentheses === 1
-      ? t`Expecting a closing parenthesis`
-      : mismatchedParentheses > 1
-        ? t`Expecting ${mismatchedParentheses} closing parentheses`
-        : mismatchedParentheses === -1
-          ? t`Expecting an opening parenthesis`
-          : mismatchedParentheses < -1
-            ? t`Expecting ${-mismatchedParentheses} opening parentheses`
-            : null;
-
-  if (message) {
-    return { message };
+  error = checkMatchingParentheses(tokens);
+  if (error) {
+    return error;
   }
 
   const database = getDatabase(query, metadata);
@@ -270,4 +233,64 @@ export function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
 function getDatabase(query: Lib.Query, metadata?: Metadata) {
   const databaseId = Lib.databaseID(query);
   return metadata?.database(databaseId);
+}
+
+function checkOpenParenthesisAfterFunction(
+  source: string,
+  tokens: Token[],
+): ErrorWithMessage | null {
+  for (let i = 0; i < tokens.length - 1; ++i) {
+    const token = tokens[i];
+    if (token.type === TOKEN.Identifier && source[token.start] !== "[") {
+      const functionName = source.slice(token.start, token.end);
+      const fn = getMBQLName(functionName);
+      const clause = fn ? MBQL_CLAUSES[fn] : null;
+      if (clause && clause.args.length > 0) {
+        const next = tokens[i + 1];
+        if (
+          next.type !== TOKEN.Operator ||
+          next.op !== OPERATOR.OpenParenthesis
+        ) {
+          return {
+            message: t`Expecting an opening parenthesis after function ${functionName}`,
+          };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function checkMatchingParentheses(tokens: Token[]): ErrorWithMessage | null {
+  const mismatchedParentheses = countMatchingParentheses(tokens);
+  if (mismatchedParentheses === 1) {
+    return {
+      message: t`Expecting a closing parenthesis`,
+    };
+  } else if (mismatchedParentheses > 1) {
+    return {
+      message: t`Expecting ${mismatchedParentheses} closing parentheses`,
+    };
+  } else if (mismatchedParentheses === -1) {
+    return {
+      message: t`Expecting an opening parenthesis`,
+    };
+  } else if (mismatchedParentheses < -1) {
+    return {
+      message: t`Expecting ${-mismatchedParentheses} opening parentheses`,
+    };
+  }
+  return null;
+}
+
+// e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
+export function countMatchingParentheses(tokens: Token[]) {
+  const isOpen = (t: Token) =>
+    t.type === TOKEN.Operator && t.op === OPERATOR.OpenParenthesis;
+  const isClose = (t: Token) =>
+    t.type === TOKEN.Operator && t.op === OPERATOR.CloseParenthesis;
+  const count = (c: number, token: Token) =>
+    isOpen(token) ? c + 1 : isClose(token) ? c - 1 : c;
+  return tokens.reduce(count, 0);
 }
