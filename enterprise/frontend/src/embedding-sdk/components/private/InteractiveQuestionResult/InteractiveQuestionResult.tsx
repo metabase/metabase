@@ -69,12 +69,9 @@ export const InteractiveQuestionResult = ({
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
-    !isCreatingQuestionFromScratch &&
-    question &&
-    shouldRunCardQuery(question) &&
-    !queryResults;
+    question && shouldRunCardQuery(question) && !queryResults;
 
-  if (isQuestionLoading || isQueryResultLoading) {
+  if (!isEditorOpen && (isQuestionLoading || isQueryResultLoading)) {
     return <SdkLoader />;
   }
 
