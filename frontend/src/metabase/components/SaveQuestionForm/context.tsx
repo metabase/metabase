@@ -29,7 +29,7 @@ type SaveQuestionContextType = {
   setValues: (values: FormValues) => void;
   showSaveType: boolean;
   multiStep: boolean;
-  saveToCollectionId?: CollectionId;
+  saveToCollection?: CollectionId;
 };
 
 export const SaveQuestionContext =
@@ -58,7 +58,7 @@ export const SaveQuestionProvider = ({
   onCreate,
   onSave,
   multiStep = false,
-  saveToCollectionId,
+  saveToCollection,
   children,
   initialDashboardTabId,
 }: PropsWithChildren<SaveQuestionProps>) => {
@@ -140,9 +140,9 @@ export const SaveQuestionProvider = ({
         question,
         onSave,
         onCreate,
-        saveToCollectionId,
+        saveToCollection,
       }),
-    [originalQuestion, question, onSave, onCreate, saveToCollectionId],
+    [originalQuestion, question, onSave, onCreate, saveToCollection],
   );
 
   // we care only about the very first result as question can be changed before
@@ -176,7 +176,7 @@ export const SaveQuestionProvider = ({
             setValues,
             showSaveType,
             multiStep,
-            saveToCollectionId,
+            saveToCollection,
           }}
         >
           {children}

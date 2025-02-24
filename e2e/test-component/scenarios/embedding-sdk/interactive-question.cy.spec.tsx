@@ -155,7 +155,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
   it("can save a question to a pre-defined collection", () => {
     mountInteractiveQuestion({
-      saveToCollectionId: Number(THIRD_COLLECTION_ID),
+      saveToCollection: Number(THIRD_COLLECTION_ID),
     });
 
     saveInteractiveQuestionAsNewQuestion({
