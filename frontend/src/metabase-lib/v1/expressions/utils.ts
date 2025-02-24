@@ -19,3 +19,15 @@ export function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
     typeof (err as any).message === "string"
   );
 }
+
+export function getExpressionMode(startRule: string): Lib.ExpressionMode {
+  switch (startRule) {
+    case "expression":
+      return "expression";
+    case "aggregation":
+      return "aggregation";
+    case "boolean":
+      return "filter";
+  }
+  throw new Error(`Unknown start rule: ${startRule}`);
+}
