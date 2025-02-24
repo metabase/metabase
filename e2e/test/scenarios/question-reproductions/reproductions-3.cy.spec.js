@@ -1136,6 +1136,7 @@ describe("issue 33441", () => {
     H.enterCustomColumnDetails({
       formula: 'datetimeDiff([Created At] , now, "days")',
       name: "Date",
+      format: true,
     });
     H.popover().within(() => {
       cy.findByText("Invalid expression").should("be.visible");
@@ -1502,6 +1503,7 @@ describe("issue 44668", () => {
     H.enterCustomColumnDetails({
       formula: 'concat("abc_", [Count])',
       name: "Custom String",
+      format: true,
     });
     H.popover().button("Done").click();
 

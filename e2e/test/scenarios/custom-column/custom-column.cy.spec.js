@@ -43,7 +43,11 @@ describe("scenarios > question > custom column", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
-    H.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+    H.enterCustomColumnDetails({
+      formula: "1 + 1",
+      name: "Math",
+      format: true,
+    });
     cy.button("Done").click();
 
     H.visualize();

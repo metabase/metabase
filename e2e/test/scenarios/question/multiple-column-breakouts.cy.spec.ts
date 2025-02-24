@@ -742,7 +742,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.enterCustomColumnDetails({
             formula: expression1,
             name: "Expression1",
-            blur: true,
+            format: true,
             allowFastSet: true,
           });
           H.popover().button("Done").click();

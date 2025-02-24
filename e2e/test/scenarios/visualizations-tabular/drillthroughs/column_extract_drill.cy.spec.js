@@ -224,7 +224,7 @@ H.describeWithSnowplow("extract action", () => {
       H.getNotebookStep("expression").findByText("Year").click();
       H.enterCustomColumnDetails({
         formula: "year([Created At]) + 2",
-        blur: true,
+        format: true,
       });
       H.popover().button("Update").should("not.be.disabled").click();
       H.visualize();
