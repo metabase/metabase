@@ -21,7 +21,6 @@ type Options = {
   startRule: "expression" | "aggregation" | "boolean";
   query: Lib.Query;
   stageIndex: number;
-  name?: string;
   expressionIndex: number | undefined;
   metadata: Metadata;
   reportTimezone?: string;
@@ -46,7 +45,6 @@ export function useExtensions(options: Options): Extension[] {
     startRule,
     query,
     stageIndex,
-    name,
     expressionIndex,
     reportTimezone,
     metadata,
@@ -77,7 +75,6 @@ export function useExtensions(options: Options): Extension[] {
         startRule,
         query,
         stageIndex,
-        name,
         expressionIndex,
         metadata,
       }),
@@ -116,7 +113,6 @@ export function useExtensions(options: Options): Extension[] {
     startRule,
     query,
     stageIndex,
-    name,
     expressionIndex,
     metadata,
     reportTimezone,
