@@ -6,9 +6,9 @@ import {
   getMetabaseInstanceSetupCompleteMessage,
 } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
+import { getExampleComponentImportPath } from "../utils/get-example-component-import-path";
 import { getNextJsSetupMessages } from "../utils/get-nextjs-setup-message";
 import { checkIsInNextJsProject } from "../utils/nextjs-helpers";
-import { getExampleComponentImportPath } from "../utils/get-example-component-import-path";
 import { printEmptyLines, printWithPadding } from "../utils/print";
 
 export const showPostSetupSteps: CliStepMethod = async state => {
