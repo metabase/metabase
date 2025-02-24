@@ -61,7 +61,10 @@ export const getNewCardUrl = ({
   if (isEditable) {
     nextQuestion = new Question(cardAfterClick, metadata)
       .setDisplay(cardAfterClick.display || previousCard.display)
-      .setSettings(dashcard.card.visualization_settings)
+      .setSettings({
+        ...dashcard.card.visualization_settings,
+        ...dashcard.visualization_settings,
+      })
       .lockDisplay();
   } else {
     nextQuestion = new Question(dashcard.card, metadata).setDashboardProps({
