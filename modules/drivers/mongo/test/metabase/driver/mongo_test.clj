@@ -26,7 +26,7 @@
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2])
   (:import
-   (org.bson.types ObjectId)))
+   (org.bson.types Binary ObjectId)))
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
@@ -206,12 +206,16 @@
               {"k" "$$item.k",
                "object"
                {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
-               "type" {"$type" "$$item.v"}}}}}}
+               "type"       {"$type" "$$item.v"},
+               "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
+                                          "args" ["$$item.v" {"$type" "$$item.v"}]
+                                          "lang" "js"}}}}}}}
           {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
           {"$project"
            {"path" "$kvs.k",
             "result" {"$literal" false},
             "type" "$kvs.type",
+            "type-alias" "$kvs.type-alias"
             "index" 1,
             "object" "$kvs.object"}}
           {"$facet"
@@ -219,12 +223,12 @@
             "newResults"
             [{"$match" {"result" false}}
              {"$group"
-              {"_id" {"type" "$type", "path" "$path"},
+              {"_id" {"type" "$type", "type-alias" "$type-alias", "path" "$path"},
                "count" {"$sum" {"$cond" {"if" {"$eq" ["$type" "null"]}, "then" 0, "else" 1}}},
                "index" {"$min" "$index"}}}
              {"$sort" {"count" -1}}
-             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "index" {"$min" "$index"}}}
-             {"$project" {"path" "$_id", "type" 1, "result" {"$literal" true}, "object" nil, "index" 1}}],
+             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "type-alias" {"$first" "$_id.type-alias"}, "index" {"$min" "$index"}}}
+             {"$project" {"path" "$_id", "type" 1, "type-alias" 1, "result" {"$literal" true}, "object" nil, "index" 1}}],
             "nextItems"
             [{"$match" {"result" false, "object" {"$ne" nil}}}
              {"$project"
@@ -237,11 +241,15 @@
                  {"k" "$$item.k",
                   "object"
                   {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
-                  "type" {"$type" "$$item.v"}}}}}}
+                  "type"       {"$type" "$$item.v"},
+                  "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
+                                             "args" ["$$item.v" {"$type" "$$item.v"}]
+                                             "lang" "js"}}}}}}}
              {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
              {"$project"
               {"path" {"$concat" ["$path" "." "$kvs.k"]},
                "type" "$kvs.type",
+               "type-alias" "$kvs.type-alias",
                "result" {"$literal" false},
                "index" 1,
                "object" "$kvs.object"}}]}}
@@ -253,17 +261,31 @@
             "newResults"
             [{"$match" {"result" false}}
              {"$group"
-              {"_id" {"type" "$type", "path" "$path"},
+              {"_id" {"type" "$type",  "type-alias" "$type-alias", "path" "$path"},
                "count" {"$sum" {"$cond" {"if" {"$eq" ["$type" "null"]}, "then" 0, "else" 1}}},
                "index" {"$min" "$index"}}}
              {"$sort" {"count" -1}}
-             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "index" {"$min" "$index"}}}
-             {"$project" {"path" "$_id", "type" 1, "result" {"$literal" true}, "object" nil, "index" 1}}]}}
+             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "type-alias" {"$first" "$_id.type-alias"}, "index" {"$min" "$index"}}}
+             {"$project" {"path" "$_id", "type" 1, "type-alias" 1, "result" {"$literal" true}, "object" nil, "index" 1}}]}}
           {"$project" {"acc" {"$concatArrays" ["$results" "$newResults"]}}}
           {"$unwind" "$acc"}
           {"$replaceRoot" {"newRoot" "$acc"}}
-          {"$project" {"_id" 0, "index" "$index", "path" "$path", "type" "$type"}}]
+          {"$project" {"_id" 0, "index" "$index", "path" "$path", "type" "$type", "type-alias" "$type-alias"}}]
          (#'mongo/describe-table-query :collection-name "collection-name" :sample-size 1000 :max-depth 1))))
+
+(tx/defdataset nested-bindata-coll
+  (let [not-uuid (Binary. (byte 0) (byte-array 1))
+        some-uuid #uuid "11111111-1111-1111-1111-111111111111"]
+    [["nested-bindata"
+      [{:field-name "mixed_uuid", :base-type :type/*}
+       {:field-name "mixed_not_uuid", :base-type :type/*}
+       {:field-name "nested_mixed_uuid", :base-type :type/*}
+       {:field-name "nested_mixed_not_uuid", :base-type :type/*}]
+      [[some-uuid not-uuid {"nested_data" some-uuid} {"nested_data_2" not-uuid}]
+       [some-uuid not-uuid {"nested_data" some-uuid} {"nested_data_2" not-uuid}]
+       [some-uuid not-uuid {"nested_data" some-uuid} {"nested_data_2" not-uuid}]
+       [not-uuid some-uuid {"nested_data" not-uuid} {"nested_data_2" some-uuid}]
+       [not-uuid some-uuid {"nested_data" not-uuid} {"nested_data_2" some-uuid}]]]]))
 
 (deftest describe-table-test
   (mt/test-driver :mongo
@@ -294,7 +316,28 @@
                        :base-type         :type/Integer
                        :pk?               true
                        :database-position 0}}}
-           (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))))))
+           (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))))
+    (mt/dataset uuid-dogs
+      (testing "binData uuid fields are identified as type/UUID"
+        (is (= {:schema nil,
+                :name "dogs",
+                :fields
+                #{{:name "_id", :database-type "long", :base-type :type/Integer, :pk? true, :database-position 0}
+                  {:name "name", :database-type "string", :base-type :type/Text, :database-position 2}
+                  {:name "person_id", :database-type "binData", :base-type :type/UUID, :database-position 3}
+                  {:name "id", :database-type "binData", :base-type :type/UUID, :database-position 1}}}
+               (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :dogs)))))))
+    (mt/dataset nested-bindata-coll
+      (testing "nested fields with mixed binData subtypes are correctly identified as type/UUID"
+        (is (= {:schema nil, :name "nested-bindata",
+                :fields #{{:name "_id", :database-type "long", :base-type :type/Integer, :pk? true, :database-position 0}
+                          {:name "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 5,
+                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/*, :database-position 6}}}
+                          {:name "mixed_not_uuid", :database-type "binData", :base-type :type/*, :database-position 2}
+                          {:name "mixed_uuid", :database-type "binData", :base-type :type/UUID, :database-position 1}
+                          {:name "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 3,
+                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/UUID, :database-position 4}}}}}
+               (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
 (deftest sync-indexes-info-test
   (mt/test-driver :mongo
@@ -580,8 +623,8 @@
     [{:field-name "name", :base-type :type/Text}
      {:field-name "bird_id", :base-type :type/MongoBSONID}
      {:field-name "bird_uuid", :base-type :type/UUID}]
-    [["Rasta Toucan" (ObjectId. "012345678901234567890123") "11111111-1111-1111-1111-111111111111"]
-     ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef") "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+    [["Rasta Toucan" (ObjectId. "012345678901234567890123") #uuid "11111111-1111-1111-1111-111111111111"]
+     ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef") #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
      ["Unlucky Raven" nil]]]])
 
 (deftest bson-ids-test
@@ -627,7 +670,7 @@
                            :order-by [[:desc $bird_id]]})))))
       (testing "BSON UUIDs"
         (testing "Check that we support Mongo BSON UUID and can filter by it"
-          (is (= [[2 "Lucky Pigeon" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+          (is (= [[2 "Lucky Pigeon" #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
                  (mt/rows (mt/run-mbql-query birds
                             {:filter [:= $bird_uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
                              :fields [$id $name $bird_uuid]})))))
@@ -645,20 +688,20 @@
                              :fields [$id $name $bird_uuid]}))))))
 
       (testing "treat non-null UUID as not-empty"
-        (is (= [[1 "Rasta Toucan" "11111111-1111-1111-1111-111111111111"]
-                [2 "Lucky Pigeon" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+        (is (= [[1 "Rasta Toucan" #uuid "11111111-1111-1111-1111-111111111111"]
+                [2 "Lucky Pigeon" #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
                (mt/rows (mt/run-mbql-query birds
                           {:filter [:not-empty $bird_uuid]
                            :fields [$id $name $bird_uuid]})))))
       (testing "can order by UUID (#46259)"
         (is (= [[3 nil]
-                [1 "11111111-1111-1111-1111-111111111111"]
-                [2 "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+                [1 #uuid "11111111-1111-1111-1111-111111111111"]
+                [2 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
                (mt/rows (mt/run-mbql-query birds
                           {:fields [$id $bird_uuid]
                            :order-by [[:asc $bird_uuid]]}))))
-        (is (= [[2 "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
-                [1 "11111111-1111-1111-1111-111111111111"]
+        (is (= [[2 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                [1 #uuid "11111111-1111-1111-1111-111111111111"]
                 [3 nil]]
                (mt/rows (mt/run-mbql-query birds
                           {:fields [$id $bird_uuid]
@@ -875,3 +918,15 @@
                     ["3" "a string" "{\"b_e\":{}}" ""]
                     ["4" "a string" "null" ""]]
                    results))))))))
+
+(deftest ^:parallel mongo-uuid-test
+  (testing "mongo uuids can be filtered and are readable"
+    (mt/test-driver :mongo
+      (mt/dataset uuid-dogs
+        (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+               (->> {:filter [:=
+                              [:field (mt/id :dogs :person_id) {:base-type "type/UUID"}]
+                              "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]
+                     :source-table (mt/id :dogs)}
+                    (mt/run-mbql-query dogs)
+                    mt/rows)))))))
