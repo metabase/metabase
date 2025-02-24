@@ -30,34 +30,20 @@ type CompileResult =
 export function compileExpression({
   source,
   startRule,
-  name,
   query,
   stageIndex,
-  expressionIndex,
   database,
 }: {
   source: string;
   startRule: string;
-  name: string | null;
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex?: number | undefined;
   database?: Database | null;
 }): CompileResult {
   const tokens = lexify(source);
-  const options = {
-    source,
-    startRule,
-    name,
-    query,
-    stageIndex,
-    expressionIndex,
-  };
 
-  // PARSE
   const { root, errors } = parse(tokens, {
     throwOnError: false,
-    ...options,
   });
 
   if (errors.length > 0) {
@@ -71,7 +57,6 @@ export function compileExpression({
   });
 
   try {
-    // COMPILE
     const expression = compile(root, {
       passes: [
         adjustOptions,

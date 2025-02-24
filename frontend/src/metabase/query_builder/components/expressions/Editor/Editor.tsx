@@ -189,7 +189,6 @@ function useExpression<S extends StartRule = "expression">({
         startRule,
         query,
         stageIndex,
-        expressionIndex,
         metadata,
       });
       if (immediate) {
@@ -198,15 +197,7 @@ function useExpression<S extends StartRule = "expression">({
         debouncedOnChange(clause, error);
       }
     },
-    [
-      query,
-      stageIndex,
-      startRule,
-      metadata,
-      expressionIndex,
-      onChange,
-      debouncedOnChange,
-    ],
+    [query, stageIndex, startRule, metadata, onChange, debouncedOnChange],
   );
 
   useMount(() => {
