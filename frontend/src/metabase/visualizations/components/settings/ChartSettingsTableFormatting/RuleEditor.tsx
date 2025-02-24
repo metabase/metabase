@@ -20,8 +20,8 @@ import type {
   BooleanOperator,
   ColumnFormattingOperator,
   ColumnFormattingSetting,
+  ComparisonOperator,
   DatasetColumn,
-  NumberOperator,
 } from "metabase-types/api";
 
 import {
@@ -30,7 +30,6 @@ import {
   COLOR_RANGES,
   COMMON_OPERATOR_NAMES,
   DEFAULTS_BY_TYPE,
-  INPUT_CLASSNAME,
   NUMBER_OPERATOR_NAMES,
   STRING_OPERATOR_NAMES,
 } from "./constants";
@@ -48,6 +47,8 @@ interface RuleEditorProps {
 interface SelectMultipleItemsReturned extends Array<string> {
   changedItem: string;
 }
+
+const INPUT_CLASSNAME = cx(CS.mt1, CS.full);
 
 export const RuleEditor = ({
   rule,
@@ -81,7 +82,7 @@ export const RuleEditor = ({
 
   const handleColumnChange = (columns: SelectMultipleItemsReturned) => {
     const _cols = columns.map(name => _.findWhere(cols, { name }));
-    const operatorUpdate: { operator?: BooleanOperator | NumberOperator } =
+    const operatorUpdate: { operator?: BooleanOperator | ComparisonOperator } =
       columns.length === 1 && columns[0] === columns.changedItem
         ? {
             operator: _cols.every(isBoolean) ? "is-true" : "=",

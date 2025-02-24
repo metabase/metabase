@@ -1,7 +1,5 @@
-import cx from "classnames";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import {
   getAccentColors,
   getStatusColorRanges,
@@ -12,7 +10,7 @@ import type {
   ColumnRangeFormattingSetting,
   ColumnSingleFormattingSetting,
   CommonOperator,
-  NumberOperator,
+  ComparisonOperator,
   StringOperator,
 } from "metabase-types/api";
 
@@ -20,7 +18,7 @@ export const COMMON_OPERATOR_NAMES: Record<CommonOperator, string> = {
   "is-null": t`is null`,
   "not-null": t`is not null`,
 };
-export const NUMBER_OPERATOR_NAMES: Record<NumberOperator, string> = {
+export const NUMBER_OPERATOR_NAMES: Record<ComparisonOperator, string> = {
   "=": t`is equal to`,
   "!=": t`is not equal to`,
   "<": t`is less than`,
@@ -72,5 +70,3 @@ export const DEFAULTS_BY_TYPE: {
     max_value: 100,
   },
 };
-
-export const INPUT_CLASSNAME = cx(CS.mt1, CS.full);

@@ -114,7 +114,7 @@ export type SeriesOrderSetting = {
 };
 
 export type CommonOperator = "is-null" | "not-null";
-export type NumberOperator = "=" | "!=" | "<" | ">" | "<=" | ">=";
+export type ComparisonOperator = "=" | "!=" | "<" | ">" | "<=" | ">=";
 export type StringOperator =
   | "="
   | "!="
@@ -126,7 +126,7 @@ export type BooleanOperator = "is-true" | "is-false";
 
 export type ColumnFormattingOperator =
   | CommonOperator
-  | NumberOperator
+  | ComparisonOperator
   | StringOperator
   | BooleanOperator;
 
