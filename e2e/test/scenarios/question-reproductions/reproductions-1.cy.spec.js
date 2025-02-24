@@ -75,7 +75,7 @@ describe("issue 6239", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    H.CustomExpressionEditor.type("CountIf([Total] > 0)").blur();
+    H.CustomExpressionEditor.type("CountIf([Total] > 0)").format();
 
     cy.findByPlaceholderText("Something nice and descriptive").type("CE");
     cy.button("Done").click();
@@ -314,10 +314,10 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
     cy.findByText("Pick a function or metric").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: "Percentile([Subtotal], 0.1)" });
-    cy.findByPlaceholderText("Something nice and descriptive")
-      .as("name")
-      .click();
+    H.enterCustomColumnDetails({
+      formula: "Percentile([Subtotal], 0.1)",
+      format: true,
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Function Percentile expects 1 argument").should("not.exist");
@@ -433,6 +433,7 @@ function addSummarizeCustomExpression(formula, name) {
     H.enterCustomColumnDetails({
       formula,
       name,
+      format: true,
     });
     cy.button("Done").click();
   });
@@ -444,6 +445,7 @@ function addCustomColumn(formula, name) {
     H.enterCustomColumnDetails({
       formula,
       name,
+      format: true,
     });
     cy.button("Done").click();
   });
@@ -799,6 +801,7 @@ describe("issue 18207", () => {
       H.enterCustomColumnDetails({
         formula: "Max([Vendor])",
         name: "LastVendor",
+        format: true,
       });
       cy.findByText("Done").click();
     });

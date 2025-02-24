@@ -947,7 +947,7 @@ describe("issue 34794", () => {
       cy.findByText("Created At").click();
       cy.icon("chevronleft").click(); // go back to the main filter popover
       cy.findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("[Total] > 10").blur();
+      H.CustomExpressionEditor.type("[Total] > 10").format();
       cy.button("Done").click();
     });
 

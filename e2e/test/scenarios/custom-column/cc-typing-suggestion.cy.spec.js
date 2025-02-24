@@ -74,8 +74,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   it("should not show suggestions for an unfocused field (metabase#31643)", () => {
     H.summarize({ mode: "notebook" });
     H.popover().findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: "Count{enter}" });
-    H.popover().findByLabelText("Name").focus();
+    H.enterCustomColumnDetails({ formula: "Count{enter}" }).blur();
     H.CustomExpressionEditor.completions().should("not.exist");
   });
 
