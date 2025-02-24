@@ -2,9 +2,8 @@ import { t } from "ttag";
 
 import type * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
-import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
+import { diagnoseAndCompile } from "metabase-lib/v1/expressions/diagnostics";
 import { getFunctionByStructure } from "metabase-lib/v1/expressions/helper-text-strings";
-import { processSource } from "metabase-lib/v1/expressions/process";
 import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
@@ -72,14 +71,7 @@ export function diagnoseAndCompileExpression<
     metadata: Metadata;
   },
 ) {
-  if (source.trim() === "") {
-    return {
-      clause: null,
-      error: { message: t`Invalid expression` },
-    };
-  }
-
-  const error = diagnose({
+  const result = diagnoseAndCompile({
     source,
     startRule,
     query,
@@ -87,35 +79,12 @@ export function diagnoseAndCompileExpression<
     metadata,
   });
 
-  if (error) {
-    return { clause: null, error };
+  if ("error" in result) {
+    return { clause: null, error: result.error };
   }
 
-  const compiledExpression = processSource({
-    source,
-    query,
-    stageIndex,
-    startRule,
-  });
-
-  const {
-    expression,
-    expressionClause: clause,
-    compileError,
-  } = compiledExpression;
-  if (
-    compileError &&
-    typeof compileError === "object" &&
-    "message" in compileError &&
-    typeof compileError.message === "string"
-  ) {
-    return {
-      clause: null,
-      error: compileError,
-    };
-  }
-
-  if (compileError || !expression || !isExpression(expression) || !clause) {
+  const { expression, expressionClause: clause } = result;
+  if (!expression || !isExpression(expression) || !clause) {
     return {
       clause: null,
       error: { message: t`Invalid expression` },

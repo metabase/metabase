@@ -4,13 +4,27 @@ import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 
-import { compileExpression } from "./compiler";
+import { type CompileResult, compileExpression } from "./compiler";
 import { MBQL_CLAUSES, getMBQLName } from "./config";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, Token } from "./types";
 import { getDatabase, getExpressionMode, isErrorWithMessage } from "./utils";
 
-export function diagnose({
+export function diagnose(options: {
+  source: string;
+  startRule: "expression" | "aggregation" | "boolean";
+  query: Lib.Query;
+  stageIndex: number;
+  metadata?: Metadata;
+}) {
+  const result = diagnoseAndCompile(options);
+  if ("error" in result) {
+    return result.error;
+  }
+  return null;
+}
+
+export function diagnoseAndCompile({
   source,
   startRule,
   query,
@@ -22,34 +36,36 @@ export function diagnose({
   query: Lib.Query;
   stageIndex: number;
   metadata?: Metadata;
-}): ErrorWithMessage | null {
+}): CompileResult {
   if (!source || source.length === 0) {
-    return null;
+    return {
+      error: { message: t`Expression is empty` },
+    };
   }
 
   const { tokens, errors } = tokenize(source);
   if (errors && errors.length > 0) {
-    return errors[0];
+    return { error: errors[0] };
   }
 
   {
     const error = checkOpenParenthesisAfterFunction(source, tokens);
     if (error) {
-      return error;
+      return { error };
     }
   }
 
   {
     const error = checkMatchingParentheses(tokens);
     if (error) {
-      return error;
+      return { error };
     }
   }
 
   const database = getDatabase(query, metadata);
 
   // make a simple check on expression syntax correctness
-  const res = compileExpression({
+  const result = compileExpression({
     source,
     startRule,
     query,
@@ -57,21 +73,21 @@ export function diagnose({
     database,
   });
 
-  if ("error" in res) {
-    return res.error;
+  if ("error" in result) {
+    return result;
   }
 
   const error = checkCompiledExpression({
     query,
     stageIndex,
     startRule,
-    expression: res.expression,
+    expression: result.expression,
   });
   if (error) {
-    return error;
+    return { error };
   }
 
-  return null;
+  return result;
 }
 
 function checkOpenParenthesisAfterFunction(
