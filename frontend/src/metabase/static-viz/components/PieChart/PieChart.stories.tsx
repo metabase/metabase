@@ -16,7 +16,7 @@ import {
 import { data } from "./stories-data";
 
 export default {
-  title: "static-viz/PieChart",
+  title: "Viz/Static Viz/PieChart",
   component: StaticVisualization,
 };
 

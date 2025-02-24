@@ -2,6 +2,8 @@ import { t } from "ttag";
 
 import { Button, Icon, Menu } from "metabase/ui";
 
+import Styles from "./FilterOperatorPicker.module.css";
+
 type Option<T> = {
   name: string;
   operator: T;
@@ -25,8 +27,11 @@ export function FilterOperatorPicker<T extends string>({
       <Menu.Target>
         <Button
           fw="normal"
-          rightIcon={<Icon name="chevrondown" />}
+          rightSection={<Icon name="chevrondown" />}
           aria-label={t`Filter operator`}
+          classNames={{
+            root: Styles.Root,
+          }}
         >
           {selectedOption?.name ?? t`Select operator`}
         </Button>

@@ -1,5 +1,6 @@
-import { Group, Popover } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+
+import { Group, Popover } from "metabase/ui";
 
 import { BadgeListItem } from "../util/BadgeList/BadgeListItem";
 
@@ -42,7 +43,7 @@ export const DropdownFilterBadgeList = ({
   const filterItems = useFilterData();
 
   return (
-    <Group spacing="sm">
+    <Group gap="sm">
       {filterItems.map((item, index) => (
         <DropdownFilterBadgeListContent
           key={`${item.name}/${index}`}

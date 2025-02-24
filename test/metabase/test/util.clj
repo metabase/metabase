@@ -14,6 +14,7 @@
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.models.collection :as collection]
@@ -1578,12 +1579,12 @@
   registry and web-server."
   [[port system] & body]
   `(let [~system ^metabase.analytics.prometheus.PrometheusSystem
-         (#'metabase.analytics.prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
+         (#'prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
          server#  ^Server (.web-server ~system)
          ~port   (.. server# getURI getPort)]
-     (with-redefs [metabase.analytics.prometheus/system ~system]
+     (with-redefs [prometheus/system ~system]
        (try ~@body
-            (finally (metabase.analytics.prometheus/stop-web-server ~system))))))
+            (finally (prometheus/stop-web-server ~system))))))
 
 (defn metric-value
   "Return the value of `metric` in `system`'s registry."
@@ -1595,5 +1596,23 @@
            (registry/get
             {:name      (name metric)
              :namespace (namespace metric)}
-            labels)
+            (#'prometheus/qualified-vals labels))
            ops/read-value)))
+
+(defn- transitive*
+  "Borrows heavily from clojure.core/derive. Notably, however, this intentionally permits circular dependencies."
+  [h child parent]
+  (let [td (:descendants h {})
+        ta (:ancestors h {})
+        tf (fn [source sources target targets]
+             (reduce (fn [ret k]
+                       (assoc ret k
+                              (reduce conj (get targets k #{}) (cons target (targets target)))))
+                     targets (cons source (sources source))))]
+    {:ancestors   (tf child td parent ta)
+     :descendants (tf parent ta child td)}))
+
+(defn transitive
+  "Given a mapping from (say) parents to children, return the corresponding mapping from parents to descendants."
+  [adj-map]
+  (:descendants (reduce-kv (fn [h p children] (reduce #(transitive* %1 %2 p) h children)) nil adj-map)))

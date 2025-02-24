@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.api.util-test :as advanced-perms.api.tu]
    [metabase-enterprise.advanced-permissions.driver.impersonation :as impersonation]
+   [metabase-enterprise.test :as met]
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
@@ -17,7 +18,8 @@
 
 (deftest ^:parallel connection-impersonation-role-test
   (testing "Returns nil when no impersonations are in effect"
-    (is (nil? (@#'impersonation/connection-impersonation-role (mt/db))))))
+    (mt/with-test-user :rasta
+      (is (nil? (@#'impersonation/connection-impersonation-role (mt/db)))))))
 
 (deftest connection-impersonation-role-test-2
   (testing "Correctly fetches the impersonation when one is in effect"
@@ -77,6 +79,17 @@
            clojure.lang.ExceptionInfo
            #"Connection impersonation attribute is invalid: role must be a single non-empty string."
            (@#'impersonation/connection-impersonation-role (mt/db)))))))
+
+(deftest connection-impersonation-role-test-9
+  (testing "Throws an exception if sandboxing policies are also defined for the current user on the DB"
+    (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)}}}
+      (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                   :attributes     {"impersonation_attr" "impersonation_role"}}
+        (mt/with-test-user :rasta
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Conflicting sandboxing and impersonation policies found."
+               (@#'impersonation/connection-impersonation-role (mt/db)))))))))
 
 (deftest conn-impersonation-test-postgres
   (mt/test-driver :postgres
@@ -213,20 +226,19 @@
                                                       :card_id (:id model))
                         query          (mt/mbql-query nil
                                          {:aggregation  [:count]
-                                          :source-table (str "card__" (:id model))})]
-                    (let [impersonated-result (mt/with-test-user :rasta (qp/process-query query))
-                          ;; Make sure we run admin query second to reset the DB role on the connection for other tests!
-                          admin-result        (mt/as-admin (qp/process-query query))]
-                      (testing "Impersonated user (rasta) does not hit the model cache"
-                        (is (not (str/includes? (-> impersonated-result :data :native_form :query)
-                                                (:table_name persisted-info)))
-                            "Erroneously used the persisted model cache"))
+                                          :source-table (str "card__" (:id model))})
+                        impersonated-result (mt/with-test-user :rasta (qp/process-query query))
+                        ;; Make sure we run admin query second to reset the DB role on the connection for other tests!
+                        admin-result        (mt/as-admin (qp/process-query query))]
+                    (testing "Impersonated user (rasta) does not hit the model cache"
+                      (is (not (str/includes? (-> impersonated-result :data :native_form :query)
+                                              (:table_name persisted-info)))
+                          "Erroneously used the persisted model cache"))
 
-                      (testing "Query from admin hits the model cache"
-                        (is (str/includes? (-> admin-result :data :native_form :query)
-                                           (:table_name persisted-info))
-                            "Did not use the persisted model cache"))))
-
+                    (testing "Query from admin hits the model cache"
+                      (is (str/includes? (-> admin-result :data :native_form :query)
+                                         (:table_name persisted-info))
+                          "Did not use the persisted model cache")))
                   (finally
                     (doseq [statement ["REVOKE ALL PRIVILEGES ON TABLE \"products\" FROM \"impersonation_role\";"
                                        "DROP ROLE IF EXISTS \"impersonation_role\";"]]

@@ -44,7 +44,7 @@ const theme = {
 };
 
 export default {
-  title: "Inputs/DatePicker",
+  title: "Components/Inputs/DatePicker",
   component: DatePicker,
   args,
   argTypes,

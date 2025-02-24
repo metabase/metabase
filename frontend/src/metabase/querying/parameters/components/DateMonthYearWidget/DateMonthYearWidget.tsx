@@ -3,8 +3,10 @@ import { match } from "ts-pattern";
 
 import { MonthYearPicker } from "metabase/querying/filters/components/MonthYearPicker";
 import type { MonthYearPickerValue } from "metabase/querying/filters/types";
-import { serializeDateParameterValue } from "metabase/querying/parameters/utils/dates";
-import { normalizeDateParameterValue } from "metabase/querying/parameters/utils/normalize";
+import {
+  deserializeDateParameterValue,
+  serializeDateParameterValue,
+} from "metabase/querying/parameters/utils/parsing";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateMonthYearPickerProps = {
@@ -28,7 +30,7 @@ export function DateMonthYearWidget({
 function getPickerValue(
   value: ParameterValueOrArray | null | undefined,
 ): MonthYearPickerValue | undefined {
-  return match(normalizeDateParameterValue(value))
+  return match(deserializeDateParameterValue(value))
     .returnType<MonthYearPickerValue | undefined>()
     .with({ type: "month" }, value => value)
     .otherwise(() => undefined);

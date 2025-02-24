@@ -13,7 +13,7 @@ import type { StaticChartProps } from "../StaticVisualization";
 import { StaticVisualization } from "../StaticVisualization";
 
 export default {
-  title: "static-viz/WaterfallChart",
+  title: "Viz/Static Viz/WaterfallChart",
   component: StaticVisualization,
 };
 

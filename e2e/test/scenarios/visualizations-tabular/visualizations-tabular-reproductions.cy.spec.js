@@ -617,7 +617,7 @@ describe("issue 30039", () => {
   });
 });
 
-describe("issue 37726", { tags: "@flaky" }, () => {
+describe("issue 37726", () => {
   const PIVOT_QUESTION = {
     name: "Pivot table with custom column width",
     display: "pivot",
@@ -679,7 +679,7 @@ describe("issue 37726", { tags: "@flaky" }, () => {
     // along with the rest of the pivot table, would not appear.
     // Instead, you got a nice ⚠️ icon and a "Something's gone wrong" tooltip.
     H.main().within(() => {
-      cy.findByText("Product → Category");
+      cy.findByText("Product → Category", { timeout: 8000 });
     });
   });
 });
@@ -1228,7 +1228,7 @@ describe("issue 50686", () => {
     cy.button("Add comparison").click();
     H.popover().findByText("Value from another column…").click();
     H.popover().findByText("FORECAST").click();
-    cy.button("Done").click();
+    H.popover().button("Done").click();
 
     H.queryBuilderMain().within(() => {
       // First comparison still exists

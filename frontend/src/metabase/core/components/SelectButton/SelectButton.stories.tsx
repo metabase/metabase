@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import SelectButton, { type SelectButtonProps } from "./SelectButton";
 
 export default {
-  title: "Core/SelectButton",
+  title: "Components/Ask Before Using/SelectButton",
   component: SelectButton,
 };
 

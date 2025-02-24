@@ -23,9 +23,9 @@ export const InteractiveContent = ({
       {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
       {t`Interactive embedding allows you to embed the full Metabase app with iframes. It offers settings to customize appearance and includes the query builder with row-level access.`}
     </Text>
-    <Group spacing="md">
+    <Group gap="md">
       <ExternalLink href={interactiveEmbeddingQuickstartUrl}>
-        <Button variant="outline">{t`Check out the Quick Start`}</Button>
+        <Button variant="outline">{t`Check out the Quickstart`}</Button>
       </ExternalLink>
       <ExternalLink href={learnMoreInteractiveEmbedUrl}>
         <Button variant="subtle">{t`Read the docs`}</Button>

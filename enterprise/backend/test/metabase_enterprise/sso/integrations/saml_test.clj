@@ -5,11 +5,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.saml :as saml.mt]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.api.ldap]
    [metabase.http-client :as client]
    [metabase.premium-features.token-check :as token-check]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.sso.init]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -25,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.api.ldap/keep-me) ; for [[metabase.api.ldap/ldap-enabled]]
+(comment metabase.sso.init/keep-me)
 
 (use-fixtures :once (fixtures/initialize :test-users :web-server))
 
@@ -221,7 +221,7 @@
               redirect-url (get-in result [:headers "Location"])]
           (is (str/starts-with? redirect-url default-idp-uri)))))))
 
-(deftest redirect-append-paramters-test
+(deftest redirect-append-parameters-test
   (testing (str "When the identity provider already includes a query parameter, the SAML code should spot that and "
                 "append more parameters onto the query string (rather than always include a `?newparam=here`).")
     (with-other-sso-types-disabled!

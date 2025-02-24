@@ -1,17 +1,19 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
+import type { ParameterValueOrArray } from "metabase-types/api";
+
 import { NumberInputWidget } from "./NumberInputWidget";
 
 export default {
-  title: "Parameters/NumberInputWidget",
+  title: "Components/Parameters/NumberInputWidget",
   component: NumberInputWidget,
 };
 
 const Template: StoryFn<typeof NumberInputWidget> = args => {
   const [{ value }, updateArgs] = useArgs();
 
-  const handleSetValue = (v: number[] | undefined) => {
+  const handleSetValue = (v: ParameterValueOrArray | undefined) => {
     updateArgs({ value: v });
   };
 

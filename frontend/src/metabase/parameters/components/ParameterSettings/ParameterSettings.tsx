@@ -1,4 +1,10 @@
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { resetParameterMapping } from "metabase/dashboard/actions";
@@ -10,6 +16,7 @@ import {
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
   Box,
+  type BoxProps,
   Button,
   Radio,
   Select,
@@ -33,14 +40,11 @@ import type {
 } from "metabase-types/api";
 
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
+import { ParameterValueWidget } from "../ParameterValueWidget";
 import { RequiredParamToggle } from "../RequiredParamToggle";
 import { ValuesSourceSettings } from "../ValuesSourceSettings";
 
-import {
-  SettingLabel,
-  SettingLabelError,
-  SettingValueWidget,
-} from "./ParameterSettings.styled";
+import S from "./ParameterSettings.module.css";
 import { TemporalUnitSettings } from "./TemporalUnitSettings";
 
 export interface ParameterSettingsProps {
@@ -85,7 +89,7 @@ export const ParameterSettings = ({
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
   // TODO: sectionId should always be present, but current type definition presumes it's optional in the parameter.
   // so we might want to remove all checks related to absence of it
-  const sectionId = parameter.sectionId;
+  const sectionId = parameter.sectionId as ParameterSectionId;
 
   useLayoutEffect(() => {
     setTempLabelValue(parameter.name);
@@ -216,7 +220,7 @@ export const ParameterSettings = ({
             value={isMultiValue}
             onChange={val => onChangeIsMultiSelect(val === "multi")}
           >
-            <Stack spacing="xs">
+            <Stack gap="xs">
               <Radio
                 checked={isMultiValue === "multi"}
                 label={t`Multiple values`}
@@ -237,12 +241,13 @@ export const ParameterSettings = ({
           {t`Default value`}
           {parameter.required &&
             parameterHasNoDisplayValue(parameter.default) && (
-              <SettingLabelError> ({t`required`})</SettingLabelError>
+              <span className={S.SettingLabelError}> ({t`required`})</span>
             )}
         </SettingLabel>
 
         <div aria-labelledby="default-value-label">
-          <SettingValueWidget
+          <ParameterValueWidget
+            className={S.SettingValueWidget}
             parameter={parameter}
             value={parameter.default}
             placeholder={t`No default`}
@@ -312,4 +317,17 @@ function getLabelError({
     return t`This label is reserved for dashboard tabs.`;
   }
   return null;
+}
+
+function SettingLabel(props: BoxProps & { id?: string; children?: ReactNode }) {
+  return (
+    <Box
+      component="label"
+      className={S.SettingLabel}
+      mb="sm"
+      fw="bold"
+      display="block"
+      {...props}
+    />
+  );
 }

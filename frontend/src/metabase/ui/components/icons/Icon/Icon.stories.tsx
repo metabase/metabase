@@ -35,7 +35,7 @@ const ListTemplate = () => {
 };
 
 export default {
-  title: "Icons/Icon",
+  title: "Design System/Icons",
   component: Icon,
   args,
   argTypes,

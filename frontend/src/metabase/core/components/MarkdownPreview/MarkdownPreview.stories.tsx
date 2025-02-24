@@ -4,7 +4,7 @@ import type { StoryFn } from "@storybook/react";
 import { MarkdownPreview, type MarkdownPreviewProps } from "./MarkdownPreview";
 
 export default {
-  title: "Core/MarkdownPreview",
+  title: "Components/Ask Before Using/MarkdownPreview",
   component: MarkdownPreview,
 };
 

@@ -5,7 +5,7 @@ import { useState } from "react";
 import DateWidget from "./DateWidget";
 
 export default {
-  title: "Core/DateWidget",
+  title: "Components/Ask Before Using/DateWidget",
   component: DateWidget,
 };
 

@@ -11,7 +11,7 @@ import { DatePicker } from "./DatePicker";
 import "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 export default {
-  title: "Parameters/DatePicker",
+  title: "Components/Parameters/DatePicker",
   component: DatePicker,
 } as Meta<typeof DatePicker>;
 
@@ -194,7 +194,7 @@ export const RelativeNext = {
       name: "Next",
     });
     next.classList.add("pseudo-hover");
-    await userEvent.click(canvas.getByRole("searchbox", { name: "Unit" }));
+    await userEvent.click(canvas.getByRole("textbox", { name: "Unit" }));
   },
   decorators: [withMockDate],
 };

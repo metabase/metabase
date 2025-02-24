@@ -51,7 +51,7 @@ export const EmbeddingSdkLegaleseModal = ({
           <Text>{t`That, and we consider shared accounts to be unfair usage. Fair usage of the SDK involves giving each end-user of the embedded analytics their own Metabase account.`}</Text>
         </List.Item>
       </List>
-      <Group position="right" mt="lg">
+      <Group justify="right" mt="lg">
         <Button
           onClick={onClose}
           variant="outline"

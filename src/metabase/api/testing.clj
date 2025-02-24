@@ -1,17 +1,16 @@
 (ns metabase.api.testing
   "Endpoints for testing."
-  ;; Allow direct access to search.ingestion here, as only our e2e tests need this coupling to our queue.
-  ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [java-time.api :as t]
    [java-time.clock]
-   [metabase.analytics.stats :as stats]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.util.date-2 :as u.date]
@@ -192,5 +191,15 @@
 (api.macros/defendpoint :post "/stats"
   "Triggers a send of instance usage stats"
   []
-  (stats/phone-home-stats!)
+  (analytics/phone-home-stats!)
   {:success true})
+
+(defenterprise refresh-cache-configs!
+  "Manually triggers the preemptive caching refresh job on EE. No-op on OSS."
+  metabase-enterprise.task.cache
+  [])
+
+(api.macros/defendpoint :post "/refresh-caches"
+  "Manually triggers the cache refresh task, if Enterprise code is available."
+  []
+  (refresh-cache-configs!))

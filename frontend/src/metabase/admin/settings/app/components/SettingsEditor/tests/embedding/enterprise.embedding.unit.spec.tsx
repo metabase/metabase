@@ -131,7 +131,9 @@ describe("[EE, no token] embedding settings", () => {
             name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
-        expect(withinEmbeddingSdkCard.getByText("Beta")).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.queryByText("Beta"),
+        ).not.toBeInTheDocument();
         expect(
           withinEmbeddingSdkCard.getByText(
             /Interactive embedding with full, granular control./,
@@ -343,7 +345,9 @@ describe("[EE, no token] embedding settings", () => {
             name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
-        expect(withinEmbeddingSdkCard.getByText("Beta")).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.queryByText("Beta"),
+        ).not.toBeInTheDocument();
         expect(
           withinEmbeddingSdkCard.getByText(
             /Interactive embedding with full, granular control./,
@@ -533,7 +537,7 @@ describe("[EE, no token] embedding settings", () => {
         );
       });
 
-      it("should show quick start section", () => {
+      it("should show quickstart section", () => {
         expect(
           screen.getByText("Try Embedded analytics SDK"),
         ).toBeInTheDocument();
@@ -542,7 +546,7 @@ describe("[EE, no token] embedding settings", () => {
         ).toBeInTheDocument();
 
         expect(
-          screen.getByRole("link", { name: "Check out the Quick Start" }),
+          screen.getByRole("link", { name: "Check out the Quickstart" }),
         ).toHaveProperty(
           "href",
           "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=starter",

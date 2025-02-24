@@ -1,4 +1,4 @@
-import type { EditorState } from "@codemirror/state";
+import type { EditorState, SelectionRange } from "@codemirror/state";
 import { createSelector } from "@reduxjs/toolkit";
 import { shallowEqual } from "react-redux";
 import { t } from "ttag";
@@ -7,7 +7,7 @@ import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type { CardId, CardType } from "metabase-types/api";
 
-import type { Location } from "../types";
+import type { Location, SelectionRange as Range } from "../types";
 
 export function convertIndexToPosition(value: string, index: number): Location {
   let row = 0;
@@ -26,6 +26,16 @@ export function convertIndexToPosition(value: string, index: number): Location {
   return {
     row,
     column,
+  };
+}
+
+export function convertSelectionToRange(
+  value: string,
+  selection: SelectionRange,
+): Range {
+  return {
+    start: convertIndexToPosition(value, selection.from),
+    end: convertIndexToPosition(value, selection.to),
   };
 }
 
@@ -234,5 +244,10 @@ export const getReferencedCardIds = createSelector(
       .filter(tag => tag.type === "card")
       .map(tag => tag["card-id"])
       .filter(isNotNull),
-  { argsMemoizeOptions: { resultEqualityCheck: shallowEqual } },
+  {
+    argsMemoizeOptions: { resultEqualityCheck: shallowEqual },
+    memoizeOptions: {
+      resultEqualityCheck: shallowEqual,
+    },
+  },
 );

@@ -1,9 +1,12 @@
 import { Global } from "@emotion/react";
-import type { MantineThemeOverride } from "@mantine/core";
 import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher } from "@testing-library/react";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  screen,
+  render as testingLibraryRender,
+  waitFor,
+} from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { KBarProvider } from "kbar";
@@ -20,6 +23,7 @@ import { baseStyle } from "metabase/css/core/base.styled";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
+import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
@@ -125,7 +129,7 @@ export function renderWithProviders(
     );
   };
 
-  const utils = render(ui, {
+  const utils = testingLibraryRender(ui, {
     wrapper,
     ...options,
   });
@@ -165,7 +169,10 @@ export function TestWrapper({
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <ThemeProvider theme={theme}>
+        <ThemeProvider
+          theme={theme}
+          mantineProviderProps={{ withCssVariables: false }}
+        >
           <GlobalStylesForTest />
 
           <MaybeKBar hasKBar={withKBar}>
@@ -341,4 +348,23 @@ export function createMockClipboardData(
   return clipboardData as unknown as DataTransfer;
 }
 
+const ThemeProviderWrapper = ({
+  children,
+  ...props
+}: React.PropsWithChildren) => (
+  <ThemeProvider mantineProviderProps={{ withCssVariables: false }} {...props}>
+    {children}
+  </ThemeProvider>
+);
+
+export function renderWithTheme(children: React.ReactElement) {
+  return testingLibraryRender(children, {
+    wrapper: ThemeProviderWrapper,
+  });
+}
+
+// eslint-disable-next-line import/export -- we're intentionally overriding the render function
+export { renderWithTheme as render };
+
+// eslint-disable-next-line import/export -- we're intentionally overriding the render function
 export * from "@testing-library/react";

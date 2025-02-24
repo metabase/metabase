@@ -19,7 +19,7 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
   cy.findByRole("button", { name: "Save" }).click();
 
   modal().within(() => {
-    cy.findByRole("radiogroup").findByText("Save as new question").click();
+    cy.findByText("Save as new question").click();
 
     cy.findByPlaceholderText("What is the name of your question?")
       .clear()

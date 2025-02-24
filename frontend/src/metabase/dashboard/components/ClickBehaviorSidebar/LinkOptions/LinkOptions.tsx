@@ -14,7 +14,7 @@ import type {
   DashboardCard,
 } from "metabase-types/api";
 
-import { SidebarContent } from "../ClickBehaviorSidebar.styled";
+import { SidebarContent } from "../ClickBehaviorSidebarComponents";
 
 import { CustomLinkText } from "./CustomLinkText";
 import { CustomURLPicker } from "./CustomURLPicker";

@@ -6,7 +6,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.actions.core :as actions]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.collection :as api.collection]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -33,9 +33,10 @@
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.pulse :as models.pulse]
    [metabase.models.query.permissions :as query-perms]
    [metabase.permissions.core :as perms]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.pulse.core :as pulse]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -141,9 +142,9 @@
                         ;; Ok, now save the Dashboard
                          (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
-    (snowplow/track-event! ::snowplow/dashboard
-                           {:event        :dashboard-created
-                            :dashboard-id (u/the-id dash)})
+    (analytics/track-event! :snowplow/dashboard
+                            {:event        :dashboard-created
+                             :dashboard-id (u/the-id dash)})
     (-> dash
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
@@ -347,7 +348,8 @@
                          (cond
                            (or
                             (not (readable? parent-card))
-                            (not (readable? card)))
+                            (not (readable? card))
+                            (:archived card))
                            :discard
 
                            (or (:dashboard_id card)
@@ -459,6 +461,11 @@
                                               [:is_deep_copy        {:default false} [:maybe :boolean]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
+  (api/check-400 (not (and (= is_deep_copy false)
+                           (t2/exists? :model/Card
+                                       :dashboard_id from-dashboard-id
+                                       :archived false)))
+                 (deferred-tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))
   (let [existing-dashboard (get-dashboard from-dashboard-id)
         dashboard-data {:name                (or name (:name existing-dashboard))
                         :description         (or description (:description existing-dashboard))
@@ -490,9 +497,9 @@
                            (cond-> dash
                              (seq uncopied)
                              (assoc :uncopied uncopied))))]
-    (snowplow/track-event! ::snowplow/dashboard
-                           {:event        :dashboard-created
-                            :dashboard-id (u/the-id dashboard)})
+    (analytics/track-event! :snowplow/dashboard
+                            {:event        :dashboard-created
+                             :dashboard-id (u/the-id dashboard)})
     ;; must signal event outside of tx so cards are visible from other threads
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
@@ -730,23 +737,23 @@
                            {:object dashboard :user-id api/*current-user-id* :dashcards created-dashcards})
     (for [{:keys [card_id]} created-dashcards
           :when             (pos-int? card_id)]
-      (snowplow/track-event! ::snowplow/dashboard
-                             {:event        :question-added-to-dashboard
-                              :dashboard-id dashboard-id
-                              :question-id  card_id})))
+      (analytics/track-event! :snowplow/dashboard
+                              {:event        :question-added-to-dashboard
+                               :dashboard-id dashboard-id
+                               :question-id  card_id})))
   ;; Tabs events
   (when (seq deleted-tab-ids)
-    (snowplow/track-event! ::snowplow/dashboard
-                           {:event          :dashboard-tab-deleted
-                            :dashboard-id   dashboard-id
-                            :num-tabs       (count deleted-tab-ids)
-                            :total-num-tabs total-num-tabs}))
+    (analytics/track-event! :snowplow/dashboard
+                            {:event          :dashboard-tab-deleted
+                             :dashboard-id   dashboard-id
+                             :num-tabs       (count deleted-tab-ids)
+                             :total-num-tabs total-num-tabs}))
   (when (seq created-tab-ids)
-    (snowplow/track-event! ::snowplow/dashboard
-                           {:event          :dashboard-tab-created
-                            :dashboard-id   dashboard-id
-                            :num-tabs       (count created-tab-ids)
-                            :total-num-tabs total-num-tabs})))
+    (analytics/track-event! :snowplow/dashboard
+                            {:event          :dashboard-tab-created
+                             :dashboard-id   dashboard-id
+                             :num-tabs       (count created-tab-ids)
+                             :total-num-tabs total-num-tabs})))
 
 ;;;;;;;;;;;; Bad pulse check & repair
 
@@ -828,7 +835,7 @@
   [dashboard-id original-dashboard-params]
   (doseq [{:keys [pulse-id] :as broken-subscription} (broken-subscription-data dashboard-id original-dashboard-params)]
     ;; Archive the pulse
-    (models.pulse/update-pulse! {:id pulse-id :archived true})
+    (pulse/update-pulse! {:id pulse-id :archived true})
     ;; Let the pulse and subscription creator know about the broken pulse
     (messages/send-broken-subscription-notification! broken-subscription)))
 
@@ -1312,8 +1319,8 @@
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
   [_route-params
    {:keys [filtered filtering]} :- [:map
-                                    [:filtered  (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
-                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+                                    [:filtered  (ms/QueryVectorOf ms/PositiveInt)]
+                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]]]
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
         filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
     (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]

@@ -168,7 +168,9 @@
 
 (defn raw-hash
   "Hashes a Clojure value into an 8-character hex string, which is used as the identity hash.
-  Don't call this outside a test, use [[identity-hash]] instead."
+
+  Don't call this outside a test, use [[identity-hash]] instead. Exception: [[metabase-enterprise.audit-app.audit]]
+  uses this because it needs reproducible `:entity_id`s that differ from the usual [[hash-fields]] ones."
   [target]
   (when (sequential? target)
     (assert (seq target) "target cannot be an empty sequence"))
@@ -208,16 +210,42 @@
   [s]
   (boolean (re-matches #"^[0-9a-fA-F]{8}$" s)))
 
+;; ## Memoizing `hydrated-hash`
+;;
+;; Hashing a Field requires its Table; hashing a Table requires its Database.
+;; Letting each of those hit the appdb for every Field lookup (when it lacks an `entity_id`) is too costly,
+;; so we cache any that have to be looked up right here.
+;;
+;; Memory use is not a serious concern here, for two reasons:
+;; 1. This is caching the `hydrated-hash` lookups, so it doesn't cache Fields but only Tables and Databases.
+;; 2. This is called only when [[backfill-entity-id]] needs to generate an `entity_id` by hashing. Once the background
+;;    job populates that column everywhere, this will always be empty.
+;;
+;; NOTE: To support Metabase upgrades where the new `entity_id`s might still be blank, this code will have to live on.
+;; But in practice once `entity_id`s are populated this cache will never be needed.
+(def ^:private hydrated-hash-cache
+  (atom {}))
+
 (defn hydrated-hash
   "Returns a function which accepts an entity and returns the identity hash of
    the value of the hydrated property under key k.
 
   This is a helper for writing [[hash-fields]] implementations."
-  [k]
-  (fn [entity]
-    (or
-     (some-> entity (t2/hydrate k) (get k) identity-hash)
-     "<none>")))
+  ([k]
+   (fn [entity]
+     (or
+      (some-> entity (t2/hydrate k) (get k) identity-hash)
+      "<none>")))
+  ([hydration-key cache-key]
+   (let [inner-fn (hydrated-hash hydration-key)]
+     (fn [entity]
+       (let [the-key (cache-key entity)
+             cached  (swap! hydrated-hash-cache
+                            (fn [cache]
+                              (cond-> cache
+                                (-> cache hydration-key (get the-key) not)
+                                (assoc-in [hydration-key the-key] (delay (inner-fn entity))))))]
+         (-> cached hydration-key (get the-key) deref))))))
 
 ;;; # Serdes paths and <tt>:serdes/meta</tt>
 ;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information

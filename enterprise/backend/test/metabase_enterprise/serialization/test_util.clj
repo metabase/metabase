@@ -24,12 +24,12 @@
 
 (defn temp-field [from-field-id table-id]
   (-> (t2/select-one :model/Field :id from-field-id)
-      (dissoc :id)
+      (dissoc :id :entity_id)
       (assoc :table_id table-id)))
 
 (defn temp-table [from-tbl-id db-id]
   (-> (t2/select-one :model/Table :id from-tbl-id)
-      (dissoc :id)
+      (dissoc :id :entity_id)
       (update :display_name #(str "Temp " %))
       (assoc :db_id db-id)))
 
@@ -121,7 +121,7 @@
 
 (defn do-with-world [f]
   (with-temp-dpc [:model/Database   {db-id :id} (into {:name temp-db-name} (-> (data/db)
-                                                                               (dissoc :id :features :name)))
+                                                                               (dissoc :id :features :name :entity_id)))
                   :model/Table      {table-id :id :as table} (temp-table (data/id :venues) db-id)
                   :model/Table      {table-id-categories :id}  (temp-table (data/id :categories) db-id)
                   :model/Table      {table-id-users :id}       (temp-table (data/id :users) db-id)

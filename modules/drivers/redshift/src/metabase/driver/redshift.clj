@@ -201,9 +201,11 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
-  (h2x/+ [:raw "TIMESTAMP '1970-01-01T00:00:00Z'"]
-         (h2x/* expr
-                [:raw "INTERVAL '1 second'"])))
+  (h2x/with-database-type-info
+   (h2x/+ [:raw "TIMESTAMP '1970-01-01T00:00:00Z'"]
+          (h2x/* expr
+                 [:raw "INTERVAL '1 second'"]))
+   :timestamp))
 
 (defmethod sql.qp/current-datetime-honeysql-form :redshift
   [_]
@@ -473,6 +475,8 @@
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
+(defmethod driver/allowed-promotions :redshift [_] {})
+
 (defmethod driver/table-name-length-limit :redshift
   [_driver]
   ;; https://docs.aws.amazon.com/redshift/latest/dg/r_names.html
@@ -538,6 +542,7 @@
     (doseq [[k v] column-definitions]
       (f driver db-id table-name {k v} settings))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/alter-columns! :redshift
   [_driver _db-id _table-name column-definitions]
   ;; TODO: redshift doesn't allow promotion of ints to floats using ALTER TABLE.

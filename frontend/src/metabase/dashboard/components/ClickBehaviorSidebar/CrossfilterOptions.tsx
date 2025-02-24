@@ -8,7 +8,7 @@ import type {
   DashboardCard,
 } from "metabase-types/api";
 
-import { Heading, SidebarContent } from "./ClickBehaviorSidebar.styled";
+import { Heading, SidebarContent } from "./ClickBehaviorSidebarComponents";
 
 interface Props {
   dashboard: Dashboard;

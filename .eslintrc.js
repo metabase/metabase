@@ -17,11 +17,14 @@ module.exports = {
       {
         vars: "all",
         args: "none",
-        varsIgnorePattern: "^_",
+        varsIgnorePattern: "^_.+$",
         ignoreRestSiblings: true,
       },
     ],
     "no-empty": [1, { allowEmptyCatch: true }],
+    // Note: adding this rule to a eslint config file in a subfolder will remove
+    // *not* carry over the restricted imports from parent folders, you will
+    // need to copy them over
     "no-restricted-imports": [
       "error",
       {
@@ -107,7 +110,7 @@ module.exports = {
           "And",
           "When",
           "Then",
-          "describeWithSnowplow"
+          "describeWithSnowplow",
         ],
       },
     ],
@@ -219,10 +222,10 @@ module.exports = {
         "@typescript-eslint/no-unused-vars": [
           "error",
           {
-            argsIgnorePattern: "^_",
-            varsIgnorePattern: "^_",
+            argsIgnorePattern: "^_.+$",
+            varsIgnorePattern: "^_.+$",
             ignoreRestSiblings: true,
-            destructuredArrayIgnorePattern: "^_",
+            destructuredArrayIgnorePattern: "^_.+$",
           },
         ],
         // This was introduced in 6.0.0

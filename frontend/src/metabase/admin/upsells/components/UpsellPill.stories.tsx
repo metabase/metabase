@@ -46,7 +46,7 @@ const NarrowTemplate = (args: UpsellPillProps) => (
 );
 
 export default {
-  title: "Upsells/Pill",
+  title: "Patterns/Upsells/Pill",
   component: _UpsellPill,
   args,
   argTypes,
