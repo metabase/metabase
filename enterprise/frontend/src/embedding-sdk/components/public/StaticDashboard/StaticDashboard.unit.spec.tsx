@@ -1,4 +1,3 @@
-import { Box } from "@mantine/core";
 import fetchMock from "fetch-mock";
 import { indexBy } from "underscore";
 
@@ -12,6 +11,7 @@ import type { MetabaseProviderProps } from "embedding-sdk/components/public/Meta
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
+import { Box } from "metabase/ui";
 import {
   createMockCard,
   createMockDashboard,
