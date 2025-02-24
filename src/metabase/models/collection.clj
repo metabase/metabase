@@ -338,13 +338,10 @@
   "Come up with a nice name for the Personal Collection for the passed `user-or-ids`.
   Returns a map of user-id -> name"
   [user-or-ids user-or-site]
-  (let [ids (filter some? (map u/the-id user-or-ids))
-        rows (if (empty? ids)
-               []
-               (t2/select [:model/User :first_name :last_name :email :id]
-                          :id [:in ids]))]
-    (into {} (map (fn [{first-name :first_name last-name :last_name email :email id :id}]
-                    [id (format-personal-collection-name first-name last-name email user-or-site)]) rows))))
+  (into {} (when-let [ids (seq (filter some? (map u/the-id user-or-ids)))]
+             (t2/select-pk->fn #(format-personal-collection-name (:first_name %) (:last_name %) (:email %) user-or-site)
+                               [:model/User :first_name :last_name :email :id]
+                               :id [:in ids]))))
 
 (mu/defn user->personal-collection-name :- ms/NonBlankString
   "Calls `user->personal-collection-names` for a single user-id and returns the name"
