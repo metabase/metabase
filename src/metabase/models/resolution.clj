@@ -22,7 +22,7 @@
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
-    :model/CloudMigration                    metabase.models.cloud-migration
+    :model/CloudMigration                    metabase.cloud-migration.models.cloud-migration
     :model/Collection                        metabase.models.collection
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.models.collection-permission-graph-revision
@@ -43,7 +43,7 @@
     :model/ImplicitAction                    metabase.actions.models
     :model/LegacyMetric                      metabase.models.legacy-metric
     :model/LegacyMetricImportantField        metabase.models.legacy-metric-important-field
-    :model/LoginHistory                      metabase.models.login-history
+    :model/LoginHistory                      metabase.login-history.models.login-history
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.models.moderation-review
@@ -58,10 +58,10 @@
     :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
     :model/PermissionsRevision               metabase.permissions.models.permissions-revision
     :model/PersistedInfo                     metabase.models.persisted-info
-    :model/Pulse                             metabase.models.pulse
-    :model/PulseCard                         metabase.models.pulse-card
-    :model/PulseChannel                      metabase.models.pulse-channel
-    :model/PulseChannelRecipient             metabase.models.pulse-channel-recipient
+    :model/Pulse                             metabase.pulse.models.pulse
+    :model/PulseCard                         metabase.pulse.models.pulse-card
+    :model/PulseChannel                      metabase.pulse.models.pulse-channel
+    :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
     :model/Query                             metabase.models.query
     :model/QueryAction                       metabase.actions.models
     :model/QueryAnalysis                     metabase.models.query-analysis
@@ -70,11 +70,11 @@
     :model/QueryField                        metabase.models.query-field
     :model/QueryTable                        metabase.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
-    :model/Revision                          metabase.models.revision
+    :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.models.secret
     :model/Segment                           metabase.segments.models.segment
-    :model/Session                           metabase.models.session
+    :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.models.setting
     :model/Table                             metabase.models.table
     :model/TablePrivileges                   metabase.models.table-privileges
@@ -85,6 +85,13 @@
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.models.user-parameter-value
     :model/ViewLog                           metabase.models.view-log})
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                 DO NOT ADD ANY MORE MODEL NAMESPACES UNDER `metabase.models.*`                 !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 (methodical/defmethod t2.model/resolve-model :before :default
   "Ensure the namespace for given model is loaded. This is a safety mechanism as we are moving to toucan2 and we don't

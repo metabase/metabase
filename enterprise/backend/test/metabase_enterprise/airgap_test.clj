@@ -1,9 +1,10 @@
 (ns metabase-enterprise.airgap-test
-  (:require    [clojure.java.io :as io]
-               [clojure.string :as str]
-               [clojure.test :refer :all]
-               [metabase-enterprise.airgap :as airgap]
-               [metabase.premium-features.core :as premium-features]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.airgap :as airgap]
+   [metabase.premium-features.core :as premium-features]))
 
 (defn- test-fake-features! [& {:keys [token-fn pubk-fn]}]
   (with-redefs

@@ -2,7 +2,7 @@ const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
 
 describe("issue 11727", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
@@ -184,6 +184,36 @@ describe("issue 49454", () => {
     H.nativeEditorCompletions().within(() => {
       cy.findByText("-question-49454").should("be.visible");
       cy.findByText("-metric-49454").should("be.visible");
+    });
+  });
+});
+
+describe("issue 53194", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    Object.values(REVIEWS).forEach(fieldId => {
+      cy.request("PUT", `/api/field/${fieldId}`, {
+        visibility_type: "sensitive",
+      });
+    });
+  });
+
+  it("should not enter an infinite loop when browsing table fields (metabase#53194)", () => {
+    H.startNewNativeQuestion();
+    cy.icon("reference").click();
+
+    cy.findByTestId("sidebar-content").within(() => {
+      cy.findByText("REVIEWS").click(); // the infinite loop used to start with this action
+      cy.findByText("ID").should("not.exist");
+      cy.findByText("ORDERS").should("not.exist");
+
+      cy.findByTestId("sidebar-header-title").click(); // if app is frozen, Cypress won't be able to execute this
+      cy.findByText("ID").should("not.exist");
+      cy.findByText("REVIEWS").should("be.visible");
+
+      cy.findByText("ORDERS").click();
+      cy.findByText("ID").should("be.visible");
     });
   });
 });

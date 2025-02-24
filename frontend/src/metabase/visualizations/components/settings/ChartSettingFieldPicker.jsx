@@ -16,6 +16,8 @@ import {
 } from "./ChartSettingFieldPicker.styled";
 import { ChartSettingSelect } from "./ChartSettingSelect";
 
+const RIGHT_SECTION_BUTTON_WIDTH = 22;
+
 export const ChartSettingFieldPicker = ({
   value,
   options,
@@ -78,6 +80,10 @@ export const ChartSettingFieldPicker = ({
     options.length === 0 ||
     (options.length === 1 && options[0].value === value);
 
+  const rightSectionWidth =
+    [!disabled, !!menuWidgetInfo, !!onRemove].filter(Boolean).length *
+    RIGHT_SECTION_BUTTON_WIDTH;
+
   return (
     <ChartSettingFieldPickerRoot
       className={className}
@@ -96,7 +102,7 @@ export const ChartSettingFieldPicker = ({
         onChange={onChange}
         icon={
           showDragHandle || (showColorPicker && seriesKey) ? (
-            <Group noWrap spacing="sm" p="xs" ml="sm">
+            <Group noWrap spacing="xs" p="xs" ml="sm" align="center">
               {showDragHandle && (
                 <GrabberHandle
                   name="grabber"
@@ -124,7 +130,7 @@ export const ChartSettingFieldPicker = ({
         iconWidth="auto"
         rightSectionWidth="auto"
         rightSection={
-          <Group noWrap spacing="sm" p="xs" mr="sm">
+          <>
             {!disabled && (
               <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
                 <Icon name="chevrondown" />
@@ -144,7 +150,7 @@ export const ChartSettingFieldPicker = ({
                 onClick={onRemove}
               />
             )}
-          </Group>
+          </>
         }
         styles={{
           wrapper: {
@@ -166,9 +172,12 @@ export const ChartSettingFieldPicker = ({
             },
             border: "none",
             width: "100%",
+            paddingRight: `${rightSectionWidth}px`,
           },
           rightSection: {
             pointerEvents: "none",
+            width: `${rightSectionWidth}px`,
+            paddingRight: "0.75rem",
           },
         }}
       />

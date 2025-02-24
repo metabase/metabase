@@ -9,9 +9,13 @@ title: Driver interface changelog
 - Added a feature `:test/arrays` and multimethod `native-array-query` to enable the testing of array types for
   databases that support them.
 
-## Metabase 0.53.0 
+## Metabase 0.53.0
 
 - Added the multimethod `bad-connection-details` to allow mocking bad connection parameters for tests.
+
+## Metabase 0.52.12
+
+- Added the multimethod `metabase.driver/db-details-to-test-and-migrate`. This can be used to cleanup and migrate ambiguous connection details from previous versions.
 
 ## Metabase 0.52.0
 

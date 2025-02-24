@@ -242,14 +242,14 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
           font: { fontFamily, fontSize },
         });
 
-        setHeaderWidths({ ...newLeftHeaderWidths, valueHeaderWidths });
+        const newColumnWidths = { ...newLeftHeaderWidths, valueHeaderWidths };
+        setHeaderWidths(newColumnWidths);
 
-        onUpdateVisualizationSettings({
-          "pivot_table.column_widths": {
-            ...newLeftHeaderWidths,
-            valueHeaderWidths,
-          },
-        });
+        if (!_.isEqual(newColumnWidths, columnWidthSettings)) {
+          onUpdateVisualizationSettings({
+            "pivot_table.column_widths": newColumnWidths,
+          });
+        }
       }
     }, [
       onUpdateVisualizationSettings,
@@ -260,6 +260,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       getColumnTitle,
       columnsChanged,
       setHeaderWidths,
+      columnWidthSettings,
     ]);
 
     const handleColumnResize = (
@@ -329,7 +330,11 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       leftHeaderWidth,
     ]);
 
-    if (pivoted === null || !leftHeaderWidths || columnsChanged) {
+    if (
+      pivoted === null ||
+      !leftHeaderWidths ||
+      (leftHeaderWidths?.length && columnsChanged)
+    ) {
       return null;
     }
 

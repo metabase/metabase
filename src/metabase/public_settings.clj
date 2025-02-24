@@ -45,7 +45,9 @@
     (binding [config/*disable-setting-cache* true]
       (application-name))))
 
-(defn- google-auth-enabled? []
+(defn google-auth-enabled?
+  "Is Google Auth (OIDC not SAML) enabled?"
+  []
   (boolean (setting/get :google-auth-enabled)))
 
 (defn ldap-enabled?
@@ -318,13 +320,6 @@ x.com")
                 (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
-  :visibility :public
-  :audit      :getter)
-
-(defsetting map-tile-server-url
-  (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :encryption :no
-  :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
   :visibility :public
   :audit      :getter)
 
@@ -1093,6 +1088,13 @@ See [fonts](../configuring-metabase/fonts.md).")
   :setter     :none
   :audit      :getter)
 
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                         DO NOT ADD ANY MORE SETTINGS IN THIS NAMESPACE                         !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1142,3 +1144,10 @@ See [fonts](../configuring-metabase/fonts.md).")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                         DO NOT ADD ANY MORE SETTINGS IN THIS NAMESPACE                         !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

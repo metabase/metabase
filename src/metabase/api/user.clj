@@ -13,13 +13,13 @@
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.session :as session]
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.session.models.session :as session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -204,11 +204,10 @@
         clauses             (user-clauses status query group-id-clause include_deactivated)]
     {:data (cond-> (t2/select
                     (vec (cons :model/User (user-visible-columns)))
-                    (cond-> clauses
-                      (and (some? group_id) group-id-clause) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
-                      true             (sql.helpers/order-by [:%lower.first_name :asc]
-                                                             [:%lower.last_name :asc]
-                                                             [:id :asc])))
+                    (sql.helpers/order-by clauses
+                                          [:%lower.first_name :asc]
+                                          [:%lower.last_name :asc]
+                                          [:id :asc]))
              ;; For admins also include the IDs of Users' Personal Collections
              api/*is-superuser?*
              (t2/hydrate :personal_collection_id)

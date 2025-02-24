@@ -80,33 +80,29 @@ describe("scenarios > models metadata", () => {
         .and("not.contain", "Pre-tax");
     });
 
-    it(
-      "clears custom metadata when a model is turned back into a question",
-      { tags: "@flaky" },
-      () => {
-        H.openQuestionActions();
-        H.popover().findByTextEnsureVisible("Edit metadata").click();
+    it("clears custom metadata when a model is turned back into a question", () => {
+      H.openQuestionActions();
+      H.popover().findByTextEnsureVisible("Edit metadata").click();
 
-        H.openColumnOptions("Subtotal");
-        H.renameColumn("Subtotal", "Pre-tax");
-        H.setColumnType("No special type", "Cost");
-        H.saveMetadataChanges();
+      H.openColumnOptions("Subtotal");
+      H.renameColumn("Subtotal", "Pre-tax");
+      H.setColumnType("No special type", "Cost");
+      H.saveMetadataChanges();
 
-        cy.findAllByTestId("header-cell")
-          .should("contain", "Pre-tax ($)")
-          .and("not.contain", "Subtotal");
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Pre-tax ($)")
+        .and("not.contain", "Subtotal");
 
-        H.openQuestionActions();
-        H.popover()
-          .findByTextEnsureVisible("Turn back to saved question")
-          .click();
-        cy.wait("@cardQuery");
+      H.openQuestionActions();
+      H.popover()
+        .findByTextEnsureVisible("Turn back to saved question")
+        .click();
+      cy.wait("@cardQuery");
 
-        cy.findAllByTestId("header-cell")
-          .should("contain", "Subtotal")
-          .and("not.contain", "Pre-tax ($)");
-      },
-    );
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Subtotal")
+        .and("not.contain", "Pre-tax ($)");
+    });
   });
 
   it("should edit native model metadata", () => {

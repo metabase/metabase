@@ -116,6 +116,9 @@ test/metabase/cmd @metabase/devexp
 src/metabase/channel @metabase/core-workflows
 test/metabase/channel @metabase/core-workflows
 
+src/metabase/cloud_migration @metabase/core-workflows
+test/metabase/cloud_migration @metabase/core-workflows
+
 src/metabase/cmd @metabase/devexp
 test/metabase/cmd @metabase/devexp
 
@@ -156,6 +159,9 @@ test/metabase/lib @metabase/core-backend-querying
 src/metabase/logger @metabase/devexp
 test/metabase/logger @metabase/devexp
 
+src/metabase/login_history @metabase/core-backend-admin-webapp
+test/metabase/login_history @metabase/core-backend-admin-webapp
+
 src/metabase/models @metabase/devexp
 test/metabase/models @metabase/devexp
 
@@ -189,6 +195,9 @@ test/metabase/query_processor @metabase/core-backend-querying
 src/metabase/request @metabase/devexp
 test/metabase/request @metabase/devexp
 
+src/metabase/revisions @metabase/core-backend-admin-webapp
+test/metabase/revisions @metabase/core-backend-admin-webapp
+
 src/metabase/sample_data @metabase/core-backend-admin-webapp
 test/metabase/sample_data @metabase/core-backend-admin-webapp
 
@@ -201,6 +210,9 @@ test/metabase/segments @metabase/core-backend-querying
 src/metabase/server @metabase/devexp
 test/metabase/server @metabase/devexp
 
+src/metabase/session @metabase/core-backend-admin-webapp
+test/metabase/session @metabase/core-backend-admin-webapp
+
 src/metabase/setup @metabase/core-backend-admin-webapp
 test/metabase/setup @metabase/core-backend-admin-webapp
 
@@ -209,6 +221,9 @@ test/metabase/sync @metabase/drivers
 
 src/metabase/task @metabase/devexp
 test/metabase/task @metabase/devexp
+
+src/metabase/tiles @metabase/core-backend-dashviz
+test/metabase/tiles @metabase/core-backend-dashviz
 
 src/metabase/timeline @metabase/core-backend-dashviz
 test/metabase/timeline @metabase/core-backend-dashviz
