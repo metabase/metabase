@@ -170,6 +170,26 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  it("can save a question to their personal collection", () => {
+    mountInteractiveQuestion({
+      saveToCollection: "personal",
+    });
+    cy.intercept("/api/user/current").as("getUser");
+
+    cy.wait("@getUser").then(({ response: userResponse }) => {
+      saveInteractiveQuestionAsNewQuestion({
+        entityName: "Orders",
+        questionName: "Sample Orders 3",
+      });
+      const userCollection = userResponse?.body.personal_collection_id;
+      cy.wait("@createCard").then(({ response }) => {
+        expect(response?.statusCode).to.equal(200);
+        expect(response?.body.name).to.equal("Sample Orders 3");
+        expect(response?.body.collection_id).to.equal(userCollection);
+      });
+    });
+  });
+
   it("can add a filter via the FilterPicker component", () => {
     cy.intercept("GET", "/api/card/*").as("getCard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
