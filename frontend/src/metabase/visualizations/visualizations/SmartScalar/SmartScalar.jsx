@@ -315,7 +315,7 @@ function PreviousValueComparison({
     const detailColor = "var(--mb-color-text-secondary)";
 
     return (
-      <Title order={4} c={detailColor} style={{ whiteSpace: "pre" }}>
+      <Title order={4} style={{ whiteSpace: "pre", color: detailColor }}>
         <Separator inTooltip={inTooltip} />
         {children}
       </Title>
