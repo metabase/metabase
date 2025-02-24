@@ -1,11 +1,22 @@
-import type { Expression } from "metabase-types/api";
+import type {
+  CallExpression,
+  CaseOptions,
+  Expression,
+} from "metabase-types/api";
 
 import { MBQL_CLAUSES } from "./config";
-import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
+import {
+  isCaseOrIf,
+  isCaseOrIfOperator,
+  isFunction,
+  isOptionsObject,
+} from "./matchers";
 import type { CompilerPass } from "./pratt/compiler";
 import { OPERATOR } from "./tokenizer";
 
-type Transform = (node: Expression) => Expression;
+function isCallExpression(expr: unknown): expr is CallExpression {
+  return Array.isArray(expr) && expr.length > 1;
+}
 
 const NEGATIVE_FILTER_SHORTHANDS = {
   contains: "does-not-contain",
@@ -16,9 +27,9 @@ const NEGATIVE_FILTER_SHORTHANDS = {
 // ["NOT", ["is-null", 42]] becomes ["not-null",42]
 export const useShorthands: CompilerPass = tree =>
   modify(tree, node => {
-    if (Array.isArray(node) && node.length === 2) {
+    if (isFunction(node) && node.length === 2) {
       const [operator, operand] = node;
-      if (operator === OPERATOR.Not && Array.isArray(operand)) {
+      if (operator === OPERATOR.Not && isFunction(operand)) {
         const [fn, ...params] = operand;
         const shorthand =
           NEGATIVE_FILTER_SHORTHANDS[
@@ -35,22 +46,27 @@ export const useShorthands: CompilerPass = tree =>
 // ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]
 export const adjustCaseOrIf: CompilerPass = tree =>
   modify(tree, node => {
-    if (Array.isArray(node)) {
+    if (isCallExpression(node) && isCaseOrIfOperator(node[0])) {
       const [operator, ...operands] = node;
-      if (isCaseOrIfOperator(operator)) {
-        const pairs = [];
-        const pairCount = operands.length >> 1;
-        for (let i = 0; i < pairCount; ++i) {
-          const tst = operands[i * 2];
-          const val = operands[i * 2 + 1];
-          pairs.push([tst, val]);
+      const pairs: [Expression, Expression][] = [];
+      const pairCount = operands.length >> 1;
+      for (let i = 0; i < pairCount; ++i) {
+        const tst = operands[i * 2];
+        const val = operands[i * 2 + 1];
+        if (isOptionsObject(tst) || isOptionsObject(val)) {
+          throw new Error("Unsupported case/if options");
         }
-        if (operands.length > 2 * pairCount) {
-          const defVal = operands[operands.length - 1];
-          return withAST([operator, pairs, { default: defVal }], node);
-        }
-        return withAST([operator, pairs], node);
+        pairs.push([tst, val]);
       }
+      if (operands.length > 2 * pairCount) {
+        const defaultValue = operands[operands.length - 1];
+        let options: CaseOptions = defaultValue as CaseOptions;
+        if (!isOptionsObject(defaultValue)) {
+          options = { default: defaultValue };
+        }
+        return withAST([operator, pairs, options], node);
+      }
+      return withAST([operator, pairs], node);
     }
     return node;
   });
@@ -69,23 +85,23 @@ export const adjustOffset: CompilerPass = tree =>
 
 export const adjustOptions: CompilerPass = tree =>
   modify(tree, node => {
-    if (Array.isArray(node)) {
+    if (isCallExpression(node)) {
       const [operator, ...operands] = node;
       if (operands.length > 0) {
         const clause = MBQL_CLAUSES[operator];
         if (clause && clause.hasOptions) {
           if (operands.length > clause.args.length) {
             // the last one holds the function options
-            const options = operands[operands.length - 1];
+            const index = operands.length - 1;
+            const options = operands[index];
 
             // HACK: very specific to some string/time functions for now
             if (options === "case-insensitive") {
-              operands.pop();
-              operands.push({ "case-sensitive": false });
+              operands[index] = { "case-sensitive": false };
             } else if (options === "include-current") {
-              operands.pop();
-              operands.push({ "include-current": true });
+              operands[index] = { "include-current": true };
             }
+
             return withAST([operator, ...operands], node);
           }
         }
@@ -109,12 +125,13 @@ export const adjustOptions: CompilerPass = tree =>
  */
 export const adjustMultiArgOptions: CompilerPass = tree =>
   modify(tree, node => {
-    if (Array.isArray(node)) {
+    if (isCallExpression(node)) {
       const [operator, ...args] = node;
       const clause = MBQL_CLAUSES[operator];
       if (clause != null && clause.multiple && clause.hasOptions) {
-        if (isOptionsObject(args.at(-1)) && args.length > 3) {
-          return withAST([operator, args.at(-1), ...args.slice(0, -1)], node);
+        const options = args.at(-1);
+        if (isOptionsObject(options) && args.length > 3) {
+          return withAST([operator, options, ...args.slice(0, -1)], node);
         }
         if (args.length > 2 && !isOptionsObject(args.at(-1))) {
           return withAST([operator, {}, ...args], node);
@@ -126,54 +143,63 @@ export const adjustMultiArgOptions: CompilerPass = tree =>
 
 export const adjustBooleans: CompilerPass = tree =>
   modify(tree, node => {
-    if (Array.isArray(node)) {
-      if (isCaseOrIfOperator(node[0])) {
-        const [operator, pairs, options] = node;
-        return [
-          operator,
-          pairs.map(([operand, value]) => {
-            if (!Array.isArray(operand)) {
-              return [operand, value];
-            }
-            const [op, _id, opts] = operand;
-            const isBooleanField =
-              op === "field" && opts?.["base-type"] === "type/Boolean";
-            if (isBooleanField) {
-              return withAST([["=", operand, true], value], operand);
-            }
-            return [operand, value];
-          }),
-          options,
-        ];
-      } else {
-        const [operator, ...operands] = node;
-        const { args = [] } = MBQL_CLAUSES[operator] || {};
-        return [
-          operator,
-          ...operands.map((operand, index) => {
-            if (!Array.isArray(operand) || args[index] !== "boolean") {
-              return operand;
-            }
-            const [op, _id, opts] = operand;
-            const isBooleanField =
-              op === "field" && opts?.["base-type"] === "type/Boolean";
-            if (isBooleanField || op === "segment") {
-              return withAST(["=", operand, true], operand);
-            }
+    // Assumes adjustCaseOrIf has already been run
+    if (isCaseOrIf(node)) {
+      const [operator, pairs, options] = node;
+      return [
+        operator,
+        pairs.map(([input, output]): [Expression, Expression] => {
+          if (isBooleanField(input)) {
+            const replaced: Expression = withAST(["=", input, true], input);
+            return [replaced, output];
+          }
+          return [input, output];
+        }),
+        options ?? {},
+      ];
+    } else if (isCallExpression(node)) {
+      const [operator, ...operands] = node;
+      const { args = [] } = MBQL_CLAUSES[operator] || {};
+      return [
+        operator,
+        ...operands.map((operand, index) => {
+          if (isOptionsObject(operand)) {
             return operand;
-          }),
-        ];
-      }
+          }
+          if (!isBooleanField(operand) || args[index] !== "boolean") {
+            return operand;
+          }
+          return withAST(["=", operand, true], operand);
+        }),
+      ];
     }
     return node;
   });
+
+function isBooleanField(input: unknown) {
+  if (Array.isArray(input) && input[0] === "field") {
+    const [, _id, opts] = input;
+    return (
+      opts &&
+      typeof opts === "object" &&
+      "base-type" in opts &&
+      opts?.["base-type"] === "type/Boolean"
+    );
+  }
+  return false;
+}
+
+type Transform = (node: Expression) => Expression;
 
 function modify(node: Expression, transform: Transform): Expression {
   // MBQL clause?
   if (Array.isArray(node) && node.length > 0 && typeof node[0] === "string") {
     const [operator, ...operands] = node;
     return withAST(
-      transform([operator, ...operands.map(sub => modify(sub, transform))]),
+      transform([
+        operator,
+        ...operands.map(sub => modify(sub as Expression, transform)),
+      ]),
       node,
     );
   }
