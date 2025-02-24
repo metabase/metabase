@@ -35,7 +35,12 @@ export const getLastHistoryValue = createSelector(
   metabot => metabot.lastHistoryValue,
 );
 
-export const getMetabotSessionId = createSelector(
+export const getMetabotConversationId = createSelector(
   getMetabot,
-  metabot => metabot.sessionId,
+  metabot => metabot.conversationId,
+);
+
+export const getMetabotState = createSelector(
+  getMetabot,
+  metabot => metabot.state,
 );

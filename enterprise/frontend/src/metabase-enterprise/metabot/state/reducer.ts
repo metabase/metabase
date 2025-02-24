@@ -19,7 +19,7 @@ export interface MetabotState {
   isProcessing: boolean;
   lastSentContext: MetabotChatContext | undefined;
   lastHistoryValue: MetabotHistory | undefined;
-  sessionId: string | undefined;
+  conversationId: string | undefined;
   userMessages: string[];
   visible: boolean;
   state: any;
@@ -30,7 +30,7 @@ export const metabotInitialState: MetabotState = {
   isProcessing: false,
   lastSentContext: undefined,
   lastHistoryValue: undefined,
-  sessionId: undefined,
+  conversationId: undefined,
   userMessages: [],
   visible: false,
   state: {},
@@ -52,13 +52,13 @@ export const metabot = createSlice({
     setIsProcessing: (state, action: PayloadAction<boolean>) => {
       state.isProcessing = action.payload;
     },
-    setSessionId: (state, action: PayloadAction<string | undefined>) => {
-      state.sessionId = action.payload;
+    setConversationId: (state, action: PayloadAction<string | undefined>) => {
+      state.conversationId = action.payload;
     },
     setVisible: (state, { payload: visible }: PayloadAction<boolean>) => {
       if (visible) {
         state.visible = true;
-        state.sessionId = uuid();
+        state.conversationId = uuid();
       } else {
         return metabotInitialState;
       }

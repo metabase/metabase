@@ -172,7 +172,7 @@
                                                "Content-Type"              "application/json;charset=UTF-8"
                                                "x-metabase-instance-token" (premium-features/premium-embedding-token)
                                                "x-metabase-session-token"  session-id
-                                               "x-metabase-url"            "http://host.docker.internal:3000" #_(public-settings/site-url)}
+                                               "x-metabase-url"            (public-settings/site-url)}
                             :body             (->json-bytes body)
                             :throw-exceptions false}
                      *debug* (assoc :debug true))

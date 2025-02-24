@@ -48,7 +48,7 @@ function setup(
     currentUser = createMockUser(),
     metabotPluginInitialState = {
       ...metabotInitialState,
-      sessionId: uuid(),
+      conversationId: uuid(),
       visible: true,
     },
   } = options || {};
@@ -115,27 +115,27 @@ describe("metabot", () => {
       await assertNotVisible();
     });
 
-    it("should start a new session each time metabot is opened", async () => {
+    it("should start a new conversation each time metabot is opened", async () => {
       const { store } = setup({
         metabotPluginInitialState: metabotInitialState,
       });
       fetchMock.post(
-        `path:/api/ee/metabot-v3/agent`,
+        `path:/api/ee/metabot-v3/v2/agent`,
         whoIsYourFavoriteResponse,
       );
 
       showMetabot(store.dispatch);
       await enterChatMessage("Who is your favorite?");
-      const firstSessionId = (await lastReqBody())?.session_id;
-      expect(isUuid(firstSessionId)).toBeTruthy();
+      const firstConversationId = (await lastReqBody())?.conversation_id;
+      expect(isUuid(firstConversationId)).toBeTruthy();
       hideMetabot(store.dispatch);
 
       showMetabot(store.dispatch);
       await enterChatMessage("Who is your favorite?");
-      const secondSessionId = (await lastReqBody())?.session_id;
-      expect(isUuid(secondSessionId)).toBeTruthy();
+      const secondConversationId = (await lastReqBody())?.conversation_id;
+      expect(isUuid(secondConversationId)).toBeTruthy();
 
-      expect(secondSessionId).not.toBe(firstSessionId);
+      expect(secondConversationId).not.toBe(firstConversationId);
     });
 
     // eslint-disable-next-line jest/expect-expect
@@ -168,7 +168,7 @@ describe("metabot", () => {
       // does not auto-close if metabot is loading
       showMetabot(store.dispatch);
       fetchMock.post(
-        `path:/api/ee/metabot-v3/agent`,
+        `path:/api/ee/metabot-v3/v2/agent`,
         whoIsYourFavoriteResponse,
         { delay: METABOT_AUTO_CLOSE_DURATION_MS + 1000 }, // load longer than delay
       );
@@ -277,7 +277,7 @@ describe("metabot", () => {
     it("should properly send chat messages", async () => {
       setup();
       fetchMock.post(
-        `path:/api/ee/metabot-v3/agent`,
+        `path:/api/ee/metabot-v3/v2/agent`,
         whoIsYourFavoriteResponse,
         { delay: 50 }, // small delay to cause loading state
       );
@@ -303,7 +303,7 @@ describe("metabot", () => {
     it("should send along default context", async () => {
       setup();
       fetchMock.post(
-        `path:/api/ee/metabot-v3/agent`,
+        `path:/api/ee/metabot-v3/v2/agent`,
         whoIsYourFavoriteResponse,
       );
 
@@ -319,7 +319,7 @@ describe("metabot", () => {
 
     it("should allow components to register additional context", async () => {
       fetchMock.post(
-        `path:/api/ee/metabot-v3/agent`,
+        `path:/api/ee/metabot-v3/v2/agent`,
         whoIsYourFavoriteResponse,
       );
 
@@ -358,7 +358,7 @@ describe("metabot", () => {
     it("should send history from last response along with next message", async () => {
       setup();
       fetchMock.post(
-        `path:/api/ee/metabot-v3/agent`,
+        `path:/api/ee/metabot-v3/v2/agent`,
         whoIsYourFavoriteResponse,
       );
 
@@ -377,7 +377,7 @@ describe("metabot", () => {
     it("should clear history if metabot is closed", async () => {
       const { store } = setup();
       fetchMock.post(
-        `path:/api/ee/metabot-v3/agent`,
+        `path:/api/ee/metabot-v3/v2/agent`,
         whoIsYourFavoriteResponse,
       );
 
@@ -430,4 +430,5 @@ const whoIsYourFavoriteResponse = {
       role: "assistant",
     },
   ],
+  state: {},
 };

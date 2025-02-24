@@ -19,7 +19,8 @@ import {
   getIsProcessing,
   getLastHistoryValue,
   getLastSentContext,
-  getMetabotSessionId,
+  getMetabotConversationId,
+  getMetabotState,
 } from "./selectors";
 
 export const {
@@ -28,7 +29,7 @@ export const {
   clearUserMessages,
   setIsProcessing,
   setConfirmationOptions,
-  setSessionId,
+  setConversationId,
 } = metabot.actions;
 
 export const setVisible =
@@ -94,7 +95,7 @@ export const sendMessageRequest = createAsyncThunk(
     { dispatch, getState },
   ) => {
     // TODO: make enterprise store
-    let sessionId = getMetabotSessionId(getState() as any);
+    let sessionId = getMetabotConversationId(getState() as any);
 
     // should not be needed, but just in case the value got unset
     if (!sessionId) {
@@ -102,7 +103,7 @@ export const sendMessageRequest = createAsyncThunk(
         "Metabot has no session id while open, this should never happen",
       );
       sessionId = uuid();
-      dispatch(setSessionId(sessionId));
+      dispatch(setConversationId(sessionId));
     }
 
     const result = await dispatch(
@@ -156,6 +157,7 @@ export const sendWritebackMessageRequest = createAsyncThunk(
   async (message: string, { dispatch, getState }) => {
     const lastSentContext = getLastSentContext(getState() as any);
     const lastHistory = getLastHistoryValue(getState() as any);
+    const state = getMetabotState(getState() as any);
 
     if (!lastSentContext) {
       console.warn(
@@ -168,6 +170,7 @@ export const sendWritebackMessageRequest = createAsyncThunk(
         message,
         history: lastHistory,
         context: lastSentContext ?? ({} as any),
+        state: state ?? ({} as any),
       }),
     );
   },
