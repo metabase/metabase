@@ -4727,8 +4727,9 @@
                                                        (:id dash) load-id))])))
               (testing "make fewer AppDB calls than uncached"
                 (is (< (call-count-fn) @uncached-calls)))))
-          (testing "don't construct any MetadataProviders in bulk mode"
-            (is (= {} @provider-counts))))))))
+          (testing "constructs only 1 MetadataProvider in bulk mode"
+            ;; It's needed to compute the query hashes, which is needed for the average duration mechanism.
+            (is (= {(mt/id) 1} @provider-counts))))))))
 
 (deftest ^:synchronized dashboard-table-prefetch-test
   (mt/with-temp

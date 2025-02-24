@@ -227,7 +227,6 @@
   {:api #{metabase.lib.binning
           metabase.lib.binning.util
           metabase.lib.card
-          metabase.lib.convert
           metabase.lib.core
           metabase.lib.equality
           metabase.lib.field
