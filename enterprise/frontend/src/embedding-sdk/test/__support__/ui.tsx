@@ -1,4 +1,3 @@
-import type { MantineThemeOverride } from "@mantine/core";
 import type { Store } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
 import type * as React from "react";
@@ -14,6 +13,7 @@ import type { SdkStoreState } from "embedding-sdk/store/types";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
+import type { MantineThemeOverride } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 

@@ -1,8 +1,7 @@
-import { Badge, type BadgeProps } from "@mantine/core";
 import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Icon } from "metabase/ui";
+import { ActionIcon, Badge, type BadgeProps, Icon } from "metabase/ui";
 
 import S from "./BadgeListItem.module.css";
 
