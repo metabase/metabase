@@ -1,3 +1,5 @@
+import type { FieldReference } from "metabase-types/api";
+
 import { parse } from "./recursive-parser";
 import { resolve } from "./resolver";
 import { infer } from "./typeinferencer";
@@ -27,7 +29,7 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
     return mbql;
   }
 
-  function mockEnv(fieldRef: ["ref", string]) {
+  function mockEnv(fieldRef: FieldReference) {
     switch (fieldRef[1]) {
       case "Price":
         return "number";
@@ -43,6 +45,7 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
       case "CreatedAt":
         return "type/Datetime";
     }
+    return "undefined";
   }
 
   function type(expression: string) {
