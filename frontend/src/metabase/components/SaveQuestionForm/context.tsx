@@ -8,10 +8,12 @@ import {
   useState,
 } from "react";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { FormProvider } from "metabase/forms";
+import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId, RecentCollectionItem } from "metabase-types/api";
@@ -67,6 +69,12 @@ export const SaveQuestionProvider = ({
   const defaultCollectionId = useGetDefaultCollectionId(
     originalQuestion?.collectionId(),
   );
+
+  const currentUser = useSelector(getCurrentUser);
+  const targetCollection =
+    currentUser && saveToCollection === "personal"
+      ? currentUser.personal_collection_id
+      : saveToCollection;
 
   const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
   const { data: recentItems, isLoading } = useListRecentsQuery(
@@ -140,9 +148,9 @@ export const SaveQuestionProvider = ({
         question,
         onSave,
         onCreate,
-        saveToCollection,
+        saveToCollection: targetCollection,
       }),
-    [originalQuestion, question, onSave, onCreate, saveToCollection],
+    [originalQuestion, question, onSave, onCreate, targetCollection],
   );
 
   // we care only about the very first result as question can be changed before
