@@ -1,7 +1,6 @@
 import {
   type DragEndEvent,
   type DragOverEvent,
-  type DragStartEvent,
   KeyboardSensor,
   MouseSensor,
   type SensorDescriptor,
@@ -9,28 +8,36 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
+  DragStartEvent,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import type { Table as ReactTable } from "@tanstack/react-table";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
 import { ROW_ID_COLUMN_ID } from "../constants";
+import _ from "underscore";
 
 export type ColumnsReordering = {
   sensors: SensorDescriptor<SensorOptions>[];
   onDragOver: (event: DragOverEvent) => void;
-  onDragEnd: (_event: DragEndEvent) => void;
+  onDragEnd: (event: DragEndEvent) => void;
+  onDragStart: (event: DragStartEvent) => void;
 };
 
 export const useColumnsReordering = <TData,>(
   table: ReactTable<TData>,
   onColumnReorder?: (columnNames: string[]) => void,
 ): ColumnsReordering => {
+  const prevOrder = useRef<string[] | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor),
     useSensor(TouchSensor),
     useSensor(KeyboardSensor),
   );
+
+  const onDragStart = useCallback(() => {
+    prevOrder.current = table.getState().columnOrder;
+  }, []);
 
   const onDragOver = useCallback(
     (event: DragOverEvent) => {
@@ -48,17 +55,22 @@ export const useColumnsReordering = <TData,>(
 
   const onDragEnd = useCallback(
     (_event: DragEndEvent) => {
-      const columns = table
-        .getState()
-        .columnOrder.filter(columnName => columnName !== ROW_ID_COLUMN_ID);
+      const newColumnOrder = table.getState().columnOrder;
+      if (!_.isEqual(newColumnOrder, prevOrder.current)) {
+        const dataColumns = newColumnOrder.filter(
+          columnName => columnName !== ROW_ID_COLUMN_ID,
+        );
+        onColumnReorder?.(dataColumns);
+      }
 
-      onColumnReorder?.(columns);
+      prevOrder.current = null;
     },
     [onColumnReorder, table],
   );
 
   const columnsReordering = useMemo(
     () => ({
+      onDragStart,
       onDragOver,
       onDragEnd,
       sensors,

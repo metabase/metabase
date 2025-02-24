@@ -40,11 +40,9 @@ export const Table = forwardRef(function Table<TData>(
 
   const dndContextProps = useMemo(
     () => ({
-      sensors: columnsReordering.sensors,
       collisionDetection: pointerWithin,
       modifiers: [restrictToHorizontalAxis],
-      onDragOver: columnsReordering.onDragOver,
-      onDragEnd: columnsReordering.onDragEnd,
+      ...columnsReordering,
     }),
     [columnsReordering],
   );

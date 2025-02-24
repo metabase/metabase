@@ -231,6 +231,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const handleColumnReordering = useCallback(
     (columnsOrder: string[]) => {
       const result = settings["table.columns"]?.slice() ?? [];
+      const columnSizes = settings["table.column_widths"];
 
       const enabledIndices = result
         .map((col, index) => (col.enabled ? index : -1))
@@ -252,9 +253,15 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         }
       });
 
-      onUpdateVisualizationSettings({
+      const settingsUpdate = {
         "table.columns": result,
-      });
+      };
+
+      // should it be cols.length?
+      if (columnSizes != null && columnSizes.length === cols.length) {
+      }
+
+      onUpdateVisualizationSettings(settingsUpdate);
     },
     [onUpdateVisualizationSettings, settings],
   );

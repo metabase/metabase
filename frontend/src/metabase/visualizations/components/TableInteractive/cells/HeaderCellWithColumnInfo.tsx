@@ -7,8 +7,9 @@ import {
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { DatasetColumn } from "metabase-types/api";
-import { memo, useCallback } from "react";
+import { memo } from "react";
 import S from "./HeaderCellWithColumnInfo.module.css";
+import { useMousePressed } from "metabase/hooks/use-mouse-pressed";
 
 export interface HeaderCellWithColumnInfoProps extends HeaderCellProps {
   infoPopoversDisabled: boolean;
@@ -28,6 +29,7 @@ export const HeaderCellWithColumnInfo = memo(
     timezone,
     column,
   }: HeaderCellWithColumnInfoProps) => {
+    const isMousePressed = useMousePressed();
     const query = question?.query();
     const stageIndex = -1;
 
@@ -39,7 +41,7 @@ export const HeaderCellWithColumnInfo = memo(
           stageIndex={-1}
           column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
           timezone={timezone}
-          disabled={infoPopoversDisabled}
+          disabled={infoPopoversDisabled || isMousePressed}
           openDelay={500}
           showFingerprintInfo
         >
