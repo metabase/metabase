@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import Toaster, { type ToasterProps } from "./Toaster";
 
 export default {
-  title: "Dashboard/Toaster",
+  title: "App/Dashboard/Toaster",
   component: Toaster,
 };
 

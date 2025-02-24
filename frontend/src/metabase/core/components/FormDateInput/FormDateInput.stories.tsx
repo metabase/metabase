@@ -5,7 +5,7 @@ import { Form, FormProvider } from "metabase/forms";
 import FormDateInput from "./FormDateInput";
 
 export default {
-  title: "Core/FormDateInput",
+  title: "Components/Ask Before Using/FormDateInput",
   component: FormDateInput,
 };
 

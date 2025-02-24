@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import Link, { type LinkProps } from "./";
 
 export default {
-  title: "Core/Link",
+  title: "Deprecated/Components/Link",
   component: Link,
 };
 

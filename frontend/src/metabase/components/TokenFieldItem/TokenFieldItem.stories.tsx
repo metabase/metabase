@@ -8,7 +8,7 @@ import { Icon } from "metabase/ui";
 import { TokenFieldAddon, TokenFieldItem } from "./TokenFieldItem.styled";
 
 export default {
-  title: "Core/TokenFieldItem",
+  title: "Components/Ask Before Using/TokenFieldItem",
   component: TokenFieldItem,
 };
 

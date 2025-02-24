@@ -19,7 +19,7 @@ const TitleActions = () => {
 };
 
 export default {
-  title: "Core/FormInput",
+  title: "Components/Ask Before Using/FormInput",
   component: FormInput,
   argTypes: {
     actions: {

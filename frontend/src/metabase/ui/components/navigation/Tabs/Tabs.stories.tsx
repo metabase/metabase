@@ -59,7 +59,7 @@ const IconsTemplate = (args: TabsProps) => (
 );
 
 export default {
-  title: "Navigation/Tabs",
+  title: "Components/Navigation/Tabs",
   component: Tabs,
   args,
   argTypes,

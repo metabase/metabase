@@ -8,7 +8,7 @@ import TabPanel from "../TabPanel";
 import TabContent from "./TabContent";
 
 export default {
-  title: "Core/TabContent",
+  title: "Deprecated/Components/TabContent",
   component: TabContent,
 };
 const Template: StoryFn<typeof TabContent> = args => {

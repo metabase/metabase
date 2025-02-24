@@ -6,7 +6,7 @@ import CS from "metabase/css/core/index.css";
 import Slider from "./Slider";
 
 export default {
-  title: "Core/Slider",
+  title: "Components/Ask Before Using/Slider",
   component: Slider,
   argTypes: { onChange: { action: "onChange" } },
 };

@@ -5,7 +5,7 @@ import { useState } from "react";
 import TimeInput from "./TimeInput";
 
 export default {
-  title: "Core/TimeInput",
+  title: "Components/Ask Before Using/TimeInput",
   component: TimeInput,
 };
 
