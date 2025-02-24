@@ -2,8 +2,10 @@
   "Tests for expression aggregations and for named aggregations."
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
 
 (deftest ^:parallel sum-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
@@ -355,3 +357,15 @@
                   {:aggregation [[:aggregation-options [:sum $rating] {:name "MyCE"}]]
                    :breakout    [$category]
                    :order-by    [[:asc [:aggregation 0]]]}))))))))
+
+(deftest ^:parallel aggregated-array-is-returned-correctly-test
+  (testing "An aggregated array column should be returned in a readable format"
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/array-aggregation)
+      (mt/dataset test-data
+        (is (= [["Chez Jay" "Marlowe" "Musso & Frank Grill" "Pacific Dining Car" "Rush Street" "The Gorbals" "The Misfit Restaurant + Bar" "Yamashiro Hollywood"]
+                ["Greenblatt's Delicatessen & Fine Wine Shop" "Handy Market"]]
+               (->> (mt/native-query {:query (tx/agg-venues-by-category-id driver/*driver*)})
+                    mt/process-query
+                    mt/rows
+                    (map second)
+                    (map sort))))))))

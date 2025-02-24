@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.api.slack :as api.slack]
    [metabase.config :as config]
@@ -101,44 +102,36 @@
           mock-file-info {:url "https://files.slack.com/files-pri/123/diagnostic.json"
                           :id "F123ABC"
                           :permalink_public "https://slack.com/files/123/diagnostic.json"}
-          expected-blocks [{:type "rich_text"
-                            :elements [{:type "rich_text_section"
-                                        :elements [{:type "text"
-                                                    :text "New bug report from "}
-                                                   {:type "link"
-                                                    :url "mailto:diehard@metabase.com"
-                                                    :text "John McLane"}
-                                                   {:type "text"
-                                                    :text "\n\nDescription:\n"
-                                                    :style {:bold true}}
-                                                   {:type "text"
-                                                    :text "Test description"}
-                                                   {:type "text"
-                                                    :text "\n\nURL:\n"
-                                                    :style {:bold true}}
-                                                   {:type "link"
-                                                    :text "https://test.com"
-                                                    :url "https://test.com"}
-                                                   {:type "text"
-                                                    :text "\n\nVersion info:\n"
-                                                    :style {:bold true}}]}
-                                       {:type "rich_text_preformatted"
-                                        :border 0
-                                        :elements [{:type "text"
-                                                    :text "{\n  \"date\" : \"2025-01-10\",\n  \"tag\" : \"vUNKNOWN\",\n  \"hash\" : \"68b5038\"\n}"}]}]}
+          expected-blocks [{:type "rich_text",
+                            :elements
+                            [{:type "rich_text_section",
+                              :elements
+                              [{:type "text", :text "New bug report from "}
+                               {:type "link", :url "mailto:diehard@metabase.com", :text "John McLane"}
+                               {:type "text", :text "\n\nDescription:\n", :style {:bold true}}]}]}
+                           {:type "section", :text {:type "mrkdwn", :text "Test description"}}
+                           {:type "rich_text",
+                            :elements
+                            [{:type "rich_text_section",
+                              :elements
+                              [{:type "text", :text "\n\nURL:\n", :style {:bold true}}
+                               {:type "link", :text "https://test.com", :url "https://test.com"}
+                               {:type "text", :text "\n\nVersion info:\n", :style {:bold true}}]}
+                             {:type "rich_text_preformatted",
+                              :border 0,
+                              :elements
+                              [{:type "text",
+                                :text "{\n  \"date\" : \"2025-01-10\",\n  \"tag\" : \"vUNKNOWN\",\n  \"hash\" : \"68b5038\"\n}"}]}]}
                            {:type "divider"}
-                           {:type "actions"
-                            :elements [{:type "button"
-                                        :text {:type "plain_text"
-                                               :text "Jump to debugger"
-                                               :emoji true}
-                                        :url "https://metabase-debugger.vercel.app/?fileId=F123ABC"
-                                        :style "primary"}
-                                       {:type "button"
-                                        :text {:type "plain_text"
-                                               :text "Download the report"
-                                               :emoji true}
-                                        :url "https://files.slack.com/files-pri/123/diagnostic.json"}]}]]
+                           {:type "actions",
+                            :elements
+                            [{:type "button",
+                              :text {:type "plain_text", :text "Jump to debugger", :emoji true},
+                              :url "https://metabase-debugger.vercel.app/?fileId=F123ABC",
+                              :style "primary"}
+                             {:type "button",
+                              :text {:type "plain_text", :text "Download the report", :emoji true},
+                              :url "https://files.slack.com/files-pri/123/diagnostic.json"}]}]]
 
       (testing "should post bug report to Slack with correct blocks"
         (with-redefs [slack/upload-file! (constantly mock-file-info)
@@ -160,13 +153,9 @@
           (mt/with-temporary-setting-values [slack-files-channel "test-files"
                                              slack-bug-report-channel "test-bugs"]
             (let [anonymous-info (dissoc diagnostic-info :reporter)
-                  anonymous-blocks (update-in expected-blocks [0 :elements 0 :elements]
-                                              (fn [elements]
-                                                (map #(cond
-                                                        (and (= (:type %) "link")
-                                                             (str/starts-with? (:url %) "mailto:"))
-                                                        {:type "text" :text "anonymous user"}
-
-                                                        :else %)
-                                                     elements)))]
+                  anonymous-blocks (walk/postwalk
+                                    (fn [m] (if (and (map? m) (= (:type m) "link") (str/starts-with? (:url m) "mailto:"))
+                                              {:type "text" :text "anonymous user"}
+                                              m))
+                                    expected-blocks)]
               (is (= anonymous-blocks (#'api.slack/create-slack-message-blocks anonymous-info mock-file-info))))))))))

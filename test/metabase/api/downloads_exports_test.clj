@@ -20,8 +20,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter :as formatter]
    [metabase.public-settings :as public-settings]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.core :as pulse]
+   [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -146,7 +145,7 @@
   (let [m    (update
               (mt/with-test-user nil
                 (pulse.test-util/with-captured-channel-send-messages!
-                  (pulse/send-pulse! pulse)))
+                  (pulse.send/send-pulse! pulse)))
               :channel/email vec)
         msgs (get-in m [:channel/email 0 :message])]
     (first (keep

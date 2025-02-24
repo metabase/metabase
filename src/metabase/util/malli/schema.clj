@@ -75,28 +75,42 @@
 
 (def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
-  (mu/with-api-error-message
-   [:int {:min 0}]
-    ;; FIXME: greater than _or equal to_ zero.
-   (deferred-tru "value must be an integer greater than zero.")))
+  (let [message (deferred-tru "value must be an integer greater or equal to than zero.")]
+    [:int
+     {:min         0
+      :description (str message)
+      :error/fn    (fn [_ _]
+                     (str message))
+      :api/regex   #"\d+"}]))
 
 (def Int
   "Schema representing an integer."
-  (mu/with-api-error-message
-   int?
-   (deferred-tru "value must be an integer.")))
+  (let [message (deferred-tru "value must be an integer.")]
+    [:int
+     {:description (str message)
+      :error/fn    (fn [_ _]
+                     (str message))
+      :api/regex   #"-?\d+"}]))
 
 (def PositiveInt
   "Schema representing an integer than must also be greater than zero."
-  (mu/with-api-error-message
-   pos-int?
-   (deferred-tru "value must be an integer greater than zero.")))
+  (let [message (deferred-tru "value must be an integer greater than zero.")]
+    [:int
+     {:min         1
+      :description (str message)
+      :error/fn    (fn [_ _]
+                     (str message))
+      :api/regex   #"[1-9]\d*"}]))
 
 (def NegativeInt
   "Schema representing an integer than must be less than zero."
-  (mu/with-api-error-message
-   neg?
-   (deferred-tru "value must be a negative integer")))
+  (let [message (deferred-tru "value must be a negative integer")]
+    [:int
+     {:max         -1
+      :description (str message)
+      :error/fn    (fn [_ _]
+                     (str message))
+      :api/regex   #"-[1-9]\d*"}]))
 
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."

@@ -26,12 +26,12 @@
           not-empty))
 
 (defn validate-email-domains
-  "Check that `email-addresses` associated with a [[metabase.models.pulse-channel]] are allowed based on the value of
-  the [[subscription-allowed-domains]] Setting, if set. This function no-ops if `subscription-allowed-domains` is
+  "Check that `email-addresses` associated with a [[metabase.pulse.models.pulse-channel]] are allowed based on the value
+  of the [[subscription-allowed-domains]] Setting, if set. This function no-ops if `subscription-allowed-domains` is
   unset or if we do not have a premium token with the `:email-allow-list` feature.
 
-  This function is called by [[metabase.models.pulse-channel/validate-email-domains]] when Pulses are created and
-  updated."
+  This function is called by [[metabase.pulse.models.pulse-channel/validate-email-domains]] when Pulses are created
+  and updated."
   [email-addresses]
   (when (premium-features/enable-email-allow-list?)
     (when-let [allowed-domains (allowed-domains-set)]

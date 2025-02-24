@@ -1,5 +1,8 @@
 import * as d3 from "d3";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
 import Humanize from "humanize-plus";
+dayjs.extend(duration);
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
@@ -80,6 +83,8 @@ export function formatNumber(
     return formatNumberCompact(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
+  } else if (options.number_style === "duration") {
+    return formatDuration(number, options);
   } else {
     try {
       let nf;
@@ -282,6 +287,29 @@ function formatNumberScientific(
   } else {
     return exp;
   }
+}
+
+function formatDuration(value: number, _options: FormatNumberOptionsType) {
+  const duration = dayjs.duration(value);
+  let str = "";
+
+  if (duration.days() > 0) {
+    str += `${duration.days()}d `;
+  }
+
+  if (duration.hours() > 0) {
+    str += `${duration.hours()}h `;
+  }
+
+  if (duration.minutes() > 0) {
+    str += `${duration.minutes()}m `;
+  }
+
+  if (duration.seconds() > 0) {
+    str += `${duration.seconds()}s `;
+  }
+
+  return str.trim();
 }
 
 /**

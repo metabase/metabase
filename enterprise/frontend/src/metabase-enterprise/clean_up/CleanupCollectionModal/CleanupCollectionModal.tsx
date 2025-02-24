@@ -146,7 +146,7 @@ const _CleanupCollectionModal = ({
     >
       <Modal.Overlay />
       <Modal.Content
-        className={CS.modalContent}
+        classNames={{ content: CS.modalContent }}
         mih={isLoading ? `min(25rem, ${getModalHeightCalc("0px")})` : undefined}
       >
         <Modal.Header

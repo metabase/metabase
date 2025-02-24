@@ -23,9 +23,10 @@
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.pulse.core :as pulse]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.upload :as upload]
@@ -1254,7 +1255,7 @@
   users just as if they had be archived individually via the card API."
   [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (when-let [alerts (not-empty (models.pulse/retrieve-alerts-for-cards
+    (when-let [alerts (not-empty (pulse/retrieve-alerts-for-cards
                                   {:card-ids (t2/select-pks-set :model/Card :collection_id (u/the-id collection-before-update))}))]
       (t2/delete! :model/Pulse :id [:in (mapv u/the-id alerts)])
       (events/publish-event! :event/card-update.alerts-deleted.card-archived {:alerts alerts, :actor actor}))))

@@ -331,6 +331,19 @@
 ;;;    | "Aggregated" Cell   | ✔      | ✔     | ✔   | ✔          |
 ;;;    | Pivot Cell          |        | ✔     | ✔   | ✔          |
 ;;;    | Legend Item         |        |       |     | ✔          |
+;;;
+;;; Testing shows that the above table is still mostly correct, with the exception of Pivot Cell clicks, which instead
+;;; have the following shapes, where `Pivot "Dim" Cell` means one of the Row/Column cells of the pivoted table,
+;;; corresponding to the breakout dimensions of the query, and `Pivot "Agg" Cell` means one of the
+;;; aggregated "measure" cells of the pivoted table.
+;;;
+;;; TODO: are these differences a bug in the pivot table implementation, or is the above table just out of date?
+;;;
+;;;
+;;;    | Drill Context Shape | column | value | row | dimensions |
+;;;    |---------------------|--------|-------|-----|------------|
+;;;    | Pivot "Dim" Cell    | ✔      | ✔     | ✔   |            |
+;;;    | Pivot "Agg" Cell    |        |       | ✔   | ✔          |
 
 (mr/def ::context.row.value
   [:map

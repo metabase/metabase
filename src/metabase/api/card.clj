@@ -10,7 +10,6 @@
    [metabase.api.field :as api.field]
    [metabase.api.macros :as api.macros]
    [metabase.api.query-metadata :as api.query-metadata]
-   [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -24,16 +23,13 @@
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
-   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
-   [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -469,7 +465,8 @@
                             [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
                             [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
                             [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]]]
+                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+                            [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
   (card/check-run-permissions-for-query query)
@@ -532,7 +529,8 @@
    [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:collection_preview     {:optional true} [:maybe :boolean]]
-   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
 
 (mu/defn update-card!
   "Updates a card - impl"
@@ -832,55 +830,6 @@
                                   :parameters   parameters
                                   :qp           qp.pivot/run-pivot-query
                                   :ignore-cache ignore_cache))
-
-(api.macros/defendpoint :post "/:card-id/persist"
-  "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
-  query in place of the model's query."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
-  (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
-  (api/let-404 [{:keys [database_id] :as card} (t2/select-one :model/Card :id card-id)]
-    (let [database (t2/select-one :model/Database :id database_id)]
-      (api/write-check database)
-      (when-not (driver.u/supports? (:engine database) :persist-models database)
-        (throw (ex-info (tru "Database does not support persisting")
-                        {:status-code 400
-                         :database    (:name database)})))
-      (when-not (driver.u/supports? (:engine database) :persist-models-enabled database)
-        (throw (ex-info (tru "Persisting models not enabled for database")
-                        {:status-code 400
-                         :database    (:name database)})))
-      (when-not (card/model? card)
-        (throw (ex-info (tru "Card is not a model") {:status-code 400})))
-      (when-let [persisted-info (persisted-info/turn-on-model! api/*current-user-id* card)]
-        (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
-      api/generic-204-no-content)))
-
-(api.macros/defendpoint :post "/:card-id/refresh"
-  "Refresh the persisted model caching `card-id`."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
-  (api/let-404 [card           (t2/select-one :model/Card :id card-id)
-                persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
-    (when (not (card/model? card))
-      (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
-    (when (:archived card)
-      (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
-    (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
-    (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
-    api/generic-204-no-content))
-
-(api.macros/defendpoint :post "/:card-id/unpersist"
-  "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
-  query rather than the saved version of the query."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
-  (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
-  (api/let-404 [_card (t2/select-one :model/Card :id card-id)]
-    (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
-      (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
-      (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off"))
-    api/generic-204-no-content))
 
 (defn mapping->field-values
   "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have

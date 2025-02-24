@@ -629,7 +629,7 @@
                                 options        {:unique-name-fn               unique-name-fn
                                                 :include-implicitly-joinable? false}]
                             (for [field (visible-columns-method query stage-number table-metadata options)
-                                  :let  [ident (lib.metadata.ident/implicitly-joined-ident fk-ident (:ident field))
+                                  :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)
                                          field (assoc field
                                                       :ident                    ident
                                                       :fk-field-id              source-field-id

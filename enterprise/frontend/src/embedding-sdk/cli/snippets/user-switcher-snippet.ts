@@ -6,6 +6,7 @@ export const getUserSwitcherSnippet = () => {
     firstName: user.firstName,
   }));
 
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- cli snippets
   return `
 import {useContext} from 'react'
 
@@ -13,6 +14,9 @@ import {AnalyticsContext} from './analytics-provider'
 
 const USERS = ${JSON.stringify(users, null, 2)}
 
+// Demo component to switch between fake users.
+// In a real app, this would be managed by your auth provider.
+// See https://www.metabase.com/docs/latest/embedding/sdk/authentication
 export const UserSwitcher = () => {
   const {email, switchUser} = useContext(AnalyticsContext)
 

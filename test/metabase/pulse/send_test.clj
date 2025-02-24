@@ -11,14 +11,12 @@
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
    [metabase.integrations.slack :as slack]
-   [metabase.models.pulse :as models.pulse]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.core :as pulse]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
@@ -28,6 +26,12 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each
+  (fn warn-possible-rebuild
+    [thunk]
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n\n"
+      (thunk))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Util Fns & Macros                                                |
@@ -131,7 +135,7 @@
                          ((keyword "channel" (name channel-type))
                           (pulse.test-util/with-captured-channel-send-messages!
                             (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
-                              (pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
+                              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
                     (thunk []
                       (if fixture
                         (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
@@ -885,41 +889,6 @@
                                                           [:message :string]
                                                           [:timestamp :string]]])}}
                     (latest-task-history-entry :channel-send)))))))))
-
-(deftest alerts-do-not-remove-user-metadata
-  (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."
-    (mt/dataset test-data
-      (let [q               {:database (mt/id)
-                             :type     :query
-                             :query
-                             {:source-table (mt/id :reviews)
-                              :aggregation  [[:count]]}}
-            result-metadata [{:base_type         :type/Integer
-                              :name              "count"
-                              :display_name      "ASDF Count"
-                              :description       "ASDF Some description"
-                              :semantic_type     :type/Quantity
-                              :source            :aggregation
-                              :field_ref         [:aggregation 0]
-                              :aggregation_index 0}]]
-        (mt/with-temp [:model/Card {card-id :id} {:display         :table
-                                                  :dataset_query   q
-                                                  :type            :model
-                                                  :result_metadata result-metadata}
-                       :model/Pulse {pulse-id :id :as p} {:name "Test Pulse" :alert_condition "rows"}
-                       :model/PulseCard _ {:pulse_id pulse-id
-                                           :card_id  card-id}
-                       :model/PulseChannel _ {:channel_type :email
-                                              :pulse_id     pulse-id
-                                              :enabled      true}]
-          (pulse.send/send-pulse! p)
-          (testing "The custom columns defined in the result-metadata (:display_name and :description) are still present after the alert has run."
-            (is (= (-> result-metadata
-                       first
-                       (select-keys [:display_name :description]))
-                   (t2/select-one-fn
-                    (comp #(select-keys % [:display_name :description]) first :result_metadata)
-                    :model/Card :id card-id)))))))))
 
 (deftest partial-channel-failure-will-deliver-all-that-success-test
   (testing "if a pulse is set to send to multiple channels and one of them fail, the other channels should still receive the message"

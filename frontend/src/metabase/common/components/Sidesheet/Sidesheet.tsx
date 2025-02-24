@@ -55,7 +55,9 @@ export function Sidesheet({
         w={sizes[size]}
         bg="bg-light"
         data-testid="sidesheet"
-        className={cx(Styles.SidesheetContent, Animation.slideLeft)}
+        classNames={{
+          content: cx(Styles.SidesheetContent, Animation.slideLeft),
+        }}
         aria-labelledby={titleId}
       >
         <Modal.Header bg="bg-light" px="xl">

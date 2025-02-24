@@ -252,12 +252,12 @@
 (defn prewalk
   "Like `clojure.walk/prewalk`, but uses a more efficient `metabase.util.performance/walk` underneath."
   [f form]
-  (walk (partial prewalk f) identity (f form)))
+  (walk (fn prewalker [form] (walk prewalker identity (f form))) identity (f form)))
 
 (defn postwalk
   "Like `clojure.walk/postwalk`, but uses a more efficient `metabase.util.performance/walk` underneath."
   [f form]
-  (walk (partial postwalk f) f form))
+  (walk (fn postwalker [form] (walk postwalker f form)) f form))
 
 (defn keywordize-keys
   "Like `clojure.walk/keywordize-keys`, but uses a more efficient `metabase.util.performance/walk` underneath and

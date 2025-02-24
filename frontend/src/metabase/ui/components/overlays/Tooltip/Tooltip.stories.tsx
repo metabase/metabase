@@ -37,7 +37,7 @@ const DefaultTemplate = (args: TooltipProps) => (
 );
 
 export default {
-  title: "Overlays/Tooltip",
+  title: "Components/Overlays/Tooltip",
   component: Tooltip,
   args,
   argTypes,

@@ -40,7 +40,10 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
+  ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
+  ;; cause duplication rather than good matching if the two instances are later linked by serdes.
+  #_(derive :hook/entity-id))
 
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
@@ -122,7 +125,7 @@
 
 (defmethod serdes/hash-fields :model/Table
   [_table]
-  [:schema :name (serdes/hydrated-hash :db)])
+  [:schema :name (serdes/hydrated-hash :db :db_id)])
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 

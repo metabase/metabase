@@ -3,12 +3,15 @@
    [clojure.test :refer :all]
    [metabase-enterprise.enhancements.integrations.ldap :as ldap-ee]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.integrations.ldap :as ldap]
    [metabase.public-settings :as public-settings]
+   [metabase.sso.ldap :as ldap]
+   [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
-   [metabase.test.integrations.ldap :as ldap.test]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest find-test
   (mt/with-premium-features #{:sso-ldap}

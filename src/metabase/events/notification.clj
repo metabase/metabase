@@ -51,8 +51,8 @@
   "Hydrate event-info if the topic has a schema."
   [topic event-info]
   (cond->> event-info
-    (some? (events/topic->schema topic))
-    (hydrate! (events/topic->schema topic))))
+    (some? (events/event-schema topic))
+    (hydrate! (events/event-schema topic))))
 
 (defn- notifications-for-topic
   "Returns notifications for a given topic if it is supported and has notifications."

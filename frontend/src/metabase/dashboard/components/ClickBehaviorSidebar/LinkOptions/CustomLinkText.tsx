@@ -9,7 +9,7 @@ import type {
   ClickBehavior,
 } from "metabase-types/api";
 
-import { Label } from "./CustomLinkText.styled";
+import S from "./CustomLinkText.module.css";
 
 interface Props {
   clickBehavior: ArbitraryCustomDestinationClickBehavior;
@@ -29,7 +29,10 @@ export const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
 
   return (
     <div className={cx(CS.mt2, CS.mb1)}>
-      <Label htmlFor="link-text-template">{t`Customize link text (optional)`}</Label>
+      <label
+        className={S.Label}
+        htmlFor="link-text-template"
+      >{t`Customize link text (optional)`}</label>
       <InputBlurChange
         id="link-text-template"
         className={cx(CS.block, CS.full)}

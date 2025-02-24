@@ -5,7 +5,7 @@
    [java-time.api :as t]
    [metabase-enterprise.cache.config :as cache.config]
    [metabase.events :as events]
-   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

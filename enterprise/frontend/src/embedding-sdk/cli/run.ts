@@ -30,7 +30,6 @@ export const CLI_STEPS: CliStepConfig[] = [
   { id: "checkIfReactProject", executeStep: checkIfReactProject },
   { id: "checkSdkAvailable", executeStep: checkSdkAvailable },
   { id: "checkIsDockerRunning", executeStep: checkIsDockerRunning },
-  { id: "askIfHasDatabase", executeStep: askIfHasDatabase },
   { id: "generateCredentials", executeStep: generateCredentials },
   {
     id: "startLocalMetabaseContainer",
@@ -40,6 +39,7 @@ export const CLI_STEPS: CliStepConfig[] = [
   { id: "pollMetabaseInstance", executeStep: pollMetabaseInstance },
   { id: "setupMetabaseInstance", executeStep: setupMetabaseInstance },
   { id: "createApiKey", executeStep: createApiKey },
+  { id: "askIfHasDatabase", executeStep: askIfHasDatabase },
   { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
   { id: "pickDatabaseTables", executeStep: pickDatabaseTables },
   { id: "createModelsAndXrays", executeStep: createModelsAndXrays },

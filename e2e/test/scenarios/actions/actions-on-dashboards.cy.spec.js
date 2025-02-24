@@ -50,6 +50,29 @@ const MODEL_NAME = "Test Action Model";
           H.expectNoBadSnowplowEvents();
         });
 
+        it("action creation modal can be closed on click outside (WRK-67)", () => {
+          cy.get("@modelId").then(id => {
+            cy.visit(`/model/${id}/detail`);
+            cy.wait(["@getModel", "@getModelActions"]);
+          });
+
+          const newActionBtn = cy
+            .findByTestId("model-actions-header")
+            .findByText("New action");
+
+          // click outside
+          newActionBtn.click();
+          cy.findByTestId("action-creator").should("be.visible");
+          cy.get("body").click("topLeft");
+          cy.findByTestId("action-creator").should("not.exist");
+
+          // ESC button
+          newActionBtn.click();
+          cy.findByTestId("action-creator").should("be.visible");
+          cy.get("body").type("{esc}");
+          cy.findByTestId("action-creator").should("not.exist");
+        });
+
         it("adds a custom query action to a dashboard and runs it", () => {
           const ACTION_NAME = "Update Score";
 

@@ -33,7 +33,7 @@ export const PublicEmbedCard = ({
     <Group gap="xs">
       <Text>
         {jt`Use ${(
-          <Text span fw="bold" key="bold">
+          <Text component="span" fw="bold" key="bold">
             {t`public embedding`}
           </Text>
         )} to add a publicly-visible iframe embed to your web page or blog

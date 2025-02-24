@@ -9,7 +9,7 @@
     <Logger name="liquibase" level="FATAL"/>
     <Logger name="metabase" level="FATAL"/>
     <Logger name="metabase-enterprise" level="FATAL"/>
-    <Logger name="metabase.lib.test-util.random" level="INFO"/>
+    <Logger name="metabase.test.gentest" level="INFO"/>
     <Logger name="metabase.query-analysis" level="DEBUG"/>
     <Logger name="metabase.sync.fetch-metadata" level="ERROR"/>
     <Logger name="metabase.task.analyze-queries" level="DEBUG" />

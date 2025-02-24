@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.models.persisted-info :as persisted-info]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]

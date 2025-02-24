@@ -62,7 +62,7 @@ const DefaultTemplate = ({
 );
 
 export default {
-  title: "Overlays/HoverCard",
+  title: "Components/Overlays/HoverCard",
   component: HoverCard,
   args,
   argTypes,

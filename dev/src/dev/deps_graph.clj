@@ -112,31 +112,37 @@
                  required-symbol (conj required-symbol)))
              (z/right zloc)))))
 
-(comment
-  (find-required-namespaces (z/of-string "(require 'malli.generator)"))
-  (find-required-namespaces (z/of-string "(require (quote malli.generator))"))
-  (find-required-namespaces (z/of-string "(classloader/require 'a 'b)"))
-  (find-required-namespaces (z/of-string "(requiring-resolve 'a/b 'c/d)"))
-  (find-required-namespaces (z/of-string "(require '[malli.generator :as mg])"))
-  (find-required-namespaces (z/of-string "(require '[malli.generator])")))
+(mu/defn- comment-loc?
+  [zloc :- ::zloc]
+  (or (and (= (z/tag zloc) :list)
+           (let [child-loc (z/down zloc)]
+             (and (= (z/tag child-loc) :token)
+                  (= (z/sexpr child-loc) 'comment))))
+      (= (z/tag zloc) :uneval)))
 
-(mu/defn- find-requires :- [:sequential ::zloc]
+(mu/defn- find-requires :- [:maybe [:sequential ::zloc]]
   [zloc :- ::zloc]
   (concat
-   (if (require-loc? zloc)
-     [zloc]
-     (when-let [down (z/down zloc)]
-       (find-requires down)))
+   (when-not (comment-loc? zloc)
+     (if (require-loc? zloc)
+       [zloc]
+       (when-let [down (z/down zloc)]
+         (find-requires down))))
    (when-let [right (z/right zloc)]
      (find-requires right))))
 
 (mu/defn- find-dynamically-loaded-namespaces :- [:set simple-symbol?]
   "Find the set of namespace symbols for namespaces loaded by `require` and friends in a `file`."
   [file]
-  (let [node     (r.parser/parse-file-all file)
-        zloc     (z/of-node node)
-        requires (find-requires zloc)]
-    (into #{} (mapcat find-required-namespaces) requires)))
+  (try
+    (let [node     (r.parser/parse-file-all file)
+          zloc     (z/of-node node)
+          requires (find-requires zloc)]
+      (into #{} (mapcat find-required-namespaces) requires))
+    (catch Throwable e
+      (throw (ex-info (format "Error in file %s: %s" (str file) (ex-message e))
+                      {:file file}
+                      e)))))
 
 (comment
   ;; uses require
@@ -146,7 +152,14 @@
   ;; uses requiring-resolve, has more than one.
   (find-dynamically-loaded-namespaces "src/metabase/api/user.clj")
   ;; has require inside of a `comment` form, should ignore it.
-  (find-dynamically-loaded-namespaces "src/metabase/xrays/automagic_dashboards/schema.clj"))
+  (find-dynamically-loaded-namespaces "src/metabase/xrays/automagic_dashboards/schema.clj")
+  (find-dynamically-loaded-namespaces "src/metabase/api/open_api.clj"))
+
+(def ^:private ignored-dependencies
+  "Technically `config` 'uses' `enterprise/core` and `test` since it tries to load them to see if they exist so we know
+  if EE/test code is available; however we can ignore them since they're not 'real' usages. So add them here so we
+  don't include them in our deps tree."
+  '{metabase.config #{metabase-enterprise.core metabase.test.core}})
 
 (mu/defn- file-dependencies :- [:map
                                 [:namespace simple-symbol?]
@@ -166,13 +179,14 @@
           deps         (into (sorted-set) cat [static-deps dynamic-deps])]
       {:namespace ns-symb
        :module    (module ns-symb)
-       :deps      (keep (fn [symb]
-                          (when-let [module (module symb)]
-                            (merge
-                             {:namespace symb
-                              :module    module}
-                             (when (::dynamic (meta symb))
-                               {:dynamic true}))))
+       :deps      (keep (fn [required-ns]
+                          (when-let [module (module required-ns)]
+                            (when-not (some-> ignored-dependencies ns-symb required-ns)
+                              (merge
+                               {:namespace required-ns
+                                :module    module}
+                               (when (::dynamic (meta required-ns))
+                                 {:dynamic true})))))
                         deps)})
     (catch Throwable e
       (throw (ex-info (format "Error calculating dependencies for %s" file)
@@ -180,7 +194,9 @@
                       e)))))
 
 (comment
-  (file-dependencies "src/metabase/db/setup.clj"))
+  (file-dependencies "src/metabase/db/setup.clj")
+  ;; should ignore the entries from [[ignored-dependencies]]
+  (file-dependencies "src/metabase/config.clj"))
 
 (def ^{:arglists '([])} dependencies
   (memoize/ttl
@@ -292,6 +308,12 @@
           (map (fn [[k v]]
                  [k (expand-deps v)]))
           deps-graph)))
+
+(defn module-deps-count []
+  (into (sorted-map)
+        (map (fn [[k v]]
+               [k (count v)]))
+        (full-dependencies)))
 
 (defn module-dependencies-mermaid []
   (doseq [[module deps] (module-dependencies)

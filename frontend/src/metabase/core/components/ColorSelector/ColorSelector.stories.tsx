@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 import { ColorSelector, type ColorSelectorProps } from "./ColorSelector";
 
 export default {
-  title: "Core/ColorSelector",
+  title: "Components/Ask Before Using/ColorSelector",
   component: ColorSelector,
 };
 

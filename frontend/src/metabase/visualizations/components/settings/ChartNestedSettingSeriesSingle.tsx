@@ -41,6 +41,7 @@ const ChartNestedSettingsSeriesSingle = ({
     >
       <div className={cx(CS.flex, CS.alignCenter, CS.borderBottom, CS.pb2)}>
         <ColorSelector
+          withinPortal={false}
           value={computedSettings.color}
           colors={getAccentColors()}
           onChange={value => onChangeObjectSettings(object, { color: value })}

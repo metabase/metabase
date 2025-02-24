@@ -2,7 +2,7 @@ name: Re-run Flaky Workflows
 
 on:
   workflow_run:
-    workflows: [run-tests]
+    workflows: [Run tests]
     types: [completed]
     branches: [master, 'release-x.**', 'backport-**']
 

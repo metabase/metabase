@@ -104,9 +104,7 @@ export const CollectionMenu = ({
         leftSection={<Icon name="add_to_dash" />}
         component={ForwardRefLink}
         to={`${url}/move-questions-dashboard`}
-        rightSection={
-          !hasSeenMoveToDashboard && <Badge variant="light">New</Badge>
-        }
+        rightSection={!hasSeenMoveToDashboard && <Badge>New</Badge>}
         onClick={() => !hasSeenMoveToDashboard && ackHasMoveToDashboard()}
       >{t`Move questions into their dashboards`}</Menu.Item>,
     );

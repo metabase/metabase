@@ -87,9 +87,10 @@
    x))
 
 (mu/defn- sort-parameter-values
-  "Return the sequence of parameter maps, but with any :value keys sorted if they are a sequence"
+  "Return the sequence of parameter maps, but with any :value keys sorted if they are a sequence. Parameter values can
+  be of mixed types, as bigintegers are passed as strings to avoid precision loss."
   [params :- [:or :nil [:sequential :any]]]
-  (map #(if (sequential? (:value %)) (update % :value sort) %) params))
+  (map #(if (sequential? (:value %)) (update % :value (partial sort-by str)) %) params))
 
 (mu/defn- select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
