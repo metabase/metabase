@@ -1,19 +1,13 @@
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type { Node } from "metabase-lib/v1/expressions/pratt";
-import {
-  ResolverError,
-  compile,
-  lexify,
-  parse,
-} from "metabase-lib/v1/expressions/pratt";
+import { compile, lexify, parse } from "metabase-lib/v1/expressions/pratt";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 
 import { MBQL_CLAUSES, getMBQLName } from "./config";
-import { parseDimension, parseMetric, parseSegment } from "./identifier";
+import { fieldResolver } from "./field-resolver";
 import {
   adjustCaseOrIf,
   adjustMultiArgOptions,
@@ -140,47 +134,11 @@ function prattCompiler({
     return { error: errors[0] };
   }
 
-  function resolveMBQLField(kind: string, name: string, node: Node) {
-    // @uladzimirdev double check why is this needed
-    if (!query) {
-      return [kind, name];
-    }
-    if (kind === "metric") {
-      const metric = parseMetric(name, options);
-      if (!metric) {
-        const dimension = parseDimension(name, options);
-        const isNameKnown = Boolean(dimension);
-
-        if (isNameKnown) {
-          const error = c(
-            "{0} is an identifier of the field provided by user in a custom expression",
-          )
-            .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`;
-
-          throw new ResolverError(error, node);
-        }
-
-        throw new ResolverError(t`Unknown Metric: ${name}`, node);
-      }
-
-      return Lib.legacyRef(query, stageIndex, metric);
-    } else if (kind === "segment") {
-      const segment = parseSegment(name, options);
-      if (!segment) {
-        throw new ResolverError(t`Unknown Segment: ${name}`, node);
-      }
-
-      return Lib.legacyRef(query, stageIndex, segment);
-    } else {
-      // fallback
-      const dimension = parseDimension(name, options);
-      if (!dimension) {
-        throw new ResolverError(t`Unknown Field: ${name}`, node);
-      }
-
-      return Lib.legacyRef(query, stageIndex, dimension);
-    }
-  }
+  const resolveMBQLField = fieldResolver({
+    query,
+    stageIndex,
+    startRule,
+  });
 
   try {
     // COMPILE
