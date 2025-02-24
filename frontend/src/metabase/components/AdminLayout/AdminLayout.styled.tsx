@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { breakpointMaxSmall } from "metabase/styled-components/theme";

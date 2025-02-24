@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import type { Theme } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import Label from "metabase/components/type/Label";

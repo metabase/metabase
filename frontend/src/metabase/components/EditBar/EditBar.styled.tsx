@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";

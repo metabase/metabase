@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { GAP_REM } from "metabase/collections/components/PinnedItemOverview/PinnedItemOverview.styled";

@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";

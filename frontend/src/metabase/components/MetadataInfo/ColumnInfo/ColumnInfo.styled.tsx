@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { InfoContainer as _InfoContainer } from "metabase/components/MetadataInfo/MetadataInfo.styled";

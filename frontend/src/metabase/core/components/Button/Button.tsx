@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import cx from "classnames";
 import type { ButtonHTMLAttributes, ElementType, ReactNode, Ref } from "react";

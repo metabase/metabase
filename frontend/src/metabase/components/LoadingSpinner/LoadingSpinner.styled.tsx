@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { keyframes } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 const spinnerAnimation = keyframes`

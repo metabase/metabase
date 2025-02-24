@@ -1,4 +1,5 @@
 import createCache from "@emotion/cache";
+// eslint-disable-next-line no-restricted-imports
 import { CacheProvider } from "@emotion/react";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
