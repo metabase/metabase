@@ -6,9 +6,9 @@ import {
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
-  parse as oldParser,
   useShorthands,
-} from "../recursive-parser";
+} from "../passes";
+import { parse as oldParser } from "../recursive-parser";
 import { resolve } from "../resolver";
 import { generateExpression } from "../test/generator";
 
