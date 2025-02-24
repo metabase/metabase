@@ -179,12 +179,11 @@ function useExpression<S extends StartRule = "expression">({
         startRule,
         query,
         stageIndex,
-        expressionIndex,
         metadata,
       });
       onChange(clause, error);
     },
-    [query, stageIndex, startRule, metadata, expressionIndex, onChange],
+    [query, stageIndex, startRule, metadata, onChange],
   );
 
   useMount(() => {

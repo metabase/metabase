@@ -64,13 +64,11 @@ export function diagnoseAndCompileExpression<
     startRule,
     query,
     stageIndex,
-    expressionIndex,
     metadata,
   }: {
     startRule: S;
     query: Lib.Query;
     stageIndex: number;
-    expressionIndex?: number;
     metadata: Metadata;
   },
 ) {
@@ -86,7 +84,6 @@ export function diagnoseAndCompileExpression<
     startRule,
     query,
     stageIndex,
-    expressionIndex,
     metadata,
   });
 
