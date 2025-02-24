@@ -12,7 +12,6 @@ import type { StartRule } from "./types";
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {
     setup();
-
     expect(screen.getByText("Expression")).toBeInTheDocument();
     expect(screen.getByText("Cancel")).toBeInTheDocument();
     expect(screen.getByText("Done")).toBeInTheDocument();
@@ -43,7 +42,7 @@ describe("ExpressionWidget", () => {
     await userEvent.hover(link);
 
     expect(
-      screen.getByText(
+      await screen.findByText(
         "You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.",
       ),
     ).toBeInTheDocument();

@@ -70,6 +70,7 @@ describe("scenarios > custom column > boolean functions", () => {
       H.enterCustomColumnDetails({
         formula: newExpression,
         name: expressionName,
+        allowFastSet: true,
       });
       H.popover().button("Done").click();
       H.visualize();
@@ -85,6 +86,7 @@ describe("scenarios > custom column > boolean functions", () => {
       H.enterCustomColumnDetails({
         formula: modifiedExpression,
         name: expressionName,
+        allowFastSet: true,
       });
       H.popover().button("Update").click();
       H.visualize();

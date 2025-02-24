@@ -36,8 +36,8 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
 
       cy.button("Done").click();
 
-      cy.findByTestId("expression-editor-textfield").should(
-        "contain",
+      H.CustomExpressionEditor.value().should(
+        "equal",
         'concat([Total], "__", [Product → Rating])',
       );
       cy.findByTestId("expression-name").should(
@@ -60,7 +60,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
       cy.findByText("Select columns to combine").click();
     });
 
-    cy.get(".ace_text-input").should("have.value", "\n\n");
+    H.CustomExpressionEditor.value().should("equal", "");
     cy.findByTestId("expression-name").should("have.value", "");
   });
 
@@ -159,9 +159,14 @@ H.describeWithSnowplow(
 );
 
 function selectCombineColumns() {
-  cy.findByTestId("expression-suggestions-list").within(() => {
-    cy.findByText("Combine columns").click();
-  });
+  H.CustomExpressionEditor.completions().should("be.visible");
+
+  // Avoid flakiness from CodeMirror not picking up on the click
+  cy.wait(300);
+
+  H.CustomExpressionEditor.completion("Combine columns")
+    .should("be.visible")
+    .click();
 }
 
 function selectColumn(index: number, table: string, name?: string) {
