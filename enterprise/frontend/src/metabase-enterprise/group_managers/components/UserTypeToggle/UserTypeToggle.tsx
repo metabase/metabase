@@ -1,7 +1,7 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
-import { FloatingPosition, Icon, Tooltip } from "metabase/ui";
+import { type FloatingPosition, Icon, Tooltip } from "metabase/ui";
 
 import { UserTypeToggleRoot } from "./UserTypeToggle.styled";
 
