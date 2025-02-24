@@ -132,7 +132,7 @@ function getVisualizerRawSeries(datasets, dashcardSettings) {
   ];
 }
 
-export function RenderChart(rawSeries, dashcardSettings, dashcard, options) {
+export function RenderChart(rawSeries, dashcardSettings, options) {
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,
   );
