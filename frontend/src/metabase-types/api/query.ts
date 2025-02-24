@@ -395,8 +395,8 @@ export type OffsetExpression = [
   NumericLiteral,
 ];
 
-type ExpressionOperator = string;
-type ExpressionOperand = Expression | CallOptions;
+export type ExpressionOperator = string;
+export type ExpressionOperand = Expression | CallOptions;
 
 type FieldsClause = ConcreteFieldReference[];
 
