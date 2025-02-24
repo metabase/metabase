@@ -51,75 +51,54 @@ export function diagnose({
     return errors[0];
   }
 
-  let error = checkOpenParenthesisAfterFunction(source, tokens);
-  if (error) {
-    return error;
+  {
+    const error = checkOpenParenthesisAfterFunction(source, tokens);
+    if (error) {
+      return error;
+    }
   }
 
-  error = checkMatchingParentheses(tokens);
-  if (error) {
-    return error;
+  {
+    const error = checkMatchingParentheses(tokens);
+    if (error) {
+      return error;
+    }
   }
 
   const database = getDatabase(query, metadata);
 
   // make a simple check on expression syntax correctness
-  let mbqlOrError: Expression | ErrorWithMessage;
-  try {
-    mbqlOrError = prattCompiler({
-      source,
-      startRule,
-      name,
-      query,
-      stageIndex,
-      expressionIndex,
-      database,
-    });
+  const res = prattCompiler({
+    source,
+    startRule,
+    name,
+    query,
+    stageIndex,
+    expressionIndex,
+    database,
+  });
 
-    if (isErrorWithMessage(mbqlOrError)) {
-      return mbqlOrError;
-    }
-  } catch (err) {
-    if (isErrorWithMessage(err)) {
-      return err;
-    }
-
-    return { message: t`Invalid expression` };
+  if ("error" in res) {
+    return res.error;
   }
 
-  // now make a proper check
-  const startRuleToExpressionModeMapping: Record<string, Lib.ExpressionMode> = {
-    boolean: "filter",
-  };
-
-  const expressionMode: Lib.ExpressionMode =
-    startRuleToExpressionModeMapping[startRule] ?? startRule;
-
-  try {
-    const possibleError = Lib.diagnoseExpression(
-      query,
-      stageIndex,
-      expressionMode,
-      mbqlOrError,
-      expressionIndex,
-    );
-
-    if (possibleError) {
-      console.warn("diagnostic error", possibleError.message);
-
-      // diagnoseExpression returns some messages which are user-friendly and some which are not.
-      // If the `friendly` flag is true, we can use the possibleError as-is; if not then use a generic message.
-      return possibleError.friendly
-        ? possibleError
-        : { message: t`Invalid expression` };
-    }
-  } catch (error) {
-    console.warn("diagnostic error", error);
-    return { message: t`Invalid expression` };
+  const error = checkCompiledExpression({
+    query,
+    stageIndex,
+    startRule,
+    expression: res.expression,
+    expressionIndex,
+  });
+  if (error) {
+    return error;
   }
 
   return null;
 }
+
+const startRuleToExpressionModeMapping: Record<string, Lib.ExpressionMode> = {
+  boolean: "filter",
+};
 
 function prattCompiler({
   source,
@@ -137,7 +116,13 @@ function prattCompiler({
   stageIndex: number;
   expressionIndex?: number | undefined;
   database?: Database | null;
-}): ErrorWithMessage | Expression {
+}):
+  | {
+      expression: Expression;
+    }
+  | {
+      error: ErrorWithMessage;
+    } {
   const tokens = lexify(source);
   const options = {
     source,
@@ -155,7 +140,7 @@ function prattCompiler({
   });
 
   if (errors.length > 0) {
-    return errors[0];
+    return { error: errors[0] };
   }
 
   function resolveMBQLField(kind: string, name: string, node: Node) {
@@ -200,26 +185,33 @@ function prattCompiler({
     }
   }
 
-  // COMPILE
-  const mbql = compile(root, {
-    passes: [
-      adjustOptions,
-      useShorthands,
-      adjustOffset,
-      adjustCaseOrIf,
-      adjustMultiArgOptions,
-      expression =>
-        resolve({
-          expression,
-          type: startRule,
-          fn: resolveMBQLField,
-          database,
-        }),
-    ],
-    getMBQLName,
-  });
+  try {
+    // COMPILE
+    const mbql = compile(root, {
+      passes: [
+        adjustOptions,
+        useShorthands,
+        adjustOffset,
+        adjustCaseOrIf,
+        adjustMultiArgOptions,
+        expression =>
+          resolve({
+            expression,
+            type: startRule,
+            fn: resolveMBQLField,
+            database,
+          }),
+      ],
+      getMBQLName,
+    });
 
-  return mbql;
+    return { expression: mbql };
+  } catch (error) {
+    if (isErrorWithMessage(error)) {
+      return { error };
+    }
+    return { error: { message: t`Invalid expression` } };
+  }
 }
 
 export function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
@@ -293,4 +285,43 @@ export function countMatchingParentheses(tokens: Token[]) {
   const count = (c: number, token: Token) =>
     isOpen(token) ? c + 1 : isClose(token) ? c - 1 : c;
   return tokens.reduce(count, 0);
+}
+
+function checkCompiledExpression({
+  query,
+  stageIndex,
+  startRule,
+  expression,
+  expressionIndex,
+}: {
+  query: Lib.Query;
+  stageIndex: number;
+  startRule: string;
+  expression: Expression;
+  expressionIndex?: number;
+}): ErrorWithMessage | null {
+  try {
+    const expressionMode: Lib.ExpressionMode =
+      startRuleToExpressionModeMapping[startRule] ?? startRule;
+
+    const error = Lib.diagnoseExpression(
+      query,
+      stageIndex,
+      expressionMode,
+      expression,
+      expressionIndex,
+    );
+
+    if (error) {
+      console.warn("diagnostic error", error.message);
+
+      // diagnoseExpression returns some messages which are user-friendly and some which are not.
+      // If the `friendly` flag is true, we can use the possibleError as-is; if not then use a generic message.
+      return error.friendly ? error : { message: t`Invalid expression` };
+    }
+  } catch (error) {
+    console.warn("diagnostic error", error);
+    return { message: t`Invalid expression` };
+  }
+  return null;
 }
