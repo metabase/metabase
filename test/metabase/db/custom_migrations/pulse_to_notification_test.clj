@@ -1,5 +1,6 @@
 (ns metabase.db.custom-migrations.pulse-to-notification-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.models.notification :as models.notification]
@@ -191,7 +192,12 @@
                                :card_id card-id
                                :entity_id notification-id)
                        expected-views)
-                  (map #(update % :archived bit->boolean)
+                  (map #(-> %
+                            (update :archivedd bit->boolean)
+                            (update :recipients (fn [recipients]
+                                                  (some-> recipients
+                                                          (str/split #",")
+                                                          set))))
                        (t2/query {:select [:*]
                                   :from [:v_alerts]
                                   :where [:= :entity_qualified_id entity-id]
@@ -218,7 +224,7 @@
                           :alert_condition "rows"
                           :schedule_hour 6
                           :recipient_external (json/encode {:value "ngoc@metabase.com"})
-                          :recipients "rasta@metabase.com,crowberto@metabase.com",
+                          :recipients #{"rasta@metabase.com" "crowberto@metabase.com"}
                           :recipient_type "channel/email"}
                          {:archived false
                           :schedule_type "daily"
@@ -245,7 +251,7 @@
                             :schedule_hour 15
                             :schedule_day "wed"
                             :recipient_external nil
-                            :recipients "rasta@metabase.com"
+                            :recipients #{"rasta@metabase.com"}
                             :recipient_type "channel/email"}]}))
 
       (testing "hourly schedule"
@@ -273,5 +279,5 @@
                             :alert_condition "rows"
                             :schedule_hour 23
                             :recipient_external nil
-                            :recipients "rasta@metabase.com"
+                            :recipients #{"rasta@metabase.com"}
                             :recipient_type "channel/email"}]})))))
