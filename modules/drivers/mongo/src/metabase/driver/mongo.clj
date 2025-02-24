@@ -537,8 +537,8 @@
        (cond
          (map? mgo) (encode-map mgo next-indent)
          (vector? mgo) (encode-vector mgo next-indent)
-         (instance? org.bson.types.ObjectId mgo) (encode-object-id mgo)
-         (instance? org.bson.types.Binary mgo) (encode-binary mgo)
+         (instance? ObjectId mgo) (encode-object-id mgo)
+         (instance? Binary mgo) (encode-binary mgo)
          :else (json/encode mgo))))))
 
 (defmethod driver/prettify-native-form :mongo
