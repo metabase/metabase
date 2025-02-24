@@ -184,7 +184,7 @@ function prattCompiler({
 
   try {
     // COMPILE
-    const mbql = compile(root, {
+    const expression = compile(root, {
       passes: [
         adjustOptions,
         useShorthands,
@@ -202,7 +202,7 @@ function prattCompiler({
       getMBQLName,
     });
 
-    return { expression: mbql };
+    return { expression };
   } catch (error) {
     if (isErrorWithMessage(error)) {
       return { error };
@@ -294,14 +294,17 @@ function checkCompiledExpression({
     );
 
     if (error) {
-      console.warn("diagnostic error", error.message);
-
-      // diagnoseExpression returns some messages which are user-friendly and some which are not.
-      // If the `friendly` flag is true, we can use the possibleError as-is; if not then use a generic message.
-      return error.friendly ? error : { message: t`Invalid expression` };
+      throw error;
     }
   } catch (error) {
     console.warn("diagnostic error", error);
+
+    // diagnoseExpression returns some messages which are user-friendly and
+    // some which are not. If the `friendly` flag is true, we can use the
+    // error as-is; if not then use a generic message.
+    if (isErrorWithMessage(error) && error.friendly) {
+      return error;
+    }
     return { message: t`Invalid expression` };
   }
   return null;
