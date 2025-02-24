@@ -6,12 +6,6 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-export const HeaderRoot = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 2rem 2rem 0;
-`;
-
 export const HeaderLink = styled.div`
   display: flex;
   align-items: center;
