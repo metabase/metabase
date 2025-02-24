@@ -10,7 +10,7 @@ const argTypes = {
 };
 
 export default {
-  title: "Core/Chip",
+  title: "Components/Ask Before Using/Chip",
   component: Chip,
   args: {
     size: "md",

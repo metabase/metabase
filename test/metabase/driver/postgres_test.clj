@@ -352,8 +352,8 @@
 
 (deftest partitioned-table-test
   (mt/test-driver :postgres
-    (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are
-                   synced properly (#15049)")
+    (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are"
+                  " synced properly (#15049)")
       (let [db-name "partitioned_table_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -1391,7 +1391,9 @@
                                 !month.id]
                        :limit  1})]
           (is (= {:query ["SELECT"
-                          "  DATE_TRUNC('month', \"public\".\"people\".\"birth_date\") AS \"birth_date\","
+                          "  CAST("
+                          "    DATE_TRUNC('month', \"public\".\"people\".\"birth_date\") AS date"
+                          "  ) AS \"birth_date\","
                           "  DATE_TRUNC('month', \"public\".\"people\".\"created_at\") AS \"created_at\","
                           "  DATE_TRUNC('month', CAST(\"public\".\"people\".\"id\" AS timestamp)) AS \"id\""
                           "FROM"
@@ -1665,17 +1667,18 @@
                 :type :native
                 :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))
 
-(deftest ^:parallel aggregated-array-is-returned-correctly-test
-  (testing "An aggregated array column should be returned in a readable format"
-    (mt/test-driver :postgres
-      (mt/dataset test-data
-        (is (= [["The Gorbals" "The Misfit Restaurant + Bar" "Marlowe" "Yamashiro Hollywood" "Musso & Frank Grill" "Pacific Dining Car" "Chez Jay" "Rush Street"]
-                ["Greenblatt's Delicatessen & Fine Wine Shop" "Handy Market"]]
-               (->> (mt/native-query {:query "select category_id, array_agg(name)
-                                              from venues
-                                              group by category_id
-                                              order by 1 asc
-                                              limit 2;"})
-                    mt/process-query
-                    mt/rows
-                    (map second))))))))
+(deftest ^:parallel temporal-column-with-binning-keeps-type
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[field bins] [[:birth_date [:year :quarter :month :week :day]]
+                            [:created_at [:year :quarter :month :week :day :hour :minute]]]
+              bin bins]
+        (testing (str "field " (name field) " for temporal bucket " (name bin))
+          (let [field-md (lib.metadata/field mp (mt/id :people field))
+                unbinned-query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                                   (lib/with-fields [field-md])
+                                   (lib/limit 1))
+                binned-query (-> unbinned-query
+                                 (lib/breakout (lib/with-temporal-bucket field-md bin)))]
+            (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type))
+                   (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))

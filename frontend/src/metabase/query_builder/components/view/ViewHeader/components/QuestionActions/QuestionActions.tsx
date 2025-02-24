@@ -1,7 +1,6 @@
 import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { UploadInput } from "metabase/components/upload";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";

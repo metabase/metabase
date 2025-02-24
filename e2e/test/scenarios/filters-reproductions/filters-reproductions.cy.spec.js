@@ -1569,11 +1569,11 @@ describe("issue 49642", () => {
     H.filterWidget().click();
     H.popover().within(() => {
       cy.findByText("Zackery Bailey").should("not.exist");
-      cy.findByPlaceholderText("Search by Name").type("Zackery");
+      cy.findByPlaceholderText("Search the list").type("Zackery");
       cy.findByText("Zackery Bailey").should("be.visible");
       cy.findByText("Zackery Kuhn").should("be.visible").click();
 
-      cy.findByPlaceholderText("Search by Name").should(
+      cy.findByPlaceholderText("Search the list").should(
         "have.value",
         "Zackery Kuhn",
       );
@@ -1600,7 +1600,8 @@ describe("issue 44665", () => {
   });
 
   it("should use the correct widget for the default value picker (metabase#44665)", () => {
-    H.startNewNativeQuestion().type("select * from {{param");
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select * from {{param");
     // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar()
       .last()
@@ -1648,41 +1649,27 @@ describe("issue 44665", () => {
   });
 });
 
-describe("issue 5816", () => {
-  const questionDetails = {
-    native: {
-      query: `SELECT CAST('9007199254740992' AS BIGINT) AS BIGINT
-UNION ALL
-SELECT CAST('9007199254740993' AS BIGINT) AS BIGINT
-UNION ALL
-SELECT CAST('9007199254740994' AS BIGINT) AS BIGINT`,
-    },
-  };
-
+describe("issue 50731", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
+    cy.viewport(800, 800);
   });
 
-  it("should be able to filter on a BigInteger column (metabase#5816)", () => {
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    H.queryBuilderHeader().findByText("Explore results").click();
-    H.assertQueryBuilderRowCount(3);
-    H.openNotebook();
-    H.filter({ mode: "notebook" });
-    H.popover().within(() => {
-      cy.findByText("BIGINT").click();
-      cy.findByLabelText("Filter operator").click();
-    });
-    H.popover().eq(1).findByText("Equal to").click();
-    H.popover().within(() => {
-      cy.findByLabelText("Filter value").type("9007199254740993");
-      cy.button("Add filter").click();
-    });
-    H.getNotebookStep("filter")
-      .findByText('BIGINT is equal to "9007199254740993"')
-      .should("be.visible");
-    H.visualize();
-    H.assertQueryBuilderRowCount(1);
+  it("tooltip content should not overflow the tooltip (metabase#50731)", () => {
+    H.openOrdersTable();
+    cy.icon("filter").click();
+    cy.icon("label").realHover();
+
+    H.popover()
+      .should("be.visible")
+      .and($element => {
+        const [container] = $element;
+        const descendants = container.querySelectorAll("*");
+
+        descendants.forEach(descendant => {
+          H.assertDescendantNotOverflowsContainer(descendant, container);
+        });
+      });
   });
 });

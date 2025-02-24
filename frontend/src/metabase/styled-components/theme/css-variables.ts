@@ -48,7 +48,7 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
     /* Semantic colors */
     /* Dynamic colors from SDK */
     ${Object.entries(SDK_TO_MAIN_APP_COLORS_MAPPING).flatMap(
-      ([_, metabaseColorNames]) => {
+      ([_key, metabaseColorNames]) => {
         return metabaseColorNames.map(metabaseColorName => {
           /**
            * Prevent returning the primary color when color is not found,

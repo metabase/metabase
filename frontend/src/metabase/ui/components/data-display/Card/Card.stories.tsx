@@ -59,7 +59,7 @@ const CardSectionBorderTemplate = (
 ) => <CardSectionTemplate {...args} withSectionBorder />;
 
 export default {
-  title: "Data display/Card",
+  title: "Components/Data display/Card",
   component: Card,
   args,
   argTypes,

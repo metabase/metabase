@@ -1,13 +1,13 @@
 import { onlyOn } from "@cypress/skip-test";
-import _ from "underscore";
 
-const { H } = cy;
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+
+const { H } = cy;
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],

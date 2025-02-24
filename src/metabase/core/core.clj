@@ -4,7 +4,8 @@
    [clojure.tools.trace :as trace]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
+   [metabase.cloud-migration.core :as cloud-migration]
    [metabase.config :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
@@ -16,9 +17,8 @@
    [metabase.embed.settings :as embed.settings]
    [metabase.events :as events]
    [metabase.logger :as logger]
-   [metabase.models.cloud-migration :as cloud-migration]
    [metabase.models.database :as database]
-   [metabase.models.setting :as settings]
+   [metabase.models.setting :as setting]
    [metabase.notification.core :as notification]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
@@ -87,7 +87,7 @@
   (log/info "Metabase Shutting Down ...")
   (task/stop-scheduler!)
   (server/stop-web-server!)
-  (prometheus/shutdown!)
+  (analytics/shutdown!)
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
@@ -110,7 +110,7 @@
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
-  (settings/validate-settings-formatting!)
+  (setting/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
   ;; Cal 2024-04-03:
@@ -118,18 +118,15 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
-
   ;; Disable read-only mode if its on during startup.
   ;; This can happen if a cloud migration process dies during h2 dump.
   (when (cloud-migration/read-only-mode)
     (cloud-migration/read-only-mode! false))
-
   (init-status/set-progress! 0.4)
   ;; Set up Prometheus
   (log/info "Setting up prometheus metrics")
-  (prometheus/setup!)
+  (analytics/setup!)
   (init-status/set-progress! 0.5)
-
   (premium-features/airgap-check-user-count)
   (init-status/set-progress! 0.55)
   ;; run a very quick check to see if we are doing a first time installation
@@ -153,15 +150,12 @@
         ;; otherwise update if appropriate
         (sample-data/update-sample-database-if-needed!)))
     (init-status/set-progress! 0.8))
-
   (ensure-audit-db-installed!)
   (notification/seed-notification!)
   (init-status/set-progress! 0.9)
-
   (embed.settings/check-and-sync-settings-on-startup! env/env)
   (init-status/set-progress! 0.95)
-
-  (settings/migrate-encrypted-settings!)
+  (setting/migrate-encrypted-settings!)
    ;; start scheduler at end of init!
   (task/start-scheduler!)
    ;; In case we could not do this earlier (e.g. for DBs added via config file), because the scheduler was not up yet:

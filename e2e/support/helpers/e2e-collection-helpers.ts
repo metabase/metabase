@@ -7,18 +7,6 @@ import {
 } from "e2e/support/helpers";
 import type { CollectionId } from "metabase-types/api";
 
-/**
- * Clicks the "+" icon on the collection page and selects one of the menu options
- *
- * @deprecated Use newButton helper
- */
-export function openNewCollectionItemFlowFor(
-  type: "question" | "dashboard" | "collection",
-) {
-  cy.findByText("New").click();
-  popover().findByText(new RegExp(type, "i")).click();
-}
-
 export function getCollectionActions() {
   return cy.findByTestId("collection-menu");
 }

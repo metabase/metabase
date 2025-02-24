@@ -26,7 +26,7 @@ const LoadingText = () => (
 );
 
 const InfoTextSeparator = (
-  <Text span size="sm" mx="xs" c="text-medium">
+  <Text component="span" size="sm" mx="xs" c="text-medium">
     •
   </Text>
 );
@@ -92,7 +92,7 @@ export const InfoTextEditedInfo = ({
       const formattedDuration = timestamp && getRelativeTime(timestamp);
       return (
         <Tooltip tooltip={<LastEditedInfoTooltip {...lastEditedInfoData} />}>
-          <Text span size="sm" c="text-medium" truncate>
+          <Text component="span" size="sm" c="text-medium" truncate>
             {formattedDuration}
           </Text>
         </Tooltip>

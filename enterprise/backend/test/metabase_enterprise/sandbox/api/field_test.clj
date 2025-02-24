@@ -103,6 +103,8 @@
 (deftest human-readable-values-test
   (testing "GET /api/field/:id/values should returns correct human readable mapping if exists"
     (mt/with-temp-copy-of-db
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
       (let [field-id   (mt/id :venues :price)
             full-fv-id (t2/select-one-pk :model/FieldValues :field_id field-id :type :full)]
         (t2/update! :model/FieldValues full-fv-id

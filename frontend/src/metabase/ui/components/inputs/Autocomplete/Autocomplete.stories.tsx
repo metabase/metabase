@@ -125,7 +125,7 @@ const VariantTemplate = (args: AutocompleteProps) => (
 );
 
 export default {
-  title: "Inputs/Autocomplete",
+  title: "Components/Inputs/Autocomplete",
   component: Autocomplete,
   args,
   argTypes,

@@ -1,12 +1,13 @@
-(ns macros.metabase.api.card-test
-  (:require [macros.common]))
+(ns macros.metabase.api.card-test)
 
 (defmacro with-ordered-items
   [collection model-and-name-syms & body]
   `(let ~(into []
                (comp (partition-all 2)
                      (mapcat (fn [[model binding]]
-                               [(macros.common/ignore-unused binding) model])))
+                               [binding model])))
                model-and-name-syms)
      ~collection
+     ~@(->> (partition-all 2 model-and-name-syms)
+            (map second))
      ~@body))

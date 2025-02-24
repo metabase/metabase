@@ -2,7 +2,7 @@
   (:require
    [clojure.core.match :refer [match]]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.db :as mdb]
@@ -14,17 +14,17 @@
    [metabase.models.interface :as mi]
    [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting :as setting]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
-   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.quick-task :as quick-task]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -58,7 +58,10 @@
 (doto :model/Database
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
+  ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
+  ;; cause duplication rather than good matching if the two instances are later linked by serdes.
+  #_(derive :hook/entity-id))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :before :model/Database
   [_model _explicit-attributes f]
@@ -140,18 +143,48 @@
     (catch Throwable e
       (log/error e "Error scheduling tasks for DB"))))
 
-(defn health-check-database!
-  "Checks database health off-thread, currently just checks connectivity."
+(defn maybe-test-and-migrate-details!
+  "When a driver has db-details to test and migrate:
+   we loop through them until we find one that works and update the database with the working details."
   [{:keys [engine details] :as database}]
+  (if-let [details-to-test (seq (driver/db-details-to-test-and-migrate (keyword engine) details))]
+    (do
+      (log/infof "Attempting to connect to %d possible legacy details" (count details-to-test))
+      (loop [[test-details & tail] details-to-test]
+        (if test-details
+          (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
+            (do
+              (log/infof "Successfully connected, migrating to: %s" (pr-str test-details))
+              (t2/update! :model/Database (:id database) {:details test-details})
+              test-details)
+            (recur tail))
+          ;; if we go through the list and we can't fine a working detail to test, keep original value
+          details)))
+    details))
+
+(defn health-check-database!
+  "Checks database health off-thread.
+   - checks connectivity
+   - cleans-up ambiguous legacy, db-details"
+  [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
-    (sync.concurrent/submit-task!
+    (log/info (u/format-color :cyan "Health check: queueing %s {:id %d}" (:name database) (:id database)))
+    (quick-task/submit-task!
      (fn []
-       (try
-         (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
-           (prometheus/inc! :metabase-database/healthy {:driver engine} 1)
-           (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1))
-         (catch Throwable _
-           (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))))))
+       (let [details (maybe-test-and-migrate-details! database)]
+         (try
+           (log/info (u/format-color :cyan "Health check: checking %s {:id %d}" (:name database) (:id database)))
+           (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
+             (do
+               (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
+               (analytics/inc! :metabase-database/healthy {:driver engine} 1))
+             (do
+               (log/warn (u/format-color :yellow "Health check: failure %s {:id %d}" (:name database) (:id database)))
+               (analytics/inc! :metabase-database/unhealthy {:driver engine} 1)))
+           (catch Throwable e
+             (do
+               (log/error e (u/format-color :red "Health check: failure with error %s {:id %d}" (:name database) (:id database)))
+               (analytics/inc! :metabase-database/unhealthy {:driver engine} 1)))))))))
 
 (defn check-health-and-schedule-tasks!
   "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
@@ -307,13 +340,6 @@
 (defmethod serdes/hash-fields :model/Database
   [_database]
   [:name :engine])
-
-(defsetting persist-models-enabled
-  (deferred-tru "Whether to enable models persistence for a specific Database.")
-  :default        false
-  :type           :boolean
-  :visibility     :public
-  :database-local :only)
 
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]

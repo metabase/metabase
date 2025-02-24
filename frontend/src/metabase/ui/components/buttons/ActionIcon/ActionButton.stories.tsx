@@ -3,7 +3,7 @@ import { Icon } from "../../";
 import { ActionIcon, type ActionIconProps } from "./";
 
 export default {
-  title: "Buttons/ActionIcon",
+  title: "Components/Buttons/ActionIcon",
   component: ActionIcon,
   argTypes: {
     color: {

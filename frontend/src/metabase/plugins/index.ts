@@ -1,3 +1,4 @@
+import type React from "react";
 import type {
   ComponentType,
   Dispatch,
@@ -5,9 +6,7 @@ import type {
   ReactNode,
   SetStateAction,
 } from "react";
-import type React from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -88,9 +87,7 @@ export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
 ) => AdminPathKey[])[] = [];
 
 export const PLUGIN_ADMIN_TOOLS = {
-  INDEX_ROUTE: "model-caching",
-  EXTRA_ROUTES_INFO: [],
-  EXTRA_ROUTES: [],
+  COMPONENT: null,
 };
 
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
@@ -297,9 +294,9 @@ export const PLUGIN_COLLECTIONS = {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
-  isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
+  isRegularCollection: (_data: Partial<Collection> | Bookmark) => true,
   getCollectionType: (
-    _: Partial<Collection>,
+    _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
   useGetDefaultCollectionId: null as GetCollectionIdType | null,

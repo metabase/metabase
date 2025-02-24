@@ -2,7 +2,6 @@
 import cx from "classnames";
 import { assoc, updateIn } from "icepick";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useListChannelsQuery } from "metabase/api/channel";
 import CS from "metabase/css/core/index.css";

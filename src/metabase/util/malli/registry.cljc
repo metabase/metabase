@@ -86,6 +86,11 @@
   (reset! cache {})
   nil)
 
+(defn registered-schema
+  "Get the schema registered for `k`, if any."
+  [k]
+  (get @registry* k))
+
 (defn schema
   "Get the Malli schema for `type` from the registry."
   [type]

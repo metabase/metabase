@@ -84,7 +84,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesInput().click();
         });
 
       H.popover().button("Add filter").click();
@@ -156,7 +156,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesInput().click();
         });
       H.popover().button("Add filter").click();
 
@@ -202,7 +202,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesInput().click();
         });
 
       H.popover().button("Add filter").click();
@@ -247,7 +247,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesInput().click();
         });
       H.popover().button("Add filter").click();
 
@@ -285,7 +285,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesInput().click();
         });
       H.popover().button("Add filter").click();
 

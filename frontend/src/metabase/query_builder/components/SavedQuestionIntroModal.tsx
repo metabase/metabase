@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { Button, Modal, Text } from "metabase/ui";
+import EmptyMetric from "assets/img/empty-states/qbnewb-metric.svg";
+import EmptyModel from "assets/img/empty-states/qbnewb-model.svg";
+import EmptyQuestion from "assets/img/empty-states/qbnewq-question.svg";
+import { Box, Button, Modal, Stack, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 interface Props {
@@ -14,20 +17,23 @@ const getLabels = (question: Question) => {
 
   if (type === "question") {
     return {
+      image: EmptyQuestion,
       title: t`It's okay to play around with saved questions`,
-      message: t`You won't make any permanent changes to a saved question unless you click Save and choose to replace the original question.`,
+      message: t`You can save your edits as a new question, or choose to overwrite the original question.`,
     };
   }
 
   if (type === "model") {
     return {
-      title: t`It's okay to play around with models`,
-      message: t`You won't make any permanent changes to them unless you edit their query definition.`,
+      image: EmptyModel,
+      title: t`You can filter and summarize any model, and save your results as a question`,
+      message: t`If you want to edit the model itself, click on the model's Info button → Model details → Edit definition.`,
     };
   }
 
   if (type === "metric") {
     return {
+      image: EmptyMetric,
       title: t`It's okay to play around with metrics`,
       message: t`You won't make any permanent changes to them unless you edit their query definition.`,
     };
@@ -41,20 +47,35 @@ export const SavedQuestionIntroModal = ({
   isShowingNewbModal,
   onClose,
 }: Props) => {
-  const { title, message } = getLabels(question);
+  const { image, title, message } = getLabels(question);
+
+  /**
+   * We need this value for both the header and the body content width.
+   * Can't set it on the Modal.Content because it overrides the actual modal width.
+   */
+  const contentWidth = "28rem";
 
   return (
-    <Modal.Root opened={isShowingNewbModal} onClose={onClose} size={500}>
+    <Modal.Root opened={isShowingNewbModal} onClose={onClose} size={560}>
       <Modal.Overlay />
-      <Modal.Content p="md">
-        <Modal.Header mb="md">
-          <Modal.Title>{title}</Modal.Title>
+      <Modal.Content p="xl" ta="center">
+        <Modal.Header maw={contentWidth} mx="auto" my="md">
+          <Stack align="center">
+            <Box w="6rem">
+              <img
+                src={image}
+                alt={t`Saved entity modal empty state illustration`}
+              />
+            </Box>
+            <Modal.Title>{title}</Modal.Title>
+          </Stack>
         </Modal.Header>
-        <Modal.Body ta="center">
-          <Text mb="lg" ta="left">
-            {message}
-          </Text>
-          <Button variant="filled" onClick={onClose}>{t`Okay`}</Button>
+        <Modal.Body maw={contentWidth} mx="auto" my="md">
+          <Text mb="lg">{message}</Text>
+          <Button
+            variant="filled"
+            onClick={onClose}
+          >{t`Start exploring`}</Button>
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>

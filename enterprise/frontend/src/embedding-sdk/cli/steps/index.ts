@@ -1,6 +1,7 @@
 export * from "./check-docker-running";
 export * from "./create-api-key";
 export * from "./generate-credentials";
+export * from "./generate-credentials-file";
 export * from "./poll-metabase-instance";
 export * from "./setup-metabase-instance";
 export * from "./ask-if-has-database";

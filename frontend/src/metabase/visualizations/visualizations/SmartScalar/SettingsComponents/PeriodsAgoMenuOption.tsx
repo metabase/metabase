@@ -2,7 +2,6 @@ import type { KeyboardEvent, MouseEvent } from "react";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import type { NumberValue } from "metabase/querying/filters/hooks/use-number-filter";
 import { Box, Group, Text, rem } from "metabase/ui";
 import type { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
@@ -49,7 +48,7 @@ export function PeriodsAgoMenuOption({
 
   const value = editedValue?.value ?? MIN_VALUE;
   const handleInputChange = useCallback(
-    (value: NumberValue) => {
+    (value: number | "") => {
       if (message) {
         setMessage(null);
       }

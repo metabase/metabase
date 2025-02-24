@@ -6,10 +6,8 @@ import _ from "underscore";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
 import TransitionS from "metabase/css/core/transitions.module.css";
-import {
-  FixedWidthContainer,
-  ParametersFixedWidthContainer,
-} from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
 import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
 import {
   DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID,
@@ -228,7 +226,8 @@ export const EmbedFrame = ({
             isSticky={isParameterPanelSticky}
             data-testid="dashboard-parameters-widget-container"
           >
-            <ParametersFixedWidthContainer
+            <FixedWidthContainer
+              className={DashboardS.ParametersFixedWidthContainer}
               id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
               data-testid="fixed-width-filters"
               isFixedWidth={dashboard?.width === "fixed"}
@@ -250,7 +249,7 @@ export const EmbedFrame = ({
                 }
               />
               {dashboard && <FilterApplyButton />}
-            </ParametersFixedWidthContainer>
+            </FixedWidthContainer>
           </ParametersWidgetContainer>
         )}
         <Body>{children}</Body>

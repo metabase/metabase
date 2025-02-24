@@ -9,7 +9,7 @@ import type { DashCardId } from "metabase-types/api";
 
 import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
 
-import { MoveDashCardActionStyled } from "./DashCardTabMenu.styled";
+import S from "./DashCardTabMenu.module.css";
 
 interface DashCardTabMenuProps {
   dashCardId: DashCardId;
@@ -47,9 +47,9 @@ export function DashCardTabMenu({
     <>
       <Menu trigger="hover" onOpen={onOpen} onClose={onClose}>
         <Menu.Target>
-          <MoveDashCardActionStyled>
+          <DashCardActionButton className={S.MoveDashCardActionStyled}>
             <DashCardActionButton.Icon name="move_card" />
-          </MoveDashCardActionStyled>
+          </DashCardActionButton>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{t`Move to tab`}</Menu.Label>

@@ -17,6 +17,7 @@
   color: var(--mb-color-upsell-primary);
   background-color: var(--mb-color-upsell-secondary);
   text-decoration: none;
+  cursor: pointer;
 
   &:hover {
     background-color: var(--mb-color-upsell-primary);

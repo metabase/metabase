@@ -117,7 +117,10 @@
 (doto :model/Field
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
+  ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
+  ;; cause duplication rather than good matching if the two instances are later linked by serdes.
+  #_(derive :hook/entity-id))
 
 (t2/define-after-select :model/Field
   [field]
@@ -177,7 +180,7 @@
 
 (defmethod serdes/hash-fields :model/Field
   [_field]
-  [:name (serdes/hydrated-hash :table)])
+  [:name (serdes/hydrated-hash :table :table_id)])
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 

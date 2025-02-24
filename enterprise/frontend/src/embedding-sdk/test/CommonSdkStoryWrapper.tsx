@@ -1,10 +1,8 @@
 import type { StoryFn } from "@storybook/react";
 import * as jose from "jose";
+import { useMemo } from "react";
 
 import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
-
-import "@mantine/core/styles.css"; // TODO: how to use in embedding?
-import "@mantine/dates/styles.css";
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
 
@@ -19,13 +17,15 @@ const secret = new TextEncoder().encode(METABASE_JWT_SHARED_SECRET);
 /**
  * SDK auth config that signs the jwt on the FE
  */
-export const storybookSdkAuthDefaultConfig: MetabaseAuthConfig = {
+export const getStorybookSdkAuthConfigForUser = (
+  user: keyof typeof USERS = "normal",
+): MetabaseAuthConfig => ({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
   authProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
   fetchRequestToken: async () => {
     try {
       const signedUserData = await new jose.SignJWT({
-        email: USERS.normal.email,
+        email: USERS[user].email,
         exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
       })
         .setProtectedHeader({ alg: "HS256" }) // algorithm
@@ -45,13 +45,23 @@ export const storybookSdkAuthDefaultConfig: MetabaseAuthConfig = {
       return `Failed to generate JWT for storybook: ${e}`;
     }
   },
-};
+});
+
+export const storybookSdkAuthDefaultConfig =
+  getStorybookSdkAuthConfigForUser("normal");
 
 export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
   const sdkTheme = context.globals.sdkTheme;
   const theme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
+
+  const user = context.globals.user;
+
+  const authConfig = useMemo(() => {
+    return getStorybookSdkAuthConfigForUser(user);
+  }, [user]);
+
   return (
-    <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig} theme={theme}>
+    <MetabaseProvider authConfig={authConfig} theme={theme} key={user}>
       <Story />
     </MetabaseProvider>
   );

@@ -16,7 +16,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
 
     expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
     expect(screen.getByText("Pro and Enterprise")).toBeInTheDocument();
-    expect(screen.getByText("Beta")).toBeInTheDocument();
+    expect(screen.queryByText("Beta")).not.toBeInTheDocument();
   });
 
   it("should show 'Try it out' button", async () => {

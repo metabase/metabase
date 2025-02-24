@@ -41,13 +41,6 @@ export function EmbeddingSdkOptionCard({
             py="xs"
             uppercase
           >{t`Pro and Enterprise`}</Badge>
-          <Badge
-            color="gray"
-            fz="sm"
-            px="sm"
-            py="xs"
-            uppercase
-          >{t`Beta`}</Badge>
         </Flex>
       }
       description={t`Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT.`}

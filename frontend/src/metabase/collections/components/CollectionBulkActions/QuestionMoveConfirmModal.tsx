@@ -145,7 +145,7 @@ export const QuestionMoveConfirmModal = ({
                 return (
                   <List.Item key={`card-${cd.card_id}`}>
                     <Text>{jt`${(
-                      <Text span fw={700}>
+                      <Text component="span" fw={700}>
                         {card?.name}
                       </Text>
                     )} will be removed from ${(
@@ -204,7 +204,7 @@ const DashboardNames = ({ names }: { names: string[] }) => {
     return null;
   } else if (names.length === 1) {
     return (
-      <Text span fw={700}>
+      <Text component="span" fw={700}>
         {names[0]}
       </Text>
     );
@@ -214,16 +214,16 @@ const DashboardNames = ({ names }: { names: string[] }) => {
 
     return [
       ...restOfNames.map((name, i, arr) => (
-        <Text span key={`dashboard-${name}`}>
-          <Text span fw={700}>
+        <Text component="span" key={`dashboard-${name}`}>
+          <Text component="span" fw={700}>
             {name}
           </Text>
           {i < arr.length - 1 ? ", " : ""}
         </Text>
       )),
-      <Text span key={`dashboard-${lastName}`}>
+      <Text component="span" key={`dashboard-${lastName}`}>
         {t` and `}
-        <Text span fw={700}>
+        <Text component="span" fw={700}>
           {lastName}
         </Text>
       </Text>,
