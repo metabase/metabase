@@ -44,10 +44,7 @@ export function enterCustomColumnDetails({
   }
 
   if (name) {
-    cy.findByPlaceholderText("Something nice and descriptive")
-      .clear()
-      .type(name)
-      .blur();
+    cy.findByTestId("expression-name").clear().type(name).blur();
   }
 }
 
@@ -188,7 +185,7 @@ export const CustomExpressionEditor = {
   },
   blur() {
     // click outside the expression editor
-    cy.get("label[for='expression-content']").click();
+    cy.findByTestId("expression-name").focus();
     return CustomExpressionEditor;
   },
   selectAll() {
