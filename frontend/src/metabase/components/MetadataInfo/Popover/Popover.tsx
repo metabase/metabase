@@ -67,6 +67,7 @@ export function Popover({
       onOpen={handleOpen}
       onClose={handleClose}
       middlewares={{
+        size: true,
         shift: true,
         flip: false,
       }}

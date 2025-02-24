@@ -196,7 +196,7 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("Number of distinct values of ...").click();
-      cy.findByLabelText("Temporal bucket").click();
+      cy.findByLabelText("Temporal bucket").realHover().click();
     });
 
     // eslint-disable-next-line no-unsafe-element-filtering

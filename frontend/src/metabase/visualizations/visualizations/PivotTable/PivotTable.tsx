@@ -330,8 +330,13 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       leftHeaderWidth,
     ]);
 
-    if (pivoted === null || !leftHeaderWidths || columnsChanged) {
-      return null;
+    if (
+      pivoted === null ||
+      !leftHeaderWidths ||
+      (leftHeaderWidths?.length && columnsChanged)
+    ) {
+      // We have to return an element to assign the ref to it
+      return <div ref={ref} />;
     }
 
     const {

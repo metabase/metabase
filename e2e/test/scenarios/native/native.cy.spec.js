@@ -226,7 +226,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
-    H.startNewNativeQuestion({ display: "table" }).as("editor");
+    H.startNewNativeQuestion({ display: "table" });
     H.NativeEditor.type("select 1 as visible, 2 as hidden");
     cy.findByTestId("native-query-editor-container")
       .icon("play")

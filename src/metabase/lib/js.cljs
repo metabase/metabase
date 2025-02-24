@@ -2403,6 +2403,10 @@
 
   `bounds` is a JS object `{north: number, south: number, west: number, east: number}` giving the bounding rectangle.
 
+  This function expects that longitudes (west and east bounds) have been canonicalized into the range [-180, 180]. If
+  west > east, this indicates that the bounds cross the antimerdian, and so we must add two filter clauses, which are
+  ORed together. In such cases, the first clause covers the range [west, 180.0] and the second covers [-180.0, east].
+
   > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
   ideally refactored away."

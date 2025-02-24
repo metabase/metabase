@@ -16,6 +16,8 @@ import {
 } from "./ChartSettingFieldPicker.styled";
 import { ChartSettingSelect } from "./ChartSettingSelect";
 
+const RIGHT_SECTION_BUTTON_WIDTH = 22;
+
 export const ChartSettingFieldPicker = ({
   value,
   options,
@@ -80,6 +82,10 @@ export const ChartSettingFieldPicker = ({
 
   const hasLeftSection = showDragHandle || (showColorPicker && seriesKey);
 
+  const rightSectionWidth =
+    [!disabled, !!menuWidgetInfo, !!onRemove].filter(Boolean).length *
+    RIGHT_SECTION_BUTTON_WIDTH;
+
   return (
     <ChartSettingFieldPickerRoot
       className={className}
@@ -98,7 +104,7 @@ export const ChartSettingFieldPicker = ({
         onChange={onChange}
         leftSection={
           hasLeftSection ? (
-            <Group wrap="nowrap" gap="sm" p="xs" ml="sm" align="start">
+            <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
               {showDragHandle && (
                 <GrabberHandle
                   name="grabber"
@@ -121,12 +127,11 @@ export const ChartSettingFieldPicker = ({
             </Group>
           ) : null
         }
-        leftSectionWidth="auto"
         placeholderNoOptions={t`No valid fields`}
         placeholder={t`Select a field`}
-        rightSectionWidth="auto"
+        rightSectionWidth={`${rightSectionWidth}px`}
         rightSection={
-          <Group wrap="nowrap" gap="sm" p="xs" mr="sm">
+          <>
             {!disabled && (
               <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
                 <Icon name="chevrondown" />
@@ -146,7 +151,7 @@ export const ChartSettingFieldPicker = ({
                 onClick={onRemove}
               />
             )}
-          </Group>
+          </>
         }
         styles={{
           root: {
@@ -171,8 +176,9 @@ export const ChartSettingFieldPicker = ({
             border: "none",
             width: "100%",
             color: "var(--mb-color-text-primary)",
-            cursor: "inherit",
+            cursor: "pointer",
             pointerEvents: "unset",
+            paddingRight: `${rightSectionWidth + 8}px`,
           },
         }}
       />

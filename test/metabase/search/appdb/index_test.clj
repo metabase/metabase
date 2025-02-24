@@ -513,30 +513,12 @@
    "report_card"       #{"action" "model_index_value" "report_card"}
    "report_dashboard"  #{"action" "model_index_value" "report_card"}})
 
-(defn- transitive*
-  "Borrows heavily from clojure.core/derive. Notably, however, this intentionally permits circular dependencies."
-  [h child parent]
-  (let [td (:descendants h {})
-        ta (:ancestors h {})
-        tf (fn [source sources target targets]
-             (reduce (fn [ret k]
-                       (assoc ret k
-                              (reduce conj (get targets k #{}) (cons target (targets target)))))
-                     targets (cons source (sources source))))]
-    {:ancestors   (tf child td parent ta)
-     :descendants (tf parent ta child td)}))
-
-(defn transitive
-  "Given a mapping from (say) parents to children, return the corresponding mapping from parents to descendants."
-  [adj-map]
-  (:descendants (reduce-kv (fn [h p children] (reduce #(transitive* %1 %2 p) h children)) nil adj-map)))
-
 (deftest search-model-cascade-text
   (is (= model->deleted-descendants
          (mt/with-empty-h2-app-db
            (let [table->children    (u.conn/app-db-cascading-deletes (mdb/app-db) (map t2/table-name (descendants :metabase/model)))
                  table->sub-tables  (into {} (for [[t cs] table->children] [t (map :child-table cs)]))
-                 table->descendants (transitive table->sub-tables)
+                 table->descendants (mt/transitive table->sub-tables)
                  search-model?      (into #{} (map (comp name t2/table-name :model val)) (search.spec/specifications))]
              (into {}
                    (keep (fn [[p ds]]

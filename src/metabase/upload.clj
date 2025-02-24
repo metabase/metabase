@@ -4,6 +4,7 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
@@ -702,6 +703,13 @@
    {:added {}, :updated {}}
    (map vector field-names existing-types new-types)))
 
+(defn- old-column-types
+  [driver field-names existing-types]
+  (->> (for [[field-name col-type] (map vector field-names existing-types)
+             :when col-type]
+         [(keyword field-name) (database-type driver col-type)])
+       (into {})))
+
 (defn- field->db-type [driver field->col-type]
   (m/map-kv
    (fn [field-name col-type]
@@ -717,7 +725,7 @@
 
 (defn- alter-columns! [driver database table field->new-type & args]
   (when (seq field->new-type)
-    (apply driver/alter-columns! driver (:id database) (table-identifier table)
+    (apply driver/alter-table-columns! driver (:id database) (table-identifier table)
            (field->db-type driver field->new-type)
            args)))
 
@@ -755,6 +763,14 @@
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
     (model-persistence/invalidate! {:card_id [:in model-ids]})))
 
+(defn- translate-type-keywords [m]
+  (walk/postwalk
+   (fn [x]
+     (if (and (keyword? x) (= "metabase.upload" (namespace x)))
+       (keyword "metabase.upload.types" (name x))
+       x))
+   m))
+
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try
     (let [parse (infer-parser filename file)]
@@ -780,15 +796,17 @@
               ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
               ;; we can come back and optimize this to an optimistic-with-fallback approach later.
               detected-types     (upload-types/column-types-from-rows settings old-types rows)
-              new-types          (map upload-types/new-type old-types detected-types)
+              allowed-promotions (translate-type-keywords (driver/allowed-promotions driver))
+              new-types          (map #(upload-types/new-type %1 %2 allowed-promotions) old-types detected-types)
               ;; avoid any schema modification unless all the promotions required by the file are supported,
               ;; choosing to not promote means that we will defer failure until we hit the first value that cannot
               ;; be parsed as its existing type - there is scope to improve these error messages in the future.
               modify-schema?     (and (not= old-types new-types) (= detected-types new-types))
               _                  (when modify-schema?
-                                   (let [changes (field-changes column-names old-types new-types)]
+                                   (let [changes   (field-changes column-names old-types new-types)
+                                         old-types (old-column-types driver column-names old-types)]
                                      (add-columns! driver database table (:added changes))
-                                     (alter-columns! driver database table (:updated changes))))
+                                     (alter-columns! driver database table (:updated changes) :old-types old-types)))
               ;; this will fail if any of our required relaxations were rejected.
               parsed-rows        (parse-rows settings new-types rows)
               row-count          (count parsed-rows)

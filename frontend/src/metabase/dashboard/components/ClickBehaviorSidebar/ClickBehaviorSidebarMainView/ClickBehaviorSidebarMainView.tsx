@@ -5,10 +5,8 @@ import type {
   DashboardCard,
 } from "metabase-types/api";
 
-import {
-  SelectedClickBehaviorItemIcon,
-  SidebarContentBordered,
-} from "../ClickBehaviorSidebar.styled";
+import S from "../ClickBehaviorSidebar.module.css";
+import { SidebarContent } from "../ClickBehaviorSidebarComponents";
 import { CrossfilterOptions } from "../CrossfilterOptions";
 import { LinkOptions } from "../LinkOptions/LinkOptions";
 import { SidebarItem } from "../SidebarItem";
@@ -80,13 +78,14 @@ export function ClickBehaviorSidebarMainView({
 
   return (
     <>
-      <SidebarContentBordered>
+      <SidebarContent className={S.SidebarContentBordered}>
         <SidebarItem.Selectable
           onClick={handleShowTypeSelector}
           isSelected
           padded={false}
         >
-          <SelectedClickBehaviorItemIcon
+          <SidebarItem.Icon
+            className={S.SelectedClickBehaviorItemIcon}
             name={currentOption?.icon || "unknown"}
           />
           <SidebarItem.Content>
@@ -94,7 +93,7 @@ export function ClickBehaviorSidebarMainView({
             <SidebarItem.CloseIcon />
           </SidebarItem.Content>
         </SidebarItem.Selectable>
-      </SidebarContentBordered>
+      </SidebarContent>
 
       <ClickBehaviorOptions
         clickBehavior={clickBehavior}

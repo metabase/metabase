@@ -113,7 +113,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   concat: {
     displayName: `concat`,
     type: "string",
-    args: ["expression"],
+    args: ["expression", "expression"],
     multiple: true,
   },
   replace: {

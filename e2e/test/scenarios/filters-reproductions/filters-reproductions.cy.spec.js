@@ -1569,11 +1569,11 @@ describe("issue 49642", () => {
     H.filterWidget().click();
     H.popover().within(() => {
       cy.findByText("Zackery Bailey").should("not.exist");
-      cy.findByPlaceholderText("Search by Name").type("Zackery");
+      cy.findByPlaceholderText("Search the list").type("Zackery");
       cy.findByText("Zackery Bailey").should("be.visible");
       cy.findByText("Zackery Kuhn").should("be.visible").click();
 
-      cy.findByPlaceholderText("Search by Name").should(
+      cy.findByPlaceholderText("Search the list").should(
         "have.value",
         "Zackery Kuhn",
       );
@@ -1600,7 +1600,8 @@ describe("issue 44665", () => {
   });
 
   it("should use the correct widget for the default value picker (metabase#44665)", () => {
-    H.startNewNativeQuestion().type("select * from {{param");
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select * from {{param");
     // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar()
       .last()

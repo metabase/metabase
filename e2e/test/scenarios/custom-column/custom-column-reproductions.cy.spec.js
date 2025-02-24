@@ -1304,3 +1304,24 @@ describe("issue 50925", () => {
       .should("equal", "case([ID] = 1, [Price] * 1.21, [Price] [Price])");
   });
 });
+
+describe("issue 53682", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message when trying to use a multi-arg expression function with not enough arguments (metabase#53682)", () => {
+    H.openProductsTable({ mode: "notebook" });
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: "contains([Category])",
+    });
+    H.popover().within(() => {
+      cy.findByText("Function contains expects at least 2 arguments").should(
+        "be.visible",
+      );
+      cy.button("Done").should("be.disabled");
+    });
+  });
+});

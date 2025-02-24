@@ -42,7 +42,9 @@
     (binding [config/*disable-setting-cache* true]
       (application-name))))
 
-(defn- google-auth-enabled? []
+(defn google-auth-enabled?
+  "Is Google Auth (OIDC not SAML) enabled?"
+  []
   (boolean (setting/get :google-auth-enabled)))
 
 (defn ldap-enabled?
@@ -683,7 +685,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                   (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
 
 (defsetting show-metabase-links
-  (deferred-tru (str "Whether or not to display Metabase links outside admin settings."))
+  (deferred-tru "Whether or not to display Metabase links outside admin settings.")
   :type       :boolean
   :default    true
   :visibility :public

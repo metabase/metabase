@@ -1052,7 +1052,7 @@
                                                        :card_id          (u/the-id series-card)
                                                        :position         0}]
             (is (= "completed"
-                   (:status (client/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/the-id series-card))))))))))))))
+                   (:status (client/client :get 202 (dashcard-url (assoc dashcard :card_id (u/the-id series-card)))))))))))))
 
 ;;; ------------------------------- GET /api/embed/card/:token/field/:field/values nil --------------------------------
 
@@ -1831,6 +1831,33 @@
                                          :embedding_params {:qty_locked "locked"}}]
           (is (= [3443]
                  (mt/first-row (client/client :get 202 (card-query-url card "" {:params {:qty_locked 1}}))))))))))
+
+(deftest biginteger-numeric-param-between-test
+  (testing "Embedded numeric params with mixed long and biginteger values in a between filter should be correctly applied"
+    (mt/dataset test-data
+      (with-embedding-enabled-and-new-secret-key!
+        (mt/with-temp [:model/Card source-card {:dataset_query (mt/native-query
+                                                                 {:query "SELECT CAST('9223372036854775808' AS DECIMAL) as NUMBER UNION ALL
+                                                                          SELECT CAST('0' AS DECIMAL) as NUMBER UNION ALL
+                                                                          SELECT CAST('-9223372036854775809' as DECIMAL) as NUMBER"})}
+                       :model/Card target-card {:dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (format "card__%s" (u/the-id source-card))
+                                                                           :aggregation  [[:count]]}}}
+                       :model/Dashboard dashboard {:parameters       [{:id "number" :slug "number" :name "number" :type :number/between}]
+                                                   :enable_embedding true
+                                                   :embedding_params {:number "enabled"}}
+                       :model/DashboardCard dashcard {:dashboard_id       (u/the-id dashboard)
+                                                      :card_id            (u/the-id target-card)
+                                                      :parameter_mappings [{:parameter_id "number"
+                                                                            :card_id      (u/the-id target-card)
+                                                                            :target       [:dimension [:field "NUMBER" {:base-type :type/Decimal}]]}]}]
+          (is (=? {:status "completed"
+                   :data   {:rows [[3]]}}
+                  (client/client :get 202 (dashcard-url dashcard))))
+          (is (=? {:status "completed"
+                   :data   {:rows [[2]]}}
+                  (client/client :get 202 (dashcard-url dashcard {:params {:number ["-9223372036854775809", 0]}})))))))))
 
 (deftest format-export-middleware-test
   (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
