@@ -348,7 +348,8 @@
                          (cond
                            (or
                             (not (readable? parent-card))
-                            (not (readable? card)))
+                            (not (readable? card))
+                            (:archived card))
                            :discard
 
                            (or (:dashboard_id card)
@@ -460,6 +461,11 @@
                                               [:is_deep_copy        {:default false} [:maybe :boolean]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
+  (api/check-400 (not (and (= is_deep_copy false)
+                           (t2/exists? :model/Card
+                                       :dashboard_id from-dashboard-id
+                                       :archived false)))
+                 (deferred-tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))
   (let [existing-dashboard (get-dashboard from-dashboard-id)
         dashboard-data {:name                (or name (:name existing-dashboard))
                         :description         (or description (:description existing-dashboard))

@@ -229,14 +229,12 @@
 ;;; ### GENERIC RESPONSE HELPERS
 ;; These are basically the same as the `api-` versions but with RESPONSE-PAIR already bound
 
-;; #### GENERIC 400 RESPONSE HELPERS
-(def ^:private generic-400
-  [400 (deferred-tru "Invalid Request.")])
-
 (defn check-400
   "Throw a `400` if `arg` is `false` or `nil`, otherwise return as-is."
-  [arg]
-  (check arg generic-400))
+  ([arg]
+   (check-400 arg (deferred-tru "Invalid Request.")))
+  ([arg msg]
+   (check arg [400 msg])))
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private generic-404
