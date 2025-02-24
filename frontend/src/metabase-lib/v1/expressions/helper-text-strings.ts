@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
-import { adjustCaseOrIf } from "./recursive-parser";
+import { adjustCaseOrIf } from "./passes";
 import type { HelpText, HelpTextConfig } from "./types";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (

@@ -1,13 +1,15 @@
 import { t } from "ttag";
 
 import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { getMBQLName } from "./config";
 import {
-  isBooleanLiteral,
-  isCaseOrIfOperator,
-  isNumberLiteral,
-  isOptionsObject,
-  isStringLiteral,
-} from "./matchers";
+  adjustCaseOrIf,
+  adjustMultiArgOptions,
+  adjustOffset,
+  adjustOptions,
+  adjustTopLevelLiteral,
+  useShorthands,
+} from "./passes";
 import { unescapeString } from "./string";
 import { OPERATOR as OP, TOKEN, tokenize } from "./tokenizer";
 
@@ -217,6 +219,7 @@ function recursiveParse(source) {
   return parseExpression();
 }
 
+<<<<<<< HEAD
 const modify = (node, transform) => {
   // MBQL clause?
   if (Array.isArray(node) && node.length > 0 && typeof node[0] === "string") {
@@ -399,18 +402,6 @@ export const adjustBooleans = tree =>
     }
     return node;
   });
-
-export const adjustTopLevelLiteral = tree => {
-  if (
-    isStringLiteral(tree) ||
-    isNumberLiteral(tree) ||
-    isBooleanLiteral(tree)
-  ) {
-    return ["value", tree];
-  } else {
-    return tree;
-  }
-};
 
 const pipe =
   (...fns) =>
