@@ -74,12 +74,12 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
       });
 
       it("should show the modal when the user loads the page", () => {
-        expect(screen.getByText("Embedding SDK for React")).toBeInTheDocument();
+        expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
         assertLegaleseModal();
       });
 
       it("should show the modal when the user declines the modal then tries to edit CORS settings", async () => {
-        expect(screen.getByText("Embedding SDK for React")).toBeInTheDocument();
+        expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
         assertLegaleseModal();
         await userEvent.click(screen.getByText("Decline and go back"));
         await waitFor(() => {
