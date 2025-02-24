@@ -5,6 +5,16 @@ import { query } from "./__support__/shared";
 import { compileExpression } from "./compiler";
 import { generateExpression } from "./test/generator";
 
+jest.mock("metabase-lib", () => {
+  const mod = jest.requireActual("metabase-lib");
+  return {
+    ...mod,
+    expressionClauseForLegacyExpression() {
+      return null;
+    },
+  };
+});
+
 const fuzz = process.env.MB_FUZZ ? describe : _.noop;
 const MAX_SEED = 10_000;
 
