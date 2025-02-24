@@ -146,10 +146,10 @@
   "Logout."
   ;; `metabase-session-key` gets added automatically by the [[metabase.server.middleware.session]] middleware
   [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
-  (let [session-key-hashed (session/hash-session-key metabase-session-key)]
-    (let [rows-deleted (t2/delete! :model/Session {:where [:or [:= :key_hashed session-key-hashed] [:= :id metabase-session-key]]})]
-      (api/check-404 (> rows-deleted 0))
-      (request/clear-session-cookie api/generic-204-no-content))))
+  (let [session-key-hashed (session/hash-session-key metabase-session-key)
+        rows-deleted (t2/delete! :model/Session {:where [:or [:= :key_hashed session-key-hashed] [:= :id metabase-session-key]]})]
+    (api/check-404 (> rows-deleted 0))
+    (request/clear-session-cookie api/generic-204-no-content)))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
