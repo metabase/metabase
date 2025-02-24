@@ -1,8 +1,9 @@
-import classnames from "classnames";
+import cx from "classnames";
 import { type ReactNode, type Ref, forwardRef } from "react";
 
-import styles from "./ParameterValueWidget.module.css";
-import { TriggerContainer } from "./ParameterValueWidgetTrigger.styled";
+import { Flex } from "metabase/ui";
+
+import S from "./ParameterValueWidget.module.css";
 
 export const ParameterValueWidgetTrigger = forwardRef(
   ParameterValueWidgetTriggerInner,
@@ -26,17 +27,26 @@ function ParameterValueWidgetTriggerInner(
 ) {
   if (mimicMantine) {
     return (
-      <TriggerContainer aria-label={ariaLabel} ref={ref} hasValue={hasValue}>
+      <Flex
+        align="center"
+        pos="relative"
+        w="100%"
+        className={cx(S.TriggerContainer, {
+          [S.hasValue]: hasValue,
+        })}
+        aria-label={ariaLabel}
+        ref={ref}
+      >
         {children}
-      </TriggerContainer>
+      </Flex>
     );
   }
 
   return (
     <div
       ref={ref}
-      className={classnames(styles.parameter, className, {
-        [styles.selected]: hasValue,
+      className={cx(S.parameter, className, {
+        [S.selected]: hasValue,
       })}
       role="button"
       aria-label={ariaLabel}

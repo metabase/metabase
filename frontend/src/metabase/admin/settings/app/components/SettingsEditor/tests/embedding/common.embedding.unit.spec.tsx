@@ -538,7 +538,7 @@ describe("[OSS] embedding settings", () => {
         );
       });
 
-      it("should show quick start section", () => {
+      it("should show quickstart section", () => {
         expect(
           screen.getByText("Try Embedded analytics SDK"),
         ).toBeInTheDocument();
@@ -547,7 +547,7 @@ describe("[OSS] embedding settings", () => {
         ).toBeInTheDocument();
 
         expect(
-          screen.getByRole("link", { name: "Check out the Quick Start" }),
+          screen.getByRole("link", { name: "Check out the Quickstart" }),
         ).toHaveProperty(
           "href",
           "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=oss",

@@ -64,7 +64,7 @@ const SecondaryTemplate = ({ children, ...args }: UpsellBannerProps) => (
 );
 
 export default {
-  title: "Upsells/Banner",
+  title: "Patterns/Upsells/Banner",
   component: _UpsellBanner,
   args,
   argTypes,

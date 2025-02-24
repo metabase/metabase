@@ -47,7 +47,7 @@ describe("scenarios > models > create", () => {
     H.visitCollection(THIRD_COLLECTION_ID);
 
     navigateToNewModelPage();
-    H.NativeEditor.focus().type("select * from ORDERS");
+    H.NativeEditor.focus().type("select 1");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
@@ -86,8 +86,7 @@ describe("scenarios > models > create", () => {
 });
 
 function navigateToNewModelPage(queryType = "native") {
-  cy.findByText("New").click();
-  cy.findByText("Model").click();
+  H.newButton("Model").click();
   if (queryType === "structured") {
     cy.findByText("Use the notebook editor").click();
   } else {

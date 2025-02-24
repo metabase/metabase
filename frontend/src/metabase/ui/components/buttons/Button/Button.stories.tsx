@@ -128,7 +128,7 @@ const LoadingGridTemplate = (args: ButtonProps) => (
 );
 
 export default {
-  title: "Buttons/Button",
+  title: "Components/Buttons/Button",
   component: Button,
   args,
   argTypes,

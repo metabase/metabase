@@ -184,6 +184,10 @@ export const useCloseTooltipOnScroll = (
 ) => {
   useEffect(() => {
     const handleScroll = _.throttle(() => {
+      if (chartRef.current?.isDisposed()) {
+        return;
+      }
+
       chartRef.current?.dispatchAction({
         type: "hideTip",
       });

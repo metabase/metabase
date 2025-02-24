@@ -876,7 +876,7 @@
     [_driver]
     {:access_key (u.random/random-name)}))
 
-(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite]]
+(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite :vertica :athena]]
   (defmethod driver/database-supports? [driver :test/arrays]
     [_driver _feature _database]
     true))
@@ -903,3 +903,42 @@
 (defmethod native-array-query :snowflake
   [_driver]
   "select array_construct('a', 'b', 'c')")
+
+(doseq [driver [:postgres :athena :oracle]]
+  (defmethod driver/database-supports? [driver :test/array-aggregation]
+    [_driver _feature _database]
+    true))
+
+;; redshift only supports listagg which returns a string
+(defmethod driver/database-supports? [:redshift :test/array-aggregation]
+  [_driver _feature _database]
+  false)
+
+(defmulti agg-venues-by-category-id
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod agg-venues-by-category-id :postgres
+  [_driver]
+  "select category_id, array_agg(name)
+   from public.venues
+   group by category_id
+   order by 1 asc
+   limit 2;")
+
+(defmethod agg-venues-by-category-id :oracle
+  [_driver]
+  "select \"category_id\", cast(collect(\"name\") AS sys.odcivarchar2list)
+   from \"mb_test\".\"test_data_venues\"
+   group by \"category_id\"
+   order by \"category_id\" asc
+   fetch first 2 rows only")
+
+(defmethod agg-venues-by-category-id :athena
+  [_driver]
+  "select category_id, array_agg(name)
+   from test_data.venues
+   group by category_id
+   order by 1 asc
+   limit 2;")

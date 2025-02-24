@@ -16,6 +16,8 @@ import {
 } from "./ChartSettingFieldPicker.styled";
 import { ChartSettingSelect } from "./ChartSettingSelect";
 
+const RIGHT_SECTION_BUTTON_WIDTH = 22;
+
 export const ChartSettingFieldPicker = ({
   value,
   options,
@@ -80,6 +82,10 @@ export const ChartSettingFieldPicker = ({
 
   const hasLeftSection = showDragHandle || (showColorPicker && seriesKey);
 
+  const rightSectionWidth =
+    [!disabled, !!menuWidgetInfo, !!onRemove].filter(Boolean).length *
+    RIGHT_SECTION_BUTTON_WIDTH;
+
   return (
     <ChartSettingFieldPickerRoot
       className={className}
@@ -123,18 +129,9 @@ export const ChartSettingFieldPicker = ({
         }
         placeholderNoOptions={t`No valid fields`}
         placeholder={t`Select a field`}
-        rightSectionWidth="100px"
+        rightSectionWidth={`${rightSectionWidth}px`}
         rightSection={
-          <Group
-            wrap="nowrap"
-            gap="sm"
-            p="xs"
-            mr="sm"
-            miw={
-              [!disabled, !!menuWidgetInfo, !!onRemove].filter(Boolean).length *
-              42
-            }
-          >
+          <>
             {!disabled && (
               <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
                 <Icon name="chevrondown" />
@@ -154,7 +151,7 @@ export const ChartSettingFieldPicker = ({
                 onClick={onRemove}
               />
             )}
-          </Group>
+          </>
         }
         styles={{
           root: {
@@ -172,15 +169,14 @@ export const ChartSettingFieldPicker = ({
             textOverflow: "ellipsis",
             fontWeight: "bold",
 
-            backgroundColor: disabled
-              ? "var(--mb-color-bg-white) !important"
-              : "inherit",
+            backgroundColor: disabled ? "var(--mb-color-bg-white)" : "inherit",
 
             border: "none",
             width: "100%",
             color: "var(--mb-color-text-primary)",
             cursor: "pointer",
             pointerEvents: "unset",
+            paddingRight: `${rightSectionWidth + 8}px`,
           },
         }}
       />

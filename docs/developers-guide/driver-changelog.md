@@ -6,6 +6,18 @@ title: Driver interface changelog
 
 ## Metabase 0.54.0
 
+- Added the multi-method `allowed-promotions` that allows driver control over which column type promotions are supported for uploads.
+
+- Added the multi-method `alter-table-columns!`, like `alter-columns!` but accepts additional kw-arg opts.
+  Existing implementations of `alter-columns!` will be used by default.
+
+- `alter-columns!` is now marked as deprecated. Drivers
+  should seek to implement the new `alter-table-columns!` method.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.interface/alter-table-columns-sql` has been added, like `alter-columns-sql` but accepts additional kw-arg opts. Existing implementations of `alter-columns-sql` will be used by default.
+
+- `metabase.driver.sql-jdbc.sync.interface/alter-columns-sql` is now marked as deprecated. Drivers should seek to implement the new `alter-table-columns-sql` method.
+
 - Added a feature `:test/arrays` and multimethod `native-array-query` to enable the testing of array types for
   databases that support them.
 

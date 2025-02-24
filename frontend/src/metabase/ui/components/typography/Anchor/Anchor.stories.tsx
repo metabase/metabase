@@ -51,7 +51,7 @@ const SizeTemplate = (args: AnchorProps) => (
 );
 
 export default {
-  title: "Typography/Anchor",
+  title: "Components/Text/Anchor",
   component: Anchor,
   args,
   argTypes,

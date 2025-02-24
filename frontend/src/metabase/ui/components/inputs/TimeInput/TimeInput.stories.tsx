@@ -64,7 +64,7 @@ const VariantTemplate = (args: TimeInputProps) => (
 );
 
 export default {
-  title: "Inputs/TimeInput",
+  title: "Components/Inputs/TimeInput",
   component: TimeInput,
   args,
   argTypes,

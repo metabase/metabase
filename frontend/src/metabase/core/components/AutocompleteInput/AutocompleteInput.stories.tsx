@@ -4,7 +4,7 @@ import { useState } from "react";
 import AutocompleteInput from "./AutocompleteInput";
 
 export default {
-  title: "Core/AutocompleteInput",
+  title: "Components/Ask Before Using/AutocompleteInput",
   component: AutocompleteInput,
 };
 

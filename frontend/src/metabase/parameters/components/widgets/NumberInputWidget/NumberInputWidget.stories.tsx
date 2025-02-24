@@ -6,7 +6,7 @@ import type { ParameterValueOrArray } from "metabase-types/api";
 import { NumberInputWidget } from "./NumberInputWidget";
 
 export default {
-  title: "Parameters/NumberInputWidget",
+  title: "Components/Parameters/NumberInputWidget",
   component: NumberInputWidget,
 };
 
