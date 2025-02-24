@@ -51,6 +51,7 @@ import {
   funnelDropHandler,
   removeColumnFromFunnel,
 } from "./visualizations/funnel";
+import { mapDropHandler, removeColumnFromMap } from "./visualizations/map";
 import { pieDropHandler, removeColumnFromPieChart } from "./visualizations/pie";
 import {
   pivotDropHandler,
@@ -247,6 +248,8 @@ const visualizerHistoryItemSlice = createSlice({
         removeColumnFromPieChart(state, name);
       } else if (state.display === "pivot") {
         removeColumnFromPivotTable(state, name);
+      } else if (state.display === "map") {
+        removeColumnFromMap(state, name);
       }
     },
   },
@@ -273,6 +276,8 @@ const visualizerHistoryItemSlice = createSlice({
           pieDropHandler(state, event);
         } else if (state.display === "pivot") {
           pivotDropHandler(state, event);
+        } else if (state.display === "map") {
+          mapDropHandler(state, event);
         }
       })
       .addCase(addDataSource.fulfilled, (state, action) => {

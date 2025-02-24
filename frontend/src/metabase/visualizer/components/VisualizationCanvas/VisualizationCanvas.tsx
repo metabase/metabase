@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
+  Box,
   Center,
   Flex,
   Icon,
@@ -26,6 +27,7 @@ import { HorizontalWell } from "./HorizontalWell";
 import { ScatterFloatingWell } from "./ScatterFloatingWell";
 import { StartFromViz } from "./StartFromViz";
 import { VerticalWell } from "./VerticalWell";
+import Styles from "./VisualizationCanvas.module.css";
 
 export function VisualizationCanvas() {
   const [isTabularPreviewOpen, setTabularPreviewOpen] = useState(false);
@@ -58,32 +60,41 @@ export function VisualizationCanvas() {
 
   return (
     <>
-      <Flex w="100%" h="100%" pos="relative" ref={setNodeRef}>
-        <VerticalWell display={display} />
-        <Flex direction="column" style={{ flex: 1 }}>
+      <Box className={Styles.Container} ref={setNodeRef}>
+        <Box style={{ gridArea: "left" }}>
+          <VerticalWell display={display} />
+        </Box>
+
+        <Box style={{ gridArea: "main" }}>
           <Visualization
             rawSeries={rawSeries}
             // TableInteractive crashes when trying to use metabase-lib
             isDashboard={display === "table"}
           />
-          <HorizontalWell
-            display={display}
-            w="90%"
-            style={{ alignSelf: "center" }}
-          />
+        </Box>
+
+        <Flex
+          align="center"
+          justify="left"
+          pl="7px"
+          style={{ gridArea: "bottom-left" }}
+        >
+          <Tooltip label={t`View as table`}>
+            <ActionIcon onClick={() => setTabularPreviewOpen(true)}>
+              <Icon name="table" />
+            </ActionIcon>
+          </Tooltip>
         </Flex>
-        {display === "scatter" && <ScatterFloatingWell />}
-        <Tooltip label={t`View as table`}>
-          <ActionIcon
-            pos="absolute"
-            right={0}
-            bottom={0}
-            onClick={() => setTabularPreviewOpen(true)}
-          >
-            <Icon name="table" />
-          </ActionIcon>
-        </Tooltip>
-      </Flex>
+
+        <Box style={{ gridArea: "bottom" }}>
+          <HorizontalWell display={display} />
+        </Box>
+        {display === "scatter" && (
+          <Box style={{ gridArea: "top-right" }}>
+            <ScatterFloatingWell />
+          </Box>
+        )}
+      </Box>
       <TabularPreviewModal
         opened={isTabularPreviewOpen}
         onClose={() => setTabularPreviewOpen(false)}

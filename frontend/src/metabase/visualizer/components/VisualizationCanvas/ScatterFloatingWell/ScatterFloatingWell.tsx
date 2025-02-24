@@ -36,9 +36,6 @@ export function ScatterFloatingWell() {
 
   return (
     <Stack
-      pos="absolute"
-      top="1rem"
-      right="1rem"
       p="md"
       bg="bg-medium"
       style={{
