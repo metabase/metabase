@@ -102,6 +102,10 @@ describe("scenarios > question > summarize sidebar", () => {
       .should("have.attr", "aria-selected", "true")
       .findByLabelText("Binning strategy")
       .should("be.visible");
+    H.getDimensionByName({ name: "Discount" }).within(() => {
+      cy.button("Add dimension").realHover();
+      cy.findByLabelText("Binning strategy").should("be.visible");
+    });
   });
 
   it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
