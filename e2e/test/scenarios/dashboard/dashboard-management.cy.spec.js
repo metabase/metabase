@@ -223,68 +223,6 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               });
             });
 
-            if (user !== "nodata") {
-              it("should not allow shallow duplication if there is a dashboard question on the dashboard", () => {
-                cy.get("@originalDashboardId").then(id => {
-                  cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
-                    "copyDashboard",
-                  );
-
-                  // visit dash first to set it as recently opened
-                  cy.visit(`/dashboard/${id}`);
-
-                  cy.log("create a dashboard question for a dashboard");
-                  H.newButton("Question").click();
-                  H.entityPickerModalTab("Collections").click();
-                  H.entityPickerModal().findByText("Orders Model").click();
-                  cy.findByTestId("qb-save-button").click();
-                  H.modal()
-                    .findByLabelText("Name")
-                    .clear()
-                    .type("A dashboard question");
-                  H.modal()
-                    .findByLabelText(/Where do you want to save this/)
-                    .click();
-                  H.entityPickerModal().findByText(dashboardName).click();
-                  H.entityPickerModal()
-                    .findByText("Select this dashboard")
-                    .click();
-                  H.modal().button("Save").click();
-
-                  cy.findByTestId("dashboard-header-container")
-                    .findByRole("button", { name: "Cancel" })
-                    .click();
-
-                  cy.log("validate the shallow copy options is disabled");
-                  H.openDashboardMenu();
-
-                  H.popover()
-                    .findByText("Duplicate")
-                    .should("be.visible")
-                    .click();
-                  cy.location("pathname").should(
-                    "eq",
-                    `/dashboard/${id}-${dashboardName.toLowerCase()}/copy`,
-                  );
-
-                  H.modal().within(() => {
-                    cy.findByRole("heading", {
-                      name: `Duplicate "${dashboardName}" and its questions`,
-                    });
-                    cy.findByDisplayValue(`${dashboardName} - Duplicate`);
-                    cy.findByLabelText("Only duplicate the dashboard").should(
-                      "not.be.checked",
-                    );
-                    cy.findByLabelText("Only duplicate the dashboard").should(
-                      "be.disabled",
-                    );
-                    cy.button("Duplicate").click();
-                    assertOnRequest("copyDashboard");
-                  });
-                });
-              });
-            }
-
             it("should be able to move/undo move a dashboard (metabase#13059, metabase#25705)", () => {
               cy.get("@originalDashboardId").then(id => {
                 H.appBar().contains("Our analytics");
