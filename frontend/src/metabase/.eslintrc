@@ -29,7 +29,7 @@
           },
           {
             "name": "@emotion/styled",
-            "message": "Please use components from `metabase/ui` instead and style them using css modules.",
+            "message": "Please style components using css modules.",
           },
           {
             "name": "@emotion/react",
