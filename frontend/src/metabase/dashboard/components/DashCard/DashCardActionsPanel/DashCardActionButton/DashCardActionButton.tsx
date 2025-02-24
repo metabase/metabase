@@ -33,8 +33,10 @@ const DashActionButton = forwardRef<HTMLAnchorElement, Props>(
   },
 );
 
-const ActionIcon = (props: IconProps) => (
-  <Icon size={HEADER_ICON_SIZE} {...props} />
+const ActionIcon = forwardRef<SVGSVGElement, IconProps>(
+  function ActionIconInner(props, ref) {
+    return <Icon ref={ref} size={HEADER_ICON_SIZE} {...props} />;
+  },
 );
 
 export const DashCardActionButton = Object.assign(DashActionButton, {
