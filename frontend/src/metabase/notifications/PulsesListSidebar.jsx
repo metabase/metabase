@@ -7,7 +7,6 @@ import _ from "underscore";
 
 import Label from "metabase/components/type/Label";
 import Subhead from "metabase/components/type/Subhead";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { getParameters } from "metabase/dashboard/selectors";
@@ -18,7 +17,7 @@ import {
 import { getActivePulseParameters } from "metabase/lib/pulse";
 import { connect } from "metabase/lib/redux";
 import { formatFrame } from "metabase/lib/time";
-import { Icon } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 
 import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
 
@@ -52,32 +51,21 @@ function _PulsesListSidebar({
         <Subhead>{t`Subscriptions`}</Subhead>
 
         <SidebarActions>
-          <Tooltip tooltip={t`Set up a new schedule`}>
-            <Icon
-              name="add"
-              className={cx(
-                CS.textBrand,
-                CS.bgLightHover,
-                CS.rounded,
-                CS.p1,
-                CS.cursorPointer,
-                CS.mr1,
-              )}
-              size={18}
+          <Tooltip label={t`Set up a new schedule`}>
+            <Button
+              leftSection={<Icon name="add" size={16} />}
+              variant="subtle"
+              mr="1rem"
               onClick={createSubscription}
             />
           </Tooltip>
-          <Tooltip tooltip={t`Close`}>
-            <Icon
-              name="close"
-              className={cx(
-                CS.textLight,
-                CS.bgLightHover,
-                CS.rounded,
-                CS.p1,
-                CS.cursorPointer,
-              )}
-              size={22}
+
+          <Tooltip label={t`Close`}>
+            <Button
+              leftSection={<Icon name="close" size={16} />}
+              variant="subtle"
+              color="text-medium"
+              mr="-1rem"
               onClick={onCancel}
             />
           </Tooltip>

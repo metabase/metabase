@@ -66,6 +66,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
       H.popover()
         .findByLabelText("Created At")
         .findByLabelText("Temporal bucket")
+        .realHover()
         .click();
       // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText("Week").click();
