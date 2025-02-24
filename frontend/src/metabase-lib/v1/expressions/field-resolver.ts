@@ -1,10 +1,9 @@
 import { c, t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type { Node } from "metabase-lib/v1/expressions/pratt";
-import { ResolverError } from "metabase-lib/v1/expressions/pratt";
 
 import { parseDimension, parseMetric, parseSegment } from "./identifier";
+import { type Node, ResolverError } from "./pratt";
 
 export function fieldResolver(options: {
   query: Lib.Query;
