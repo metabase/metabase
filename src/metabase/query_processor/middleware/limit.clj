@@ -2,9 +2,10 @@
   "Middleware that handles limiting the maximum number of rows returned by a query."
   (:require
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.models.setting :as setting]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 ;;;; Pre-processing
 
@@ -34,6 +35,27 @@
   details."
   1048575)
 
+(setting/defsetting attachment-row-limit
+  (deferred-tru "Row limit in file attachments excluding the header.")
+  :visibility :internal
+  :export?    true
+  :type       :positive-integer)
+
+(def ^:dynamic *minimum-download-row-limit*
+  "Minimum download row limit. Using dynamic so we can rebind in tests"
+  absolute-max-results)
+
+(setting/defsetting download-row-limit
+  (deferred-tru "Row limit in file exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.")
+  :visibility :internal
+  :export?    true
+  :type       :positive-integer
+  :getter     (fn []
+                (let [limit (setting/get-value-of-type :positive-integer :download-row-limit)]
+                  (if (nil? limit)
+                    limit
+                    (max limit *minimum-download-row-limit*)))))
+
 (defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned. This is the minimum of:
   1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query
@@ -47,8 +69,8 @@
     (let [context (-> query :info :context)
           download-context? #{:csv-download :json-download :xlsx-download}
           attachment-context? #{:dashboard-subscription :pulse}
-          download-limit (when (download-context? context) (qp.constraints/download-row-limit))
-          attachment-limit (when (attachment-context? context) (qp.constraints/attachment-row-limit))
+          download-limit (when (download-context? context) (download-row-limit))
+          attachment-limit (when (attachment-context? context) (attachment-row-limit))
           res (u/safe-min (mbql.u/query->max-rows-limit query)
                           download-limit
                           attachment-limit)]

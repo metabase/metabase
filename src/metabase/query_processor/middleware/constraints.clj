@@ -3,7 +3,6 @@
   `:add-default-userland-constraints?` `:middleware` option."
   (:require
    [metabase.models.setting :as setting]
-   [metabase.query-processor.middleware.limit :as limit]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 ;; The following "defaults" are not applied to the settings themselves - why not? Because the existing behavior is
@@ -45,27 +44,6 @@
   :database-local :allowed
   :audit          :getter
   :doc "Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.")
-
-(setting/defsetting attachment-row-limit
-  (deferred-tru "Row limit in file attachments excluding the header.")
-  :visibility :internal
-  :export?    true
-  :type       :positive-integer)
-
-(def ^:dynamic *minimum-download-row-limit*
-  "Minimum download row limit. Using dynamic so we can rebind in tests"
-  limit/absolute-max-results)
-
-(setting/defsetting download-row-limit
-  (deferred-tru "Row limit in file exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.")
-  :visibility :internal
-  :export?    true
-  :type       :positive-integer
-  :getter     (fn []
-                (let [limit (setting/get-value-of-type :positive-integer :download-row-limit)]
-                  (if (nil? limit)
-                    limit
-                    (max limit *minimum-download-row-limit*)))))
 
 (defn default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."
