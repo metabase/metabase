@@ -90,9 +90,9 @@ describe("ChartSkeleton", () => {
         actionMenu: MockActionMenu,
         display,
       });
-      await userEvent.hover(screen.getByLabelText("info icon"));
+      userEvent.hover(screen.getByLabelText("info icon"));
       expect(screen.getByText(name)).toBeInTheDocument();
-      expect(screen.getByText(displayDescription)).toBeInTheDocument();
+      expect(await screen.findByText(displayDescription)).toBeInTheDocument();
       expect(screen.getByText("Action Menu")).toBeInTheDocument();
     });
   });

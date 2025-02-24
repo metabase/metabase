@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import { NumberColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -191,12 +191,18 @@ describe("SmartScalar", () => {
       expect(screen.queryByText("vs. previous month:")).not.toBeInTheDocument();
       expect(screen.queryByText("50")).not.toBeInTheDocument();
 
-      // show tool-tip
+      // show tooltip
       userEvent.hover(lastChange);
-      expect(await screen.findAllByLabelText("arrow_up icon")).toHaveLength(2);
-      expect(screen.queryAllByText("100%")).toHaveLength(2);
-      expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
-      expect(screen.getByText("50")).toBeInTheDocument();
+      const tooltip = await screen.findByRole("tooltip");
+
+      expect(
+        within(tooltip).getByLabelText("arrow_up icon"),
+      ).toBeInTheDocument();
+      expect(within(tooltip).getByText("100%")).toBeInTheDocument();
+      expect(
+        within(tooltip).getByText("vs. previous month:"),
+      ).toBeInTheDocument();
+      expect(within(tooltip).getByText("50")).toBeInTheDocument();
     });
   });
 
