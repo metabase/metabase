@@ -106,5 +106,5 @@ export const updateQuestionSdk =
       });
     }
 
-    return { question: nextQuestion };
+    return { question: nextQuestion, lastRunQuestion: previousQuestion };
   };

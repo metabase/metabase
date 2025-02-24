@@ -1,3 +1,6 @@
+import _ from "underscore";
+
+import { areQueriesEquivalent } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
@@ -17,6 +20,35 @@ export function isQuestionDirty(
 
   return question.isDirtyComparedToWithoutParameters(originalQuestion!);
 }
+
+export const isQuestionResultDirty = ({
+  question,
+  originalQuestion,
+  lastRunQuestion,
+  lastParameters,
+  nextParameters,
+}: {
+  question: Question | undefined;
+  originalQuestion: Question | undefined;
+  lastRunQuestion: Question | undefined;
+  lastParameters: any;
+  nextParameters: any;
+}) => {
+  const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
+  const isEditable =
+    question && Lib.queryDisplayInfo(question.query()).isEditable;
+
+  return (
+    haveParametersChanged ||
+    (isEditable &&
+      !areQueriesEquivalent({
+        originalQuestion,
+        lastRunQuestion,
+        currentQuestion: question,
+        tableMetadata: undefined,
+      }))
+  );
+};
 
 export function isQuestionRunnable(
   question: Question | undefined,

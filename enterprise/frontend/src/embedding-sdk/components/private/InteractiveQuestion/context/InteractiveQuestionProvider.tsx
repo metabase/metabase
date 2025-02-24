@@ -100,6 +100,7 @@ export const InteractiveQuestionProvider = ({
 
   const {
     question,
+    lastRunQuestion,
     originalQuestion,
 
     queryResults,
@@ -142,6 +143,7 @@ export const InteractiveQuestionProvider = ({
     navigateToNewCard,
     plugins: combinedPlugins,
     question,
+    lastRunQuestion,
     originalQuestion,
     queryResults,
     mode,

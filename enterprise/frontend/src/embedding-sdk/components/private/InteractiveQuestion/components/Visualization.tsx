@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
@@ -9,6 +10,11 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import {
+  isQuestionDirty,
+  isQuestionResultDirty,
+  isQuestionRunnable,
+} from "metabase/query_builder/utils/question";
 import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionContext } from "../context";
@@ -21,6 +27,8 @@ export const QuestionVisualization = ({
 }: FlexibleSizeProps) => {
   const {
     question,
+    originalQuestion,
+    lastRunQuestion,
     queryResults,
     mode,
     isQuestionLoading,
@@ -28,10 +36,29 @@ export const QuestionVisualization = ({
     navigateToNewCard,
     onNavigateBack,
     updateQuestion,
+    queryQuestion,
   } = useInteractiveQuestionContext();
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading = question && !queryResults;
+
+  const isDirty = useMemo(() => {
+    return isQuestionDirty(question, originalQuestion);
+  }, [question, originalQuestion]);
+
+  const isResultDirty = useMemo(() => {
+    return isQuestionResultDirty({
+      question,
+      originalQuestion,
+      lastRunQuestion,
+      lastParameters: lastRunQuestion?.parameters(),
+      nextParameters: question?.parameters(),
+    });
+  }, [question, lastRunQuestion, originalQuestion]);
+
+  const isRunnable = useMemo(() => {
+    return isQuestionRunnable(question, isDirty);
+  }, [question, isDirty]);
 
   if (isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
@@ -55,15 +82,19 @@ export const QuestionVisualization = ({
         className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
         question={question}
         rawSeries={[{ card, data: result && result.data }]}
+        isRunnable={isRunnable}
         isRunning={isQueryRunning}
         isObjectDetail={false}
-        isResultDirty={false}
+        isResultDirty={isResultDirty}
         isNativeEditorOpen={false}
         result={result}
         noHeader
         mode={mode}
         navigateToNewCardInsideQB={navigateToNewCard}
         onNavigateBack={onNavigateBack}
+        runQuestionQuery={async () => {
+          await queryQuestion();
+        }}
         onUpdateQuestion={(question: Question) =>
           updateQuestion(question, { run: false })
         }

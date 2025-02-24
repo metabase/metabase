@@ -26,6 +26,7 @@ export interface LoadQuestionHookResult {
   originalId?: number | string;
 
   question?: Question;
+  lastRunQuestion?: Question;
   originalQuestion?: Question;
 
   queryResults?: any[];
@@ -63,7 +64,8 @@ export function useLoadQuestion({
   // Keep track of the latest question and query results.
   // They can be updated from the below actions.
   const [questionState, mergeQuestionState] = useReducer(questionReducer, {});
-  const { question, originalQuestion, queryResults } = questionState;
+  const { question, lastRunQuestion, originalQuestion, queryResults } =
+    questionState;
 
   const deferredRef = useRef<Deferred>();
 
@@ -182,10 +184,15 @@ export function useLoadQuestion({
     navigateToNewCardState.loading;
 
   const replaceQuestion = (question: Question) =>
-    mergeQuestionState({ question, originalQuestion: question });
+    mergeQuestionState({
+      question,
+      lastRunQuestion: question,
+      originalQuestion: question,
+    });
 
   return {
     question,
+    lastRunQuestion,
     originalQuestion,
 
     queryResults,

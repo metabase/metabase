@@ -6,7 +6,7 @@ import type Question from "metabase-lib/v1/Question";
 
 interface RunQuestionQueryParams {
   question: Question;
-  originalQuestion?: Question;
+  originalQuestion: Question | undefined;
   cancelDeferred?: Deferred;
 }
 
@@ -42,7 +42,7 @@ export async function runQuestionQuerySdk(
     question.alertType = () => null;
   }
 
-  return { question, queryResults };
+  return { question, lastRunQuestion: question, queryResults };
 }
 
 export function shouldRunCardQuery(question: Question): boolean {

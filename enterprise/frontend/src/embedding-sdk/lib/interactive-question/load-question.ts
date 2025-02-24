@@ -1,6 +1,9 @@
 import _ from "underscore";
 
-import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
+import type {
+  LoadSdkQuestionParams,
+  SdkQuestionState,
+} from "embedding-sdk/types/question";
 import { resolveCards } from "metabase/query_builder/actions";
 import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -15,10 +18,7 @@ export const loadQuestionSdk =
     cardId,
     initialSqlParameters,
   }: LoadSdkQuestionParams) =>
-  async (
-    dispatch: Dispatch,
-    getState: GetState,
-  ): Promise<{ question: Question; originalQuestion?: Question }> => {
+  async (dispatch: Dispatch, getState: GetState): Promise<SdkQuestionState> => {
     const { card, originalCard } = await resolveCards({
       cardId: cardId ?? undefined,
       options,
@@ -51,5 +51,5 @@ export const loadQuestionSdk =
       question = question.setParameterValues(parameterValues);
     }
 
-    return { question, originalQuestion };
+    return { question, lastRunQuestion: question, originalQuestion };
   };
