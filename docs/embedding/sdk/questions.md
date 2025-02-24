@@ -419,7 +419,7 @@ const authConfig = {...}
 export default function App() {
     return (
         <MetabaseProvider authConfig={authConfig}>
-            <InteractiveQuestion />
+            <InteractiveQuestion isSaveEnabled />
         </MetabaseProvider>
     );
 }
