@@ -913,6 +913,11 @@
     [_driver _feature _database]
     true))
 
+;; redshift doesn't have a way to to return null as an array
+(defmethod driver/database-supports? [:redshift :test/null-arrays]
+  [_driver _feature _database]
+  false)
+
 (defmulti native-null-array-query
   {:arglists '([driver])}
   dispatch-on-driver-with-test-extensions
