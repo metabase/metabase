@@ -34,7 +34,7 @@ const TimelineListModal = ({
   onGoBack,
 }: TimelineListModalProps): JSX.Element => {
   const title = getTitle(timelines, collection, isArchive);
-  const menuItems = getMenuItems(timelines, collection, isArchive);
+  const menuItems = getMenuItems(collection, isArchive);
   const hasTimelines = timelines.length > 0;
   const hasMenuItems = menuItems.length > 0;
 
@@ -84,11 +84,7 @@ const getTitle = (
   }
 };
 
-const getMenuItems = (
-  timelines: Timeline[],
-  collection: Collection,
-  isArchive: boolean,
-) => {
+const getMenuItems = (collection: Collection, isArchive: boolean) => {
   if (!collection.can_write || isArchive) {
     return [];
   }
