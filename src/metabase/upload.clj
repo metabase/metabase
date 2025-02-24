@@ -763,7 +763,7 @@
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
     (model-persistence/invalidate! {:card_id [:in model-ids]})))
 
-(defn- internal-allowed-promotions [m]
+(defn- translate-type-keywords [m]
   (walk/postwalk
    (fn [x]
      (if (and (keyword? x) (= "metabase.upload" (namespace x)))
@@ -796,7 +796,7 @@
               ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
               ;; we can come back and optimize this to an optimistic-with-fallback approach later.
               detected-types     (upload-types/column-types-from-rows settings old-types rows)
-              allowed-promotions (internal-allowed-promotions (driver/allowed-promotions driver))
+              allowed-promotions (translate-type-keywords (driver/allowed-promotions driver))
               new-types          (map #(upload-types/new-type %1 %2 allowed-promotions) old-types detected-types)
               ;; avoid any schema modification unless all the promotions required by the file are supported,
               ;; choosing to not promote means that we will defer failure until we hit the first value that cannot
