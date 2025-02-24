@@ -186,7 +186,6 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
         startRule={startRule as S}
         clause={clause}
         onChange={handleExpressionChange}
-        name={name}
         query={query}
         stageIndex={stageIndex}
         expressionIndex={expressionIndex}

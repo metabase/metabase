@@ -20,7 +20,6 @@ type LintOptions = {
   startRule: StartRule;
   query: Lib.Query;
   stageIndex: number;
-  name?: string;
   expressionIndex?: number | undefined;
   metadata: Metadata;
 };

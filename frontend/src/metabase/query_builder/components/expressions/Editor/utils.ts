@@ -66,14 +66,12 @@ export function diagnoseAndCompileExpression<
     stageIndex,
     expressionIndex,
     metadata,
-    name,
   }: {
     startRule: S;
     query: Lib.Query;
     stageIndex: number;
     expressionIndex?: number;
     metadata: Metadata;
-    name?: string;
   },
 ) {
   if (source.trim() === "") {
@@ -101,8 +99,6 @@ export function diagnoseAndCompileExpression<
     query,
     stageIndex,
     startRule,
-    expressionIndex,
-    name,
   });
 
   const {
