@@ -8,7 +8,7 @@ import {
 import FunnelChart, { type FunnelProps } from "./FunnelChart";
 
 export default {
-  title: "static-viz/FunnelChart",
+  title: "Viz/Static Viz/FunnelChart",
   component: FunnelChart,
 };
 

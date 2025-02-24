@@ -5,7 +5,7 @@ import { Form, FormProvider } from "metabase/forms";
 import FormToggle from "./FormToggle";
 
 export default {
-  title: "Core/FormToggle",
+  title: "Components/Ask Before Using/FormToggle",
   component: FormToggle,
 };
 

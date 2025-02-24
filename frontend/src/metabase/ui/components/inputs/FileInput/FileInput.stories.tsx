@@ -60,7 +60,7 @@ const IconTemplate = (args: FileInputProps) => (
 );
 
 export default {
-  title: "Inputs/FileInput",
+  title: "Components/Inputs/FileInput",
   component: FileInput,
   args,
   argTypes,

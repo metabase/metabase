@@ -16,7 +16,7 @@ import {
 import { data } from "./stories-data";
 
 export default {
-  title: "static-viz/ScatterPlot",
+  title: "Viz/Static Viz/ScatterPlot",
   component: StaticVisualization,
 };
 

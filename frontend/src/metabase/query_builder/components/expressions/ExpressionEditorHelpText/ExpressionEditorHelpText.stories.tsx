@@ -9,7 +9,7 @@ import type { ExpressionEditorHelpTextProps } from "./ExpressionEditorHelpText";
 import { ExpressionEditorHelpText } from "./ExpressionEditorHelpText";
 
 export default {
-  title: "Query Builder/ExpressionEditorHelpText",
+  title: "App/Query Builder/ExpressionEditorHelpText",
   component: ExpressionEditorHelpText,
 };
 

@@ -10,7 +10,7 @@ import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChar
 import { RowChart, type RowChartProps } from "./RowChart";
 
 export default {
-  title: "Visualizations/shared/RowChart",
+  title: "Viz/Shared/RowChart",
   component: RowChart,
 };
 

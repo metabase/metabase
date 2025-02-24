@@ -5,7 +5,7 @@ import type { ChangeEvent } from "react";
 import CheckBox from "./CheckBox";
 
 export default {
-  title: "Core/CheckBox",
+  title: "Deprecated/Components/CheckBox",
   component: CheckBox,
 };
 

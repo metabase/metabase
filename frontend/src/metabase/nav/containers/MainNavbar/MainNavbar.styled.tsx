@@ -19,7 +19,6 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   flex-shrink: 0;
   align-items: center;
   background-color: var(--mb-color-bg-white);
-  overflow: auto;
   z-index: 4;
   width: ${NAV_SIDEBAR_WIDTH};
   border-inline-end: 1px solid var(--mb-color-border);
