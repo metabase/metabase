@@ -116,7 +116,7 @@ https://www.example.com/widget
 
 #### Display URL as an image
 
-If you select image, and the text is a link to an image asset, Metabase will display image in the table cell.
+If you select image, and the text is a link to an image asset, Metabase will display the image in the table cell.
 
 ## Date formatting options
 
