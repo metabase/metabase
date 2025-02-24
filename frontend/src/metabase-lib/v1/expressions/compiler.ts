@@ -34,12 +34,14 @@ export function compileExpression({
   query,
   stageIndex,
   database,
+  resolve: shouldResolve = true,
 }: {
   source: string;
   startRule: string;
   query: Lib.Query;
   stageIndex: number;
   database?: Database | null;
+  resolve?: boolean;
 }): CompileResult {
   const tokens = lexify(source);
 
@@ -51,30 +53,35 @@ export function compileExpression({
     return { error: errors[0] };
   }
 
-  const resolveMBQLField = fieldResolver({
-    query,
-    stageIndex,
-    startRule,
-  });
+  const passes = [
+    adjustOptions,
+    useShorthands,
+    adjustOffset,
+    adjustCaseOrIf,
+    adjustMultiArgOptions,
+    adjustTopLevelLiteral,
+  ];
+
+  if (shouldResolve) {
+    const resolveMBQLField = fieldResolver({
+      query,
+      stageIndex,
+      startRule,
+    });
+    passes.push(expression =>
+      resolve({
+        expression,
+        type: startRule,
+        fn: resolveMBQLField,
+        database,
+      }),
+    );
+  }
 
   try {
     const expression = compile(root, {
-      passes: [
-        adjustOptions,
-        useShorthands,
-        adjustOffset,
-        adjustCaseOrIf,
-        adjustMultiArgOptions,
-        adjustTopLevelLiteral,
-        expression =>
-          resolve({
-            expression,
-            type: startRule,
-            fn: resolveMBQLField,
-            database,
-          }),
-      ],
       getMBQLName,
+      passes,
     });
 
     const expressionClause = Lib.expressionClauseForLegacyExpression(
