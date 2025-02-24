@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import Input from "metabase/core/components/Input";

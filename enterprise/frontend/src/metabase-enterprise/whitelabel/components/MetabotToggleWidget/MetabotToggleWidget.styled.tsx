@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import MetabotLogo from "metabase/core/components/MetabotLogo";
