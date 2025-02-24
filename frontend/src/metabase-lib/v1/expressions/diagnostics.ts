@@ -24,7 +24,7 @@ import {
 import { resolve } from "./resolver";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, Token } from "./types";
-import { getDatabase, isErrorWithMessage } from "./utils";
+import { getDatabase, getExpressionMode, isErrorWithMessage } from "./utils";
 
 export function diagnose({
   source,
@@ -96,10 +96,6 @@ export function diagnose({
 
   return null;
 }
-
-const startRuleToExpressionModeMapping: Record<string, Lib.ExpressionMode> = {
-  boolean: "filter",
-};
 
 function prattCompiler({
   source,
@@ -289,13 +285,10 @@ function checkCompiledExpression({
   expressionIndex?: number;
 }): ErrorWithMessage | null {
   try {
-    const expressionMode: Lib.ExpressionMode =
-      startRuleToExpressionModeMapping[startRule] ?? startRule;
-
     const error = Lib.diagnoseExpression(
       query,
       stageIndex,
-      expressionMode,
+      getExpressionMode(startRule),
       expression,
       expressionIndex,
     );
