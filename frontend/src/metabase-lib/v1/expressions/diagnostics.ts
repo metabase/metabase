@@ -25,6 +25,7 @@ import {
 import { resolve } from "./resolver";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, Token } from "./types";
+import { getDatabase } from "./utils";
 
 export function diagnose({
   source,
@@ -222,11 +223,6 @@ export function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
     err != null &&
     typeof (err as any).message === "string"
   );
-}
-
-function getDatabase(query: Lib.Query, metadata?: Metadata) {
-  const databaseId = Lib.databaseID(query);
-  return metadata?.database(databaseId);
 }
 
 function checkOpenParenthesisAfterFunction(
