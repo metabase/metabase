@@ -25,7 +25,7 @@ import {
 import { resolve } from "./resolver";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, Token } from "./types";
-import { getDatabase } from "./utils";
+import { getDatabase, isErrorWithMessage } from "./utils";
 
 export function diagnose({
   source,
@@ -215,14 +215,6 @@ function prattCompiler({
     }
     return { error: { message: t`Invalid expression` } };
   }
-}
-
-export function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
-  return (
-    typeof err === "object" &&
-    err != null &&
-    typeof (err as any).message === "string"
-  );
 }
 
 function checkOpenParenthesisAfterFunction(
