@@ -50,12 +50,14 @@ export function SourceDatasetBreadcrumbs({
             maw="auto"
             position="bottom"
           >
-            <HeadBreadcrumbs.Badge
-              inactiveColor="text-light"
-              icon={{ name: "warning", color: color("danger") }}
-            >
-              {question.displayName()}
-            </HeadBreadcrumbs.Badge>
+            <span>
+              <HeadBreadcrumbs.Badge
+                inactiveColor="text-light"
+                icon={{ name: "warning", color: color("danger") }}
+              >
+                {question.displayName()}
+              </HeadBreadcrumbs.Badge>
+            </span>
           </Tooltip>
         ) : (
           <HeadBreadcrumbs.Badge

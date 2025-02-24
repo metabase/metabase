@@ -13,7 +13,9 @@ function NoResultsView({ isSmall }: NoResultsViewProps) {
   return (
     <Root>
       <Tooltip label={t`No results!`} disabled={!isSmall}>
-        <NoDataError data-testid="no-results-image" mb="1rem" />
+        <span>
+          <NoDataError data-testid="no-results-image" mb="1rem" />
+        </span>
       </Tooltip>
       {!isSmall && <ShortMessage>{t`No results!`}</ShortMessage>}
     </Root>

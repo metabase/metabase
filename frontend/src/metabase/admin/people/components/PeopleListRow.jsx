@@ -76,9 +76,11 @@ const PeopleListRow = ({
           <td>{moment(user.updated_at).fromNow()}</td>
           <td>
             <Tooltip label={t`Reactivate this account`}>
-              <RefreshLink to={Urls.reactivateUser(user.id)}>
-                <Icon name="refresh" size={20} />
-              </RefreshLink>
+              <span>
+                <RefreshLink to={Urls.reactivateUser(user.id)}>
+                  <Icon name="refresh" size={20} />
+                </RefreshLink>
+              </span>
             </Tooltip>
           </td>
         </Fragment>

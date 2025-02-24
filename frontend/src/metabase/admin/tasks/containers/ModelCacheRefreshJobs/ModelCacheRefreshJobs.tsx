@@ -80,7 +80,7 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
       <th>{renderStatus()}</th>
       <th>
         <Tooltip label={<DateTime value={job.refresh_begin} />}>
-          {lastRunAtLabel}
+          <span>{lastRunAtLabel}</span>
         </Tooltip>
       </th>
       <th>{job.creator?.common_name || t`Automatic`}</th>
