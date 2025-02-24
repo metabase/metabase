@@ -1,9 +1,9 @@
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 
-import { parseDimension, parseMetric, parseSegment } from "./identifier";
+import { fieldResolver } from "./field-resolver";
 import { adjustBooleans, parse } from "./recursive-parser";
 import { resolve } from "./resolver";
 
@@ -20,45 +20,13 @@ export function processSource(options: {
   expressionClause: Lib.ExpressionClause | null;
   compileError: Error | null;
 } {
-  const resolveMBQLField = (kind: string, name: string) => {
-    if (kind === "metric") {
-      const metric = parseMetric(name, options);
-      if (!metric) {
-        const dimension = parseDimension(name, options);
-        const isNameKnown = Boolean(dimension);
-
-        if (isNameKnown) {
-          const error = c(
-            "{0} is an identifier of the field provided by user in a custom expression",
-          )
-            .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`;
-
-          throw new Error(error);
-        }
-
-        throw new Error(t`Unknown Metric: ${name}`);
-      }
-
-      return Lib.legacyRef(query, stageIndex, metric);
-    } else if (kind === "segment") {
-      const segment = parseSegment(name, options);
-      if (!segment) {
-        throw new Error(t`Unknown Segment: ${name}`);
-      }
-
-      return Lib.legacyRef(query, stageIndex, segment);
-    } else {
-      // fallback
-      const dimension = parseDimension(name, options);
-      if (!dimension) {
-        throw new Error(t`Unknown Field: ${name}`);
-      }
-
-      return Lib.legacyRef(query, stageIndex, dimension);
-    }
-  };
-
   const { source, query, stageIndex, startRule } = options;
+
+  const resolveMBQLField = fieldResolver({
+    query,
+    stageIndex,
+    startRule,
+  });
 
   let expression = null;
   let expressionClause = null;
