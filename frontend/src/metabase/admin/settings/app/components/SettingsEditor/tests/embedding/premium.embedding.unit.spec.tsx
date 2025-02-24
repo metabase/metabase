@@ -478,10 +478,10 @@ describe("[EE, with token] embedding settings", () => {
         );
 
         expect(
-          screen.getByRole("link", { name: "Check out the Quick Start" }),
+          screen.getByRole("link", { name: "Check out the Quickstart" }),
         ).toBeInTheDocument();
         expect(
-          screen.getByRole("link", { name: "Check out the Quick Start" }),
+          screen.getByRole("link", { name: "Check out the Quickstart" }),
         ).toHaveProperty(
           "href",
           /**
@@ -578,14 +578,14 @@ describe("[EE, with token] embedding settings", () => {
         );
       });
 
-      it("should show quick start section", () => {
+      it("should show quickstart section", () => {
         expect(screen.getByText("Get started")).toBeInTheDocument();
         expect(
           screen.queryByText("Use the SDK with API keys for development."),
         ).not.toBeInTheDocument();
 
         expect(
-          screen.getByRole("link", { name: "Check out the Quick Start" }),
+          screen.getByRole("link", { name: "Check out the Quickstart" }),
         ).toHaveProperty(
           "href",
           "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-self-hosted",
@@ -671,14 +671,14 @@ describe("[EE, with token] embedding settings", () => {
         );
       });
 
-      it("should show quick start section", () => {
+      it("should show quickstart section", () => {
         expect(screen.getByText("Get started")).toBeInTheDocument();
         expect(
           screen.queryByText("Use the SDK with API keys for development."),
         ).not.toBeInTheDocument();
 
         expect(
-          screen.getByRole("link", { name: "Check out the Quick Start" }),
+          screen.getByRole("link", { name: "Check out the Quickstart" }),
         ).toHaveProperty(
           "href",
           "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-cloud",
