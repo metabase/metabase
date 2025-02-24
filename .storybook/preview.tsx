@@ -21,6 +21,34 @@ import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 const parameters = {
+  options: {
+    storySort: {
+      order: [
+        "Intro",
+        "Design System",
+        "Typography",
+        "Components",
+        [
+          "Buttons",
+          "Data display",
+          "Feedback",
+          "Inputs",
+          "Overlays",
+          "Parameters",
+          "Navigation",
+          "Text",
+          "*",
+          "Utils",
+          "Ask Before Using",
+        ],
+        "Patterns",
+        "Viz",
+        "*",
+        "App",
+        "Deprecated",
+      ],
+    },
+  },
   controls: {
     matchers: {
       color: /(background|color)$/i,

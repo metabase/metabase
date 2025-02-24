@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import Calendar from "./Calendar";
 
 export default {
-  title: "Core/Calendar",
+  title: "Components/Ask Before Using/Calendar",
   component: Calendar,
 };
 

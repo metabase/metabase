@@ -4,7 +4,7 @@ import type { StoryFn } from "@storybook/react";
 import BookmarkToggle from "./BookmarkToggle";
 
 export default {
-  title: "Core/BookmarkToggle",
+  title: "Components/BookmarkToggle",
   component: BookmarkToggle,
 };
 

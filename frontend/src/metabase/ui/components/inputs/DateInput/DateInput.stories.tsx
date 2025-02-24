@@ -65,7 +65,7 @@ const IconTemplate = (args: DateInputProps) => (
 );
 
 export default {
-  title: "Inputs/DateInput",
+  title: "Components/Inputs/DateInput",
   component: DateInput,
   args,
   argTypes,

@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import Markdown, { type MarkdownProps } from "./Markdown";
 
 export default {
-  title: "Core/Markdown",
+  title: "Components/Ask Before Using/Markdown",
   component: Markdown,
 };
 

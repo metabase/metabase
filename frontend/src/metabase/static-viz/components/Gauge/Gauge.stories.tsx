@@ -11,7 +11,7 @@ import {
 } from "metabase/static-viz/components/Gauge/stories-data";
 
 export default {
-  title: "static-viz/Gauge",
+  title: "Viz/Static Viz/Gauge",
   component: GaugeContainer,
 };
 
