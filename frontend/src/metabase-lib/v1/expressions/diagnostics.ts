@@ -1,21 +1,11 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 
+import { compileExpression } from "./compiler";
 import { MBQL_CLAUSES, getMBQLName } from "./config";
-import { fieldResolver } from "./field-resolver";
-import { compile, lexify, parse } from "./pratt";
-import {
-  adjustCaseOrIf,
-  adjustMultiArgOptions,
-  adjustOffset,
-  adjustOptions,
-  useShorthands,
-} from "./recursive-parser";
-import { resolve } from "./resolver";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, Token } from "./types";
 import { getDatabase, getExpressionMode, isErrorWithMessage } from "./utils";
@@ -63,7 +53,7 @@ export function diagnose({
   const database = getDatabase(query, metadata);
 
   // make a simple check on expression syntax correctness
-  const res = prattCompiler({
+  const res = compileExpression({
     source,
     startRule,
     name,
@@ -89,84 +79,6 @@ export function diagnose({
   }
 
   return null;
-}
-
-function prattCompiler({
-  source,
-  startRule,
-  name,
-  query,
-  stageIndex,
-  expressionIndex,
-  database,
-}: {
-  source: string;
-  startRule: string;
-  name: string | null;
-  query: Lib.Query;
-  stageIndex: number;
-  expressionIndex?: number | undefined;
-  database?: Database | null;
-}):
-  | {
-      expression: Expression;
-    }
-  | {
-      error: ErrorWithMessage;
-    } {
-  const tokens = lexify(source);
-  const options = {
-    source,
-    startRule,
-    name,
-    query,
-    stageIndex,
-    expressionIndex,
-  };
-
-  // PARSE
-  const { root, errors } = parse(tokens, {
-    throwOnError: false,
-    ...options,
-  });
-
-  if (errors.length > 0) {
-    return { error: errors[0] };
-  }
-
-  const resolveMBQLField = fieldResolver({
-    query,
-    stageIndex,
-    startRule,
-  });
-
-  try {
-    // COMPILE
-    const expression = compile(root, {
-      passes: [
-        adjustOptions,
-        useShorthands,
-        adjustOffset,
-        adjustCaseOrIf,
-        adjustMultiArgOptions,
-        expression =>
-          resolve({
-            expression,
-            type: startRule,
-            fn: resolveMBQLField,
-            database,
-          }),
-      ],
-      getMBQLName,
-    });
-
-    return { expression };
-  } catch (error) {
-    if (isErrorWithMessage(error)) {
-      return { error };
-    }
-    return { error: { message: t`Invalid expression` } };
-  }
 }
 
 function checkOpenParenthesisAfterFunction(
