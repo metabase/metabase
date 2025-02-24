@@ -37,7 +37,7 @@ const TimelineEmptyState = ({
       </EmptyStateText>
       {canWrite && (
         <EmptyStateButton primary onClick={onNewEvent}>
-          {t`Create an event`}
+          {t`Create event`}
         </EmptyStateButton>
       )}
     </EmptyStateRoot>

@@ -43,7 +43,7 @@ const TimelineEmptyState = ({
       {canWrite && (
         <Link to={link}>
           <Button variant="filled" w="12.5rem">
-            {t`Create an event`}
+            {t`Create event`}
           </Button>
         </Link>
       )}
