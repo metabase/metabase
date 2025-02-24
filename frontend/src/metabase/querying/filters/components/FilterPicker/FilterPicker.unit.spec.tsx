@@ -417,6 +417,7 @@ describe("FilterPicker", () => {
 
       // The expression editor applies changes on blur,
       // but for some reason it doesn't work without `act`.
+      await waitFor(() => expect(input).toHaveProperty("readOnly", false));
 
       await userEvent.clear(input);
       await userEvent.type(input, text, { delay });
