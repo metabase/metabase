@@ -5,12 +5,12 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { EXPRESSION_FUNCTIONS, MBQL_CLAUSES } from "../config";
 import { TOKEN } from "../tokenizer";
+import { getDatabase } from "../utils";
 
 import {
   content,
   expressionClauseCompletion,
   fuzzyMatcher,
-  getDatabase,
   isFieldReference,
   isIdentifier,
   tokenAtPos,
