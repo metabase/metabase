@@ -365,7 +365,7 @@
            metabase.notification.init
            metabase.notification.payload.core
            metabase.notification.payload.execute}
-   :uses #{api channel events models permissions premium-features public-settings query-processor request util}}
+   :uses #{analytics api channel events models permissions premium-features public-settings query-processor request util}}
 
   permissions
   {:api  #{metabase.permissions.api
