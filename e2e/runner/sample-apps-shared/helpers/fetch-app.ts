@@ -2,7 +2,6 @@ import { pipeline } from "stream/promises";
 
 import type { IncomingMessage } from "http";
 import https from "https";
-import path from "path";
 import * as tar from "tar";
 
 import { E2E_TMP_FOLDER_PATH } from "../../constants/file-system";
@@ -11,8 +10,8 @@ import type { SampleAppName } from "../types";
 import { createFolder, removeFolder } from "./file-utils";
 import { logWithPrefix } from "./log-with-prefix";
 
-function getRootPath(appName: SampleAppName, subAppName?: string) {
-  return `${E2E_TMP_FOLDER_PATH}/${[appName, subAppName].filter(Boolean).join("-")}`;
+function getRootPath(appName: SampleAppName) {
+  return `${E2E_TMP_FOLDER_PATH}/${appName}`;
 }
 
 async function downloadRepository({
@@ -66,19 +65,14 @@ async function extractRepository({
 
 export async function fetchApp({
   appName,
-  subAppName,
   loggerPrefix,
   branch,
 }: {
   appName: SampleAppName;
-  subAppName?: string;
   loggerPrefix: string;
   branch: string;
 }) {
-  const rootPath = getRootPath(appName, subAppName);
-  const installationPath = subAppName
-    ? path.join(rootPath, subAppName)
-    : rootPath;
+  const rootPath = getRootPath(appName);
 
   removeFolder({ path: rootPath, loggerPrefix });
   createFolder({ path: rootPath, loggerPrefix });
@@ -90,5 +84,5 @@ export async function fetchApp({
     loggerPrefix,
   });
 
-  return { rootPath, installationPath };
+  return { rootPath };
 }

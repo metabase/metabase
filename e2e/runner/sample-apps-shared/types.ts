@@ -6,16 +6,11 @@ export type SampleAppName =
 export type EmbeddingSdkVersion = string | "local" | undefined;
 
 export type SampleAppSetupConfig = {
-  subAppName?: string;
+  "docker-compose-path": string;
   branch: string;
   env: Record<string, string | number>;
-  additionalSetup?: (data: {
-    installationPath: string;
-    loggerPrefix: string;
-  }) => void;
-  startCommand: string[];
 };
 
 export type SampleAppSetupConfigs<
   TSampleAppSetupConfig extends SampleAppSetupConfig = SampleAppSetupConfig,
-> = Partial<Record<SampleAppName, TSampleAppSetupConfig[]>>;
+> = Partial<Record<SampleAppName, TSampleAppSetupConfig>>;

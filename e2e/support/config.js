@@ -11,7 +11,6 @@ import {
 import webpackConfig from "./component-webpack.config";
 import * as dbTasks from "./db_tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
-import { getSampleAppsEmbeddingSdkSpecFiles } from "./helpers/e2e-sample-apps-helpers";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
@@ -261,13 +260,6 @@ const embeddingSdkComponentTestConfig = {
   },
 };
 
-const sampleAppsEmbeddingSdkE2eTestConfig = {
-  ...defaultConfig,
-  specPattern: getSampleAppsEmbeddingSdkSpecFiles(
-    "e2e/test/sample-apps-embedding-sdk-scenarios",
-  ),
-};
-
 module.exports = {
   mainConfig,
   snapshotsConfig,
@@ -275,5 +267,4 @@ module.exports = {
   crossVersionSourceConfig,
   crossVersionTargetConfig,
   embeddingSdkComponentTestConfig,
-  sampleAppsEmbeddingSdkE2eTestConfig,
 };

@@ -27,17 +27,3 @@ export function removeFolder({
 
   fs.rmSync(path, { recursive: true, force: true });
 }
-
-export function updateJsonFile<
-  TContent extends Record<string, any> = Record<string, any>,
->(filePath: string, updateFunction: (jsonContent: TContent) => TContent) {
-  if (!fs.existsSync(filePath)) {
-    return;
-  }
-
-  const content = JSON.parse(fs.readFileSync(filePath, "utf8")) as TContent;
-
-  const updatedContent = updateFunction(content);
-
-  fs.writeFileSync(filePath, JSON.stringify(updatedContent, null, 2), "utf8");
-}
