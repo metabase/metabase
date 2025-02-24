@@ -911,6 +911,5 @@
          (mongo/encode-mongo
           [{"$match" {"_id" (ObjectId. "67bb6394fb517f3d8397fd09")
                       "uuid" (#'mongo.qp/uuid->bsonbinary #uuid "11111111-1111-1111-1111-111111111111")}}
-
            {"$project" #ordered/map (["_id" "$_id"] ["uuid" "$uuid"] ["nested" "$nested"])}
            {"$limit" 1048575}]))))
