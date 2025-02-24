@@ -4,7 +4,7 @@ import type { StoryFn } from "@storybook/react";
 import Radio, { type RadioProps } from "./Radio";
 
 export default {
-  title: "Deprecated/Radio",
+  title: "Deprecated/Components/Radio",
   component: Radio,
 };
 

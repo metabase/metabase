@@ -448,8 +448,8 @@ describe.skip(
         cy.findByText("Saved");
 
         // Run the query and save the question
-        H.startNewNativeQuestion().as("editor");
-        cy.get("@editor").type(nativeQuery);
+        H.startNewNativeQuestion();
+        H.NativeEditor.type(nativeQuery);
         H.runNativeQuery();
 
         getCellText().then(res => {
@@ -508,13 +508,16 @@ describe("Cloud settings section", () => {
   it("should prompt us to migrate to cloud if we are not hosted", () => {
     H.setTokenFeatures("all");
     cy.visit("/admin");
-    cy.findByTestId("admin-list-settings-items").findByText("Cloud").click();
-
+    cy.findAllByTestId("settings-sidebar-link")
+      .filter(":contains(Cloud)")
+      .should("have.descendants", ".Icon-gem")
+      .click();
     cy.location("pathname").should("contain", "/admin/settings/cloud");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Migrate to Cloud/i).should("exist");
-    cy.button("Get started").should("exist");
+    cy.findByRole("heading", { name: "Migrate to Metabase Cloud" }).should(
+      "exist",
+    );
+    cy.button("Try for free").should("exist");
   });
 });
 

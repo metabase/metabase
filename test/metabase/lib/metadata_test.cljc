@@ -68,7 +68,6 @@
 (deftest ^:parallel idents-test
   (doseq [table-key (meta/tables)
           field-key (meta/fields table-key)]
-    (let [table    (meta/table-metadata table-key)
-          field    (meta/field-metadata table-key field-key)]
-      (is (= (str "field__" (:name meta/database) "__" (:schema table) "__" (:name table) "__" (:name field))
+    (let [field (meta/field-metadata table-key field-key)]
+      (is (= (:ident field)
              (:ident (lib.metadata/field meta/metadata-provider (:id field))))))))

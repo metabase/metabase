@@ -821,7 +821,7 @@
                      "options" [:optional StringFilterOptions])
      ;; Multi-arg form
      (helpers/clause (keyword (name clause-keyword))
-                     "options" StringFilterOptions
+                     "options" [:maybe StringFilterOptions]
                      "field" StringExpressionArg
                      "string-or-field" StringExpressionArg
                      "second-string-or-field" StringExpressionArg

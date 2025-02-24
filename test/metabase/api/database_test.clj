@@ -600,30 +600,30 @@
             db                 (first (t2/insert-returning-instances! :model/Database {:name    database-name
                                                                                        :engine  (u/qualified-name driver/*driver*)
                                                                                        :details connection-details}))
-            _                  (sync/sync-database! db)]
-        (let [;; 2. start a long running process on another thread that uses a connection
-              connections-stay-open? (future
-                                       (sql-jdbc.execute/do-with-connection-with-options
-                                        driver/*driver*
-                                        db
-                                        nil
-                                        (fn [^Connection conn]
-                                          ;; sleep long enough to make sure the PUT request below finishes processing,
-                                          ;; including any async operations that it might trigger
-                                          (Thread/sleep 1000)
-                                          ;; test the connection is open by executing a query
-                                          (try
-                                            (let [stmt      (.createStatement conn)
-                                                  resultset (.executeQuery stmt "SELECT 1")]
-                                              (.next resultset))
-                                            (catch Exception _e
-                                              false)))))]
-          ;; 3. update the database's `database-enable-actions` setting
-          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
-                                {:settings {:database-enable-actions true}})
-          ;; 4. test the connection was still open at the end of it of the long running process
-          (is (true? @connections-stay-open?))
-          (tx/destroy-db! driver/*driver* empty-dbdef))))))
+            _                  (sync/sync-database! db)
+            ;; 2. start a long running process on another thread that uses a connection
+            connections-stay-open? (future
+                                     (sql-jdbc.execute/do-with-connection-with-options
+                                      driver/*driver*
+                                      db
+                                      nil
+                                      (fn [^Connection conn]
+                                        ;; sleep long enough to make sure the PUT request below finishes processing,
+                                        ;; including any async operations that it might trigger
+                                        (Thread/sleep 1000)
+                                        ;; test the connection is open by executing a query
+                                        (try
+                                          (let [stmt      (.createStatement conn)
+                                                resultset (.executeQuery stmt "SELECT 1")]
+                                            (.next resultset))
+                                          (catch Exception _e
+                                            false)))))]
+        ;; 3. update the database's `database-enable-actions` setting
+        (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                              {:settings {:database-enable-actions true}})
+        ;; 4. test the connection was still open at the end of it of the long running process
+        (is (true? @connections-stay-open?))
+        (tx/destroy-db! driver/*driver* empty-dbdef)))))
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
@@ -872,6 +872,27 @@
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
                      (set (keys db)))))))))))
+
+(deftest ^:parallel databases-caching
+  (testing "GET /api/database"
+    (testing "Testing that listing all databases does not make excessive queries with multiple databases"
+      (mt/with-temp [:model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}]
+        (t2/with-call-count [call-count]
+          (mt/user-http-request :rasta :get 200 "database")
+          (is (< (call-count) 10)))))))
 
 (deftest ^:parallel databases-list-test-2
   (testing "GET /api/database"
@@ -2191,58 +2212,6 @@
                (-> (messages)
                    first
                    :message)))))))
-
-(deftest persist-database-test-2
-  (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-    (mt/dataset test-data
-      (let [db-id (:id (mt/db))]
-        (mt/with-temp
-          [:model/Card card {:database_id db-id
-                             :type        :model}]
-          (mt/with-temporary-setting-values [persisted-models-enabled false]
-            (testing "requires persist setting to be enabled"
-              (is (= "Persisting models is not enabled."
-                     (mt/user-http-request :crowberto :post 400 (str "database/" db-id "/persist"))))))
-
-          (mt/with-temporary-setting-values [persisted-models-enabled true]
-            (testing "only users with permissions can persist a database"
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :post 403 (str "database/" db-id "/persist")))))
-
-            (testing "should be able to persit an database"
-              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/persist"))
-              (is (= "creating" (t2/select-one-fn :state 'PersistedInfo
-                                                  :database_id db-id
-                                                  :card_id     (:id card))))
-              (is (true? (t2/select-one-fn (comp :persist-models-enabled :settings)
-                                           :model/Database
-                                           :id db-id)))
-              (is (true? (get-in (mt/user-http-request :crowberto :get 200
-                                                       (str "database/" db-id))
-                                 [:settings :persist-models-enabled]))))
-            (testing "it's okay to trigger persist even though the database is already persisted"
-              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/persist")))))))))
-
-(deftest unpersist-database-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-    (mt/dataset test-data
-      (let [db-id (:id (mt/db))]
-        (mt/with-temp
-          [:model/Card     _ {:database_id db-id
-                              :type        :model}]
-          (testing "only users with permissions can persist a database"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :post 403 (str "database/" db-id "/unpersist")))))
-
-          (mt/with-temporary-setting-values [persisted-models-enabled true]
-            (testing "should be able to persit an database"
-              ;; trigger persist first
-              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/unpersist"))
-              (is (nil? (t2/select-one-fn (comp :persist-models-enabled :settings)
-                                          :model/Database
-                                          :id db-id))))
-            (testing "it's okay to unpersist even though the database is not persisted"
-              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/unpersist")))))))))
 
 (deftest autocomplete-suggestions-do-not-include-dashboard-cards
   (testing "GET /api/database/:id/card_autocomplete_suggestions"

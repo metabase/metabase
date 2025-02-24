@@ -6,14 +6,12 @@
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
-   [metabase.integrations.common :as integrations.common]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.core :as perms]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.setup.core :as setup]
@@ -91,7 +89,7 @@
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   (when (and sso_source (not (setup/has-user-setup)))
     ;; Only allow SSO users to be provisioned if the setup flow has been completed and an admin has been created
-    (throw (Exception. (trs "Instance has not been initialized"))))
+    (throw (Exception. (trs "Metabase instance has not been initialized"))))
   (premium-features/airgap-check-user-count)
   (merge
    insert-default-values
@@ -358,16 +356,17 @@
                                    :sso_source    (:sso_source new-user))
                             :details {:invitor (select-keys invitor [:email :first_name])}})))
 
+;;; TODO -- this should probably be moved into [[metabase.sso.google]]
 (mu/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- NewUser]
   (u/prog1 (insert-new-user! (assoc new-user :sso_source "google"))
     ;; send an email to everyone including the site admin if that's set
-    (when (integrations.common/send-new-sso-user-admin-email?)
-      (classloader/require 'metabase.channel.email.messages)
-      ((resolve 'metabase.channel.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
+    (when (setting/get :send-new-sso-user-admin-email?)
+      ((requiring-resolve 'metabase.channel.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
 
+;;; TODO -- this should probably be moved into [[metabase.sso.ldap]]
 (mu/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will receive an email right away."

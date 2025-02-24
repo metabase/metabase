@@ -29,11 +29,6 @@
         (is (= (set known-models)
                (set (map name (v2.entity-ids/toucan-models)))))))))
 
-(def ^:private dual-entity-id-exceptions
-  "Databases, Tables and Fields have a custom [[serdes/entity-id]] based on their names, but also have randomized
-  `entity_id` columns used by column metadata."
-  #{"Database" "Table" "Field"})
-
 (deftest ^:parallel every-model-is-supported-test-2
   (testing "Serialization support\n"
     (let [should-have-entity-id (set (concat serdes.models/data-model serdes.models/content))
@@ -48,12 +43,9 @@
           ;; we're not checking inline-models for anything here, since some of them have (and use) entity_id, like
           ;; dashcards, and some (ParameterCard) do not
           (when (contains? should-have-entity-id (name model))
-            (if (contains? dual-entity-id-exceptions (name model))
-              (testing (str "Certain models have *both* entity_id and hash key: " (name model))
-                (is (= true custom-entity-id? random-entity-id?)))
-              (testing (str "Model should either have entity_id or a hash key: " (name model))
-                ;; `not=` is effectively `xor`
-                (is (not= custom-entity-id? random-entity-id?)))))
+            (testing (str "Model should either have entity_id or a hash key: " (name model))
+              ;; `not=` is effectively `xor`
+              (is (not= custom-entity-id? random-entity-id?))))
           (when (contains? excluded (name model))
             (testing (str "Model shouldn't have entity_id defined: " (name model))
               (is (not custom-entity-id?))

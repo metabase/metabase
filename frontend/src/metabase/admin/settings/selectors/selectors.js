@@ -492,6 +492,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     order: 132,
     component: CloudPanel,
     settings: [],
+    isUpsell: true,
   },
   whitelabel: {
     name: t`Appearance`,

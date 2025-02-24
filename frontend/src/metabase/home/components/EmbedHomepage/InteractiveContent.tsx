@@ -25,7 +25,7 @@ export const InteractiveContent = ({
     </Text>
     <Group gap="md">
       <ExternalLink href={interactiveEmbeddingQuickstartUrl}>
-        <Button variant="outline">{t`Check out the Quick Start`}</Button>
+        <Button variant="outline">{t`Check out the Quickstart`}</Button>
       </ExternalLink>
       <ExternalLink href={learnMoreInteractiveEmbedUrl}>
         <Button variant="subtle">{t`Read the docs`}</Button>

@@ -4,7 +4,7 @@ import type { StoryFn } from "@storybook/react";
 import { StringInputWidget } from "./StringInputWidget";
 
 export default {
-  title: "Parameters/StringInputWidget",
+  title: "Components/Parameters/StringInputWidget",
   component: StringInputWidget,
 };
 

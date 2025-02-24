@@ -26,12 +26,12 @@
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
-   [metabase.models.pulse :as models.pulse]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -638,7 +638,8 @@
                                                                                       :parameter_id "bar"
                                                                                       :target       [:dimension
                                                                                                      [:field (mt/id :categories :name) nil]]}]}]
-
+          ;; Manually activate Field values since they are not created during sync (#53387)
+          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
           (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
                                                                  "25°"
                                                                  "33 Taps"]
@@ -687,6 +688,8 @@
                                                      :parameter_id "foo"
                                                      :target       [:dimension
                                                                     [:field (mt/id :venues :name) nil]]}]}]
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
       (let [dashboard-load-a (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
             _                (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
             dashboard-load-b (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
@@ -1148,20 +1151,75 @@
             (is (not=  (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")))))))
 
-(deftest copy-dashboard-with-dashboard-questions-test
-  (mt/with-temp [:model/Dashboard {dash-id :id} {}
-                 :model/Card {dq-id :id} {:dashboard_id dash-id
-                                          :dataset_query (mt/$ids
-                                                           {:database (mt/id)
-                                                            :type     :query
-                                                            :query    {:source-table $$orders
-                                                                       :aggregation  [[:avg $orders.total]]
-                                                                       :breakout     [!month.orders.created_at]}})}
-                 :model/DashboardCard _ {:dashboard_id dash-id :card_id dq-id}]
-    (let [new-dash-id (:id (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dash-id)))]
-      (is (= 1
-             (t2/count :model/DashboardCard :dashboard_id dash-id)
-             (t2/count :model/DashboardCard :dashboard_id new-dash-id))))))
+(deftest copy-dashboard-with-dashboard-questions
+  (testing "`is_deep_copy=true` works for dashboards regardless of whether they have dashboard questions"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:collection_id coll-id
+                                              :dashboard_id dash-id
+                                              :database_id (mt/id)
+                                              :dataset_query (mt/$ids
+                                                               {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table $$orders
+                                                                           :aggregation  [[:avg $orders.total]]
+                                                                           :breakout     [!month.orders.created_at]}})}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id card-id}]
+      (let [response (mt/user-http-request :rasta :post 200
+                                           (format "dashboard/%d/copy" dash-id)
+                                           {:is_deep_copy true})]
+        (is (some? (:id response)))
+        (is (not= dash-id (:id response)))
+        (let [copied-cards (t2/select :model/Card :dashboard_id (:id response))]
+          (is (= 1 (count copied-cards)))
+          (is (not= card-id (:id (first copied-cards))))))))
+  (testing "`is_deep_copy=false` errors for dashboards containing dashboard questions"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:collection_id coll-id
+                                              :dashboard_id dash-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id card-id}]
+      (is (= "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."
+             (mt/user-http-request :rasta :post 400
+                                   (format "dashboard/%d/copy" dash-id)
+                                   {:is_deep_copy false})))))
+  (testing "`is_deep_copy=false` works for a dashboard without any dashboard questions"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id card-id}]
+      (let [response (mt/user-http-request :rasta :post 200
+                                           (format "dashboard/%d/copy" dash-id)
+                                           {:is_deep_copy false})]
+        (is (some? (:id response)))
+        (is (not= dash-id (:id response)))
+        (is (zero? (t2/count :model/Card :dashboard_id (:id response)))))))
+  (testing "`is_deep_copy=false` works for a dashboard with archived dashboard questions"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:collection_id coll-id
+                                              :dashboard_id dash-id
+                                              :database_id (mt/id)
+                                              :archived true
+                                              :dataset_query (mt/$ids
+                                                               {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table $$orders
+                                                                           :aggregation  [[:avg $orders.total]]
+                                                                           :breakout     [!month.orders.created_at]}})}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id card-id}]
+      (let [response (mt/user-http-request :rasta :post 200
+                                           (format "dashboard/%d/copy" dash-id)
+                                           {:is_deep_copy false})]
+        (is (some? (:id response)))
+        (is (not= dash-id (:id response)))
+        ;; Verify no cards were copied
+        (is (zero? (t2/count :model/Card :dashboard_id (:id response))))
+        (is (zero? (t2/count :model/DashboardCard :dashboard_id (:id response))))))))
 
 (deftest copy-dashboard-test-2
   (mt/with-model-cleanup [:model/Dashboard]
@@ -3088,7 +3146,7 @@
         (mt/with-temp [:model/Collection collection]
           (with-chain-filter-fixtures [{:keys [dashboard param-keys]} {:collection_id (:id collection)}]
             (let [url (chain-filter-search-url dashboard (:category-name param-keys) "s")]
-              (testing (str "\n url")
+              (testing (str "\n" url)
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :get 403 url)))))))))))
 
@@ -4745,7 +4803,7 @@
                                   (format "dashboard/%s/dashcard/%s/card/%s/query" dashboard-id dashcard-id card-id)))
           (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))
 
-;; This test is same as [[metabase.api.public-test/dashboard-param-values-param-fields-hydration-test]]
+;; This test is same as [[metabase.public-sharing.api-test/dashboard-param-values-param-fields-hydration-test]]
 ;; adjusted to run with NORMAL dashboard.
 (deftest ^:synchronized dashboard-param-values-param-fields-hydration-test
   (mt/with-temp
@@ -4804,6 +4862,8 @@
                                   :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}]
     (let [call-count (volatile! 0)
           orig-filterable-columns-for-query params/filterable-columns-for-query]
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :people :state)))
       (with-redefs [params/filterable-columns-for-query
                     (fn [& args]
                       (vswap! call-count inc)
@@ -4932,25 +4992,6 @@
     (testing "If the dashboard is deleted, its dashboard internal cards are too"
       (t2/delete! :model/Dashboard :id dash-id)
       (is (not (t2/exists? :model/Card :dashboard_id dash-id))))))
-
-(deftest dashboard-internal-cards-copying
-  (mt/with-temp [:model/Collection {coll-id :id} {}
-                 :model/Collection {_other-coll-id :id} {}
-                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                 :model/Card {card-id :id} {:dashboard_id dash-id
-                                            :table_id      (mt/id :orders)
-                                            :dataset_query (mt/mbql-query orders)
-                                            :database_id   (mt/id)}
-                 :model/DashboardCard {_dashcard-id :id} {:card_id card-id
-                                                          :dashboard_id dash-id}]
-    (let [new-dash-id (:id (mt/user-http-request :crowberto :post 200 (str "dashboard/" dash-id "/copy")))
-          new-card (:card (first (:dashcards (t2/hydrate (t2/select-one :model/Dashboard :id new-dash-id) [:dashcards :card]))))]
-      (is (not= (:id new-card) card-id))
-      (is (=? (select-keys (t2/select-one :model/Card :id card-id)
-                           [:dataset_query :display :name :description])
-              new-card))
-      (is (= new-dash-id
-             (:dashboard_id new-card))))))
 
 (deftest dashboard-questions-are-archived-with-the-dashboard
   (testing "It gets archived with the dashboard"

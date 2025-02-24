@@ -28,13 +28,13 @@
   ;; that the contents changed in the tests below.
   (testing "password reset email tells user if they should log in with Google Sign-In"
     (et/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" "google" "http://localhost/some/url" true)
+      (messages/send-password-reset-email! "test@test.com" :google "http://localhost/some/url" true)
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "Google")))))
   (testing "password reset email tells user if they should log in with (non-Google) SSO"
     (et/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" "SAML" nil true)
+      (messages/send-password-reset-email! "test@test.com" :saml nil true)
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "SSO")))))

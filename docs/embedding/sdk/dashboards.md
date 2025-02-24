@@ -25,11 +25,11 @@ You can embed a dashboard using the one of the dashboard components:
 | Prop                         | Type                                            | Description                                                                                                                                                                                                                                                                                                                      |
 | ---------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | dashboardId                  | `number \| string`                              | The ID of the dashboard. This is either:<br>- the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`<br>- the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data |
-| initialParameters\*\*          | `Record<string, string \| string[]>`            | Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.                                                                                                                                                                                                   |
+| initialParameters\*\*        | `Record<string, string \| string[]>`            | Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.                                                                                                                                                                                                   |
 | withTitle                    | `boolean`                                       | Whether the dashboard should display a title.                                                                                                                                                                                                                                                                                    |
 | withCardTitle                | `boolean`                                       | Whether the dashboard cards should display a title.                                                                                                                                                                                                                                                                              |
 | withDownloads                | `boolean \| null`                               | Whether to hide the download button.                                                                                                                                                                                                                                                                                             |
-| hiddenParameters\*\*               | `string[] \| null`                              | A list of [parameters to hide](../../embedding/public-links.md#appearance-parameters).                                                                                                                                                                                                                                           |
+| hiddenParameters\*\*         | `string[] \| null`                              | A list of [parameters to hide](../../embedding/public-links.md#appearance-parameters).                                                                                                                                                                                                                                           |
 | drillThroughQuestionHeight\* | `number \| null`                                | Height of a question component when drilled from the dashboard to a question level.                                                                                                                                                                                                                                              |
 | questionPlugins\*            | `{ mapQuestionClickActions: Function } \| null` | Additional mapper function to override or add drill-down menu. See the implementing custom actions section for more details.                                                                                                                                                                                                     |
 | onLoad                       | `(dashboard: Dashboard \| null) => void`        | Event handler that triggers after dashboard loads with all visible cards and their content.                                                                                                                                                                                                                                      |
@@ -231,11 +231,11 @@ return <Button onClick={handleDashboardCreate}>Create new dashboard</Button>;
 
 Props:
 
-| Prop         | Type                                     | Description                                                                                                 |
-| ------------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| name         | `string`                                 | (required) Dashboard title                                                                                  |
-| description  | `string \| null`                         | Optional dashboard description                                                                              |
-| collectionId | `number \| 'root' \| 'personal' \| null` | Collection where to create a new dashboard. You can use predefined system values like `root` or `personal`. |
+| Prop         | Type                             | Description                                                                                                    |
+| ------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| name         | `string`                         | (required) Dashboard title                                                                                     |
+| description  | `string \| null`                 | Optional dashboard description                                                                                 |
+| collectionId | `number \| 'root' \| 'personal'` | Collection in which to create a new dashboard. You can use predefined system values like `root` or `personal`. |
 
 ### Component
 
@@ -251,8 +251,8 @@ return <CreateDashboardModal onClose={handleClose} onCreate={setDashboard} />;
 
 Supported component props:
 
-| Prop          | Type                                     | Description                                                                                     |
-| ------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| collectionId? | `number \| 'root' \| 'personal' \| null` | Initial collection field value. You can use predefined system values like `root` or `personal`. |
-| onCreate      | `(dashboard: Dashboard) => void`         | Handler to react on dashboard creation.                                                         |
-| onClose       | `() => void`                             | Handler to close modal component                                                                |
+| Prop          | Type                             | Description                                                                                                        |
+| ------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| collectionId? | `number \| 'root' \| 'personal'` | Initial collection in which to create a dashboard. You can use predefined system values like `root` or `personal`. |
+| onCreate      | `(dashboard: Dashboard) => void` | Handler to react on dashboard creation.                                                                            |
+| onClose       | `() => void`                     | Handler to close modal component                                                                                   |

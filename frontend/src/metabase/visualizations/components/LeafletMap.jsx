@@ -171,11 +171,18 @@ export default class LeafletMap extends Component {
     if (this.supportsFilter()) {
       const query = question.query();
       const stageIndex = -1;
+
+      // Longitudes should be wrapped to the canonical range [-180, 180]. If the delta is >= 360,
+      // select the full range; otherwise, you wind up selecting only the overlapping portion.
+      const lngDelta = Math.abs(bounds.getEast() - bounds.getWest());
+      const west = lngDelta >= 360 ? -180 : bounds.getSouthWest().wrap().lng;
+      const east = lngDelta >= 360 ? 180 : bounds.getNorthEast().wrap().lng;
+
       const filterBounds = {
         north: bounds.getNorth(),
         south: bounds.getSouth(),
-        west: bounds.getWest(),
-        east: bounds.getEast(),
+        west,
+        east,
       };
       const updatedQuery = Lib.updateLatLonFilter(
         query,

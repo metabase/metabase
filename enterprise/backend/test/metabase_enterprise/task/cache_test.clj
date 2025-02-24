@@ -2,11 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.task.cache :as task.cache]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -16,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn parameterized-native-query
+(defn- parameterized-native-query
   "A native query with an optional template tag"
   []
   {:database (mt/id)
@@ -27,37 +27,44 @@
               :query "SELECT count(*) FROM CHECKINS [[WHERE date = {{date}}]]"}})
 
 (defn run-query-for-card-id
-  [card-id params]
+  [card-id parameters]
   (mt/as-admin
     (qp.card/process-query-for-card
      card-id :api
-     :parameters params
+     :parameters parameters
      :make-run (constantly
                 (fn [query info]
                   (qp/process-query (qp/userland-query (assoc query :info info))))))))
 
 (defn run-query-for-dashcard
-  [card-id dashboard-id dashcard-id]
+  [card-id dashboard-id dashcard-id parameters]
   (mt/as-admin
-    (qp.dashboard/process-query-for-dashcard
-     :card-id card-id
+    (qp.card/process-query-for-card
+     card-id :api
      :dashboard-id dashboard-id
      :dashcard-id dashcard-id
+     :parameters parameters
      :make-run (constantly
                 (fn [query info]
                   (qp/process-query (qp/userland-query (assoc query :info info))))))))
 
 (defn- most-recent-cache-entry
   []
-  (t2/select-one :model/QueryCache {:order-by [[:updated_at :desc]]
-                                    :limit 1}))
+  (t2/select-one :model/QueryCache {:order-by [[:updated_at :desc]] :limit 1}))
+
+(defn- delete-cache-entry!
+  [entry]
+  (t2/delete! :model/QueryCache :query_hash (:query_hash entry)))
+
+(defn- expire-cache-entry!
+  "Manually expire a cache entry by setting its updated_at back by 24 hours"
+  [cache-entry]
+  (t2/update! :model/QueryCache :query_hash (:query_hash cache-entry)
+              (update cache-entry :updated_at #(t/minus % (t/days 1)))))
 
 (defn- expire-most-recent-cache-entry!
-  "Manually expire the most recently updated cache entry by setting its updated_at back by 24 hours"
   []
-  (let [cache-entry (most-recent-cache-entry)]
-    (t2/update! :model/QueryCache :query_hash (:query_hash cache-entry)
-                (update cache-entry :updated_at #(t/minus % (t/days 1))))))
+  (expire-cache-entry! (most-recent-cache-entry)))
 
 (defn- query-execution-defaults
   [query]
@@ -101,7 +108,7 @@
             (run-query-for-card-id card-id params-2)
             (is (= [nil param-val-1 param-val-2] (map param-vals (to-rerun))))
 
-            (testing "Running a parmaeterized query again bumps it up in the result list, but base query comes first"
+            (testing "Running a parameterized query again bumps it up in the result list, but base query comes first"
               (run-query-for-card-id card-id params-2)
               (is (= [nil param-val-2 param-val-1] (map param-vals (to-rerun)))))
 
@@ -468,97 +475,165 @@
             (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
                                                [question-cache-config-1] true))))))))))
 
+(defn- compare-query-results
+  "Compares a normal query result with a query result generated after a preemptive caching job runs, and asserts
+  that all relevant fields are the same."
+  [original-result cached-result]
+  (let [clean-result (fn [result]
+                       (-> result
+                           (dissoc :running_time :average_execution_time :started_at :cached)
+                           (m/dissoc-in [:json_query :cache-strategy])))]
+    (is (= (clean-result original-result)
+           (clean-result cached-result)))))
+
+(defn- testing-queries
+  "Queries, parameters, and expected results that we should use to test preemptive caching e2e"
+  []
+  [{:label "non-parameterized native query"
+    :query (parameterized-native-query)
+    :parameters []
+    :result [[1000]]}
+   {:label "parameterized native query"
+    :query (parameterized-native-query)
+    :parameters [{:type  :text
+                  :target [:variable [:template-tag "date"]]
+                  :value  "2014-05-31"}]
+    :result [[2]]}
+   {:label "mbql query"
+    :query (mt/mbql-query venues {:aggregation [[:count]]})
+    :parameters []
+    :result [[100]]}])
+
 (deftest refresh-schedule-cache-card-e2e-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
-    (testing "Do we successfully execute a refresh query for a :schedule cache config on a card?"
+    (testing "Do we successfully execute a refresh query for a :schedule cache config on a card?\n"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
-                                                  :dataset_query (parameterized-native-query)}
-                       :model/CacheConfig _ {:model "question"
-                                             :model_id card-id
-                                             :strategy :schedule
-                                             :refresh_automatically true
-                                             :next_run_at nil
-                                             :config {:schedule "0 0 * * * ?"}}]
-          ;; Run card once to populate cache
-          (is (= [[1000]] (mt/rows (run-query-for-card-id card-id []))))
-          (let [cache-timestamp-1 (:updated_at (most-recent-cache-entry))]
-            (@#'task.cache/refresh-cache-configs!)
-            (let [cache-timestamp-2 (:updated_at (most-recent-cache-entry))]
-              (is (t/before? cache-timestamp-1 cache-timestamp-2)))))))))
+        (doseq [{:keys [label query parameters result]} (testing-queries)]
+          (testing (format "\nTesting with %s:" label)
+            (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
+                                                      :dataset_query query}
+                           :model/CacheConfig _ {:model "question"
+                                                 :model_id card-id
+                                                 :strategy :schedule
+                                                 :refresh_automatically true
+                                                 :next_run_at nil
+                                                 :config {:schedule "0 0 * * * ?"}}]
+              ;; Run card once to populate cache
+              (let [original-result (run-query-for-card-id card-id parameters)]
+                (is (= result (mt/rows original-result)))
+                (let [original-cache-entry (most-recent-cache-entry)]
+                  (try
+                    (is (= 1 (:schedule-refreshed (@#'task.cache/refresh-cache-configs!))))
+                    (@#'task.cache/refresh-cache-configs!)
+                    (let [refreshed-cache-entry (most-recent-cache-entry)
+                          cached-result (run-query-for-card-id card-id parameters)]
+                      (is (t/before? (:updated_at original-cache-entry) (:updated_at refreshed-cache-entry)))
+                      (is (= (vec (:query_hash original-cache-entry)) (vec (:query_hash refreshed-cache-entry))))
+                      (compare-query-results original-result cached-result))
+                    (finally
+                      (delete-cache-entry! original-cache-entry))))))))))))
 
 (deftest refresh-schedule-cache-dashboard-e2e-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
-    (testing "Do we successfully execute a refresh query for a :schedule cache config on a dashboard?"
+    (testing "Do we successfully execute a refresh query for a :schedule cache config on a dashboard?\n"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
-                       :model/Card {card-id :id} {:name "Cached card"
-                                                  :dataset_query (parameterized-native-query)}
-                       :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
-                                                               :card_id      card-id}
-                       :model/CacheConfig _ {:model "dashboard"
-                                             :model_id dashboard-id
-                                             :strategy :schedule
-                                             :refresh_automatically true
-                                             :next_run_at nil
-                                             :config {:schedule "0 0 * * * ?"}}]
-          ;; Run card once to populate cache
-          (is (= [[1000]] (mt/rows (run-query-for-dashcard card-id dashboard-id dashcard-id))))
-          (let [cache-timestamp-1 (:updated_at (most-recent-cache-entry))]
-            (@#'task.cache/refresh-cache-configs!)
-            (let [cache-timestamp-2 (:updated_at (most-recent-cache-entry))]
-              (is (t/before? cache-timestamp-1 cache-timestamp-2)))))))))
+        (doseq [{:keys [label query parameters result]} (testing-queries)]
+          (testing (format "\nTesting with %s:" label)
+            (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                           :model/Card {card-id :id} {:name "Cached card"
+                                                      :dataset_query query}
+                           :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                                   :card_id      card-id}
+                           :model/CacheConfig _ {:model "dashboard"
+                                                 :model_id dashboard-id
+                                                 :strategy :schedule
+                                                 :refresh_automatically true
+                                                 :next_run_at nil
+                                                 :config {:schedule "0 0 * * * ?"}}]
+              ;; Run card once to populate cache
+              (let [original-result (run-query-for-dashcard card-id dashboard-id dashcard-id parameters)]
+                (is (= result (mt/rows original-result)))
+                (let [original-cache-entry (most-recent-cache-entry)]
+                  (try
+                    (is (= 1 (:schedule-refreshed (@#'task.cache/refresh-cache-configs!))))
+                    (let [refreshed-cache-entry (most-recent-cache-entry)
+                          cached-result (run-query-for-dashcard card-id dashboard-id dashcard-id parameters)]
+                      (is (t/before? (:updated_at original-cache-entry) (:updated_at refreshed-cache-entry)))
+                      (is (= (vec (:query_hash original-cache-entry)) (vec (:query_hash refreshed-cache-entry))))
+                      (compare-query-results original-result cached-result))
+                    (finally
+                      (delete-cache-entry! original-cache-entry))))))))))))
 
 (deftest refresh-duration-cache-card-e2e-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
-    (testing "Do we successfully execute a refresh query for a :duration cache config on a card?"
+    (testing "Do we successfully execute a refresh query for a :duration cache config on a card?\n"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
-                                                  :dataset_query (parameterized-native-query)}
-                       :model/CacheConfig _ {:model "question"
-                                             :model_id card-id
-                                             :strategy :duration
-                                             :refresh_automatically true
-                                             :config {:unit "hours" :duration 1}}]
-          ;; Run card once to populate cache
-          (is (= [[1000]] (mt/rows (run-query-for-card-id card-id []))))
-          ;; Run again to register a cache hit
-          (is (= [[1000]] (mt/rows (run-query-for-card-id card-id []))))
-          (let [cache-timestamp-1 (:updated_at (most-recent-cache-entry))]
-            ;; Manually expire the existing cache entry. Now the cache should be refreshed.
-            (expire-most-recent-cache-entry!)
-            (@#'task.cache/refresh-cache-configs!)
-            (let [cache-timestamp-2 (:updated_at (most-recent-cache-entry))]
-              (is (t/before? cache-timestamp-1 cache-timestamp-2)))))))))
+        (doseq [{:keys [label query parameters result]} (testing-queries)]
+          (testing (format "\nTesting with %s:" label)
+            (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
+                                                      :dataset_query query}
+                           :model/CacheConfig _ {:model "question"
+                                                 :model_id card-id
+                                                 :strategy :duration
+                                                 :refresh_automatically true
+                                                 :config {:unit "hours" :duration 1}}]
+              ;; Run card once to populate cache
+              (let [original-result (run-query-for-card-id card-id parameters)]
+                (is (= result (mt/rows original-result)))
+                ;; Run again to register a cache hit
+                (is (= result (mt/rows (run-query-for-card-id card-id parameters))))
+                (let [original-cache-entry (most-recent-cache-entry)]
+                  (try
+                    (is (= 0 (:duration-refreshed (@#'task.cache/refresh-cache-configs!))))
+                    ;; Manually expire the existing cache entry. Now the cache should be refreshable
+                    (expire-cache-entry! original-cache-entry)
+                    (is (= 1 (:duration-refreshed (@#'task.cache/refresh-cache-configs!))))
+                    (let [refreshed-cache-entry (most-recent-cache-entry)
+                          cached-result (run-query-for-card-id card-id parameters)]
+                      (compare-query-results original-result cached-result)
+                      (is (t/before? (:updated_at original-cache-entry) (:updated_at refreshed-cache-entry)))
+                      (is (= (vec (:query_hash original-cache-entry)) (vec (:query_hash refreshed-cache-entry)))))
+                    (finally
+                      (delete-cache-entry! original-cache-entry))))))))))))
 
 (deftest refresh-duration-cache-dashboard-e2e-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
-    (testing "Do we successfully execute a refresh query for a :duration cache config on a dashboard?"
+    (testing "Do we successfully execute a refresh query for a :duration cache config on a dashboard?\n"
       (binding [qp.util/*execute-async?* false
                 task.cache/*run-cache-refresh-async* false]
-        (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
-                       :model/Card {card-id :id} {:name "Cached card"
-                                                  :dataset_query (parameterized-native-query)}
-                       :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
-                                                               :card_id      card-id}
-                       :model/CacheConfig _ {:model "dashboard"
-                                             :model_id dashboard-id
-                                             :strategy :duration
-                                             :refresh_automatically true
-                                             :config {:unit "hours" :duration 1}}]
-          ;; Run dashboard card once to populate cache
-          (is (= [[1000]] (mt/rows (run-query-for-dashcard card-id dashboard-id dashcard-id))))
-          ;; Run again to register a cache hit
-          (is (= [[1000]] (mt/rows (run-query-for-dashcard card-id dashboard-id dashcard-id))))
-          (let [cache-timestamp-1 (:updated_at (most-recent-cache-entry))]
-            ;; Manually expire the existing cache entry. Now the cache should be refreshed.
-            (expire-most-recent-cache-entry!)
-            (@#'task.cache/refresh-cache-configs!)
-            (let [cache-timestamp-2 (:updated_at (most-recent-cache-entry))]
-              (is (t/before? cache-timestamp-1 cache-timestamp-2)))))))))
+        (doseq [{:keys [label query parameters result]} (testing-queries)]
+          (testing (format "\nTesting with %s:" label)
+            (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                           :model/Card {card-id :id} {:name "Cached card"
+                                                      :dataset_query query}
+                           :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                                   :card_id      card-id}
+                           :model/CacheConfig _ {:model "dashboard"
+                                                 :model_id dashboard-id
+                                                 :strategy :duration
+                                                 :refresh_automatically true
+                                                 :config {:unit "hours" :duration 1}}]
+              ;; Run dashboard card once to populate cache
+              (let [original-result (run-query-for-dashcard card-id dashboard-id dashcard-id parameters)]
+                (is (= result (mt/rows original-result)))
+                ;; Run again to register a cache hit
+                (is (= result (mt/rows (run-query-for-dashcard card-id dashboard-id dashcard-id parameters))))
+                (let [original-cache-entry (most-recent-cache-entry)]
+                  (try
+                    (is (= 0 (:duration-refreshed (@#'task.cache/refresh-cache-configs!))))
+                    ;; Manually expire the existing cache entry. Now the cache should be refreshable
+                    (expire-cache-entry! original-cache-entry)
+                    (is (= 1 (:duration-refreshed (@#'task.cache/refresh-cache-configs!))))
+                    (let [refreshed-cache-entry (most-recent-cache-entry)
+                          cached-result (run-query-for-dashcard card-id dashboard-id dashcard-id parameters)]
+                      (is (t/before? (:updated_at original-cache-entry) (:updated_at refreshed-cache-entry)))
+                      (is (= (vec (:query_hash original-cache-entry)) (vec (:query_hash refreshed-cache-entry))))
+                      (compare-query-results original-result cached-result))
+                    (finally
+                      (delete-cache-entry! original-cache-entry))))))))))))
 
 (deftest cache-preemptive-feature-flag-test
   (testing "Sanity check that we are correctly enforcing the :cache-preemptive feature flags"

@@ -4,21 +4,25 @@ import _ from "underscore";
 
 import NumericInput from "metabase/core/components/NumericInput";
 import CS from "metabase/css/core/index.css";
-import { parseNumberValue } from "metabase/lib/number";
+import { type NumberValue, parseNumber } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
-  Footer,
-  TokenFieldWrapper,
-  WidgetLabel,
-  WidgetRoot,
-} from "metabase/parameters/components/widgets/Widget.styled";
+  deserializeNumberParameterValue,
+  serializeNumberParameterValue,
+} from "metabase/querying/parameters/utils/parsing";
 import { MultiAutocomplete } from "metabase/ui";
-import type { Parameter, ParameterValue } from "metabase-types/api";
+import type {
+  Parameter,
+  ParameterValue,
+  ParameterValueOrArray,
+} from "metabase-types/api";
+
+import { Footer, TokenFieldWrapper, WidgetLabel, WidgetRoot } from "../Widget";
 
 export type NumberInputWidgetProps = {
-  value: number[] | undefined;
-  setValue: (value: number[] | undefined) => void;
+  value: ParameterValueOrArray | undefined;
+  setValue: (value: ParameterValueOrArray | undefined) => void;
   className?: string;
   arity?: "n" | number;
   infixText?: string;
@@ -39,12 +43,12 @@ export function NumberInputWidget({
   label,
   parameter,
 }: NumberInputWidgetProps) {
-  const arrayValue = normalize(value);
+  const arrayValue = deserializeNumberParameterValue(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
-    useState<(number | undefined)[]>(arrayValue);
+    useState<(NumberValue | undefined)[]>(arrayValue);
 
   const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
-  const allValuesSet = unsavedArrayValue.every(_.isNumber);
+  const allValuesSet = unsavedArrayValue.every(isNotNull);
   const isValid =
     (arity === "n" || unsavedArrayValue.length <= arity) &&
     (allValuesUnset || allValuesSet);
@@ -54,7 +58,7 @@ export function NumberInputWidget({
       if (allValuesUnset || unsavedArrayValue.length === 0) {
         setValue(undefined);
       } else {
-        setValue(unsavedArrayValue);
+        setValue(serializeNumberParameterValue(unsavedArrayValue));
       }
     }
   };
@@ -95,16 +99,8 @@ export function NumberInputWidget({
     option => option.label !== option.value,
   );
 
-  function parseValue(value: string | number | undefined): number | null {
-    if (value === undefined) {
-      return null;
-    }
-
-    return parseNumberValue(value);
-  }
-
-  function shouldCreate(value: string | number) {
-    const res = parseValue(value);
+  function shouldCreate(value: string) {
+    const res = parseNumber(value);
     return res !== null;
   }
 
@@ -116,7 +112,7 @@ export function NumberInputWidget({
           <MultiAutocomplete
             onChange={(values: string[]) =>
               setUnsavedArrayValue(
-                values.map(value => parseValue(value) ?? undefined),
+                values.map(value => parseNumber(value)).filter(isNotNull),
               )
             }
             value={filteredUnsavedArrayValue.map(value => value?.toString())}
@@ -147,11 +143,11 @@ export function NumberInputWidget({
               fullWidth
               className={CS.p1}
               autoFocus={autoFocus && i === 0}
-              value={unsavedArrayValue[i]}
-              onChange={newValue => {
+              value={unsavedArrayValue[i]?.toString()}
+              onChange={(_newValue, newValueText) => {
                 setUnsavedArrayValue(unsavedArrayValue => {
                   const newUnsavedValue = [...unsavedArrayValue];
-                  newUnsavedValue[i] = newValue;
+                  newUnsavedValue[i] = parseNumber(newValueText) ?? undefined;
                   return newUnsavedValue;
                 });
               }}
@@ -175,14 +171,6 @@ export function NumberInputWidget({
       </Footer>
     </WidgetRoot>
   );
-}
-
-function normalize(value: number[] | undefined): (number | undefined)[] {
-  if (Array.isArray(value)) {
-    return value;
-  } else {
-    return [];
-  }
 }
 
 type SelectItem = {

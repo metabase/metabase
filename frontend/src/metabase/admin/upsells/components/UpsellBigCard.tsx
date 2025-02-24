@@ -9,16 +9,24 @@ import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
-export type UpsellBigCardProps = {
+export type UpsellBigCardProps = React.PropsWithChildren<{
   title: string;
   buttonText: string;
-  buttonLink: string;
   campaign: string;
   source: string;
   illustrationSrc?: string;
-  children: React.ReactNode;
   style?: React.CSSProperties;
-};
+}> &
+  (
+    | {
+        buttonLink: string;
+        onOpenModal?: never;
+      }
+    | {
+        buttonLink?: never;
+        onOpenModal: () => void;
+      }
+  );
 
 export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   title,
@@ -26,12 +34,16 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   buttonLink,
   campaign,
   illustrationSrc,
+  onOpenModal,
   source,
   children,
   ...props
 }: UpsellBigCardProps) => {
   const url = useUpsellLink({
-    url: buttonLink,
+    // The fallback url only applies when the button opens a modal instead of
+    // navigating to an external url. The value is not used otherwise. It is
+    // there only because we cannot conditionally skip the hook.
+    url: buttonLink ?? "https://www.metabase.com/upgrade",
     campaign,
     source,
   });
@@ -52,16 +64,27 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
           <Title order={1} lh={1} mb="sm">
             {title}
           </Title>
-          <Text lh="lg" mb="lg">
+          <Text lh="xl" mb="lg">
             {children}
           </Text>
-          <ExternalLink
-            className={S.UpsellCTALink}
-            href={url}
-            onClickCapture={() => trackUpsellClicked({ source, campaign })}
-          >
-            {buttonText}
-          </ExternalLink>
+          {buttonLink ? (
+            <ExternalLink
+              className={S.UpsellCTALink}
+              href={url}
+              onClickCapture={() => trackUpsellClicked({ source, campaign })}
+            >
+              {buttonText}
+            </ExternalLink>
+          ) : (
+            <Box
+              component="button"
+              className={S.UpsellCTALink}
+              onClickCapture={() => trackUpsellClicked({ source, campaign })}
+              onClick={onOpenModal}
+            >
+              {buttonText}
+            </Box>
+          )}
         </Stack>
       </Flex>
       {illustrationSrc && (

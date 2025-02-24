@@ -229,10 +229,10 @@ or a specific test (or test namespace) with
 
 ```
 # run tests in only one namespace (pass in a symbol)
-clojure -X:dev:test :only metabase.api.session-test
+clojure -X:dev:test :only metabase.session.api-test
 
 # run one specific test (pass in a qualified symbol)
-clojure -X:dev:test :only metabase.api.session-test/my-test
+clojure -X:dev:test :only metabase.session.api-test/my-test
 
 # run tests in one specific folder (test/metabase/util in this example)
 # pass arg in double-quotes so Clojure CLI interprets it as a string;

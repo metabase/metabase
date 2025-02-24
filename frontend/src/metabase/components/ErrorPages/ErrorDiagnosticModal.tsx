@@ -3,7 +3,6 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { getSlackSettings } from "metabase/admin/settings/slack/selectors";
 import { useSendBugReportMutation } from "metabase/api/bug-report";
 import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -42,13 +41,6 @@ export const ErrorDiagnosticModal = ({
   const isBugReportingEnabled = useSetting("bug-reporting-enabled");
   const [isSubmissionComplete, setIsSubmissionComplete] = useState(false);
   const applicationName = useSelector(getApplicationName);
-
-  const slackSettings = useSelector(getSlackSettings);
-  const enableBugReportField = Boolean(
-    slackSettings["slack-bug-report-channel"] &&
-      slackSettings["slack-app-token"] &&
-      isBugReportingEnabled,
-  );
 
   if (loading || !errorInfo) {
     return (
@@ -158,7 +150,7 @@ export const ErrorDiagnosticModal = ({
     );
   }
 
-  return enableBugReportField ? (
+  return isBugReportingEnabled ? (
     <BugReportModal
       errorInfo={errorInfo}
       onClose={onClose}

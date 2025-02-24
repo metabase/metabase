@@ -8,14 +8,10 @@
   (:require
    [metabase.task.cache]
    [metabase.task.creator-sentiment-emails]
-   [metabase.task.email-remove-legacy-pulse]
    [metabase.task.follow-up-emails]
    [metabase.task.notification]
-   [metabase.task.persist-refresh]
    [metabase.task.refresh-slack-channel-user-cache]
    [metabase.task.send-anonymous-stats]
-   [metabase.task.send-pulses]
-   [metabase.task.session-cleanup]
    [metabase.task.task-history-cleanup]
    [metabase.task.truncate-audit-tables]
    [metabase.task.upgrade-checks]))

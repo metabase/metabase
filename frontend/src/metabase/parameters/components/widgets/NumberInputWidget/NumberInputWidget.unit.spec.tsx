@@ -125,6 +125,22 @@ describe("NumberInputWidget", () => {
       expect(setValue).toHaveBeenCalledWith([1, 2]);
     });
 
+    it("should correctly parse big integers", async () => {
+      const { setValue } = setup({ value: undefined, arity: 2 });
+
+      const [textbox1, textbox2] = screen.getAllByRole("textbox");
+      await userEvent.type(textbox1, "9007199254740993");
+      await userEvent.type(textbox2, "9007199254740994");
+
+      const button = screen.getByRole("button", { name: "Add filter" });
+      await userEvent.click(button);
+
+      expect(setValue).toHaveBeenCalledWith([
+        "9007199254740993",
+        "9007199254740994",
+      ]);
+    });
+
     it("should be clearable by emptying all inputs", async () => {
       const { setValue } = setup({ value: [123, 456], arity: 2 });
 
@@ -166,6 +182,21 @@ describe("NumberInputWidget", () => {
       const button = screen.getByRole("button", { name: "Add filter" });
       await userEvent.click(button);
       expect(setValue).toHaveBeenCalledWith([123, 456]);
+    });
+
+    it("should correctly parse big integers", async () => {
+      const { setValue } = setup({ value: undefined, arity: "n" });
+
+      const input = screen.getByRole("combobox");
+      const valueList = screen.getByRole("list");
+      await userEvent.type(input, "9007199254740993,", {
+        pointerEventsCheck: 0,
+      });
+      expect(getValue(valueList, "9007199254740993")).toBeInTheDocument();
+
+      const button = screen.getByRole("button", { name: "Add filter" });
+      await userEvent.click(button);
+      expect(setValue).toHaveBeenCalledWith(["9007199254740993"]);
     });
 
     it("should be unsettable", async () => {
@@ -236,7 +267,7 @@ describe("NumberInputWidget", () => {
   });
 });
 
-function getValue(parent: HTMLElement, value: number) {
+function getValue(parent: HTMLElement, value: number | string) {
   /* eslint-disable-next-line testing-library/prefer-screen-queries */
   return getByText(parent, value.toString());
 }

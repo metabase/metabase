@@ -134,10 +134,19 @@
 (defmethod prometheus/known-labels :metabase-notification/channel-send-ok [_] payload-channel-labels)
 (defmethod prometheus/known-labels :metabase-notification/channel-send-error [_] payload-channel-labels)
 
+(defn- since-trigger-ms
+  [notification-info]
+  (some-> notification-info meta :notification/triggered-at-ns u/since-ms))
+
 (mu/defn send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
   [{:keys [id payload_type] :as notification-info} :- notification.payload/Notification]
-  (u/with-timer-ms [duration-ms-fn]
+  (u/with-timer-ms
+    ;; TODO: write a hook for this
+    #_{:clj-kondo/ignore [:unresolved-symbol]}
+    [duration-ms-fn]
+    (when-let [wait-time (since-trigger-ms notification-info)]
+      (prometheus/observe! :metabase-notification/wait-duration-ms {:payload-type payload_type} wait-time))
     (try
       (log/infof "[Notification %d] Sending" id)
       (prometheus/inc! :metabase-notification/concurrent-tasks)
@@ -175,6 +184,8 @@
       (finally
         (prometheus/dec! :metabase-notification/concurrent-tasks)))
     (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
+    (when-let [total-time (since-trigger-ms notification-info)]
+      (prometheus/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
     nil))
 
 (mu/defn send-notification-async!

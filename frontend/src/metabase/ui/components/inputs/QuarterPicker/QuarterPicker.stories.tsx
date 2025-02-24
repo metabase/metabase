@@ -24,7 +24,7 @@ const argTypes = {
 };
 
 export default {
-  title: "Inputs/QuarterPicker",
+  title: "Components/Inputs/QuarterPicker",
   component: QuarterPicker,
   args,
   argTypes,

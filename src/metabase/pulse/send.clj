@@ -2,7 +2,7 @@
   "Code related to sending Pulses (Alerts or Dashboard Subscriptions)."
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 

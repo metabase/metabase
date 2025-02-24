@@ -9,8 +9,6 @@ import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
 import { MenuItemStyled } from "./MenuItem.styled";
 import { NumberInputStyled } from "./PeriodsAgoMenuOption.styled";
 
-type NumberValue = number | "";
-
 type PeriodsAgoMenuOptionProps = {
   "aria-selected": boolean;
   editedValue?: SmartScalarComparisonPeriodsAgo;
@@ -50,7 +48,7 @@ export function PeriodsAgoMenuOption({
 
   const value = editedValue?.value ?? MIN_VALUE;
   const handleInputChange = useCallback(
-    (value: NumberValue) => {
+    (value: number | "") => {
       if (message) {
         setMessage(null);
       }

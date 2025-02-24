@@ -1598,3 +1598,21 @@
              :namespace (namespace metric)}
             (#'prometheus/qualified-vals labels))
            ops/read-value)))
+
+(defn- transitive*
+  "Borrows heavily from clojure.core/derive. Notably, however, this intentionally permits circular dependencies."
+  [h child parent]
+  (let [td (:descendants h {})
+        ta (:ancestors h {})
+        tf (fn [source sources target targets]
+             (reduce (fn [ret k]
+                       (assoc ret k
+                              (reduce conj (get targets k #{}) (cons target (targets target)))))
+                     targets (cons source (sources source))))]
+    {:ancestors   (tf child td parent ta)
+     :descendants (tf parent ta child td)}))
+
+(defn transitive
+  "Given a mapping from (say) parents to children, return the corresponding mapping from parents to descendants."
+  [adj-map]
+  (:descendants (reduce-kv (fn [h p children] (reduce #(transitive* %1 %2 p) h children)) nil adj-map)))

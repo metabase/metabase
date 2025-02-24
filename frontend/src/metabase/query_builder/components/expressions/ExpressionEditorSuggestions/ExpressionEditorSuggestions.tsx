@@ -104,6 +104,7 @@ export const ExpressionEditorSuggestions = forwardRef<
       radius="xs"
       withinPortal
       middlewares={{
+        size: true,
         flip: false,
         shift: false,
         inline: false,

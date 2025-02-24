@@ -52,7 +52,7 @@
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
-(t2/define-before-update :model/Segment  [{:keys [creator_id id], :as segment}]
+(t2/define-before-update :model/Segment  [{:keys [id], :as segment}]
   (u/prog1 (t2/changes segment)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? <> :creator_id)

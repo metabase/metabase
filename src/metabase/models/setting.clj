@@ -1043,7 +1043,7 @@
       (when-let [same-munge (first (filter (comp #{munged-name} :munged-name)
                                            (vals @registered-settings)))]
         (when (not= setting-name (:name same-munge)) ;; redefinitions are fine
-          (throw (ex-info (tru "Setting names in would collide: {0} and {1}"
+          (throw (ex-info (tru "Setting names would collide: {0} and {1}"
                                setting-name (:name same-munge))
                           {:existing-setting (dissoc same-munge :on-change :getter :setter)
                            :new-setting      (dissoc <> :on-change :getter :setter)}))))

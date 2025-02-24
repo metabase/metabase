@@ -255,7 +255,7 @@ Options include:
 - [Side nav](#side_nav)
 - [Top nav](#top_nav)
 
-> To make sure that query parameters are preserved when using [click behavior](../dashboards/interactive#customizing-click-behavior), configure the [Site URL](../configuring-metabase/settings#site-url) Admin setting to be your Metabase server URL.
+> To make sure that query parameters are preserved when using [click behavior](../dashboards/interactive.md#customizing-click-behavior), configure the [Site URL](../configuring-metabase/settings.md#site-url) Admin setting to be your Metabase server URL.
 
 ### `action_buttons`
 
