@@ -120,7 +120,7 @@
    stage-number :- :int
    column       :- ::lib.schema.metadata/column
    value        :- :any]
-  (let [column         (lib.drill-thru.common/breakout->filterable-column query stage-number column)
+  (let [column         (lib.drill-thru.common/breakout->resolved-column query stage-number column)
         filter-clauses (or (when (lib.binning/binning column)
                              (let [unbinned-column (lib.binning/with-binning column nil)]
                                (if (some? value)

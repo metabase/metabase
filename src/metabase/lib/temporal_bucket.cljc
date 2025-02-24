@@ -158,16 +158,6 @@
     {:lib/type :option/temporal-bucketing
      :unit     unit}))
 
-(mu/defn with-preserved-temporal-bucket :- ::lib.schema.metadata/column
-  "Copy existing [[temporal-bucket]] from `old-column` to `new-column`.
-
-  If `old-column` has no [[temporal-bucket]], return `new-column` unmodified."
-  [old-column :- ::lib.schema.metadata/column
-   new-column :- ::lib.schema.metadata/column]
-  (if-let [old-bucket (temporal-bucket old-column)]
-    (with-temporal-bucket new-column old-bucket)
-    new-column))
-
 (def ^:private hidden-bucketing-options
   "Options that are technically legal in MBQL, but that should be hidden in the UI."
   #{:millisecond

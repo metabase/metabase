@@ -163,7 +163,7 @@
   (get-in drill-thru [:pivots pivot-type]))
 
 (defn- breakouts->filters [query stage-number {:keys [column value] :as _dimension}]
-  (let [filterable-column (lib.drill-thru.common/breakout->filterable-column query stage-number column)]
+  (let [filterable-column (lib.drill-thru.common/breakout->resolved-column query stage-number column)]
     (-> query
         (lib.breakout/remove-existing-breakouts-for-column stage-number column)
         (lib.filter/filter stage-number (lib.filter/= filterable-column value)))))

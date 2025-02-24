@@ -144,7 +144,7 @@
   ;; where [[metabase.query-processor.middleware.binning/update-binning-strategy]] expects to find them. Adding the
   ;; filters to top-level-stage-number breaks the binning.
   (let [top-level-stage-number (lib.underlying/top-level-stage-number query)
-        filterable-column (lib.drill-thru.common/breakout->filterable-column query stage-number column)
+        filterable-column (lib.drill-thru.common/breakout->resolved-column query stage-number column)
         old-filters (filter (fn [[operator _opts filter-column]]
                               (and (#{:>= :<} operator)
                                    (lib.equality/find-matching-column filter-column [column])))

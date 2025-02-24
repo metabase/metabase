@@ -130,7 +130,7 @@
         old-breakout           (:column-ref dimension)
         new-breakout           (lib.temporal-bucket/with-temporal-bucket old-breakout next-unit)
         stage-number           (lib.underlying/top-level-stage-number query)
-        filterable-column      (lib.drill-thru.common/breakout->filterable-column query stage-number column)]
+        filterable-column      (lib.drill-thru.common/breakout->resolved-column query stage-number column)]
     (-> query
         (lib.filter/filter stage-number (lib.filter/= filterable-column value))
         (lib.remove-replace/replace-clause stage-number old-breakout new-breakout))))

@@ -232,7 +232,7 @@
   [query                             :- ::lib.schema/query
    stage-number                      :- :int
    {:keys [column value], :as drill} :- ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
-  (let [filterable-column (lib.drill-thru.common/breakout->filterable-column query stage-number column)]
+  (let [filterable-column (lib.drill-thru.common/breakout->resolved-column query stage-number column)]
     (-> query
         (lib.breakout/remove-existing-breakouts-for-column stage-number column)
         ;; TODO -- remove/update existing filter?
