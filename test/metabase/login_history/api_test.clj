@@ -1,10 +1,9 @@
 (ns metabase.login-history.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.session :as session]
+   [metabase.session.core :as session]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.util.encryption :as encryption]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,7 +18,7 @@
     (let [session-key (session/generate-session-key)
           session-id (session/generate-session-id)
           device-id  "e9b49ec7-bc64-4a83-9b1a-ecd3ae26ba9d"
-          session-key-hashed (encryption/hash-session-key session-key)]
+          session-key-hashed (session/hash-session-key session-key)]
       (mt/with-temp [:model/User         user {}
                      :model/Session      _    {:id session-id :key_hashed session-key-hashed, :user_id (u/the-id user)}
                      :model/LoginHistory _    {:timestamp          #t "2021-03-18T19:52:41.808482Z"

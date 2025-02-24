@@ -6,15 +6,14 @@
    [metabase-enterprise.sso.integrations.saml :as saml.mt]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.http-client :as client]
-   [metabase.models.session :as session]
    [metabase.premium-features.token-check :as token-check]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.session.core :as session]
    [metabase.sso.init]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
    [ring.util.codec :as codec]
    [saml20-clj.core :as saml]
    [saml20-clj.encode-decode :as encode-decode]
@@ -714,7 +713,7 @@
     (with-other-sso-types-disabled!
       (mt/with-temporary-setting-values [saml-slo-enabled true]
         (let [session-key (session/generate-session-key)
-              session-key-hashed (encryption/hash-session-key session-key)]
+              session-key-hashed (session/hash-session-key session-key)]
           (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
                          :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
             (with-saml-default-setup!
@@ -735,7 +734,7 @@
     (with-other-sso-types-disabled!
       (mt/with-temporary-setting-values [saml-slo-enabled false]
         (let [session-key (session/generate-session-key)
-              session-key-hashed (encryption/hash-session-key session-key)]
+              session-key-hashed (session/hash-session-key session-key)]
           (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
                          :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
             (with-saml-default-setup!
@@ -755,7 +754,7 @@
   (testing "Missing SAML SLO config logouts should still delete the user's session."
     (with-other-sso-types-disabled!
       (let [session-key (session/generate-session-key)
-            session-key-hashed (encryption/hash-session-key session-key)]
+            session-key-hashed (session/hash-session-key session-key)]
         (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
                        :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
           (is (t2/exists? :model/Session :key_hashed session-key-hashed))

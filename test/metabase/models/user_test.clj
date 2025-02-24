@@ -10,7 +10,6 @@
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.serialization :as serdes]
-   [metabase.models.session :as session]
    [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.notification.test-util :as notification.tu]
@@ -18,13 +17,13 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-test :as perms-test]
    [metabase.request.core :as request]
+   [metabase.session.core :as session]
    [metabase.sso.init]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -414,7 +413,7 @@
       (mt/with-temp [:model/User {user-id :id} {}]
         (dotimes [_ 2]
           (t2/insert! :model/Session {:id (session/generate-session-id)
-                                      :key_hashed (encryption/hash-session-key (session/generate-session-key)),
+                                      :key_hashed (session/hash-session-key (session/generate-session-key)),
                                       :user_id user-id}))
         (letfn [(session-count [] (t2/count :model/Session :user_id user-id))]
           (is (= 2

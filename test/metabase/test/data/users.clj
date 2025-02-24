@@ -5,11 +5,10 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.http-client :as client]
-   [metabase.models.session :as session]
    [metabase.request.core :as request]
+   [metabase.session.core :as session]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -139,7 +138,7 @@
   "Create a new `:model/Session` for one of the test users."
   [username :- TestUserName]
   (let [session-key (session/generate-session-key)]
-    (t2/insert! :model/Session {:id (session/generate-session-id) :key_hashed (encryption/hash-session-key session-key), :user_id (user->id username)})
+    (t2/insert! :model/Session {:id (session/generate-session-id) :key_hashed (session/hash-session-key session-key), :user_id (user->id username)})
     session-key))
 
 (mu/defn username->token :- ms/UUIDString
@@ -193,7 +192,7 @@
         (throw (ex-info "User does not exist" {:user user})))
       #_{:clj-kondo/ignore [:discouraged-var]}
       (t2.with-temp/with-temp [:model/Session _ {:id (session/generate-session-id)
-                                                 :key_hashed (encryption/hash-session-key session-key)
+                                                 :key_hashed (session/hash-session-key session-key)
                                                  :user_id user-id}]
         (apply the-client session-key args)))))
 
