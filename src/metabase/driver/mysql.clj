@@ -706,6 +706,12 @@
     ::upload/datetime                 [:datetime]
     ::upload/offset-datetime          [:timestamp]))
 
+(defmethod driver/allowed-promotions :mysql
+  [_driver]
+  {::upload/int     #{::upload/float}
+   ::upload/boolean #{::upload/int
+                      ::upload/float}})
+
 (defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
 
 (defmethod driver/table-name-length-limit :mysql
