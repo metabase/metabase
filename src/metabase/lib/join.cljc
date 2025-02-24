@@ -471,7 +471,7 @@
           :else &match)))))
 
 (defn- generate-unique-name [metadata-providerable base-name taken-names]
-  (let [generator (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))]
+  (let [generator (lib.util/unique-name-generator)]
     (run! generator taken-names)
     (generator base-name)))
 
@@ -882,7 +882,7 @@
 (defn- xform-add-join-alias [metadata-providerable a-join]
   (let [join-alias (lib.join.util/current-join-alias a-join)]
     (fn [xf]
-      (let [unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))]
+      (let [unique-name-fn (lib.util/unique-name-generator)]
         (fn
           ([] (xf))
           ([result] (xf result))

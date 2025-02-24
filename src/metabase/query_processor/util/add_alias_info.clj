@@ -77,7 +77,7 @@
   To return a uniquified version of `original-alias`. Memoized by `position`, so duplicate calls will result in the
   same unique alias."
   []
-  (let [unique-name-fn (lib.util/unique-name-generator (qp.store/metadata-provider))]
+  (let [unique-name-fn (lib.util/unique-name-generator)]
     (fn unique-alias-fn [position original-alias]
       (assert (string? original-alias)
               (format "unique-alias-fn expected string, got: %s" (pr-str original-alias)))

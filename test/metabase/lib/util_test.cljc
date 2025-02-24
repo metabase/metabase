@@ -264,7 +264,7 @@
                (truncate-alias s max-bytes)))))))
 
 (deftest ^:parallel unique-name-generator-test
-  (let [unique-name-fn (lib.util/unique-name-generator meta/metadata-provider)]
+  (let [unique-name-fn (lib.util/unique-name-generator)]
     (is (= "wow"
            (unique-name-fn "wow")))
     (is (= "wow_2"
@@ -280,7 +280,7 @@
 
 (deftest ^:parallel unique-name-generator-idempotence-test
   (testing "idempotence (2-arity calls to generated function)"
-    (let [unique-name (lib.util/unique-name-generator meta/metadata-provider)]
+    (let [unique-name (lib.util/unique-name-generator)]
       (is (= ["A" "B" "A" "A_2" "A_2"]
              [(unique-name :x "A")
               (unique-name :x "B")
@@ -293,7 +293,7 @@
     (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                              meta/metadata-provider
                              {:database {:lib/methods {:escape-alias #(lib.util/truncate-alias % 15)}}})
-          unique-name        (lib.util/unique-name-generator metadata-provider)]
+          unique-name        (lib.util/unique-name-generator)]
       (is (= "catego_ef520013"
              (unique-name "categories__via__category_id__name")))
       (is (= "catego_ec940c72"

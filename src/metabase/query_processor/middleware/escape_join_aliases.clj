@@ -7,12 +7,17 @@
     (metabase.test/set-ns-log-level! 'metabase.query-processor.middleware.escape-join-aliases :trace)"
   (:require
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 ;;; this is done in a series of discrete steps
 
@@ -20,7 +25,7 @@
   (driver/escape-alias driver join-alias))
 
 (defn- driver->escape-fn [driver]
-  (comp (lib.util/unique-name-generator (qp.store/metadata-provider))
+  (comp (lib.util/unique-name-generator)
         (partial escape-alias driver)))
 
 (defn- add-escaped-aliases
@@ -157,6 +162,26 @@
                            (assoc :join-alias (::join-alias options))
                            (dissoc ::join-alias))]))
 
+(defn- update-renamed-field-refs
+  "Look at each stage in the query, and compare visible-columns to the original-query stage.
+   Differences are a result of renamed aliases."
+  [query original-query]
+  (mu/disable-enforcement
+    (let [original-pmbql-query (lib.query/query (qp.store/metadata-provider) original-query)
+          pmbql-query (lib.query/query (qp.store/metadata-provider) query)]
+      (lib.walk/walk-stages
+       pmbql-query
+       (fn [_q path stage]
+         (let [orginal-aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path original-pmbql-query path))))
+               aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path pmbql-query path))))
+               renames (->> (zipmap
+                             orginal-aliases
+                             aliases)
+                            (m/filter-kv not=))]
+           (lib.util.match/replace
+             stage
+             [:field opts (field-name :guard (every-pred string? renames))] [:field opts (driver/escape-alias driver/*driver* field-name)])))))))
+
 (defn escape-join-aliases
   "Pre-processing middleware. Make sure all join aliases are unique, regardless of case (some databases treat table
   aliases as case-insensitive, even if table names themselves are not); escape all join aliases
@@ -181,7 +206,10 @@
             (add-escaped->original-info query))
           (replace-original-aliases-with-escaped-aliases* [query]
             (log/tracef "Replacing original aliases with escaped aliases\n%s" (u/pprint-to-str query))
-            (replace-original-aliases-with-escaped-aliases query))]
+            (replace-original-aliases-with-escaped-aliases query))
+          (update-renamed-field-refs* [query original-query]
+            (log/tracef "Replacing field refs based on escaped aliases\n%s" (u/pprint-to-str query))
+            (update-renamed-field-refs query original-query))]
     (let [result (if-not (:query query)
                    ;; nothing to do if this is a native query rather than MBQL.
                    query
@@ -193,7 +221,8 @@
                                             merge-original->escaped-maps*
                                             add-escaped-join-aliases-to-fields*)))
                        add-escaped->original-info*
-                       (update :query replace-original-aliases-with-escaped-aliases*)))]
+                       (update :query replace-original-aliases-with-escaped-aliases*)
+                       (update-renamed-field-refs* query)))]
       (log/debugf "=>\n%s" (u/pprint-to-str result))
       result)))
 

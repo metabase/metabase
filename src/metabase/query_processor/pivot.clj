@@ -360,7 +360,7 @@
         metadata-provider  (or (:lib/metadata query)
                                (lib.metadata.jvm/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
-        unique-name-fn     (lib.util/unique-name-generator (lib.metadata/->metadata-provider query))
+        unique-name-fn     (lib.util/unique-name-generator)
         returned-columns   (->> (lib/returned-columns query)
                                 (mapv #(update % :name unique-name-fn)))
         {:source/keys [aggregations breakouts]} (group-by :lib/source returned-columns)
