@@ -13,7 +13,6 @@ export const Content = styled.div`
   border-radius: 6px;
 
   .${BucketPickerPopoverStyle.triggerButton} {
-    visibility: visible;
     height: 100%;
   }
 `;
@@ -90,7 +89,6 @@ const getSelectedStyle = (theme: Theme) => css`
 
 const unselectedStyle = css`
   .${BucketPickerPopoverStyle.triggerButton} {
-    visibility: visible;
     opacity: 0;
     color: var(--mb-color-text-light);
   }
