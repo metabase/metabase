@@ -215,11 +215,11 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/alter-table-columns! :sql-jdbc
   [driver db-id table-name column-definitions & opts]
-  (let [deprecated-default-method     (get-method driver/alter-columns! :sql-jdbc)
-        deprecated-driver-method      (get-method driver/alter-columns! driver)
-        deprecated-method-specialised (not (identical? deprecated-default-method deprecated-driver-method))]
+  (let [deprecated-default-method      (get-method driver/alter-columns! :sql-jdbc)
+        deprecated-driver-method       (get-method driver/alter-columns! driver)
+        deprecated-method-specialised? (not (identical? deprecated-default-method deprecated-driver-method))]
     ;; compatibility: continue to use the old method if it has been overridden
-    (if deprecated-method-specialised
+    (if deprecated-method-specialised?
       (deprecated-driver-method driver db-id table-name column-definitions)
       (->> (apply sql-jdbc.sync/alter-table-columns-sql driver table-name column-definitions opts)
            (qp.writeback/execute-write-sql! db-id)))))
