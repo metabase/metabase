@@ -24,7 +24,7 @@ const argTypes = {
 };
 
 export default {
-  title: "Inputs/MonthPicker",
+  title: "Components/Inputs/MonthPicker",
   component: MonthPicker,
   args,
   argTypes,

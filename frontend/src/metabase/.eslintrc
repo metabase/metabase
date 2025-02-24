@@ -1,5 +1,8 @@
 {
   "rules": {
+    // Note: adding this rule to a eslint config file in a subfolder will remove
+    // *not* carry over the restricted imports from parent folders, you will
+    // need to copy them over
     "no-restricted-imports": [
       "error",
       {
@@ -7,47 +10,47 @@
           "metabase-enterprise",
           "metabase-enterprise/*",
           "cljs/metabase.lib*",
-          "/embedding-sdk"
+          "/embedding-sdk",
         ],
         "paths": [
           {
             "name": "react-redux",
             "importNames": ["useSelector", "useDispatch", "connect"],
-            "message": "Please import from `metabase/lib/redux` instead."
+            "message": "Please import from `metabase/lib/redux` instead.",
           },
           {
             "name": "@mantine/core",
-            "message": "Please import from `metabase/ui` instead."
+            "message": "Please import from `metabase/ui` instead.",
           },
           {
             "name": "moment",
-            "message": "Moment is deprecated, please use dayjs"
+            "message": "Moment is deprecated, please use dayjs",
           },
           {
             "name": "moment-timezone",
-            "message": "Moment is deprecated, please use dayjs"
+            "message": "Moment is deprecated, please use dayjs",
           },
           {
-            "name": "@storybook/testing-library",
-            "message": "Please use `testing-library/react` or `@testing-library/user-event`"
-          }
-        ]
-      }
-    ]
+            "name": "@storybook/test",
+            "message": "Please use `testing-library/react` or `@testing-library/user-event`",
+          },
+        ],
+      },
+    ],
   },
   "overrides": [
     {
       "files": ["**/*.stories.tsx"],
       "rules": {
         "import/no-default-export": 0,
-        "no-restricted-imports": 0
-      }
+        "no-restricted-imports": 0,
+      },
     },
     {
       "files": ["lib/redux/hooks.ts"],
       "rules": {
-        "no-restricted-imports": 0
-      }
+        "no-restricted-imports": 0,
+      },
     },
     {
       "files": ["ui/**/*.{js,jsx,ts,tsx}"],
@@ -58,21 +61,21 @@
             "patterns": [
               "metabase-enterprise",
               "metabase-enterprise/*",
-              "cljs/metabase.lib*"
+              "cljs/metabase.lib*",
             ],
             "paths": [
               {
                 "name": "moment",
-                "message": "Moment is deprecated, please use dayjs"
+                "message": "Moment is deprecated, please use dayjs",
               },
               {
                 "name": "moment-timezone",
-                "message": "Moment is deprecated, please use dayjs"
-              }
-            ]
-          }
-        ]
-      }
-    }
-  ]
+                "message": "Moment is deprecated, please use dayjs",
+              },
+            ],
+          },
+        ],
+      },
+    },
+  ],
 }

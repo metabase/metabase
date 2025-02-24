@@ -4,9 +4,10 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
+import { Flex } from "metabase/ui";
 
 import { DashCardCardParameterMapperConnected } from "./DashCardCardParameterMapper";
-import { MapperSettingsContainer } from "./DashCardParameterMapper.styled";
+import S from "./DashCardParameterMapper.module.css";
 
 export const DashCardParameterMapper = ({ dashcard, isMobile }) => (
   <div
@@ -29,7 +30,13 @@ export const DashCardParameterMapper = ({ dashcard, isMobile }) => (
         {t`Make sure to make a selection for each series, or the filter won't work on this card.`}
       </div>
     )}
-    <MapperSettingsContainer data-testid="parameter-mapper-container">
+    <Flex
+      justify="space-around"
+      maw="100%"
+      m="0 2rem"
+      className={S.MapperSettingsContainer}
+      data-testid="parameter-mapper-container"
+    >
       {[dashcard.card].concat(dashcard.series || []).map(card => (
         <DashCardCardParameterMapperConnected
           key={`${dashcard.id},${card.id}`}
@@ -38,6 +45,6 @@ export const DashCardParameterMapper = ({ dashcard, isMobile }) => (
           isMobile={isMobile}
         />
       ))}
-    </MapperSettingsContainer>
+    </Flex>
   </div>
 );

@@ -26,7 +26,7 @@ const args = {
 };
 
 export default {
-  title: "Inputs/SegmentedControl",
+  title: "Components/Inputs/SegmentedControl",
   component: SegmentedControl,
   args,
 };

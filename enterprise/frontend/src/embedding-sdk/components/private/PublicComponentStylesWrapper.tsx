@@ -41,6 +41,7 @@ export const PublicComponentStylesWrapper = (
   return (
     <PublicComponentStylesWrapperInner
       {...props}
+      dir="ltr"
       // eslint-disable-next-line react/prop-types -- className is in div props :shrugs:
       className={`mb-wrapper ${props.className}`}
     />
