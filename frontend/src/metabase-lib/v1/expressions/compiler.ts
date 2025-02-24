@@ -6,19 +6,19 @@ import type { Expression } from "metabase-types/api";
 
 import { getMBQLName } from "./config";
 import { fieldResolver } from "./field-resolver";
-import { compile, lexify, parse } from "./pratt";
 import {
   adjustCaseOrIf,
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
   useShorthands,
-} from "./recursive-parser";
+} from "./passes";
+import { compile, lexify, parse } from "./pratt";
 import { resolve } from "./resolver";
 import type { ErrorWithMessage } from "./types";
 import { isErrorWithMessage } from "./utils";
 
-type CompileResult =
+export type CompileResult =
   | {
       error: ErrorWithMessage;
     }

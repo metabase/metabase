@@ -4,7 +4,8 @@ import * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 
 import { fieldResolver } from "./field-resolver";
-import { adjustBooleans, parse } from "./recursive-parser";
+import { adjustBooleans } from "./passes";
+import { parse } from "./recursive-parser";
 import { resolve } from "./resolver";
 
 export function processSource({
