@@ -387,6 +387,12 @@
 (def ^:private changed-stopped-template    (template-path "card_notification_changed_stopped"))
 (def ^:private archived-template           (template-path "card_notification_archived"))
 
+(defn- username
+  [user]
+  (->> [(:first_name user) (:last_name user)]
+       (remove nil?)
+       (str/join " ")))
+
 (defn send-you-unsubscribed-notification-card-email!
   "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `notification`"
   [notification unsubscribed-emails]
@@ -394,14 +400,13 @@
 
 (defn send-you-were-removed-notification-card-email!
   "Send an email to `removed-users` letting them know `admin` has removed them from `notification`"
-  [notification removed-emails {:keys [first_name last_name] :as _actor}]
-  (let [actor-name (format "%s %s" first_name last_name)]
-    (send-email! removed-emails "You’ve been unsubscribed from an alert" removed-template (assoc notification :actor_name actor-name) true)))
+  [notification removed-emails actor]
+  (send-email! removed-emails "You’ve been unsubscribed from an alert" removed-template (assoc notification :actor_name (username actor)) true))
 
 (defn send-you-were-added-card-notification-email!
   "Send an email to `added-users` letting them know `admin-adder` has added them to `notification`"
-  [notification added-user-emails {:keys [first_name last_name] :as _adder}]
-  (let [subject (format "%s %s added you to an alert" first_name last_name)]
+  [notification added-user-emails adder]
+  (let [subject (format "%s added you to an alert" (username adder))]
     (send-email! added-user-emails subject added-template notification true)))
 
 (def ^:private not-working-subject "One of your alerts has stopped working")
