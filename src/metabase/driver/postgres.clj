@@ -1006,7 +1006,7 @@
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
-(defmethod driver/upload-promotion-allowlist :postgres
+(defmethod driver/allowed-promotions :postgres
   [_driver]
   {::upload/int     #{::upload/float}
    ::upload/boolean #{::upload/int

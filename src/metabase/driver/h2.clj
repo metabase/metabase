@@ -604,7 +604,7 @@
     (doseq [[k v] column-definitions]
       (apply f driver db-id table-name {k v} opts))))
 
-(defmethod driver/upload-promotion-allowlist :h2
+(defmethod driver/allowed-promotions :h2
   [_driver]
   {:metabase.upload/int     #{:metabase.upload/float}
    :metabase.upload/boolean #{:metabase.upload/int

@@ -706,7 +706,7 @@
     ::upload/datetime                 [:datetime]
     ::upload/offset-datetime          [:timestamp]))
 
-(defmethod driver/upload-promotion-allowlist :mysql
+(defmethod driver/allowed-promotions :mysql
   [_driver]
   {::upload/int     #{::upload/float}
    ::upload/boolean #{::upload/int

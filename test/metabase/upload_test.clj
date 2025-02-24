@@ -2208,13 +2208,13 @@
 (defn- external-type [t]
   (keyword "metabase.upload" (name t)))
 
-(defn- promo-allowed? [allowlist col-type new-type]
-  (get-in allowlist [(external-type col-type) (external-type new-type)]))
+(defn- promo-allowed? [allowed-promotions col-type new-type]
+  (get-in allowed-promotions [(external-type col-type) (external-type new-type)]))
 
 (deftest update-type-coercion-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)
-            :let [allowlist (driver/upload-promotion-allowlist driver/*driver*)]]
+            :let [allowed-promotions (driver/allowed-promotions driver/*driver*)]]
       (testing (action-testing-str action)
         (with-mysql-local-infile-on-and-off
           (testing "Append succeeds if the CSV file contains values that don't match the column types, but are coercible"
@@ -2226,25 +2226,25 @@
                        {:upload-type     int-type
                         :uncoerced      "2.1"
                         :coerced         2.1
-                        :fail            (not (promo-allowed? allowlist int-type float-type))
+                        :fail            (not (promo-allowed? allowed-promotions int-type float-type))
                         :fail-msg        "'2.1' is not an integer"}
                        ;; column is promoted to an int
                        {:upload-type     bool-type
                         :uncoerced       "2"
                         :coerced         2
-                        :fail            (not (promo-allowed? allowlist bool-type int-type))
+                        :fail            (not (promo-allowed? allowed-promotions bool-type int-type))
                         :fail-msg        "'2' is not a recognizable boolean"}
                        ;; column is promoted to a float
                        {:upload-type     bool-type
                         :uncoerced       "2.0"
                         :coerced         2.0
-                        :fail            (not (promo-allowed? allowlist bool-type float-type))
+                        :fail            (not (promo-allowed? allowed-promotions bool-type float-type))
                         :fail-msg        "'2.0' is not a recognizable boolean"}
                        ;; column is promoted to a float
                        {:upload-type     bool-type
                         :uncoerced       "3.14"
                         :coerced         3.14
-                        :fail            (not (promo-allowed? allowlist bool-type float-type))
+                        :fail            (not (promo-allowed? allowed-promotions bool-type float-type))
                         :fail-msg        "'3.14' is not a recognizable boolean"}
                        ; value is coerced to an int
                        {:upload-type     int-type
@@ -2294,8 +2294,8 @@
   e.g. if you are going to test int -> float: (promo-drivers [int-type float-type])"
   [& must-support]
   (set/select (fn [driver]
-                (let [allowlist (driver/upload-promotion-allowlist driver)]
-                  (every? #(apply promo-allowed? allowlist %) must-support)))
+                (let [allowed-promotions (driver/allowed-promotions driver)]
+                  (every? #(apply promo-allowed? allowed-promotions %) must-support)))
               (mt/normal-drivers-with-feature :uploads)))
 
 (deftest update-promotion-multiple-columns-test
@@ -2584,5 +2584,5 @@
       ;; Imagine it was possible to go from (int -> float) and (bool ->
       ;; int) - but not (bool -> float). This would mean a user could get (bool -> float), but only by filtering and re-uploading portions of
       ;; the csv - Yuk! This test ensure drivers always meet any transitive expectations users might have.
-      (let [allow-list (driver/upload-promotion-allowlist driver/*driver*)]
+      (let [allow-list (driver/allowed-promotions driver/*driver*)]
         (is (= allow-list (mt/transitive allow-list)))))))

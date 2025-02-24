@@ -289,14 +289,14 @@
 
 (defn- promotable?
   "Are we allowed to promote a column's schema from `current-type` to `inferred-type`?"
-  [current-type inferred-type promotion-allowlist]
-  (when-let [allowed? (get promotion-allowlist current-type)]
+  [current-type inferred-type allowed-promotions]
+  (when-let [allowed? (get allowed-promotions current-type)]
     (allowed? inferred-type)))
 
 (defn new-type
   "Given the `current-type` of a column, and an `inferred-type` for new values to be added, return its new type.
   This assumes we have already coerced the new values down to the existing type, if possible."
-  [current-type inferred-type promotion-allowlist]
+  [current-type inferred-type allowed-promotions]
   (cond
     ;; No restriction on new columns
     (nil? current-type) inferred-type
@@ -304,6 +304,6 @@
     (= current-type inferred-type) current-type
     :else
     ;; Keep the existing type unless a promotion is allowed.
-    (if (promotable? current-type inferred-type promotion-allowlist)
+    (if (promotable? current-type inferred-type allowed-promotions)
       inferred-type
       current-type)))

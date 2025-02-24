@@ -475,7 +475,7 @@
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
-(defmethod driver/upload-promotion-allowlist :redshift [_] {})
+(defmethod driver/allowed-promotions :redshift [_] {})
 
 (defmethod driver/table-name-length-limit :redshift
   [_driver]
