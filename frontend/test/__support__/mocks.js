@@ -41,11 +41,12 @@ jest.mock("@uiw/react-codemirror", () => {
   const { forwardRef } = jest.requireActual("react");
 
   const MockEditor = forwardRef((props, ref) => {
+    const { indentWithTab, extensions, ...rest } = props;
     return (
       // @ts-expect-error: some props types are different on CodeMirror
       <textarea
         ref={ref}
-        {...props}
+        {...rest}
         value={props.value ?? ""}
         // @ts-expect-error: We cannot provide the update argument to onChange
         onChange={evt => props.onChange?.(evt.target.value, undefined)}
