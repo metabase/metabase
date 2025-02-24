@@ -38,7 +38,6 @@ import { diagnoseAndCompileExpression } from "./utils";
 type EditorProps<S extends StartRule> = {
   id?: string;
   clause?: ClauseType<S> | null;
-  name: string;
   query: Lib.Query;
   stageIndex: number;
   startRule: S;
@@ -60,7 +59,6 @@ export function Editor<S extends StartRule = "expression">(
 ) {
   const {
     id,
-    name,
     startRule = "expression",
     stageIndex,
     query,
@@ -115,7 +113,6 @@ export function Editor<S extends StartRule = "expression">(
     startRule,
     query,
     stageIndex,
-    name,
     expressionIndex,
     reportTimezone,
     metadata,
@@ -173,7 +170,6 @@ export function Editor<S extends StartRule = "expression">(
 }
 
 function useExpression<S extends StartRule = "expression">({
-  name,
   clause,
   startRule,
   stageIndex,
@@ -243,7 +239,6 @@ function useExpression<S extends StartRule = "expression">({
         stageIndex,
         expressionIndex,
         metadata,
-        name,
       });
       if (immediate || prevError) {
         debouncedOnChange.cancel();
@@ -253,7 +248,6 @@ function useExpression<S extends StartRule = "expression">({
       }
     },
     [
-      name,
       query,
       stageIndex,
       startRule,
