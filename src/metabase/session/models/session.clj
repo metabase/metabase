@@ -1,7 +1,9 @@
 (ns metabase.session.models.session
   (:require
    [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [buddy.core.nonce :as nonce]
+   [clojure.core.memoize :as memo]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -10,13 +12,14 @@
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (mu/defn- random-anti-csrf-token :- [:re {:error/message "valid anti-CSRF token"} #"^[0-9a-f]{32}$"]
   []
@@ -65,6 +68,10 @@
   (fn [session-type & _]
     session-type))
 
+(def ^{:arglists '([session-key])} hash-session-key
+  "Hash the session-key for storage in the database"
+  (memo/lru (fn [session-key] (codecs/bytes->hex (buddy-hash/sha512 (.getBytes session-key java.nio.charset.StandardCharsets/US_ASCII)))) {} :lru/threshold 100))
+
 (defn generate-session-key
   "Generate a new session key."
   []
@@ -78,7 +85,7 @@
 (mu/defmethod create-session! :sso :- SessionSchema
   [_ user :- CreateSessionUserInfo device-info :- request/DeviceInfo]
   (let [session-key (generate-session-key)
-        session-key-hashed (encryption/hash-session-key session-key)
+        session-key-hashed (hash-session-key session-key)
         session-id (generate-session-id)
         session (first (t2/insert-returning-instances! :model/Session
                                                        :id session-id

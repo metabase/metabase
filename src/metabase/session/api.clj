@@ -15,7 +15,6 @@
    [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -147,7 +146,7 @@
   "Logout."
   ;; `metabase-session-key` gets added automatically by the [[metabase.server.middleware.session]] middleware
   [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
-  (let [session-key-hashed (encryption/hash-session-key metabase-session-key)]
+  (let [session-key-hashed (session/hash-session-key metabase-session-key)]
     (let [rows-deleted (t2/delete! :model/Session {:where [:or [:= :key_hashed session-key-hashed] [:= :id metabase-session-key]]})]
       (api/check-404 (> rows-deleted 0))
       (request/clear-session-cookie api/generic-204-no-content))))
