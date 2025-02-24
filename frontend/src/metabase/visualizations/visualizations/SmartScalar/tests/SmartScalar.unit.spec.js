@@ -192,8 +192,8 @@ describe("SmartScalar", () => {
       expect(screen.queryByText("50")).not.toBeInTheDocument();
 
       // show tool-tip
-      await userEvent.hover(lastChange);
-      expect(screen.queryAllByLabelText("arrow_up icon")).toHaveLength(2);
+      userEvent.hover(lastChange);
+      expect(await screen.findAllByLabelText("arrow_up icon")).toHaveLength(2);
       expect(screen.queryAllByText("100%")).toHaveLength(2);
       expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
       expect(screen.getByText("50")).toBeInTheDocument();

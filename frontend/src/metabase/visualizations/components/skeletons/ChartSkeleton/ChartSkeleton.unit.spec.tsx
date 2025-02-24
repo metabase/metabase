@@ -79,8 +79,8 @@ describe("ChartSkeleton", () => {
     it(`should render ${name} visualization with description`, async () => {
       setup({ name, description: displayDescription, display });
       await userEvent.hover(screen.getByLabelText("info icon"));
-      expect(screen.getByText(name)).toBeInTheDocument();
-      expect(screen.getByText(displayDescription)).toBeInTheDocument();
+      expect(await screen.findByText(name)).toBeInTheDocument();
+      expect(await screen.findByText(displayDescription)).toBeInTheDocument();
     });
 
     it(`should render ${name} visualization with description and action menu`, async () => {
