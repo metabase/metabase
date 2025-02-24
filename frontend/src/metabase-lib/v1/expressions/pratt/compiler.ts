@@ -27,7 +27,7 @@ import {
 } from "./syntax";
 import { CompileError, type Node, type NodeType, assert } from "./types";
 
-type CompilerPass = (expr: Expression) => Expression;
+export type CompilerPass = (expr: Expression) => Expression;
 
 interface Options {
   getMBQLName(expressionName: string): string | undefined;
