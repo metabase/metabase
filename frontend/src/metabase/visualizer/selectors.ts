@@ -229,12 +229,14 @@ export const getTabularPreviewSeries = createSelector(
   },
 );
 
+export const getCurrentVisualizerState = getCurrentHistoryItem;
+
 export const getIsDirty = createSelector([getCurrentHistoryItem], state =>
   checkIfStateDirty(state),
 );
 
 export const getVisualizerUrlHash = createSelector(
-  [getCurrentHistoryItem],
+  [getCurrentVisualizerState],
   state => getStateHash(state),
 );
 
@@ -249,7 +251,7 @@ export const getFutureVisualizerUrlHashes = createSelector(
 );
 
 function getStateHash(state: VisualizerHistoryItem) {
-  return checkIfStateDirty(state) ? utf8_to_b64(JSON.stringify(state)) : "";
+  return checkIfStateDirty(state) ? utf8_to_b64(JSON.stringify({ state })) : "";
 }
 
 function checkIfStateDirty(state: VisualizerHistoryItem) {

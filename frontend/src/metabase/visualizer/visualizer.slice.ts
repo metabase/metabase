@@ -8,9 +8,7 @@ import {
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
-import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
 import {
   getColumnVizSettings,
   isCartesianChart,
@@ -39,6 +37,7 @@ import {
   createVisualizerColumnReference,
   extractReferencedColumns,
   getDataSourceIdFromNameRef,
+  getInitialStateForCardDataSource,
   parseDataSourceId,
 } from "./utils";
 import {
@@ -85,30 +84,38 @@ const initialState: VisualizerState = {
   future: [],
 };
 
+type InitVisualizerPayload = {
+  state?: Partial<VisualizerHistoryItem>;
+  extraDataSources?: VisualizerDataSourceId[];
+};
+
 export const initializeVisualizer = createAsyncThunk(
   "visualizer/initializeVisualizer",
-  async (urlHash: string, { dispatch }) => {
-    try {
-      const urlData = JSON.parse(b64hash_to_utf8(urlHash));
-      const columnRefs = extractReferencedColumns(urlData.columnValuesMapping);
-      const dataSourceIds = Array.from(
-        new Set(columnRefs.map(ref => ref.sourceId)),
-      );
-      await Promise.all(
-        dataSourceIds
-          .map(sourceId => {
-            const [, cardId] = sourceId.split(":");
-            return [
-              dispatch(fetchCard(Number(cardId))),
-              dispatch(fetchCardQuery(Number(cardId))),
-            ];
-          })
-          .flat(),
-      );
-      return urlData;
-    } catch (err) {
-      console.error("Error parsing visualizer URL hash", err);
+  async (
+    { state: initialState = {}, extraDataSources = [] }: InitVisualizerPayload,
+    { dispatch },
+  ) => {
+    const columnRefs = initialState.columnValuesMapping
+      ? extractReferencedColumns(initialState.columnValuesMapping)
+      : [];
+    const dataSourceIds = Array.from(
+      new Set(columnRefs.map(ref => ref.sourceId)),
+    );
+    if (extraDataSources.length > 0) {
+      dataSourceIds.push(...extraDataSources);
     }
+    await Promise.all(
+      dataSourceIds
+        .map(sourceId => {
+          const [, cardId] = sourceId.split(":");
+          return [
+            dispatch(fetchCard(Number(cardId))),
+            dispatch(fetchCardQuery(Number(cardId))),
+          ];
+        })
+        .flat(),
+    );
+    return initialState;
   },
 );
 
@@ -249,9 +256,9 @@ const visualizerHistoryItemSlice = createSlice({
   extraReducers: builder => {
     builder
       .addCase(initializeVisualizer.fulfilled, (state, action) => {
-        const urlState = action.payload;
-        if (urlState) {
-          Object.assign(state, urlState);
+        const initialState = action.payload;
+        if (initialState) {
+          Object.assign(state, initialState);
         }
       })
       .addCase(handleDrop, (state, action) => {
@@ -480,54 +487,7 @@ function maybeCombineDataset(
     !state.display ||
     (card.display === state.display && state.columns.length === 0)
   ) {
-    state.display = card.display;
-
-    state.columns = [];
-    state.columnValuesMapping = {};
-
-    dataset.data.cols.forEach(column => {
-      const columnRef = createVisualizerColumnReference(
-        source,
-        column,
-        extractReferencedColumns(state.columnValuesMapping),
-      );
-      state.columns.push(copyColumn(columnRef.name, column));
-      state.columnValuesMapping[columnRef.name] = [columnRef];
-    });
-
-    const entries = getColumnVizSettings(state.display)
-      .map(setting => {
-        const originalValue = card.visualization_settings[setting];
-
-        if (!originalValue) {
-          return null;
-        }
-
-        if (Array.isArray(originalValue)) {
-          return [
-            setting,
-            originalValue.map(originalColumnName => {
-              const index = dataset.data.cols.findIndex(
-                col => col.name === originalColumnName,
-              );
-              return state.columns[index].name;
-            }),
-          ];
-        } else {
-          const index = dataset.data.cols.findIndex(
-            col => col.name === originalValue,
-          );
-          return [setting, state.columns[index].name];
-        }
-      })
-      .filter(isNotNull);
-
-    state.settings = {
-      ...card.visualization_settings,
-      ...Object.fromEntries(entries),
-    };
-
-    return state;
+    return getInitialStateForCardDataSource(card, dataset);
   }
 
   if (

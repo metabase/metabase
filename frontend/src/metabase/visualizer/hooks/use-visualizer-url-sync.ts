@@ -4,6 +4,7 @@ import type { InjectedRouter } from "react-router";
 import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import {
@@ -60,7 +61,12 @@ export function useVisualizerUrlSync(
     if (isStateChanged) {
       dispatch(push({ ...location, hash: `#${stateHash}` }));
     } else if (isUrlHashChanged) {
-      dispatch(initializeVisualizer(hash));
+      try {
+        const visualizerState = JSON.parse(b64hash_to_utf8(hash));
+        dispatch(initializeVisualizer(visualizerState));
+      } catch (err) {
+        console.error("Error parsing visualizer URL hash", err);
+      }
     } else if (isUrlHashRemoved) {
       dispatch(resetVisualizer());
     }

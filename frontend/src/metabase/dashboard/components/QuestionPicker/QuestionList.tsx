@@ -11,19 +11,23 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import { PaginationControls } from "metabase/components/PaginationControls";
 import SelectList from "metabase/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
+import { addCardWithVisualization } from "metabase/dashboard/actions";
 import Search from "metabase/entities/search";
 import { isEmbeddingSdk } from "metabase/env";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import type { CollectionId } from "metabase-types/api";
+import { Box, Flex, Icon, Tooltip } from "metabase/ui";
+import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
+import type { CardId, CollectionId } from "metabase-types/api";
 
 import {
   EmptyStateContainer,
   PaginationControlsContainer,
   QuestionListItem,
 } from "./QuestionList.styled";
+import S from "./QuestionPicker.module.css";
 
 interface QuestionListProps {
   searchText: string;
@@ -42,6 +46,10 @@ export function QuestionList({
 }: QuestionListProps) {
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
+
+  const [visualizerModalCardId, setVisualizerModalCardId] =
+    useState<CardId | null>(null);
+  const isVisualizerModalOpen = !!visualizerModalCardId;
 
   useEffect(() => {
     setQueryOffset(0);
@@ -100,6 +108,7 @@ export function QuestionList({
   const error = isSearching ? searchError : itemsError;
   const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
   const dispatch = useDispatch();
+
   const list = useMemo(() => {
     return data?.data?.map(item => Search.wrapEntity(item, dispatch)) ?? [];
   }, [data, dispatch]);
@@ -127,19 +136,34 @@ export function QuestionList({
     <>
       <SelectList>
         {list.map(item => (
-          <QuestionListItem
+          <Flex
             key={item.id}
-            id={item.id}
-            name={item.getName()}
-            icon={{
-              name: item.getIcon().name,
-              size: item.model === "dataset" ? 18 : 16,
-            }}
-            onSelect={onSelect}
-            rightIcon={PLUGIN_MODERATION.getStatusIcon(
-              item.moderated_status ?? undefined,
-            )}
-          />
+            className={S.questionItem}
+            align="center"
+            justify="space-between"
+          >
+            <QuestionListItem
+              id={item.id}
+              name={item.getName()}
+              icon={{
+                name: item.getIcon().name,
+                size: item.model === "dataset" ? 18 : 16,
+              }}
+              onSelect={onSelect}
+              rightIcon={PLUGIN_MODERATION.getStatusIcon(
+                item.moderated_status ?? undefined,
+              )}
+            />
+            <Tooltip label={t`Visualize another way`}>
+              <Box
+                className={S.visualizerButton}
+                ml="auto"
+                onClick={() => setVisualizerModalCardId(Number(item.id))}
+              >
+                <Icon name="add_data" />
+              </Box>
+            </Tooltip>
+          </Flex>
         ))}
       </SelectList>
       <PaginationControlsContainer>
@@ -153,6 +177,22 @@ export function QuestionList({
           onPreviousPage={handleClickPreviousPage}
         />
       </PaginationControlsContainer>
+      {isVisualizerModalOpen && (
+        <VisualizerModal
+          initialState={{
+            state: {
+              display: list.find(item => item.id === visualizerModalCardId)
+                ?.display,
+            },
+            extraDataSources: [`card:${visualizerModalCardId}`],
+          }}
+          onSave={visualization => {
+            dispatch(addCardWithVisualization({ visualization }));
+            setVisualizerModalCardId(null);
+          }}
+          onClose={() => setVisualizerModalCardId(null)}
+        />
+      )}
     </>
   );
 }

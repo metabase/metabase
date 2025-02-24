@@ -3,17 +3,31 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ActionIcon, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
-import { getIsDirty } from "metabase/visualizer/selectors";
+import {
+  getCurrentVisualizerState,
+  getIsDirty,
+} from "metabase/visualizer/selectors";
 import {
   toggleFullscreenMode,
   toggleVizSettingsSidebar,
 } from "metabase/visualizer/visualizer.slice";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
-export function Header() {
+interface HeaderProps {
+  onSave?: (visualization: VisualizerHistoryItem) => void;
+}
+
+export function Header({ onSave }: HeaderProps) {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
+  const visualization = useSelector(getCurrentVisualizerState);
   const isDirty = useSelector(getIsDirty);
+
   const dispatch = useDispatch();
+
+  const handleSave = () => {
+    onSave?.(visualization);
+  };
 
   return (
     <Flex p="md" pb="sm" justify="space-between">
@@ -44,9 +58,6 @@ export function Header() {
             <Icon name="share" />
           </ActionIcon>
         </Tooltip>
-        <Button compact disabled mx="xs">
-          Persist me
-        </Button>
         <Tooltip label={t`Fullscreen`}>
           <ActionIcon
             disabled={!isDirty}
@@ -55,6 +66,11 @@ export function Header() {
             <Icon name="expand" />
           </ActionIcon>
         </Tooltip>
+        <Button
+          variant="filled"
+          disabled={!isDirty}
+          onClick={handleSave}
+        >{t`Add to dashboard`}</Button>
       </Flex>
     </Flex>
   );
