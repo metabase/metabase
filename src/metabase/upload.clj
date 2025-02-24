@@ -803,7 +803,7 @@
               ;; be parsed as its existing type - there is scope to improve these error messages in the future.
               modify-schema?     (and (not= old-types new-types) (= detected-types new-types))
               _                  (when modify-schema?
-                                   (let [changes (field-changes column-names old-types new-types)
+                                   (let [changes   (field-changes column-names old-types new-types)
                                          old-types (old-column-types driver column-names old-types)]
                                      (add-columns! driver database table (:added changes))
                                      (alter-columns! driver database table (:updated changes) :old-types old-types)))
