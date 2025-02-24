@@ -118,6 +118,12 @@
                     (parse-connection-properties))]
     properties))
 
-(defn get-property [driver property] (some #(when (= (:name %) property) %) (get-connection-properties driver)))
+(defn get-property
+  ([driver] (get-connection-properties driver))
+  ([driver property] (some #(when (= (:name %) property) %) (get-connection-properties driver))))
 
-(defn get-properties [driver] (get-connection-properties driver))
+(defn get-property-list
+  [driver]
+  (map :name (get-property driver)))
+
+
