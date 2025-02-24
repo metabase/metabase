@@ -1,4 +1,5 @@
 import type { Active } from "@dnd-kit/core";
+import { t } from "ttag";
 
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { isNotNull } from "metabase/lib/types";
@@ -25,6 +26,10 @@ import type {
 } from "metabase-types/store/visualizer";
 
 import { DRAGGABLE_ID } from "./constants";
+
+export function getDefaultVisualizationName() {
+  return t`My new visualization`;
+}
 
 export function createDataSource(
   type: VisualizerDataSourceType,

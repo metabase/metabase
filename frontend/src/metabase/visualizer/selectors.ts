@@ -15,6 +15,7 @@ import {
   createDataSource,
   extractReferencedColumns,
   getDataSourceIdFromNameRef,
+  getDefaultVisualizationName,
   isDataSourceNameRef,
 } from "./utils";
 
@@ -50,6 +51,11 @@ const getVisualizerColumnValuesMapping = (state: State) =>
   getCurrentHistoryItem(state).columnValuesMapping;
 
 // Public selectors
+
+export function getVisualizationTitle(state: State) {
+  const settings = getRawSettings(state);
+  return settings["card.title"] ?? getDefaultVisualizationName();
+}
 
 export function getVisualizationType(state: State) {
   return getCurrentHistoryItem(state).display;
