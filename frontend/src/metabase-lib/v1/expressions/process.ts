@@ -7,21 +7,22 @@ import { fieldResolver } from "./field-resolver";
 import { adjustBooleans, parse } from "./recursive-parser";
 import { resolve } from "./resolver";
 
-export function processSource(options: {
+export function processSource({
+  source,
+  query,
+  stageIndex,
+  startRule,
+}: {
   source: string;
   query: Lib.Query;
   stageIndex: number;
   startRule: string;
-  expressionIndex?: number | undefined;
-  name?: string;
 }): {
   source: string;
   expression: Expression | null;
   expressionClause: Lib.ExpressionClause | null;
   compileError: Error | null;
 } {
-  const { source, query, stageIndex, startRule } = options;
-
   const resolveMBQLField = fieldResolver({
     query,
     stageIndex,
