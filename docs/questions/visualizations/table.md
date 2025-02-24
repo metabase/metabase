@@ -98,7 +98,7 @@ You can rename the column.
 
 You can display the text as is, or if the text is a URL, you can display the text as a link or image. 
 
-#### Link
+#### Display text as a link
 
 If you select link, you can also change the text displayed, and use parameters for both the link text and the link's URL.
 
@@ -114,7 +114,7 @@ In the above example, Metabase would take the value for the `category` column fo
 https://www.example.com/widget
 ```
 
-#### Image
+#### Display URL as an image
 
 If you select image, and the text is a link to an image asset, Metabase will display image in the table cell.
 
