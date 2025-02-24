@@ -18,14 +18,14 @@ To set up JWT SSO with Metabase and your app, you'll need to:
 
 1. [Enable JWT SSO in your Metabase](#1-enable-jwt-sso-in-your-metabase)
 2. [Add a new endpoint to your backend to handle authentication](#2-add-a-new-endpoint-to-your-backend-to-handle-authentication)
-3. [Wire the SDK in your frontend to your new endpoint](#3-wire-the-sdk-in-your-frontent-to-your-new-endpoint)
+3. [Wire the SDK in your frontend to your new endpoint](#3-wire-the-sdk-in-your-frontend-to-your-new-endpoint)
 
 ### 1. Enable JWT SSO in your Metabase
 
 1. Configure JWT by going to **Admin Settings** > **Settings** > **Authentication** and clicking on **Setup**
 2. Generate a key and copy it to your clipboard.
 
-### 3. Add a new endpoint to your backend to handle authentication
+### 2. Add a new endpoint to your backend to handle authentication
 
 You'll need add a library to your backend to sign your JSON Web Tokens.
 
