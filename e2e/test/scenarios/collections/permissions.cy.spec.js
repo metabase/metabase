@@ -120,7 +120,7 @@ describe("collection permissions", () => {
                     name: "Model",
                     type: "model",
                     native: {
-                      query: "SELECT * FROM ORDERS",
+                      query: "SELECT 1",
                     },
                   });
                   archiveUnarchive("Model", "model");
