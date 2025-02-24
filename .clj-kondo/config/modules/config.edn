@@ -658,8 +658,9 @@
    :uses #{analytics analyze api models query-processor util}}
 
   enterprise/metabot-v3
-  {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core}
-   :uses #{api config db legacy-mbql lib models premium-features public-settings pulse query-processor util}}
+  {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
+          metabase-enterprise.metabot-v3.tools.api}
+   :uses #{api config db legacy-mbql lib models premium-features public-settings pulse query-processor request util}}
 
   enterprise/query-reference-validation
   {:api  #{metabase-enterprise.query-reference-validation.api}

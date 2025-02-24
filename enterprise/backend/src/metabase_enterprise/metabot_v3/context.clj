@@ -44,21 +44,23 @@
    :keyword
    :any])
 
-(def ^:private ^DateTimeFormatter current-user-time-format
+(def ^:private current-user-time-format
   (DateTimeFormatter/ofPattern "'Today is' EEEE, 'Year' yyyy, 'Date' yyyy-MM-dd, HH:mm:ss"))
 
 (defn- set-user-time
-  [context]
+  [context {:keys [date-format] :or {date-format current-user-time-format}}]
   (let [offset-time (or (some-> context :current_time_with_timezone OffsetDateTime/parse)
                         (OffsetDateTime/now))]
     (-> context
         (dissoc :current_time_with_timezone)
-        (assoc :current_user_time (.format current-user-time-format offset-time)))))
+        (assoc :current_user_time (.format ^DateTimeFormatter date-format offset-time)))))
 
 (mu/defn create-context
   "Create a tool context."
-  [context]
-  (set-user-time context))
+  ([context]
+   (create-context context nil))
+  ([context opts]
+   (set-user-time context opts)))
 
 (mu/defn create-reactions
   "Extracts reactions based on the current context."

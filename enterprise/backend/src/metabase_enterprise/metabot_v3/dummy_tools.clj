@@ -106,9 +106,13 @@
   (when-let [base (metabot-v3.tools.u/get-card id)]
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id base))
           card-metadata (lib.metadata/card mp id)
-          card-query (lib/query mp (cond-> card-metadata
-                                     ;; pivot questions have strange result-columns so we work with the dataset-query
-                                     (#{:question} (:type base)) (get :dataset-query)))
+          dataset-query (get card-metadata :dataset-query)
+          ;; pivot questions have strange result-columns so we work with the dataset-query
+          card-query (lib/query mp (if (and (#{:question} (:type base))
+                                            (#{:pivot} (:display base))
+                                            (#{:query} (:type dataset-query)))
+                                     dataset-query
+                                     card-metadata))
           cols (lib/returned-columns card-query)
           field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
       (-> {:id id

@@ -177,12 +177,15 @@ export type MetabotAgentRequest = {
   message: string;
   context: MetabotChatContext;
   history: MetabotHistory[];
-  session_id: string; // uuid
+  conversation_id: string; // uuid
+  state: any;
 };
 
 export type MetabotAgentResponse = {
   reactions: MetabotReaction[];
   history: MetabotHistory[];
+  conversation_id: string;
+  state: any;
 };
 
 /* Metabot v3 - Type Guards */
