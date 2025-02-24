@@ -167,7 +167,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
     (is (some? (driver/current-user-table-privileges driver/*driver* (mt/db))))))
 
-(deftest nonsql-dialects-return-original-query-test
+(deftest mongo-prettify-native-form-test
   (mt/test-driver :mongo
     (testing "Passing a mongodb query through [[driver/prettify-native-form]] returns the original query (#31122)"
       (let [query [{"$group"   {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
@@ -183,8 +183,12 @@
                                 "sum"        true}}]
             formatted-query (driver/prettify-native-form :mongo query)]
 
-        (testing "Formatting a non-sql query returns the same query"
-          (is (= query formatted-query)))
+        (testing "Formatting a mongo query returns a JSON-like string"
+          (is (= "[\n  {\n    \"$group\": {\n      \"_id\": {\n        \"created_at\": {\n          \"$let\": {\n            \"vars\": {\n              \"parts\": {\n                \"$dateToParts\": {\n                  \"timezone\": \"UTC\",\n                  \"date\": \"$created_at\"\n                }\n              }\n            },\n            \"in\": {\n              \"$dateFromParts\": {\n                \"timezone\": \"UTC\",\n                \"year\": \"$$parts.year\",\n                \"month\": \"$$parts.month\",\n                \"day\": \"$$parts.day\"\n              }\n            }\n          }\n        }\n      },\n      \"sum\": {\n        \"$sum\": \"$tax\"\n      }\n    }\n  },\n  {\n    \"$sort\": {\n      \"_id\": 1\n    }\n  },\n  {\n    \"$project\": {\n      \"_id\": false,\n      \"created_at\": \"$_id.created_at\",\n      \"sum\": true\n    }\n  }\n]"
+                 formatted-query)))
+
+        (testing "The formatted JSON-like string is equivalent to the query"
+          (is (= query (json/decode formatted-query))))
 
         ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
         (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
