@@ -2,7 +2,6 @@
   "Tests for the `:limit` clause and `:max-results` constraints."
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.test :as mt]))
@@ -10,13 +9,13 @@
 (def ^:private test-max-results 10000)
 
 (defn- limit! [query]
-  (with-redefs [qp.i/absolute-max-results test-max-results]
+  (with-redefs [limit/absolute-max-results test-max-results]
     (let [rff (limit/limit-result-rows query qp.reducible/default-rff)
           rf  (rff {})]
       (transduce identity rf (repeat (inc test-max-results) [:ok])))))
 
 (deftest limit-results-rows-test
-  (testing "Apply to an infinite sequence and make sure it gets capped at `qp.i/absolute-max-results`"
+  (testing "Apply to an infinite sequence and make sure it gets capped at `limit/absolute-max-results`"
     (is (= test-max-results
            (-> (limit! {:type :native}) mt/rows count)))))
 
@@ -25,7 +24,7 @@
     (let [query {:type :query
                  :query {}}]
       (is (= {:type  :query
-              :query {:limit                qp.i/absolute-max-results
+              :query {:limit                 limit/absolute-max-results
                       ::limit/original-limit nil}}
              (limit/add-default-limit query)))))
   (testing "Don't apply the `absolute-max-results` limit when `disable-max-results` is used."
@@ -67,7 +66,7 @@
                  :query {}
                  :info  {:context :csv-download}}]
       (is (= {:type  :query
-              :query {:limit                 qp.i/absolute-max-results
+              :query {:limit                 limit/absolute-max-results
                       ::limit/original-limit nil}
               :info  {:context :csv-download}}
              (limit/add-default-limit query))))))
@@ -76,12 +75,12 @@
   (testing "Apply custom download row limits when"
     (doseq [[limit expected context] [[1100000 1100000 :csv-download]
                                       [1100000 1100000 :json-download]
-                                      [1100000 qp.i/absolute-max-results :xlsx-download]
-                                      [nil qp.i/absolute-max-results :csv-download]
-                                      [nil qp.i/absolute-max-results :json-download]
-                                      [nil qp.i/absolute-max-results :xlsx-download]]]
+                                      [1100000 limit/absolute-max-results :xlsx-download]
+                                      [nil limit/absolute-max-results :csv-download]
+                                      [nil limit/absolute-max-results :json-download]
+                                      [nil limit/absolute-max-results :xlsx-download]]]
       (testing (format "%s the absolute limit for %s"
-                       (if (< expected qp.i/absolute-max-results)
+                       (if (< expected limit/absolute-max-results)
                          "below"
                          "above")
                        context)
@@ -98,9 +97,9 @@
                                       [1000 1000 :xlsx-download]
                                       [1100000 1100000 :csv-download]
                                       [1100000 1100000 :json-download]
-                                      [1100000 qp.i/absolute-max-results :xlsx-download]]]
+                                      [1100000 limit/absolute-max-results :xlsx-download]]]
       (testing (format "%s the absolute limit for %s"
-                       (if (< expected qp.i/absolute-max-results)
+                       (if (< expected limit/absolute-max-results)
                          "below"
                          "above")
                        context)

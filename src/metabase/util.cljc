@@ -1212,15 +1212,8 @@
 (defn safe-min
   "nil safe clojure.core/min"
   [& args]
-  (transduce
-   (filter some?)
-   (completing
-    (fn [acc n]
-      (if acc
-        (min acc n)
-        n)))
-   nil
-   args))
+  (when-let [filtered (seq (remove nil? args))]
+    (apply min filtered)))
 
 #?(:clj
    (defn do-with-timer-ms
