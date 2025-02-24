@@ -1026,7 +1026,7 @@
   It returns nil if no such expression has been defined for the pair of types. In this case, the caller should
   generate the ALTER COLUMN statement without a USING."
   [column old-type new-type]
-  (condp = [old-type new-type]
+  (case [old-type new-type]
 
     [[:boolean] [:bigint]]
     [:case
