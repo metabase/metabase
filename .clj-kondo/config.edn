@@ -834,6 +834,7 @@
   source-namespaces
   {:linters
    {:metabase/validate-escaped-single-quotes-in-i18n {:level :warning}
+    :metabase/validate-string-or-str-args-to-i18n {:level :warning}
     :discouraged-var
     {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}
      clojure.core/eval        {:message "Don't use eval outside of tests"}}}}
