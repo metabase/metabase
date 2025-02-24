@@ -1,0 +1,41 @@
+.LevelsGroup {
+  & [data-year-level="true"] {
+    width: 100%;
+  }
+}
+
+.CalendarHeaderLevel {
+  font-weight: bold;
+}
+
+.MonthListRow {
+  &:not(:first-of-type) {
+    .MonthListCell {
+      padding-top: 0.25rem;
+    }
+  }
+}
+
+.MonthListCell {
+  button {
+    color: var(--mb-color-text-primary);
+  }
+
+  button[data-selected="true"] {
+    color: var(--mb-color-text-selected);
+    background-color: var(--mb-color-background-selected);
+  }
+
+  button:hover:not([data-selected="true"]) {
+    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background-hover);
+  }
+
+  &[data-with-spacing]:not(:last-of-type) {
+    padding-right: 0.5rem;
+  }
+
+  &[data-with-spacing]:not(:first-of-type) {
+    padding-left: 0.5rem;
+  }
+}
