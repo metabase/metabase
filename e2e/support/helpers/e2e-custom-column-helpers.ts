@@ -13,6 +13,7 @@ export function enterCustomColumnDetails({
   formula,
   name,
   blur = true,
+  format = false,
   allowFastSet = false,
 }: {
   formula: string;
@@ -28,6 +29,12 @@ export function enterCustomColumnDetails({
   blur?: boolean;
 
   /**
+   * false by default. If set to true, the formula will be formatted
+   * after being typed.
+   */
+  format?: boolean;
+
+  /**
    *   Because CodeMirror uses a contenteditable div, and it is not possible to use cy.type() on it, we emulate .type with realPress.
    *   This does not always work, since realPress() does not support all characters. Setting this to true will enable an escape hatch
    *   that uses cy.invoke('text') under the hood, to allow for formulas that contain unsupported characters.
@@ -41,6 +48,10 @@ export function enterCustomColumnDetails({
 
   if (blur) {
     CustomExpressionEditor.blur();
+  }
+
+  if (format) {
+    CustomExpressionEditor.format();
   }
 
   if (name) {
@@ -186,6 +197,10 @@ export const CustomExpressionEditor = {
   blur() {
     // click outside the expression editor
     cy.findByTestId("expression-name").focus();
+    return CustomExpressionEditor;
+  },
+  format() {
+    cy.button("Format").click();
     return CustomExpressionEditor;
   },
   selectAll() {
