@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import { compile, lexify, parse } from "metabase-lib/v1/expressions/pratt";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 
 import { MBQL_CLAUSES, getMBQLName } from "./config";
 import { fieldResolver } from "./field-resolver";
+import { compile, lexify, parse } from "./pratt";
 import {
   adjustCaseOrIf,
   adjustMultiArgOptions,
