@@ -53,6 +53,7 @@ export type ErrorWithMessage = {
   message: string;
   pos?: number | null;
   len?: number | null;
+  friendly?: boolean;
 };
 
 export type Token =
