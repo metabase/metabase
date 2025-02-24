@@ -88,8 +88,6 @@ export const InteractiveQuestionResult = ({
     isSaveEnabled &&
     !isSaveModalOpen;
 
-  const showTopBar = !isCreatingQuestionFromScratch || queryResults;
-
   return (
     <FlexibleSizeComponent
       height={height}
@@ -97,7 +95,7 @@ export const InteractiveQuestionResult = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      {showTopBar && (
+      {queryResults && (
         <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
           <Group justify="space-between" align="flex-end">
             <Group gap="xs">
