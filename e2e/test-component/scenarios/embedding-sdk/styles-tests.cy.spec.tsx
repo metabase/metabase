@@ -1,6 +1,5 @@
 import {
   CreateDashboardModal,
-  CreateQuestion,
   InteractiveQuestion,
   MetabaseProvider,
   StaticQuestion,
@@ -56,7 +55,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={theme}
         >
-          <CreateQuestion />
+          <InteractiveQuestion isSaveEnabled />
         </MetabaseProvider>,
       );
 
