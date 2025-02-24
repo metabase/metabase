@@ -56,7 +56,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={theme}
         >
-          <IreateQuestion />
+          <CreateQuestion />
         </MetabaseProvider>,
       );
 
