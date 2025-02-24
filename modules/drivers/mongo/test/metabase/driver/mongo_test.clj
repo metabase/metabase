@@ -274,18 +274,18 @@
          (#'mongo/describe-table-query :collection-name "collection-name" :sample-size 1000 :max-depth 1))))
 
 (tx/defdataset nested-bindata-coll
-  (let [md5-hash (Binary. (byte 0x05) (.getBytes "5d41402abc4b2a76b9719d911017c592"))
+  (let [not-uuid (Binary. (byte 0) (byte-array 1))
         some-uuid #uuid "11111111-1111-1111-1111-111111111111"]
     [["nested-bindata"
       [{:field-name "mixed_uuid", :base-type :type/*}
        {:field-name "mixed_not_uuid", :base-type :type/*}
        {:field-name "nested_mixed_uuid", :base-type :type/*}
        {:field-name "nested_mixed_not_uuid", :base-type :type/*}]
-      [[some-uuid md5-hash {"nested_data" some-uuid} {"nested_data_2" md5-hash}]
-       [some-uuid md5-hash {"nested_data" some-uuid} {"nested_data_2" md5-hash}]
-       [some-uuid md5-hash {"nested_data" some-uuid} {"nested_data_2" md5-hash}]
-       [md5-hash some-uuid {"nested_data" md5-hash} {"nested_data_2" some-uuid}]
-       [md5-hash some-uuid {"nested_data" md5-hash} {"nested_data_2" some-uuid}]]]]))
+      [[some-uuid not-uuid {"nested_data" some-uuid} {"nested_data_2" not-uuid}]
+       [some-uuid not-uuid {"nested_data" some-uuid} {"nested_data_2" not-uuid}]
+       [some-uuid not-uuid {"nested_data" some-uuid} {"nested_data_2" not-uuid}]
+       [not-uuid some-uuid {"nested_data" not-uuid} {"nested_data_2" some-uuid}]
+       [not-uuid some-uuid {"nested_data" not-uuid} {"nested_data_2" some-uuid}]]]]))
 
 (deftest describe-table-test
   (mt/test-driver :mongo
