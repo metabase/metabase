@@ -55,6 +55,15 @@ describe("pratt/compiler", () => {
       ]);
     });
 
+    it("should parse function calls", () => {
+      expect(expr("ceil(3.14)")).toEqual(["ceil", 3.14]);
+      expect(expr("log(1 + sqrt(9))")).toEqual(["log", ["+", 1, ["sqrt", 9]]]);
+      expect(expr("power(log(2.1), 7)")).toEqual(["power", ["log", 2.1], 7]);
+      expect(expr("trim(ID)")).toEqual(["trim", ["dimension", "ID"]]);
+      expect(expr("text(ID)")).toEqual(["text", ["dimension", "ID"]]);
+      expect(expr("integer(ID)")).toEqual(["integer", ["dimension", "ID"]]);
+    });
+
     it("should handle parenthesized expression", () => {
       expect(expr("(42)")).toEqual(["value", 42]);
       expect(expr("-42")).toEqual(["value", -42]);
