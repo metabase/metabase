@@ -161,16 +161,6 @@ function DashCardActionsPanelInner({
       );
     }
 
-    if (supportsSeries) {
-      buttons.push(
-        <AddSeriesButton
-          key="add-series-button"
-          series={series}
-          onClick={handleAddSeries}
-        />,
-      );
-    }
-
     if (!disableSettingsConfig) {
       buttons.push(
         <ChartSettingsButton
@@ -227,6 +217,16 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
+    if (supportsSeries) {
+      buttons.push(
+        <AddSeriesButton
+          key="add-series-button"
+          series={series}
+          onClick={handleAddSeries}
+        />,
+      );
+    }
+
     if (dashcard && isActionDashCard(dashcard)) {
       buttons.push(
         <ActionSettingsButtonConnected
