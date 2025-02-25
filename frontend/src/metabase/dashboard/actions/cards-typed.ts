@@ -9,10 +9,7 @@ import {
 import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getDefaultSize } from "metabase/visualizations";
-import {
-  extractReferencedColumns,
-  parseDataSourceId,
-} from "metabase/visualizer/utils";
+import { getCardIdsFromColumnValueMappings } from "metabase/visualizer/utils";
 import type {
   Card,
   CardId,
@@ -259,17 +256,9 @@ export const replaceCard =
 export const addCardWithVisualization =
   ({ visualization }: { visualization: VisualizerHistoryItem }) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    const referencedColumns = extractReferencedColumns(
+    const cardIds = getCardIdsFromColumnValueMappings(
       visualization.columnValuesMapping,
     );
-    const usedDataSourceIds = Array.from(
-      new Set(referencedColumns.map(ref => ref.sourceId)),
-    );
-
-    const cardIds = usedDataSourceIds.map(id => {
-      const { sourceId } = parseDataSourceId(id);
-      return sourceId;
-    });
     const cards: Card[] = [];
 
     for (const cardId of cardIds) {
@@ -316,17 +305,9 @@ export const replaceCardWithVisualization =
     visualization: VisualizerHistoryItem;
   }) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    const referencedColumns = extractReferencedColumns(
+    const cardIds = getCardIdsFromColumnValueMappings(
       visualization.columnValuesMapping,
     );
-    const usedDataSourceIds = Array.from(
-      new Set(referencedColumns.map(ref => ref.sourceId)),
-    );
-
-    const cardIds = usedDataSourceIds.map(id => {
-      const { sourceId } = parseDataSourceId(id);
-      return sourceId;
-    });
     const cards: Card[] = [];
 
     for (const cardId of cardIds) {
