@@ -15,7 +15,7 @@
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -57,16 +57,16 @@
           (is (query= original
                       (#'sqlserver/fix-order-bys original))))
         (testing "In source query -- add `:limit`"
-          (is (query= {:source-query (assoc original :limit qp.i/absolute-max-results)}
+          (is (query= {:source-query (assoc original :limit limit/absolute-max-results)}
                       (#'sqlserver/fix-order-bys {:source-query original}))))
         (testing "In source query in source query-- add `:limit` at both levels"
-          (is (query= {:source-query {:source-query (assoc original :limit qp.i/absolute-max-results)
+          (is (query= {:source-query {:source-query (assoc original :limit limit/absolute-max-results)
                                       :order-by     [[:asc [:field 1]]]
-                                      :limit        qp.i/absolute-max-results}}
+                                      :limit        limit/absolute-max-results}}
                       (#'sqlserver/fix-order-bys {:source-query {:source-query original
                                                                  :order-by     [[:asc [:field 1]]]}}))))
         (testing "In source query inside source query for join -- add `:limit`"
-          (is (query= {:joins [{:source-query {:source-query (assoc original :limit qp.i/absolute-max-results)}}]}
+          (is (query= {:joins [{:source-query {:source-query (assoc original :limit limit/absolute-max-results)}}]}
                       (#'sqlserver/fix-order-bys
                        {:joins [{:source-query {:source-query original}}]}))))))))
 
