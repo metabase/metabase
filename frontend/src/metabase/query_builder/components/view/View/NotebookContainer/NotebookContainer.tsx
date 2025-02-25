@@ -25,6 +25,8 @@ type NotebookContainerProps = {
   isOpen: boolean;
 } & NotebookProps;
 
+const INITIAL_WINDOW_WIDTH = Infinity;
+
 export const NotebookContainer = ({
   isOpen,
   updateQuestion,
@@ -39,7 +41,7 @@ export const NotebookContainer = ({
   setQueryBuilderMode,
 }: NotebookContainerProps) => {
   const [shouldShowNotebook, setShouldShowNotebook] = useState(isOpen);
-  const { width: windowWidth } = useWindowSize();
+  const { width: windowWidth } = useWindowSize(INITIAL_WINDOW_WIDTH);
 
   useEffect(() => {
     isOpen && setShouldShowNotebook(isOpen);
@@ -53,6 +55,8 @@ export const NotebookContainer = ({
   const maxSidebarWidth = windowWidth - minNotebookWidth;
   const sidebarWidth = notebookNativePreviewSidebarWidth || minSidebarWidth;
   const windowBreakpoint = 1280;
+  const isWindowWidthInitialized = Number.isFinite(windowWidth);
+  const isSmallScreen = windowWidth < windowBreakpoint;
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
     event,
@@ -72,6 +76,17 @@ export const NotebookContainer = ({
     dispatch(setUIControls({ notebookNativePreviewSidebarWidth: width }));
     dispatch(setNotebookNativePreviewSidebarWidth(width));
   };
+
+  useEffect(() => {
+    /**
+     * This effect is meant to run only when:
+     * - component is mounted and the viewport is small (i.e. less than 1280px wide)
+     * - viewport is resized to a small one
+     */
+    if (isWindowWidthInitialized && isSmallScreen) {
+      dispatch(setUIControls({ isShowingNotebookNativePreview: false }));
+    }
+  }, [dispatch, isSmallScreen, isWindowWidthInitialized]);
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
@@ -141,28 +156,32 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {isShowingNotebookNativePreview && windowWidth < windowBreakpoint && (
-        <Box pos="absolute" inset={0}>
-          <NotebookNativePreview />
-        </Box>
-      )}
+      {isShowingNotebookNativePreview && isWindowWidthInitialized && (
+        <>
+          {isSmallScreen && (
+            <Box pos="absolute" inset={0}>
+              <NotebookNativePreview />
+            </Box>
+          )}
 
-      {isShowingNotebookNativePreview && windowWidth >= windowBreakpoint && (
-        <ResizableBox
-          width={sidebarWidth}
-          minConstraints={[minSidebarWidth, 0]}
-          maxConstraints={[maxSidebarWidth, 0]}
-          axis="x"
-          resizeHandles={["w"]}
-          handle={<Handle />}
-          onResizeStop={handleResizeStop}
-          style={{
-            borderLeft: "1px solid var(--mb-color-border)",
-            marginInlineStart: "0.25rem",
-          }}
-        >
-          <NotebookNativePreview />
-        </ResizableBox>
+          {!isSmallScreen && (
+            <ResizableBox
+              width={sidebarWidth}
+              minConstraints={[minSidebarWidth, 0]}
+              maxConstraints={[maxSidebarWidth, 0]}
+              axis="x"
+              resizeHandles={["w"]}
+              handle={<Handle />}
+              onResizeStop={handleResizeStop}
+              style={{
+                borderLeft: "1px solid var(--mb-color-border)",
+                marginInlineStart: "0.25rem",
+              }}
+            >
+              <NotebookNativePreview />
+            </ResizableBox>
+          )}
+        </>
       )}
     </Flex>
   );
