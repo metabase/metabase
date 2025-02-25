@@ -1,7 +1,3 @@
-import "ace/mode-clojure";
-import "ace/mode-javascript";
-import "ace/mode-python";
-import "ace/mode-ruby";
 import { t } from "ttag";
 import _ from "underscore";
 
