@@ -28,9 +28,3 @@ export type {
 } from "metabase/embedding-sdk/theme";
 
 export type { Dashboard as MetabaseDashboard } from "metabase-types/api";
-
-/**
- * Intended for debugging purposes only, so we don't want to expose it in the d.ts files.
- * @internal
- */
-export { SdkDebugInfo } from "./components/public/debug/SdkDebugInfo";
