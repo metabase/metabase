@@ -9,6 +9,7 @@ e2e @filiphric
 
 .github @metabase/devexp
 .clj-kondo @metabase/devexp
+deps.edn @metabase/backend-developers
 
 #
 # Backend modules <=> teams that own them

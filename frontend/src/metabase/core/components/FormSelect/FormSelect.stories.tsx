@@ -11,7 +11,7 @@ const TEST_OPTIONS = [
 ];
 
 export default {
-  title: "Core/FormSelect",
+  title: "Components/Ask Before Using/FormSelect",
   component: FormSelect,
 };
 

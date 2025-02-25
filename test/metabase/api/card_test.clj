@@ -2559,7 +2559,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-        ;; testing that we aren't just adding a nil moderation each time we update a card
+       ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -3097,7 +3097,7 @@
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc"))))
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "search-query")))))))))
 
-(deftest paramters-using-old-style-field-values
+(deftest parameters-using-old-style-field-values
   (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
     (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
       (testing "without search query"
@@ -4051,6 +4051,64 @@
             :moderation_status nil}
            (-> (mt/user-http-request :rasta :get 200 (str "card/" card-id))
                :dashboard)))))
+
+(deftest dashboard-questions-can-be-created-without-specifying-a-collection-id
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:name "My Dashboard"
+                                                   :collection_id coll-id}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+      (testing "Specifying only `collection_id` works"
+        (mt/user-http-request :rasta :post 200 "card/"
+                              (assoc (card-with-name-and-query)
+                                     :collection_id coll-id)))
+      (testing "Specifying only `dashboard_id` works"
+        (mt/user-http-request :rasta :post 200 "card/"
+                              (assoc (card-with-name-and-query)
+                                     :dashboard_id dash-id)))
+      (testing "Specifying both works"
+        (mt/user-http-request :rasta :post 200 "card/"
+                              (assoc (card-with-name-and-query)
+                                     :collection_id coll-id
+                                     :dashboard_id dash-id)))
+      (testing "Specifying both fails if they're different"
+        (is (= (format "Mismatch detected between Dashboard's `collection_id` (%d) and `collection_id` (%d)"
+                       coll-id
+                       nil)
+               (mt/user-http-request :rasta :post 400 "card/"
+                                     (assoc (card-with-name-and-query)
+                                            :collection_id nil
+                                            :dashboard_id dash-id))))))))
+
+(deftest cannot-move-question-to-dashboard-without-permissions
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                   :model/Collection {coll-id-2 :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id-2}
+                   :model/Card {card-id :id} {:collection_id coll-id-1}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id-1)
+      (testing "with read-only permissions on the destination collection"
+        (perms/revoke-collection-permissions! (perms-group/all-users) coll-id-2)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id-2)
+        (testing "just to be sure, we can't directly move it to the read-only collection"
+          (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:collection_id coll-id-2}))
+        (testing "we can't move it to the dashboard in the read-only collection"
+          (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id})
+          (is (not= dash-id (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))
+      (testing "with no permissions on the destination collection"
+        (perms/revoke-collection-permissions! (perms-group/all-users) coll-id-2)
+        (testing "just to be sure, we can't directly move it to the no-perms collection"
+          (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:collection_id coll-id-2}))
+        (testing "we can't move it to the dashboard in the no-perms collection"
+          (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id})
+          (is (not= dash-id (t2/select-one-fn :dashboard_id :model/Card :id card-id))))))
+    (testing "the root collection works the same way"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id nil}
+                     :model/Card {card-id :id} {:collection_id coll-id}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+        (testing "can't move to the root collection"
+          (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))))
 
 (deftest cannot-join-question-with-itself
   (testing "Cannot join card with itself."

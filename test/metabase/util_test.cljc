@@ -9,7 +9,8 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.number :as u.number])
   #?(:clj (:import [java.time DayOfWeek Month])))
 
 #?(:clj (set! *warn-on-reflection* true))
@@ -359,6 +360,7 @@
     "x"                                   :dispatch-type/string
     :x                                    :dispatch-type/keyword
     1                                     :dispatch-type/integer
+    (u.number/bigint "10")                :dispatch-type/integer
     1.1                                   :dispatch-type/number
     {:a 1}                                :dispatch-type/map
     [1]                                   :dispatch-type/sequential
@@ -575,3 +577,8 @@
     (let [acc (volatile! [])]
       (u/run-count! #(vswap! acc conj %) (eduction (map inc) (range 3)))
       (is (= [1 2 3] @acc)))))
+
+(deftest ^:parallel safe-min-test
+  (testing "safe min behaves like clojure.core/min"
+    (is (= nil (u/safe-min nil)))
+    (is (= 2 (u/safe-min nil 2 nil 3)))))

@@ -19,7 +19,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -722,7 +722,7 @@
       (fix-order-bys (dissoc m :order-by))
 
       (m :guard (partial add-limit? &parents))
-      (fix-order-bys (assoc m :limit qp.i/absolute-max-results)))))
+      (fix-order-bys (assoc m :limit limit/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
   [driver inner-query]

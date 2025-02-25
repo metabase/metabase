@@ -371,6 +371,22 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Item 1 of/i).should("be.visible");
   });
+
+  it("should not call GET /api/action endpoint for ad-hoc questions (metabase#50266)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/action", cy.spy().as("getActions"));
+
+    cy.visit("/");
+    H.browseDatabases().click();
+    cy.findByRole("heading", { name: "Sample Database" }).click();
+    cy.findByRole("heading", { name: "Orders" }).click();
+    cy.wait("@dataset");
+    cy.findAllByTestId("cell-data").eq(11).click();
+    H.popover().findByText("View details").click();
+    cy.wait(["@dataset", "@dataset", "@dataset"]); // object detail + Orders relationship + Reviews relationship
+
+    cy.get("@getActions").should("have.callCount", 0);
+  });
 });
 
 function drillPK({ id }) {

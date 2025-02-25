@@ -120,7 +120,7 @@ describe("collection permissions", () => {
                     name: "Model",
                     type: "model",
                     native: {
-                      query: "SELECT * FROM ORDERS",
+                      query: "SELECT 1",
                     },
                   });
                   archiveUnarchive("Model", "model");
@@ -376,7 +376,8 @@ describe("collection permissions", () => {
   it("should offer to save items to 'Our analytics' if user has a 'curate' access to it", () => {
     cy.signIn("normal");
 
-    H.startNewNativeQuestion().type("select * from people");
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select * from people");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 

@@ -1,0 +1,15 @@
+.FullWidthContainer {
+  margin: 0 auto;
+  padding: 0 1em;
+  width: 100%;
+
+  @media screen and (min-width: 40em) {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  @media screen and (min-width: 80em) {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}

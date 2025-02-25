@@ -44,6 +44,18 @@
               :target [:dimension [:field (mt/id :venues :name) nil]]
               :value  "Cam's Toucannery"}))))))
 
+(deftest ^:parallel biginteger-test
+  (testing "adding an id parameter with a biginteger value"
+    (is (= (expanded-query-with-filter
+            [:= [:field (mt/id :orders :id) nil] 9223372036854775808])
+           (expand-parameters
+            (query-with-parameters
+             {:hash   "abc123"
+              :name   "foo"
+              :type   "id"
+              :target [:dimension [:field (mt/id :orders :id) nil]]
+              :value  "9223372036854775808"}))))))
+
 (deftest ^:parallel multiple-filters-test
   (testing "multiple filters are conjoined by an :and"
     (is (= (expanded-query-with-filter

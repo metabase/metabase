@@ -69,7 +69,7 @@ export const SharingPaneButton = ({
             <Box
               ml="xs"
               component={Link}
-              variant="brand"
+              c="brand"
               to={disabledLink}
             >{t`Enable in admin settings`}</Box>
           </Text>

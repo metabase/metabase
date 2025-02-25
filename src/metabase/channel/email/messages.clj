@@ -120,7 +120,7 @@
   [email sso-source password-reset-url is-active?]
   {:pre [(u/email? email)
          ((some-fn string? nil?) password-reset-url)]}
-  (let [google-sso? (= "google" sso-source)
+  (let [google-sso? (= :google sso-source)
         message-body (channel.template/render
                       "metabase/channel/email/password_reset.hbs"
                       (merge (common-context)

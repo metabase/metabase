@@ -1,6 +1,10 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 
-import { isStorybookActive } from "metabase/env";
+import GlobalDashboardS from "metabase/css/dashboard.module.css";
+import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
+import DashboardGridS from "metabase/dashboard/components/DashboardGrid.module.css";
+import { isEmbeddingSdk, isStorybookActive } from "metabase/env";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
@@ -17,6 +21,29 @@ export const saveDomImageStyles = css`
     .${SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS} {
       display: none;
     }
+
+    .${DashboardS.FixedWidthContainer} {
+      legend {
+        top: -9px;
+      }
+    }
+
+    .${DashboardGridS.DashboardCardContainer} .${GlobalDashboardS.Card} {
+      /* the renderer we use for saving to image/pdf doesn't support box-shadow
+        so we replace it with a border */
+      box-shadow: none;
+      border: 1px solid var(--mb-color-border);
+    }
+
+    /* the renderer for saving to image/pdf does not support text overflow
+     with line height in custom themes in the embedding sdk.
+     this is a workaround to make sure the text is not clipped vertically */
+    ${isEmbeddingSdk &&
+    css`
+      .${DashboardGridS.DashboardCardContainer} .${GlobalDashboardS.Card} * {
+        overflow: visible !important;
+      }
+    `};
   }
 `;
 

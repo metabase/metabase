@@ -213,6 +213,7 @@
   metabase.sync.util/with-start-and-finish-logging                                     [[:default]]
   metabase.sync.util/with-start-and-finish-logging*                                    [[:default]]
   metabase.sync.util/with-sync-events                                                  [[:default]]
+  metabase.task/rerun-on-error                                                         [[:block 1]]
   metabase.test/$ids                                                                   [[:inner 0]]
   metabase.test/as-admin                                                               [[:inner 0]]
   metabase.test/dataset                                                                [[:inner 0]]

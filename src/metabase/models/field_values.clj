@@ -437,68 +437,50 @@
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & {:keys [field-values human-readable-values]}]
-  (let [field-values              (or field-values (get-latest-full-field-values (u/the-id field)))
-        {unwrapped-values :values
-         :keys [has_more_values]} (distinct-values field)
-        ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
-        values                    (map first unwrapped-values)
-        field-name                (or (:name field) (:id field))]
-    (cond
-      ;; If this Field is marked `auto-list`, and the number of values in now over
-      ;; the [[analyze/auto-list-cardinality-threshold]] or the accumulated length of all values exceeded
-      ;; the [[*total-max-length*]] threshold we need to unmark it as `auto-list`. Switch it to `has_field_values` =
-      ;; `nil` and delete the FieldValues; this will result in it getting a Search Widget in the UI when
-      ;; `has_field_values` is automatically inferred by the [[metabase.models.field/infer-has-field-values]] hydration
-      ;; function (see that namespace for more detailed discussion)
-      ;;
-      ;; It would be nicer if we could do this in analysis where it gets marked `:auto-list` in the first place, but
-      ;; Fingerprints don't get updated regularly enough that we could detect the sudden increase in cardinality in a
-      ;; way that could make this work. Thus, we are stuck doing it here :(
-      (and (= :auto-list (keyword (:has_field_values field)))
-           (or has_more_values
-               (> (count values) analyze/auto-list-cardinality-threshold)))
-      (do
-        (log/infof
-         (str "Field %s was previously automatically set to show a list widget, but now has %s values."
-              " Switching Field to use a search widget instead.")
-         field-name
-         (count values))
-        (t2/update! 'Field (u/the-id field) {:has_field_values nil})
-        (clear-field-values-for-field! field)
-        ::fv-deleted)
+  (if (field-should-have-field-values? field)
+    (let [field-values              (or field-values (get-latest-full-field-values (u/the-id field)))
+          {unwrapped-values :values
+           :keys [has_more_values]} (distinct-values field)
+          ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
+          values                    (seq (map first unwrapped-values))
+          field-name                (or (:name field) (:id field))]
+      (cond
+        (and values
+             (= (:values field-values) values)
+             (= (:has_more_values field-values) has_more_values))
+        (do
+          (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
+          ::fv-skipped)
 
-      (and (= (:values field-values) values)
-           (= (:has_more_values field-values) has_more_values))
-      (do
-        (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
-        ::fv-skipped)
+        ;; if the FieldValues object already exists then update values in it
+        (and field-values values)
+        (do
+          (log/debugf "Storing updated FieldValues for Field %s..." field-name)
+          (t2/update! :model/FieldValues (u/the-id field-values)
+                      (m/remove-vals nil?
+                                     {:has_more_values       has_more_values
+                                      :values                values
+                                      :human_readable_values (fixup-human-readable-values field-values values)}))
+          ::fv-updated)
 
-      ;; if the FieldValues object already exists then update values in it
-      (and field-values unwrapped-values)
-      (do
-        (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-        (t2/update! :model/FieldValues (u/the-id field-values)
-                    (m/remove-vals nil?
-                                   {:has_more_values       has_more_values
-                                    :values                values
-                                    :human_readable_values (fixup-human-readable-values field-values values)}))
-        ::fv-updated)
+        ;; if FieldValues object doesn't exist create one
+        values
+        (do
+          (log/debugf "Storing FieldValues for Field %s..." field-name)
+          (mdb.query/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
+                                       (constantly {:has_more_values       has_more_values
+                                                    :values                values
+                                                    :human_readable_values human-readable-values}))
+          ::fv-created)
 
-      ;; if FieldValues object doesn't exist create one
-      unwrapped-values
-      (do
-        (log/debugf "Storing FieldValues for Field %s..." field-name)
-        (mdb.query/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
-                                     (constantly {:has_more_values       has_more_values
-                                                  :values                values
-                                                  :human_readable_values human-readable-values}))
-        ::fv-created)
-
-      ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
-      :else
-      (do
-        (clear-field-values-for-field! field)
-        ::fv-deleted))))
+        ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
+        :else
+        (do
+          (clear-field-values-for-field! field)
+          ::fv-deleted)))
+    (do
+      (clear-field-values-for-field! field)
+      ::fv-deleted)))
 
 (defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly

@@ -1,6 +1,6 @@
-(ns macros.metabase-enterprise.sandbox.test-util
-  (:require [macros.common]))
+(ns macros.metabase-enterprise.sandbox.test-util)
 
 (defmacro with-gtaps! [gtaps-definition & body]
-  `(let [~(macros.common/ignore-unused '&group) ~gtaps-definition]
+  `(let [~'&group ~gtaps-definition]
+     ~'&group
      ~@body))
