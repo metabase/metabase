@@ -33,6 +33,7 @@
   :sensitive? true
   :feature    :metabot-v3
   :doc        false
+  :export?    false
   :base       setting/uuid-nonce-base)
 
 (defsetting metabot-ai-service-token-ttl
@@ -42,6 +43,7 @@
   :default    180
   :feature    :metabot-v3
   :doc        false
+  :export?    true
   :audit      :never)
 
 (defn- get-ai-service-token
