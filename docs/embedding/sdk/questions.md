@@ -412,7 +412,7 @@ You can embed the query builder without a pre-defined question by not passing th
 
 ```tsx
 import React from "react";
-import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
 
 const authConfig = {...}
 
