@@ -11,7 +11,7 @@ This guide sets up the embedded analytics SDK with a [sample React app](https://
 ## Prerequisites
 
 - [Node.js 20.x LTS or higher](https://nodejs.org/en) (for the sample application).
-- [Metabase version v1.51 or higher](https://www.metabase.com/docs/latest/releases).
+- [Metabase version v1.52 or higher](https://www.metabase.com/docs/latest/releases).
 
 ## Overview of the quickstart
 
@@ -162,6 +162,8 @@ npm install
 
 This command will install the [Metabase embedded analytics SDK](https://www.npmjs.com/package/@metabase/embedding-sdk-react), in addition to the application's other dependencies.
 
+You can also install a [different version of the SDK](./version.md). Just make sure that the major version of the SDK matches the major version of the Metabase you're using.
+
 ## Start the client
 
 In a different terminal, change into the `client` directory:
@@ -194,6 +196,6 @@ In your app, you'll see an embedded `InteractiveQuestion` component.
 </MetabaseProvider>
 ```
 
-![Embedded Metabase components](../images/embedded-components.png)
+![Embedded Metabase components](../images/interactive-question-sample-app.png)
 
 Try changing some of the `theme` options in the [client app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/blob/main/client/src/App.jsx) to style the components.
