@@ -992,7 +992,7 @@
                        (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans")))))))))))
 
 (deftest send-test-pulse-to-non-user-test
-  (testing "POST /api/pulse/test"
+  (testing "sending test email to non user won't include unsubscribe link (#43391)"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-fake-inbox
         (mt/dataset sad-toucan-incidents
