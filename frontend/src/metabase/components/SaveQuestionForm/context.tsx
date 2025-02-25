@@ -8,10 +8,12 @@ import {
   useState,
 } from "react";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { FormProvider } from "metabase/forms";
+import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId, RecentCollectionItem } from "metabase-types/api";
@@ -29,7 +31,7 @@ type SaveQuestionContextType = {
   setValues: (values: FormValues) => void;
   showSaveType: boolean;
   multiStep: boolean;
-  saveToCollectionId?: CollectionId;
+  saveToCollection?: CollectionId;
 };
 
 export const SaveQuestionContext =
@@ -58,7 +60,7 @@ export const SaveQuestionProvider = ({
   onCreate,
   onSave,
   multiStep = false,
-  saveToCollectionId,
+  saveToCollection,
   children,
   initialDashboardTabId,
 }: PropsWithChildren<SaveQuestionProps>) => {
@@ -67,6 +69,12 @@ export const SaveQuestionProvider = ({
   const defaultCollectionId = useGetDefaultCollectionId(
     originalQuestion?.collectionId(),
   );
+
+  const currentUser = useSelector(getCurrentUser);
+  const targetCollection =
+    currentUser && saveToCollection === "personal"
+      ? currentUser.personal_collection_id
+      : saveToCollection;
 
   const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
   const { data: recentItems, isLoading } = useListRecentsQuery(
@@ -140,9 +148,9 @@ export const SaveQuestionProvider = ({
         question,
         onSave,
         onCreate,
-        saveToCollectionId,
+        saveToCollection: targetCollection,
       }),
-    [originalQuestion, question, onSave, onCreate, saveToCollectionId],
+    [originalQuestion, question, onSave, onCreate, targetCollection],
   );
 
   // we care only about the very first result as question can be changed before
@@ -176,7 +184,7 @@ export const SaveQuestionProvider = ({
             setValues,
             showSaveType,
             multiStep,
-            saveToCollectionId,
+            saveToCollection,
           }}
         >
           {children}
