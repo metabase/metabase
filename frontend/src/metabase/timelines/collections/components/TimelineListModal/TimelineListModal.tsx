@@ -46,14 +46,18 @@ const TimelineListModal = ({
     onGoBack?.(collection);
   }, [collection, onGoBack]);
 
+  const pathOptions = {
+    showPath: hasTimelines,
+    collectionName: collection.name,
+  };
+
   return (
     <ModalRoot>
       <ModalHeader
         title={title}
         onClose={onClose}
         onGoBack={isArchive ? handleGoBack : undefined}
-        collectionName={collection.name}
-        showPath={hasTimelines}
+        pathOptions={pathOptions}
       >
         {hasMenuItems && (
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />

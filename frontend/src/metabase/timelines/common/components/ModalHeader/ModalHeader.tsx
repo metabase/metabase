@@ -16,8 +16,10 @@ export interface ModalHeaderProps {
   children?: ReactNode;
   onClose?: () => void;
   onGoBack?: () => void;
-  collectionName: string;
-  showPath: boolean;
+  pathOptions?: {
+    showPath: boolean;
+    collectionName: string;
+  };
 }
 
 const ModalHeader = ({
@@ -25,8 +27,7 @@ const ModalHeader = ({
   children,
   onClose,
   onGoBack,
-  collectionName,
-  showPath,
+  pathOptions,
 }: ModalHeaderProps): JSX.Element => {
   return (
     <Box p="xl" pb={0}>
@@ -42,11 +43,11 @@ const ModalHeader = ({
           </HeaderCloseButton>
         )}
       </Flex>
-      {showPath && (
+      {pathOptions?.showPath && (
         <Group gap="xs" align="center">
           {t`in`}
           <Icon name="folder" c="text-light" />
-          {collectionName}
+          {pathOptions.collectionName}
         </Group>
       )}
     </Box>
