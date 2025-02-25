@@ -196,7 +196,7 @@ export const CustomExpressionEditor = {
   },
   blur() {
     // click outside the expression editor
-    cy.findByTestId("expression-name").focus();
+    cy.findByTestId("expression-editor").click("bottomRight", { force: true });
     return CustomExpressionEditor;
   },
   format() {
