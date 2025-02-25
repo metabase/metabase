@@ -2,7 +2,6 @@
   "Tests for the `:order-by` clause."
   (:require
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
    [metabase.test :as mt]))
 
 (deftest ^:parallel order-by-test

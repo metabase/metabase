@@ -57,14 +57,13 @@
                 {:aggregation [[:avg [:* $id $price]]]
                  :breakout    [$price]})))))))
 
-(deftest ^:parallel double-average-test
+(deftest ^:parallel non-int-avg-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
-    (testing "average is calculated correctly"
-      (is (> 0.01 (Math/abs (- 2.03
-                               (->> {:aggregation [[:avg $price]]}
-                                    (mt/run-mbql-query venues)
-                                    (mt/formatted-rows [double])
-                                    first first))))))))
+    (testing "integers with a non-integer average is calculated correctly"
+      (is (= [[2.03]]
+             (->> {:aggregation [[:avg $price]]}
+                  (mt/run-mbql-query venues)
+                  (mt/formatted-rows [2.0])))))))
 
 (deftest ^:parallel post-aggregation-math-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
