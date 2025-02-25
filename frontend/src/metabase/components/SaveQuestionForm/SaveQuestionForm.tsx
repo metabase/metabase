@@ -1,26 +1,22 @@
 import cx from "classnames";
-import { useField } from "formik";
-import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
 import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
 import { FormFooter } from "metabase/core/components/FormFooter";
+import { FormDashboardTabSelect } from "metabase/dashboard/components/FormDashboardTabSelect";
 import {
   Form,
   FormErrorMessage,
   FormRadioGroup,
-  FormSelect,
-  type FormSelectProps,
   FormSubmitButton,
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
 import { isNullOrUndefined } from "metabase/lib/types";
 import { Button, Radio, Stack, rem } from "metabase/ui";
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 
 import S from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
@@ -120,34 +116,36 @@ export const SaveQuestionForm = ({
           />
 
           {isCollectionPickerEnabled && showPickerInput && (
-            <FormCollectionAndDashboardPicker
-              collectionIdFieldName="collection_id"
-              dashboardIdFieldName="dashboard_id"
-              title={t`Where do you want to save this?`}
-              collectionPickerModalProps={{
-                models,
-                recentFilter: items =>
-                  items.filter(item => {
-                    // narrow type and make sure it's a dashboard or
-                    // collection that the user can write to
-                    return item.model !== "table" && item.can_write;
-                  }),
-              }}
-            />
-          )}
+            <div>
+              <FormCollectionAndDashboardPicker
+                collectionIdFieldName="collection_id"
+                dashboardIdFieldName="dashboard_id"
+                title={t`Where do you want to save this?`}
+                collectionPickerModalProps={{
+                  models,
+                  recentFilter: items =>
+                    items.filter(item => {
+                      // narrow type and make sure it's a dashboard or
+                      // collection that the user can write to
+                      return item.model !== "table" && item.can_write;
+                    }),
+                }}
+              />
 
-          {values.saveType === "create" && (
-            <FormDashboardTabPicker
-              name="dashboard_tab_id"
-              label="Which tab should this go on?"
-              dashboardId={values.dashboard_id}
-              styles={{
-                label: {
-                  ...labelStyles,
-                  marginBottom: rem("3px"),
-                },
-              }}
-            />
+              {values.saveType === "create" && (
+                <FormDashboardTabSelect
+                  name="dashboard_tab_id"
+                  label="Which tab should this go on?"
+                  dashboardId={values.dashboard_id}
+                  styles={{
+                    label: {
+                      ...labelStyles,
+                      marginBottom: rem("3px"),
+                    },
+                  }}
+                />
+              )}
+            </div>
           )}
         </Stack>
       )}
@@ -163,45 +161,4 @@ export const SaveQuestionForm = ({
       </FormFooter>
     </Form>
   );
-};
-
-const FormDashboardTabPicker = ({
-  dashboardId,
-  ...props
-}: { dashboardId: DashboardId | null | undefined } & Omit<
-  FormSelectProps,
-  "data"
->) => {
-  const dashboardTabField = useField(props.name);
-  const dashboardTabHelpers = dashboardTabField[2];
-
-  const { currentData, isFetching, error } = useGetDashboardQuery(
-    dashboardId ? { id: dashboardId } : skipToken,
-  );
-
-  useEffect(
-    function updateDefaultTabOnDashboardChange() {
-      const firstTabId = currentData?.tabs?.length
-        ? "" + currentData.tabs[0].id
-        : undefined;
-      dashboardTabHelpers.setValue("" + firstTabId);
-    },
-    [currentData, dashboardTabHelpers],
-  );
-
-  const options = useMemo(() => {
-    return (
-      currentData?.tabs?.map(tab => ({
-        label: tab.name,
-        value: `${tab.id}`,
-      })) ?? []
-    );
-  }, [currentData]);
-
-  const showTabSelect = (isFetching || options.length > 1) && !error;
-  if (showTabSelect) {
-    return <FormSelect {...props} data={options} />;
-  }
-
-  return null;
 };

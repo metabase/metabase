@@ -285,14 +285,15 @@ export function QueryModals({
                 return;
               }
 
-              const object = await onCreate(
-                questionWithParameters
-                  .setDisplayName(formValues.name)
-                  .setCollectionId(formValues.collection_id)
-                  .setDashboardId(formValues.dashboard_id)
-                  .setDescription(formValues.description || null),
-                { dashboardTabId: formValues?.dashboardTabId },
-              );
+              const question = questionWithParameters
+                .setDisplayName(formValues.name)
+                .setCollectionId(formValues.collection_id)
+                .setDashboardId(formValues.dashboard_id)
+                .setDescription(formValues.description || null);
+
+              const object = await onCreate(question, {
+                dashboardTabId: formValues.dashboard_tab_id,
+              });
 
               return object;
             }}
