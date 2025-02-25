@@ -172,13 +172,13 @@ if (auth.status === "success") {
 
 ## Customizing JWT authentication
 
-You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function in the `authConfig`:
+You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function with the `defineMetabaseAuthConfig` function:
 
-````typescript
+```typescript
 // Pass this configuration to MetabaseProvider.
 // Wrap the fetchRequestToken function in useCallback if it has dependencies to prevent re-renders.
 const authConfig = defineMetabaseAuthConfig({
-  fetchRequestToken: async (url) => {
+  fetchRequestToken: async url => {
     const response = await fetch(url, {
       method: "GET",
       headers: { Authorization: `Bearer ${yourToken}` },
@@ -189,6 +189,7 @@ const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "http://localhost:3000",
   authProviderUri: "http://localhost:9090/sso/metabase",
 });
+```
 
 ## Security warning: each end-user _must_ have their own Metabase account
 
@@ -228,4 +229,4 @@ export default function App() {
     </MetabaseProvider>
   )
 };
-````
+```
