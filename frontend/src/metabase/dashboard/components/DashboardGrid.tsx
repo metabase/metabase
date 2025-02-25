@@ -150,7 +150,7 @@ type OwnProps = {
   isNightMode: boolean;
   withCardTitle?: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
-  getMode?: ClickActionModeGetter;
+  getClickActionMode?: ClickActionModeGetter;
   // public dashboard passes it explicitly
   width?: number;
   // public or embedded dashboard passes it as noop
@@ -558,7 +558,7 @@ class DashboardGridInner extends Component<
         onReplaceAllDashCardVisualizationSettings={
           this.props.onReplaceAllDashCardVisualizationSettings
         }
-        getMode={this.props.getMode}
+        getClickActionMode={this.props.getClickActionMode}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }

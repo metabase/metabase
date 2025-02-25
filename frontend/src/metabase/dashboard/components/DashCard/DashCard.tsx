@@ -54,7 +54,7 @@ export interface DashCardProps {
   gridItemWidth: number;
   totalNumGridCols: number;
   slowCards: Record<CardId, boolean>;
-  getMode?: ClickActionModeGetter;
+  getClickActionMode?: ClickActionModeGetter;
 
   clickBehaviorSidebarDashcard?: DashboardCard | null;
 
@@ -104,7 +104,7 @@ function DashCardInner({
   slowCards,
   gridItemWidth,
   totalNumGridCols,
-  getMode,
+  getClickActionMode,
   isEditing = false,
   isNightMode = false,
   isFullscreen = false,
@@ -369,7 +369,7 @@ function DashCardInner({
           dashboard={dashboard}
           dashcard={dashcard}
           series={series}
-          getMode={getMode}
+          getClickActionMode={getClickActionMode}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}
           totalNumGridCols={totalNumGridCols}

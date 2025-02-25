@@ -1,6 +1,6 @@
 import type { DashboardNightModeControls } from "metabase/dashboard/types/display-options";
-import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import type { DisplayTheme } from "metabase/public/lib/types";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 type EmbedBackground = boolean;
 
@@ -26,7 +26,7 @@ export type EmbedDisplayParams = {
   hideParameters: EmbedHideParameters;
   font: EmbedFont;
   theme: DisplayTheme;
-  plugins?: MetabasePluginsConfig;
+  getClickActionMode?: ClickActionModeGetter;
   downloadsEnabled: boolean;
   withFooter: boolean;
 };

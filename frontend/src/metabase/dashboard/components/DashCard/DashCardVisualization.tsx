@@ -43,7 +43,7 @@ interface DashCardVisualizationProps {
   dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
-  getMode?: ClickActionModeGetter;
+  getClickActionMode?: ClickActionModeGetter;
   getHref?: () => string | undefined;
 
   gridSize: {
@@ -93,7 +93,7 @@ export function DashCardVisualization({
   dashcard,
   dashboard,
   series,
-  getMode,
+  getClickActionMode,
   getHref,
   gridSize,
   gridItemWidth,
@@ -252,7 +252,7 @@ export function DashCardVisualization({
       dashcard={dashcard}
       rawSeries={series}
       metadata={metadata}
-      mode={getMode}
+      mode={getClickActionMode}
       getHref={getHref}
       gridSize={gridSize}
       totalNumGridCols={totalNumGridCols}

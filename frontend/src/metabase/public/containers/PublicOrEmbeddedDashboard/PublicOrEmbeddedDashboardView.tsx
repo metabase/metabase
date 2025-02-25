@@ -26,7 +26,6 @@ import type {
   EmbedHideParameters,
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
-import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import type { DisplayTheme } from "metabase/public/lib/types";
@@ -64,7 +63,7 @@ interface InnerPublicOrEmbeddedDashboardViewProps {
   bordered: boolean;
   titled: boolean;
   theme: DisplayTheme;
-  plugins?: MetabasePluginsConfig;
+  getClickActionMode?: ClickActionModeGetter;
   hideParameters: EmbedHideParameters;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
@@ -102,7 +101,7 @@ export function PublicOrEmbeddedDashboardView({
   bordered,
   titled,
   theme,
-  plugins,
+  getClickActionMode: externalGetClickActionMode,
   hideParameters,
   withFooter,
   navigateToNewCardFromDashboard,
@@ -149,16 +148,16 @@ export function PublicOrEmbeddedDashboardView({
     background,
   });
 
-  const getMode: ClickActionModeGetter = useCallback(
+  const getClickActionMode: ClickActionModeGetter = useCallback(
     ({ question }) =>
+      externalGetClickActionMode?.({ question }) ??
       getEmbeddingMode({
         question,
         queryMode: navigateToNewCardFromDashboard
           ? EmbeddingSdkMode
           : PublicMode,
-        plugins,
       }),
-    [navigateToNewCardFromDashboard, plugins],
+    [externalGetClickActionMode, navigateToNewCardFromDashboard],
   );
 
   return (
@@ -223,7 +222,7 @@ export function PublicOrEmbeddedDashboardView({
               <DashboardGridConnected
                 dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
                 isPublicOrEmbedded
-                getMode={getMode}
+                getClickActionMode={getClickActionMode}
                 selectedTabId={selectedTabId}
                 slowCards={slowCards}
                 isEditing={false}

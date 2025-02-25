@@ -134,7 +134,7 @@ const PublicOrEmbeddedDashboardInner = ({
   bordered,
   titled,
   theme,
-  plugins,
+  getClickActionMode,
   downloadsEnabled = true,
   hideParameters,
   withFooter,
@@ -236,7 +236,7 @@ const PublicOrEmbeddedDashboardInner = ({
         bordered={bordered}
         titled={titled}
         theme={theme}
-        plugins={plugins}
+        getClickActionMode={getClickActionMode}
         hideParameters={hideParameters}
         navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
         slowCards={slowCards}
