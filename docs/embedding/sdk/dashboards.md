@@ -54,9 +54,9 @@ By default, dashboard components take full page height (100vh). You can override
 
 ```typescript
 import React from "react";
-import {MetabaseProvider, InteractiveDashboard} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, InteractiveDashboard, defineMetabaseAuthConfig} from "@metabase/embedding-sdk-react";
 
-const authConfig = {...}
+const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     const dashboardId = 1; // This is the dashboard ID you want to embed
