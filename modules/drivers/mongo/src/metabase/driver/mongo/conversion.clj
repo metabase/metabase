@@ -19,19 +19,14 @@
   (:require
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
+   [metabase.driver.mongo :as mongo]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.query-processor.timezone :as qp.timezone])
   (:import
-   (java.nio ByteBuffer)
    (java.util UUID)
    (org.bson.types Binary)))
 
 (set! *warn-on-reflection* true)
-
-(def bson-uuid-type
-  "UUIDs are BSON subtype 4, see https://bsonspec.org/spec.html
-  and https://www.mongodb.com/docs/manual/reference/bson-types/#binary-data"
-  4)
 
 ;;;; Protocols defined originally in monger, adjusted for `Document` follow.
 
@@ -44,14 +39,9 @@
 
   Binary
   (from-document [input _opts]
-    (cond (= (.getType input) bson-uuid-type)
-          (let [buffer (-> input .getData ByteBuffer/wrap)
-                most-sig-bits (.getLong buffer)
-                least-sig-bits (.getLong buffer)]
-            (UUID. most-sig-bits least-sig-bits))
-
-          :else
-          input))
+    (if (= (.getType input) mongo/bson-uuid-type)
+      (#'mongo/bsonuuid->uuid input)
+      input))
 
   Object
   (from-document [input _opts] input)
