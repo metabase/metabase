@@ -29,6 +29,10 @@ button.newButton {
   }
 }
 
+.questionListItem {
+  flex: 1;
+}
+
 .visualizerButton {
   visibility: hidden;
 }
@@ -37,8 +41,6 @@ button.newButton {
   visibility: visible;
   background-color: var(--mb-color-brand);
   color: white;
-  padding: 0.75em;
   margin-left: 2px;
   cursor: pointer;
-  border-radius: 6px;
 }
