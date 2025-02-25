@@ -77,7 +77,7 @@ describe("issue 6239", () => {
 
     H.CustomExpressionEditor.type("CountIf([Total] > 0)").format();
 
-    cy.findByPlaceholderText("Something nice and descriptive").type("CE");
+    H.CustomExpressionEditor.nameInput().type("CE");
     cy.button("Done").click();
 
     cy.findByTestId("aggregate-step").contains("CE").should("exist");
@@ -321,7 +321,7 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Function Percentile expects 1 argument").should("not.exist");
-    cy.get("@name").type("Expression name");
+    H.CustomExpressionEditor.nameInput().type("Expression name");
     cy.button("Done").should("not.be.disabled").click();
     // Todo: Add positive assertions once this is fixed
 
@@ -429,26 +429,22 @@ function addSummarizeCustomExpression(formula, name) {
   H.summarize({ mode: "notebook" });
   H.popover().contains("Custom Expression").click();
 
-  H.expressionEditorWidget().within(() => {
-    H.enterCustomColumnDetails({
-      formula,
-      name,
-      format: true,
-    });
-    cy.button("Done").click();
+  H.enterCustomColumnDetails({
+    formula,
+    name,
+    format: true,
   });
+  H.expressionEditorWidget().button("Done").click();
 }
 
 function addCustomColumn(formula, name) {
   cy.findByText("Custom column").click();
-  H.expressionEditorWidget().within(() => {
-    H.enterCustomColumnDetails({
-      formula,
-      name,
-      format: true,
-    });
-    cy.button("Done").click();
+  H.enterCustomColumnDetails({
+    formula,
+    name,
+    format: true,
   });
+  H.expressionEditorWidget().button("Done").click();
 }
 
 describe("issue 17514", () => {
@@ -797,14 +793,13 @@ describe("issue 18207", () => {
 
   it("should be possible to group by a string expression (metabase#18207)", () => {
     H.popover().contains("Custom Expression").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: "Max([Vendor])",
-        name: "LastVendor",
-        format: true,
-      });
-      cy.findByText("Done").click();
+
+    H.enterCustomColumnDetails({
+      formula: "Max([Vendor])",
+      name: "LastVendor",
     });
+
+    H.expressionEditorWidget().button("Done").click();
 
     cy.findByTestId("aggregate-step").contains("LastVendor").should("exist");
 

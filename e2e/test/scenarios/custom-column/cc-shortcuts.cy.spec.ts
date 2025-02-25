@@ -5,11 +5,11 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 function selectExtractColumn() {
-  H.popover().button("Extract columns").click();
+  H.popover().findByText("Extract columns").click();
 }
 
 function selectCombineColumns() {
-  H.popover().button("Combine columns").click();
+  H.popover().findByText("Combine columns").click();
 }
 
 function selectColumn(index: number, table: string, name?: string) {

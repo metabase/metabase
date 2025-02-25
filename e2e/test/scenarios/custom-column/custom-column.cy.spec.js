@@ -637,25 +637,18 @@ describe("scenarios > question > custom column", () => {
       .should("be.visible");
   });
 
-  it("should allow switching focus with Tab", () => {
+  it("should allow indenting using Tab", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({ formula: "1 + 2", blur: false });
 
-    // next focus: the textbox for the name
+    // Tab should insert indentation
     cy.realPress("Tab");
-    cy.focused().should("have.attr", "value").and("eq", "");
-    cy.focused()
-      .should("have.attr", "placeholder")
-      .and("eq", "Something nice and descriptive");
-
-    // Shift+Tab and we're back at the editor
-    cy.realPress(["Shift", "Tab"]);
-    cy.focused().should("have.attr", "class").and("eq", "cm-content");
+    H.CustomExpressionEditor.value().should("equal", "1 + 2  ");
   });
 
-  it("should allow tabbing away from, then back to editor, while formatting expression and placing caret after reformatted expression", () => {
+  it("should not format expression when tabbing away from the editoreditor", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
@@ -665,13 +658,13 @@ describe("scenarios > question > custom column", () => {
     cy.realPress(["Shift", "Tab"]);
 
     // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
-    H.CustomExpressionEditor.value().should("equal", "1 + 1");
+    H.CustomExpressionEditor.value().should("equal", "1+1");
     H.CustomExpressionEditor.type("2");
 
     // Fix needed will prevent display value from being `1 +2 1`.
     // That's because the caret position after refocusing on textarea
     // would still be after the 3rd character
-    H.CustomExpressionEditor.value().should("equal", "1 + 12");
+    H.CustomExpressionEditor.value().should("equal", "1+12");
   });
 
   it("should allow choosing a suggestion with Tab", () => {
@@ -686,18 +679,6 @@ describe("scenarios > question > custom column", () => {
     cy.realPress("Tab");
 
     // Focus remains on the expression editor
-    cy.focused().should("have.attr", "class").and("eq", "cm-content");
-
-    // Tab to focus on the name box
-    cy.realPress("Tab");
-
-    cy.focused().should("have.attr", "value").and("eq", "");
-    cy.focused()
-      .should("have.attr", "placeholder")
-      .and("eq", "Something nice and descriptive");
-
-    // Shift+Tab and we're back at the editor
-    cy.realPress(["Shift", "Tab"]);
     cy.focused().should("have.attr", "class").and("eq", "cm-content");
   });
 
@@ -718,13 +699,11 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("custom columns");
     H.getNotebookStep("data").button("Custom column").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: 'if([ID] = 1, "First", [ID] = 2, "Second", "Other")',
-        name: "If",
-      });
-      cy.button("Done").click();
+    H.enterCustomColumnDetails({
+      formula: 'if([ID] = 1, "First", [ID] = 2, "Second", "Other")',
+      name: "If",
     });
+    H.expressionEditorWidget().button("Done").click();
     H.getNotebookStep("expression").button("Filter").click();
     H.clauseStepPopover().within(() => {
       cy.findByText("If").click();
@@ -773,13 +752,11 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("custom columns - in");
     H.getNotebookStep("data").button("Custom column").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: 'in("Gadget", [Vendor], [Category])',
-        name: "InColumn",
-      });
-      cy.button("Done").click();
+    H.enterCustomColumnDetails({
+      formula: 'in("Gadget", [Vendor], [Category])',
+      name: "InColumn",
     });
+    H.expressionEditorWidget().button("Done").click();
     H.getNotebookStep("expression").button("Filter").click();
     H.clauseStepPopover().within(() => {
       cy.findByText("InColumn").click();
@@ -791,13 +768,11 @@ describe("scenarios > question > custom column", () => {
     cy.log("custom columns - notIn");
     H.openNotebook();
     H.getNotebookStep("expression").findByText("InColumn").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: 'notIn("Gadget", [Vendor], [Category])',
-        name: "InColumn",
-      });
-      cy.button("Update").should("not.be.disabled").click();
+    H.enterCustomColumnDetails({
+      formula: 'notIn("Gadget", [Vendor], [Category])',
+      name: "InColumn",
     });
+    H.expressionEditorWidget().button("Update").click();
     H.visualize();
     H.assertQueryBuilderRowCount(147);
 
@@ -831,7 +806,7 @@ describe("scenarios > question > custom column", () => {
       cy.findByLabelText("Back").click();
       cy.findByText("Custom Expression").click();
       H.enterCustomColumnDetails({ formula: "notIn([ID], 1, 2, 3)" });
-      cy.button("Done").click();
+      cy.button("Update").click();
     });
     H.visualize();
     H.assertQueryBuilderRowCount(197);
@@ -857,13 +832,11 @@ describe("scenarios > question > custom column", () => {
     cy.log("aggregations - notIn");
     H.openNotebook();
     H.getNotebookStep("summarize").findByText("CountIfIn").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: "countIf(notIn([ID], 1, 2))",
-        name: "CountIfIn",
-      });
-      cy.button("Update").click();
+    H.enterCustomColumnDetails({
+      formula: "countIf(notIn([ID], 1, 2))",
+      name: "CountIfIn",
     });
+    H.expressionEditorWidget().button("Update").click();
     H.visualize();
     cy.findByTestId("scalar-value").should("have.text", "198");
   });
@@ -1138,7 +1111,7 @@ describe("scenarios > question > custom column > help text", () => {
     cy.log(
       "Pressing `escape` key should also remove the expression helper popover",
     );
-    cy.get("@formula").type("{esc}");
+    H.CustomExpressionEditor.blur();
     H.CustomExpressionEditor.helpText().should("not.exist");
   });
 

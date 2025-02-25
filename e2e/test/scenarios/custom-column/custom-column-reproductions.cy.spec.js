@@ -1,4 +1,5 @@
 const { H } = cy;
+import { dedent } from "ts-dedent";
 
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -1025,18 +1026,25 @@ describe("issue 49342", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be possible to leave the expression input with the Tab key (metabase#49342)", () => {
+  it("should not be possible to leave the expression input with the Tab key (metabase#49342)", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
     H.enterCustomColumnDetails({ formula: "[Tot{Enter}", blur: false });
     cy.realPress("Tab");
-    cy.findByTestId("expression-name").should("be.focused");
+    H.CustomExpressionEditor.value().should("equal", "[Total]  ");
+    H.CustomExpressionEditor.nameInput().should("not.be.focused");
 
-    cy.log("should contain focus within the popover");
-    cy.findByTestId("expression-name").realPress(["Shift", "Tab"]);
+    cy.log("Shift-tab from name input should stay within the popover");
+    H.CustomExpressionEditor.nameInput().focus();
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     cy.focused().should("have.attr", "class", "cm-content");
+
     cy.realPress(["Shift", "Tab"]);
     cy.button("Cancel").should("be.focused");
+
+    cy.realPress(["Shift", "Tab"]);
+    H.CustomExpressionEditor.nameInput().should("be.focused");
   });
 });
 
@@ -1083,7 +1091,10 @@ describe("issue 49882", () => {
     });
 
     // "Cut" [Tax]
-    H.CustomExpressionEditor.type("{end}{leftarrow}", { focus: false });
+    H.CustomExpressionEditor.type("{end}{leftarrow}", {
+      focus: false,
+      blur: false,
+    });
     cy.realPress(["Shift", "ArrowLeft"]);
     cy.realPress(["Shift", "ArrowLeft"]);
     cy.realPress(["Shift", "ArrowLeft"]);
@@ -1091,7 +1102,10 @@ describe("issue 49882", () => {
     cy.realPress(["Shift", "ArrowLeft"]);
     cy.realPress(["Backspace"]);
 
-    H.CustomExpressionEditor.type("{leftarrow}".repeat(43));
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(42), {
+      focus: false,
+      blur: false,
+    });
 
     // Paste [Tax] before case
     H.CustomExpressionEditor.paste("[Tax]");
@@ -1171,7 +1185,14 @@ describe("issue 49304", () => {
       cy.findByText("Custom Expression").click();
       H.CustomExpressionEditor.value().should(
         "equal",
-        'contains([Category], "gadget", "widget", "case-insensitive")',
+        dedent`
+          contains(
+            [Category],
+            "gadget",
+            "widget",
+            "case-insensitive"
+          )
+        `.trim(),
       );
     });
 
@@ -1183,7 +1204,7 @@ describe("issue 49304", () => {
         formula:
           'contains([Category], "gadget", "widget", "gizmo", "case-insensitive")',
       });
-      cy.button("Done").click();
+      cy.button("Update").click();
     });
     H.getNotebookStep("filter")
       .findByText("Category contains 3 selections")
@@ -1221,7 +1242,7 @@ describe("issue 49304", () => {
       H.enterCustomColumnDetails({
         formula: 'contains([Category], "gadget", "widget", "gizmo")',
       });
-      cy.button("Done").click();
+      cy.button("Update").click();
     });
     H.getNotebookStep("filter")
       .findByText("Category contains 3 selections")
