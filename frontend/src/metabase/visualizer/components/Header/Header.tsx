@@ -15,9 +15,10 @@ import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 interface HeaderProps {
   onSave?: (visualization: VisualizerHistoryItem) => void;
+  saveLabel?: string;
 }
 
-export function Header({ onSave }: HeaderProps) {
+export function Header({ onSave, saveLabel }: HeaderProps) {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const visualization = useSelector(getCurrentVisualizerState);
@@ -66,11 +67,9 @@ export function Header({ onSave }: HeaderProps) {
             <Icon name="expand" />
           </ActionIcon>
         </Tooltip>
-        <Button
-          variant="filled"
-          disabled={!isDirty}
-          onClick={handleSave}
-        >{t`Add to dashboard`}</Button>
+        <Button variant="filled" disabled={!isDirty} onClick={handleSave}>
+          {saveLabel ?? t`Add to dashboard`}
+        </Button>
       </Flex>
     </Flex>
   );
