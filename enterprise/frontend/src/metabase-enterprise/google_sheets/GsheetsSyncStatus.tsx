@@ -38,9 +38,12 @@ export const GsheetsSyncStatus = () => {
   useEffect(() => {
     if (folderSync?.status !== "loading" || apiError) {
       if (apiError) {
+        console.error((apiError as ErrorPayload)?.data?.message);
+
         setSyncError({
           error: true,
-          message: (apiError as ErrorPayload)?.data?.message ?? "",
+          // eslint-disable-next-line no-literal-metabase-strings -- admin UI
+          message: t`Please check that the folder is shared with the Metabase Service Account.`,
         });
       }
 
