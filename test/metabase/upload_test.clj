@@ -2490,3 +2490,12 @@
              ;; This is the easiest way to work around the capitalization of alpha.
              (map u/lower-case-en
                   (#'upload/derive-display-names ::short-column-test-driver original)))))))
+
+(deftest allow-lists-transitivity-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "driver allow lists should be transitively closed."
+      ;; Imagine it was possible to go from (int -> float) and (bool -> int) - but not (bool -> float).
+      ;; This would mean a user could get (bool -> float), but only by filtering and re-uploading portions of the csv - Yuk!
+      ;; This test ensure drivers always meet any transitive expectations users might have.
+      (let [allow-list (driver/allowed-promotions driver/*driver*)]
+        (is (= allow-list (or (mt/transitive allow-list) {})))))))
