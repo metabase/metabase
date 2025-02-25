@@ -74,7 +74,7 @@ export const InteractiveEmbeddingOptionCard = ({
         href={quickStartUrl}
         target="_blank"
       >
-        {t`Check out our Quick Start`}{" "}
+        {t`Check out our Quickstart`}{" "}
         <Box ml="sm" top="2.5px" pos="absolute" component="span">
           <Icon name="share" aria-hidden />
         </Box>
