@@ -1335,7 +1335,7 @@ describe("issue 31663", () => {
     cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Edit metadata").click();
 
-    cy.findByTestId("TableInteractive-root").findByText("Product ID").click();
+    H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
     cy.findByLabelText("Foreign key target").click();
     H.popover().within(() => {

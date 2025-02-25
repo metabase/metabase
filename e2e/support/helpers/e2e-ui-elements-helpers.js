@@ -311,11 +311,15 @@ export function dashboardCards() {
 }
 
 export function tableInteractive() {
-  return cy.findByTestId("TableInteractive-root");
+  return cy.findByTestId("table-root");
 }
 
 export function tableInteractiveBody() {
-  return cy.get("#main-data-grid");
+  return cy.findByTestId("table-body");
+}
+
+export function tableInteractiveScrollContainer() {
+  return cy.findByTestId("table-scroll-container");
 }
 
 export function tableAllFieldsHiddenImage() {

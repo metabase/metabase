@@ -485,7 +485,7 @@ describe("scenarios > question > settings", () => {
         "two",
       ];
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         columnNames.forEach(text => cy.findByText(text).should("be.visible"));
       });
 
@@ -508,7 +508,7 @@ describe("scenarios > question > settings", () => {
           .should("not.exist");
       });
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         // the query should not have changed
         cy.icon("play").should("not.exist");
         cy.findByText("Products → Category").should("not.exist");
@@ -523,7 +523,7 @@ describe("scenarios > question > settings", () => {
           .should("be.visible");
       });
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         // the query should not have changed
         cy.icon("play").should("not.exist");
         cy.findByText("Products → Category").should("be.visible");

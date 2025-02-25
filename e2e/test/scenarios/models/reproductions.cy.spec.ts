@@ -1143,9 +1143,7 @@ describe("issue 34514", () => {
     H.entityPickerModal().should("not.exist");
     cy.button("Save").should("be.enabled");
     H.getNotebookStep("data").findByText("Orders").should("be.visible");
-    cy.findByTestId("TableInteractive-root")
-      .findByText("39.72")
-      .should("be.visible");
+    H.tableInteractive().findByText("39.72").should("be.visible");
   }
 
   function assertMetadataTabState() {
@@ -1164,7 +1162,7 @@ describe("issue 34514", () => {
     H.getNotebookStep("data")
       .findByText("Pick your starting data")
       .should("be.visible");
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("We're experiencing server issues").should("not.exist");
       cy.findByText("Here's where your results will appear").should(

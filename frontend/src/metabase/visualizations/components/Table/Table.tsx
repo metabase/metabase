@@ -70,14 +70,15 @@ export const Table = forwardRef(function Table<TData>(
 
   return (
     <DndContext {...dndContextProps}>
-      <div ref={ref} className={S.table} data-testid="TableInteractive-root">
+      <div ref={ref} className={S.table} data-testid="table-root">
         <div
+          data-testid="table-scroll-container"
           className={S.tableGrid}
           ref={refs.gridRef}
           style={{ paddingRight: isAddColumnButtonSticky ? "36px" : 0 }}
           onScroll={onScroll}
         >
-          <div className={S.headerContainer}>
+          <div data-testid="table-header" className={S.headerContainer}>
             {table.getHeaderGroups().map(headerGroup => (
               <div
                 key={headerGroup.id}
@@ -126,7 +127,7 @@ export const Table = forwardRef(function Table<TData>(
             ))}
           </div>
           <div
-            id="main-data-grid"
+            data-testid="table-body"
             className={S.bodyContainer}
             style={{
               display: "grid",

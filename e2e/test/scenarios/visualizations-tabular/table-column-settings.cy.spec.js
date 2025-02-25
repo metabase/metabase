@@ -360,7 +360,7 @@ describe("scenarios > visualizations > table column settings", () => {
       // clicking outside of the popover to close it
       cy.findByTestId("app-bar").click();
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         cy.findByText("prod_id");
       });
     });
@@ -816,11 +816,11 @@ const openSettings = () => {
 };
 
 const visualization = () => {
-  return cy.findByTestId("TableInteractive-root");
+  return H.tableInteractive();
 };
 
 const scrollVisualization = (position = "right") => {
-  cy.get("#main-data-grid").scrollTo(position, {
+  H.tableInteractiveScrollContainer().scrollTo(position, {
     force: true,
   });
 };

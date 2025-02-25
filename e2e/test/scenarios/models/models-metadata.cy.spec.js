@@ -224,7 +224,7 @@ describe("scenarios > models metadata", () => {
     H.saveMetadataChanges();
 
     cy.log("Revision 1");
-    cy.findByTestId("TableInteractive-root").within(() => {
+    H.tableInteractive().within(() => {
       cy.findByText("Subtotal ($)").should("be.visible");
       cy.findByText("SUBTOTAL").should("not.exist");
     });

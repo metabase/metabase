@@ -557,7 +557,7 @@ describe(
     });
 
     it("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
-      cy.get("#main-data-grid")
+      H.tableInteractiveBody()
         .findAllByRole("gridcell")
         .first()
         .then($cell => {
@@ -610,7 +610,7 @@ describe(
           // The preview should show only one row
           const ordersColumns = 10;
           cy.findByTestId("preview-root")
-            .get("#main-data-grid")
+            .findByTestId("table-body")
             .findAllByTestId("cell-data")
             .should("have.length.at.most", ordersColumns);
 

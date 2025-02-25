@@ -709,7 +709,7 @@ describe("scenarios > models", () => {
       });
       cy.findByTestId("native-query-editor-container").icon("play").click();
       cy.wait("@query");
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         cy.findByText("USER_ID");
         cy.findByText("PRODUCT_ID");
         cy.findByText("TAX");
