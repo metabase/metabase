@@ -241,6 +241,9 @@
 
 (defn- format-values-in-tree
   [tree formatters cols]
+  (def tree tree)
+  (def formatters formatters)
+  (def cols cols)
   (let [formatter (first formatters)
         col       (first cols)]
     (map
