@@ -270,11 +270,11 @@ export const addCardWithVisualization =
       const { sourceId } = parseDataSourceId(id);
       return sourceId;
     });
-    const cards: any = [];
+    const cards: Card[] = [];
 
     for (const cardId of cardIds) {
       await dispatch(Questions.actions.fetch({ id: cardId }));
-      const card = Questions.selectors
+      const card: Card = Questions.selectors
         .getObject(getState(), { entityId: cardId })
         .card();
       cards.push(card);
@@ -327,11 +327,11 @@ export const replaceCardWithVisualization =
       const { sourceId } = parseDataSourceId(id);
       return sourceId;
     });
-    const cards: any = [];
+    const cards: Card[] = [];
 
     for (const cardId of cardIds) {
       await dispatch(Questions.actions.fetch({ id: cardId }));
-      const card = Questions.selectors
+      const card: Card = Questions.selectors
         .getObject(getState(), { entityId: cardId })
         .card();
       cards.push(card);
@@ -344,7 +344,7 @@ export const replaceCardWithVisualization =
         id: dashcardId,
         attributes: {
           card_id: mainCard.id,
-          card: { ...mainCard, display: "visualization" },
+          card: mainCard,
           series: secondaryCards,
           parameter_mappings: [],
           visualization_settings: {
