@@ -72,7 +72,9 @@ const setup = async (
     collectionEndpoints?: CollectionEndpoints;
   } = {},
 ) => {
-  const onCreateMock = jest.fn(question => Promise.resolve(question));
+  const onCreateMock = jest.fn((question, _options) =>
+    Promise.resolve(question),
+  );
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
 
@@ -261,7 +263,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -285,7 +287,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -327,7 +329,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -350,7 +352,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -424,7 +426,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -449,7 +451,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
