@@ -389,7 +389,9 @@ return (
 
 ## Embedding an editable interactive question
 
-You can edit an existing question using the query builder by passing the `isSaveEnabled` prop on the `InteractiveQuestion` component.
+You can edit an existing question using the query builder by passing in the `questionId` prop of an existing question.
+
+To disallow saving the question, pass `isSaveEnabled={false}` to the component.
 
 ```tsx
 import React from "react";
@@ -400,7 +402,7 @@ const authConfig = {...}
 export default function App() {
     return (
         <MetabaseProvider authConfig={authConfig}>
-            <InteractiveQuestion questionId={1} isSaveEnabled />
+            <InteractiveQuestion questionId={1} />
         </MetabaseProvider>
     );
 }
