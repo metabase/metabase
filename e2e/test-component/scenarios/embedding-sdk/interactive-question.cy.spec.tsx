@@ -170,7 +170,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  it.only("can save a question to their personal collection", () => {
+  it("can save a question to their personal collection", () => {
     cy.intercept("/api/user/current").as("getUser");
 
     mountInteractiveQuestion({
