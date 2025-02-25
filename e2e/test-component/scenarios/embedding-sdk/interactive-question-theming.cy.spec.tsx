@@ -181,6 +181,46 @@ describe(
           });
       });
     });
+
+    it("supports dynamic height in QuestionVisualization based on visualization type", () => {
+      cy.get<number>("@questionId").then(questionId => {
+        mountSdkContent(
+          <InteractiveQuestion questionId={questionId}>
+            <InteractiveQuestion.ChartTypeDropdown />
+
+            <InteractiveQuestion.QuestionVisualization
+              height={({ visualizationType }) => {
+                if (visualizationType === "bar") {
+                  return "300px";
+                }
+
+                return "500px";
+              }}
+            />
+          </InteractiveQuestion>,
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findAllByTestId("flexible-size-container")
+          .eq(0)
+          .should($el => {
+            assertHeight($el, "500px");
+          });
+
+        cy.findByTestId("chart-type-selector-button").click();
+
+        cy.findByRole("menu").within(() => {
+          cy.findByText("Bar").click();
+        });
+
+        cy.findAllByTestId("flexible-size-container")
+          .eq(0)
+          .should($el => {
+            assertHeight($el, "300px");
+          });
+      });
+    });
   },
 );
 
