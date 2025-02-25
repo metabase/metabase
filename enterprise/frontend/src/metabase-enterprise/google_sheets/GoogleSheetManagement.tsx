@@ -188,7 +188,6 @@ export function GsheetConnectionModal({
     !userIsAdmin ||
     !serviceAccountEmail
   ) {
-    console.error("Google Sheets integration is not enabled");
     return null;
   }
 

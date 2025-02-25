@@ -97,8 +97,9 @@ export const DwhUploadMenu = () => {
             fw="bold"
             leftSection={<Icon name="upload" />}
             onClick={triggerUploadInput}
-          >{c("button label for uploading a CSV data file")
-            .t`Upload CSV`}</Menu.Item>
+          >
+            {c("button label for uploading a CSV data file").t`Upload CSV`}
+          </Menu.Item>
           <PLUGIN_UPLOAD_MANAGEMENT.GsheetMenuItem onClick={openGsheetModal} />
         </Menu.Dropdown>
       </Menu>

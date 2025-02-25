@@ -26,3 +26,11 @@ export function setupGsheetsGetFolderEndpoint({ status, errorCode }: Props) {
     fetchMock.get("path:/api/ee/gsheets/folder", errorCode);
   }
 }
+
+export function setupGsheetsServiceAccountEndpoint(
+  email = "service-account123@testing.metabase.com",
+) {
+  fetchMock.get("path:/api/ee/gsheets/service-account", () => {
+    return { email };
+  });
+}

@@ -168,6 +168,7 @@ export async function setup({
       "token-features": createMockTokenFeatures({
         attached_dwh: hasDWHAttached,
       }),
+      "show-google-sheets-integration": true,
     }),
   });
 

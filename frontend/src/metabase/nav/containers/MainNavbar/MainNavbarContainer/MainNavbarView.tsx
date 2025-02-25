@@ -172,7 +172,7 @@ export function MainNavbarView({
    *   - "upload" permissions for the attached DWH
    */
   const canUpload = canCurateRootCollection && canUploadToDatabase;
-  const showUploadCSVButton = hasAttachedDWHFeature && canUpload;
+  const showUploadMenu = hasAttachedDWHFeature && canUpload;
 
   const isAdditionalDatabaseAdded = getHasOwnDatabase(databases);
   const showAddDatabaseButton = isAdmin && !isAdditionalDatabaseAdded;
@@ -210,7 +210,7 @@ export function MainNavbarView({
                 {t`How to use Metabase`}
               </PaddedSidebarLinkDismissible>
             )}
-            {showUploadCSVButton && <DwhUploadMenu />}
+            {showUploadMenu && <DwhUploadMenu />}
           </SidebarSection>
 
           {bookmarks.length > 0 && (
