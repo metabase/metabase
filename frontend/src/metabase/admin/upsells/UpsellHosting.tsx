@@ -5,10 +5,10 @@ import { useSelector } from "metabase/lib/redux";
 import { getIsHosted } from "metabase/setup/selectors";
 
 import { UpsellCard } from "./components";
-import { CLOUD_URL } from "./constants";
 
 // the default 200px width will break the title into two lines
 const UPSELL_CARD_WIDTH = 202;
+const CLOUD_PAGE = "/admin/settings/cloud";
 
 export const UpsellHosting = ({ source }: { source: string }) => {
   const isHosted = useSelector(getIsHosted);
@@ -22,7 +22,7 @@ export const UpsellHosting = ({ source }: { source: string }) => {
       title={t`Minimize maintenance`}
       campaign="hosting"
       buttonText={t`Learn more`}
-      buttonLink={CLOUD_URL}
+      internalLink={CLOUD_PAGE}
       illustrationSrc={RocketGlobeIllustrationSrc}
       source={source}
       maxWidth={UPSELL_CARD_WIDTH}
@@ -46,7 +46,7 @@ export const UpsellHostingUpdates = ({ source }: { source: string }) => {
       title={t`Get automatic updates`}
       campaign="hosting"
       buttonText={t`Learn more`}
-      buttonLink={CLOUD_URL}
+      internalLink={CLOUD_PAGE}
       illustrationSrc={RocketGlobeIllustrationSrc}
       source={source}
       maxWidth={UPSELL_CARD_WIDTH}
