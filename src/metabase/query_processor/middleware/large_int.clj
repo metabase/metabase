@@ -6,20 +6,27 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util.performance :as perf]))
 
-(defn- large-int-column?
-  [{:keys [base-type] :as _column-metadata}]
-  (isa? base-type :type/BigInteger))
+(defn- integer-column?
+  [{:keys [base_type] :as _column-metadata}]
+  (isa? base_type :type/Integer))
 
 (defn- column-index-mask
-  "Return a mask of booleans for each column. If the mask for the column is true, it could be converted to string."
   [cols]
-  (let [mask (mapv large-int-column? cols)]
-    (when (some true? mask)
-      mask)))
+  (mapv integer-column? cols))
+
+(defn- large-long?
+  [^Long n]
+  (or (< n -9007199254740991)
+      (> n 9007199254740991)))
+
+(defn- large-integer?
+  [n]
+  (and (instance? Long n) (large-long? n)))
 
 (defn- large-int->string [x]
-  (when x
-    (str x)))
+  (if (large-integer? x)
+    (str x)
+    x))
 
 (defn- result-large-int->string
   [field-mask rf]
@@ -33,9 +40,8 @@
   Clojure nil/JS null."
   [{{:keys [js-int-to-string?] :or {js-int-to-string? false}} :middleware, :as query} rff]
   (let [rff' (when js-int-to-string?
-               (when-let [mask (column-index-mask (:fields (:query query)))]
-                 (fn [metadata]
-                   (let [mask (column-index-mask (:fields (:query query)))]
-                     (qp.store/store-miscellaneous-value! [::column-index-mask] mask)
-                     (result-large-int->string mask (rff metadata))))))]
+               (fn [metadata]
+                 (let [mask (column-index-mask (:cols metadata))]
+                   (qp.store/store-miscellaneous-value! [::column-index-mask] mask)
+                   (result-large-int->string mask (rff metadata)))))]
     (or rff' rff)))
