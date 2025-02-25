@@ -152,20 +152,6 @@ npm start
 
 ## Set up the client application
 
-Change into the `client` directory.
-
-Install packages:
-
-```sh
-npm install
-```
-
-This command will install the [Metabase embedded analytics SDK](https://www.npmjs.com/package/@metabase/embedding-sdk-react), in addition to the application's other dependencies.
-
-You can also install a [different version of the SDK](./version.md). Just make sure that the major version of the SDK matches the major version of the Metabase you're using.
-
-## Start the client
-
 In a different terminal, change into the `client` directory:
 
 ```sh
@@ -177,6 +163,10 @@ Install dependencies:
 ```sh
 npm install
 ```
+
+This command will install the [Metabase embedded analytics SDK](https://www.npmjs.com/package/@metabase/embedding-sdk-react), in addition to the application's other dependencies.
+
+You can also install a [different version of the SDK](./version.md). Just make sure that the major version of the SDK matches the major version of the Metabase you're using.
 
 Start the client app:
 
