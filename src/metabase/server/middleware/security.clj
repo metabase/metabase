@@ -118,6 +118,7 @@
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
                                  ["'self'"
+                                  "'unsafe-inline'"
                                   "https://maps.google.com"
                                   "https://*.maze.co"
                                   "https://accounts.google.com"
@@ -125,11 +126,7 @@
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading
                                   (when config/is-dev?
-                                    "http://localhost:8080")
-                                  ;; for react dev tools to work in Firefox until resolution of
-                                  ;; https://github.com/facebook/react/issues/17997
-                                  (when config/is-dev?
-                                    "'unsafe-inline'")]
+                                    "http://localhost:8080")]
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    ["'unsafe-eval'"
