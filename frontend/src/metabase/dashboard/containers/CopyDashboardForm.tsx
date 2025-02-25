@@ -25,6 +25,7 @@ import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 
 import { DashboardCopyModalShallowCheckboxLabel } from "../components/DashboardCopyModal/DashboardCopyModalShallowCheckboxLabel/DashboardCopyModalShallowCheckboxLabel";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "../constants";
+import { isVirtualDashCard } from "../utils";
 
 const DASHBOARD_SCHEMA = Yup.object({
   name: Yup.string()
@@ -96,7 +97,7 @@ function CopyDashboardForm({
 
   const hasDashboardQuestions = useMemo(() => {
     return !!originalDashboard?.dashcards.some(
-      dc => dc.card.dashboard_id !== null,
+      dc => !isVirtualDashCard(dc) && dc.card.dashboard_id !== null,
     );
   }, [originalDashboard]);
 

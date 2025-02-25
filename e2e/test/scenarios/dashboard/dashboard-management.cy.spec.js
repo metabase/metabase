@@ -84,6 +84,13 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 const newQuestionName = `${originalQuestionName} - Duplicate`;
                 const newDashboardId = id + 1;
 
+                cy.log(
+                  "add virtual card to check shallow copy checkbox plays nicely",
+                );
+                H.addTextBox("Foo bar baz");
+                H.saveDashboard();
+                H.openDashboardMenu();
+
                 H.popover()
                   .findByText("Duplicate")
                   .should("be.visible")
@@ -98,6 +105,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                   cy.findByLabelText("Only duplicate the dashboard")
                     .as("shallowCopyCheckbox")
                     .should("not.be.checked")
+                    .should("not.be.disabled")
                     .click();
                   cy.get("@shallowCopyCheckbox").should("be.checked");
                   cy.findByRole("heading", {
