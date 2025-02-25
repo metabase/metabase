@@ -118,7 +118,7 @@
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
                                  ["'self'"
-                                  "https://snippet.maze.co"
+                                  "https://*.maze.co/"
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
                                   (when (public-settings/anon-tracking-enabled)
@@ -139,6 +139,7 @@
                   :child-src    ["'self'"
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
+                                 "https://*.maze.co/"
                                  ;; See [[generate-nonce]]
                                  (when nonce
                                    (format "'nonce-%s'" nonce))
@@ -149,11 +150,12 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
-                  :frame-src    (parse-allowed-iframe-hosts (public-settings/allowed-iframe-hosts))
+                  :frame-src    (conj (parse-allowed-iframe-hosts (public-settings/allowed-iframe-hosts)) "https://*.maze.co/")
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"
+                                 "https://*.maze.co/"
                                  ;; Google Identity Services
                                  "https://accounts.google.com"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
