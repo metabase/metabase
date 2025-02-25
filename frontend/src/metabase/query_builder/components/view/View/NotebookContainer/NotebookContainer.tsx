@@ -27,6 +27,16 @@ type NotebookContainerProps = {
 
 const INITIAL_WINDOW_WIDTH = Infinity;
 
+const isSmallScreen = (width: number): boolean => width < 1280;
+
+const useNotebookNativePreview = () => {
+  const { width: windowWidth } = useWindowSize(INITIAL_WINDOW_WIDTH);
+  const isWindowSizeInitialized = Number.isFinite(windowWidth);
+  const disabled = !isWindowSizeInitialized || isSmallScreen(windowWidth);
+
+  return { disabled };
+};
+
 export const NotebookContainer = ({
   isOpen,
   updateQuestion,
