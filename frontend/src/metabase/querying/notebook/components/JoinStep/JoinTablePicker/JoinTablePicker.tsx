@@ -1,10 +1,13 @@
 import type { CSSProperties, ReactNode } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Icon, Popover, Tooltip } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
+import type { Database } from "metabase-types/api";
 
 import { NotebookCellItem } from "../../NotebookCell";
 import { CONTAINER_PADDING } from "../../NotebookCell/constants";
@@ -33,6 +36,17 @@ export function JoinTablePicker({
 }: JoinTablePickerProps) {
   const isDisabled = isReadOnly;
 
+  const metadata = useSelector(getMetadata);
+  const databaseId = useMemo(() => {
+    return Lib.databaseID(query);
+  }, [query]);
+  const databases = useMemo(() => {
+    const database = metadata.database(databaseId);
+    return [database, metadata.savedQuestionsDatabase()].filter(
+      Boolean,
+    ) as Database[];
+  }, [databaseId, metadata]);
+
   return (
     <NotebookCellItem
       inactive={!table}
@@ -52,6 +66,7 @@ export function JoinTablePicker({
         title={t`Pick data to join`}
         query={query}
         stageIndex={stageIndex}
+        databases={databases}
         table={table}
         placeholder={t`Pick data…`}
         canChangeDatabase={false}

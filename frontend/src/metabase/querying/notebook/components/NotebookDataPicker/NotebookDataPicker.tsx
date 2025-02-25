@@ -19,7 +19,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { TableId } from "metabase-types/api";
+import type { Database, TableId } from "metabase-types/api";
 
 import {
   type NotebookContextType,
@@ -33,6 +33,7 @@ interface NotebookDataPickerProps {
   title: string;
   query: Lib.Query;
   stageIndex: number;
+  databases: Database[];
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder?: string;
   canChangeDatabase: boolean;
@@ -48,6 +49,7 @@ export function NotebookDataPicker({
   title,
   query,
   stageIndex,
+  databases,
   table,
   placeholder = title,
   canChangeDatabase,
@@ -76,6 +78,7 @@ export function NotebookDataPicker({
       <EmbeddingDataPicker
         query={query}
         stageIndex={stageIndex}
+        databases={databases}
         table={table}
         placeholder={placeholder}
         canChangeDatabase={canChangeDatabase}
@@ -193,6 +196,7 @@ function ModernDataPicker({
 type LegacyDataPickerProps = {
   query: Lib.Query;
   stageIndex: number;
+  databases: Database[];
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder: string;
   canChangeDatabase: boolean;
@@ -204,6 +208,7 @@ type LegacyDataPickerProps = {
 function EmbeddingDataPicker({
   query,
   stageIndex,
+  databases,
   table,
   placeholder,
   canChangeDatabase,
@@ -256,10 +261,13 @@ function EmbeddingDataPicker({
       />
     );
   }
+
   return (
     <DataSourceSelector
       key={pickerInfo?.tableId}
       isInitiallyOpen={!table}
+      databases={databases}
+      canChangeDatabase={canChangeDatabase}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
       selectedCollectionId={card?.collection_id}
