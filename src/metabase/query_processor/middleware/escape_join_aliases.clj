@@ -165,24 +165,25 @@
 (defn- update-renamed-field-refs
   "Look at each stage in the query, and compare visible-columns to the original-query stage.
    Differences are a result of renamed aliases."
-  [{:keys [info] :as query} original-query]
+  [query original-query]
   (mu/disable-enforcement
     (let [original-pmbql-query (lib.query/query (qp.store/metadata-provider) original-query)
-          pmbql-query (lib.query/query (qp.store/metadata-provider) query)]
-      (-> pmbql-query
-          (lib.walk/walk-stages
-           (fn [_q path stage]
-             (let [orginal-aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path original-pmbql-query path))))
-                   aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path pmbql-query path))))
-                   renames (->> (zipmap
-                                 orginal-aliases
-                                 aliases)
-                                (m/filter-kv not=))]
-               (lib.util.match/replace
-                 stage
-                 [:field opts (field-name :guard (every-pred string? renames))] [:field opts (driver/escape-alias driver/*driver* field-name)]))))
-          (lib.query/->legacy-MBQL)
-          (assoc :info info)))))
+          pmbql-query (lib.query/query (qp.store/metadata-provider) query)
+          result
+          (-> pmbql-query
+              (lib.walk/walk-stages
+               (fn [_q path stage]
+                 (let [orginal-aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path original-pmbql-query path))))
+                       aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path pmbql-query path))))
+                       renames (->> (zipmap
+                                     orginal-aliases
+                                     aliases)
+                                    (m/filter-kv not=))]
+                   (lib.util.match/replace
+                     stage
+                     [:field opts (field-name :guard (every-pred string? renames))] [:field opts (driver/escape-alias driver/*driver* field-name)]))))
+              (lib.query/->legacy-MBQL))]
+      (assoc query :query (:query result)))))
 
 (defn escape-join-aliases
   "Pre-processing middleware. Make sure all join aliases are unique, regardless of case (some databases treat table
