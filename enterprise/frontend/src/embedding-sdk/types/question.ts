@@ -42,4 +42,6 @@ export type SdkQuestionTitleProps =
 
 export type SdkQuestionHeight =
   | FlexibleSizeProps["height"]
-  | ((display: CardDisplayType | null) => FlexibleSizeProps["height"]);
+  | ((context: {
+      visualizationType: CardDisplayType | null;
+    }) => FlexibleSizeProps["height"]);

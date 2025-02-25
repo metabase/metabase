@@ -92,7 +92,7 @@ export const InteractiveQuestionResult = ({
 
   const height =
     typeof inputHeight === "function"
-      ? inputHeight(question?.display() ?? null)
+      ? inputHeight({ visualizationType: question?.display() ?? null })
       : inputHeight;
 
   return (
