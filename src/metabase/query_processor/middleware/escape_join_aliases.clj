@@ -165,7 +165,7 @@
 (defn- update-renamed-field-refs
   "Look at each stage in the query, and compare visible-columns to the original-query stage.
    Differences are a result of renamed aliases."
-  [query original-query]
+  [{:keys [info] :as query} original-query]
   (mu/disable-enforcement
     (let [original-pmbql-query (lib.query/query (qp.store/metadata-provider) original-query)
           pmbql-query (lib.query/query (qp.store/metadata-provider) query)]
@@ -181,7 +181,8 @@
                (lib.util.match/replace
                  stage
                  [:field opts (field-name :guard (every-pred string? renames))] [:field opts (driver/escape-alias driver/*driver* field-name)]))))
-          (lib.query/->legacy-MBQL)))))
+          (lib.query/->legacy-MBQL)
+          (assoc :info info)))))
 
 (defn escape-join-aliases
   "Pre-processing middleware. Make sure all join aliases are unique, regardless of case (some databases treat table
