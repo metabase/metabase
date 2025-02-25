@@ -53,7 +53,7 @@ export const InteractiveQuestionProvider = ({
   onSave,
   isSaveEnabled = true,
   entityTypeFilter,
-  saveToCollectionId,
+  saveToCollection,
   initialSqlParameters,
 }: InteractiveQuestionProviderProps) => {
   const {
@@ -146,7 +146,7 @@ export const InteractiveQuestionProvider = ({
     onCreate: handleCreate,
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
     isSaveEnabled,
-    saveToCollectionId,
+    saveToCollection,
     isCardIdError,
   };
 

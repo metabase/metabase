@@ -18,7 +18,7 @@ export type SaveQuestionProps = {
    * When this is defined, the collection picker will be hidden and
    * the question will be saved to this collection.
    **/
-  saveToCollectionId?: CollectionId;
+  saveToCollection?: CollectionId;
 };
 
 export type FormValues = {
@@ -38,7 +38,7 @@ export type CreateQuestionOptions = {
   details: FormValues;
   question: Question;
   onCreate: (question: Question) => Promise<void>;
-} & Pick<SaveQuestionProps, "saveToCollectionId">;
+} & Pick<SaveQuestionProps, "saveToCollection">;
 
 export type SubmitQuestionOptions = CreateQuestionOptions & {
   originalQuestion: Question | null;
