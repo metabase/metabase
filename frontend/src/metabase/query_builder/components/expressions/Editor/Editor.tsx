@@ -122,6 +122,7 @@ export function Editor<S extends StartRule = "expression">(
       <Box className={S.toolbar} p="xs">
         <Button
           title={t`Format`}
+          aria-label={t`Format`}
           onClick={formatExpression}
           variant="subtle"
           leftSection={<Icon name="snippet" />}
