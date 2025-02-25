@@ -118,6 +118,7 @@
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
                                  ["'self'"
+                                  "https://snippet.maze.co"
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
                                   (when (public-settings/anon-tracking-enabled)
