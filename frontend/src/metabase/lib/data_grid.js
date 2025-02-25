@@ -1,4 +1,3 @@
-import { getIn } from "icepick";
 import _ from "underscore";
 
 import * as Pivot from "cljs/metabase.pivot.js";
@@ -47,31 +46,6 @@ export function multiLevelPivot(data, settings) {
 
   const columnSettings = columns.map(column => settings.column(column));
 
-  const { rowTree, colTree, valuesByKey } = Pivot.build_pivot_trees(
-    pivotData,
-    columns,
-    rowColumnIndexes,
-    columnColumnIndexes,
-    valueColumnIndexes,
-    settings,
-    columnSettings,
-  );
-
-  for (const [_key, rowVal] of Object.entries(valuesByKey)) {
-    rowVal["valueColumns"] = valueColumnIndexes.map(index => columns[index]);
-    for (const [_key, dataVal] of Object.entries(rowVal.data)) {
-      dataVal["col"] = columns[dataVal["colIdx"]];
-    }
-    for (const [_key, dimVal] of Object.entries(rowVal.dimensions)) {
-      dimVal["column"] = columns[dimVal["colIdx"]];
-    }
-  }
-
-  const rowColumnTree = rowTree || [];
-  const columnColumnTree = colTree || [];
-
-  const subtotalValues = Pivot.subtotal_values(pivotData, valueColumnIndexes);
-
   // pivot tables have a lot of repeated values, so we use memoized formatters for each column
   const [valueFormatters, topIndexFormatters, leftIndexFormatters] = [
     valueColumnIndexes,
@@ -86,26 +60,6 @@ export function multiLevelPivot(data, settings) {
     ),
   );
 
-  const formatResults = Pivot.process_pivot_table(
-    rowColumnTree,
-    columnColumnTree,
-    rowColumnIndexes,
-    columnColumnIndexes,
-    valueColumnIndexes,
-    columns,
-    topIndexFormatters,
-    leftIndexFormatters,
-    valueFormatters,
-    settings,
-    columnSettings,
-  );
-
-  const { columnIndex, rowIndex, formattedRowTree, formattedColumnTree } =
-    formatResults;
-
-  const leftHeaderItems = treeToArray(formattedRowTree.flat());
-  const topHeaderItems = treeToArray(formattedColumnTree.flat());
-
   const primaryRowsKey = JSON.stringify(
     _.range(columnColumnIndexes.length + rowColumnIndexes.length),
   );
@@ -117,16 +71,29 @@ export function multiLevelPivot(data, settings) {
     true,
   );
 
-  const getRowSection = createRowSectionGetter({
-    valuesByKey,
-    subtotalValues,
-    valueFormatters,
-    columnColumnIndexes,
+  const formatResults = Pivot.process_pivot_table(
+    pivotData,
     rowColumnIndexes,
+    columnColumnIndexes,
+    valueColumnIndexes,
+    columns,
+    topIndexFormatters,
+    leftIndexFormatters,
+    valueFormatters,
+    settings,
+    columnSettings,
+    colorGetter,
+  );
+  const {
     columnIndex,
     rowIndex,
-    colorGetter,
-  });
+    formattedRowTree,
+    formattedColumnTree,
+    getRowSection,
+  } = formatResults;
+
+  const leftHeaderItems = treeToArray(formattedRowTree.flat());
+  const topHeaderItems = treeToArray(formattedColumnTree.flat());
 
   return {
     leftHeaderItems,
@@ -139,67 +106,6 @@ export function multiLevelPivot(data, settings) {
     columnIndexes: columnColumnIndexes,
     valueIndexes: valueColumnIndexes,
   };
-}
-
-// The getter returned from this function returns the value(s) at given (column, row) location
-function createRowSectionGetter({
-  valuesByKey,
-  subtotalValues,
-  valueFormatters,
-  columnColumnIndexes,
-  rowColumnIndexes,
-  columnIndex,
-  rowIndex,
-  colorGetter,
-}) {
-  const formatValues = values =>
-    values === undefined
-      ? Array(valueFormatters.length).fill({ value: null })
-      : values.map((v, i) => ({ value: valueFormatters[i](v) }));
-  const getSubtotals = (breakoutIndexes, values, otherAttrs) =>
-    formatValues(
-      getIn(
-        subtotalValues,
-        [breakoutIndexes, values].map(a =>
-          JSON.stringify(
-            _.sortBy(a, (_value, index) => breakoutIndexes[index]),
-          ),
-        ),
-      ),
-    ).map(value => ({ ...value, isSubtotal: true, ...otherAttrs }));
-
-  const getter = (columnIdx, rowIdx) => {
-    const columnValues = columnIndex[columnIdx] || [];
-    const rowValues = rowIndex[rowIdx] || [];
-    const indexValues = columnValues.concat(rowValues);
-    if (
-      rowValues.length < rowColumnIndexes.length ||
-      columnValues.length < columnColumnIndexes.length
-    ) {
-      // if we don't have a full-length key, we're looking for a subtotal
-      const rowIndexes = rowColumnIndexes.slice(0, rowValues.length);
-      const columnIndexes = columnColumnIndexes.slice(0, columnValues.length);
-      const indexes = columnIndexes.concat(rowIndexes);
-      const otherAttrs = rowValues.length === 0 ? { isGrandTotal: true } : {};
-      return getSubtotals(indexes, indexValues, otherAttrs);
-    }
-    const { values, data, dimensions, valueColumns } =
-      valuesByKey[JSON.stringify(indexValues)] || {};
-    return formatValues(values).map((o, index) =>
-      data === undefined
-        ? o
-        : {
-            ...o,
-            clicked: { data, dimensions },
-            backgroundColor: colorGetter(
-              values[index],
-              o.rowIndex,
-              valueColumns[index].name,
-            ),
-          },
-    );
-  };
-  return _.memoize(getter, (i1, i2) => [i1, i2].join());
 }
 
 // Take a tree and produce a flat list used to layout the top/left headers.
