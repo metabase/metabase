@@ -87,6 +87,7 @@
       :userLocalizationJSON (escape-script (load-localization (when should-load-locale-params? (:locale params))))
       :siteLocalizationJSON (escape-script (load-localization (public-settings/site-locale)))
       :nonceJSON            (escape-script (json/encode nonce))
+      :nonce                nonce
       :language             (hiccup.util/escape-html (public-settings/site-locale))
       :favicon              (hiccup.util/escape-html (public-settings/application-favicon-url))
       :applicationName      (hiccup.util/escape-html (public-settings/application-name))
