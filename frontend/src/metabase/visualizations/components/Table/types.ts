@@ -21,6 +21,7 @@ declare module "@tanstack/react-table" {
 }
 
 export type HeaderCellBaseProps = {
+  tabIndex?: number;
   name?: React.ReactNode;
   align?: CellAlign;
   sort?: "asc" | "desc";

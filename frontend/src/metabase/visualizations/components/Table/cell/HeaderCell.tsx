@@ -27,9 +27,10 @@ export const HeaderCell = memo(function HeaderCell({
 });
 
 export const HeaderCellPill = forwardRef<HTMLDivElement, HeaderCellBaseProps>(
-  function HeaderCellPill({ name, sort }: HeaderCellBaseProps, ref) {
+  function HeaderCellPill({ name, sort, tabIndex }: HeaderCellBaseProps, ref) {
     return (
       <div
+        tabIndex={tabIndex}
         ref={ref}
         data-grid-header-cell-content
         data-header-click-target

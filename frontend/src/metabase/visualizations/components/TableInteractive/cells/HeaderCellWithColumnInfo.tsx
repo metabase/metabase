@@ -12,6 +12,7 @@ import S from "./HeaderCellWithColumnInfo.module.css";
 import { useMousePressed } from "metabase/hooks/use-mouse-pressed";
 
 export interface HeaderCellWithColumnInfoProps extends HeaderCellProps {
+  tabIndex?: number;
   infoPopoversDisabled: boolean;
   timezone?: string;
   question: Question;
@@ -28,6 +29,7 @@ export const HeaderCellWithColumnInfo = memo(
     question,
     timezone,
     column,
+    tabIndex,
   }: HeaderCellWithColumnInfoProps) => {
     const isMousePressed = useMousePressed();
     const query = question?.query();
@@ -46,7 +48,7 @@ export const HeaderCellWithColumnInfo = memo(
           showFingerprintInfo
         >
           <div className={S.headerPillWrapper}>
-            <HeaderCellPill name={name} sort={sort} />
+            <HeaderCellPill tabIndex={tabIndex} name={name} sort={sort} />
           </div>
         </QueryColumnInfoPopover>
       </HeaderCellWrapper>

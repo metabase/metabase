@@ -19,7 +19,7 @@ import {
   useMemoizedCallback,
 } from "metabase/hooks/use-memoized-callback";
 import { formatValue } from "metabase/lib/formatting";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   getIsShowingRawTable,
   getQueryBuilderMode,
@@ -82,6 +82,8 @@ interface TableProps extends VisualizationProps {
   hasMetadataPopovers?: boolean;
   question: Question;
   mode: QueryClickActionsMode;
+  scrollToColumn?: number;
+  scrollToLastColumn?: boolean;
 }
 
 const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
@@ -123,9 +125,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     getColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    scrollToColumn,
+    scrollToLastColumn,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const dispatch = useDispatch();
   const queryBuilderMode = useSelector(getQueryBuilderMode);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const isRawTable = useSelector(getIsShowingRawTable);
@@ -356,6 +361,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         header: () => {
           return (
             <HeaderCellWithColumnInfo
+              tabIndex={columnIndex + 1}
               infoPopoversDisabled={!hasMetadataPopovers}
               timezone={data.requested_timezone}
               question={question}
@@ -471,8 +477,47 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       prevColNamesRef.current = currentColNames;
       tableProps.measureColumnWidths();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cols, tableProps.measureColumnWidths]);
+  }, [cols, tableProps.measureColumnWidths, prevColNamesRef]);
+
+  useEffect(() => {
+    if (scrollToLastColumn && width && height) {
+      dispatch({
+        type: "metabase/qb/SET_UI_CONTROLS",
+        payload: { scrollToLastColumn: false },
+      });
+    }
+  }, [scrollToLastColumn, width, height, dispatch]);
+
+  useEffect(() => {
+    const gridElement = tableProps.refs.gridRef.current;
+    if (!gridElement) {
+      return;
+    }
+
+    if (scrollToLastColumn) {
+      const totalWidth = tableProps.table.getTotalSize();
+      const visibleWidth = gridElement.offsetWidth;
+      if (totalWidth > visibleWidth) {
+        gridElement.scrollLeft = totalWidth - visibleWidth;
+      }
+    } else if (scrollToColumn !== undefined && scrollToColumn >= 0) {
+      let leftPosition = 0;
+      const visibleColumns = tableProps.table.getVisibleLeafColumns();
+
+      for (let i = 0; i < scrollToColumn && i < visibleColumns.length; i++) {
+        leftPosition += visibleColumns[i].getSize();
+      }
+
+      gridElement.scrollLeft = leftPosition;
+    }
+  }, [
+    scrollToColumn,
+    scrollToLastColumn,
+    tableProps.table,
+    tableProps.refs.gridRef,
+    width,
+    height,
+  ]);
 
   const handleScroll = useCallback(() => {
     if (clicked === null) {
