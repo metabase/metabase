@@ -1,6 +1,7 @@
 import { html } from "@codemirror/lang-html";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
+import { python } from "@codemirror/lang-python";
 import { StreamLanguage } from "@codemirror/language";
 import { clojure } from "@codemirror/legacy-modes/mode/clojure";
 import { pug } from "@codemirror/legacy-modes/mode/pug";
@@ -23,7 +24,7 @@ export function getLanguageExtension(language: CodeLanguage) {
     case "json":
       return json();
     case "python":
-      return; // TODO
+      return python();
     case "mustache":
       return handlebars;
     case "jade":
