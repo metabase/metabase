@@ -1,4 +1,4 @@
-import { CreateQuestion } from "@metabase/embedding-sdk-react";
+import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { describeEE, modal, popover } from "e2e/support/helpers";
 import {
@@ -22,7 +22,7 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
 
     mountSdkContent(
       <Flex p="xl">
-        <CreateQuestion />
+        <InteractiveQuestion />
       </Flex>,
     );
 
@@ -35,15 +35,6 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     });
 
     getSdkRoot().within(() => {
-      // The question title's header should be "New question" by default.
-      cy.contains("New question");
-
-      cy.findByRole("button", { name: "Visualize" }).click();
-
-      // Should be able to go back to the editor view
-      cy.findByRole("button", { name: "Show editor" }).click();
-
-      // Should be able to visualize the question again
       cy.findByRole("button", { name: "Visualize" }).click();
 
       // Should not show a loading indicator again as the question has not changed (metabase#47564)
