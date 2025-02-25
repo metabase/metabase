@@ -136,13 +136,15 @@ export function DashCardVisualization({
   onUpdateVisualizationSettings,
   downloadsEnabled,
 }: DashCardVisualizationProps) {
-  const datasets = useSelector(state => getDashcardData(state, dashcard.id));
+  const datasets = useSelector(
+    state => getDashcardData(state, dashcard.id) ?? {},
+  );
 
   const series = useMemo(() => {
     const isVisualizerDashcard =
       !!dashcard?.visualization_settings?.visualization;
+
     if (
-      !datasets ||
       !dashcard ||
       !_series ||
       _series.length === 0 ||
@@ -209,6 +211,7 @@ export function DashCardVisualization({
       {
         card: {
           display,
+          name: settings["card.title"],
           visualization_settings: settings,
         },
 
