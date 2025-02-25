@@ -1,3 +1,22 @@
+## [0.54.2-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.1-nightly...embedding-sdk-0.54.2-nightly) (2025-02-25)
+
+
+### Bug Fixes
+
+* **sdk:** Add dir attribute for PublicComponentStylesWrapper ([#54082](https://github.com/metabase/metabase/issues/54082)) ([c4e499c](https://github.com/metabase/metabase/commit/c4e499cd2a1b9a5739dda0cbd8a6be78ad03c160))
+* **sdk:** auto-select sample database tables in cli ([#53654](https://github.com/metabase/metabase/issues/53654)) ([8af4499](https://github.com/metabase/metabase/commit/8af4499d470a0f2641539687020f3252f2b6b6d5))
+* **sdk:** fix visual artifacts in binning options ([#53961](https://github.com/metabase/metabase/issues/53961)) ([7ad55f5](https://github.com/metabase/metabase/commit/7ad55f50997f09640884e5475ecc9c0d217ec034))
+* **sdk:** hide "New Question" in EditableDashboard sidebar ([#53908](https://github.com/metabase/metabase/issues/53908)) ([8423d63](https://github.com/metabase/metabase/commit/8423d6382a9635026918277203ee14ebb09ff942))
+* **sdk:** improve example component import paths in cli ([#53473](https://github.com/metabase/metabase/issues/53473)) ([33a64e9](https://github.com/metabase/metabase/commit/33a64e993f5dfa6046d1d72760fff84edd6717dc))
+
+
+### Features
+
+* **sdk:** asks whether to add a db right before adding db connection in the cli ([#53680](https://github.com/metabase/metabase/issues/53680)) ([f957817](https://github.com/metabase/metabase/commit/f957817f705c76ac3e675fa802751aab2c0c1526))
+* **sdk:** use new querying layout for create question flow ([#53976](https://github.com/metabase/metabase/issues/53976)) ([65b050e](https://github.com/metabase/metabase/commit/65b050eb7d701a871668ba442476482da7b48a57))
+
+
+
 ## [0.54.1-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.1-nightly...embedding-sdk-0.54.1-nightly) (2025-02-17)
 
 
