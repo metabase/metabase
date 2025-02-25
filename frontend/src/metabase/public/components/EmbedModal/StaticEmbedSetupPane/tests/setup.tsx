@@ -21,23 +21,6 @@ import { createMockState } from "metabase-types/store/mocks";
 import type { StaticEmbedSetupPaneProps } from "../StaticEmbedSetupPane";
 import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 
-const TextEditorMock = ({
-  value,
-  highlightedTexts,
-}: {
-  value: string;
-  highlightedTexts?: string[];
-}) => (
-  <>
-    <div data-testid="text-editor-mock">{value}</div>
-    <div data-testid="text-editor-mock-highlighted-code">
-      {highlightedTexts}
-    </div>
-  </>
-);
-
-jest.mock("metabase/components/TextEditor", () => TextEditorMock);
-
 export const FONTS_MOCK_VALUES = [
   "My Awesome Font",
   "Some Font 2",
