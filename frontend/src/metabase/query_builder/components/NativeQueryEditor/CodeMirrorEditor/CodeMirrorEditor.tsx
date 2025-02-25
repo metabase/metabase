@@ -83,14 +83,9 @@ export const CodeMirrorEditor = forwardRef<
         }
       }
       if (onCursorMoveOverCardTag) {
-        if (
-          update.startState.selection.main.head !==
-          update.state.selection.main.head
-        ) {
-          const cardId = matchCardIdAtCursor(update.state);
-          if (cardId !== null) {
-            onCursorMoveOverCardTag(cardId);
-          }
+        const cardId = matchCardIdAtCursor(update.state);
+        if (cardId !== null) {
+          onCursorMoveOverCardTag(cardId);
         }
       }
     },
