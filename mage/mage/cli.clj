@@ -82,7 +82,9 @@
         asked-opts (into {} (for [hybrid-option missing-and-askable]
                               (println "todo: ask (menu-ask hybrid-option)" (pr-str hybrid-option))))
         cli (assoc (merge parsed-opts asked-opts) :args arguments)
-        out (ask-unknown! cli opts)]
+        _ (u/debug "cli: " cli)
+        out (ask-unknown! cli opts)
+        _ (u/debug "out: " out)]
     ;; (println out)
     out))
 
