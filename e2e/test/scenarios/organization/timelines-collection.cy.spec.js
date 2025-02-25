@@ -346,7 +346,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Unarchive event").click();
       cy.wait("@updateEvent");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("No archived events").should("be.visible");
+      cy.findByText("No events found").should("be.visible");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Undo").click();
@@ -375,7 +375,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Delete").click();
       cy.wait("@deleteEvent");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("No archived events").should("be.visible");
+      cy.findByText("No events found").should("be.visible");
     });
 
     it("should allow navigating back to the list of timelines", () => {
@@ -553,7 +553,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Unarchive timeline").click();
       cy.wait("@updateTimeline");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("No archived timelines");
+      cy.findByText("No timelines found");
       H.modal().icon("chevronleft").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
@@ -584,7 +584,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Delete").click();
       cy.wait("@deleteTimeline");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("No archived timelines");
+      cy.findByText("No timelines found");
       H.modal().icon("chevronleft").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics events");
