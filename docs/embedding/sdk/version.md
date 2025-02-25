@@ -39,4 +39,4 @@ Normally, Metabase Cloud upgrades your Metabase as new versions roll out so that
 
 But if you're using the SDK with Metabase Cloud, you'll want to upgrade manually to make sure your embeds don't break when you upgrade both your Metabase and your SDK version.
 
-To upgrade manually, you can pin your Metabase version so that it stays in sync with the SDK version you're using. You can choose when to upgrade your Metabase.
+To upgrade manually, you can pin your Metabase version so that it stays in sync with the SDK version you're using. That way you can choose when to upgrade your Metabase.
