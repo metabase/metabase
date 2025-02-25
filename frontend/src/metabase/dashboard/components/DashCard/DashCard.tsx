@@ -22,9 +22,8 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type {
   Card,
   CardId,
@@ -55,7 +54,7 @@ export interface DashCardProps {
   gridItemWidth: number;
   totalNumGridCols: number;
   slowCards: Record<CardId, boolean>;
-  mode?: QueryClickActionsMode | Mode;
+  getMode?: ClickActionModeGetter;
 
   clickBehaviorSidebarDashcard?: DashboardCard | null;
 
@@ -105,7 +104,7 @@ function DashCardInner({
   slowCards,
   gridItemWidth,
   totalNumGridCols,
-  mode,
+  getMode,
   isEditing = false,
   isNightMode = false,
   isFullscreen = false,
@@ -370,7 +369,7 @@ function DashCardInner({
           dashboard={dashboard}
           dashcard={dashcard}
           series={series}
-          mode={mode}
+          getMode={getMode}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}
           totalNumGridCols={totalNumGridCols}

@@ -216,13 +216,17 @@ class Visualization extends PureComponent {
       : undefined;
   }
 
-  getMode(maybeModeOrQueryMode, question) {
-    if (maybeModeOrQueryMode instanceof Mode) {
-      return maybeModeOrQueryMode;
+  getMode(modeOrModeGetter, question) {
+    if (typeof modeOrModeGetter === "function") {
+      modeOrModeGetter = modeOrModeGetter({ question });
     }
 
-    if (question && maybeModeOrQueryMode) {
-      return new Mode(question, maybeModeOrQueryMode);
+    if (modeOrModeGetter instanceof Mode) {
+      return modeOrModeGetter;
+    }
+
+    if (question && modeOrModeGetter) {
+      return new Mode(question, modeOrModeGetter);
     }
 
     if (question) {

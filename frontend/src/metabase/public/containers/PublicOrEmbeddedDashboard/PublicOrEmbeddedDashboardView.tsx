@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { assoc } from "icepick";
+import { useCallback } from "react";
 import type { HandleThunkActionCreator } from "react-redux";
 import _ from "underscore";
 
@@ -25,11 +26,14 @@ import type {
   EmbedHideParameters,
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
+import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import type { DisplayTheme } from "metabase/public/lib/types";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
@@ -60,6 +64,7 @@ interface InnerPublicOrEmbeddedDashboardViewProps {
   bordered: boolean;
   titled: boolean;
   theme: DisplayTheme;
+  plugins?: MetabasePluginsConfig;
   hideParameters: EmbedHideParameters;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
@@ -97,6 +102,7 @@ export function PublicOrEmbeddedDashboardView({
   bordered,
   titled,
   theme,
+  plugins,
   hideParameters,
   withFooter,
   navigateToNewCardFromDashboard,
@@ -142,6 +148,18 @@ export function PublicOrEmbeddedDashboardView({
     theme,
     background,
   });
+
+  const getMode: ClickActionModeGetter = useCallback(
+    ({ question }) =>
+      getEmbeddingMode({
+        question,
+        queryMode: navigateToNewCardFromDashboard
+          ? EmbeddingSdkMode
+          : PublicMode,
+        plugins,
+      }),
+    [navigateToNewCardFromDashboard, plugins],
+  );
 
   return (
     <EmbedFrame
@@ -205,9 +223,7 @@ export function PublicOrEmbeddedDashboardView({
               <DashboardGridConnected
                 dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
                 isPublicOrEmbedded
-                mode={
-                  navigateToNewCardFromDashboard ? EmbeddingSdkMode : PublicMode
-                }
+                getMode={getMode}
                 selectedTabId={selectedTabId}
                 slowCards={slowCards}
                 isEditing={false}

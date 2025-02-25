@@ -113,6 +113,7 @@ const InteractiveDashboardInner = ({
             cardTitled={withCardTitle}
             withFooter={displayOptions.withFooter}
             theme={theme}
+            plugins={plugins}
             isFullscreen={isFullscreen}
             onFullscreenChange={onFullscreenChange}
             refreshPeriod={refreshPeriod}

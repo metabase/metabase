@@ -126,7 +126,13 @@ export const InteractiveQuestionProvider = ({
   }, [globalPlugins, componentPlugins]);
 
   const mode = useMemo(() => {
-    return question && getEmbeddingMode(question, combinedPlugins ?? undefined);
+    return (
+      question &&
+      getEmbeddingMode({
+        question,
+        plugins: combinedPlugins ?? undefined,
+      })
+    );
   }, [question, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
