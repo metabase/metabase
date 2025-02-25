@@ -1,11 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
-import _ from "underscore";
 
 import { utf8_to_b64 } from "metabase/lib/encoding";
 import { isCartesianChart } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { DatasetData, RawSeries, RowValues } from "metabase-types/api";
+import type { DatasetData, RawSeries } from "metabase-types/api";
 import type {
   VisualizerHistoryItem,
   VisualizerState,
@@ -14,8 +13,7 @@ import type {
 import {
   createDataSource,
   extractReferencedColumns,
-  getDataSourceIdFromNameRef,
-  isDataSourceNameRef,
+  mergeVisualizerData,
 } from "./utils";
 
 type State = { visualizer: VisualizerState };
@@ -112,66 +110,16 @@ const getVisualizerDatasetData = createSelector(
   [
     getUsedDataSources,
     getDatasets,
-    getReferencedColumns,
     getVisualizationColumns,
     getVisualizerColumnValuesMapping,
   ],
-  (
-    usedDataSources,
-    datasets,
-    referencedColumns,
-    cols,
-    columnValuesMapping,
-  ): DatasetData => {
-    const referencedColumnValuesMap: Record<string, RowValues> = {};
-    referencedColumns.forEach(ref => {
-      const dataset = datasets[ref.sourceId];
-      if (!dataset) {
-        return;
-      }
-      const columnIndex = dataset.data.cols.findIndex(
-        col => col.name === ref.originalName,
-      );
-      if (columnIndex >= 0) {
-        const values = dataset.data.rows.map(row => row[columnIndex]);
-        referencedColumnValuesMap[ref.name] = values;
-      }
-    });
-
-    const hasPivotGrouping = cols.some(col => col.name === "pivot-grouping");
-    if (hasPivotGrouping) {
-      const rowLengths = Object.values(referencedColumnValuesMap).map(
-        values => values.length,
-      );
-      const maxLength = rowLengths.length > 0 ? Math.max(...rowLengths) : 0;
-      referencedColumnValuesMap["pivot-grouping"] = new Array(maxLength).fill(
-        0,
-      );
-    }
-
-    const unzippedRows = cols.map(column =>
-      (columnValuesMapping[column.name] ?? [])
-        .map(valueSource => {
-          if (isDataSourceNameRef(valueSource)) {
-            const id = getDataSourceIdFromNameRef(valueSource);
-            const dataSource = usedDataSources.find(source => source.id === id);
-            return dataSource?.name ? [dataSource.name] : [];
-          }
-          const values = referencedColumnValuesMap[valueSource.name];
-          if (!values) {
-            return [];
-          }
-          return values;
-        })
-        .flat(),
-    );
-
-    return {
-      cols,
-      rows: _.zip(...unzippedRows),
-      results_metadata: { columns: cols },
-    };
-  },
+  (dataSources, datasets, columns, columnValuesMapping): DatasetData =>
+    mergeVisualizerData({
+      columns,
+      columnValuesMapping,
+      datasets,
+      dataSources,
+    }),
 );
 
 export const getVisualizerDatasetColumns = createSelector(
