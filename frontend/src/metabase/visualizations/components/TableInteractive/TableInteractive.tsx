@@ -56,9 +56,13 @@ import type {
 } from "metabase-types/api";
 
 import S from "./TableInteractive.module.css";
-import { HeaderCellWithColumnInfo } from "./cells/HeaderCellWithColumnInfo";
+import {
+  HeaderCellWithColumnInfo,
+  HeaderCellWithColumnInfoProps,
+} from "./cells/HeaderCellWithColumnInfo";
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
+import { MantineTheme } from "metabase/ui";
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -73,17 +77,19 @@ const getColumnIdFromPivotedColumnId = (pivotedColumnId: string) =>
   pivotedColumnId.split(":")[0];
 
 interface TableProps extends VisualizationProps {
-  onZoomRow?: (objectId: number | string) => void;
   rowIndexToPkMap?: Record<number, string>;
-  getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
-  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
-  getColumnTitle: any;
   isPivoted?: boolean;
   hasMetadataPopovers?: boolean;
   question: Question;
   mode: QueryClickActionsMode;
   scrollToColumn?: number;
   scrollToLastColumn?: boolean;
+  theme: MantineTheme;
+  getColumnTitle: (columnIndex: number) => string;
+  getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
+  renderTableHeaderWrapper: HeaderCellWithColumnInfoProps["renderTableHeaderWrapper"];
+  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  onZoomRow?: (objectId: number | string) => void;
 }
 
 const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
@@ -121,6 +127,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     getColumnTitle,
     hasMetadataPopovers = true,
     mode,
+    theme,
+    renderTableHeaderWrapper,
     visualizationIsClickable,
     getColumnSortDirection,
     onVisualizationClick,
@@ -361,7 +369,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         header: () => {
           return (
             <HeaderCellWithColumnInfo
-              tabIndex={columnIndex + 1}
               infoPopoversDisabled={!hasMetadataPopovers}
               timezone={data.requested_timezone}
               question={question}
@@ -370,6 +377,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               align={align}
               sort={sortDirection}
               variant={headerVariant}
+              columnIndex={columnIndex}
+              theme={theme}
+              renderTableHeaderWrapper={renderTableHeaderWrapper}
             />
           );
         },
@@ -412,6 +422,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     data,
     question,
     mode,
+    renderTableHeaderWrapper,
     cols,
     getColumnSortDirection,
     getColumnTitle,

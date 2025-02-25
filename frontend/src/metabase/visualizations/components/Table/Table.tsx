@@ -72,7 +72,6 @@ export const Table = forwardRef(function Table<TData>(
     <DndContext {...dndContextProps}>
       <div ref={ref} className={S.table} data-testid="TableInteractive-root">
         <div
-          id="main-data-grid"
           className={S.tableGrid}
           ref={refs.gridRef}
           style={{ paddingRight: isAddColumnButtonSticky ? "36px" : 0 }}
@@ -127,6 +126,7 @@ export const Table = forwardRef(function Table<TData>(
             ))}
           </div>
           <div
+            id="main-data-grid"
             className={S.bodyContainer}
             style={{
               display: "grid",
