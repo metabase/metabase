@@ -5,11 +5,13 @@ import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import type { IconName } from "metabase/ui";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
+import type { Series } from "metabase-types/api";
 
 export interface PinnedQuestionLoaderProps {
   id: number;
@@ -19,9 +21,9 @@ export interface PinnedQuestionLoaderProps {
 export interface PinnedQuestionChildrenProps {
   loading: boolean;
   question?: Question;
-  rawSeries?: any[];
+  rawSeries?: Series;
   error?: string;
-  errorIcon?: string;
+  errorIcon?: IconName;
 }
 
 export interface QuestionResultLoaderProps {

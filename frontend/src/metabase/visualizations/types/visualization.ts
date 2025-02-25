@@ -7,6 +7,7 @@ import type {
   TextWidthMeasurer,
 } from "metabase/visualizations/shared/types/measure-text";
 import type { ClickObject } from "metabase/visualizations/types";
+import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Query from "metabase-lib/v1/queries/Query";
 import type {
@@ -69,6 +70,7 @@ export type OnChangeCardAndRunOpts = {
   previousCard?: Card;
   nextCard: Card;
   seriesIndex?: number;
+  objectId?: number;
 };
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
@@ -93,13 +95,13 @@ export interface VisualizationProps {
   card: Card;
   getHref?: () => string | undefined;
   data: DatasetData;
-  metadata: Metadata;
+  metadata?: Metadata;
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
   hiddenSeries?: Set<string>;
-  headerIcon: IconProps;
-  errorIcon: IconName;
-  actionButtons: ReactNode;
+  headerIcon?: IconProps | null;
+  errorIcon?: IconName | null;
+  actionButtons?: ReactNode;
   fontFamily: string;
   isPlaceholder?: boolean;
   isFullscreen: boolean;
@@ -108,11 +110,12 @@ export interface VisualizationProps {
   showTitle: boolean;
   isDashboard: boolean;
   isEditing: boolean;
+  isMobile: boolean;
   isNightMode: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
-  hovered?: HoveredObject;
-  clicked?: ClickObject;
+  hovered?: HoveredObject | null;
+  clicked?: ClickObject | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
   selectedTimelineEventIds?: TimelineEventId[];
@@ -132,10 +135,14 @@ export interface VisualizationProps {
     warnings?: string[];
   }) => void;
   onRenderError: (error?: string) => void;
-  onChangeCardAndRun: OnChangeCardAndRun;
+  onActionDismissal: () => void;
+  onChangeCardAndRun?: OnChangeCardAndRun | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject?: ClickObject) => void;
-  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  onUpdateVisualizationSettings: (
+    settings: VisualizationSettings,
+    question?: Question,
+  ) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: () => void;
@@ -208,7 +215,9 @@ export type VisualizationGridSize = {
 };
 
 // TODO: add component property for the react component instead of the intersection
-export type Visualization = React.ComponentType<VisualizationProps> &
+export type Visualization = React.ComponentType<
+  Omit<VisualizationProps, "width" | "height">
+> &
   VisualizationDefinition;
 
 export type VisualizationDefinition = {
@@ -243,7 +252,7 @@ export type VisualizationDefinition = {
   checkRenderable: (
     series: Series,
     settings: VisualizationSettings,
-    query: Query,
+    query?: Query | null,
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
