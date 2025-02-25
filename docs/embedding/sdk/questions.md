@@ -20,9 +20,9 @@ The component has a default height, which can be customized by using the `height
 
 ```typescript
 import React from "react";
-import {MetabaseProvider, StaticQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, StaticQuestion, defineMetabaseAuthConfig} from "@metabase/embedding-sdk-react";
 
-const authConfig = {...}
+const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     const questionId = 1; // This is the question ID you want to embed
@@ -41,9 +41,9 @@ You can embed an interactive question using the `InteractiveQuestion` component.
 
 ```typescript
 import React from "react";
-import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, InteractiveQuestion, defineMetabaseAuthConfig} from "@metabase/embedding-sdk-react";
 
-const authConfig = {...}
+const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     const questionId = 1; // This is the question ID you want to embed
@@ -393,7 +393,7 @@ You can edit an existing question using the query builder by passing the `isSave
 import React from "react";
 import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
 
-const authConfig = {...}
+const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     return (
@@ -416,7 +416,7 @@ To customize the question editor's layout, use the `InteractiveQuestion` compone
 import React from "react";
 import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
 
-const authConfig = {...}
+const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     return (
