@@ -96,6 +96,6 @@
     column
     (let [resolved-column  (lib.metadata.calculation/metadata query stage-number (lib.ref/ref column))
           underlying-unit  (::lib.underlying/temporal-unit column)
-          matching-column  (some->> resolved-column
-                                    (#(m/assoc-some % ::lib.underlying/temporal-unit underlying-unit)))]
+          matching-column  (some-> resolved-column
+                                   (m/assoc-some ::lib.underlying/temporal-unit underlying-unit))]
       (or matching-column column))))
