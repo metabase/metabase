@@ -90,7 +90,7 @@
                 " generating join aliases.")
     (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                              meta/metadata-provider
-                             {:database {:lib/methods {:escape-alias mock-escape-alias}}
+                             {:database {}
                               ;; mock the Oracle names for things since I want to verify that this behaves correctly
                               ;; specifically for Oracle.
                               :tables   [{:id     (meta/id :orders)

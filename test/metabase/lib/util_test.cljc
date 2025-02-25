@@ -288,17 +288,6 @@
               (unique-name :y "A")
               (unique-name :y "A")])))))
 
-(deftest ^:parallel unique-name-use-database-methods-test
-  (testing "Should use database :lib/methods"
-    (let [metadata-provider (lib.tu/merged-mock-metadata-provider
-                             meta/metadata-provider
-                             {:database {:lib/methods {:escape-alias #(lib.util/truncate-alias % 15)}}})
-          unique-name        (lib.util/unique-name-generator)]
-      (is (= "catego_ef520013"
-             (unique-name "categories__via__category_id__name")))
-      (is (= "catego_ec940c72"
-             (unique-name "categories__via__category_id__name"))))))
-
 (deftest ^:parallel strip-id-test
   (are [exp in] (= exp (lib.util/strip-id in))
     "foo"            "foo"

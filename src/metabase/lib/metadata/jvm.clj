@@ -70,8 +70,7 @@
   [database]
   ;; ignore encrypted details that we cannot decrypt, because that breaks schema
   ;; validation
-  (let [database (instance->metadata database :metadata/database)
-        database (assoc database :lib/methods {:escape-alias (partial driver/escape-alias (:engine database))})]
+  (let [database (instance->metadata database :metadata/database)]
     (cond-> database
       (not (map? (:details database))) (dissoc :details))))
 

@@ -169,18 +169,19 @@
   (mu/disable-enforcement
     (let [original-pmbql-query (lib.query/query (qp.store/metadata-provider) original-query)
           pmbql-query (lib.query/query (qp.store/metadata-provider) query)]
-      (lib.walk/walk-stages
-       pmbql-query
-       (fn [_q path stage]
-         (let [orginal-aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path original-pmbql-query path))))
-               aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path pmbql-query path))))
-               renames (->> (zipmap
-                             orginal-aliases
-                             aliases)
-                            (m/filter-kv not=))]
-           (lib.util.match/replace
-             stage
-             [:field opts (field-name :guard (every-pred string? renames))] [:field opts (driver/escape-alias driver/*driver* field-name)])))))))
+      (-> pmbql-query
+          (lib.walk/walk-stages
+           (fn [_q path stage]
+             (let [orginal-aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path original-pmbql-query path))))
+                   aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path pmbql-query path))))
+                   renames (->> (zipmap
+                                 orginal-aliases
+                                 aliases)
+                                (m/filter-kv not=))]
+               (lib.util.match/replace
+                 stage
+                 [:field opts (field-name :guard (every-pred string? renames))] [:field opts (driver/escape-alias driver/*driver* field-name)]))))
+          (lib.query/->legacy-MBQL)))))
 
 (defn escape-join-aliases
   "Pre-processing middleware. Make sure all join aliases are unique, regardless of case (some databases treat table
