@@ -118,8 +118,8 @@
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
                                  ["'self'"
-                                  "https://*.maze.co/"
                                   "https://maps.google.com"
+                                  "https://*.maze.co/"
                                   "https://accounts.google.com"
                                   (when (public-settings/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
@@ -139,7 +139,6 @@
                   :child-src    ["'self'"
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
-                                 "https://*.maze.co/"
                                  ;; See [[generate-nonce]]
                                  (when nonce
                                    (format "'nonce-%s'" nonce))
@@ -149,15 +148,16 @@
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "http://localhost:9630")
-                                 "https://accounts.google.com"]
+                                 "https://accounts.google.com"
+                                 "https://*.maze.co/"]
                   :frame-src    (conj (parse-allowed-iframe-hosts (public-settings/allowed-iframe-hosts)) "https://*.maze.co/")
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"
-                                 "https://*.maze.co/"
                                  ;; Google Identity Services
                                  "https://accounts.google.com"
+                                 "https://*.maze.co/"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  ;; Snowplow analytics
