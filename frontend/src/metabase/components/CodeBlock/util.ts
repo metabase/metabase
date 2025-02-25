@@ -7,8 +7,18 @@ import { clojure } from "@codemirror/legacy-modes/mode/clojure";
 import { pug } from "@codemirror/legacy-modes/mode/pug";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
 import type { Extension } from "@codemirror/state";
+import {
+  Decoration,
+  EditorView,
+  type Range,
+  type ReactCodeMirrorRef,
+  StateEffect,
+  StateField,
+} from "@uiw/react-codemirror";
 import { handlebarsLanguage as handlebars } from "@xiechao/codemirror-lang-handlebars";
+import { type RefObject, useEffect } from "react";
 
+import S from "./CodeBlock.module.css";
 import type { CodeLanguage } from "./types";
 
 export function getLanguageExtension(language: CodeLanguage): Extension | null {
@@ -36,4 +46,47 @@ export function getLanguageExtension(language: CodeLanguage): Extension | null {
         typescript: language === "typescript",
       });
   }
+}
+
+const highlightTextEffect = StateEffect.define<Range<Decoration>[]>();
+const highlightTextDecoration = Decoration.mark({
+  class: S.highlight,
+});
+
+export function highlightText() {
+  return StateField.define({
+    create() {
+      return Decoration.none;
+    },
+    update(value, transaction) {
+      value = value.map(transaction.changes);
+
+      for (const effect of transaction.effects) {
+        if (effect.is(highlightTextEffect)) {
+          value = value.update({ filter: () => false });
+          value = value.update({ add: effect.value });
+        }
+      }
+
+      return value;
+    },
+    provide: field => EditorView.decorations.from(field),
+  });
+}
+export function useHighlightText(
+  editorRef: RefObject<ReactCodeMirrorRef>,
+  ranges: { start: number; end: number }[] = [],
+) {
+  useEffect(() => {
+    const view = editorRef.current?.view;
+    if (!view) {
+      return;
+    }
+
+    const r = ranges.map(range =>
+      highlightTextDecoration.range(range.start, range.end),
+    );
+
+    view.dispatch({ effects: highlightTextEffect.of(r) });
+  }, [editorRef, ranges]);
 }

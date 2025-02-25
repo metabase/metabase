@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ChangeEvent } from "react";
+import { type ChangeEvent, useMemo } from "react";
 
 import { CodeBlock, type CodeLanguage } from "metabase/components/CodeBlock";
 import { CopyButton } from "metabase/components/CopyButton";
@@ -31,12 +31,22 @@ export const CodeSample = ({
   source,
   title,
   languageOptions,
+  highlightedTexts,
   dataTestId,
   language,
   className,
   onChangeOption,
   onCopy,
 }: CodeSampleProps): JSX.Element => {
+  const highlightRanges = useMemo(
+    () =>
+      highlightedTexts?.map(text => ({
+        start: source.indexOf(text),
+        end: source.indexOf(text) + text.length,
+      })),
+    [source, highlightedTexts],
+  );
+
   return (
     <div className={className} data-testid={dataTestId}>
       {(title || languageOptions.length > 1) && (
@@ -72,7 +82,12 @@ export const CodeSample = ({
           CS.overflowHidden,
         )}
       >
-        <CodeBlock className={CS.z1} language={language} code={source} />
+        <CodeBlock
+          className={CS.z1}
+          language={language}
+          code={source}
+          highlightRanges={highlightRanges}
+        />
         {source && (
           <CopyButtonContainer>
             <CopyButton className={CS.p1} value={source} onCopy={onCopy} />
