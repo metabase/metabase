@@ -30,6 +30,7 @@ export function CodeBlock({ code, language, className }: CodeBlockProps) {
     <CodeMirror
       basicSetup={{
         lineNumbers: true,
+        foldGutter: false,
       }}
       value={code}
       extensions={extensions}
