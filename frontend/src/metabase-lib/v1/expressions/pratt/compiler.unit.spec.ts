@@ -1,19 +1,8 @@
 import { compile } from "./common";
 
 describe("pratt/compiler", () => {
-  function expr(
-    source: string,
-    {
-      throwOnError = true,
-      type = "expression",
-      resolverPass = false,
-    }: {
-      throwOnError?: boolean;
-      resolverPass?: boolean;
-      type?: "expression" | "boolean";
-    } = {},
-  ) {
-    return compile(source, type, { throwOnError, resolverPass });
+  function expr(source: string) {
+    return compile(source);
   }
 
   describe("(for an expression)", () => {
