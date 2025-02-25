@@ -120,6 +120,7 @@ export interface ListNotificationsRequest extends PaginationRequest {
   include_inactive?: boolean;
   creator_id?: UserId;
   recipient_id?: UserId;
+  creator_or_recipient_id?: UserId;
   card_id?: CardId;
   permission_group_id?: number;
 }

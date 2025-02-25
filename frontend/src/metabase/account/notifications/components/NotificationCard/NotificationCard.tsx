@@ -57,7 +57,7 @@ export const NotificationCard = ({
   }, [listItem, onArchive]);
 
   return (
-    <NotificationCardRoot>
+    <NotificationCardRoot data-testid="notification-alert-item">
       <NotificationContent>
         <Link variant="brandBold" to={entityLink}>
           {formatTitle(listItem)}
