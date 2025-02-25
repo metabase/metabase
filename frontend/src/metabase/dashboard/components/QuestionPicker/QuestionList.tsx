@@ -18,7 +18,7 @@ import { usePagination } from "metabase/hooks/use-pagination";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Box, Flex, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import type { CardId, CollectionId } from "metabase-types/api";
 
@@ -136,13 +136,9 @@ export function QuestionList({
     <>
       <SelectList>
         {list.map(item => (
-          <Flex
-            key={item.id}
-            className={S.questionItem}
-            align="center"
-            justify="space-between"
-          >
+          <Flex key={item.id} className={S.questionItem}>
             <QuestionListItem
+              className={S.questionListItem}
               id={item.id}
               name={item.getName()}
               icon={{
@@ -155,13 +151,14 @@ export function QuestionList({
               )}
             />
             <Tooltip label={t`Visualize another way`}>
-              <Box
+              <ActionIcon
                 className={S.visualizerButton}
+                size="41px"
                 ml="auto"
                 onClick={() => setVisualizerModalCardId(Number(item.id))}
               >
                 <Icon name="add_data" />
-              </Box>
+              </ActionIcon>
             </Tooltip>
           </Flex>
         ))}

@@ -20,12 +20,14 @@ interface VisualizerModalProps {
   };
   onSave: (visualization: VisualizerHistoryItem) => void;
   onClose: () => void;
+  saveLabel?: string;
 }
 
 export function VisualizerModal({
   initialState,
   onSave,
   onClose,
+  saveLabel,
 }: VisualizerModalProps) {
   const { open } = useModalOpen();
   const wasOpen = usePrevious(open);
@@ -45,7 +47,11 @@ export function VisualizerModal({
       transitionProps={{ transition: "fade", duration: 200 }}
       onClose={onClose}
     >
-      <Visualizer onSave={onSave} style={{ height: "80vh" }} />
+      <Visualizer
+        onSave={onSave}
+        style={{ height: "80vh" }}
+        saveLabel={saveLabel}
+      />
     </Modal>
   );
 }

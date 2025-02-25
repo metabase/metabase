@@ -1,10 +1,11 @@
 import cx from "classnames";
 import type { LocationDescriptor } from "history";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { replaceCardWithVisualization } from "metabase/dashboard/actions";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { getDashcardData } from "metabase/dashboard/selectors";
 import {
@@ -12,7 +13,7 @@ import {
   isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -21,10 +22,12 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
   extractReferencedColumns,
   getDataSourceIdFromNameRef,
   isDataSourceNameRef,
+  isVisualizerDashboardCard,
   parseDataSourceId,
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
@@ -98,6 +101,7 @@ interface DashCardVisualizationProps {
   onTogglePreviewing: () => void;
 
   downloadsEnabled: boolean;
+  editDashboard: () => void;
 }
 
 // This is done to add the `getExtraDataForClick` prop.
@@ -135,9 +139,47 @@ export function DashCardVisualization({
   onChangeLocation,
   onUpdateVisualizationSettings,
   downloadsEnabled,
+  editDashboard,
 }: DashCardVisualizationProps) {
   const datasets = useSelector(
     state => getDashcardData(state, dashcard.id) ?? {},
+  );
+  const [isVisualizerModalOpen, setIsVisualizerModalOpen] = useState(false);
+
+  const dispatch = useDispatch();
+
+  const editVisualization = useMemo(() => {
+    if (isVisualizerDashboardCard(dashcard)) {
+      return () => {
+        setIsVisualizerModalOpen(true);
+        editDashboard();
+      };
+    }
+  }, [editDashboard, dashcard]);
+
+  const onVisualizerModalSave = useCallback(
+    (visualization: VisualizerHistoryItem) => {
+      dispatch(
+        replaceCardWithVisualization({
+          dashcardId: dashcard.id,
+          visualization,
+        }),
+      );
+      setIsVisualizerModalOpen(false);
+    },
+    [dashcard.id, dispatch],
+  );
+
+  const onVisualizerModalClose = useCallback(() => {
+    setIsVisualizerModalOpen(false);
+  }, []);
+
+  const visualizerModalInitialState = useMemo(
+    () => ({
+      state: dashcard.visualization_settings
+        ?.visualization as Partial<VisualizerHistoryItem>,
+    }),
+    [dashcard.visualization_settings],
   );
 
   const series = useMemo(() => {
@@ -254,6 +296,7 @@ export function DashCardVisualization({
             heading: t`Heading Card`,
             placeholder: t`Placeholder Card`,
             iframe: t`Iframe Card`,
+            visualization: t`Visualization Card`,
           }[virtualDashcardType] ??
           t`This card does not support click mappings`;
 
@@ -325,6 +368,7 @@ export function DashCardVisualization({
             : undefined
         }
         uuid={isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined}
+        onEditVisualization={editVisualization}
       />
     );
   }, [
@@ -337,6 +381,7 @@ export function DashCardVisualization({
     dashcard.dashboard_id,
     dashboard.id,
     downloadsEnabled,
+    editVisualization,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
@@ -344,42 +389,52 @@ export function DashCardVisualization({
   });
 
   return (
-    <Visualization
-      className={cx(CS.flexFull, {
-        [CS.pointerEventsNone]: isEditingDashboardLayout,
-        [CS.overflowAuto]: visualizationOverlay,
-        [CS.overflowHidden]: !visualizationOverlay,
-      })}
-      dashboard={dashboard}
-      dashcard={dashcard}
-      rawSeries={series}
-      metadata={metadata}
-      mode={mode}
-      getHref={getHref}
-      gridSize={gridSize}
-      totalNumGridCols={totalNumGridCols}
-      headerIcon={headerIcon}
-      expectedDuration={expectedDuration}
-      error={error?.message}
-      errorIcon={error?.icon}
-      showTitle={withTitle}
-      canToggleSeriesVisibility={!isEditing}
-      isAction={isAction}
-      isDashboard
-      isSlow={isSlow}
-      isFullscreen={isFullscreen}
-      isNightMode={isNightMode}
-      isEditing={isEditing}
-      isPreviewing={isPreviewing}
-      isEditingParameter={isEditingParameter}
-      isMobile={isMobile}
-      actionButtons={actionButtons}
-      replacementContent={visualizationOverlay}
-      getExtraDataForClick={getExtraDataForClick}
-      onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
-      onTogglePreviewing={onTogglePreviewing}
-      onChangeCardAndRun={onChangeCardAndRun}
-      onChangeLocation={onChangeLocation}
-    />
+    <>
+      <Visualization
+        className={cx(CS.flexFull, {
+          [CS.pointerEventsNone]: isEditingDashboardLayout,
+          [CS.overflowAuto]: visualizationOverlay,
+          [CS.overflowHidden]: !visualizationOverlay,
+        })}
+        dashboard={dashboard}
+        dashcard={dashcard}
+        rawSeries={series}
+        metadata={metadata}
+        mode={mode}
+        getHref={getHref}
+        gridSize={gridSize}
+        totalNumGridCols={totalNumGridCols}
+        headerIcon={headerIcon}
+        expectedDuration={expectedDuration}
+        error={error?.message}
+        errorIcon={error?.icon}
+        showTitle={withTitle}
+        canToggleSeriesVisibility={!isEditing}
+        isAction={isAction}
+        isDashboard
+        isSlow={isSlow}
+        isFullscreen={isFullscreen}
+        isNightMode={isNightMode}
+        isEditing={isEditing}
+        isPreviewing={isPreviewing}
+        isEditingParameter={isEditingParameter}
+        isMobile={isMobile}
+        actionButtons={actionButtons}
+        replacementContent={visualizationOverlay}
+        getExtraDataForClick={getExtraDataForClick}
+        onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
+        onTogglePreviewing={onTogglePreviewing}
+        onChangeCardAndRun={onChangeCardAndRun}
+        onChangeLocation={onChangeLocation}
+      />
+      {isVisualizerModalOpen && (
+        <VisualizerModal
+          onSave={onVisualizerModalSave}
+          onClose={onVisualizerModalClose}
+          initialState={visualizerModalInitialState}
+          saveLabel={t`Save`}
+        />
+      )}
+    </>
   );
 }

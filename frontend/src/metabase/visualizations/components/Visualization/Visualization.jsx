@@ -297,7 +297,8 @@ class Visualization extends PureComponent {
   onRender = ({ warnings = [] } = {}) => {
     const currentWarnings = this.state.warnings;
     if (!_.isEqual(currentWarnings, warnings)) {
-      this.setState({ warnings });
+      // using requestAnimationFrame to avoid setting state in render
+      requestAnimationFrame(() => this.setState({ warnings }));
     }
   };
 

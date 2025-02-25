@@ -91,6 +91,7 @@ export interface DashCardProps {
   autoScroll: boolean;
   /** Callback to execute when the dashcard has auto-scrolled to itself */
   reportAutoScrolledToDashcard: () => void;
+  editDashboard: () => void;
 }
 
 function DashCardInner({
@@ -121,6 +122,7 @@ function DashCardInner({
   downloadsEnabled,
   autoScroll,
   reportAutoScrolledToDashcard,
+  editDashboard,
 }: DashCardProps) {
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
@@ -373,6 +375,7 @@ function DashCardInner({
           onChangeLocation={onChangeLocation}
           onTogglePreviewing={handlePreviewToggle}
           downloadsEnabled={downloadsEnabled}
+          editDashboard={editDashboard}
         />
       </DashCardRoot>
     </ErrorBoundary>
