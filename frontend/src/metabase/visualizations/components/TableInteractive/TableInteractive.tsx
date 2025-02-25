@@ -370,7 +370,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           return (
             <HeaderCellWithColumnInfo
               infoPopoversDisabled={!hasMetadataPopovers}
-              timezone={data.requested_timezone}
+              timezone={data.results_timezone}
               question={question}
               column={col}
               name={columnName}
@@ -477,7 +477,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   });
 
   useEffect(() => {
-    const currentColNames = new Set(cols.map(col => col.name));
+    const currentColNames = new Set(
+      cols.map((_col, columnIndex) => getColumnTitle(columnIndex)),
+    );
     const prevColNames = prevColNamesRef.current;
 
     const isSame =
