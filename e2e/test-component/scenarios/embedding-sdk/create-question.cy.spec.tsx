@@ -1,6 +1,6 @@
-import { CreateQuestion } from "@metabase/embedding-sdk-react";
+import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
-import { describeEE, modal, popover } from "e2e/support/helpers";
+import { modal, popover } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -9,7 +9,7 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
 
-describeEE("scenarios > embedding-sdk > create-question", () => {
+describe("scenarios > embedding-sdk > interactive-question > creating a question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
@@ -17,12 +17,14 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     mockAuthProviderAndJwtSignIn();
   });
 
-  it("can create a question via the CreateQuestion component", () => {
+  it("can create a question via the InteractiveQuestion component", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
     cy.intercept("POST", "/api/card").as("createCard");
 
     mountSdkContent(
       <Flex p="xl">
-        <CreateQuestion />
+        <InteractiveQuestion />
       </Flex>,
     );
 
@@ -35,14 +37,6 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     });
 
     getSdkRoot().within(() => {
-      // The question title's header should be "New question" by default.
-      cy.contains("New question");
-
-      cy.findByRole("button", { name: "Visualize" }).click();
-
-      // Should be able to go back to the editor view
-      cy.findByRole("button", { name: "Show editor" }).click();
-
       // Should be able to visualize the question again
       cy.findByRole("button", { name: "Visualize" }).click();
 
