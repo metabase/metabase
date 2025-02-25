@@ -5,7 +5,6 @@ import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import DeprecatedButton from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import { Box, Button, Icon } from "metabase/ui";
@@ -21,7 +20,6 @@ import LinkOptionsS from "../LinkOptions/LinkOptions.module.css";
 import { SidebarItem } from "../SidebarItem";
 
 import { CustomLinkText } from "./CustomLinkText";
-import S from "./CustomURLPicker.module.css";
 import { ValuesYouCanReference } from "./ValuesYouCanReference";
 
 interface Props {
@@ -116,16 +114,17 @@ export function CustomURLPicker({
             />
           )}
           <ValuesYouCanReference dashcard={dashcard} parameters={parameters} />
-          <DeprecatedButton
-            className={S.DoneButton}
-            primary
+          <Button
+            ml="auto"
+            mt="xl"
+            variant="filled"
             type="button"
             onClick={() => {
               handleSubmit();
               onClose();
             }}
             disabled={!canSelect}
-          >{t`Done`}</DeprecatedButton>
+          >{t`Done`}</Button>
         </ModalContent>
       )}
     </ModalWithTrigger>
