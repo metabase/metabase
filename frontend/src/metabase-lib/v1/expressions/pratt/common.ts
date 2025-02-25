@@ -1,5 +1,3 @@
-import type { Expression } from "metabase-types/api";
-
 import { getMBQLName } from "../config";
 import {
   adjustCaseOrIf,
@@ -8,19 +6,10 @@ import {
   adjustOptions,
   useShorthands,
 } from "../passes";
-import { resolve } from "../resolver";
 
 import { lexify, compile as newCompile, parse } from ".";
 
-type Type = "expression" | "boolean";
-
-interface Opts {
-  throwOnError?: boolean;
-  resolverPass?: boolean;
-}
-
-export function compile(source: string, type: Type, opts: Opts = {}) {
-  const { throwOnError } = opts;
+export function compile(source: string) {
   const passes = [
     adjustOptions,
     useShorthands,
@@ -28,22 +17,13 @@ export function compile(source: string, type: Type, opts: Opts = {}) {
     adjustCaseOrIf,
     adjustMultiArgOptions,
   ];
-  return newCompile(
-    parse(lexify(source), {
-      throwOnError,
-    }).root,
-    {
-      passes: opts.resolverPass
-        ? [
-            ...passes,
-            expression => resolve({ expression, type, fn: mockResolve }),
-          ]
-        : passes,
-      getMBQLName,
-    },
-  );
-}
 
-function mockResolve(_kind: any, name: string): Expression {
-  return ["dimension", name];
+  const ast = parse(lexify(source), {
+    throwOnError: true,
+  });
+
+  return newCompile(ast.root, {
+    passes,
+    getMBQLName,
+  });
 }
