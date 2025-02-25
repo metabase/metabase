@@ -20,9 +20,9 @@ The component has a default height, which can be customized by using the `height
 
 ```typescript
 import React from "react";
-import {MetabaseProvider, StaticQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, StaticQuestion, defineMetabaseAuthConfig} from "@metabase/embedding-sdk-react";
 
-const authConfig = {...}
+const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     const questionId = 1; // This is the question ID you want to embed
@@ -41,9 +41,9 @@ You can embed an interactive question using the `InteractiveQuestion` component.
 
 ```typescript
 import React from "react";
-import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, InteractiveQuestion, defineMetabaseAuthConfig} from "@metabase/embedding-sdk-react";
 
-const authConfig = {...}
+const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     const questionId = 1; // This is the question ID you want to embed
@@ -67,7 +67,7 @@ export default function App() {
 | isSaveEnabled         | boolean                                                              | (optional) Whether people can save the question.                                                                                                                                                                                                                                                                   |
 | withResetButton       | boolean                                                              | (optional, default: `true`) Determines whether a reset button is displayed. Only relevant when using the default layout                                                                                                                                                                                            |
 | withChartTypeSelector | boolean                                                              | (optional, default: `true`) Determines whether the chart type selector and corresponding settings button are shown. Only relevant when using the default layout.                                                                                                                                                   |
-| title                 | boolean or string or `ReactNode` or `() => ReactNode`                | (optional) Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default. Only Only applicable to interactive questions when using the default layout.                                                                     |
+| title                 | boolean or string or `ReactNode` or `() => ReactNode`                | (optional) Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default. Only applicable to interactive questions when using the default layout.                                                                     |
 | onBeforeSave          | `() => void`                                                         | (optional) A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                                             |
 | onSave                | `() => void`                                                         | (optional) A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                            |
 | saveToCollectionId    | number                                                               | (optional) The target collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.                                                                                                                                                      |
@@ -391,7 +391,7 @@ You can edit an existing question using the query builder by passing the `isSave
 import React from "react";
 import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
 
-const authConfig = {...}
+const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     return (
@@ -414,7 +414,7 @@ To customize the question editor's layout, use the `InteractiveQuestion` compone
 import React from "react";
 import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
 
-const authConfig = {...}
+const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     return (
