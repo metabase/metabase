@@ -1,5 +1,4 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { RefObject } from "react";
 
 import { useIsParameterPanelSticky } from "./use-is-parameter-panel-sticky";
 
@@ -9,9 +8,9 @@ type IOCallback = (
 ) => void;
 
 const setup = () => {
-  const parameterPanelRef = {
+  const parameterPanelRef: React.RefObject<HTMLDivElement> = {
     current: document.createElement("div"),
-  } as RefObject<HTMLElement>;
+  };
   const { result, unmount } = renderHook(() =>
     useIsParameterPanelSticky({ parameterPanelRef }),
   );
@@ -29,8 +28,8 @@ describe("useIsParameterPanelSticky", () => {
   let mockDisconnect: jest.Mock;
   let intersectionCallback: IOCallback | null = null;
 
-  const invokeIntersection = async (ratio: number) => {
-    await act(() => {
+  const invokeIntersection = (ratio: number) => {
+    act(() => {
       intersectionCallback?.(
         [{ intersectionRatio: ratio } as IntersectionObserverEntry],
         {} as IntersectionObserver,
@@ -48,24 +47,27 @@ describe("useIsParameterPanelSticky", () => {
 
     intersectionCallback = null;
 
-    (global as any).IntersectionObserver = jest.fn(function (
-      callback: IOCallback,
-    ) {
-      intersectionCallback = callback;
+    global.IntersectionObserver = class MockedIntersectionObserver
+      implements IntersectionObserver
+    {
+      constructor(callback: IntersectionObserverCallback) {
+        intersectionCallback = callback;
+      }
 
-      return {
-        observe: mockObserve,
-        disconnect: mockDisconnect,
-      };
-    });
+      observe = mockObserve;
+      disconnect = mockDisconnect;
+      root: Element | null = null;
+      rootMargin: string = "";
+      thresholds: ReadonlyArray<number> = [];
+      takeRecords(): IntersectionObserverEntry[] {
+        return [];
+      }
+      unobserve() {}
+    };
   });
 
-  afterAll(() => {
-    if (originalIntersectionObserver) {
-      global.IntersectionObserver = originalIntersectionObserver;
-    } else {
-      delete (global as any).IntersectionObserver;
-    }
+  afterEach(() => {
+    global.IntersectionObserver = originalIntersectionObserver;
   });
 
   it("returns initial state", () => {
@@ -82,7 +84,7 @@ describe("useIsParameterPanelSticky", () => {
       expect(mockObserve).toHaveBeenCalledTimes(1);
     });
 
-    await invokeIntersection(0.5);
+    invokeIntersection(0.5);
 
     expect(result.current.isSticky).toBe(true);
   });
@@ -94,28 +96,23 @@ describe("useIsParameterPanelSticky", () => {
       expect(mockObserve).toHaveBeenCalledTimes(1);
     });
 
-    await invokeIntersection(0.7);
+    invokeIntersection(0.7);
 
     expect(result.current.isSticky).toBe(true);
 
-    await invokeIntersection(1);
+    invokeIntersection(1);
 
     expect(result.current.isSticky).toBe(false);
   });
 
   it("sets isStickyStateChanging to true and false before and after isSticky is changed", async () => {
     const { result } = setup();
-    const originalRaf = global.requestAnimationFrame;
-
-    (global as any).requestAnimationFrame = jest.fn(cb => {
-      setTimeout(cb, 0);
-    });
 
     await waitFor(() => {
       expect(mockObserve).toHaveBeenCalledTimes(1);
     });
 
-    await invokeIntersection(0.7);
+    invokeIntersection(0.7);
 
     await waitFor(() => {
       expect(result.current.isStickyStateChanging).toBe(true);
@@ -126,8 +123,6 @@ describe("useIsParameterPanelSticky", () => {
     await waitFor(() => {
       expect(result.current.isStickyStateChanging).toBe(false);
     });
-
-    (global as any).requestAnimationFrame = originalRaf;
   });
 
   it("disconnects the observer on unmount", () => {
