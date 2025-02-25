@@ -129,8 +129,8 @@
 (mu/defn- update-breakout :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   old-column       :- ::lib.schema.metadata/column
-   new-column       :- ::lib.schema.metadata/column
+   old-column   :- ::lib.schema.metadata/column
+   new-column   :- ::lib.schema.metadata/column
    new-binning  :- ::lib.schema.binning/binning]
   (if-let [existing-breakout (first (lib.breakout/existing-breakouts query stage-number old-column))]
     (lib.remove-replace/replace-clause query stage-number existing-breakout (lib.binning/with-binning new-column new-binning))
