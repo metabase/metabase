@@ -5,3 +5,7 @@
   align-items: center;
   gap: 0.5rem;
 }
+
+.selectWrapper {
+  margin-top: 0;
+}

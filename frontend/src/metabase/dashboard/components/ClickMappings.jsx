@@ -14,7 +14,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { GTAPApi } from "metabase/services";
-import { Icon } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -22,7 +22,7 @@ import {
   getTargetsForQuestion,
 } from "metabase-lib/v1/parameters/utils/click-behavior";
 
-import { TargetTrigger } from "./ClickMappings.styled";
+import S from "./ClickMappings.module.css";
 
 class ClickMappings extends Component {
   render() {
@@ -188,7 +188,16 @@ function TargetWithoutSource({
     <Select
       key={id}
       triggerElement={
-        <TargetTrigger data-testid="click-target-column">{name}</TargetTrigger>
+        <Flex
+          className={S.TargetTrigger}
+          p="sm"
+          mb="sm"
+          fw="bold"
+          w="100%"
+          data-testid="click-target-column"
+        >
+          {name}
+        </Flex>
       }
       value={null}
       sections={Object.entries(sourceOptions).map(([sourceType, items]) => ({
