@@ -1136,7 +1136,6 @@ describe("issue 33441", () => {
     H.enterCustomColumnDetails({
       formula: 'datetimeDiff([Created At] , now, "days")',
       name: "Date",
-      format: true,
     });
     H.popover().within(() => {
       cy.findByText("Invalid expression").should("be.visible");
