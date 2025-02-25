@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { DatabaseHelpCard } from "metabase/databases/components/DatabaseHelpCard";
