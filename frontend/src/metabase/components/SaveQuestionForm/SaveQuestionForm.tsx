@@ -29,13 +29,8 @@ export const SaveQuestionForm = ({
   onSaveSuccess?: () => void;
   saveToDashboard?: Dashboard | null | undefined;
 }) => {
-  const {
-    question,
-    originalQuestion,
-    showSaveType,
-    values,
-    saveToCollectionId,
-  } = useSaveQuestionContext();
+  const { question, originalQuestion, showSaveType, values, saveToCollection } =
+    useSaveQuestionContext();
 
   const nameInputPlaceholder = getPlaceholder(question.type());
   const isDashboardQuestion = !!question.dashboardId();
@@ -47,7 +42,7 @@ export const SaveQuestionForm = ({
     ? t`Save changes`
     : t`Replace original question, "${originalQuestion?.displayName()}"`;
 
-  const isCollectionPickerEnabled = isNullOrUndefined(saveToCollectionId);
+  const isCollectionPickerEnabled = isNullOrUndefined(saveToCollection);
   const models: CollectionPickerModel[] =
     question.type() === "question"
       ? ["collection", "dashboard"]
