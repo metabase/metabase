@@ -15,7 +15,7 @@ This setup:
 ## Prerequisites
 
 - [Metabase](https://www.metabase.com/docs/latest/releases) version 52 or higher (OSS or EE). See [Installing Metabase](../../installation-and-operation/installing-metabase.md).
-- An application using React 17 or 18.
+- An application using React 17 or 18. (You could also use the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample))
 
 If you _don't_ have a Metabase up and running, check out the [Quickstart CLI](./quickstart-cli.md).
 
