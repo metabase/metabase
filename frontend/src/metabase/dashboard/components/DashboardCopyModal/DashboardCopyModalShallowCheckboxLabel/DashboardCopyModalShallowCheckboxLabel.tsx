@@ -3,14 +3,14 @@ import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 import { Icon } from "metabase/ui";
 
-import { CheckboxLabelRoot } from "./DashboardCopyModalShallowCheckboxLabel.styled";
+import S from "./DashboardCopyModalShallowCheckboxLabel.module.css";
 
 export const DashboardCopyModalShallowCheckboxLabel = ({
   hasDashboardQuestions,
 }: {
   hasDashboardQuestions: boolean;
 }) => (
-  <CheckboxLabelRoot>
+  <div className={S.checkboxLabelRoot}>
     {t`Only duplicate the dashboard`}
     <Tooltip
       tooltip={
@@ -21,5 +21,5 @@ export const DashboardCopyModalShallowCheckboxLabel = ({
     >
       <Icon name="info" size={18} />
     </Tooltip>
-  </CheckboxLabelRoot>
+  </div>
 );
