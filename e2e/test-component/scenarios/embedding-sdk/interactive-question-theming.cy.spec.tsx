@@ -144,8 +144,52 @@ describe(
           );
       });
     });
+
+    it.only("supports dynamic height based on visualization type", () => {
+      cy.get<number>("@questionId").then(questionId => {
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={questionId}
+            height={({ visualizationType }) => {
+              if (visualizationType === "bar") {
+                return "300px";
+              }
+
+              return "500px";
+            }}
+          />,
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findAllByTestId("flexible-size-container")
+          .eq(0)
+          .should($el => {
+            assertHeight($el, "500px");
+          });
+
+        cy.findByTestId("chart-type-selector-button").click();
+
+        cy.findByRole("menu").within(() => {
+          cy.findByText("Bar").click();
+        });
+
+        cy.findAllByTestId("flexible-size-container")
+          .eq(0)
+          .should($el => {
+            assertHeight($el, "300px");
+          });
+      });
+    });
   },
 );
+
+export function assertHeight($element: JQuery, expected: string) {
+  const element = $element[0];
+  const style = window.getComputedStyle(element);
+
+  expect(style.height).to.eq(expected);
+}
 
 /**
  * Using should("have.css", "background-color") causes off-by-one error that causes the test to fail.
