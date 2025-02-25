@@ -23,17 +23,18 @@
 (defn- large-bigint?
   [n]
   (and (instance? clojure.lang.BigInt n)
-       (or (< n min-bigint) (> n max-bigint))))
+       (or (.lt n min-bigint)
+           (.lt max-bigint n))))
 
 (defn- large-biginteger?
   [n]
   (and (instance? java.math.BigInteger n)
-       (or (< n min-biginteger) (> n max-biginteger))))
+       (or (< 0 (.compareTo n min-biginteger)) (> 0 (.compareTo n max-biginteger)))))
 
 (defn- large-bigdecimal?
   [n]
   (and (instance? java.math.BigDecimal n)
-       (or (< n min-bigdecimal) (> n max-bigdecimal))))
+       (or (< 0 (.compareTo n min-bigdecimal)) (> 0 (.compareTo n max-bigdecimal)))))
 
 (defn- large-integer?
   [n]
@@ -48,9 +49,9 @@
     x))
 
 (defn- result-large-int->string
-  [field-mask rf]
+  [column-index-mask rf]
   ((map (fn [row]
-          (perf/mapv #(if %2 (large-int->string %1) %1) row field-mask)))
+          (perf/mapv #(if %2 (large-int->string %1) %1) row column-index-mask)))
    rf))
 
 (defn- maybe-integer-column?
@@ -64,8 +65,7 @@
 
 (defn convert-large-int-to-string
   "Converts any large integer in a result to a string to handle a number > 2^51 or < -2^51, the JavaScript float
-  mantissa. This will allow proper display of large integers, like IDs from services like social media. NULLs are
-  converted to Clojure nil/JS null."
+  mantissa. This will allow proper display of large integers, like IDs from services like social media."
   [{{:keys [js-int-to-string?] :or {js-int-to-string? false}} :middleware, :as query} rff]
   (let [rff' (when js-int-to-string?
                (fn [metadata]
