@@ -126,4 +126,21 @@
   [driver]
   (map :name (get-property driver)))
 
+(defn get-placeholders
+  [driver]
+  (keep (fn [{:keys [name placeholder]}] (when placeholder (format "%s: %s" name placeholder))) (get-property driver)))
+
+(defn get-defaults
+  [driver]
+  (keep (fn [{:keys [name default]}] (when default (format "%s: %s" name default))) (get-property driver)))
+
+(defn get-required
+  [driver]
+  (keep (fn [{:keys [name required]}] (when required (format "%s: %s" name required))) (get-property driver)))
+
+(defn get-info
+  [driver]
+  {:required (get-required driver)
+   :defaults (get-defaults driver)
+   :placeholders (get-placeholders driver)})
 
