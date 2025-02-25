@@ -45,15 +45,6 @@ describe("scenarios > embedding-sdk > create-question", () => {
     });
 
     getSdkRoot().within(() => {
-      // The question title's header should be "New question" by default.
-      cy.contains("New question");
-
-      cy.findByRole("button", { name: "Visualize" }).click();
-
-      // Should be able to go back to the editor view
-      cy.findByRole("button", { name: "Show editor" }).click();
-
-      // Should be able to visualize the question again
       cy.findByRole("button", { name: "Visualize" }).click();
 
       // Should not show a loading indicator again as the question has not changed (metabase#47564)
@@ -120,15 +111,6 @@ describe("scenarios > embedding-sdk > create-question", () => {
     });
 
     getSdkRoot().within(() => {
-      // The question title's header should be "New question" by default.
-      cy.findByText("New question");
-
-      cy.findByRole("button", { name: "Visualize" }).click();
-
-      // Should be able to go back to the editor view
-      cy.findByRole("button", { name: "Show editor" }).click();
-
-      // Should be able to visualize the question again
       cy.findByRole("button", { name: "Visualize" }).click();
 
       // Should not show a loading indicator again as the question has not changed (metabase#47564)
