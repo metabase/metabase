@@ -113,22 +113,28 @@ export type SeriesOrderSetting = {
   color?: string;
 };
 
-export type CommonOperator = "is-null" | "not-null";
-export type ComparisonOperator = "=" | "!=" | "<" | ">" | "<=" | ">=";
-export type StringOperator =
+export type ConditionalFormattingCommonOperator = "is-null" | "not-null";
+export type ConditionalFormattingComparisonOperator =
+  | "="
+  | "!="
+  | "<"
+  | ">"
+  | "<="
+  | ">=";
+export type ConditionalFormattingStringOperator =
   | "="
   | "!="
   | "contains"
   | "does-not-contain"
   | "starts-with"
   | "ends-with";
-export type BooleanOperator = "is-true" | "is-false";
+export type ConditionalFormattingBooleanOperator = "is-true" | "is-false";
 
 export type ColumnFormattingOperator =
-  | CommonOperator
-  | ComparisonOperator
-  | StringOperator
-  | BooleanOperator;
+  | ConditionalFormattingCommonOperator
+  | ConditionalFormattingComparisonOperator
+  | ConditionalFormattingStringOperator
+  | ConditionalFormattingBooleanOperator;
 
 export type ColumnSingleFormattingSetting = {
   columns: string[];
