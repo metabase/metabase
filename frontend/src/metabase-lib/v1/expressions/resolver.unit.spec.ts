@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import type { CaseOptions, Expression } from "metabase-types/api";
+import type { CallOptions, CaseOptions, Expression } from "metabase-types/api";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { resolve } from "./resolver";
@@ -186,7 +186,7 @@ describe("resolve", () => {
       it.each(["contains", "does-not-contain", "starts-with", "ends-with"])(
         "should reject multi-arg function calls with options when there is not enough arguments",
         tag => {
-          const options = { "case-sensitive": true };
+          const options: CallOptions = { "case-sensitive": true };
           expect(() => expr([tag])).toThrow();
           expect(() => expr([tag, A])).toThrow();
           expect(() => expr([tag, A, options])).toThrow();
@@ -194,6 +194,7 @@ describe("resolve", () => {
           expect(() => expr([tag, A, B])).not.toThrow();
           expect(() => expr([tag, A, B, C])).not.toThrow();
           expect(() => expr([tag, A, B, options])).not.toThrow();
+          // @ts-expect-error: options should be passed as the last argument
           expect(() => expr([tag, options, A, B, C])).not.toThrow();
         },
       );
