@@ -68,7 +68,7 @@ const RightSectionTemplate = (args: TextInputProps) => (
 );
 
 export default {
-  title: "Inputs/TextInput",
+  title: "Components/Inputs/TextInput",
   component: TextInput,
   args,
   argTypes,

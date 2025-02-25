@@ -340,3 +340,31 @@ describe("issue 54124", () => {
     cy.findByTestId("sidebar-content").should("be.visible");
   });
 });
+
+describe("issue 52811", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("popovers should close when clicking outside (metabase#52811)", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("{{x");
+    cy.findByLabelText("Variable type").click();
+
+    H.popover().findByText("Field Filter").click();
+    clickAway();
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    cy.findByTestId("sidebar-content").findByText("Select...").click();
+    cy.findByLabelText("Variable type").click();
+    H.popover()
+      .should("have.length", 1)
+      .and("contain.text", "Field Filter")
+      .and("not.contain.text", "Sample Database");
+  });
+
+  function clickAway() {
+    cy.get("body").click(0, 0);
+  }
+});

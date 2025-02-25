@@ -4,7 +4,7 @@ import { useState } from "react";
 import SelectList from "./SelectList";
 
 export default {
-  title: "Core/SelectList",
+  title: "Deprecated/Components/SelectList",
   component: SelectList,
 };
 
