@@ -1,8 +1,8 @@
-import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
+import { EE_PLUGINS_SYSTEM, PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
 // SETTINGS OVERRIDES:
 const activateIsEEBuildPlugin = () => {
-PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
+  PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 };
 
 import "./shared";
@@ -75,3 +75,13 @@ const activateEEPlugins = () => {
 };
 
 activateEEPlugins();
+
+const activatePluginsSystem = () => {
+  // console.log("activating plugins (ee", { eePluginActivators });
+  EE_PLUGINS_SYSTEM.activatePlugins = () => {
+    // console.log("activating plugins (ee)");
+    activateEEPlugins();
+  };
+};
+
+export { activatePluginsSystem };
