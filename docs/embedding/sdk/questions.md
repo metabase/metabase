@@ -423,7 +423,6 @@ With the `CreateQuestion` component, you can embed the query builder without a p
 
 The `CreateQuestion` component is built on top of the `InteractiveQuestion` component with [namespaced components](#interactive-question-components). `CreateQuestion` [shares the same props as `InteractiveQuestion`](#question-props), except it lacks the `questionId` prop and the ability to pass custom children.
 
-
 ```tsx
 import React from "react";
 import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
