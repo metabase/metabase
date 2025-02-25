@@ -5,6 +5,8 @@
    [clojure.string :as str]
    [mage.color :as c]))
 
+(set! *warn-on-reflection* true)
+
 (def ^String project-root-directory
   "Root directory of the Metabase repo."
   (.. (java.io.File. (.toURI (io/resource "mage/util.clj"))) ; this file
@@ -29,7 +31,9 @@
 ;; Git Stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn staged-files []
+(defn staged-files
+  "Returns git staged files as a vector of strings."
+  []
   (->> (shl "git diff --name-status --cached -- \"*.clj\" \"*.cljc\" \"*.cljs\"")
        (filter #(re-find #"^[AM]" %))
        (map #(str/split % #"\t"))

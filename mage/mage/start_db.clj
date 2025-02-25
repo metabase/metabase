@@ -86,7 +86,8 @@
       (printf "Use the %s alias in deps.edn to use this DB:\n" deps-edn-alias)
       (println (str "  clj -M:dev:ee:ee-dev" deps-edn-alias)))))
 
-(defn- usage [ports]
+(defn- usage
+  [ports]
   (println "Usage:")
   (println)
   (println "  bb start-db <db> <version>")
@@ -94,9 +95,7 @@
   (println "Available DBs:")
   (println)
   (t/table
-   (for [[db m] {:mariadb  {:oldest 3306 :latest 3307}
-                 :mysql    {:oldest 3308 :latest 3309}
-                 :postgres {:oldest 5432 :latest 5433}}
+   (for [[db m] ports
          [stamp port] m]
      {:port port
       :start-db-cmd (str "./bin/mage start-db " (name db) " " (name stamp))})

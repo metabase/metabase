@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [mage.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 (def excluded-public-tasks
   "Private tasks aren't tested, and do not have the same level of reliability!!"
   #{"nrepl"})

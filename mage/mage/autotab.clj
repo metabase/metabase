@@ -1,6 +1,8 @@
 (ns mage.autotab)
 
-(defn instructions [& _]
+(defn instructions
+  "prints instructions to setup tab-completion for mage."
+  [& _]
   (println
    "# Terminal tab-completion
 

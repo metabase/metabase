@@ -1,6 +1,5 @@
 (ns mage.shell
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.util :as u])
   (:import

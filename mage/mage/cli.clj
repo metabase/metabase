@@ -1,6 +1,5 @@
 (ns mage.cli
   (:require
-   [babashka.tasks :refer [shell]]
    [clojure.string :as str]
    [clojure.tools.cli :refer [parse-opts]]
    [mage.color :as c]
@@ -51,15 +50,6 @@
               (delay? choices) @choices
               (not= ::nope (try-eval choices)) (try-eval choices)
               :else choices)})
-
-(defn- install-if-needed! [program install-fn]
-  (letfn [(can-run? [program] (= 0 (:exit (try
-                                            (shell {:out nil} (str "command -v " program))
-                                            (catch Exception _ {:exit 1})))))]
-    (when-not (can-run? program)
-      (println (str "You don't have " program " installed. Installing now..."))
-      (install-fn)
-      (println (str program " should be installed now. Thanks!")))))
 
 (defn- ask-unknown! [cli-options all-options]
   (let [answered-ids (set (keys cli-options))

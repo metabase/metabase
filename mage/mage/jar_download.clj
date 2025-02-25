@@ -1,22 +1,23 @@
 (ns mage.jar-download
-  (:require [babashka.curl :as curl]
-            [clojure.java.io :as io]
-            [clojure.repl :refer [pst]]
-            [clojure.string :as str]
-            [mage.util :as u]))
+  (:require
+   [babashka.curl :as curl]
+   [clojure.java.io :as io]
+   [clojure.repl :refer [pst]]
+   [clojure.string :as str]
+   [mage.util :as u]))
 
-(defn url [version]
+(defn- url [version]
   (str "https://downloads.metabase.com"
        (when (str/starts-with? version "1") "/enterprise")
        "/v"
        version "/metabase.jar"))
 
-(defn download [version dir]
+(defn- download [version dir]
   (io/copy
    (:body (curl/get (url version) {:as :stream}))
    (io/file (str dir "/metabase_" version ".jar"))))
 
-(defn download-jar! [version dir]
+(defn- download-jar! [version dir]
   (try
     (println (str "Downloading from " (url version) " ..."))
     (download version dir)
@@ -27,7 +28,9 @@
 
 (defn- without-slash [s] (str/replace s #"/$" ""))
 
-(defn jar-download [[version dir]]
+(defn jar-download
+  "Download a specific version of Metabase to a directory."
+  [[version dir]]
   (let [dir (some-> (or dir (u/env "JARS")) without-slash)]
     (if (or (nil? version) (nil? dir))
       (do (println "Usage: mb-download 0.42.2")

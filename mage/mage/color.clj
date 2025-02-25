@@ -1,9 +1,16 @@
 (ns mage.color
-  (:require [clojure.string :as str]))
+  (:require
+   [clojure.string :as str]))
 
-(defn- escape [i] (str "\033[" i "m"))
-(def ^:dynamic *disable-colors* false)
-(def reset (escape 0))
+(defn escape
+  "Wrap [[i]] with escape code."
+  [i] (str "\033[" i "m"))
+
+(def ^:dynamic *disable-colors*
+  "If set to true, all color functions will return the input string as is."
+  false)
+
+(def ^:private reset (escape 0))
 
 (defn- do-color [color-code args]
   (if *disable-colors*
