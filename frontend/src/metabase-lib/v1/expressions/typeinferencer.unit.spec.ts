@@ -1,6 +1,8 @@
 import type { FieldReference } from "metabase-types/api";
 
-import { parse } from "./recursive-parser";
+import { getMBQLName } from "./config";
+import * as passes from "./passes";
+import { compile, lexify, parse } from "./pratt";
 import { resolve } from "./resolver";
 import { infer } from "./typeinferencer";
 
@@ -8,25 +10,35 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
   function mockResolve(_kind: string, name: string) {
     return ["field", name];
   }
-  function compileAs(source: string, startRule: string) {
-    let mbql = null;
+
+  function expr(source: string) {
     try {
-      mbql = resolve({
-        expression: parse(source),
-        type: startRule,
-        fn: mockResolve,
+      const ast = parse(lexify(source), { throwOnError: true });
+      return compile(ast.root, {
+        passes: Object.values(passes),
+        getMBQLName,
       });
-    } catch (e) {}
-    return mbql;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function compileAs(source: string, type: string) {
+    const expression = expr(source);
+    return resolve({
+      expression,
+      type,
+      fn: mockResolve,
+    });
   }
 
   // workaround the limitation of the parsing expecting a strict top-level grammar rule
   function tryCompile(source: string) {
-    let mbql = compileAs(source, "expression");
-    if (mbql === null) {
-      mbql = compileAs(source, "boolean");
+    const mbql = compileAs(source, "expression");
+    if (mbql !== null) {
+      return mbql;
     }
-    return mbql;
+    return compileAs(source, "boolean");
   }
 
   function mockEnv(fieldRef: FieldReference) {
