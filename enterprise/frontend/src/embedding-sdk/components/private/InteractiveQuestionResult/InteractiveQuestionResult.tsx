@@ -8,7 +8,10 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
-import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
+import type {
+  SdkQuestionHeight,
+  SdkQuestionTitleProps,
+} from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import {
   Box,
@@ -18,7 +21,6 @@ import {
   PopoverBackButton,
   Stack,
 } from "metabase/ui";
-import type { CardDisplayType } from "metabase-types/api";
 
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 import {
@@ -35,12 +37,8 @@ export interface InteractiveQuestionResultProps {
   title?: SdkQuestionTitleProps;
   withResetButton?: boolean;
   withChartTypeSelector?: boolean;
-  height?: QuestionHeight;
+  height?: SdkQuestionHeight;
 }
-
-type QuestionHeight =
-  | FlexibleSizeProps["height"]
-  | ((display: CardDisplayType | null) => FlexibleSizeProps["height"]);
 
 export const InteractiveQuestionResult = ({
   height: inputHeight,

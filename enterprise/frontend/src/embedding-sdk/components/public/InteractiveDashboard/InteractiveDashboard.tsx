@@ -15,6 +15,7 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import type { SdkQuestionHeight } from "embedding-sdk/types/question";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
@@ -38,7 +39,7 @@ export type InteractiveDashboardProps = {
    *       once we have a public-facing question context.
    */
   renderDrillThroughQuestion?: () => ReactNode;
-  drillThroughQuestionHeight?: number;
+  drillThroughQuestionHeight?: SdkQuestionHeight;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 

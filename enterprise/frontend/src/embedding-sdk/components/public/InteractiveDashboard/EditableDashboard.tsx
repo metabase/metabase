@@ -8,6 +8,7 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkSelector } from "embedding-sdk/store";
+import type { SdkQuestionHeight } from "embedding-sdk/types/question";
 import {
   DASHBOARD_EDITING_ACTIONS,
   SDK_DASHBOARD_VIEW_ACTIONS,
@@ -20,7 +21,7 @@ import { InteractiveDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 export type EditableDashboardProps = {
-  drillThroughQuestionHeight?: number;
+  drillThroughQuestionHeight?: SdkQuestionHeight;
   plugins?: MetabasePluginsConfig;
   className?: string;
   style?: CSSProperties;
