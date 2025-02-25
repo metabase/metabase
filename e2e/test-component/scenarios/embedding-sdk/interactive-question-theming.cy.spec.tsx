@@ -145,7 +145,7 @@ describe(
       });
     });
 
-    it.only("supports dynamic height based on visualization type", () => {
+    it("supports dynamic height based on visualization type", () => {
       cy.get<number>("@questionId").then(questionId => {
         mountSdkContent(
           <InteractiveQuestion
