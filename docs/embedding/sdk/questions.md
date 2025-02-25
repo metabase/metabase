@@ -16,7 +16,7 @@ There are different ways you can embed questions:
 
 You can embed a static question using the `StaticQuestion` component.
 
-The component has a default height, which can be customized by using the `height` prop. To inherit the height from the parent container, you can pass `100%` to the height prop.
+The component has a default height, which can be customized by using the `height` prop. To inherit the height from the parent container, you can pass `100%` to the height prop. You can pass a function to the height prop to customize the height based on the visualization type.
 
 ```typescript
 import React from "react";
@@ -61,7 +61,7 @@ export default function App() {
 | Prop                    | Type                                                                 | Description                                                                                                                                                                                                                                                                                                        |
 | ----------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `entityTypeFilter`      | string array; options include "table", "question", "model", "metric" | (optional) An array that specifies which entity types are available in the data picker                                                                                                                                                                                                                             |
-| `height`                | number or string                                                     | (optional) A number or string specifying a CSS size value that specifies the height of the component                                                                                                                                                                                                               |
+| `height`                | number or string or `({ visualizationType }) => (number \| string)`  | (optional) A number, string or function specifying a CSS size value that specifies the height of the component                                                                                                                                                                                                     |
 | `initialSqlParameters`  | `Record<string, string \| string[]>`                                 | (optional) For SQL questions only. A mapping of [SQL parameter names to parameter values](#pass-sql-parameters-to-sql-questions-with-initialsqlparameters), such as `{ product_id: "42"}`.                                                                                                                         |
 | `isSaveEnabled`         | boolean                                                              | (optional) Whether people can save the question.                                                                                                                                                                                                                                                                   |
 | `onBeforeSave`          | `() => void`                                                         | (optional) A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                                             |
@@ -263,12 +263,12 @@ Uses [Mantine ActionIcon props](https://v6.mantine.dev/core/action-icon/) under 
 
 The main visualization component that renders the question results as a chart, table, or other visualization type.
 
-| Prop      | Type                | Description                                     |
-| --------- | ------------------- | ----------------------------------------------- |
-| height    | number \| string    | Height for visualization                        |
-| width     | number \| string    | Width for visualization                         |
-| className | string              | Custom CSS class name for styling the component |
-| style     | React.CSSProperties | Inline styles to apply to the component         |
+| Prop      | Type                                                                | Description                                     |
+| --------- | ------------------------------------------------------------------- | ----------------------------------------------- |
+| height    | number \| string \| `({ visualizationType }) => (number \| string)` | Height for visualization                        |
+| width     | number \| string                                                    | Width for visualization                         |
+| className | string                                                              | Custom CSS class name for styling the component |
+| style     | React.CSSProperties                                                 | Inline styles to apply to the component         |
 
 #### `InteractiveQuestion.QuestionSettings`
 

@@ -7,18 +7,23 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import type { SdkQuestionHeight } from "embedding-sdk/types/question";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionContext } from "../context";
 
+type QuestionVisualizationProps = Omit<FlexibleSizeProps, "height"> & {
+  height?: SdkQuestionHeight;
+};
+
 export const QuestionVisualization = ({
-  height,
+  height: inputHeight,
   width,
   className,
   style,
-}: FlexibleSizeProps) => {
+}: QuestionVisualizationProps) => {
   const {
     question,
     queryResults,
@@ -43,6 +48,11 @@ export const QuestionVisualization = ({
 
   const [result] = queryResults ?? [];
   const card = question.card();
+
+  const height =
+    typeof inputHeight === "function"
+      ? inputHeight({ visualizationType: question?.display() ?? null })
+      : inputHeight;
 
   return (
     <FlexibleSizeComponent
