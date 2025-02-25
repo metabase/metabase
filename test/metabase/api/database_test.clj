@@ -41,6 +41,7 @@
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
+   (clojure.lang ExceptionInfo)
    (java.sql Connection)
    (org.quartz JobDetail TriggerKey)))
 
@@ -692,6 +693,84 @@
           (is (partial= {"FOO_TABLE.F_NAME" {:name "F_NAME" :display_name "user editable"
                                              :table_name "FOO_TABLE"}}
                         (f (mt/user-http-request :rasta :get 200 (format "database/%d/fields" (mt/id)))))))))))
+
+(deftest resolve-table-test
+  (testing "#'api.database/resolve-table"
+    (let [resolve-table #'api.database/resolve-table]
+      (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
+                     :model/Table {t1-id :id} {:db_id db-id :schema nil      :name "CUSTOMERS"}
+                     :model/Table {t2-id :id} {:db_id db-id :schema "PUBLIC" :name "ORDERS"}
+                     :model/Table _           {:db_id db-id :schema "APP"    :name "MEMBERS"}
+                     :model/Table _           {:db_id db-id :schema "PUBLIC" :name "MEMBERS"}]
+
+        (testing "exact match without schema"
+          (is (= t1-id (:id (resolve-table db-id "CUSTOMERS")))))
+
+        (testing "exact match with schema"
+          (is (= t2-id (:id (resolve-table db-id "PUBLIC.ORDERS")))))
+
+        (testing "case-insensitive match"
+          (is (= t1-id (:id (resolve-table db-id "customers"))))
+          (is (= t2-id (:id (resolve-table db-id "public.orders")))))
+
+        (testing "ambiguous match (multiple schemas with same table name)"
+          (let [ex (is (thrown-with-msg? ExceptionInfo
+                                         #"Ambiguous table identifier"
+                                         (resolve-table db-id "members")))]
+            (is (= 300 (:status-code (ex-data ex))))
+            (is (= #{"APP.MEMBERS" "PUBLIC.MEMBERS"}
+                   (set (:potential-matches (ex-data ex)))))))
+
+        (testing "non-existent table"
+          (let [ex (is (thrown-with-msg? ExceptionInfo
+                                         #"Not found"
+                                         (resolve-table db-id "non_existent")))]
+            (is (= 404 (:status-code (ex-data ex))))))
+
+        (testing "invalid format (too many segments)"
+          (let [ex (is (thrown-with-msg? ExceptionInfo
+                                         #"Invalid table identifier"
+                                         (resolve-table db-id "a.b.c")))]
+            (is (= 400 (:status-code (ex-data ex))))))))))
+
+(deftest api-database-table-endpoint-test
+  (testing "GET /api/database/:id/table/:table-identifier"
+    (mt/dataset test-data
+      (let [db-id (mt/id)]
+        (testing "returns dataset in same format as POST /api/dataset"
+          (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/table/public.orders" db-id))]
+            (is (contains? response :data))
+            (is (contains? response :row_count))
+            (is (contains? response :status))
+            (is (= #{"Created At"
+                     "Discount"
+                     "ID"
+                     "Product ID"
+                     "Quantity"
+                     "Subtotal"
+                     "Tax"
+                     "Total"
+                     "User ID"}
+                   (into #{} (map :display_name) (:cols (:data response)))))
+            (is (seq (:rows (:data response))))))
+
+        (testing "resolves case-insensitive table references"
+          (mt/user-http-request :rasta :get 200 (format "database/%d/table/PUBLIC.ORDERS" db-id))
+          (mt/user-http-request :rasta :get 200 (format "database/%d/table/public.orders" db-id)))
+
+        (testing "handles ambiguous references"
+          (mt/with-temp [:model/Table _ {:db_id db-id :schema "app" :name "ORDERS"}]
+            (mt/with-test-user :rasta
+              (let [response (mt/user-http-request :rasta :get 300 (format "database/%d/table/orders" db-id))]
+                (is (contains? response :potential-matches))
+                (is (= #{"PUBLIC.ORDERS" "app.ORDERS"}
+                       (set (:potential-matches response))))))))
+
+        (testing "returns 404 for tables that don't exist"
+          (mt/user-http-request :rasta :get 404 (format "database/%d/table/nonexistent" db-id)))
+
+        (testing "validates table identifier format"
+          (mt/user-http-request :rasta :get 400 (format "database/%d/table/a.b.c" db-id)))))))
 
 (deftest fetch-database-metadata-include-hidden-test
   ;; NOTE: test for the exclude_uneditable parameter lives in metabase-enterprise.advanced-permissions.common-test
