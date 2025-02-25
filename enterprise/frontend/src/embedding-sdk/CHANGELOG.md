@@ -1,3 +1,12 @@
+## [0.52.12](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.11...embedding-sdk-0.52.12) (2025-02-25)
+
+
+### Bug Fixes
+
+* **sdk:** fix visual artifacts in binning options ([#54130](https://github.com/metabase/metabase/issues/54130)) ([9187756](https://github.com/metabase/metabase/commit/9187756e4579d973914066092782750d20595b32)), closes [#53961](https://github.com/metabase/metabase/issues/53961)
+
+
+
 ## [0.52.11](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.10...embedding-sdk-0.52.11) (2025-02-18)
 
 
