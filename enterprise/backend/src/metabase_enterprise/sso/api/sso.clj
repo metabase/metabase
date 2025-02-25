@@ -77,12 +77,14 @@
                          :where  [:= :session.id metabase-session-id]})]
       ;; If a user doesn't have SLO setup on their IdP,
       ;; they will never hit "/handle_slo" so we must delete the session here:
-      (t2/delete! :model/Session :id metabase-session-id)
+      (when-not (sso-settings/saml-slo-enabled)
+        (t2/delete! :model/Session :id metabase-session-id))
       {:saml-logout-url
        (when (and (sso-settings/saml-slo-enabled)
                   (= sso_source "saml"))
          (saml/logout-redirect-location
-          :idp-url (sso-settings/saml-identity-provider-uri)
+          :credential (metabase-enterprise.sso.integrations.saml/sp-cert-keystore-details)
+          :idp-url (sso-settings/saml-identity-provider-slo-uri)
           :issuer (sso-settings/saml-application-name)
           :user-email email
           :relay-state (encode-decode/str->base64
