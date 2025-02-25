@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/lib/engine";
@@ -12,16 +13,6 @@ import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-const BUTTON_TEXT = {
-  sql: t`View SQL`,
-  json: t`View native query`,
-};
-
-const BUTTON_CLOSE_TEXT = {
-  sql: t`Hide SQL`,
-  json: t`Hide native query`,
-};
-
 interface ToggleNativeQueryPreviewProps {
   question: Question;
 }
@@ -35,9 +26,10 @@ export const ToggleNativeQueryPreview = ({
   }: { isShowingNotebookNativePreview: boolean } = useSelector(getUiControls);
 
   const engineType = getEngineNativeType(question.database()?.engine);
-  const buttonText = isShowingNotebookNativePreview
-    ? BUTTON_CLOSE_TEXT[engineType]
-    : BUTTON_TEXT[engineType];
+  const buttonText = getButtonText({
+    isShowingNotebookNativePreview,
+    engineType,
+  });
 
   const handleClick = () => {
     dispatch(
@@ -61,6 +53,33 @@ export const ToggleNativeQueryPreview = ({
     </Button>
   );
 };
+
+function getButtonText({
+  isShowingNotebookNativePreview,
+  engineType,
+}: {
+  isShowingNotebookNativePreview: boolean;
+  engineType: "sql" | "json";
+}) {
+  return match({ isShowingNotebookNativePreview, engineType })
+    .with(
+      { isShowingNotebookNativePreview: true, engineType: "sql" },
+      () => t`Hide SQL`,
+    )
+    .with(
+      { isShowingNotebookNativePreview: true, engineType: "json" },
+      () => t`Hide native query`,
+    )
+    .with(
+      { isShowingNotebookNativePreview: false, engineType: "sql" },
+      () => t`View SQL`,
+    )
+    .with(
+      { isShowingNotebookNativePreview: false, engineType: "json" },
+      () => t`View native query`,
+    )
+    .exhaustive();
+}
 
 interface ToggleNativeQueryPreviewOpts {
   question: Question;
