@@ -4,18 +4,22 @@ import { tags } from "@lezer/highlight";
 
 import S from "./highlight.module.css";
 
-export const metabaseSyntaxHighlighting = HighlightStyle.define([
-  {
-    tag: tags.function(tags.variableName),
-    class: S,
-  },
-  ...Object.values(tags)
-    .filter((tag): tag is Tag => typeof tag !== "function")
-    .map((tag: Tag) => ({
-      tag,
-      class: classNameForTag(tag),
-    })),
-]);
+const defaultTags = Object.values(tags)
+  .filter((tag): tag is Tag => typeof tag !== "function")
+  .map((tag: Tag) => ({
+    tag,
+    class: classNameForTag(tag),
+  }))
+  .filter(tag => tag.class !== "");
+
+const styles = [
+  ...defaultTags,
+  { tag: tags.special(tags.string), class: S.string },
+  { tag: tags.definition(tags.propertyName), class: S.propertyNameDefinition },
+  { tag: tags.function(tags.variableName), class: S.variableName },
+];
+
+export const metabaseSyntaxHighlighting = HighlightStyle.define(styles);
 
 /**
  * Returns the correct css class name for a @lezer/highlight tag.
