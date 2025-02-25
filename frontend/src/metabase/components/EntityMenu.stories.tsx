@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import EntityMenu from "./EntityMenu";
 
 export default {
-  title: "Components/Entity Menu",
+  title: "Deprecated/Components/Entity Menu",
   component: EntityMenu,
 };
 

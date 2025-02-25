@@ -8,7 +8,7 @@ import ColorRangeSelector, {
 } from "./ColorRangeSelector";
 
 export default {
-  title: "Core/ColorRangeSelector",
+  title: "Components/Ask Before Using/ColorRangeSelector",
   component: ColorRangeSelector,
 };
 
