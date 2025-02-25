@@ -15,12 +15,14 @@ export type CodeBlockProps = {
 };
 
 export function CodeBlock({ code, language, ...props }: CodeBlockProps) {
-  const extensions = useMemo(() => {
-    const lang = getLanguageExtension(language);
-    return [syntaxHighlighting(metabaseSyntaxHighlighting), lang].filter(
-      isNotNull,
-    );
-  }, [language]);
+  const extensions = useMemo(
+    () =>
+      [
+        syntaxHighlighting(metabaseSyntaxHighlighting),
+        getLanguageExtension(language),
+      ].filter(isNotNull),
+    [language],
+  );
 
   return (
     <CodeMirror value={code} extensions={extensions} readOnly {...props} />
