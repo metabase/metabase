@@ -1,8 +1,0 @@
-.visualizerLink {
-  margin-right: 0.5rem;
-  transition: color 0.2s;
-
-  &:hover {
-    color: var(--mb-color-brand);
-  }
-}
