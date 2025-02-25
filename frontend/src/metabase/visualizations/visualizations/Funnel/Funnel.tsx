@@ -206,6 +206,7 @@ export function Funnel(props: VisualizationProps) {
     headerIcon,
     settings,
     showTitle,
+    isVisualizerViz,
     actionButtons,
     className,
     onChangeCardAndRun,
@@ -233,6 +234,10 @@ export function Funnel(props: VisualizationProps) {
     );
   }
 
+  // We can't navigate a user to a particual card from a visualizer viz,
+  // so title selection is disabled in this case
+  const canSelectTitle = !!onChangeCardAndRun && !isVisualizerViz;
+
   return (
     <div className={cx(className, CS.flex, CS.flexColumn, CS.p1)}>
       {hasTitle && (
@@ -240,9 +245,9 @@ export function Funnel(props: VisualizationProps) {
           series={groupedRawSeries}
           settings={settings}
           icon={headerIcon}
-          getHref={getHref}
+          getHref={canSelectTitle ? getHref : undefined}
           actionButtons={actionButtons}
-          onChangeCardAndRun={onChangeCardAndRun}
+          onChangeCardAndRun={canSelectTitle ? onChangeCardAndRun : undefined}
         />
       )}
       <FunnelNormal
