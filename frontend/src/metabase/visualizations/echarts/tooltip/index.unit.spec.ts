@@ -15,6 +15,7 @@ describe("useCloseTooltipOnScroll", () => {
     chartRefMock = {
       current: {
         dispatchAction: jest.fn(),
+        isDisposed: () => false,
       } as unknown as EChartsType,
     };
     jest.clearAllMocks();
