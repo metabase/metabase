@@ -35,12 +35,12 @@ export interface InteractiveQuestionResultProps {
   title?: SdkQuestionTitleProps;
   withResetButton?: boolean;
   withChartTypeSelector?: boolean;
-  height?:
-    | FlexibleSizeProps["height"]
-    | ((
-        visualizationType: CardDisplayType | null,
-      ) => FlexibleSizeProps["height"]);
+  height?: QuestionHeight;
 }
+
+type QuestionHeight =
+  | FlexibleSizeProps["height"]
+  | ((display: CardDisplayType | null) => FlexibleSizeProps["height"]);
 
 export const InteractiveQuestionResult = ({
   height: inputHeight,
