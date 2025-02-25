@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
 import Radio from "metabase/core/components/Radio";
+import CS from "metabase/css/core/index.css";
 import { Stack } from "metabase/ui";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
@@ -189,7 +190,13 @@ export const BaseChartSettings = ({
 
   return (
     <>
-      <Stack data-testid="chartsettings-sidebar" gap={0} {...stackProps}>
+      <Stack
+        data-testid="chartsettings-sidebar"
+        h="100%"
+        gap={0}
+        className={CS.overflowHidden}
+        {...stackProps}
+      >
         {showSectionPicker && (
           <SectionContainer>
             <Radio
