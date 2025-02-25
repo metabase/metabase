@@ -1209,6 +1209,12 @@
   [s]
   (when-not (str/blank? s) s))
 
+(defn safe-min
+  "nil safe clojure.core/min"
+  [& args]
+  (when-let [filtered (seq (remove nil? args))]
+    (apply min filtered)))
+
 #?(:clj
    (defn do-with-timer-ms
      "Impl of `with-timer-ms` for the JVM."
