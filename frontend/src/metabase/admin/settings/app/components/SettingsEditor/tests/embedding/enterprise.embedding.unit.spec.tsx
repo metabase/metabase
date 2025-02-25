@@ -503,7 +503,7 @@ describe("[EE, no token] embedding settings", () => {
       await userEvent.click(
         within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK with React",
           }),
         ).getByRole("button", { name: "Try it out" }),
       );

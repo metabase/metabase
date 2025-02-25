@@ -350,13 +350,13 @@ describe("[EE, with token] embedding settings", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK with React",
           }),
         );
 
         expect(
           withinEmbeddingSdkCard.getByRole("heading", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK with React",
           }),
         ).toBeInTheDocument();
         expect(
@@ -376,7 +376,7 @@ describe("[EE, with token] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedded analytics SDK",
+              name: "Embedded analytics SDK with React",
             }),
           ).getByRole("button", { name: "Configure" }),
         );
