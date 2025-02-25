@@ -156,13 +156,9 @@ module.exports = env => {
         IS_EMBEDDING_SDK: true,
       }),
       new webpack.DefinePlugin({
-        BUILD_TIME: webpack.DefinePlugin.runtimeValue(
-          () => JSON.stringify(new Date().toISOString()),
-          true, // This flag makes it update on each build
-        ),
         "process.env.BUILD_TIME": webpack.DefinePlugin.runtimeValue(
           () => JSON.stringify(new Date().toISOString()),
-          true,
+          true, // This flag makes it update on each build
         ),
       }),
       !skipDTS &&
