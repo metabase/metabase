@@ -1053,6 +1053,22 @@ describe("issue 29378", () => {
   });
 });
 
+function mapModelColumnToDatabase({ table, field }) {
+  cy.findByText("Database column this maps to")
+    .parent()
+    .findByTestId("select-button")
+    .click();
+  H.popover().findByRole("option", { name: table }).click();
+  H.popover().findByRole("option", { name: field }).click();
+  cy.contains(`${table} → ${field}`).should("be.visible");
+  cy.findByDisplayValue(field);
+  cy.findByLabelText("Description").should("not.be.empty");
+}
+
+function selectModelColumn(column) {
+  cy.findAllByTestId("header-cell").contains(column).click();
+}
+
 describe("issue 29517 - nested question based on native model with remapped values", () => {
   const questionDetails = {
     name: "29517",
@@ -1063,21 +1079,6 @@ describe("issue 29517 - nested question based on native model with remapped valu
       "template-tags": {},
     },
   };
-  function mapModelColumnToDatabase({ table, field }) {
-    cy.findByText("Database column this maps to")
-      .parent()
-      .findByTestId("select-button")
-      .click();
-    H.popover().findByRole("option", { name: table }).click();
-    H.popover().findByRole("option", { name: field }).click();
-    cy.contains(`${table} → ${field}`).should("be.visible");
-    cy.findByDisplayValue(field);
-    cy.findByLabelText("Description").should("not.be.empty");
-  }
-
-  function selectModelColumn(column) {
-    cy.findAllByTestId("header-cell").contains(column).click();
-  }
 
   beforeEach(() => {
     H.restore();
@@ -1188,21 +1189,6 @@ describe("issue 53556 - nested question based on native model with remapped valu
       "template-tags": {},
     },
   };
-  function mapModelColumnToDatabase({ table, field }) {
-    cy.findByText("Database column this maps to")
-      .parent()
-      .findByTestId("select-button")
-      .click();
-    H.popover().findByRole("option", { name: table }).click();
-    H.popover().findByRole("option", { name: field }).click();
-    cy.contains(`${table} → ${field}`).should("be.visible");
-    cy.findByDisplayValue(field);
-    cy.findByLabelText("Description").should("not.be.empty");
-  }
-
-  function selectModelColumn(column) {
-    cy.findAllByTestId("header-cell").contains(column).click();
-  }
 
   beforeEach(() => {
     H.restore();
