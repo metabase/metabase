@@ -512,8 +512,8 @@
 (defn- make-formatters
   [columns row-indexes col-indexes val-indexes settings timezone format-rows?]
   {:row-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) row-indexes)
-   :col-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) val-indexes)
-   :val-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) col-indexes)})
+   :col-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) col-indexes)
+   :val-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) val-indexes)})
 
 (defn- build-pivot-output-2
   [{:keys [data2 settings timezone format-rows?] :as pivot} ordered-formatters]
@@ -527,31 +527,31 @@
         subtotal-values (pivot/subtotal-values pivot-data val-indexes)
         {:keys [row-formatters col-formatters val-formatters]} (make-formatters columns row-indexes col-indexes val-indexes settings timezone format-rows?)
         {:keys [columnIndex rowIndex formattedRowTree formattedColumnTree valuesByKey]}
-        (pivot/process-pivot-table pivot-data row-indexes col-indexes val-indexes columns col-formatters row-formatters val-formatters settings col-settings)]
+        (pivot/process-pivot-table pivot-data row-indexes col-indexes val-indexes columns col-formatters row-formatters val-formatters settings col-settings (constantly nil))]))
 
-    (def row-formatters row-formatters)
-    (def col-formatters col-formatters)
-    (def val-formatters val-formatters)
-    (def timezone timezone)
-    (def format-rows? format-rows?)
-    (def pivot pivot)
-    (def data2 data2)
-    (def settings settings)
-    (def ordered-formatters ordered-formatters)
-    (def pivot-data pivot-data)
-    (def columns columns)
-    (def column-split column-split)
-    (def row-indexes row-indexes)
-    (def col-indexes col-indexes)
-    (def val-indexes val-indexes)
-    (def settings settings)
-    (def col-settings col-settings)
-    (def values-by-key values-by-key)
-    (def subtotal-values subtotal-values)
-    (def formattedRowTree formattedRowTree)
-    (def formattedColumnTree formattedColumnTree)
-    (def columnIndex columnIndex)
-    (def rowIndex rowIndex)))
+    ; (def row-formatters row-formatters)
+    ; (def col-formatters col-formatters)
+    ; (def val-formatters val-formatters)
+    ; (def timezone timezone)
+    ; (def format-rows? format-rows?)
+    ; (def pivot pivot)
+    ; (def data2 data2)
+    ; (def settings settings)
+    ; (def ordered-formatters ordered-formatters)
+    ; (def pivot-data pivot-data)
+    ; (def columns columns)
+    ; (def column-split column-split)
+    ; (def row-indexes row-indexes)
+    ; (def col-indexes col-indexes)
+    ; (def val-indexes val-indexes)
+    ; (def settings settings)
+    ; (def col-settings col-settings)
+    ; (def values-by-key values-by-key)
+    ; (def subtotal-values subtotal-values)
+    ; (def formattedRowTree formattedRowTree)
+    ; (def formattedColumnTree formattedColumnTree)
+    ; (def columnIndex columnIndex)
+    ; (def rowIndex rowIndex)))
 
 (defn build-pivot-output
   "Arrange and format the aggregated `pivot` data."
