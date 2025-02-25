@@ -190,4 +190,36 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
       cy.findByText("New question").should("be.visible");
     });
   });
+
+  it("should support dynamic question height in drillThroughQuestionHeight", () => {
+    cy.get("@dashboardId").then(dashboardId => {
+      mountSdkContent(
+        <InteractiveDashboard
+          dashboardId={dashboardId}
+          drillThroughQuestionHeight={({ visualizationType }) =>
+            visualizationType === "bar" ? "300px" : "500px"
+          }
+        />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Orders in a dashboard").should("be.visible");
+      cy.findByText("Orders").click();
+      cy.findByTestId("chart-type-selector-button").click();
+
+      cy.findByRole("menu").within(() => {
+        cy.findByText("Bar").click();
+      });
+
+      cy.findAllByTestId("flexible-size-container")
+        .eq(0)
+        .should($el => {
+          const element = $el[0];
+          const style = window.getComputedStyle(element);
+
+          expect(style.height).to.eq("300px");
+        });
+    });
+  });
 });

@@ -150,13 +150,9 @@ describe(
         mountSdkContent(
           <InteractiveQuestion
             questionId={questionId}
-            height={({ visualizationType }) => {
-              if (visualizationType === "bar") {
-                return "300px";
-              }
-
-              return "500px";
-            }}
+            height={({ visualizationType }) =>
+              visualizationType === "bar" ? "300px" : "500px"
+            }
           />,
         );
       });
@@ -189,13 +185,9 @@ describe(
             <InteractiveQuestion.ChartTypeDropdown />
 
             <InteractiveQuestion.QuestionVisualization
-              height={({ visualizationType }) => {
-                if (visualizationType === "bar") {
-                  return "300px";
-                }
-
-                return "500px";
-              }}
+              height={({ visualizationType }) =>
+                visualizationType === "bar" ? "300px" : "500px"
+              }
             />
           </InteractiveQuestion>,
         );
