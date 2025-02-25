@@ -36,7 +36,7 @@ const NotificationsAppInner = ({
   const { data: questionNotifications = [] } = useListNotificationsQuery(
     user
       ? {
-          recipient_id: user.id,
+          creator_or_recipient_id: user.id,
           include_inactive: false,
         }
       : skipToken,
