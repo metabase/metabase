@@ -28,40 +28,10 @@ import {
   isString,
 } from "metabase-lib/v1/types/utils/isa";
 
-const COMMON_OPERATOR_NAMES = {
-  "is-null": t`is null`,
-  "not-null": t`is not null`,
-};
-
-const NUMBER_OPERATOR_NAMES = {
-  "=": t`is equal to`,
-  "!=": t`is not equal to`,
-  "<": t`is less than`,
-  ">": t`is greater than`,
-  "<=": t`is less than or equal to`,
-  ">=": t`is greater than or equal to`,
-};
-
-const STRING_OPERATOR_NAMES = {
-  "=": t`is equal to`,
-  "!=": t`is not equal to`,
-  contains: t`contains`,
-  "does-not-contain": t`does not contain`,
-  "starts-with": t`starts with`,
-  "ends-with": t`ends with`,
-};
-
-const BOOLEAN_OPERATIOR_NAMES = {
-  "is-true": t`is true`,
-  "is-false": t`is false`,
-};
-
-export const ALL_OPERATOR_NAMES = {
-  ...NUMBER_OPERATOR_NAMES,
-  ...STRING_OPERATOR_NAMES,
-  ...BOOLEAN_OPERATIOR_NAMES,
-  ...COMMON_OPERATOR_NAMES,
-};
+import {
+  ALL_OPERATOR_NAMES,
+  getOperatorsForColumns,
+} from "./get-operators-for-columns";
 
 // TODO
 const COLORS = getAccentColors({ dark: false });
@@ -334,19 +304,14 @@ const RuleEditor = ({
   onRemove,
   canHighlightRow = true,
 }) => {
-  const selectedColumns = rule.columns.map(name => _.findWhere(cols, { name }));
-  const hasBooleanRule =
-    selectedColumns.length > 0 && selectedColumns.some(isBoolean);
-  const isBooleanRule =
-    selectedColumns.length > 0 && selectedColumns.every(isBoolean);
-  const isStringRule =
-    !hasBooleanRule &&
-    selectedColumns.length > 0 &&
-    selectedColumns.every(isString);
-  const isNumericRule =
-    !hasBooleanRule &&
-    selectedColumns.length > 0 &&
-    selectedColumns.every(isNumeric);
+  const selectedColumns = useMemo(
+    () => rule.columns.map(name => _.findWhere(cols, { name })),
+    [rule.columns, cols],
+  );
+  const { operators, isNumericRule, isKeyRule, isFieldDisabled } = useMemo(
+    () => getOperatorsForColumns(selectedColumns),
+    [selectedColumns],
+  );
 
   const hasOperand =
     rule.operator !== "is-null" &&
@@ -379,17 +344,13 @@ const RuleEditor = ({
           <Option
             key={col.name}
             value={col.name}
-            disabled={
-              (isStringRule && (!isString(col) || isBoolean(col))) ||
-              (isNumericRule && !isNumeric(col)) ||
-              (isBooleanRule && !isBoolean(col))
-            }
+            disabled={isFieldDisabled(col)}
           >
             {col.display_name}
           </Option>
         ))}
       </Select>
-      {isNumericRule && (
+      {isNumericRule && !isKeyRule && (
         <div>
           <h3 className={cx(CS.mt3, CS.mb1)}>{t`Formatting style`}</h3>
           <Radio
@@ -421,22 +382,13 @@ const RuleEditor = ({
               "data-testid": "conditional-formatting-value-operator-button",
             }}
           >
-            {Object.entries({
-              ...COMMON_OPERATOR_NAMES,
-              ...(isBooleanRule
-                ? BOOLEAN_OPERATIOR_NAMES
-                : isNumericRule
-                  ? NUMBER_OPERATOR_NAMES
-                  : isStringRule
-                    ? STRING_OPERATOR_NAMES
-                    : {}),
-            }).map(([operator, operatorName]) => (
+            {Object.entries(operators).map(([operator, operatorName]) => (
               <Option key={operatorName} value={operator}>
                 {operatorName}
               </Option>
             ))}
           </Select>
-          {hasOperand && isNumericRule ? (
+          {hasOperand && isNumericRule && !isKeyRule ? (
             <NumericInput
               data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
