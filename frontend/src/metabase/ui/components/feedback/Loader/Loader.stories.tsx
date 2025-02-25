@@ -31,7 +31,7 @@ const SizeTemplate = () => (
 );
 
 export default {
-  title: "Feedback/Loader",
+  title: "Components/Feedback/Loader",
   component: Loader,
   args,
   argTypes,

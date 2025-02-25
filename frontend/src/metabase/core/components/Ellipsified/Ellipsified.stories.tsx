@@ -12,7 +12,7 @@ const testLabels = [
 ];
 
 export default {
-  title: "Core/Ellipsified",
+  title: "Deprecated/Components/Ellipsified",
   component: Ellipsified,
 };
 

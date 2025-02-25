@@ -93,16 +93,19 @@ describe("scenarios > question > summarize sidebar", () => {
       toBinning: "10 bins",
     });
 
-    H.getDimensionByName({ name: "Total" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-    H.getDimensionByName({ name: "Quantity" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
+    H.getDimensionByName({ name: "Total" })
+      .scrollIntoView()
+      .should("have.attr", "aria-selected", "true")
+      .findByLabelText("Binning strategy")
+      .should("be.visible");
+    H.getDimensionByName({ name: "Quantity" })
+      .should("have.attr", "aria-selected", "true")
+      .findByLabelText("Binning strategy")
+      .should("be.visible");
+    H.getDimensionByName({ name: "Discount" }).within(() => {
+      cy.button("Add dimension").realHover();
+      cy.findByLabelText("Binning strategy").should("be.visible");
+    });
   });
 
   it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
