@@ -10,7 +10,7 @@ The SDK stable version tracks with the Metabase version.
 
 So, for example, if you're on Metabase 53 (`0.53.x`, `1.53.x`), _any_ version 0.53.x of the @metabase/embedding-sdk-react npm package will be compatible.
 
-To simplify things, we publish dist-tags for each stable Metabase version, starting from Metabase 53,`53-stable`. To install the latest version of the SDK compatible with Metabase 53, run:
+To simplify things, we publish dist-tags for each stable Metabase version. For example, to install the latest version of the SDK compatible with Metabase 53, run:
 
 ```sh
 npm install @metabase/embedding-sdk-react@53-stable

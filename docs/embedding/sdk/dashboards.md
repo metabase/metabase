@@ -36,7 +36,7 @@ You can embed a dashboard using the one of the dashboard components:
 
 _\* Not available for `StaticDashboard`._
 
-_\*\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParaters` to declutter the user interface is fine._
+_\*\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParameters` to declutter the user interface is fine._
 
 By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
 
@@ -98,9 +98,7 @@ with the custom view as the child component.
 const QuestionView = () => <InteractiveQuestion.Title />;
 ```
 
-The questionView prop accepts a React component that will be rendered in the question view, which
-you can build with namespaced components within the `InteractiveQuestion` component.
-See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
+The questionView prop accepts a React component that will be rendered in the question view, which you can build with namespaced components within the `InteractiveQuestion` component. See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
 
 ## Dashboard plugins
 
@@ -127,7 +125,7 @@ const plugins = {
 ```typescript
 {% raw %}
 <InteractiveDashboard
-  questionId={1}
+  dashboardId={1}
   plugins={{
     dashboard: {
       dashcardMenu: null,

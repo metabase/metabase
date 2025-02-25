@@ -12,7 +12,7 @@ With the Embedded analytics SDK, you can embed individual Metabase components wi
 
 To give you an idea of what's possible with the SDK, we've put together example sites at [metaba.se/sdk-demo](https://metaba.se/sdk-demo). Navigate between different shop websites. Check them out and poke around their products and analytics sections, as well as the New Question and New Dashboard options.
 
-![Pug and play example app built with embedding SDK](../images/pug-and-play.png)
+![Pug and play example app built with embedded analytics SDK](../images/pug-and-play.png)
 
 Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
@@ -65,9 +65,9 @@ Start with one of the quickstarts, then see these pages for more info on compone
 - [Versioning](./version.md)
 - [Notes on Next.js](./next-js.md)
 
-## Embedding SDK source code
+## Embedded analytics SDK source code
 
-You can find the [embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
+You can find the [Embedded analytics SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
 
 ## Changelog
 
