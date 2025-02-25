@@ -395,6 +395,7 @@ function Dashboard(props: DashboardProps) {
         downloadsEnabled={downloadsEnabled}
         autoScrollToDashcardId={autoScrollToDashcardId}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
+        handleSetEditing={handleSetEditing}
       />
     );
   };

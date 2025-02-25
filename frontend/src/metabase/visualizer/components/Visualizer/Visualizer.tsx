@@ -44,9 +44,11 @@ interface VisualizerProps {
   className?: string;
   onSave?: (visualization: VisualizerHistoryItem) => void;
   style?: CSSProperties;
+  saveLabel?: string;
 }
 
-export const Visualizer = ({ className, onSave, style }: VisualizerProps) => {
+export const Visualizer = (props: VisualizerProps) => {
+  const { className, onSave, style, saveLabel } = props;
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const display = useSelector(getVisualizationType);
@@ -133,7 +135,7 @@ export const Visualizer = ({ className, onSave, style }: VisualizerProps) => {
         h="100%"
         style={style}
       >
-        <Header onSave={onSave} />
+        <Header onSave={onSave} saveLabel={saveLabel} />
         <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
           {!isFullscreen && (
             <Flex direction="column" miw={320}>
