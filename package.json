@@ -43,6 +43,7 @@
     "@visx/scale": "^3.5.0",
     "@visx/shape": "^3.5.0",
     "@visx/text": "^3.3.0",
+    "@xiechao/codemirror-lang-handlebars": "^1.0.4",
     "ace-builds": "^1.4.14",
     "bowser": "^2.11.0",
     "buffer": "^6.0.3",
