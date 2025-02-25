@@ -18,14 +18,14 @@ To set up JWT SSO with Metabase and your app, you'll need to:
 
 1. [Enable JWT SSO in your Metabase](#1-enable-jwt-sso-in-your-metabase)
 2. [Add a new endpoint to your backend to handle authentication](#2-add-a-new-endpoint-to-your-backend-to-handle-authentication)
-3. [Wire the SDK in your frontend to your new endpoint](#3-wire-the-sdk-in-your-frontent-to-your-new-endpoint)
+3. [Wire the SDK in your frontend to your new endpoint](#3-wire-the-sdk-in-your-frontend-to-your-new-endpoint)
 
 ### 1. Enable JWT SSO in your Metabase
 
-1. Configure JWT by going to  **Admin Settings** > **Settings** > **Authentication** and clicking on **Setup**
+1. Configure JWT by going to **Admin Settings** > **Settings** > **Authentication** and clicking on **Setup**
 2. Generate a key and copy it to your clipboard.
 
-### 3. Add a new endpoint to your backend to handle authentication
+### 2. Add a new endpoint to your backend to handle authentication
 
 You'll need add a library to your backend to sign your JSON Web Tokens.
 
@@ -45,13 +45,12 @@ const jwt = require("jsonwebtoken");
 const fetch = require("node-fetch");
 
 // Replace this with your Metabase URL
-const METABASE_INSTANCE_URL = "YOUR_METABASE_URL_HERE"
+const METABASE_INSTANCE_URL = "YOUR_METABASE_URL_HERE";
 // Replace this with the JWT signing secret you generated when enabling
 // JWT SSO in your Metabase.
-const METABASE_JWT_SHARED_SECRET = "YOUR_SECRET_HERE"
+const METABASE_JWT_SHARED_SECRET = "YOUR_SECRET_HERE";
 
 app.get("/sso/metabase", async (req, res) => {
-
   // Usually, you would grab the user from the current session
   // Here it's hardcoded for demonstration purposes
   // Example:
@@ -60,15 +59,15 @@ app.get("/sso/metabase", async (req, res) => {
     email: "rene@example.com",
     firstName: "Rene",
     lastName: "Descartes",
-    group: "Customer"
-  }
+    group: "Customer",
+  };
 
   if (!user) {
     console.log("no user");
     return res.status(401).json({
-      status: 'error',
-      message: 'not authenticated',
-    })
+      status: "error",
+      message: "not authenticated",
+    });
   }
 
   const token = jwt.sign(
@@ -79,27 +78,27 @@ app.get("/sso/metabase", async (req, res) => {
       groups: [user.group],
       exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
     },
-    METABASE_JWT_SHARED_SECRET
-  )
-  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`
-  console.log('Hitting MB SSO endpoint', ssoUrl);
+    METABASE_JWT_SHARED_SECRET,
+  );
+  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
+  console.log("Hitting MB SSO endpoint", ssoUrl);
 
   try {
-    const response = await fetch(ssoUrl, { method: 'GET' })
-    const session = await response.text()
+    const response = await fetch(ssoUrl, { method: "GET" });
+    const session = await response.text();
 
-    console.log("Received session", session)
-    return res.status(200).set("Content-Type", "application/json").end(session)
+    console.log("Received session", session);
+    return res.status(200).set("Content-Type", "application/json").end(session);
   } catch (error) {
     if (error instanceof Error) {
       res.status(401).json({
-        status: 'error',
-        message: 'authentication failed',
+        status: "error",
+        message: "authentication failed",
         error: error.message,
-      })
+      });
     }
   }
-})
+});
 
 const app = express();
 ```
@@ -115,22 +114,7 @@ const authConfig = defineMetabaseAuthConfig({
 });
 ```
 
-(Optional) If you use headers instead of cookies to authenticate calls from your frontend to your backend, you'll need to use a custom fetch function:
-
-```js
-const authConfig = defineMetabaseAuthConfig({
-  fetchRequestToken: async (url) => {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${yourToken}` },
-    });
-
-    return await response.json();
-  },
-  metabaseInstanceUrl: "http://localhost:3000",
-  authProviderUri: "http://localhost:9090/sso/metabase",
-});
-```
+(Optional) If you use headers instead of cookies to authenticate calls from your frontend to your backend, you'll need to use a [custom fetch function](#customizing-jwt-authentication).
 
 ## If your frontend and backend don't share a domain, you need to enable CORS
 
@@ -188,29 +172,23 @@ if (auth.status === "success") {
 
 ## Customizing JWT authentication
 
-You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function in the `config` prop:
+You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function with the `defineMetabaseAuthConfig` function:
 
 ```typescript
-/**
- * This is the default implementation used in the SDK.
- * You can customize this function to fit your needs, such as adding headers or excluding cookies.
-
- * The function must return a JWT token object, or return "null" if the user is not authenticated.
-
- * @returns {Promise<{id: string, exp: number} | null>}
- */
-async function fetchRequestToken(url) {
-  const response = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-  });
-
-  return await response.json();
-}
-
 // Pass this configuration to MetabaseProvider.
 // Wrap the fetchRequestToken function in useCallback if it has dependencies to prevent re-renders.
-const config = { fetchRequestToken };
+const authConfig = defineMetabaseAuthConfig({
+  fetchRequestToken: async url => {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${yourToken}` },
+    });
+
+    return await response.json();
+  },
+  metabaseInstanceUrl: "http://localhost:3000",
+  authProviderUri: "http://localhost:9090/sso/metabase",
+});
 ```
 
 ## Security warning: each end-user _must_ have their own Metabase account
