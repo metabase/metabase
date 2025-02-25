@@ -50,6 +50,7 @@ interface AlertIconProps {
 }
 
 export const AlertIcon = styled(Icon)<AlertIconProps>`
+  box-sizing: content-box;
   flex-shrink: 0;
   padding: 0.5rem 1rem 0.5rem 0.5rem;
   color: ${props => colorsByVariant.icon[props.variant]};

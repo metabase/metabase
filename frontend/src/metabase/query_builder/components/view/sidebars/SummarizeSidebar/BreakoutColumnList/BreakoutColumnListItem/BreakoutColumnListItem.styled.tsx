@@ -1,7 +1,7 @@
 import { type Theme, css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
+import BucketPickerPopoverStyle from "metabase/common/components/QueryColumnPicker/BucketPickerPopover/BaseBucketPickerPopover.module.css";
 import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Button from "metabase/core/components/Button";
 import { alpha } from "metabase/lib/colors";
@@ -12,7 +12,7 @@ export const Content = styled.div`
   align-items: center;
   border-radius: 6px;
 
-  ${BucketPickerPopover.TriggerButton} {
+  .${BucketPickerPopoverStyle.triggerButton} {
     height: 100%;
   }
 `;
@@ -75,19 +75,20 @@ const getSelectedStyle = (theme: Theme) => css`
     color: var(--mb-color-text-white);
   }
 
-  ${BucketPickerPopover.TriggerButton} {
+  .${BucketPickerPopoverStyle.triggerButton} {
+    visibility: visible;
     opacity: 1;
     color: ${alpha(theme.fn.themeColor("text-white"), 0.65)};
   }
 
-  ${BucketPickerPopover.TriggerButton}:hover {
+  .${BucketPickerPopoverStyle.triggerButton}:hover {
     color: var(--mb-color-text-white);
     opacity: 1;
   }
 `;
 
 const unselectedStyle = css`
-  ${BucketPickerPopover.TriggerButton} {
+  .${BucketPickerPopoverStyle.triggerButton} {
     opacity: 0;
     color: var(--mb-color-text-light);
   }
@@ -108,12 +109,13 @@ const unselectedStyle = css`
       background-color: var(--mb-color-bg-medium);
     }
 
-    ${BucketPickerPopover.TriggerButton} {
+    .${BucketPickerPopoverStyle.triggerButton} {
+      visibility: visible;
       opacity: 1;
       color: var(--mb-color-text-light);
     }
 
-    ${BucketPickerPopover.TriggerButton}:hover {
+    .${BucketPickerPopoverStyle.triggerButton}:hover {
       color: var(--mb-color-text-medium);
     }
   }

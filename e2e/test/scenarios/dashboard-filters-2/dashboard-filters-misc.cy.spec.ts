@@ -66,6 +66,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
       H.popover()
         .findByLabelText("Created At")
         .findByLabelText("Temporal bucket")
+        .realHover()
         .click();
       H.popover().last().findByText("Week").click();
       H.getNotebookStep("summarize")
