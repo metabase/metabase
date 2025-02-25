@@ -470,7 +470,11 @@
                              (:dashboard_id changes)))]
     (when will-be-dq?
       (cond
-        (not (or *updating-dashboard* (not (api/column-will-change? :collection_id card changes))))
+        (not (or *updating-dashboard*
+                 ;; if the `dashboard_id` is changing, allow specifying a `collection_id`. Note that if it's different
+                 ;; than the actual `collection_id` of the new dashboard we're moving to, it will be ignored.
+                 dq-will-change?
+                 (not (api/column-will-change? :collection_id card changes))))
         (tru "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question")
         (api/column-will-change? :collection_position card changes)
         (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
