@@ -34,7 +34,7 @@
   "List notifications. See `GET /` for parameters."
   [{:keys [creator_id creator_or_recipient_id recipient_id card_id payload_type include_inactive legacy-active legacy-user-id]}]
   (->> (t2/reducible-select :model/Notification
-                            (cond-> {}
+                            (cond-> {:select-distinct [:notification.*]}
                               creator_id
                               (sql.helpers/where [:= :notification.creator_id creator_id])
 

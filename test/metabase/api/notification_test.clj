@@ -683,7 +683,9 @@
       (notification.tu/with-card-notification [{rasta-noti :id} {:notification {:creator_id (mt/user->id :rasta)}
                                                                  :handlers     [{:channel_type "channel/email"
                                                                                  :recipients   [{:type    :notification-recipient/user
-                                                                                                 :user_id (mt/user->id :lucky)}]}]}]
+                                                                                                 :user_id (mt/user->id :lucky)}
+                                                                                                {:type    :notification-recipient/user
+                                                                                                 :user_id (mt/user->id :rasta)}]}]}]
         (notification.tu/with-card-notification [{lucky-noti :id} {:notification {:creator_id (mt/user->id :lucky)}
                                                                    :handlers     [{:channel_type "channel/email"
                                                                                    :recipients   [{:type    :notification-recipient/user
@@ -693,10 +695,10 @@
                     (->> (apply mt/user-http-request user :get 200 "notification" params)
                          (map :id)
                          (filter #{rasta-noti lucky-noti})
-                         set))]
+                         sort))]
 
             (testing "return notifications where user is either creator or recipient"
-              (is (= #{rasta-noti lucky-noti}
+              (is (= (sort [rasta-noti lucky-noti])
                      (get-notification-ids :crowberto :creator_or_recipient_id (mt/user->id :rasta)))))))))))
 
 (deftest list-notifications-card-filter-test
