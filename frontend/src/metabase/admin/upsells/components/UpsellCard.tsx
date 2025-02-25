@@ -97,7 +97,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
             {children}
           </Text>
           <Box mx="md" mb="lg">
-            {buttonLink ? (
+            {buttonLink !== undefined ? (
               <ExternalLink
                 onClickCapture={() => trackUpsellClicked({ source, campaign })}
                 href={url}
@@ -108,7 +108,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
             ) : (
               <Link
                 onClickCapture={() => trackUpsellClicked({ source, campaign })}
-                to={internalLink as string}
+                to={internalLink}
                 className={S.UpsellCTALink}
               >
                 {buttonText}
