@@ -4,16 +4,15 @@ title: Embedded analytics SDK - quickstart with sample app
 
 # Embedded analytics SDK - quickstart with sample app
 
-{% include beta-blockquote.html %}
-
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 This guide sets up the embedded analytics SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample), but you can follow along with your own application.
 
 ## Prerequisites
 
-- [Metabase](https://www.metabase.com/docs/latest/releases) version 52 or higher (OSS or EE). See [Installing Metabase](../../installation-and-operation/installing-metabase.md).
-- An application using React 17 or 18. (You could also use the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample))
+- [Node.js 20.x LTS or higher](https://nodejs.org/en) (for the sample application).
+- [Metabase version v1.52 or higher](https://www.metabase.com/docs/latest/releases).
+- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a licences, check out [this quickstart](./quickstart.md))
 
 ## Overview of the quickstart
 
@@ -116,15 +115,15 @@ In the sample app's main directory, copy the `.env.example` template to `.env`.
 cp .env.example .env
 ```
 
-In `.env`, make sure `REACT_APP_METABASE_INSTANCE_URL` and `METABASE_INSTANCE_URL` point to your Metabase instance URL, e.g., `http://localhost:3000`.
+In `.env`, make sure `VITE_METABASE_INSTANCE_URL` and `METABASE_INSTANCE_URL` point to your Metabase instance URL, e.g., `http://localhost:3000`.
 
 Your `.env` will look something like:
 
 ```txt
 # FRONTEND
 PORT=3100
-REACT_APP_METABASE_INSTANCE_URL="http://localhost:3000"
-REACT_APP_AUTH_PROVIDER_URI="http://localhost:9090/sso/metabase"
+VITE_METABASE_INSTANCE_URL="http://localhost:3000"
+VITE_AUTH_PROVIDER_URI="http://localhost:9090/sso/metabase"
 
 # BACKEND
 BACKEND_PORT=9090
@@ -154,18 +153,6 @@ npm start
 
 ## Set up the client application
 
-Change into the `client` directory.
-
-Install packages:
-
-```sh
-npm install
-```
-
-This command will install the [Metabase embedded analytics SDK](https://www.npmjs.com/package/@metabase/embedding-sdk-react), in addition to the application's other dependencies.
-
-## Start the client
-
 In a different terminal, change into the `client` directory:
 
 ```sh
@@ -177,6 +164,10 @@ Install dependencies:
 ```sh
 npm install
 ```
+
+This command will install the [Metabase embedded analytics SDK](https://www.npmjs.com/package/@metabase/embedding-sdk-react), in addition to the application's other dependencies.
+
+You can also install a [different version of the SDK](./version.md). Just make sure that the major version of the SDK matches the major version of the Metabase you're using.
 
 Start the client app:
 
@@ -196,6 +187,6 @@ In your app, you'll see an embedded `InteractiveQuestion` component.
 </MetabaseProvider>
 ```
 
-![Embedded Metabase components](../images/embedded-components.png)
+![Embedded Metabase components](../images/interactive-question-sample-app.png)
 
 Try changing some of the `theme` options in the [client app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/blob/main/client/src/App.jsx) to style the components.
