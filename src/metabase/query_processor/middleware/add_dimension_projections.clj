@@ -41,7 +41,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.middleware.large-int-id :as-alias large-int-id]
+   [metabase.query-processor.middleware.large-int :as-alias large-int]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -399,7 +399,7 @@
   "Converts `values` to a type compatible with the `base-type` found for `col`. These values should be directly
   comparable with the values returned from the database for the given `col`.
 
-  When `large-int-id` has converted a would-be `BigInteger` column to strings, `stringified?` is truthy; in that case
+  When `large-int` has converted a would-be `BigInteger` column to strings, `stringified?` is truthy; in that case
   the values are further transformed to strings."
   [{:keys [base-type]} values stringified?]
   (let [transform (condp #(isa? %2 %1) base-type
@@ -442,7 +442,7 @@
     :as                                                    col} :- ColumnMetadataWithOptionalBaseType]
   (when (seq values)
     (let [remap-from       (:name col)
-          stringified-mask (qp.store/miscellaneous-value [::large-int-id/field-index-mask])]
+          stringified-mask (qp.store/miscellaneous-value [::large-int/column-index-mask])]
       {:col-index       idx
        :from            remap-from
        :to              remap-to
