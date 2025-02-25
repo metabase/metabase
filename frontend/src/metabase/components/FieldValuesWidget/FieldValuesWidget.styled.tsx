@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";

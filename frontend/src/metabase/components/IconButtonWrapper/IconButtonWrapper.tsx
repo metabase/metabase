@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 const IconButtonWrapper = styled.button<{ circle?: boolean }>`
