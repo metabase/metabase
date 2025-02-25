@@ -1,10 +1,12 @@
 import { syntaxHighlighting } from "@codemirror/language";
 import CodeMirror from "@uiw/react-codemirror";
+import cx from "classnames";
 import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 
+import S from "./CodeBlock.module.css";
 import type { CodeLanguage } from "./types";
 import { getLanguageExtension } from "./util";
 
@@ -14,7 +16,7 @@ export type CodeBlockProps = {
   className?: string;
 };
 
-export function CodeBlock({ code, language, ...props }: CodeBlockProps) {
+export function CodeBlock({ code, language, className }: CodeBlockProps) {
   const extensions = useMemo(
     () =>
       [
@@ -25,6 +27,14 @@ export function CodeBlock({ code, language, ...props }: CodeBlockProps) {
   );
 
   return (
-    <CodeMirror value={code} extensions={extensions} readOnly {...props} />
+    <CodeMirror
+      basicSetup={{
+        lineNumbers: true,
+      }}
+      value={code}
+      extensions={extensions}
+      readOnly
+      className={cx(S.codeBlock, className, language)}
+    />
   );
 }
