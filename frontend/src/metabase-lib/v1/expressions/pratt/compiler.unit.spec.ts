@@ -1,8 +1,18 @@
-import { compile } from "./common";
+import { getMBQLName } from "../config";
+import * as passes from "../passes";
+
+import { compile, lexify, parse } from ".";
 
 describe("pratt/compiler", () => {
   function expr(source: string) {
-    return compile(source);
+    const ast = parse(lexify(source), {
+      throwOnError: true,
+    });
+
+    return compile(ast.root, {
+      passes: Object.values(passes),
+      getMBQLName,
+    });
   }
 
   describe("(for an expression)", () => {
