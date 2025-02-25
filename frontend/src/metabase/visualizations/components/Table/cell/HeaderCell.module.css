@@ -18,7 +18,6 @@
   text-overflow: ellipsis;
   color: var(--mb-color-brand);
   border-radius: 5px;
-  cursor: pointer;
   overflow: auto;
   outline: none;
 }
@@ -26,6 +25,7 @@
 .light .content {
   transition: background-color 200ms ease-in-out;
   background-color: var(--mb-base-color-brand-10);
+  cursor: pointer;
 }
 
 .light .content:hover {
