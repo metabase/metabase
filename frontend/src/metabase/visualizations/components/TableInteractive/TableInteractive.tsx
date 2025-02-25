@@ -12,7 +12,12 @@ import {
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
+import {
+  memoize,
+  useMemoizedCallback,
+} from "metabase/hooks/use-memoized-callback";
 import { formatValue } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
 import {
@@ -40,7 +45,7 @@ import type {
   QueryClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { OrderByDirection } from "metabase-lib/types";
+import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -51,13 +56,9 @@ import type {
 } from "metabase-types/api";
 
 import S from "./TableInteractive.module.css";
-import { useObjectDetail } from "./hooks/use-object-detail";
-import { MiniBarCell } from "./cells/MiniBarCell";
 import { HeaderCellWithColumnInfo } from "./cells/HeaderCellWithColumnInfo";
-import {
-  memoize,
-  useMemoizedCallback,
-} from "metabase/hooks/use-memoized-callback";
+import { MiniBarCell } from "./cells/MiniBarCell";
+import { useObjectDetail } from "./hooks/use-object-detail";
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -106,21 +107,22 @@ const getColumnSizing = (
 
 export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   {
+    className,
     data,
     series,
     height,
     settings,
     width,
-    onVisualizationClick,
-    onUpdateVisualizationSettings,
     isPivoted = false,
-    getColumnSortDirection,
     question,
     clicked,
     getColumnTitle,
     hasMetadataPopovers = true,
     mode,
-    className,
+    visualizationIsClickable,
+    getColumnSortDirection,
+    onVisualizationClick,
+    onUpdateVisualizationSettings,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -146,6 +148,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
   const onOpenObjectDetail = useObjectDetail(data);
 
+  const getIsCellClickable = useMemoizedCallback(
+    (clicked: ClickObject) => {
+      return visualizationIsClickable(clicked);
+    },
+    [onVisualizationClick, visualizationIsClickable],
+  );
+
   const getCellClickedObject = useMemoizedCallback(
     (datasetColumnIndex: number, rowIndex: number) => {
       const clickedRowData = getTableClickedObjectRowData(
@@ -170,6 +179,24 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [series, isPivoted, data, settings],
   );
 
+  const columnFormatters = useMemo(() => {
+    return cols.map(col => {
+      const columnSettings = settings.column?.(col);
+      const columnIndex = cols.findIndex(c => c.name === col.name);
+
+      return memoize((value, rowIndex) => {
+        const clicked = getCellClickedObject(columnIndex, rowIndex);
+        return formatValue(value, {
+          ...columnSettings,
+          type: "cell",
+          jsx: true,
+          rich: true,
+          clicked,
+        });
+      });
+    });
+  }, [cols, settings, getCellClickedObject]);
+
   const handleBodyCellClick = useCallback(
     (
       event: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -186,22 +213,29 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       }
 
       const columnIndex = data.cols.findIndex(col => col.name === columnId);
-
+      const formatter = columnFormatters[columnIndex];
+      const formattedValue = formatter(
+        data.rows[rowIndex][columnIndex],
+        rowIndex,
+      );
       const clicked = getCellClickedObject(columnIndex, rowIndex);
 
-      onVisualizationClick?.({
-        ...clicked,
-        element: event.currentTarget,
-      });
+      const isLink = (formattedValue as any)?.type === ExternalLink;
+      if (getIsCellClickable(clicked) && !isLink) {
+        onVisualizationClick?.({
+          ...clicked,
+          element: event.currentTarget,
+        });
+      }
     },
     [
       data,
       isPivoted,
+      columnFormatters,
+      getIsCellClickable,
+      getCellClickedObject,
       onOpenObjectDetail,
       onVisualizationClick,
-      series,
-      settings,
-      getCellClickedObject,
     ],
   );
 
@@ -231,7 +265,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const handleColumnReordering = useCallback(
     (columnsOrder: string[]) => {
       const result = settings["table.columns"]?.slice() ?? [];
-      const columnSizes = settings["table.column_widths"];
 
       const enabledIndices = result
         .map((col, index) => (col.enabled ? index : -1))
@@ -256,10 +289,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const settingsUpdate = {
         "table.columns": result,
       };
-
-      // should it be cols.length?
-      if (columnSizes != null && columnSizes.length === cols.length) {
-      }
 
       onUpdateVisualizationSettings(settingsUpdate);
     },
@@ -291,24 +320,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       }
     }
   }, [isRawTable, mode, onVisualizationClick, question]);
-
-  const columnFormatters = useMemo(() => {
-    return cols.map(col => {
-      const columnSettings = settings.column?.(col);
-      const columnIndex = data.cols.findIndex(c => c.name === col.name);
-
-      return memoize((value, rowIndex) => {
-        const clicked = getCellClickedObject(columnIndex, rowIndex);
-        return formatValue(value, {
-          ...columnSettings,
-          type: "cell",
-          jsx: true,
-          rich: true,
-          clicked,
-        });
-      });
-    });
-  }, [cols, settings, getCellClickedObject]);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((col, columnIndex) => {
@@ -345,7 +356,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         header: () => {
           return (
             <HeaderCellWithColumnInfo
-              infoPopoversDisabled={!hasMetadataPopovers || clicked != null}
+              infoPopoversDisabled={!hasMetadataPopovers}
               timezone={data.requested_timezone}
               question={question}
               column={col}
@@ -376,6 +387,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
           return (
             <MiniBarCell
+              rowIndex={row.index}
+              columnId={id}
               align={align}
               backgroundColor={backgroundColor}
               value={value}
@@ -390,13 +403,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     });
   }, [
     hasMetadataPopovers,
-    data.requested_timezone,
+    data,
     question,
     mode,
     cols,
-    columnFormatters,
     getColumnSortDirection,
     getColumnTitle,
+    columnFormatters,
     isPivoted,
     rows,
     settings,

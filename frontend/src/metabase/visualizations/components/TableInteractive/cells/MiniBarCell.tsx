@@ -4,8 +4,8 @@ import CS from "metabase/css/core/index.css";
 import { alpha, color } from "metabase/lib/colors";
 
 import type { CellAlign, CellFormatter } from "../../Table";
-
 import { BaseCell } from "../../Table";
+
 import S from "./MiniBarCell.module.css";
 
 const BAR_HEIGHT = 8;
@@ -20,6 +20,8 @@ export interface MiniBarCellProps<TValue> {
   formatter: CellFormatter<TValue>;
   backgroundColor?: string;
   align?: CellAlign;
+  rowIndex: number;
+  columnId: string;
 }
 
 export const MiniBarCell = <TValue,>({
@@ -28,6 +30,8 @@ export const MiniBarCell = <TValue,>({
   formatter,
   backgroundColor,
   align,
+  rowIndex,
+  columnId,
 }: MiniBarCellProps<TValue>) => {
   if (typeof value !== "number") {
     return null;
@@ -74,7 +78,7 @@ export const MiniBarCell = <TValue,>({
         className={cx(CS.textEllipsis, CS.textBold, CS.textRight, CS.flexFull)}
         style={{ minWidth: LABEL_MIN_WIDTH }}
       >
-        {formatter(value)}
+        {formatter(value, rowIndex, columnId)}
       </div>
       {/* OUTER CONTAINER BAR */}
       <div
