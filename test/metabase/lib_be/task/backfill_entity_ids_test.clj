@@ -26,13 +26,8 @@
         :table table
         :field1 field1
         :field2 field2
-        :field3 field3})))
-
-(defn reset-failed-rows-fixture! [f]
-  (f)
+        :field3 field3}))
   (backfill-entity-ids/reset-failed-rows!))
-
-(clojure.test/use-fixtures :each reset-failed-rows-fixture!)
 
 (deftest ^:synchronized backfill-databases-test
   (testing "Can backfill databases"
