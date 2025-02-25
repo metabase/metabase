@@ -3,7 +3,7 @@
 import type { Expression } from "metabase-types/api";
 
 import { dataForFormatting, query } from "../__support__/shared";
-import { processSource } from "../process";
+import { compileExpression } from "../compiler";
 
 import { format } from "./formatter";
 
@@ -20,16 +20,16 @@ function setup(printWidth: number, startRule: string = "expression") {
       };
 
       const source = dedent(expr);
-      const { expression: mbql, compileError } = processSource({
+      const res = compileExpression({
         ...options,
         source,
       });
 
-      if (!mbql || compileError) {
-        throw new Error(`Cannot compile expression: ${compileError?.message}`);
+      if ("error" in res) {
+        throw res.error;
       }
 
-      const result = await format(mbql, {
+      const result = await format(res.expression, {
         ...options,
         printWidth,
       });
