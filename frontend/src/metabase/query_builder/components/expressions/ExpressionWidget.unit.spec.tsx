@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 
@@ -49,7 +49,7 @@ describe("ExpressionWidget", () => {
   });
 
   it("should trigger onChangeClause if expression is valid", async () => {
-    const { getRecentExpressionClauseInfo, onChangeClause } = setup();
+    const { getRecentExpressionClauseInfo, onChangeClause } = await setup();
 
     const doneButton = screen.getByRole("button", { name: "Done" });
     expect(doneButton).toBeDisabled();
@@ -93,7 +93,7 @@ describe("ExpressionWidget", () => {
 
     it("should validate name value", async () => {
       const clause = Lib.expressionClause("+", [1, 1]);
-      const { getRecentExpressionClauseInfo, onChangeClause } = setup({
+      const { getRecentExpressionClauseInfo, onChangeClause } = await setup({
         withName: true,
         clause,
       });
@@ -105,7 +105,8 @@ describe("ExpressionWidget", () => {
 
       expect(doneButton).toBeDisabled();
 
-      await userEvent.type(screen.getByDisplayValue("1 + 1"), "{enter}");
+      const input = await screen.findByDisplayValue("1 + 1");
+      await userEvent.type(input, "{enter}");
 
       // enter in expression editor should not trigger "onChangeClause"
       // as popover is not valid with empty "name"
@@ -145,7 +146,7 @@ describe("ExpressionWidget", () => {
 
   describe("startRule = 'aggregation'", () => {
     it("should show 'unknown metric' error if the identifier is not recognized as a dimension (metabase#50753)", async () => {
-      setup({ startRule: "aggregation" });
+      await setup({ startRule: "aggregation" });
 
       await userEvent.paste("[Imaginary]");
       await userEvent.tab();
@@ -157,7 +158,7 @@ describe("ExpressionWidget", () => {
     });
 
     it("should show 'no aggregation found' error if the identifier is recognized as a dimension (metabase#50753)", async () => {
-      setup({ startRule: "aggregation" });
+      await setup({ startRule: "aggregation" });
 
       await userEvent.paste("[Total] / [Subtotal]");
       await userEvent.tab();
@@ -175,7 +176,7 @@ describe("ExpressionWidget", () => {
 
   describe("startRule = 'expression'", () => {
     it("should show a detailed error when comma is missing (metabase#15892)", async () => {
-      setup({ startRule: "expression" });
+      await setup({ startRule: "expression" });
 
       await userEvent.paste('concat([Tax] "test")');
       await userEvent.tab();
@@ -190,7 +191,7 @@ describe("ExpressionWidget", () => {
   });
 });
 
-function setup<S extends StartRule = "expression">(
+async function setup<S extends StartRule = "expression">(
   additionalProps?: Partial<ExpressionWidgetProps<S>>,
 ) {
   const query = createQuery();
@@ -220,6 +221,13 @@ function setup<S extends StartRule = "expression">(
       {...additionalProps}
     />,
   );
+  await waitFor(() =>
+    expect(screen.getByTestId("custom-expression-query-editor")).toHaveProperty(
+      "readOnly",
+      false,
+    ),
+  );
+  screen.getByTestId("custom-expression-query-editor").focus();
 
   return {
     getRecentExpressionClauseInfo,

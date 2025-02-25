@@ -1,8 +1,7 @@
-import type { CallOptions } from "use-debounce";
-
 import type {
   BooleanLiteral,
   CallExpression,
+  CallOptions,
   CaseOrIfExpression,
   CaseOrIfOperator,
   Expression,
@@ -26,6 +25,10 @@ export function isExpression(expr: unknown): expr is Expression {
     isSegment(expr) ||
     isCaseOrIf(expr)
   );
+}
+
+export function isEmpty(expr: unknown): expr is [] {
+  return expr == null || (Array.isArray(expr) && expr.length === 0);
 }
 
 export function isLiteral(

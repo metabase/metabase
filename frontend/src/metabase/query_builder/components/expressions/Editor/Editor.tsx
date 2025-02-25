@@ -1,17 +1,18 @@
 import type { EditorState } from "@codemirror/state";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { isExpression } from "metabase-lib/v1/expressions";
+import { format, isExpression } from "metabase-lib/v1/expressions";
 import type { Shortcut } from "metabase-lib/v1/expressions/complete";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
-import { format } from "metabase-lib/v1/expressions/format";
 import { processSource } from "metabase-lib/v1/expressions/process";
 import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
@@ -64,8 +65,14 @@ export function Editor<S extends StartRule = "expression">(
   const ref = useRef<ReactCodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
 
-  const { source, onSourceChange, onChange, onCommit, hasChanges } =
-    useExpression({ ...props, metadata });
+  const {
+    source,
+    onSourceChange,
+    onChange,
+    onCommit,
+    hasChanges,
+    isFormatting,
+  } = useExpression({ ...props, metadata });
 
   const [customTooltip, portal] = useCustomTooltip({
     getPosition: getTooltipPosition,
@@ -99,7 +106,7 @@ export function Editor<S extends StartRule = "expression">(
 
   return (
     <>
-      <div className={S.wrapper}>
+      <div className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
         <div className={S.prefix}>=</div>
         <CodeMirror
           id={id}
@@ -107,7 +114,7 @@ export function Editor<S extends StartRule = "expression">(
           data-testid="custom-expression-query-editor"
           className={S.editor}
           extensions={extensions}
-          readOnly={readOnly}
+          readOnly={readOnly || isFormatting}
           value={source}
           onChange={onSourceChange}
           onBlur={handleBlur}
@@ -144,20 +151,25 @@ function useExpression<S extends StartRule = "expression">({
     return expressionFromClause;
   }, [clause, query, stageIndex]);
 
-  const formatExpression = useCallback(
-    (expression: Expression | null) =>
-      format(expression, {
-        startRule,
-        stageIndex,
-        query,
-        name,
-        expressionIndex,
-      }),
-    [startRule, stageIndex, query, name, expressionIndex],
-  );
-
-  const [source, setSource] = useState(formatExpression(expression));
+  const [source, setSource] = useState<string>("");
   const [hasChanges, setHasChanges] = useState(false);
+  const [isFormatting, setIsFormatting] = useState(true);
+
+  const formatExpression = useCallback(
+    async (expression: Expression | null): Promise<string> => {
+      if (!expression) {
+        return "";
+      }
+
+      return format(expression, {
+        query,
+        stageIndex,
+        expressionIndex,
+        printWidth: Infinity,
+      });
+    },
+    [stageIndex, query, expressionIndex],
+  );
 
   const handleSourceChange = useCallback((source: string) => {
     setSource(source);
@@ -222,8 +234,18 @@ function useExpression<S extends StartRule = "expression">({
         onChange(clause);
       }
       onError(null);
-      setHasChanges(false);
-      setSource(formatExpression(expression));
+      setIsFormatting(true);
+      formatExpression(expression)
+        .then(source => {
+          setIsFormatting(false);
+          setHasChanges(false);
+          setSource(source);
+        })
+        .catch(err => {
+          setIsFormatting(false);
+          setHasChanges(false);
+          onError(err);
+        });
     },
     [
       name,
@@ -238,6 +260,14 @@ function useExpression<S extends StartRule = "expression">({
       onError,
     ],
   );
+
+  useMount(() => {
+    // format the expression on mount
+    formatExpression(expression).then(source => {
+      setSource(source);
+      setIsFormatting(false);
+    });
+  });
 
   const handleChange = useCallback(
     (source: string) => handleUpdate(source, false),
@@ -255,6 +285,7 @@ function useExpression<S extends StartRule = "expression">({
     onChange: handleChange,
     onCommit: handleCommit,
     hasChanges,
+    isFormatting,
   };
 }
 

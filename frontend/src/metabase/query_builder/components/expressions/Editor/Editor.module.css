@@ -11,6 +11,10 @@
   &:focus-within {
     border-color: var(--mb-color-brand);
   }
+
+  &.formatting {
+    background-color: var(--mb-color-bg-medium);
+  }
 }
 
 .prefix {
