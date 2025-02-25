@@ -39,7 +39,7 @@ In Metabase, click on the gear icon in the upper right and navigate to **Admin S
 
 Still in the Admin's Settings tab, navigate to the **Authentication** section in the sidebar and click on the **API keys** tab. [Create a new API key](../../people-and-groups/api-keys.md).
 
-- Key name: "Embedded analtics SDK" (just to make the key easy to identify.
+- Key name: "Embedded analytics SDK" (just to make the key easy to identify).
 - Group: select “Admin” (since this is only for local testing).
 
 ## 3. Install the SDK in your app
