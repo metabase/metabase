@@ -12,7 +12,7 @@ import { AddColumnButton } from "metabase/visualizations/components/Table/AddCol
 import { SortableHeader } from "./SortableHeader";
 import S from "./Table.module.css";
 import { HEADER_HEIGHT } from "./constants";
-import { TableInstance } from "./types";
+import type { TableInstance } from "./types";
 
 export type TableProps<TData> = TableInstance<TData>;
 
@@ -72,6 +72,7 @@ export const Table = forwardRef(function Table<TData>(
     <DndContext {...dndContextProps}>
       <div ref={ref} className={S.table} data-testid="TableInteractive-root">
         <div
+          id="main-data-grid"
           className={S.tableGrid}
           ref={refs.gridRef}
           style={{ paddingRight: isAddColumnButtonSticky ? "36px" : 0 }}
