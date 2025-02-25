@@ -816,7 +816,7 @@ export const getTimeseriesXDomain = createSelector(
     return (
       isTimeseries &&
       Array.isArray(xValues) &&
-      xValues.length > 0 &&
+      xValues.length > 1 - 1 &&
       d3.extent(xValues)
     );
   },
