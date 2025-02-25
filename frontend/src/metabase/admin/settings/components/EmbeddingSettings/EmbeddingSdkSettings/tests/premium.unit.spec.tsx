@@ -74,9 +74,7 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
       });
 
       it("should show the modal when the user loads the page", () => {
-        expect(
-          screen.getByText("Embedded analytics SDK with React"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
         assertLegaleseModal();
       });
 
