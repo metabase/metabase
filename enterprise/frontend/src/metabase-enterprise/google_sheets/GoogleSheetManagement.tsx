@@ -30,8 +30,6 @@ import {
 import { trackSheetConnectionClick, trackSheetImportClick } from "./analytics";
 import disconnectIllustration from "./disconnect.svg?component";
 
-const FIXME_TEST_BOOLEAN = true;
-
 export function GsheetConnectButton() {
   const url = useLocation();
   const databaseId = /databases\/(\d+)/.exec(url.pathname ?? "")?.[1];
@@ -57,12 +55,11 @@ export function GsheetConnectButton() {
   const { status } = gSheetsSetting;
 
   if (
-    !FIXME_TEST_BOOLEAN &&
-    (!gSheetsEnabled ||
-      !gSheetsSetting ||
-      !userIsAdmin ||
-      !serviceAccountEmail ||
-      !isDwh)
+    !gSheetsEnabled ||
+    !gSheetsSetting ||
+    !userIsAdmin ||
+    !serviceAccountEmail ||
+    !isDwh
   ) {
     return null;
   }
@@ -115,8 +112,10 @@ export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
     useGetServiceAccountQuery();
 
   if (
-    !FIXME_TEST_BOOLEAN &&
-    (!gSheetsEnabled || !gSheetsSetting || !userIsAdmin || !serviceAccountEmail)
+    !gSheetsEnabled ||
+    !gSheetsSetting ||
+    !userIsAdmin ||
+    !serviceAccountEmail
   ) {
     return null;
   }
@@ -184,8 +183,10 @@ export function GsheetConnectionModal({
   const gSheetsEnabled = useSetting("show-google-sheets-integration");
 
   if (
-    !FIXME_TEST_BOOLEAN &&
-    (!gSheetsEnabled || !gSheetsSetting || !userIsAdmin || !serviceAccountEmail)
+    !gSheetsEnabled ||
+    !gSheetsSetting ||
+    !userIsAdmin ||
+    !serviceAccountEmail
   ) {
     console.error("Google Sheets integration is not enabled");
     return null;
