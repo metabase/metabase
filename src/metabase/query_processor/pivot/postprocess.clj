@@ -11,6 +11,7 @@
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
    [metabase.query-processor.streaming.common :as streaming.common]
+   [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
    [metabase.util :as u]
@@ -508,16 +509,49 @@
                          (filter some?))])
                column-split))))
 
+(defn- make-formatters
+  [columns row-indexes col-indexes val-indexes settings timezone format-rows?]
+  {:row-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) row-indexes)
+   :col-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) val-indexes)
+   :val-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) col-indexes)})
+
 (defn- build-pivot-output-2
-  [{:keys [data2 settings] :as _pivot} _ordered-formatters]
+  [{:keys [data2 settings timezone format-rows?] :as pivot} ordered-formatters]
   (let [{:keys [pivot-data columns]} (pivot/split-pivot-data data2)
         column-split (:pivot_table.column_split settings)
         indexes (column-split->indexes column-split columns)
         row-indexes (:rows indexes)
         col-indexes (:columns indexes)
         val-indexes (:values indexes)
-        col-settings (merge-column-settings columns settings)]
-    (pivot/build-pivot-trees pivot-data columns row-indexes col-indexes val-indexes settings col-settings)))
+        col-settings (merge-column-settings columns settings)
+        subtotal-values (pivot/subtotal-values pivot-data val-indexes)
+        {:keys [row-formatters col-formatters val-formatters]} (make-formatters columns row-indexes col-indexes val-indexes settings timezone format-rows?)
+        {:keys [columnIndex rowIndex formattedRowTree formattedColumnTree valuesByKey]}
+        (pivot/process-pivot-table pivot-data row-indexes col-indexes val-indexes columns col-formatters row-formatters val-formatters settings col-settings)]
+
+    (def row-formatters row-formatters)
+    (def col-formatters col-formatters)
+    (def val-formatters val-formatters)
+    (def timezone timezone)
+    (def format-rows? format-rows?)
+    (def pivot pivot)
+    (def data2 data2)
+    (def settings settings)
+    (def ordered-formatters ordered-formatters)
+    (def pivot-data pivot-data)
+    (def columns columns)
+    (def column-split column-split)
+    (def row-indexes row-indexes)
+    (def col-indexes col-indexes)
+    (def val-indexes val-indexes)
+    (def settings settings)
+    (def col-settings col-settings)
+    (def values-by-key values-by-key)
+    (def subtotal-values subtotal-values)
+    (def formattedRowTree formattedRowTree)
+    (def formattedColumnTree formattedColumnTree)
+    (def columnIndex columnIndex)
+    (def rowIndex rowIndex)))
 
 (defn build-pivot-output
   "Arrange and format the aggregated `pivot` data."

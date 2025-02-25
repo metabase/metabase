@@ -136,10 +136,12 @@
                                             {:value value
                                              :colIdx index}))
                              (filter (fn [tmp]
-                                       (= ((nth cols (:colIdx tmp)) "source") "breakout"))))]
+                                       (= ((nth cols (:colIdx tmp)) "source") "breakout"))))
+             value-columns (select-indexes cols val-indexes)]
          (assoc acc
                 value-key
                 {:values values
+                 :valueColumns value-columns
                  :data data
                  :dimensions dimensions})))
      {}
@@ -191,7 +193,6 @@
   (let [all-collapsed-subtotals (-> settings :pivot_table.collapsed_rows :value)
         pivot-row-settings (map #(nth col-settings %) row-indexes)
         column-is-collapsible? (map #(not= false (:pivot_table.column_show_totals %)) pivot-row-settings)]
-    #?(:cljs (js/console.log col-settings))
     ;; A path can't be collapsed if subtotals are turned off for that column
     (filter (fn [path-or-length]
               (let [path-or-length (json-parse path-or-length)
@@ -200,6 +201,15 @@
                              path-or-length)]
                 (nth column-is-collapsible? (dec length) false)))
             all-collapsed-subtotals)))
+
+;; TODO: See if we can elide this step?
+(defn- postprocess-tree
+  [tree]
+  (vec
+   (for [[value tree-node] tree]
+     (assoc tree-node
+            :value value
+            :children (postprocess-tree (:children tree-node))))))
 
 (defn build-pivot-trees
   "TODO"
@@ -225,8 +235,8 @@
         sorted-row-tree (sort-tree collapsed-row-tree row-sort-orders)
         sorted-col-tree (sort-tree col-tree col-sort-orders)
         values-by-key   (build-values-by-key rows cols row-indexes col-indexes val-indexes)]
-    {:row-tree sorted-row-tree
-     :col-tree sorted-col-tree
+    {:row-tree (postprocess-tree sorted-row-tree)
+     :col-tree (postprocess-tree sorted-col-tree)
      :values-by-key values-by-key}))
 
 (defn- format-values-in-tree
@@ -355,11 +365,63 @@
       (empty? children) [(conj path rawValue)]
       :else (mapcat #(enumerate-paths % (conj path rawValue)) children))))
 
+(defn- format-values
+  [values value-formatters]
+  (if values
+    (map (fn [value formatter] {:value (formatter value)}) values value-formatters)
+    (repeat (count value-formatters) {:value nil})))
+
+(defn- get-subtotals
+  [subtotal-values breakout-indexes values other-attrs value-formatters]
+  (map (fn [value] (merge value
+                          {:isSubtotal true}
+                          other-attrs))
+       (format-values
+        (get-in subtotal-values
+                [(to-key (sort-by (fn [_value index] (nth breakout-indexes index)) breakout-indexes))
+                 (to-key (sort-by (fn [_value index] (nth breakout-indexes index)) values))])
+        value-formatters)))
+
+;; TODO - memoize the getter
+(defn- create-row-section-getter
+  [values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter]
+  ;; The getter returned from this function returns the value(s) at given (column, row) location
+  (fn [col-index row-index]
+    (let [col-values (nth col-paths col-index [])
+          row-values (nth row-paths row-index [])
+          index-values (concat col-values row-values)
+          result (if (or (< (count row-values) (count row-indexes))
+                         (< (count col-values) (count col-indexes)))
+                   (let [row-idxs (take (count row-values) row-indexes)
+                         col-idxs (take (count col-values) col-indexes)
+                         indexes (concat col-idxs row-idxs)
+                         other-attrs (if (zero? (count row-values))
+                                       {:isGrandTotal true}
+                                       {})]
+                     (get-subtotals subtotal-values indexes index-values other-attrs value-formatters))
+                   (let [{:keys [values valueColumns data dimensions]}
+                         (get values-by-key (to-key index-values))]
+                     (map-indexed
+                      (fn [index o]
+                        (if-not data
+                          o
+                          (assoc o
+                                 :clicked {:data data :dimensions dimensions}
+                                 :backgroundColor
+                                 (color-getter
+                                  (get values index)
+                                  (:rowIndex o)
+                                  (:name (get valueColumns index))))))
+                      (format-values values value-formatters))))]
+      #?(:cljs (clj->js result)
+         :clj result))))
+
 (defn process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
-  [row-tree col-tree row-indexes col-indexes val-indexes cols top-formatters left-formatters _value-formatters settings col-settings]
-  (let [left-index-columns (map cols row-indexes)
+  [pivot-data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters settings col-settings color-getter]
+  (let [{:keys [row-tree col-tree values-by-key]} (build-pivot-trees pivot-data columns row-indexes col-indexes val-indexes settings col-settings)
+        left-index-columns (select-indexes columns row-indexes)
         formatted-row-tree-without-subtotals (into [] (format-values-in-tree row-tree left-formatters left-index-columns))
         ;; TODO condense the below functions
         formatted-row-tree (into [] (add-subtotals formatted-row-tree-without-subtotals row-indexes settings col-settings))
@@ -369,16 +431,16 @@
         row-paths (->> formatted-row-tree-with-totals
                        (mapcat enumerate-paths)
                        maybe-add-empty-path)
-
-        top-index-columns (map cols col-indexes)
+        top-index-columns (select-indexes columns col-indexes)
         formatted-col-tree-without-values (into [] (format-values-in-tree col-tree top-formatters top-index-columns))
         formatted-col-tree-with-totals (maybe-add-row-totals-column formatted-col-tree-without-values settings)
         col-paths (->> formatted-col-tree-with-totals
                        (mapcat enumerate-paths)
                        maybe-add-empty-path)
-        formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals cols val-indexes col-settings))]
-
+        formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals columns val-indexes col-settings))
+        subtotal-values (subtotal-values pivot-data val-indexes)]
     {:columnIndex col-paths
      :rowIndex row-paths
      :formattedRowTree formatted-row-tree-with-totals
-     :formattedColumnTree formatted-col-tree}))
+     :formattedColumnTree formatted-col-tree
+     :getRowSection (create-row-section-getter values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter)}))

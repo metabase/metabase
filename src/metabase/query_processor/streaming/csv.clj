@@ -111,7 +111,9 @@
                      (qp.pivot.postprocess/init-pivot opts)
                      :settings viz-settings
                      :data2 {:cols ordered-cols
-                             :rows []})))
+                             :rows []}
+                     :timezone results_timezone
+                     :format-rows? format-rows?)))
           (when pivot-grouping-key
             (swap! pivot-data assoc :pivot-grouping pivot-grouping-key))
 

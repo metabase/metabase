@@ -529,21 +529,23 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                           key,
                           style,
                           isScrolling,
-                        }) => (
-                          <BodyCell
-                            key={key}
-                            style={style}
-                            showTooltip={!isScrolling}
-                            rowSection={getRowSection(columnIndex, rowIndex)}
-                            isNightMode={isNightMode}
-                            getCellClickHandler={getCellClickHandler}
-                            cellWidths={getCellWidthsForSection(
-                              valueHeaderWidths,
-                              valueIndexes,
-                              columnIndex,
-                            )}
-                          />
-                        )}
+                        }) => {
+                          return (
+                            <BodyCell
+                              key={key}
+                              style={style}
+                              showTooltip={!isScrolling}
+                              rowSection={getRowSection(columnIndex, rowIndex)}
+                              isNightMode={isNightMode}
+                              getCellClickHandler={getCellClickHandler}
+                              cellWidths={getCellWidthsForSection(
+                                valueHeaderWidths,
+                                valueIndexes,
+                                columnIndex,
+                              )}
+                            />
+                          );
+                        }}
                         onScroll={({ scrollLeft, scrollTop }) =>
                           onScroll({ scrollLeft, scrollTop } as OnScrollParams)
                         }
