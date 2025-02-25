@@ -7,6 +7,7 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mongo.connection :as mongo.connection]
+   [metabase.driver.mongo.conversion :as mongo.conversion]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.driver.mongo.json]
@@ -26,8 +27,6 @@
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)
-   (java.nio ByteBuffer)
-   (java.util UUID)
    (org.bson.types Binary ObjectId)))
 
 (set! *warn-on-reflection* true)
@@ -507,18 +506,6 @@
                       :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
       (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts)))))
 
-(def bson-uuid-type
-  "UUIDs are BSON subtype 4, see https://bsonspec.org/spec.html
-  and https://www.mongodb.com/docs/manual/reference/bson-types/#binary-data"
-  4)
-
-(defn- bsonuuid->uuid
-  [^Binary bin]
-  (let [buffer (ByteBuffer/wrap (.getData bin))
-        most-sig-bits (.getLong buffer)
-        least-sig-bits (.getLong buffer)]
-    (UUID. most-sig-bits least-sig-bits)))
-
 (defn- encode-mongo
   "Converts a Clojure representation of a Mongo aggregation pipeline to a formatted JSON-like string"
   ([mgo] (encode-mongo mgo 0))
@@ -540,8 +527,8 @@
                              (str/join ",\n"))
                         "\n" indent "]")))
              (encode-binary [bin]
-               (if (= (.getType ^Binary bson-uuid-type) 4)
-                 (str "UUID(\"" (bsonuuid->uuid bin) "\")")
+               (if (= (.getType ^Binary mongo.conversion/bson-uuid-type) 4)
+                 (str "UUID(\"" (mongo.conversion/bsonuuid->uuid bin) "\")")
                  (json/encode bin)))
              (encode-object-id [oid] (str "ObjectId(\"" (.toString ^ObjectId oid) "\")"))]
        (cond
