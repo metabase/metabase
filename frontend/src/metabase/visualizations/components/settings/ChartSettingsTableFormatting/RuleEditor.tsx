@@ -103,7 +103,7 @@ export const RuleEditor = ({
             value={rule.type}
             onChange={type =>
               onChange({
-                ...DEFAULTS_BY_TYPE[type],
+                ...DEFAULTS_BY_TYPE[type as "single" | "range"],
                 columns: rule.columns,
               })
             }
