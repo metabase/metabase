@@ -1,12 +1,12 @@
 import cx from "classnames";
 import { useMount } from "react-use";
 
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
-import S from "./UpsellCard.module.css";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
-import { UpsellCTALink, UpsellCardComponent } from "./Upsells.styled";
+import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
@@ -62,10 +62,10 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   });
 
   return (
-    <UpsellCardComponent
+    <Box
       data-testid="upsell-card"
-      fullWidth={fullWidth}
-      maxWidth={maxWidth}
+      w={fullWidth ? "100%" : "auto"}
+      maw={`${maxWidth ?? 200}px`}
       {...props}
       className={className}
     >
@@ -82,7 +82,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
             {children}
           </Text>
           <Box
-            component={UpsellCTALink}
+            component={ExternalLink}
             onClickCapture={() => trackUpsellClicked({ source, campaign })}
             href={url}
             className={S.UpsellCTALink}
@@ -93,7 +93,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
           </Box>
         </Stack>
       </Stack>
-    </UpsellCardComponent>
+    </Box>
   );
 };
 

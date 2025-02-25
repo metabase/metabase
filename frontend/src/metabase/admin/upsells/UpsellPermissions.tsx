@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { useHasTokenFeature } from "metabase/common/hooks";
 
 import { UpsellBanner } from "./components";
+import { UPGRADE_URL } from "./constants";
 
 export const UpsellPermissions = ({ source }: { source: string }) => {
   const hasAdvancedPermissions = useHasTokenFeature("advanced_permissions");
@@ -15,7 +16,7 @@ export const UpsellPermissions = ({ source }: { source: string }) => {
     <UpsellBanner
       campaign="advanced-permissions"
       buttonText={t`Try for free`}
-      buttonLink="https://www.metabase.com/upgrade"
+      buttonLink={UPGRADE_URL}
       source={source}
       title={t`Get advanced permissions`}
     >
