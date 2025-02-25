@@ -4,7 +4,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { VerifiedFilter } from "./VerifiedFilter";
 import { MetricFilterControls, getDefaultMetricFilters } from "./metrics";
 import { ModelFilterControls, getDefaultModelFilters } from "./models";
-
+export const activate = () => {
 if (hasPremiumFeature("content_verification")) {
   Object.assign(PLUGIN_CONTENT_VERIFICATION, {
     contentVerificationEnabled: true,
@@ -17,3 +17,5 @@ if (hasPremiumFeature("content_verification")) {
     MetricFilterControls,
   });
 }
+
+};

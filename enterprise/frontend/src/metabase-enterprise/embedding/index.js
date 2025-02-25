@@ -3,7 +3,7 @@ import { isInteractiveEmbeddingEnabled } from "metabase-enterprise/embedding/sel
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { InteractiveEmbeddingSettings } from "./components/InteractiveEmbeddingSettings";
-
+export const activate = () => {
 if (hasPremiumFeature("embedding")) {
   PLUGIN_EMBEDDING.isEnabled = () => true;
   PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled =
@@ -12,3 +12,5 @@ if (hasPremiumFeature("embedding")) {
   PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings =
     InteractiveEmbeddingSettings;
 }
+
+};

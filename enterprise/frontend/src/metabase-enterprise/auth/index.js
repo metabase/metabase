@@ -28,7 +28,7 @@ import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import { SsoButton } from "./components/SsoButton";
 import JwtAuthCard from "./containers/JwtAuthCard";
 import SamlAuthCard from "./containers/SamlAuthCard";
-
+export const activate = () => {
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(sections, ["authentication", "settings"], settings => {
     const [apiKeySettings, otherSettings] = _.partition(
@@ -310,3 +310,5 @@ if (hasPremiumFeature("sso_ldap")) {
 if (hasPremiumFeature("session_timeout_config")) {
   PLUGIN_REDUX_MIDDLEWARES.push(createSessionMiddleware([LOGIN, LOGIN_GOOGLE]));
 }
+
+};

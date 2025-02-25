@@ -7,7 +7,7 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { UserProvisioning } from "./components/UserProvisioning";
-
+export const activate = () => {
 if (hasPremiumFeature("scim")) {
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS.push({
     name: t`User Provisioning`,
@@ -54,3 +54,5 @@ if (hasPremiumFeature("scim")) {
     },
   }));
 }
+
+};

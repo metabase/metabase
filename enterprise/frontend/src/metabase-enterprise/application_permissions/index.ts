@@ -14,7 +14,7 @@ import {
   monitoringPermissionAllowedPathGetter,
   settingsPermissionAllowedPathGetter,
 } from "./utils";
-
+export const activate = () => {
 if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(monitoringPermissionAllowedPathGetter);
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(settingsPermissionAllowedPathGetter);
@@ -30,3 +30,5 @@ if (hasPremiumFeature("advanced_permissions")) {
   };
   PLUGIN_REDUCERS.applicationPermissionsPlugin = applicationPermissionsReducer;
 }
+
+};

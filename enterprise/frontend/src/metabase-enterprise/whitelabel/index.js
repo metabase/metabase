@@ -42,6 +42,7 @@ import {
 import { getLoadingMessageOptions } from "./lib/loading-message";
 import { updateColors } from "./lib/whitelabel";
 
+export const activate = () => {
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(
@@ -321,3 +322,5 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_SELECTORS.getNoDataIllustration = getNoDataIllustration;
   PLUGIN_SELECTORS.getNoObjectIllustration = getNoObjectIllustration;
 }
+
+};

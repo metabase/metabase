@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 
 import LicenseAndBillingSettings from "./components/LicenseAndBillingSettings";
-
+export const activate = () => {
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(sections, ["license"], license => {
     return {
@@ -15,3 +15,5 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     };
   }),
 );
+
+};

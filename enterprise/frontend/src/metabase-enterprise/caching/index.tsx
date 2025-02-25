@@ -14,7 +14,7 @@ import {
   getEnterprisePerformanceTabMetadata,
 } from "./constants";
 import { hasQuestionCacheSection } from "./utils";
-
+export const activate = () => {
 if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.isGranularCachingEnabled = () => true;
   PLUGIN_CACHING.StrategyFormLauncherPanel = StrategyFormLauncherPanel;
@@ -41,3 +41,5 @@ if (hasPremiumFeature("cache_granular_controls")) {
 if (hasPremiumFeature("cache_preemptive")) {
   PLUGIN_CACHING.PreemptiveCachingSwitch = PreemptiveCachingSwitch;
 }
+
+};

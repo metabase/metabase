@@ -18,7 +18,7 @@ import {
   getQuestionIcon,
   getStatusIcon,
 } from "./service";
-
+export const activate = () => {
 if (hasPremiumFeature("content_verification")) {
   Object.assign(PLUGIN_MODERATION, {
     isEnabled: () => true,
@@ -35,3 +35,5 @@ if (hasPremiumFeature("content_verification")) {
     useDashboardMenuItems,
   });
 }
+
+};
