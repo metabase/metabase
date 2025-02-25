@@ -1,6 +1,9 @@
 (ns metabase-enterprise.metabot-v3.tools.api
   "Code for handling tool requests from the AI service."
   (:require
+   [buddy.core.hash :as buddy-hash]
+   [buddy.sign.jwt :as jwt]
+   [clj-time.core :as time]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
@@ -16,12 +19,47 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.request.core :as request]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [nano-id.core :as nano-id]))
+   [metabase.util.malli.schema :as ms]))
 
-(def ^:private ai-sessions (atom {}))
+(defsetting site-uuid-for-metabot-tools
+  "UUID that we use for encrypting JWT tokens given to the AI service to make callbacks with."
+  :encryption :when-encryption-key-set
+  :visibility :internal
+  :sensitive? true
+  :feature    :metabot-v3
+  :doc        false
+  :base       setting/uuid-nonce-base)
+
+(defsetting metabot-ai-service-token-ttl
+  (deferred-tru "The number of seconds the tokens passed to AI service should be valid.")
+  :type       :integer
+  :visibility :settings-manager
+  :default    180
+  :feature    :metabot-v3
+  :doc        false
+  :audit      :never)
+
+(defn- get-ai-service-token
+  [user-id]
+  (let [secret (buddy-hash/sha256 (site-uuid-for-metabot-tools))
+        claims {:user user-id, :exp (time/plus (time/now) (time/seconds (metabot-ai-service-token-ttl)))}]
+    (jwt/encrypt claims secret {:alg :dir, :enc :a128cbc-hs256})))
+
+(defn- decode-ai-service-token
+  [token]
+  (try
+    (when (string? token)
+      (-> token
+          (jwt/decrypt (buddy-hash/sha256 (site-uuid-for-metabot-tools)))
+          :user))
+    (catch Exception e
+      (log/error e "Bad AI service token")
+      nil)))
 
 (defn- start-ai-loop
   [e]
@@ -33,8 +71,7 @@
 (defn handle-envelope-v2
   "Executes the AI loop in the context of a new session. Returns the response of the AI service."
   [e]
-  (let [session-id (nano-id/nano-id)]
-    (swap! ai-sessions assoc session-id {:user-id api/*current-user-id*})
+  (let [session-id (get-ai-service-token api/*current-user-id*)]
     (try
       (start-ai-loop (assoc e :session-id session-id))
       (catch Exception ex
@@ -43,9 +80,7 @@
             (envelope/add-message (or (:envelope d) e)
                                   {:role :assistant
                                    :content assistant-message})
-            (throw ex))))
-      (finally
-        (swap! ai-sessions dissoc session-id)))))
+            (throw ex)))))))
 
 (mr/def ::existence-filter
   [:map
@@ -321,10 +356,12 @@
   [handler]
   (with-meta
    (fn [{:keys [headers] :as request} respond raise]
-     (if-let [user-id (get-in @ai-sessions [(get headers "x-metabase-session") :user-id])]
+     (if-let [user-id (decode-ai-service-token (get headers "x-metabase-session"))]
        (request/with-current-user user-id
          (handler request respond raise))
-       (respond request/response-unauthentic)))
+       (if (:metabase-user-id request)
+         (handler request respond raise)
+         (respond request/response-unauthentic))))
    (meta handler)))
 
 (def ^{:arglists '([handler])} +tool-session
