@@ -103,39 +103,45 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 
 ```typescript
 {% raw %}
-<InteractiveQuestion questionId={95}>
-  <div
-    style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-  >
-    <div style={{ display: "grid", placeItems: "center" }}>
-      <InteractiveQuestion.Title />
-      <InteractiveQuestion.ResetButton />
+    <div className="App" style={{ width: "100%", maxWidth: "1600px", height: "800px", margin: "0 auto" }}>
+      <MetabaseProvider authConfig={config} theme={theme}>
+        <InteractiveQuestion questionId={questionId}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "100%",
+            }}
+          >
+            <div style={{ display: "grid", placeItems: "center", width: "100%" }}>
+              <InteractiveQuestion.Title />
+              <InteractiveQuestion.ResetButton />
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-start",
+                overflow: "hidden",
+                width: "100%",
+              }}
+            >
+              <div style={{ width: "100%" }}>
+                <InteractiveQuestion.QuestionVisualization />
+              </div>
+              <div style={{ display: "flex", flex: 1, overflow: "scroll" }}>
+                <InteractiveQuestion.Summarize />
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", width: "100%" }}>
+              <InteractiveQuestion.Filter />
+            </div>
+          </div>
+        </InteractiveQuestion>
+      </MetabaseProvider>
     </div>
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        overflow: "hidden",
-      }}
-    >
-      <div style={{ width: "100%" }}>
-        <InteractiveQuestion.QuestionVisualization />
-      </div>
-      <div style={{ display: "flex", flex: 1, overflow: "scroll" }}>
-        <InteractiveQuestion.Summarize />
-      </div>
-    </div>
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <InteractiveQuestion.Filter />
-    </div>
-  </div>
-</InteractiveQuestion>
 {% endraw %}
 ```
 
