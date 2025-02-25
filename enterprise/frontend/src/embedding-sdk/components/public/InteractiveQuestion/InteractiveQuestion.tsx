@@ -64,7 +64,7 @@ export const _InteractiveQuestion = ({
   initialSqlParameters,
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps &
-  FlexibleSizeProps): JSX.Element | null => (
+  Omit<FlexibleSizeProps, "height">): JSX.Element | null => (
   <InteractiveQuestionProvider
     cardId={questionId}
     componentPlugins={plugins}

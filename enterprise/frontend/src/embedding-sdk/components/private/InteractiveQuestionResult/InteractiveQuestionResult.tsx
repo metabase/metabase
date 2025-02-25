@@ -18,6 +18,7 @@ import {
   PopoverBackButton,
   Stack,
 } from "metabase/ui";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 import {
@@ -34,17 +35,23 @@ export interface InteractiveQuestionResultProps {
   title?: SdkQuestionTitleProps;
   withResetButton?: boolean;
   withChartTypeSelector?: boolean;
+  height?:
+    | FlexibleSizeProps["height"]
+    | ((
+        visualizationType: CardDisplayType | null,
+      ) => FlexibleSizeProps["height"]);
 }
 
 export const InteractiveQuestionResult = ({
-  height,
+  height: inputHeight,
   width,
   className,
   style,
   title,
   withResetButton,
   withChartTypeSelector,
-}: InteractiveQuestionResultProps & FlexibleSizeProps): ReactElement => {
+}: InteractiveQuestionResultProps &
+  Omit<FlexibleSizeProps, "height">): ReactElement => {
   const {
     originalId,
     question,
@@ -84,6 +91,11 @@ export const InteractiveQuestionResult = ({
     shouldShowSaveButton({ question, originalQuestion }) &&
     isSaveEnabled &&
     !isSaveModalOpen;
+
+  const height =
+    typeof inputHeight === "function"
+      ? inputHeight(question?.display() ?? null)
+      : inputHeight;
 
   return (
     <FlexibleSizeComponent
