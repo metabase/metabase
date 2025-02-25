@@ -9,10 +9,7 @@ import {
 import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getDefaultSize } from "metabase/visualizations";
-import {
-  extractReferencedColumns,
-  parseDataSourceId,
-} from "metabase/visualizer/utils";
+import { getCardIdsFromColumnValueMappings } from "metabase/visualizer/utils";
 import type {
   Card,
   CardId,
@@ -259,22 +256,14 @@ export const replaceCard =
 export const addCardWithVisualization =
   ({ visualization }: { visualization: VisualizerHistoryItem }) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    const referencedColumns = extractReferencedColumns(
+    const cardIds = getCardIdsFromColumnValueMappings(
       visualization.columnValuesMapping,
     );
-    const usedDataSourceIds = Array.from(
-      new Set(referencedColumns.map(ref => ref.sourceId)),
-    );
-
-    const cardIds = usedDataSourceIds.map(id => {
-      const { sourceId } = parseDataSourceId(id);
-      return sourceId;
-    });
-    const cards: any = [];
+    const cards: Card[] = [];
 
     for (const cardId of cardIds) {
       await dispatch(Questions.actions.fetch({ id: cardId }));
-      const card = Questions.selectors
+      const card: Card = Questions.selectors
         .getObject(getState(), { entityId: cardId })
         .card();
       cards.push(card);
@@ -316,22 +305,14 @@ export const replaceCardWithVisualization =
     visualization: VisualizerHistoryItem;
   }) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    const referencedColumns = extractReferencedColumns(
+    const cardIds = getCardIdsFromColumnValueMappings(
       visualization.columnValuesMapping,
     );
-    const usedDataSourceIds = Array.from(
-      new Set(referencedColumns.map(ref => ref.sourceId)),
-    );
-
-    const cardIds = usedDataSourceIds.map(id => {
-      const { sourceId } = parseDataSourceId(id);
-      return sourceId;
-    });
-    const cards: any = [];
+    const cards: Card[] = [];
 
     for (const cardId of cardIds) {
       await dispatch(Questions.actions.fetch({ id: cardId }));
-      const card = Questions.selectors
+      const card: Card = Questions.selectors
         .getObject(getState(), { entityId: cardId })
         .card();
       cards.push(card);
@@ -344,7 +325,7 @@ export const replaceCardWithVisualization =
         id: dashcardId,
         attributes: {
           card_id: mainCard.id,
-          card: { ...mainCard, display: "visualization" },
+          card: mainCard,
           series: secondaryCards,
           parameter_mappings: [],
           visualization_settings: {

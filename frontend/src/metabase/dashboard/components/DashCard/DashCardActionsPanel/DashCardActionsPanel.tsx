@@ -25,6 +25,7 @@ import {
 } from "./DashCardActionsPanel.styled";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
+import { VisualizerButton } from "./VisualizerButton";
 import { useDuplicateDashCard } from "./use-duplicate-dashcard";
 
 interface Props {
@@ -150,6 +151,16 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
+    if (dashcard && !isVirtualDashCard(dashcard)) {
+      buttons.push(
+        <VisualizerButton
+          key="visualizer-button"
+          series={series}
+          dashcard={dashcard}
+        />,
+      );
+    }
+
     if (!disableSettingsConfig) {
       buttons.push(
         <ChartSettingsButton
@@ -206,6 +217,16 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
+    if (supportsSeries) {
+      buttons.push(
+        <AddSeriesButton
+          key="add-series-button"
+          series={series}
+          onClick={handleAddSeries}
+        />,
+      );
+    }
+
     if (dashcard && isActionDashCard(dashcard)) {
       buttons.push(
         <ActionSettingsButtonConnected

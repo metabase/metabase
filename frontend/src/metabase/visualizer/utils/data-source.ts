@@ -6,6 +6,8 @@ import type {
   VisualizerDataSourceType,
 } from "metabase-types/store/visualizer";
 
+import { extractReferencedColumns } from "./column";
+
 export function createDataSource(
   type: VisualizerDataSourceType,
   sourceId: number,
@@ -52,4 +54,17 @@ export function isDataSourceNameRef(
 export function getDataSourceIdFromNameRef(str: string) {
   const [, dataSourceId] = str.split("_");
   return dataSourceId;
+}
+
+export function getCardIdsFromColumnValueMappings(
+  columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
+) {
+  const referencedColumns = extractReferencedColumns(columnValuesMapping);
+  const usedDataSourceIds = Array.from(
+    new Set(referencedColumns.map(ref => ref.sourceId)),
+  );
+  return usedDataSourceIds.map(id => {
+    const { sourceId } = parseDataSourceId(id);
+    return sourceId;
+  });
 }
