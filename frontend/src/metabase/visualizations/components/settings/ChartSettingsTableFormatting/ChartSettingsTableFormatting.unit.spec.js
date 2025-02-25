@@ -30,11 +30,27 @@ const NUMBER_COLUMN = createMockColumn({
   name: "NUMBER_COLUMN",
 });
 
+const PRIMARY_KEY_COLUMN = createMockColumn({
+  base_type: "type/Integer",
+  semantic_type: "type/PK",
+  display_name: "Primary Key Column",
+  name: "PK_COLUMN",
+});
+
+const FOREIGN_KEY_COLUMN = createMockColumn({
+  base_type: "type/Integer",
+  semantic_type: "type/FK",
+  display_name: "Foreign Key Column",
+  name: "FK_COLUMN",
+});
+
 const COLUMNS = [
   STRING_COLUMN,
   STRING_COLUMN_TWO,
   BOOLEAN_COLUMN,
   NUMBER_COLUMN,
+  PRIMARY_KEY_COLUMN,
+  FOREIGN_KEY_COLUMN,
 ];
 
 const STRING_OPERATORS = [
@@ -98,7 +114,7 @@ describe("ChartSettingsTableFormatting", () => {
     await userEvent.click(await screen.findByText("Add rule"));
 
     expect(await screen.findByText("String Column")).toBeInTheDocument();
-    expect(await screen.findByText(/is equal to toucan/g)).toBeInTheDocument();
+    expect(await screen.findByText(/is equal to toucan/)).toBeInTheDocument();
   });
 
   it("should only let you choose columns of the same type for a rule", async () => {
@@ -128,6 +144,42 @@ describe("ChartSettingsTableFormatting", () => {
 
     it("string", async () => {
       await userEvent.click(screen.getByText("String Column"));
+      //Dismiss Popup
+      await userEvent.click(
+        screen.getByText("Which columns should be affected?"),
+      );
+
+      await userEvent.click(
+        screen.getByTestId("conditional-formatting-value-operator-button"),
+      );
+
+      STRING_OPERATORS.forEach(operator => {
+        expect(
+          screen.getByRole("option", { name: operator }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("number primary key (metabase#17448)(VIZ-379)", async () => {
+      await userEvent.click(screen.getByText("Primary Key Column"));
+      //Dismiss Popup
+      await userEvent.click(
+        screen.getByText("Which columns should be affected?"),
+      );
+
+      await userEvent.click(
+        screen.getByTestId("conditional-formatting-value-operator-button"),
+      );
+
+      STRING_OPERATORS.forEach(operator => {
+        expect(
+          screen.getByRole("option", { name: operator }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("number foreign key (metabase#17448)(VIZ-379)", async () => {
+      await userEvent.click(screen.getByText("Foreign Key Column"));
       //Dismiss Popup
       await userEvent.click(
         screen.getByText("Which columns should be affected?"),
