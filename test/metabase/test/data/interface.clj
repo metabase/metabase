@@ -876,7 +876,7 @@
     [_driver]
     {:access_key (u.random/random-name)}))
 
-(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite :vertica :athena]]
+(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite :vertica :athena :oracle]]
   (defmethod driver/database-supports? [driver :test/arrays]
     [_driver _feature _database]
     true))
@@ -903,6 +903,37 @@
 (defmethod native-array-query :snowflake
   [_driver]
   "select array_construct('a', 'b', 'c')")
+
+(defmethod native-array-query :oracle
+  [_driver]
+  "select cast(collect(1) as sys.odcinumberlist) from dual")
+
+(doseq [driver [:postgres :vertica :athena :oracle]]
+  (defmethod driver/database-supports? [driver :test/null-arrays]
+    [_driver _feature _database]
+    true))
+
+;; redshift doesn't have a way to to return null as an array
+(defmethod driver/database-supports? [:redshift :test/null-arrays]
+  [_driver _feature _database]
+  false)
+
+(defmulti native-null-array-query
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-null-array-query :default
+  [_driver]
+  "select cast(null as integer[])")
+
+(defmethod native-null-array-query :athena
+  [_driver]
+  "select cast(null as array<integer>)")
+
+(defmethod native-null-array-query :oracle
+  [_driver]
+  "select cast(null as sys.odcinumberlist) from dual")
 
 (doseq [driver [:postgres :athena :oracle]]
   (defmethod driver/database-supports? [driver :test/array-aggregation]

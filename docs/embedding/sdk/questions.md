@@ -4,8 +4,6 @@ title: "Embedded analytics SDK - components"
 
 # Embedded analytics SDK - questions
 
-{% include beta-blockquote.html %}
-
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 There are different ways you can embed questions:

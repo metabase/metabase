@@ -2585,4 +2585,4 @@
       ;; This would mean a user could get (bool -> float), but only by filtering and re-uploading portions of the csv - Yuk!
       ;; This test ensure drivers always meet any transitive expectations users might have.
       (let [allow-list (driver/allowed-promotions driver/*driver*)]
-        (is (= allow-list (mt/transitive allow-list)))))))
+        (is (= allow-list (or (mt/transitive allow-list) {})))))))
