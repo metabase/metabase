@@ -527,7 +527,7 @@
                              (str/join ",\n"))
                         "\n" indent "]")))
              (encode-binary [bin]
-               (if (= (.getType ^Binary mongo.conversion/bson-uuid-type) 4)
+               (if (= (.getType ^Binary bin) mongo.conversion/bson-uuid-type)
                  (str "UUID(\"" (mongo.conversion/bsonuuid->uuid bin) "\")")
                  (json/encode bin)))
              (encode-object-id [oid] (str "ObjectId(\"" (.toString ^ObjectId oid) "\")"))]
