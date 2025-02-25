@@ -60,12 +60,16 @@
                   :pulse-id pulse-id}))))
 
 (defn- unsubscribe-url-for-non-user
+  "Given a `dashboard-subscription-id` and a `non-user-email`, returns a URL that can be used to unsubscribe from a
+  pulse for a non-logged in user. If `dashboard-subscription-id` is `nil`, returns `nil`, since
+  there is nothing to unsubscribe from."
   [dashboard-subscription-id non-user-email]
-  (str (urls/unsubscribe-url)
-       "?"
-       (codec/form-encode {:hash     (generate-dashboard-sub-unsubscribe-hash dashboard-subscription-id non-user-email)
-                           :email    non-user-email
-                           :pulse-id dashboard-subscription-id})))
+  (when dashboard-subscription-id
+    (str (urls/unsubscribe-url)
+         "?"
+         (codec/form-encode {:hash     (generate-dashboard-sub-unsubscribe-hash dashboard-subscription-id non-user-email)
+                             :email    non-user-email
+                             :pulse-id dashboard-subscription-id}))))
 
 (defn- render-part
   [timezone part options]
