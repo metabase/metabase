@@ -55,7 +55,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={theme}
         >
-          <InteractiveQuestion isSaveEnabled />
+          <InteractiveQuestion />
         </MetabaseProvider>,
       );
 
@@ -78,7 +78,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <InteractiveQuestion isSaveEnabled />
+          <InteractiveQuestion />
         </MetabaseProvider>,
       );
 
@@ -104,7 +104,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={theme}
         >
-          <InteractiveQuestion isSaveEnabled />
+          <InteractiveQuestion />
         </MetabaseProvider>,
       );
 

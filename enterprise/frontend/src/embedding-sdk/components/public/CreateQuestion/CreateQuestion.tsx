@@ -8,10 +8,6 @@ export type CreateQuestionProps = Partial<
 >;
 
 /** @deprecated Use `InteractiveQuestion` without specifying `questionId` and with `isSaveEnabled={true}` instead. */
-export const CreateQuestion = ({
-  onSave,
-  isSaveEnabled = true,
-  ...props
-}: CreateQuestionProps = {}) => (
-  <InteractiveQuestion {...props} isSaveEnabled={isSaveEnabled} />
+export const CreateQuestion = (props: CreateQuestionProps = {}) => (
+  <InteractiveQuestion {...props} />
 );

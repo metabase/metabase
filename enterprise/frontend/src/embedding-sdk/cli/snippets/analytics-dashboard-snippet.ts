@@ -73,7 +73,7 @@ export const AnalyticsDashboard = () => {
           />
         )}
 
-        {isCreateQuestion && <InteractiveQuestion isSaveEnabled />}
+        {isCreateQuestion && <InteractiveQuestion />}
       </div>
     </div>
   )
