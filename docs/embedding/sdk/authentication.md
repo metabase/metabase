@@ -4,8 +4,6 @@ title: Embedded analytics SDK - authentication
 
 # Embedded analytics SDK - authentication
 
-{% include beta-blockquote.html %}
-
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 For using the SDK in production, you'll need to set up authentication with JWT SSO.
