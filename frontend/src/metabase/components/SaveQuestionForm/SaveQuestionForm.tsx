@@ -115,8 +115,8 @@ export const SaveQuestionForm = ({
             styles={{ label: labelStyles }}
           />
 
-          {isCollectionPickerEnabled && showPickerInput && (
-            <div>
+          <div>
+            {isCollectionPickerEnabled && showPickerInput && (
               <FormCollectionAndDashboardPicker
                 collectionIdFieldName="collection_id"
                 dashboardIdFieldName="dashboard_id"
@@ -131,22 +131,22 @@ export const SaveQuestionForm = ({
                     }),
                 }}
               />
+            )}
 
-              {values.saveType === "create" && (
-                <FormDashboardTabSelect
-                  name="dashboard_tab_id"
-                  label="Which tab should this go on?"
-                  dashboardId={values.dashboard_id}
-                  styles={{
-                    label: {
-                      ...labelStyles,
-                      marginBottom: rem("3px"),
-                    },
-                  }}
-                />
-              )}
-            </div>
-          )}
+            {values.saveType === "create" && (
+              <FormDashboardTabSelect
+                name="dashboard_tab_id"
+                label="Which tab should this go on?"
+                dashboardId={values.dashboard_id}
+                styles={{
+                  label: {
+                    ...labelStyles,
+                    marginBottom: rem("3px"),
+                  },
+                }}
+              />
+            )}
+          </div>
         </Stack>
       )}
       <FormFooter>
