@@ -8,6 +8,11 @@
   --mb-color-upsell-gem: #00d4ff;
 }
 
+.UpsellGem {
+  color: var(--mb-color-upsell-gem);
+  flex-shrink: 0;
+}
+
 .UpsellCTALink {
   display: flex;
   gap: 0.5rem;
