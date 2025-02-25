@@ -5,20 +5,26 @@ import {
   getStatusColorRanges,
 } from "metabase/lib/colors/groups";
 import type {
-  BooleanOperator,
   ColumnFormattingOperator,
   ColumnRangeFormattingSetting,
   ColumnSingleFormattingSetting,
-  CommonOperator,
-  ComparisonOperator,
-  StringOperator,
+  ConditionalFormattingBooleanOperator,
+  ConditionalFormattingCommonOperator,
+  ConditionalFormattingComparisonOperator,
+  ConditionalFormattingStringOperator,
 } from "metabase-types/api";
 
-export const COMMON_OPERATOR_NAMES: Record<CommonOperator, string> = {
+export const COMMON_OPERATOR_NAMES: Record<
+  ConditionalFormattingCommonOperator,
+  string
+> = {
   "is-null": t`is null`,
   "not-null": t`is not null`,
 };
-export const NUMBER_OPERATOR_NAMES: Record<ComparisonOperator, string> = {
+export const NUMBER_OPERATOR_NAMES: Record<
+  ConditionalFormattingComparisonOperator,
+  string
+> = {
   "=": t`is equal to`,
   "!=": t`is not equal to`,
   "<": t`is less than`,
@@ -26,7 +32,10 @@ export const NUMBER_OPERATOR_NAMES: Record<ComparisonOperator, string> = {
   "<=": t`is less than or equal to`,
   ">=": t`is greater than or equal to`,
 };
-export const STRING_OPERATOR_NAMES: Record<StringOperator, string> = {
+export const STRING_OPERATOR_NAMES: Record<
+  ConditionalFormattingStringOperator,
+  string
+> = {
   "=": t`is equal to`,
   "!=": t`is not equal to`,
   contains: t`contains`,
@@ -34,7 +43,10 @@ export const STRING_OPERATOR_NAMES: Record<StringOperator, string> = {
   "starts-with": t`starts with`,
   "ends-with": t`ends with`,
 };
-export const BOOLEAN_OPERATIOR_NAMES: Record<BooleanOperator, string> = {
+export const BOOLEAN_OPERATIOR_NAMES: Record<
+  ConditionalFormattingBooleanOperator,
+  string
+> = {
   "is-true": t`is true`,
   "is-false": t`is false`,
 };

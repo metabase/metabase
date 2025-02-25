@@ -17,10 +17,10 @@ import {
   isString,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
-  BooleanOperator,
   ColumnFormattingOperator,
   ColumnFormattingSetting,
-  ComparisonOperator,
+  ConditionalFormattingBooleanOperator,
+  ConditionalFormattingComparisonOperator,
   DatasetColumn,
 } from "metabase-types/api";
 
@@ -82,7 +82,11 @@ export const RuleEditor = ({
 
   const handleColumnChange = (columns: SelectMultipleItemsReturned) => {
     const _cols = columns.map(name => _.findWhere(cols, { name }));
-    const operatorUpdate: { operator?: BooleanOperator | ComparisonOperator } =
+    const operatorUpdate: {
+      operator?:
+        | ConditionalFormattingBooleanOperator
+        | ConditionalFormattingComparisonOperator;
+    } =
       columns.length === 1 && columns[0] === columns.changedItem
         ? {
             operator: _cols.every(isBoolean) ? "is-true" : "=",
