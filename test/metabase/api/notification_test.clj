@@ -677,6 +677,28 @@
             (is (= #{}
                    (get-notification-ids :crowberto :recipient_id Integer/MAX_VALUE)))))))))
 
+(deftest list-notifications-creator-or-recipient-id-filter-test
+  (testing "GET /api/notification with :creator_or_recipient_id filter"
+    (mt/with-model-cleanup [:model/Notification]
+      (notification.tu/with-card-notification [{rasta-noti :id} {:notification {:creator_id (mt/user->id :rasta)}
+                                                                 :handlers     [{:channel_type "channel/email"
+                                                                                 :recipients   [{:type    :notification-recipient/user
+                                                                                                 :user_id (mt/user->id :lucky)}]}]}]
+        (notification.tu/with-card-notification [{lucky-noti :id} {:notification {:creator_id (mt/user->id :lucky)}
+                                                                   :handlers     [{:channel_type "channel/email"
+                                                                                   :recipients   [{:type    :notification-recipient/user
+                                                                                                   :user_id (mt/user->id :rasta)}]}]}]
+
+          (letfn [(get-notification-ids [user & params]
+                    (->> (apply mt/user-http-request user :get 200 "notification" params)
+                         (map :id)
+                         (filter #{rasta-noti lucky-noti})
+                         set))]
+
+            (testing "return notifications where user is either creator or recipient"
+              (is (= #{rasta-noti lucky-noti}
+                     (get-notification-ids :crowberto :creator_or_recipient_id (mt/user->id :rasta)))))))))))
+
 (deftest list-notifications-card-filter-test
   (testing "GET /api/notification with card_id filter"
     (mt/with-model-cleanup [:model/Notification]

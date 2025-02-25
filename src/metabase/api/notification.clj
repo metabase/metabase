@@ -32,11 +32,26 @@
 
 (defn list-notifications
   "List notifications. See `GET /` for parameters."
-  [{:keys [creator_id recipient_id card_id payload_type include_inactive legacy-active legacy-user-id]}]
+  [{:keys [creator_id creator_or_recipient_id recipient_id card_id payload_type include_inactive legacy-active legacy-user-id]}]
   (->> (t2/reducible-select :model/Notification
                             (cond-> {}
                               creator_id
                               (sql.helpers/where [:= :notification.creator_id creator_id])
+
+                              recipient_id
+                              (-> (sql.helpers/left-join
+                                   :notification_handler [:= :notification_handler.notification_id :notification.id])
+                                  (sql.helpers/left-join
+                                   :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
+                                  (sql.helpers/where [:= :notification_recipient.user_id recipient_id]))
+
+                              creator_or_recipient_id
+                              (-> (sql.helpers/left-join
+                                   :notification_handler [:= :notification_handler.notification_id :notification.id])
+                                  (sql.helpers/left-join
+                                   :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
+                                  (sql.helpers/where [:or [:= :notification_recipient.user_id creator_or_recipient_id]
+                                                      [:= :notification.creator_id creator_or_recipient_id]]))
 
                               card_id
                               (-> (sql.helpers/left-join
@@ -45,13 +60,6 @@
                                     [:= :notification_card.id :notification.payload_id]
                                     [:= :notification.payload_type "notification/card"]])
                                   (sql.helpers/where [:= :notification_card.card_id card_id]))
-
-                              recipient_id
-                              (-> (sql.helpers/left-join
-                                   :notification_handler [:= :notification_handler.notification_id :notification.id])
-                                  (sql.helpers/left-join
-                                   :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
-                                  (sql.helpers/where [:= :notification_recipient.user_id recipient_id]))
 
                               (and (nil? legacy-active) (not (true? include_inactive)))
                               (sql.helpers/where [:= :notification.active true])
@@ -81,20 +89,23 @@
   "List notifications.
   - `creator_id`: if provided returns only notifications created by this user
   - `recipient_id`: if provided returns only notification that has recipient_id as a recipient
+  - `creator_or_recipient_id`: if provided returns only notification that has user_id as creator or recipient
   - `card_id`: if provided returns only notification that has card_id as payload"
   [_route-params
-   {:keys [creator_id recipient_id card_id include_inactive payload_type]} :-
+   {:keys [creator_id creator_or_recipient_id recipient_id card_id include_inactive payload_type]} :-
    [:map
-    [:creator_id       {:optional true} ms/PositiveInt]
-    [:recipient_id     {:optional true} ms/PositiveInt]
-    [:card_id          {:optional true} ms/PositiveInt]
-    [:include_inactive {:optional true} ms/BooleanValue]
-    [:pyaload_type     {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
-  (list-notifications {:creator_id       creator_id
-                       :recipient_id     recipient_id
-                       :card_id          card_id
-                       :include_inactive include_inactive
-                       :payload_type     payload_type}))
+    [:creator_id              {:optional true} ms/PositiveInt]
+    [:recipient_id            {:optional true} ms/PositiveInt]
+    [:creator_or_recipient_id {:optional true} ms/PositiveInt]
+    [:card_id                 {:optional true} ms/PositiveInt]
+    [:include_inactive        {:optional true} ms/BooleanValue]
+    [:pyaload_type            {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
+  (list-notifications {:creator_id              creator_id
+                       :recipient_id            recipient_id
+                       :creator_or_recipient_id creator_or_recipient_id
+                       :card_id                 card_id
+                       :include_inactive        include_inactive
+                       :payload_type            payload_type}))
 
 (api.macros/defendpoint :get "/:id"
   "Get a notification by id."
