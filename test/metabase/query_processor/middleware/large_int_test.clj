@@ -8,6 +8,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def min-long -9007199254740991)
+(def max-long 9007199254740991)
+(def min-long-minus-1 (dec min-long))
+(def max-long-plus-1 (inc max-long))
+
 (defn- convert-large-int-to-string [cols rows]
   (qp.store/with-metadata-provider (mt/id)
     (let [query    {:middleware {:js-int-to-string? true}}
@@ -16,39 +21,51 @@
           rf       (rff metadata)]
       (transduce identity rf rows))))
 
-(deftest ^:parallel different-row-types-test
-  (testing "Should not convert integers within the JS number range or float/double values."
+(deftest ^:parallel different-column-types-test
+  (testing "Should not convert integers within the JS number range or float/double values"
     (let [cols [{:base_type :type/Integer}
                 {:base_type :type/BigInteger}
-                {:base_type :type/Float}
-                {:base_type :type/Decimal}]
-          rows [[Integer/MIN_VALUE Integer/MAX_VALUE Double/MAX_VALUE (bigdec 10)]]]
+                {:base_type :type/BigInteger}
+                {:base_type :type/Decimal}
+                {:base_type :type/Float}]
+          rows [[min-long (bigint min-long) (biginteger min-long) (bigdec min-long) Double/MIN_VALUE]
+                [max-long (bigint max-long) (biginteger max-long) (bigdec max-long) Double/MAX_VALUE]]]
       (is (= rows
+             (convert-large-int-to-string cols rows)))))
+  (testing "Should convert integers outside the JS number range"
+    (let [cols [{:base_type :type/Integer}
+                {:base_type :type/BigInteger}
+                {:base_type :type/BigInteger}
+                {:base_type :type/Decimal}]
+          rows [[min-long-minus-1 (bigint min-long-minus-1) (biginteger min-long-minus-1) (bigdec min-long-minus-1)]
+                [max-long-plus-1 (bigint max-long-plus-1) (biginteger max-long-plus-1) (bigdec max-long-plus-1)]]]
+      (is (= [(repeat 4 (str min-long-minus-1))
+              (repeat 4 (str max-long-plus-1))]
              (convert-large-int-to-string cols rows))))))
 
 (deftest ^:parallel different-row-types-test
   (testing "Middleware should work regardless of the type of each row (#13475)"
     (let [cols [{:base_type :type/Integer}]]
       (doseq [rows [[[1]
-                     [Long/MAX_VALUE]]
-                    [(list 1)
-                     (list Long/MAX_VALUE)]
-                    [(cons 1 nil)
-                     (cons Long/MAX_VALUE nil)]
-                    [(lazy-seq [1])
-                     (lazy-seq [Long/MAX_VALUE])]]]
+                     [max-long-plus-1]]
+                    [[(list 1)
+                      [max-long-plus-1]]]
+                    [[(cons 1 nil)
+                      (cons max-long-plus-1 nil)]]
+                    [[(lazy-seq [1])
+                      (lazy-seq [max-long-plus-1])]]]]
         (testing (format "rows = ^%s %s" (.getCanonicalName (class rows)) (pr-str rows))
           (is (= [[1]
-                  ["9223372036854775807"]]
+                  [(str max-long-plus-1)]]
                  (convert-large-int-to-string cols rows))))))))
 
 (deftest ^:parallel null-ids-as-strings
   (testing "Middleware should convert NULL IDs to nil (#13957)"
     (let [cols [{:base_type :type/Integer}]
           rows [[1]
-                [Long/MAX_VALUE]
+                [max-long-plus-1]
                 [nil]]]
       (is (= [[1]
-              ["9223372036854775807"]
+              [(str max-long-plus-1)]
               [nil]]
              (convert-large-int-to-string cols rows))))))
