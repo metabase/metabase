@@ -234,3 +234,11 @@ function withAST(
   }
   return result;
 }
+
+export const ALL_PASSES = [
+  adjustCaseOrIf,
+  adjustMultiArgOptions,
+  adjustOffset,
+  adjustOptions,
+  useShorthands,
+];

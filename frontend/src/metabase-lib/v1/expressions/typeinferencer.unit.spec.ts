@@ -1,7 +1,7 @@
 import type { FieldReference } from "metabase-types/api";
 
 import { getMBQLName } from "./config";
-import * as passes from "./passes";
+import { ALL_PASSES } from "./passes";
 import { compile, lexify, parse } from "./pratt";
 import { resolve } from "./resolver";
 import { infer } from "./typeinferencer";
@@ -15,7 +15,7 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
     try {
       const ast = parse(lexify(source), { throwOnError: true });
       return compile(ast.root, {
-        passes: Object.values(passes),
+        passes: ALL_PASSES,
         getMBQLName,
       });
     } catch (err) {
