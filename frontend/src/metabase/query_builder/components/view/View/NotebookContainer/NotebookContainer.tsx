@@ -9,6 +9,7 @@ import {
   setNotebookNativePreviewSidebarWidth,
   setUIControls,
 } from "metabase/query_builder/actions";
+import { useNotebookNativePreview } from "metabase/query_builder/hooks/use-notebook-native-preview";
 import { getUiControls } from "metabase/query_builder/selectors";
 import {
   Notebook,
@@ -25,18 +26,6 @@ type NotebookContainerProps = {
   isOpen: boolean;
 } & NotebookProps;
 
-const INITIAL_WINDOW_WIDTH = Infinity;
-
-const isSmallScreen = (width: number): boolean => width < 1280;
-
-const useNotebookNativePreview = () => {
-  const { width: windowWidth } = useWindowSize(INITIAL_WINDOW_WIDTH);
-  const isWindowSizeInitialized = Number.isFinite(windowWidth);
-  const disabled = !isWindowSizeInitialized || isSmallScreen(windowWidth);
-
-  return { disabled };
-};
-
 export const NotebookContainer = ({
   isOpen,
   updateQuestion,
@@ -51,7 +40,7 @@ export const NotebookContainer = ({
   setQueryBuilderMode,
 }: NotebookContainerProps) => {
   const [shouldShowNotebook, setShouldShowNotebook] = useState(isOpen);
-  const { width: windowWidth } = useWindowSize(INITIAL_WINDOW_WIDTH);
+  const { width: windowWidth } = useWindowSize();
 
   useEffect(() => {
     isOpen && setShouldShowNotebook(isOpen);
@@ -64,9 +53,6 @@ export const NotebookContainer = ({
   const minSidebarWidth = 428;
   const maxSidebarWidth = windowWidth - minNotebookWidth;
   const sidebarWidth = notebookNativePreviewSidebarWidth || minSidebarWidth;
-  const windowBreakpoint = 1280;
-  const isWindowWidthInitialized = Number.isFinite(windowWidth);
-  const isSmallScreen = windowWidth < windowBreakpoint;
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
     event,
@@ -87,16 +73,17 @@ export const NotebookContainer = ({
     dispatch(setNotebookNativePreviewSidebarWidth(width));
   };
 
+  const { disabled, isSmallScreen } = useNotebookNativePreview();
   useEffect(() => {
     /**
      * This effect is meant to run only when:
      * - component is mounted and the viewport is small (i.e. less than 1280px wide)
      * - viewport is resized to a small one
      */
-    if (isWindowWidthInitialized && isSmallScreen) {
+    if (isSmallScreen && !disabled) {
       dispatch(setUIControls({ isShowingNotebookNativePreview: false }));
     }
-  }, [dispatch, isSmallScreen, isWindowWidthInitialized]);
+  }, [dispatch, isSmallScreen, disabled]);
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
@@ -166,7 +153,7 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {isShowingNotebookNativePreview && isWindowWidthInitialized && (
+      {isShowingNotebookNativePreview && !disabled && (
         <>
           {isSmallScreen && (
             <Box pos="absolute" inset={0}>
