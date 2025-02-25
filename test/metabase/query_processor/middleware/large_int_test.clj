@@ -17,6 +17,16 @@
       (transduce identity rf rows))))
 
 (deftest ^:parallel different-row-types-test
+  (testing "Should not convert integers within the JS number range or float/double values."
+    (let [cols [{:base_type :type/Integer}
+                {:base_type :type/BigInteger}
+                {:base_type :type/Float}
+                {:base_type :type/Decimal}]
+          rows [[Integer/MIN_VALUE Integer/MAX_VALUE Double/MAX_VALUE (bigdec 10)]]]
+      (is (= rows
+             (convert-large-int-to-string cols rows))))))
+
+(deftest ^:parallel different-row-types-test
   (testing "Middleware should work regardless of the type of each row (#13475)"
     (let [cols [{:base_type :type/Integer}]]
       (doseq [rows [[[1]
