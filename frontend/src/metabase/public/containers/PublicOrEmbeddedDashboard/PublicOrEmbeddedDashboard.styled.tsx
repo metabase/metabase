@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";

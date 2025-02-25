@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import { Box, type BoxProps } from "@mantine/core";
 import cx from "classnames";
