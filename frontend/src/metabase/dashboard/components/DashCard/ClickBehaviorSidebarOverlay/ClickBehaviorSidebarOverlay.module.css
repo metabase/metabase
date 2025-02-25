@@ -1,0 +1,28 @@
+.ClickBehaviorDescription {
+  display: block;
+  color: var(--mb-color-brand);
+
+  &.isActive {
+    color: unset;
+  }
+}
+
+.ClickIcon {
+  color: var(--mb-color-text-light);
+
+  &.isActive {
+    color: unset;
+  }
+}
+
+.Button {
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: var(--mb-color-bg-light);
+  color: var(--mb-color-text-medium);
+
+  &.isActive {
+    background-color: var(--mb-color-brand);
+    color: var(--mb-color-text-white);
+  }
+}

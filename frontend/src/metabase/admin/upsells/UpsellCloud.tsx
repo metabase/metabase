@@ -5,6 +5,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { UpsellBigCard } from "./components";
 import S from "./components/Upsells.module.css";
+import { CLOUD_URL } from "./constants";
 
 export const UpsellCloud = ({
   source,
@@ -32,10 +33,7 @@ export const UpsellCloud = ({
         .t`Get automatic backups, restores, and upgrades, built-in network monitoring, unlimited expert help from engineers and more.`}{" "}
       <strong>{t`All your dashboards and questions will be copied to your Cloud instance.`}</strong>{" "}
       {t`Get your first 14 days of Metabase Cloud for free.`}
-      <ExternalLink
-        className={S.SecondaryCTALink}
-        href="https://www.metabase.com/cloud"
-      >
+      <ExternalLink className={S.SecondaryCTALink} href={CLOUD_URL}>
         {t`Learn more`}
       </ExternalLink>
     </UpsellBigCard>

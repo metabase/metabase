@@ -1,0 +1,38 @@
+.ParametersWidgetContainer {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  /* z-index should be higher than in dashcards */
+  z-index: 3;
+  top: 0;
+  left: 0;
+  /* this is for proper transitions from the \`transparent\` value to other values if set */
+  border-bottom: 1px solid transparent;
+
+  &.allowSticky {
+    position: sticky;
+  }
+
+  &.isSticky {
+    background-color: var(--mb-color-bg-light);
+
+    &.isNightMode {
+      background-color: var(--mb-color-bg-black);
+    }
+
+    &.isEmbeddingSdk {
+      background-color: var(--mb-color-bg-dashboard);
+    }
+
+    border-bottom-color: var(--mb-color-border);
+  }
+
+  &.isNightMode {
+    --mb-color-text-secondary: color-mix(
+      in srgb,
+      var(--mb-base-color-white) 65%,
+      transparent
+    );
+    --mb-color-border: var(--mb-base-color-orion-60);
+    --mb-color-background: var(--mb-color-bg-black);
+  }
+}

@@ -12,6 +12,7 @@
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.config :as config]
    [metabase.http-client :as client]
+   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
@@ -924,6 +925,8 @@
 ;;; --------------------------- Check that parameter information comes back with Dashboard ---------------------------
 
 (deftest double-check-that-the-field-has-fieldvalues
+  ;; Manually activate Field values since they are not created during sync (#53387)
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
   (is (= [1 2 3 4]
          (t2/select-one-fn :values :model/FieldValues :field_id (mt/id :venues :price)))))
 
@@ -940,6 +943,8 @@
                                                                               :target  ["dimension" dimension]}]}))
 
 (defn- GET-param-values! [dashboard]
+  ;; Manually activate Field values since they are not created during sync (#53387)
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (:param_values (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard))))))
 
@@ -1915,6 +1920,7 @@
                                       :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}]
         (let [call-count (volatile! 0)
               orig-filterable-columns-for-query params/filterable-columns-for-query]
+          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :people :state)))
           (with-redefs [params/filterable-columns-for-query
                         (fn [& args]
                           (vswap! call-count inc)

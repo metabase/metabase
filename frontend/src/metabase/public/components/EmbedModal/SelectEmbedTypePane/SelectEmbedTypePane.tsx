@@ -169,7 +169,6 @@ export function SelectEmbedTypePane({
             title={t`Embedded analytics SDK`}
             badge={
               <>
-                <Badge color="gray">{t`Beta`}</Badge>
                 <Badge color="brand">{t`Pro`}</Badge>
               </>
             }

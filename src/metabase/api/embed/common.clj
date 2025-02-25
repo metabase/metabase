@@ -172,7 +172,7 @@
   (-> (merge user-params token-params)
       (update-vals (fn [v]
                      (if (and (not (string? v)) (seqable? v))
-                       (seq v)
+                       (not-empty v)
                        v)))))
 
 (mu/defn- param-values-merged-params :- [:map-of ms/NonBlankString :any]

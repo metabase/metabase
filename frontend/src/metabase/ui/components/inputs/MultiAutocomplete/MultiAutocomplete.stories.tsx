@@ -71,7 +71,7 @@ const VariantTemplate = (args: MultiAutocompleteProps) => (
 );
 
 export default {
-  title: "Inputs/MultiAutocomplete",
+  title: "Components/Inputs/MultiAutocomplete",
   component: MultiAutocomplete,
   args,
   argTypes,

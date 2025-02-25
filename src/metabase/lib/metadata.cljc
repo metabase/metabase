@@ -1,6 +1,5 @@
 (ns metabase.lib.metadata
   (:require
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -46,10 +45,7 @@
   "Get metadata about all the Fields belonging to a specific Table."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    table-id              :- ::lib.schema.id/table]
-  (let [prefix (lib.metadata.ident/table-prefix (:name (database metadata-providerable))
-                                                (table metadata-providerable table-id))]
-    (->> (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id)
-         (lib.metadata.ident/attach-idents (constantly prefix)))))
+  (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
 
 (mu/defn metadatas-for-table :- [:sequential [:or
                                               ::lib.schema.metadata/column
@@ -77,7 +73,8 @@
 
   Generally that is an error and we should throw, but there are a few tests explicitly checking broken fields that
   don't want to get hung up on this error."
-  true)
+  ;; TODO: Fix the metadata APIs to include `:ident` or `:entity_id` so the JS side has proper idents.
+  #?(:clj true :cljs false))
 
 (mu/defn field :- [:maybe ::lib.schema.metadata/column]
   "Get metadata about a specific Field in the Database we're querying."

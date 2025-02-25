@@ -455,6 +455,44 @@ describe("issue 32840", () => {
   });
 });
 
+describe("issue 41831", () => {
+  beforeEach(() => {
+    H.restore("without-models");
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+    cy.visit("/");
+  });
+
+  it("new action button is hidden without models", () => {
+    cy.findByRole("button", { name: "New" }).click();
+    cy.findByRole("dialog").within(() => {
+      cy.findByText("Action").should("not.exist");
+    });
+  });
+});
+
+describe("issue 32750", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+    cy.visit("/");
+  });
+
+  it("modal do not dissapear on viewport change", () => {
+    cy.findByRole("button", { name: "New" }).click();
+    cy.findByRole("dialog").within(() => {
+      cy.findByText("Action").click();
+    });
+
+    cy.findByTestId("action-creator").should("be.visible");
+    cy.viewport(320, 800);
+    cy.findByTestId("action-creator").should("be.visible");
+    cy.viewport(1440, 800);
+    cy.findByTestId("action-creator").should("be.visible");
+  });
+});
+
 function setupBasicActionsInModel() {
   H.questionInfoButton().click();
   H.sidesheet().findByText("Actions").click();

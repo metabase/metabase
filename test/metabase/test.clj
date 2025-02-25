@@ -266,6 +266,7 @@
   secret-value-equals?
   select-keys-sequentially
   throw-if-called!
+  transitive
   repeat-concurrently
   with-all-users-permission
   with-column-remappings

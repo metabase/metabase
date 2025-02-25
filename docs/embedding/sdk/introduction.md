@@ -4,13 +4,9 @@ title: Embedded analytics SDK
 
 # Embedded analytics SDK
 
-{% include beta-blockquote.html %}
-
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 With the Embedded analytics SDK, you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
-
-The Embedded analytics SDK is currently in beta, but you should check it out and kick the tires; you can do a lot of cool stuff with it.
 
 ## Example apps built with the embedded analytics SDK
 
@@ -22,9 +18,9 @@ To see how we made the demo, check out the [SDK demo's source code](https://gith
 
 ## Embedded analytics SDK prerequisites
 
-- React application. The SDK is tested to work with React 18, though it may work with earlier versions.
+- React application. The SDK is tested to work with React 18 or higher, though it may work with earlier versions.
 - [Metabase Pro or Enterprise subscription or free trial](https://www.metabase.com/pricing/).
-- Metabase version 1.51 or higher.
+- Metabase version 1.52 or higher.
 - [Node.js 20.x LTS](https://nodejs.org/en).
 
 ## Embedded analytics SDK on NPM
@@ -41,15 +37,17 @@ npx @metabase/embedding-sdk-react@latest start
 
 This CLI quickstart only works locally, and you don't need a license key (but you can use one to demo more features).
 
-See more about the [CLI quickstart](./quickstart-cli.md).
+## Quickstarts
 
-We also have a [quickstart with a sample app that uses JWT](./quickstart.md).
+- [Quickstart](./quickstart.md) (If you have Metabase and an app)
+- [Quickstart CLI](./quickstart-cli.md) (If you have an app, but no Metabase)
+- [Quickstart with sample React app](./quickstart-with-sample-app.md) (If you don't have either)
 
 ## Installation
 
-You'll need to enable the SDK in your Metabase, and install the SDK as a dependency in your app.
+To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK in your React app.
 
-### In Metabase
+### Enable the SDK in Metabase
 
 Enable the Embedded analytics SDK:
 
@@ -58,7 +56,7 @@ Enable the Embedded analytics SDK:
 3. Hit **Configure**.
 4. Enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
 
-### In your React application
+### Install the SDK in your React application
 
 You can install the Embedded analytics SDK for React via npm:
 
@@ -72,18 +70,18 @@ or with yarn:
 yarn add @metabase/embedding-sdk-react@53-stable
 ```
 
-## Developing with the embedded analytics SDK
+## Developing with the Embedded analytics SDK
 
-- [Quickstart with sample app and JWT](./quickstart.md)
-- [Quickstart with CLI and your data](./quickstart-cli.md)
+Start with one of the quickstarts, then see these pages for more info on components, theming, and more.
+
+- [Authentication](./authentication.md)
 - [Questions](./questions.md)
 - [Dashboards](./dashboards.md)
-- [Collections](./collections.md)
 - [Appearance](./appearance.md)
+- [Collections](./collections.md)
 - [Plugins](./plugins.md)
-- [Versioning](./version.md)
-- [Authentication](./authentication.md)
 - [Config](./config.md)
+- [Versioning](./version.md)
 - [Notes on Next.js](./next-js.md)
 
 ## Embedding SDK source code
@@ -92,7 +90,11 @@ You can find the [embedding SDK source code in the Metabase repo](https://github
 
 ## Changelog
 
-[View changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+View the [SDK's changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md).
+
+## Embedded analytics SDK on NPM
+
+Check out the Metabase Embedded analytics SDK on NPM: [metaba.se/sdk](https://metaba.se/sdk).
 
 ## SDK limitations
 

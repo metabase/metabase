@@ -2205,9 +2205,16 @@
   (let [round-if-float #(if (float? %) (u/round-to-decimals digits-precision %) %)]
     (mapv (partial mapv round-if-float) rows)))
 
+(defn- external-type [t]
+  (keyword "metabase.upload" (name t)))
+
+(defn- promo-allowed? [allowed-promotions col-type new-type]
+  (get-in allowed-promotions [(external-type col-type) (external-type new-type)]))
+
 (deftest update-type-coercion-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (doseq [action (actions-to-test driver/*driver*)]
+    (doseq [action (actions-to-test driver/*driver*)
+            :let [allowed-promotions (driver/allowed-promotions driver/*driver*)]]
       (testing (action-testing-str action)
         (with-mysql-local-infile-on-and-off
           (testing "Append succeeds if the CSV file contains values that don't match the column types, but are coercible"
@@ -2215,18 +2222,47 @@
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
               (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                      [(merge
-                        {:upload-type int-type, :uncoerced "2.1"}
-                        (if (= driver/*driver* :redshift)
-                          ;; TODO: redshift doesn't allow promotion of ints to floats
-                          {:fail-msg "There's a value with the wrong type \\('double precision'\\) in the 'test_column' column"}
-                          {:coerced 2.1})) ; column is promoted to float
-                       {:upload-type int-type,   :uncoerced "2.0",        :coerced 2} ; value is coerced to int
-                       {:upload-type float-type, :uncoerced "2",          :coerced 2.0} ; column is promoted to float
-                       {:upload-type bool-type,  :uncoerced "0",          :coerced false}
-                       {:upload-type bool-type,  :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
-                       {:upload-type bool-type,  :uncoerced "0.0",        :fail-msg "'0.0' is not a recognizable boolean"}
-                       {:upload-type int-type,   :uncoerced "01/01/2012", :fail-msg "'01/01/2012' is not a recognizable number"}]]
+                      [; column is promoted to a float
+                       {:upload-type     int-type
+                        :uncoerced      "2.1"
+                        :coerced         2.1
+                        :fail            (not (promo-allowed? allowed-promotions int-type float-type))
+                        :fail-msg        "'2.1' is not an integer"}
+                       ;; column is promoted to an int
+                       {:upload-type     bool-type
+                        :uncoerced       "2"
+                        :coerced         2
+                        :fail            (not (promo-allowed? allowed-promotions bool-type int-type))
+                        :fail-msg        "'2' is not a recognizable boolean"}
+                       ;; column is promoted to a float
+                       {:upload-type     bool-type
+                        :uncoerced       "2.0"
+                        :coerced         2.0
+                        :fail            (not (promo-allowed? allowed-promotions bool-type float-type))
+                        :fail-msg        "'2.0' is not a recognizable boolean"}
+                       ;; column is promoted to a float
+                       {:upload-type     bool-type
+                        :uncoerced       "3.14"
+                        :coerced         3.14
+                        :fail            (not (promo-allowed? allowed-promotions bool-type float-type))
+                        :fail-msg        "'3.14' is not a recognizable boolean"}
+                       ; value is coerced to an int
+                       {:upload-type     int-type
+                        :uncoerced       "2.0"
+                        :coerced         2}
+                       ; value is coerced to a float
+                       {:upload-type     float-type
+                        :uncoerced       "2"
+                        :coerced         2.0}
+                       ;; value is interpreted as a boolean
+                       {:upload-type     bool-type
+                        :uncoerced       "0"
+                        :coerced         false}
+                       ;; value is not an int
+                       {:upload-type     int-type
+                        :uncoerced       "01/01/2012"
+                        :fail            true
+                        :fail-msg        "'01/01/2012' is not a recognizable number"}]]
                 (with-upload-table!
                   [table (create-upload-table! {:col->upload-type (columns-with-auto-pk
                                                                    (ordered-map/ordered-map :test_column upload-type))
@@ -2235,7 +2271,13 @@
                         file     (csv-file-with csv-rows)
                         update!  (fn []
                                    (update-csv! action {:file file, :table-id (:id table)}))]
-                    (if (contains? args :coerced)
+                    (if (:fail args)
+                      (testing (format "\nUploading %s into a column of type %s should fail to coerce"
+                                       uncoerced (name upload-type))
+                        (is (thrown-with-msg?
+                             clojure.lang.ExceptionInfo
+                             (re-pattern (str "^" fail-msg "$"))
+                             (update!))))
                       (testing (format "\nUploading %s into a column of type %s should be coerced to %s"
                                        uncoerced (name upload-type) coerced)
                         (testing "\nAppend should succeed"
@@ -2244,17 +2286,20 @@
                         (is (= (rows-with-auto-pk [[coerced]])
                                ;; Clickhouse uses 32-bit floats, so we must account for that loss in precision.
                                ;; In this case, 2.1 ⇒ 2.0999999046325684
-                               (round-floats 6 (rows-for-table table)))))
-                      (testing (format "\nUploading %s into a column of type %s should fail to coerce"
-                                       uncoerced (name upload-type))
-                        (is (thrown-with-msg?
-                             clojure.lang.ExceptionInfo
-                             (re-pattern (str "^" fail-msg "$"))
-                             (update!)))))
+                               (round-floats 6 (rows-for-table table))))))
                     (io/delete-file file)))))))))))
 
+(defn- col-promotion-drivers
+  "Returns the drivers that support the given column promotions
+  e.g. if you are going to test int -> float: (promo-drivers [int-type float-type])"
+  [& must-support]
+  (set/select (fn [driver]
+                (let [allowed-promotions (driver/allowed-promotions driver)]
+                  (every? #(apply promo-allowed? allowed-promotions %) must-support)))
+              (mt/normal-drivers-with-feature :uploads)))
+
 (deftest update-promotion-multiple-columns-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift) ; redshift doesn't support promotion
+  (mt/test-drivers (col-promotion-drivers [int-type float-type])
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
         (with-mysql-local-infile-on-and-off
@@ -2334,6 +2379,48 @@
                                             [[1 1]]
                                             [[1 1]
                                              [1 1]]))
+                     (set (rows-for-table table))))
+              (io/delete-file file))))))))
+
+(deftest update-from-csv-int-and-boolean-test
+  (mt/test-drivers (col-promotion-drivers [int-type bool-type])
+    (doseq [action (actions-to-test driver/*driver*)]
+      (testing (action-testing-str action)
+        (testing "Append should handle int values being appended to a boolean column"
+          (with-upload-table! [table (create-upload-table!
+                                      :col->upload-type (columns-with-auto-pk {:col bool-type})
+                                      :rows [[1] [0]])]
+            (let [csv-rows ["col"
+                            "1"
+                            "2"]
+                  file     (csv-file-with csv-rows)]
+              (is (some? (update-csv! action {:file file, :table-id (:id table)})))
+              (is (= (set (updated-contents action
+                                            [[1]
+                                             [0]]
+                                            [[1]
+                                             [2]]))
+                     (set (rows-for-table table))))
+              (io/delete-file file))))))))
+
+(deftest update-from-csv-float-and-boolean-test
+  (mt/test-drivers (col-promotion-drivers [bool-type float-type])
+    (doseq [action (actions-to-test driver/*driver*)]
+      (testing (action-testing-str action)
+        (testing "Append should handle float values being appended to a boolean column"
+          (with-upload-table! [table (create-upload-table!
+                                      :col->upload-type (columns-with-auto-pk {:col bool-type})
+                                      :rows [[1] [0]])]
+            (let [csv-rows ["col"
+                            "1.2"
+                            "2.3"]
+                  file     (csv-file-with csv-rows)]
+              (is (some? (update-csv! action {:file file, :table-id (:id table)})))
+              (is (= (set (updated-contents action
+                                            [[1.0]
+                                             [0.0]]
+                                            [[1.2]
+                                             [2.3]]))
                      (set (rows-for-table table))))
               (io/delete-file file))))))))
 
@@ -2490,3 +2577,12 @@
              ;; This is the easiest way to work around the capitalization of alpha.
              (map u/lower-case-en
                   (#'upload/derive-display-names ::short-column-test-driver original)))))))
+
+(deftest allow-lists-transitivity-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "driver allow lists should be transitively closed."
+      ;; Imagine it was possible to go from (int -> float) and (bool -> int) - but not (bool -> float).
+      ;; This would mean a user could get (bool -> float), but only by filtering and re-uploading portions of the csv - Yuk!
+      ;; This test ensure drivers always meet any transitive expectations users might have.
+      (let [allow-list (driver/allowed-promotions driver/*driver*)]
+        (is (= allow-list (or (mt/transitive allow-list) {})))))))

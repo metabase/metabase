@@ -31,9 +31,9 @@ import {
 import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import { Box, Flex } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import {
   type BaseDashboardCard,
   type Card,
@@ -71,10 +71,9 @@ import { getDashcardDataMap } from "../selectors";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
-import {
-  DashboardCardContainer,
-  DashboardGridContainer,
-} from "./DashboardGrid.styled";
+import DashCardS from "./DashCard/DashCard.module.css";
+import { FIXED_WIDTH } from "./Dashboard/DashboardComponents";
+import S from "./DashboardGrid.module.css";
 import { GridLayout } from "./grid/GridLayout";
 
 type GridBreakpoint = "desktop" | "mobile";
@@ -151,7 +150,7 @@ type OwnProps = {
   isNightMode: boolean;
   withCardTitle?: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
-  mode?: QueryClickActionsMode | Mode;
+  getClickActionMode?: ClickActionModeGetter;
   // public dashboard passes it explicitly
   width?: number;
   // public or embedded dashboard passes it as noop
@@ -536,6 +535,7 @@ class DashboardGridInner extends Component<
   ) {
     return (
       <DashCard
+        className={S.Card}
         dashcard={dashcard}
         slowCards={this.props.slowCards}
         gridItemWidth={gridItemWidth}
@@ -558,7 +558,7 @@ class DashboardGridInner extends Component<
         onReplaceAllDashCardVisualizationSettings={
           this.props.onReplaceAllDashCardVisualizationSettings
         }
-        mode={this.props.mode}
+        getClickActionMode={this.props.getClickActionMode}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }
@@ -603,18 +603,19 @@ class DashboardGridInner extends Component<
     );
 
     return (
-      <DashboardCardContainer
+      <Box
         key={String(dc.id)}
         data-testid="dashcard-container"
         className={cx(
           DashboardS.DashCard,
           EmbedFrameS.DashCard,
           LegendS.DashCard,
+          S.DashboardCardContainer,
           {
             [DashboardS.BrandColorResizeHandle]: shouldChangeResizeHandle,
+            [S.isAnimationDisabled]: this.state.isAnimationPaused,
           },
         )}
-        isAnimationDisabled={this.state.isAnimationPaused}
       >
         {this.renderDashCard(dc, {
           isMobile: breakpoint === "mobile",
@@ -624,7 +625,7 @@ class DashboardGridInner extends Component<
           shouldAutoScrollTo,
           reportAutoScrolledToDashcard,
         })}
-      </DashboardCardContainer>
+      </Box>
     );
   };
 
@@ -637,6 +638,9 @@ class DashboardGridInner extends Component<
         className={cx({
           [DashboardS.DashEditing]: this.isEditingLayout,
           [DashboardS.DashDragging]: this.state.isDragging,
+          // we use this class to hide a dashcard actions
+          // panel during dragging
+          [DashCardS.DashboardCardRootDragging]: this.state.isDragging,
         })}
         layouts={layouts}
         breakpoints={GRID_BREAKPOINTS}
@@ -659,15 +663,22 @@ class DashboardGridInner extends Component<
   render() {
     const { dashboard, width, forwardedRef } = this.props;
     return (
-      <DashboardGridContainer
+      <Flex
+        align="center"
+        justify="center"
+        className={cx(S.DashboardGridContainer, {
+          [S.isFixedWidth]: dashboard?.width === "fixed",
+        })}
         ref={forwardedRef}
         data-testid="dashboard-grid"
-        isFixedWidth={dashboard?.width === "fixed"}
+        style={{
+          "--dashboard-fixed-width": FIXED_WIDTH,
+        }}
       >
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderAddSeriesModal()}
         {this.renderReplaceCardModal()}
-      </DashboardGridContainer>
+      </Flex>
     );
   }
 }

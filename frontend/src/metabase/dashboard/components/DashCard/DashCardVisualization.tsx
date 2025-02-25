@@ -14,11 +14,10 @@ import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { IconName, IconProps } from "metabase/ui";
+import { Flex, type IconName, type IconProps, Title } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
@@ -31,12 +30,9 @@ import type {
 } from "metabase-types/api";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
-import {
-  VirtualDashCardOverlayRoot,
-  VirtualDashCardOverlayText,
-} from "./DashCard.styled";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
+import S from "./DashCardVisualization.module.css";
 import type {
   CardSlownessStatus,
   DashCardOnChangeCardAndRunHandler,
@@ -47,7 +43,7 @@ interface DashCardVisualizationProps {
   dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
-  mode?: QueryClickActionsMode | Mode;
+  getClickActionMode?: ClickActionModeGetter;
   getHref?: () => string | undefined;
 
   gridSize: {
@@ -97,7 +93,7 @@ export function DashCardVisualization({
   dashcard,
   dashboard,
   series,
-  mode,
+  getClickActionMode,
   getHref,
   gridSize,
   gridItemWidth,
@@ -160,11 +156,11 @@ export function DashCardVisualization({
           t`This card does not support click mappings`;
 
         return (
-          <VirtualDashCardOverlayRoot>
-            <VirtualDashCardOverlayText>
+          <Flex align="center" justify="center" h="100%">
+            <Title className={S.VirtualDashCardOverlayText} order={4} p="md">
               {placeholderText}
-            </VirtualDashCardOverlayText>
-          </VirtualDashCardOverlayRoot>
+            </Title>
+          </Flex>
         );
       }
       return (
@@ -256,7 +252,7 @@ export function DashCardVisualization({
       dashcard={dashcard}
       rawSeries={series}
       metadata={metadata}
-      mode={mode}
+      mode={getClickActionMode}
       getHref={getHref}
       gridSize={gridSize}
       totalNumGridCols={totalNumGridCols}

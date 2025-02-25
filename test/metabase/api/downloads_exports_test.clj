@@ -22,7 +22,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -957,38 +957,37 @@
                     :subscription-attachment (first subscription-result)}))))))))
 
 (deftest downloads-row-limit-test
-  (testing "Downloads row limit works."
-    (mt/with-temporary-setting-values [public-settings/download-row-limit 105]
+  (testing "Downloads row limit respects minimum (#52019)"
+    (mt/with-temporary-setting-values [limit/download-row-limit 100]
       (mt/with-temp [:model/Card card {:display       :table
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
         (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-          (is (= {:card-download            106
-                  :unsaved-card-download    106
-                  :alert-attachment         106
-                  :dashcard-download        106
-                  :subscription-attachment  106
-                  :public-question-download 106
-                  :public-dashcard-download 106}
-                 (update-vals results count))))))))
-
-(deftest downloads-row-limit-default-test
-  (testing "Downloads row limit default works."
-    (with-redefs [qp.i/absolute-max-results 100]
-      (mt/with-temp [:model/Card card {:display       :table
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
-        (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-          (is (= {:card-download            101
-                  :unsaved-card-download    101
-                  :alert-attachment         101
-                  :dashcard-download        101
-                  :subscription-attachment  101
-                  :public-question-download 101
-                  :public-dashcard-download 101}
-                 (update-vals results count))))))))
+          (is (= {:card-download            110
+                  :unsaved-card-download    110
+                  :alert-attachment         110
+                  :dashcard-download        110
+                  :subscription-attachment  110
+                  :public-question-download 110
+                  :public-dashcard-download 110}
+                 (update-vals results count)))))))
+  (testing "Downloads row limit can be raised"
+    (binding [limit/*minimum-download-row-limit* 100]
+      (mt/with-temporary-setting-values [limit/download-row-limit 109]
+        (mt/with-temp [:model/Card card {:display       :table
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
+          (let [results (all-outputs! card {:export-format :csv :format-rows true})]
+            (is (= {:card-download            110
+                    :unsaved-card-download    110
+                    :alert-attachment         110
+                    :dashcard-download        110
+                    :subscription-attachment  110
+                    :public-question-download 110
+                    :public-dashcard-download 110}
+                   (update-vals results count)))))))))
 
 (deftest ^:parallel model-viz-settings-downloads-test
   (testing "A model's visualization settings are respected in downloads."

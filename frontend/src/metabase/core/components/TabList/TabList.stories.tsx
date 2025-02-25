@@ -6,7 +6,7 @@ import Tab from "../Tab";
 import TabList from "./TabList";
 
 export default {
-  title: "Core/TabList",
+  title: "Deprecated/Components/TabList",
   component: TabList,
 };
 
