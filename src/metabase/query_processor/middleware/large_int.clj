@@ -6,6 +6,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util.performance :as perf]))
 
+;; Min and max integers that can be used in JS without precision loss.
+;; There is a value for each type to avoid runtime memory allocation.
 (def ^:private min-long -9007199254740991)
 (def ^:private max-long 9007199254740991)
 (def ^:private min-bigint (bigint min-long))
@@ -44,22 +46,27 @@
       (large-bigdecimal? n)))
 
 (defn- large-int->string [x]
+  "Converts large integer values to strings and leaves other values unchanged."
   (if (large-integer? x)
     (str x)
     x))
 
 (defn- result-large-int->string
+  "Converts all large integer row values to strings."
   [column-index-mask rf]
   ((map (fn [row]
           (perf/mapv #(if %2 (large-int->string %1) %1) row column-index-mask)))
    rf))
 
 (defn- maybe-integer-column?
+  "Checks if the column might have large interger values."
   [{:keys [base_type] :as _column-metadata}]
   (or (isa? base_type :type/Integer)
       (isa? base_type :type/Decimal)))
 
 (defn- column-index-mask
+  "Returns a mask of booleans for each column. If the mask for the column is true, it might be converted to string. Done
+  for performance reasons to avoid checking every row value."
   [cols]
   (mapv maybe-integer-column? cols))
 
