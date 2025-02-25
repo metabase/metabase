@@ -37,7 +37,7 @@ export const ClientEmbedCodePane = ({
       selectedOptionId={selectedClientCodeOptionId}
       languageOptions={clientCodeOptions}
       source={selectedClientCodeOption.source}
-      textHighlightMode={selectedClientCodeOption.mode}
+      language={selectedClientCodeOption.language}
       onChangeOption={setSelectedClientCodeOptionId}
       onCopy={onCopy}
     />

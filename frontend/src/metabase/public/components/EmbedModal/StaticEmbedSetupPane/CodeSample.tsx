@@ -1,8 +1,8 @@
 import cx from "classnames";
 import type { ChangeEvent } from "react";
 
+import { CodeBlock, type CodeLanguage } from "metabase/components/CodeBlock";
 import { CopyButton } from "metabase/components/CopyButton";
-import AceEditor from "metabase/components/TextEditor";
 import Select, { Option } from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import type { CodeSampleOption } from "metabase/public/lib/types";
@@ -14,7 +14,7 @@ interface CodeSampleProps {
   source: string;
   languageOptions: CodeSampleOption[];
   title?: string;
-  textHighlightMode: string;
+  language: CodeLanguage;
   highlightedTexts?: string[];
 
   dataTestId?: string;
@@ -24,14 +24,15 @@ interface CodeSampleProps {
   onCopy?: () => void;
 }
 
+// TODO: handle highlighted texts
+
 export const CodeSample = ({
   selectedOptionId,
   source,
   title,
   languageOptions,
   dataTestId,
-  textHighlightMode,
-  highlightedTexts,
+  language,
   className,
   onChangeOption,
   onCopy,
@@ -71,15 +72,7 @@ export const CodeSample = ({
           CS.overflowHidden,
         )}
       >
-        <AceEditor
-          className={CS.z1}
-          value={source}
-          mode={textHighlightMode}
-          theme="ace/theme/metabase"
-          sizeToFit
-          readOnly
-          highlightedTexts={highlightedTexts}
-        />
+        <CodeBlock className={CS.z1} language={language} code={source} />
         {source && (
           <CopyButtonContainer>
             <CopyButton className={CS.p1} value={source} onCopy={onCopy} />
