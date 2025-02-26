@@ -1,8 +1,7 @@
 import * as d3 from "d3";
 import dayjs from "dayjs";
-import duration from "dayjs/plugin/duration";
 import Humanize from "humanize-plus";
-dayjs.extend(duration);
+import type { ReactNode } from "react";
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
@@ -11,14 +10,13 @@ const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 const FIXED_NUMBER_FORMATTER = d3.format(",.0f");
 const PRECISION_NUMBER_FORMATTER = d3.format(".2f");
 
-interface FormatNumberOptionsType {
-  _numberFormatter?: any;
+type FormatNumberOptions = {
+  _numberFormatter?: Intl.NumberFormat;
   compact?: boolean;
   currency?: string;
   currency_in_header?: boolean;
   currency_style?: string;
   decimals?: string | number;
-  jsx?: any;
   maximumFractionDigits?: number;
   minimumFractionDigits?: number;
   minimumIntegerDigits?: number;
@@ -29,15 +27,19 @@ interface FormatNumberOptionsType {
   number_style?: string;
   scale?: number;
   type?: string;
-}
+};
 
-interface DEFAULT_NUMBER_OPTIONS_TYPE {
+type FormatNumberJsxOptions = FormatNumberOptions & {
+  jsx?: boolean;
+};
+
+type DefaultFormatNumberOptions = {
   compact: boolean;
   maximumFractionDigits: number;
   minimumFractionDigits?: number;
-}
+};
 
-const DEFAULT_NUMBER_OPTIONS: DEFAULT_NUMBER_OPTIONS_TYPE = {
+const DEFAULT_NUMBER_OPTIONS: DefaultFormatNumberOptions = {
   compact: false,
   maximumFractionDigits: 2,
 };
@@ -63,8 +65,12 @@ function getDefaultNumberOptions(options: { decimals?: string | number }) {
 
 export function formatNumber(
   number: number,
-  options: FormatNumberOptionsType = {},
-): any {
+  options?: FormatNumberOptions,
+): string;
+export function formatNumber(
+  number: number,
+  options: FormatNumberJsxOptions = {},
+): string | ReactNode {
   options = { ...getDefaultNumberOptions(options), ...options };
 
   if (typeof options.scale === "number" && !isNaN(options.scale)) {
@@ -134,7 +140,7 @@ export function formatNumber(
 
       // fixes issue where certain symbols, such as
       // czech Kč, and Bitcoin ₿, are not displayed
-      if (options["currency_style"] === "symbol") {
+      if (options["currency"] && options["currency_style"] === "symbol") {
         formatted = formatted.replace(
           options["currency"],
           getCurrencySymbol(options["currency"] as string),
@@ -169,7 +175,7 @@ export function formatChangeWithSign(
   return change > 0 ? `+${formattedNumber}` : formattedNumber;
 }
 
-export function numberFormatterForOptions(options: FormatNumberOptionsType) {
+export function numberFormatterForOptions(options: FormatNumberOptions) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
@@ -184,10 +190,13 @@ export function numberFormatterForOptions(options: FormatNumberOptionsType) {
     maximumFractionDigits: options.maximumFractionDigits,
     minimumSignificantDigits: options.minimumSignificantDigits,
     maximumSignificantDigits: options.maximumSignificantDigits,
-  }) as any;
+  });
 }
 
-function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
+function formatNumberCompact(
+  value: number,
+  options: FormatNumberJsxOptions,
+): string | ReactNode {
   const separators = options["number_separators"];
 
   if (options.number_style === "percent") {
@@ -205,7 +214,7 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
       }
       const { value: currency } = nf
         .formatToParts(value)
-        .find((p: any) => p.type === "currency");
+        .find((p: any) => p.type === "currency") ?? { value: "" };
 
       const valueSign = value < 0 ? "-" : "";
 
@@ -230,7 +239,10 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
   return formatNumberCompactWithoutOptions(value, separators);
 }
 
-function formatNumberCompactWithoutOptions(value: number, separators?: string) {
+function formatNumberCompactWithoutOptions(
+  value: number,
+  separators?: string,
+): string {
   if (value === 0) {
     // 0 => 0
     return "0";
@@ -261,15 +273,15 @@ function replaceNumberSeparators(formatted: any, separators: any) {
   };
 
   return formatted.replace(
-    /,|\./g,
+    /[,.]/g,
     (separator: "." | ",") => separatorMap[separator],
   );
 }
 
 function formatNumberScientific(
   value: number,
-  options: FormatNumberOptionsType,
-) {
+  options: FormatNumberJsxOptions,
+): string | ReactNode {
   if (options.maximumFractionDigits) {
     value = roundFloat(value, options.maximumFractionDigits);
   }
@@ -289,7 +301,7 @@ function formatNumberScientific(
   }
 }
 
-function formatDuration(value: number, _options: FormatNumberOptionsType) {
+function formatDuration(value: number, _options: FormatNumberOptions): string {
   const duration = dayjs.duration(value);
   let str = "";
 
@@ -318,7 +330,7 @@ function formatDuration(value: number, _options: FormatNumberOptionsType) {
 export function roundFloat(
   value: number,
   decimalPlaces: number = DEFAULT_NUMBER_OPTIONS.maximumFractionDigits,
-) {
+): number {
   const factor = Math.pow(10, decimalPlaces);
 
   return Math.round(value * factor) / factor;
