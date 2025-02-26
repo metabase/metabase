@@ -2,7 +2,7 @@ import type { SyntheticEvent, TransitionEventHandler } from "react";
 import { forwardRef, useEffect, useState } from "react";
 import type { ResizableBoxProps, ResizeCallbackData } from "react-resizable";
 import { ResizableBox } from "react-resizable";
-import { useLatest, useWindowSize } from "react-use";
+import { useWindowSize } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -80,9 +80,6 @@ export const NotebookContainer = ({
   const isNotebookNativePreviewShown = useSelector(
     getIsNotebookNativePreviewShown,
   );
-  const isNotebookNativePreviewShownRef = useLatest(
-    isNotebookNativePreviewShown,
-  );
 
   useEffect(() => {
     if (isSmallScreen) {
@@ -92,7 +89,7 @@ export const NotebookContainer = ({
 
   useEffect(() => {
     if (isLargeScreen) {
-      const currentSettingValue = isNotebookNativePreviewShownRef.current;
+      const currentSettingValue = isNotebookNativePreviewShown;
 
       dispatch(
         setUIControls({
@@ -100,7 +97,7 @@ export const NotebookContainer = ({
         }),
       );
     }
-  }, [dispatch, isLargeScreen, isNotebookNativePreviewShownRef]);
+  }, [dispatch, isLargeScreen, isNotebookNativePreviewShown]);
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
