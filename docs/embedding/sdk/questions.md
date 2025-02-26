@@ -425,7 +425,7 @@ export default function App() {
 
 ![Query builder](../images/query-builder.png)
 
-You can embed the query builder for creating new questions by passing the `questionId="new"` to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
+You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
 
 ```tsx
 import React from "react";
