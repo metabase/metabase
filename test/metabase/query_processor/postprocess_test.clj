@@ -8,7 +8,8 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel row-type-agnostic-test
-  (let [api-qp-middleware-options (delay (-> (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1}))
+  (let [metadata                  {:cols [{:base_type :type/Integer}]}
+        api-qp-middleware-options (delay (-> (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1}))
                                              :json_query
                                              :middleware))]
     (mt/test-drivers (mt/normal-drivers)
@@ -31,7 +32,7 @@
                                    additional-options)
                             rff   (qp.postprocess/post-processing-rff query (constantly conj))]
                         (qp.setup/with-qp-setup [_query query]
-                          (transduce identity (rff nil) rows))))]
+                          (transduce identity (rff metadata) rows))))]
               (is (= [[1]
                       [Long/MAX_VALUE]]
                      (process-query)))
