@@ -21,6 +21,7 @@ import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { Box, Divider, Flex } from "metabase/ui";
 import Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseData,
@@ -29,6 +30,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import {
   deleteDatabase,
   dismissSyncSpinner,
@@ -40,13 +42,7 @@ import {
 } from "../database";
 import { getEditingDatabase, getInitializeError } from "../selectors";
 
-import {
-  DatabaseEditContent,
-  DatabaseEditForm,
-  DatabaseEditHelp,
-  DatabaseEditMain,
-  DatabaseEditRoot,
-} from "./DatabaseEditApp.styled";
+import { DatabaseEditHelp } from "./DatabaseEditApp.styled";
 
 interface DatabaseEditAppProps {
   database?: Database;
@@ -157,10 +153,17 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
   const autofocusFieldName = window.location.hash.slice(1);
 
   return (
-    <DatabaseEditRoot>
+    <Box w="100%" maw="64.25rem" mx="auto" px="2rem">
       <Breadcrumbs className={CS.py4} crumbs={crumbs} />
 
-      <DatabaseEditMain>
+      {!addingNewDatabase && (
+        <>
+          <ExistingDatabaseHeader database={database} />
+          <Divider mb="3.25rem" />
+        </>
+      )}
+
+      <Flex mb="md">
         <ErrorBoundary errorComponent={GenericError as ComponentType}>
           <div>
             <div className={CS.pt0}>
@@ -171,8 +174,8 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
                 {editingExistingDatabase && database.is_attached_dwh ? (
                   <div>{t`This database cannot be modified.`}</div>
                 ) : (
-                  <DatabaseEditContent>
-                    <DatabaseEditForm>
+                  <Flex>
+                    <Box w="38.5rem">
                       <DatabaseForm
                         initialValues={database}
                         isAdvanced
@@ -180,9 +183,9 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
                         setIsDirty={setIsDirty}
                         autofocusFieldName={autofocusFieldName}
                       />
-                    </DatabaseEditForm>
+                    </Box>
                     <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
-                  </DatabaseEditContent>
+                  </Flex>
                 )}
               </LoadingAndErrorWrapper>
             </div>
@@ -199,13 +202,13 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
             dismissSyncSpinner={dismissSyncSpinner}
           />
         )}
-      </DatabaseEditMain>
+      </Flex>
 
       <LeaveConfirmationModal
         isEnabled={isDirty && !isCallbackScheduled}
         route={route}
       />
-    </DatabaseEditRoot>
+    </Box>
   );
 }
 
