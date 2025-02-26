@@ -382,7 +382,7 @@
       (when-some [metric-ids (not-empty (set (lib.util.match/match aggregation
                                                [:metric opts id]
                                                id)))]
-        (let [metrics (-> (->> (lib.metadata/bulk-metadata query :metadata/card metric-ids)
+        (let [metrics (-> (->> (lib.metadata/bulk-metadata-or-throw query :metadata/card metric-ids)
                                (m/index-by :id))
                           (update-vals #(->> %
                                              :dataset-query
@@ -419,8 +419,8 @@
     query
     (do
       (analytics/inc! :metabase-query-processor/metrics-adjust)
-      (assert-compatible-metrics query)
       (try
+        (assert-compatible-metrics query)
         (let [query (lib.walk/walk
                      query
                      (fn [_query path-type path stage-or-join]
