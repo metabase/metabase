@@ -4,8 +4,6 @@ title: Embedded analytics SDK - collections
 
 # Embedded analytics SDK - collections
 
-{% include beta-blockquote.html %}
-
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 You can embed Metabase's collection browser so that people can explore items in your Metabase from your application.

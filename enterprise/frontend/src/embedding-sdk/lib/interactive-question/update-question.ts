@@ -69,7 +69,9 @@ export const updateQuestionSdk =
     nextQuestion = computedPivotQuestion.question;
 
     if (computedPivotQuestion.shouldRun !== null) {
-      shouldRunQueryOnQuestionChange = computedPivotQuestion.shouldRun;
+      // TODO: should be uncommented when implementing https://linear.app/metabase/issue/EMB-190/add-the-query-run-button-to-the-embedding-sdk
+      // shouldRunQueryOnQuestionChange = computedPivotQuestion.shouldRun;
+      shouldRunQueryOnQuestionChange = true;
     }
 
     // Optimistic update the UI before we re-fetch the query metadata.

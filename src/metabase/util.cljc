@@ -1207,3 +1207,9 @@
   "Like not-empty, but for strings"
   [s]
   (when-not (str/blank? s) s))
+
+(defn safe-min
+  "nil safe clojure.core/min"
+  [& args]
+  (when-let [filtered (seq (remove nil? args))]
+    (apply min filtered)))
