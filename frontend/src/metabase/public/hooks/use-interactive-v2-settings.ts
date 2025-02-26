@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import type { EmbedResource, EmbedResourceType } from "../lib/types";
 
-type InteractiveV2Settings = {
+export type InteractiveV2Settings = {
   embedResourceType: EmbedResourceType;
   embedResourceId: EmbedResource["id"];
 

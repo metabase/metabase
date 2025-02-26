@@ -9,16 +9,18 @@ import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbed
 
 export const getRoutes = store => (
   <Route>
+    <Route
+      path="embed/interactive/:settings"
+      component={PublicOrEmbeddedInteractive}
+    />
+
     <Route path="embed" component={PublicApp}>
       <Route path="question/:token" component={PublicOrEmbeddedQuestion} />
       <Route
         path="dashboard/:token"
         component={PublicOrEmbeddedDashboardPage}
       />
-      <Route
-        path="interactive/:settings"
-        component={PublicOrEmbeddedInteractive}
-      />
+
       <Route path="*" component={PublicNotFound} />
     </Route>
 
