@@ -1,5 +1,10 @@
-.PreviewIframe {
+.PreviewIframeContainer {
   border: 1px solid var(--mb-color-border);
   width: 100%;
   height: 500px;
+}
+
+.PreviewIframe {
+  width: 100%;
+  height: 100%;
 }

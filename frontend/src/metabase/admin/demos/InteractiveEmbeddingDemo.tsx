@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -10,6 +10,7 @@ import {
   Code,
   Grid,
   Group,
+  Loader,
   Radio,
   Text,
   TextInput,
@@ -17,11 +18,6 @@ import {
 import { isBaseEntityID } from "metabase-types/api/entity-id";
 
 import S from "./InteractiveEmbeddingDemo.module.css";
-
-// Hard-coded API key for demonstration purposes only.
-// In the real implementation, we might not use API key at all,
-// or at least create the most restricted API key possible for public usage.
-const DEMO_API_KEY = "mb_Fxoc6Cns8Stk3BxJi33ova6Vmi8GpVDQetZsPWMTEzY=";
 
 const DEFAULT_DASHBOARD_ID = 1;
 const DEFAULT_QUESTION_ID = 5;
@@ -37,6 +33,9 @@ const DEFAULT_THEME_COLORS = {
 type EmbedMode = EmbedResourceType | "exploration";
 
 export const InteractiveEmbeddingDemo = () => {
+  const [isLoadingEmbedJs, setIsLoadingEmbedJs] = useState(true);
+  const iframeParentRef = useRef<HTMLDivElement>(null);
+
   const [embedMode, setEmbedMode] = useState<EmbedMode>("dashboard");
   const [resourceId, setResourceId] = useState<string>("1");
   const [themeColors, setThemeColors] = useState(DEFAULT_THEME_COLORS);
@@ -85,7 +84,6 @@ export const InteractiveEmbeddingDemo = () => {
     };
 
   const config: InteractiveV2Settings = {
-    apiKey: DEMO_API_KEY,
     embedResourceType: getResourceType(embedMode),
     embedResourceId: getResourceId(resourceId),
     theme: {
@@ -95,11 +93,62 @@ export const InteractiveEmbeddingDemo = () => {
 
   const encodedConfig = btoa(JSON.stringify(config));
   const iframePreviewUrl = `/embed/interactive/${encodedConfig}`;
+  const origin = window.location.origin;
+
   const iframeExampleSnippet = `
-    <iframe src="${window.location.origin}${iframePreviewUrl}"></iframe>
+    <script src="${origin}/app/embed.js"></script>
+
+    <div id="metabase-embed-container"></div>
+
+    <script>
+      const embed = new MetabaseEmbed({
+        url: "${origin}${iframePreviewUrl}",
+        target: "#metabase-embed-container",
+      });
+    </script>
   `;
 
   const resourceName = embedMode === "dashboard" ? "Dashboard" : "Question";
+
+  // Attach the embed.js to the page
+  useEffect(() => {
+    const scriptElement = document.createElement("script");
+    scriptElement.src = "/app/embed.js";
+    scriptElement.onload = () => setIsLoadingEmbedJs(false);
+
+    document.head.appendChild(scriptElement);
+
+    return () => {
+      document.head.removeChild(scriptElement);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (iframeParentRef.current && !isLoadingEmbedJs) {
+      const windowWithEmbed = window as unknown as Window & {
+        "metabase.embed": { MetabaseEmbed: any };
+      };
+
+      const { MetabaseEmbed } = windowWithEmbed["metabase.embed"];
+
+      const embed = new MetabaseEmbed({
+        url: iframePreviewUrl,
+        target: iframeParentRef.current,
+      });
+
+      return () => {
+        embed.destroy();
+      };
+    }
+  }, [isLoadingEmbedJs, iframePreviewUrl]);
+
+  if (isLoadingEmbedJs) {
+    return (
+      <Center>
+        <Loader />
+      </Center>
+    );
+  }
 
   return (
     <Center>
@@ -115,7 +164,10 @@ export const InteractiveEmbeddingDemo = () => {
 
         <Grid>
           <Grid.Col span={7}>
-            <iframe src={iframePreviewUrl} className={S.PreviewIframe} />
+            <Box
+              ref={iframeParentRef}
+              className={S.PreviewIframeContainer}
+            ></Box>
 
             <Box p="md">
               <Text mb="sm">

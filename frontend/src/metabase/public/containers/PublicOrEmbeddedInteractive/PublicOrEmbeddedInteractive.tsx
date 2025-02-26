@@ -15,6 +15,11 @@ import {
 } from "metabase/public/hooks/use-interactive-v2-settings";
 import { Box } from "metabase/ui";
 
+// Hard-coded API key for demonstration purposes only.
+// In the real implementation, we might not use API key at all,
+// or at least create the most restricted API key possible for public usage.
+const DEMO_API_KEY = "mb_Fxoc6Cns8Stk3BxJi33ova6Vmi8GpVDQetZsPWMTEzY=";
+
 export const PublicOrEmbeddedInteractive = ({
   params: { settings: settingsKey },
 }: {
@@ -26,9 +31,9 @@ export const PublicOrEmbeddedInteractive = ({
   const authConfig = useMemo(() => {
     return defineMetabaseAuthConfig({
       metabaseInstanceUrl: window.location.origin,
-      apiKey: settings?.apiKey ?? "",
+      apiKey: DEMO_API_KEY ?? "",
     });
-  }, [settings?.apiKey]);
+  }, []);
 
   const derivedTheme = useMemo(() => {
     return defineMetabaseTheme({

@@ -8,7 +8,6 @@ export type InteractiveV2Settings = {
   embedResourceType: EmbedResourceType;
   embedResourceId?: EmbedResource["id"];
 
-  apiKey: string;
   theme?: MetabaseTheme;
 };
 
