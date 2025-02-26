@@ -24,7 +24,7 @@
               {:name :api-response}
               (mtx/key-transformer {:encode u/->snake_case_en}))))
 
-(defn request-v2
+(defn request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [message context history conversation_id state]
   (let [llm-context (metabot-v3.context/create-context context {:date-format DateTimeFormatter/ISO_INSTANT})
@@ -61,7 +61,7 @@
         history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
                            history (mtx/transformer {:name :api-request}))]
     (doto (assoc
-           (request-v2 message context history conversation_id state)
+           (request message context history conversation_id state)
            :conversation_id conversation_id)
       (metabot-v3.context/log :llm.log/be->fe))))
 
