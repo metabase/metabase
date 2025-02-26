@@ -5464,6 +5464,13 @@ databaseChangeLog:
       id: v49.2024-01-22T11:52:00
       author: qnkhuat
       comment: Backfill `report_card.type`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - sqlCheck:
+              sql: >-
+                SELECT COUNT(*) FROM revision
+              expectedResult: 0
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.CardRevisionAddType"
