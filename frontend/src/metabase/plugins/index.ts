@@ -67,6 +67,7 @@ import type {
   PluginGroupManagersType,
   PluginLLMAutoDescription,
 } from "./types";
+import { MutableParametersSectionProps } from "metabase-enterprise/sharing/components/MutableParametersSection";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS = [];
@@ -261,7 +262,10 @@ export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
 export const PLUGIN_SNIPPET_SIDEBAR_MODALS = [];
 export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
-export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
+type PluginDashboardSubscriptionParametersSectionOverride = {
+  Component?: React.ComponentType<MutableParametersSectionProps>;
+}
+export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE: PluginDashboardSubscriptionParametersSectionOverride = {
   Component: undefined,
 };
 

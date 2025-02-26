@@ -25,6 +25,7 @@ function _AddEditSlackSidebar({
   channel,
   channelSpec,
   parameters,
+  hiddenParameters,
   dashboard,
   // form callbacks
   handleSave,
@@ -92,6 +93,7 @@ function _AddEditSlackSidebar({
           <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
             className={cx(CS.py3, CS.mt2, CS.borderTop)}
             parameters={parameters}
+            hiddenParameters={hiddenParameters}
             dashboard={dashboard}
             pulse={pulse}
             setPulseParameters={setPulseParameters}

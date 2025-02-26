@@ -27,6 +27,7 @@ function _AddEditEmailSidebar({
   channelSpec,
   users,
   parameters,
+  hiddenParameters,
   dashboard,
 
   // form callbacks
@@ -106,6 +107,7 @@ function _AddEditEmailSidebar({
             dashboard={dashboard}
             pulse={pulse}
             setPulseParameters={setPulseParameters}
+            hiddenParameters={hiddenParameters}
           />
         ) : (
           <DefaultParametersSection

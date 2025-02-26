@@ -17,12 +17,13 @@ import type {
   Pulse,
 } from "metabase-types/api";
 
-type MutableParametersSectionProps = {
+export type MutableParametersSectionProps = {
   className?: string;
   parameters: Parameter[];
   dashboard: Dashboard;
   pulse: Pulse;
   setPulseParameters: (parameters: Parameter[]) => void;
+  hiddenParameters?: string;
 };
 
 export const MutableParametersSection = ({
@@ -31,6 +32,7 @@ export const MutableParametersSection = ({
   dashboard,
   pulse,
   setPulseParameters,
+  hiddenParameters,
 }: MutableParametersSectionProps) => {
   const pulseParameters = getPulseParameters(pulse);
   const pulseParamValuesById = pulseParameters.reduce((map, parameter) => {
@@ -59,6 +61,7 @@ export const MutableParametersSection = ({
     setPulseParameters(newParameters);
   };
 
+
   return _.isEmpty(parameters) ? null : (
     <CollapseSection
       header={<h4>{t`Set filter values for when this gets sent`}</h4>}
@@ -72,6 +75,7 @@ export const MutableParametersSection = ({
         vertical
         dashboard={dashboard}
         parameters={valuePopulatedParameters}
+        hideParameters={hiddenParameters}
         setParameterValue={setParameterValue}
       />
     </CollapseSection>
