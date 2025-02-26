@@ -9,7 +9,8 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model])
   (:import (com.fasterxml.jackson.core JsonParseException)))
 
 ;; let's make sure the `transform-metabase-query`/`transform-metric-segment-definition`/`transform-parameters-list`
@@ -228,3 +229,28 @@
 
   (testing "A passed string is not elided"
     (is (= (apply str (repeat 1000 "a")) (#'mi/json-in-with-eliding (apply str (repeat 1000 "a")))))))
+
+(defmethod mi/non-timestamped-fields :test-model/updated-at-tester [_]
+  #{:non_timestamped :other})
+
+(deftest add-updated-at-timestamp-test
+  (testing "Should set updated_at timestamp to a map"
+    (is (= {:a 1 :updated_at [:metabase.util.honey-sql-2/typed :%now {:database-type "timestamptz"}]}
+           (#'mi/add-updated-at-timestamp {:a 1}))))
+  (testing "Does not add timestamp if a value is already set"
+    (is (= {:a 1 :updated_at "x"}
+           (#'mi/add-updated-at-timestamp {:a 1 :updated_at "x"}))))
+  (testing "Does not add a timestamp if it only includes non-timestamped fields"
+    (let [instance (-> (t2/instance :test-model/updated-at-tester {:non_timestamped nil})
+                       (assoc :non_timestamped 1))]
+      (is (= {:non_timestamped 1}
+             (#'mi/add-updated-at-timestamp instance)))))
+  (testing "Adds a timestamp if it includes other fields"
+    (let [instance (-> (t2/instance :test-model/updated-at-tester {:non_timestamped nil :included nil})
+                       (assoc :non_timestamped 1)
+                       (assoc :included 2))]
+      (is (= {:non_timestamped 1 :included 2 :updated_at [:metabase.util.honey-sql-2/typed :%now {:database-type "timestamptz"}]}
+             (#'mi/add-updated-at-timestamp instance))))))
+;;=> #'metabase.models.interface-test/add-updated-at-timestamp-test
+
+(comment (t2.model/resolve-model obj))
