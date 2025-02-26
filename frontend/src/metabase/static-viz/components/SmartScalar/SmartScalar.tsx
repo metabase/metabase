@@ -15,9 +15,10 @@ export function SmartScalar({
   renderingContext,
 }: StaticChartProps) {
   const { fontFamily, getColor } = renderingContext;
-  const [{ card }] = rawSeries;
+  const [{ card, data }] = rawSeries;
+  const { insights } = data;
 
-  const { trend, error } = computeTrend(rawSeries, settings, {
+  const { trend, error } = computeTrend(rawSeries, insights, settings, {
     getColor,
   });
 
