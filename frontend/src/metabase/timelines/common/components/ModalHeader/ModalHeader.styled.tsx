@@ -37,7 +37,13 @@ export const HeaderMenu = styled.div`
   margin-right: 1rem;
 `;
 
+/**
+ * Both the `height` and the `width` need to be in sync with `EntityMenuIconButton`
+ * in order to prevent the header from visually jumping. See: CLO-3660
+ */
 export const HeaderCloseButton = styled(IconButtonWrapper)`
+  height: 36px;
+  width: 36px;
   flex: 0 0 auto;
   color: var(--mb-color-text-light);
 `;
