@@ -18,7 +18,7 @@ import type {
   DatasetQuery,
   ParameterId,
   ParameterValuesMap,
-  Series,
+  RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -99,7 +99,7 @@ export function PublicOrEmbeddedQuestionView({
           <Visualization
             isNightMode={theme === "night"}
             error={result?.error?.toString()}
-            rawSeries={[{ card, data: result?.data }] as Series}
+            rawSeries={[{ card, data: result?.data }] as RawSeries}
             className={cx(CS.full, CS.flexFull, CS.z1)}
             onUpdateVisualizationSettings={(
               settings: VisualizationSettings,

@@ -59,6 +59,7 @@ import type {
   Card,
   Dashboard,
   DashboardCard,
+  RawSeries,
   Series,
   TimelineEvent,
   VisualizationSettings,
@@ -125,7 +126,7 @@ type VisualizationOwnProps = {
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   query?: Query;
-  rawSeries?: Series;
+  rawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
   settings?: VisualizationSettings;

@@ -11,7 +11,7 @@ import {
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import type { Series } from "metabase-types/api";
+import type { RawSeries } from "metabase-types/api";
 
 export interface PinnedQuestionLoaderProps {
   id: number;
@@ -21,7 +21,7 @@ export interface PinnedQuestionLoaderProps {
 export interface PinnedQuestionChildrenProps {
   loading: boolean;
   question?: Question;
-  rawSeries?: Series;
+  rawSeries?: RawSeries;
   error?: string;
   errorIcon?: IconName;
 }
@@ -31,7 +31,7 @@ export interface QuestionResultLoaderProps {
   error?: any;
   result?: any;
   results?: any;
-  rawSeries?: any[];
+  rawSeries?: RawSeries;
 }
 
 const PinnedQuestionLoader = ({
