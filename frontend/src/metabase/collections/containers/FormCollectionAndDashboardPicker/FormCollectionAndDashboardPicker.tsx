@@ -1,4 +1,4 @@
-import { useField } from "formik";
+import { useField, useFormikContext } from "formik";
 import type { HTMLAttributes } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
@@ -85,6 +85,8 @@ export function FormCollectionAndDashboardPicker({
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
+  const { setFieldValue } = useFormikContext();
+
   const collectionField = useField(collectionIdFieldName);
   const [collectionIdInput, collectionIdMeta, collectionIdHelpers] =
     collectionField;
@@ -92,9 +94,6 @@ export function FormCollectionAndDashboardPicker({
   const dashboardField = useField(dashboardIdFieldName);
   const [dashboardIdInput, dashboardIdMeta, dashboardIdHelpers] =
     dashboardField;
-
-  const dashboardTabField = useField(dashboardTabIdFieldName ?? "");
-  const dashboardTabHelpers = dashboardTabField[2];
 
   const pickerTitle = collectionPickerModalProps?.models?.includes("dashboard")
     ? t`Select a collection or dashboard`
@@ -181,10 +180,10 @@ export function FormCollectionAndDashboardPicker({
           const defaultTabId = dashboard?.tabs?.length
             ? String(dashboard.tabs[0].id)
             : undefined;
-          dashboardTabHelpers.setValue(defaultTabId);
+          setFieldValue(dashboardIdFieldName, defaultTabId);
         } catch (err) {
           console.error(err);
-          dashboardTabHelpers.setValue(undefined);
+          setFieldValue(dashboardIdFieldName, undefined);
         }
       }
 
@@ -193,8 +192,9 @@ export function FormCollectionAndDashboardPicker({
     [
       collectionIdHelpers,
       dashboardIdHelpers,
-      dashboardTabHelpers,
       dashboardTabIdFieldName,
+      setFieldValue,
+      dashboardIdFieldName,
       fetchDashboard,
     ],
   );
