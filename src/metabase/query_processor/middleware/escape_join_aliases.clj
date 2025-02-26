@@ -7,15 +7,11 @@
     (metabase.test/set-ns-log-level! 'metabase.query-processor.middleware.escape-join-aliases :trace)"
   (:require
    [clojure.set :as set]
-   [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
