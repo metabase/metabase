@@ -107,7 +107,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       cy.findByLabelText("View SQL").click();
       cy.location("pathname").should("eq", "/question/notebook");
 
-      cy.log("setting should not be updated on small screens");
+      cy.log("user setting should not be updated on small screens");
       cy.get("@updatePreviewStateSpy").should("not.have.been.called");
 
       cy.log(
@@ -131,6 +131,63 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       });
     },
   );
+
+  it("should disregard user setting on small screens when navigating (metabase#48170)", () => {
+    H.openReviewsTable({ mode: "notebook", limit: 1 });
+
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 0);
+    cy.findByLabelText("View SQL").click(); // set setting to true
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 1);
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    H.newButton("Model").click();
+    cy.findByTestId("new-model-options").should("be.visible");
+
+    resizeToSmallScreen();
+
+    H.openReviewsTable({ mode: "notebook", limit: 1 });
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+  });
+
+  it("should disregard user setting on small screens when resizing (metabase#48170)", () => {
+    H.openReviewsTable({ mode: "notebook", limit: 1 });
+
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 0);
+    cy.findByLabelText("View SQL").click(); // set setting to true
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 1);
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    cy.log(
+      "resizing from large to small screen, setting: open, ui state: open",
+    );
+    resizeToSmallScreen();
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+
+    cy.findByLabelText("View SQL").click();
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    cy.log(
+      "resizing from small to large screen, setting: open, ui state: closed",
+    );
+    cy.findByLabelText("Hide SQL").click();
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+    resizeToLargeScreen();
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    cy.log(
+      "resizing from small to large screen, setting: closed, ui state: open",
+    );
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 1);
+    cy.findByLabelText("Hide SQL").click(); // set setting to false
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 2);
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+    resizeToSmallScreen();
+    cy.findByLabelText("View SQL").click();
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 2);
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+    resizeToLargeScreen();
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+  });
 
   it("sidebar should be resizable", () => {
     const toleranceDelta = 0.5;
@@ -467,4 +524,21 @@ function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
       cb(initialSidebarWidth, sidebarWidth);
     });
   });
+}
+
+function resizeToSmallScreen() {
+  cy.viewport(800, 800);
+  preventFlakyTest();
+}
+
+function resizeToLargeScreen() {
+  cy.viewport(1280, 800);
+  preventFlakyTest();
+}
+
+function preventFlakyTest() {
+  // We need to wait for react to re-render, but nothing really changes on the screen
+  // so it's hard to detect this. Let's dummy-interact with the app to make sure it re-rendered.
+  cy.findByLabelText("Settings menu").click(); // open menu
+  cy.findByLabelText("Settings menu").click(); // close menu
 }
