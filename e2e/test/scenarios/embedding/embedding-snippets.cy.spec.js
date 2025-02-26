@@ -8,6 +8,10 @@ import { IFRAME_CODE, getEmbeddingJsCode } from "./shared/embedding-snippets";
 
 const features = ["none", "all"];
 
+function codeBlock() {
+  return cy.get(".cm-content");
+}
+
 features.forEach(feature => {
   describe(`[tokenFeatures=${feature}] scenarios > embedding > code snippets`, () => {
     beforeEach(() => {
@@ -30,7 +34,7 @@ features.forEach(feature => {
           "Insert this code snippet in your server code to generate the signed embedding URL",
         );
 
-        cy.get(".ace_content")
+        codeBlock()
           .first()
           .invoke("text")
           .should(
@@ -54,7 +58,7 @@ features.forEach(feature => {
         .and("contain", "Clojure");
 
       // eslint-disable-next-line no-unsafe-element-filtering
-      cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
+      codeBlock().last().should("have.text", IFRAME_CODE);
 
       H.modal()
         .findAllByTestId("embed-frontend-select-button")
@@ -72,7 +76,7 @@ features.forEach(feature => {
 
         // set transparent background metabase#23477
         cy.findByText("Dashboard background").click();
-        cy.get(".ace_content")
+        codeBlock()
           .first()
           .invoke("text")
           .should(
@@ -88,7 +92,7 @@ features.forEach(feature => {
         if (feature === "all") {
           cy.findByText("Download buttons").click();
 
-          cy.get(".ace_content")
+          codeBlock()
             .first()
             .invoke("text")
             .should(
@@ -117,7 +121,7 @@ features.forEach(feature => {
           "Insert this code snippet in your server code to generate the signed embedding URL",
         );
 
-        cy.get(".ace_content")
+        codeBlock()
           .first()
           .invoke("text")
           .should(
@@ -135,7 +139,7 @@ features.forEach(feature => {
         if (feature === "all") {
           cy.findByText("Download buttons").click();
 
-          cy.get(".ace_content")
+          codeBlock()
             .first()
             .invoke("text")
             .should(
