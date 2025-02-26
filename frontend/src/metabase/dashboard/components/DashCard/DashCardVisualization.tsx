@@ -13,7 +13,6 @@ import {
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -176,14 +175,11 @@ export function DashCardVisualization({
   );
 
   const series = useMemo(() => {
-    const isVisualizerDashcard =
-      !!dashcard?.visualization_settings?.visualization;
-
     if (
       !dashcard ||
       !_series ||
       _series.length === 0 ||
-      !isVisualizerDashcard
+      !isVisualizerDashboardCard(dashcard)
     ) {
       return _series;
     }
@@ -191,7 +187,11 @@ export function DashCardVisualization({
     const { display, columns, columnValuesMapping, settings } = dashcard
       .visualization_settings!.visualization as VisualizerHistoryItem;
 
-    const cards = [dashcard.card, ...dashcard.series].filter(isNotNull);
+    const cards = [dashcard.card];
+    if (Array.isArray(dashcard.series)) {
+      cards.push(...dashcard.series);
+    }
+
     const dataSources = cards.map(card =>
       createDataSource("card", card.id, card.name),
     );

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Box, type BoxProps, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
@@ -16,7 +18,7 @@ interface DragOverlayProps {
 export function DragOverlay({ item }: DragOverlayProps) {
   if (isDraggedColumnItem(item)) {
     return (
-      <DragOverlayWrapper
+      <DragOverlayWrapper // FIX
         style={{ borderRadius: "var(--default-border-radius)" }}
       >
         <ColumnListItem column={item.data.current.column} />
@@ -43,7 +45,11 @@ export function DragOverlay({ item }: DragOverlayProps) {
   return null;
 }
 
-function DragOverlayWrapper({ style, ...props }: BoxProps) {
+interface DragOverlayWrapperProps extends BoxProps {
+  children: ReactNode;
+}
+
+function DragOverlayWrapper({ style, ...props }: DragOverlayWrapperProps) {
   return (
     <Box
       {...props}
