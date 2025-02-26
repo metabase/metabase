@@ -23,8 +23,13 @@ export const InteractiveEmbeddingDemo = () => {
 
   return (
     <Box p="lg">
-      <Text mb="md" size="xl" fw="bold">
-        Simple Interactive Embedding Demo
+      <Text size="xl" fw="bold">
+        Simple Interactive Embedding Prototype
+      </Text>
+
+      <Text mb="md" c="text-secondary">
+        This is a prototype of a simplified version of interactive embedding. It
+        is not ready for production usage.
       </Text>
 
       <Grid>
@@ -43,6 +48,7 @@ export const InteractiveEmbeddingDemo = () => {
             </Box>
           </Box>
         </Grid.Col>
+
         <Grid.Col span={4}></Grid.Col>
       </Grid>
     </Box>
