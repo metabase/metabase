@@ -7,7 +7,6 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util :as lib.util]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util.transformations.nest-breakouts :as nest-breakouts]))
 

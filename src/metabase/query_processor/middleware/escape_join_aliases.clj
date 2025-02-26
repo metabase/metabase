@@ -17,6 +17,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
+(set! *warn-on-reflection* true)
+
 ;;; this is done in a series of discrete steps
 
 (defn- escape-alias [driver join-alias]

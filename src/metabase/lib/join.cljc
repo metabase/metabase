@@ -879,7 +879,7 @@
                   (filter-clause (::target fk) fk))
                 fks)))))))
 
-(defn- xform-add-join-alias [metadata-providerable a-join]
+(defn- xform-add-join-alias [a-join]
   (let [join-alias (lib.join.util/current-join-alias a-join)]
     (fn [xf]
       (let [unique-name-fn (lib.util/unique-name-generator)]
@@ -921,7 +921,7 @@
     (into []
           (if a-join
             (comp xform-fix-source-for-joinable-columns
-                  (xform-add-join-alias query a-join)
+                  (xform-add-join-alias a-join)
                   (xform-mark-selected-joinable-columns a-join))
             identity)
           cols)))
