@@ -393,7 +393,6 @@
 (defn- create-row-section-getter
   [values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter]
   ;; The getter returned from this function returns the value(s) at given (column, row) location
-
   (fn [col-index row-index]
     (let [col-values (nth col-paths col-index [])
           row-values (nth row-paths row-index [])
@@ -424,6 +423,37 @@
       #?(:cljs (clj->js result)
          :clj result))))
 
+(defn tree-to-array [nodes]
+  (let [a (atom [])]
+    (letfn [(dfs [nodes depth offset path]
+              (if (empty? nodes)
+                {:span 1 :maxDepth 0}
+                (loop [remaining nodes
+                       total-span 0
+                       max-depth 0
+                       current-offset offset]
+                  (if (empty? remaining)
+                    {:span total-span :maxDepth (inc max-depth)}
+                    (let [{:keys [children rawValue isGrandTotal isValueColumn] :as node} (first remaining)
+                          path-with-value (if (or isValueColumn isGrandTotal) nil (conj path rawValue))
+                          item (-> (dissoc node :children)
+                                   (assoc :depth depth
+                                          :offset current-offset
+                                          :hasChildren (boolean (seq children))
+                                          :path path-with-value))
+                          item-index (count @a)
+                          _ (swap! a conj item)
+                          result (dfs children (inc depth) current-offset path-with-value)
+                          _ (swap! a update-in [item-index] assoc
+                                   :span (:span result)
+                                   :maxDepthBelow (:maxDepth result))]
+                      (recur (rest remaining)
+                             (+ total-span (:span result))
+                             (max max-depth (:maxDepth result))
+                             (+ current-offset (:span result))))))))]
+      (dfs nodes 0 0 [])
+      @a)))
+
 (defn process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
@@ -449,6 +479,6 @@
         subtotal-values (get-subtotal-values pivot-data val-indexes)]
     {:columnIndex col-paths
      :rowIndex row-paths
-     :formattedRowTree formatted-row-tree-with-totals
-     :formattedColumnTree formatted-col-tree
+     :leftHeaderItems (tree-to-array formatted-row-tree-with-totals)
+     :topHeaderItems (tree-to-array formatted-col-tree)
      :getRowSection (create-row-section-getter values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter)}))
