@@ -41,7 +41,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.middleware.large-int :as-alias large-int]
+   [metabase.query-processor.middleware.large-int :as qp.middleware.large-int]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -406,11 +406,11 @@
                     :type/Decimal    bigdec
                     :type/Float      double
                     :type/BigInteger bigint
-                    :type/Integer    int
+                    :type/Integer    long
                     :type/Text       str
                     identity)
         transform (cond->> transform
-                    stringified? (comp str))]
+                    stringified? (comp qp.middleware.large-int/maybe-large-int->string))]
     (map #(some-> % transform) values)))
 
 (defn- infer-human-readable-values-type
@@ -442,7 +442,7 @@
     :as                                                    col} :- ColumnMetadataWithOptionalBaseType]
   (when (seq values)
     (let [remap-from       (:name col)
-          stringified-mask (qp.store/miscellaneous-value [::large-int/column-index-mask])]
+          stringified-mask (qp.store/miscellaneous-value [::qp.middleware.large-int/column-index-mask])]
       {:col-index       idx
        :from            remap-from
        :to              remap-to

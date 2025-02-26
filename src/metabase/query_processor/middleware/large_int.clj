@@ -53,7 +53,7 @@
       (large-biginteger? n)
       (large-bigdecimal? n)))
 
-(defn- large-int->string [x]
+(defn maybe-large-int->string [x]
   "Converts large integer values to strings and leaves other values unchanged."
   (if (large-integer? x)
     (str x)
@@ -63,7 +63,7 @@
   "Converts all large integer row values to strings."
   [column-index-mask rf]
   ((map (fn [row]
-          (perf/mapv #(if %2 (large-int->string %1) %1) row column-index-mask)))
+          (perf/mapv #(if %2 (maybe-large-int->string %1) %1) row column-index-mask)))
    rf))
 
 (defn- maybe-integer-column?
