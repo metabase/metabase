@@ -226,12 +226,6 @@ import {
 </MetabaseProvider>
 ```
 
-### Limitations
+## Limitations
 
-Colors configured in the visualization settings of a question will take precendence over those configured in the theme.
-
-
-
-
-
-
+Colors configured in a question's visualization settings will override theme colors.
