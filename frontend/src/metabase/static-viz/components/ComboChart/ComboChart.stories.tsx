@@ -14,7 +14,7 @@ import { StaticVisualization } from "../StaticVisualization";
 import { data } from "./stories-data";
 
 export default {
-  title: "static-viz/ComboChart",
+  title: "Viz/Static Viz/ComboChart",
   component: StaticVisualization,
 };
 

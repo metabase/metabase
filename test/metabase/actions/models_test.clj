@@ -273,3 +273,63 @@
             (is (some? (->> (action/select-action :id action-id)
                             :parameters
                             (filter #(= "uuid" (:id %))))))))))))
+
+(deftest updating-implicit-params-round-trip-test
+  ;; See #39101
+  (one-off-dbs/with-blank-db
+    (doseq [statement ["CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
+                       "SET DB_CLOSE_DELAY -1;"
+                       "CREATE TABLE \"FOO\" (\"id\" IDENTITY PRIMARY KEY, \"toggle\" BOOLEAN);"
+                       "GRANT ALL ON \"FOO\" TO GUEST;"]]
+      (jdbc/execute! one-off-dbs/*conn* [statement]))
+    (sync/sync-database! (mt/db))
+    (mt/with-actions-enabled
+      (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query foo)}]
+        (let [action-data         {:type     :implicit
+                                   :kind     "row/create"
+                                   :name     "create foo"
+                                   :model_id model-id}
+              action-id           (action/insert! action-data)
+              select-action       #(action/select-action :id action-id)
+              action-after-insert (select-action)]
+          (is (= [:type/Boolean] (map :type (:parameters action-after-insert))))
+          (action/update! (assoc (select-action) :name "create foo2") action-after-insert)
+          (is (= (:parameters action-after-insert) (:parameters (select-action)))))))))
+
+(deftest implicit-action-parameters-schema-change-test
+  (one-off-dbs/with-blank-db
+    (doseq [statement ["CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
+                       "SET DB_CLOSE_DELAY -1;"
+                       "CREATE TABLE \"FOO\" (\"id\" IDENTITY PRIMARY KEY, \"name\" TEXT);"
+                       "GRANT ALL ON \"FOO\" TO GUEST;"]]
+      (jdbc/execute! one-off-dbs/*conn* [statement]))
+    (sync/sync-database! (mt/db))
+    (mt/with-actions-enabled
+      (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query foo)}]
+        (let [action-data {:type     :implicit
+                           :kind     "row/create"
+                           :name     "create foo"
+                           :model_id model-id}
+              action-id   (action/insert! action-data)
+              exec!       #(do (jdbc/execute! one-off-dbs/*conn* [%])
+                               (sync/sync-database! (mt/db)))]
+          (testing "if a column type is varied the parameter types are updated on select-action"
+            (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" BIGINT;")
+            (is (= [["name" :type/BigInteger]] (map (juxt :id :type) (:parameters (action/select-action action-id)))))
+            (testing "if the column type is varied after an update to the action, it is reflected in the parameters"
+              (let [action (action/select-action action-id)]
+                (action/update! (assoc action :name "create foo2") action)
+                (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" TEXT;")
+                (sync/sync-database! (mt/db))
+                (is (= [["name" :type/Text]] (map (juxt :id :type) (:parameters (action/select-action action-id))))))))
+          (testing "if a column added, the model column set is used, not the table"
+            (exec! "ALTER TABLE \"FOO\" ADD COLUMN \"name2\" BIGINT;")
+            (is (= ["name"] (map :id (:parameters (action/select-action action-id))))))
+          (testing "viz settings are kept after a schema change (for hiding fields)"
+            (let [action     (action/select-action action-id)
+                  hide-state #(-> % :visualization_settings :fields (update-vals :hidden))]
+              (is (= {"name" false} (hide-state action)))
+              (action/update! (assoc-in action [:visualization_settings :fields "name" :hidden] true) action)
+              (is (= {"name" true}  (hide-state (action/select-action action-id))))
+              (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" BIGINT;")
+              (is (= {"name" true}  (hide-state (action/select-action action-id)))))))))))

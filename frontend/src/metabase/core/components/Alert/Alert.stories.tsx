@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import Alert, { type AlertProps } from "./Alert";
 
 export default {
-  title: "Core/Alert",
+  title: "Components/Ask Before Using/Alert",
   component: Alert,
 };
 

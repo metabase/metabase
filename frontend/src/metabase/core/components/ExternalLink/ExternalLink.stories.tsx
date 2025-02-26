@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import ExternalLink from "./ExternalLink";
 
 export default {
-  title: "Core/ExternalLink",
+  title: "Components/Ask Before Using/ExternalLink",
   component: ExternalLink,
 };
 

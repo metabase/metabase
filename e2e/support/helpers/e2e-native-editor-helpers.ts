@@ -100,11 +100,11 @@ function nativeEditorType(
 
       case "{home}":
       case "{movetostart}":
-        return cy.realPress(["Control", "A"]);
+        return cy.realPress(["Home"]);
 
       case "{end}":
       case "{movetoend}":
-        return cy.realPress(["Control", "E"]);
+        return cy.realPress(["End"]);
 
       case "{backspace}":
         return cy.realPress(["Backspace"]);

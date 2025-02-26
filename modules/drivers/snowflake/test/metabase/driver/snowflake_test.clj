@@ -697,7 +697,7 @@
     (testing "Make sure temporal parameters are set and returned correctly when report-timezone is set (#11036, #39769)"
       (let [query {:database   (mt/id)
                    :type       :native
-                   :native     {:query         (str "SELECT {{filter_date}}")
+                   :native     {:query         "SELECT {{filter_date}}"
                                 :template-tags {:filter_date {:name         "filter_date"
                                                               :display_name "Just A Date"
                                                               :type         "date"}}}
@@ -799,7 +799,7 @@
                 (-> (mt/rows
                      (qp/process-query {:database   (mt/id)
                                         :type       :native
-                                        :native     {:query         (str "SELECT DAYOFWEEK({{filter_date}})")
+                                        :native     {:query         "SELECT DAYOFWEEK({{filter_date}})"
                                                      :template-tags {:filter_date {:name         "filter_date"
                                                                                    :display_name "Just A Date"
                                                                                    :type         "date"}}}

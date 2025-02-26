@@ -1,18 +1,20 @@
 import { useMemo } from "react";
 
 import { Radio, Stack, Text } from "metabase/ui";
-
-const NULL_VALUE = "\0_null" as const;
+import {
+  decodeWidgetValue,
+  encodeWidgetValue,
+} from "metabase/visualizations/lib/settings/widgets";
 
 interface ChartSettingRadioProps {
   options: { name: string; value: string | null }[];
   value: string | null;
   className?: string;
-  onChange: (value: string | null) => void;
+  onChange: (value: unknown) => void;
 }
 
 export const ChartSettingRadio = ({
-  value: rawValue,
+  value,
   onChange,
   options: rawOptions = [],
   className,
@@ -20,18 +22,15 @@ export const ChartSettingRadio = ({
   const options: { name: string; value: string }[] = useMemo(() => {
     return rawOptions.map(({ name, value }) => ({
       name,
-      value: value ?? NULL_VALUE,
+      value: encodeWidgetValue(value),
     }));
   }, [rawOptions]);
 
-  // Some properties of visualization settings that are controlled by radio buttons can have a value of `null`
-  const value = rawValue === null ? NULL_VALUE : rawValue;
-
   return (
     <Radio.Group
-      value={value}
+      value={encodeWidgetValue(value)}
       className={className}
-      onChange={value => onChange(value === NULL_VALUE ? null : value)}
+      onChange={value => onChange(decodeWidgetValue(value))}
     >
       <Stack gap="xs">
         {options.map(({ name, value: optionValue }) => (

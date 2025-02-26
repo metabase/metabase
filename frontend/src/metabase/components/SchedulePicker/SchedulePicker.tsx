@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { Component } from "react";
+import { type CSSProperties, Component } from "react";
 import { t } from "ttag";
 
 import { SegmentedControl } from "metabase/components/SegmentedControl";
@@ -16,6 +16,7 @@ import {
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Box } from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -24,7 +25,6 @@ import type {
 } from "metabase-types/api";
 
 import {
-  PickerRoot,
   PickerRow,
   PickerSpacedRow,
   PickerText,
@@ -48,6 +48,9 @@ export interface SchedulePickerProps {
   textBeforeInterval?: string;
   textBeforeSendTime?: string;
   minutesOnHourPicker?: boolean;
+  className?: string;
+  style?: CSSProperties;
+
   onScheduleChange: (
     nextSchedule: ScheduleSettings,
     change: ScheduleChangeProp,
@@ -244,12 +247,13 @@ class SchedulePicker extends Component<SchedulePickerProps> {
   }
 
   render() {
-    const { schedule, scheduleOptions, textBeforeInterval } = this.props;
+    const { schedule, scheduleOptions, textBeforeInterval, className, style } =
+      this.props;
 
     const scheduleType = schedule.schedule_type;
 
     return (
-      <PickerRoot>
+      <Box mt="lg" className={className} style={style}>
         <PickerRow>
           <PickerText>{textBeforeInterval}</PickerText>
           <Select
@@ -273,7 +277,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
           scheduleType === "weekly" ||
           scheduleType === "monthly") &&
           this.renderHourPicker()}
-      </PickerRoot>
+      </Box>
     );
   }
 }

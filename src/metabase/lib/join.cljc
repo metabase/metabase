@@ -246,7 +246,7 @@
              {:error/message "Join must have an ident to determine column idents"}
              ::lib.schema.common/non-blank-string]]
    col  :- :map]
-  (update col :ident #(lib.metadata.ident/explicitly-joined-ident (:ident join) %)))
+  (update col :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
 
 (mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join
   [query

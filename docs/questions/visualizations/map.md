@@ -24,6 +24,10 @@ To visualize your results in the format of a map of the world broken out by coun
 
 Creating a map of the United States from your data requires your results to contain a column that contains names of states or two-letter state codes. This lets you do things like visualize the count of your users broken out by state, with darker states representing more users.
 
+### Custom maps
+
+Metabase also allows administrators to add [custom maps via GeoJSON files](../../configuring-metabase/custom-maps.md) through the Metabase **Admin Panel**.
+
 ## Pin map
 
 If your results contains [latitude and longitude fields](../../data-modeling/field-types.md), Metabase will try to display the results as a pin map of the world. Metabase will put one pin on the map for each row in your table, based on the latitude and longitude fields. You can try this with the Sample Database that's included in Metabase: start a new question and select the People table and choose the Map option for your visualization. You'll see a map of the world, with each dot representing the latitude and longitude coordinates of a single person from the People table.
@@ -32,9 +36,11 @@ If your results contains [latitude and longitude fields](../../data-modeling/fie
 
 When you open up the Map options, you can manually switch between a region map (e.g., United States) and a pin map. If you're using a region map, you can also choose which field to use as the measurement, and which field to use as the region (e.g., State or Country).
 
-## Custom maps
+## Grid map
 
-Metabase also allows administrators to add [custom maps via GeoJSON files](../../configuring-metabase/custom-maps.md) through the Metabase **Admin Panel**.
+This visualization groups geolocated data into a grid of cells of varying sizes. Each cell aggregates multiple data points within its area, providing an overview of trends and concentrations on a map.
+
+Particularly useful for analyzing large volumes of spatial data, this approach prevents visual clutter caused by overlapping individual markers.
 
 ## Further reading
 

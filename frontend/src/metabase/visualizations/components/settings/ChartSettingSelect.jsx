@@ -3,17 +3,10 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { Select, Stack } from "metabase/ui";
-
-// Some properties of visualization settings that are controlled by selects can have a value of `true` or `false`
-const VALUE_OVERRIDE = val => {
-  if (val === true) {
-    return "\0_true";
-  } else if (val === false || val === "") {
-    return "\0_false";
-  } else {
-    return val;
-  }
-};
+import {
+  decodeWidgetValue,
+  encodeWidgetValue,
+} from "metabase/visualizations/lib/settings/widgets";
 
 export const ChartSettingSelect = ({
   // Use null if value is undefined. If we pass undefined, Select will create an
@@ -45,7 +38,7 @@ export const ChartSettingSelect = ({
 
   const data = options.map(({ name, value }) => ({
     label: name,
-    value: VALUE_OVERRIDE(value) || "",
+    value: encodeWidgetValue(value) || "",
   }));
 
   const dropdownComponent =
@@ -65,13 +58,12 @@ export const ChartSettingSelect = ({
       data={data}
       dropdownComponent={dropdownComponent}
       disabled={disabled}
-      value={VALUE_OVERRIDE(value)}
+      value={encodeWidgetValue(value)}
       //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
-      onChange={v => onChange(v)}
+      onChange={v => onChange(decodeWidgetValue(v))}
       placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
       initiallyOpened={isInitiallyOpen}
       searchable={!!searchProp}
-      rightSectionWidth={rightSectionWidth ?? "10px"}
       comboboxProps={{
         withinPortal: false,
         floatingStrategy: "fixed",
@@ -82,6 +74,9 @@ export const ChartSettingSelect = ({
       pr={pr}
       leftSection={leftSection}
       rightSection={rightSection}
+      rightSectionProps={
+        rightSectionWidth ? { style: { width: rightSectionWidth } } : undefined
+      }
       styles={styles}
       w={w}
       defaultDropdownOpened={defaultDropdownOpened}
