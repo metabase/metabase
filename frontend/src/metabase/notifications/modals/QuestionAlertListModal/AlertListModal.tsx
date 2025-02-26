@@ -63,12 +63,12 @@ export const AlertListModal = ({
     >
       <Modal.Overlay />
       <Modal.Content>
-        <Modal.Header p="2rem" pb="2rem">
+        <Modal.Header p="xl" pb="lg">
           <Modal.Title>{t`Edit alerts`}</Modal.Title>
           <Modal.CloseButton />
         </Modal.Header>
-        <Modal.Body p="2rem">
-          <Stack gap="1rem" mb="2rem">
+        <Modal.Body p="xl" pt="0">
+          <Stack gap="lg" mb="lg">
             {sortedQuestionAlerts.map(alert => {
               const canEditAlert =
                 isAdmin ||
