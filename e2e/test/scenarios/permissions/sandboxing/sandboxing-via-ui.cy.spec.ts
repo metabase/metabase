@@ -214,6 +214,12 @@ describe(
         cy.log("Modify the sandboxing policy for the 'data' group");
         H.modifyPermission("data", 0, "Sandboxed");
 
+        // TODO: This fails because of the data retention issue
+        H.modal().within(() => {
+          cy.findByText(/Change access to this database to .*Sandboxed.*?/);
+          cy.button("Change").click();
+        });
+
         H.modal().findByText(/Restrict access to this table/);
         cy.findByRole("radio", {
           name: /Filter by a column in the table/,
