@@ -42,6 +42,8 @@ export function CodeBlock({
       basicSetup={{
         lineNumbers: true,
         foldGutter: false,
+        highlightActiveLine: false,
+        highlightActiveLineGutter: false,
       }}
       value={code}
       extensions={extensions}
