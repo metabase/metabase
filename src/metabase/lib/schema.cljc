@@ -99,9 +99,11 @@
   [:sequential {:min 1} ::filterable])
 
 (defn- bad-ref-clause? [ref-type valid-ids x]
-  (and (vector? x)
-       (= ref-type (nth x 0 nil))
-       (not (contains? valid-ids (nth x 2 nil)))))
+  (when-let [[kind opts target] (and (vector? x) x)]
+    (and (= ref-type kind)
+         (map? opts)
+         (string? target)
+         (not (contains? valid-ids target)))))
 
 (defn- stage-with-joins-and-namespaced-keys-removed
   "For ref validation purposes we should ignore `:joins` and any namespaced keys that might be used to record additional
