@@ -47,9 +47,12 @@ describe("Notebook Editor > Expression Step", () => {
 
     await userEvent.click(screen.getByRole("img", { name: "add icon" }));
 
-    await userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
     await userEvent.type(
-      screen.getByLabelText("Name"),
+      screen.getByTestId("custom-expression-query-editor"),
+      "1 + 1",
+    );
+    await userEvent.type(
+      screen.getByTestId("expression-name"),
       "new expression{enter}",
     );
 
@@ -69,7 +72,7 @@ describe("Notebook Editor > Expression Step", () => {
 
     await userEvent.click(screen.getByText("old name"));
 
-    const nameField = screen.getByLabelText("Name");
+    const nameField = screen.getByTestId("expression-name");
     await userEvent.clear(nameField);
     await userEvent.type(nameField, "new name{enter}");
 
@@ -102,8 +105,11 @@ describe("Notebook Editor > Expression Step", () => {
 
     await userEvent.click(screen.getByRole("img", { name: "add icon" }));
 
-    await userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
-    await userEvent.type(screen.getByLabelText("Name"), "Total{enter}");
+    await userEvent.type(
+      screen.getByTestId("custom-expression-query-editor"),
+      "1 + 1",
+    );
+    await userEvent.type(screen.getByTestId("expression-name"), "Total{enter}");
 
     const recentQuery = getRecentQuery();
     const expressions = Lib.expressions(recentQuery, 0);
