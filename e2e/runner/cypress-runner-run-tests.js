@@ -28,7 +28,7 @@ const configs = {
 
     const defaultConfig = {
       browser: "chrome",
-      configFile: "support/cypress.config.js",
+      configFile: "e2e/support/cypress.config.js",
       config: {
         baseUrl: getHost({ port: clientPort }),
       },
@@ -47,7 +47,7 @@ const configs = {
     const defaultConfig = {
       browser: "chrome",
       project: `e2e/tmp/${sampleAppName}/next-sample-app-router/e2e`,
-      configFile: "support/cypress.config.js",
+      configFile: "e2e/support/cypress.config.js",
       config: {
         baseUrl: getHost({ port: clientPort }),
       },

@@ -110,26 +110,26 @@ const init = async () => {
     );
   }
 
-  let profile = "";
+  let sampleAppProfile = "";
   switch (options.TEST_SUITE) {
     case "metabase-nodejs-react-sdk-embedding-sample-e2e":
-      profile = "node-sample-app";
+      sampleAppProfile = "node-sample-app";
       break;
 
     case "metabase-nextjs-sdk-embedding-sample-app-router-e2e":
     case "metabase-nextjs-sdk-embedding-sample-pages-router-e2e":
-      profile = ""; // TODO: add profile
+      sampleAppProfile = ""; // TODO: add profile
       break;
 
     case "shoppy-e2e":
-      profile = ""; // TODO: add profile
+      sampleAppProfile = ""; // TODO: add profile
       break;
   }
 
-  if (profile) {
-    printBold(`⏳ Starting ${profile} containers`);
+  if (sampleAppProfile) {
+    printBold(`⏳ Starting ${sampleAppProfile} containers`);
     shell(
-      `docker compose -f e2e/runner/embedding-sdk-apps/docker-compose.yml --profile ${profile} up -d --force-recreate`,
+      `docker compose -f e2e/runner/embedding-sdk-apps/docker-compose.yml --profile ${sampleAppProfile} up -d --force-recreate`,
     );
   }
 

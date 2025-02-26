@@ -20,7 +20,7 @@ COPY $HOST_SDK_PATH ./sdk
 # install the local sdk - this doesn't work due to different sdk versions?
 # RUN cd $APP-$BRANCH/client && npm install file:../../sdk/ --install-links --force
 
-# ENV startCommand="cd $APP-$BRANCH && ./test-run.sh"
+# we could maybe keep make this a single command at the sample app level
 ENV backendCommand="npm run start --prefix $APP-$BRANCH/server"
 ENV frontendCommand="npm run start --prefix $APP-$BRANCH/client -- --host"
 
