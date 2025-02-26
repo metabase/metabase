@@ -291,11 +291,16 @@ describe("formatting", () => {
     });
 
     it("should format big integers", () => {
-      expect(
-        formatValue(9223372036854775807n, {
-          column: { base_type: TYPE.Number, semantic_type: TYPE.Number },
-        }),
-      ).toEqual("9,223,372,036,854,775,807");
+      const options = {
+        column: { base_type: TYPE.Number, semantic_type: TYPE.Number },
+      };
+
+      expect(formatValue(9223372036854775807n, options)).toEqual(
+        "9,223,372,036,854,775,807",
+      );
+      expect(formatValue("9223372036854775807", options)).toEqual(
+        "9,223,372,036,854,775,807",
+      );
     });
 
     it("should format zip codes without commas", () => {
