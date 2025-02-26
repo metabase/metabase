@@ -3,12 +3,12 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import {
   type SandboxPolicy,
+  testCardsOnlyIncludeGizmos as cardsShouldOnlyShowGizmos,
+  cardsHaveRowsWithGizmosAndWidgets as cardsShouldShowGizmosAndWidgets,
   configureSandboxPolicy,
   configureUser,
-  createTestCards,
+  createTestCards as createCardsShowingGizmosAndWidgets,
   signInAsSandboxedUser,
-  testCardsIncludeGizmosAndWidgets,
-  testCardsOnlyIncludeGizmos,
   sandboxingUser as user,
 } from "./helpers/e2e-sandboxing-helpers";
 
@@ -39,12 +39,12 @@ describe(
           filterTableBy: "custom_view",
           customViewType: "question",
         };
-        createTestCards(policy);
+        createCardsShowingGizmosAndWidgets(policy);
         signInAsSandboxedUser();
-        testCardsIncludeGizmosAndWidgets(policy);
+        cardsShouldShowGizmosAndWidgets(policy);
         configureSandboxPolicy(policy);
         signInAsSandboxedUser();
-        testCardsOnlyIncludeGizmos(policy);
+        cardsShouldOnlyShowGizmos(policy);
       });
 
       it("to a table filtered using a model as a custom view", () => {
@@ -52,12 +52,12 @@ describe(
           filterTableBy: "custom_view",
           customViewType: "model",
         };
-        createTestCards(policy);
+        createCardsShowingGizmosAndWidgets(policy);
         signInAsSandboxedUser();
-        testCardsIncludeGizmosAndWidgets(policy);
+        cardsShouldShowGizmosAndWidgets(policy);
         configureSandboxPolicy(policy);
         signInAsSandboxedUser();
-        testCardsOnlyIncludeGizmos(policy);
+        cardsShouldOnlyShowGizmos(policy);
       });
 
       it("to a table filtered by a regular column", () => {
@@ -65,13 +65,13 @@ describe(
           filterTableBy: "column",
           columnType: "regular",
         };
-        createTestCards(policy);
+        createCardsShowingGizmosAndWidgets(policy);
         signInAsSandboxedUser();
-        testCardsIncludeGizmosAndWidgets(policy);
+        cardsShouldShowGizmosAndWidgets(policy);
         const { attributeKey } = configureUser(policy);
         configureSandboxPolicy({ ...policy, attributeKey });
         signInAsSandboxedUser();
-        testCardsOnlyIncludeGizmos(policy);
+        cardsShouldOnlyShowGizmos(policy);
       });
 
       // This behavior might be genuinely broken?
@@ -83,13 +83,13 @@ describe(
           columnType: "custom",
           customColumnType: "boolean",
         };
-        createTestCards(policy);
+        createCardsShowingGizmosAndWidgets(policy);
         signInAsSandboxedUser();
-        testCardsIncludeGizmosAndWidgets(policy);
+        cardsShouldShowGizmosAndWidgets(policy);
         const { attributeKey } = configureUser(policy);
         configureSandboxPolicy({ ...policy, attributeKey });
         signInAsSandboxedUser();
-        testCardsOnlyIncludeGizmos(policy);
+        cardsShouldOnlyShowGizmos(policy);
       });
 
       // This might also be broken? The query errors with: Invalid output:
@@ -107,13 +107,13 @@ describe(
           columnType: "custom",
           customColumnType: "string",
         };
-        createTestCards(policy);
+        createCardsShowingGizmosAndWidgets(policy);
         signInAsSandboxedUser();
-        testCardsIncludeGizmosAndWidgets(policy);
+        cardsShouldShowGizmosAndWidgets(policy);
         const { attributeKey } = configureUser(policy);
         configureSandboxPolicy({ ...policy, attributeKey });
         signInAsSandboxedUser();
-        testCardsOnlyIncludeGizmos(policy);
+        cardsShouldOnlyShowGizmos(policy);
       });
 
       // Also fails with a similar error
@@ -123,13 +123,13 @@ describe(
           columnType: "custom",
           customColumnType: "number",
         };
-        createTestCards(policy);
+        createCardsShowingGizmosAndWidgets(policy);
         signInAsSandboxedUser();
-        testCardsIncludeGizmosAndWidgets(policy);
+        cardsShouldShowGizmosAndWidgets(policy);
         const { attributeKey } = configureUser(policy);
         configureSandboxPolicy({ ...policy, attributeKey });
         signInAsSandboxedUser();
-        testCardsOnlyIncludeGizmos(policy);
+        cardsShouldOnlyShowGizmos(policy);
       });
     });
 
