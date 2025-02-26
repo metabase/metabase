@@ -244,12 +244,9 @@ class Visualization extends PureComponent {
       metadata,
       isRawTable,
       getExtraDataForClick = () => ({}),
-      rawSeries,
     } = this.props;
 
-    const card =
-      rawSeries.find(series => series.card.id === clicked.cardId)?.card ??
-      rawSeries[0].card;
+    const card = this.findCardById(clicked.cardId);
 
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
@@ -267,6 +264,27 @@ class Visualization extends PureComponent {
         )
       : [];
   }
+
+  isVisualizerViz = () => {
+    const { dashcard } = this.props;
+    return isVisualizerDashboardCard(dashcard);
+  };
+
+  findCardById = cardId => {
+    const { metadata, rawSeries } = this.props;
+
+    if (this.isVisualizerViz()) {
+      const card = metadata.question(cardId)?.card();
+      if (card) {
+        return card;
+      }
+    }
+
+    return (
+      rawSeries.find(series => series.card.id === cardId)?.card ??
+      rawSeries[0].card
+    );
+  };
 
   visualizationIsClickable = clicked => {
     try {
@@ -305,12 +323,7 @@ class Visualization extends PureComponent {
 
   // Add the underlying card of current series to onChangeCardAndRun if available
   handleOnChangeCardAndRun = ({ nextCard, objectId }) => {
-    const { rawSeries } = this.props;
-
-    const previousCard =
-      rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
-      rawSeries[0].card;
-
+    const previousCard = this.findCardById(nextCard.id);
     this.props.onChangeCardAndRun({
       nextCard,
       previousCard,
@@ -468,8 +481,6 @@ class Visualization extends PureComponent {
 
     const CardVisualization = visualization;
 
-    const isVisualizerViz = dashcard && isVisualizerDashboardCard(dashcard);
-
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
@@ -483,7 +494,9 @@ class Visualization extends PureComponent {
     // We can't navigate a user to a particular card from a visualizer viz,
     // so title selection is disabled in this case
     const canSelectTitle =
-      this.props.onChangeCardAndRun && !replacementContent && !isVisualizerViz;
+      this.props.onChangeCardAndRun &&
+      !replacementContent &&
+      !this.isVisualizerViz();
 
     return (
       <ErrorBoundary
@@ -541,7 +554,7 @@ class Visualization extends PureComponent {
                 )}
                 isPlaceholder={isPlaceholder}
                 isMobile={isMobile}
-                isVisualizerViz={isVisualizerViz}
+                isVisualizerViz={this.isVisualizerViz()}
                 series={series}
                 settings={settings}
                 card={series[0].card} // convenience for single-series visualizations
