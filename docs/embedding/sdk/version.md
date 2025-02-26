@@ -10,7 +10,7 @@ The SDK stable version tracks with the Metabase version.
 
 So, for example, if you're on Metabase 53 (`0.53.x`, `1.53.x`), _any_ version 0.53.x of the @metabase/embedding-sdk-react npm package will be compatible.
 
-To simplify things, we publish dist-tags for each stable Metabase version, starting from Metabase 51,`51-stable`. To install the latest version of the SDK compatible with Metabase 51, run:
+To simplify things, we publish dist-tags for each stable Metabase version. For example, to install the latest version of the SDK compatible with Metabase 53, run:
 
 ```sh
 npm install @metabase/embedding-sdk-react@53-stable
@@ -39,4 +39,4 @@ Normally, Metabase Cloud upgrades your Metabase as new versions roll out so that
 
 But if you're using the SDK with Metabase Cloud, you'll want to upgrade manually to make sure your embeds don't break when you upgrade both your Metabase and your SDK version.
 
-To upgrade manually, you can pin your Metabase version so that it stays in sync with the SDK version you're using. You can choose when to upgrade your Metabase.
+To upgrade manually, you can pin your Metabase version so that it stays in sync with the SDK version you're using. That way you can choose when to upgrade your Metabase.
