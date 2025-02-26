@@ -46,7 +46,7 @@ describe("issue 19180", () => {
           cy.visit(`/model/${QUESTION_ID}/query`);
           cy.wait("@cardQuery");
           cy.button("Cancel").click();
-          cy.get(".test-TableInteractive");
+          H.tableInteractive();
           cy.findByText("Here's where your results will appear").should(
             "not.exist",
           );

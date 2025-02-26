@@ -52,9 +52,7 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("visualization-root").contains("8833419218504");
 
       // confirm that the table contains the right columns
-      cy.findByTestId("query-visualization-root")
-        .get(".test-TableInteractive")
-        .as("table");
+      H.tableInteractive().as("table");
       cy.get("@table").contains("Product → Category");
       cy.get("@table").contains("Product → Ean");
       cy.get("@table").contains("Total").should("not.exist");
@@ -254,7 +252,6 @@ describe("scenarios > question > settings", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
 
-      // cy.get(".test-TableInteractive").findByText("Subtotal").scrollIntoView();
       H.tableHeaderClick("Subtotal"); // open subtotal column header actions
 
       H.popover().icon("gear").click(); // open subtotal column settings

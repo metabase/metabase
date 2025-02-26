@@ -367,9 +367,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         accessorFn: (row: RowValues) => row[columnIndex],
         cellVariant,
         getCellClassName: value =>
-          cx({
+          cx("test-TableInteractive-cellWrapper", {
             "test-Table-ID": value != null && isID(col),
             "test-Table-FK": value != null && isFK(col),
+            "test-TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+            "test-TableInteractive-cellWrapper--lastColumn":
+              columnIndex === cols.length - 1,
+            "test-TableInteractive-emptyCell": value == null,
           }),
         header: () => {
           return (

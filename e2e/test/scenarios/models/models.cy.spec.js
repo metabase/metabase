@@ -221,13 +221,11 @@ describe("scenarios > models", () => {
     H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
     H.echartsContainer();
-    // TODO (styles): migrate
-    cy.get(".test-TableInteractive").should("not.exist");
+    H.tableInteractive().should("not.exist");
 
     turnIntoModel();
 
-    // TODO (styles): migrate
-    cy.get(".test-TableInteractive");
+    H.tableInteractive();
     H.echartsContainer().should("not.exist");
   });
 
