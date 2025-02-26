@@ -16,56 +16,51 @@
 (def ^:dynamic *batch-size*
   "The number of records the backfill entity ids job will process at once"
   50)
-(def min-repeat-ms
+(def ^:private min-repeat-ms
   "The minimum acceptable repeat rate for the backfill entity ids job"
   1000)
 (defsetting backfill-entity-ids-repeat-ms
-  (deferred-tru "Frequency for running backfill entity ids job in ms.  Any value below 1000 will disable the job entirely.")
+  (deferred-tru "Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely.")
   :type       :integer
   :visibility :internal
   :audit      :never
   :export?    true
   :default    2000)
 
-(def failed-rows
-  "The list of failed rows for the current backfill entity ids job stage"
+(defonce ^{:doc "The list of failed rows for the current backfill entity ids job stage"} failed-rows
   (atom #{}))
 
-(defn add-failed-row!
+(defn- add-failed-row!
   "Adds an id to the failed-rows list"
   [id]
   (swap! failed-rows conj id))
 
-(defn reset-failed-rows!
+(defn- reset-failed-rows!
   "Resets the failed-rows list.  Should be called after the backfill entity ids job finishes with a model."
   []
   (reset! failed-rows #{}))
 
-(defn backfill-entity-ids!-inner
+(defn- backfill-entity-ids!-inner
   "Given a model, gets a batch of objects from the db and adds entity-ids"
   [model]
   (try
     (t2/with-transaction [_conn]
-      (let [table-name (t2/table-name model)
-            rows (t2/select model
-                            {:select [:*]
-                             :from table-name
-                             :where (into [:and [:= :entity_id nil]]
-                                          (map (fn [id] [:not [:= :id id]]))
-                                          @failed-rows)
-                             :limit *batch-size*})]
+      (let [failed-ids @failed-rows
+            id-condition (if (seq failed-ids)
+                           [:not-in failed-ids]
+                           [:!= 0])
+            rows (t2/select model :entity_id nil :id id-condition {:limit *batch-size*})]
         (when (seq rows)
           (log/info (str "Adding entity-ids to " (count rows) " rows of " model))
-          (doseq [row rows]
-            (let [{:keys [id]} row]
-              (try
-                (t2/update! model id {:entity_id (serdes/backfill-entity-id row)})
-                (catch Exception e
-                  ;; If we fail to update an individual entity id, add it to the ignore list and continue.  We'll
-                  ;; retry them on next sync.
-                  (add-failed-row! id)
-                  (log/error (str "Exception updating entity-id for " model " with id " id))
-                  (log/error e)))))
+          (doseq [{:keys [id] :as row} rows]
+            (try
+              (t2/update! model id {:entity_id (serdes/backfill-entity-id row)})
+              (catch Exception e
+                ;; If we fail to update an individual entity id, add it to the ignore list and continue.  We'll
+                ;; retry them on next sync.
+                (add-failed-row! id)
+                (log/error (str "Exception updating entity-id for " model " with id " id))
+                (log/error e))))
           true)))
     (catch Exception e
       ;; If we error outside of updating a single entity id, stop.  We'll retry on next sync.
@@ -93,14 +88,14 @@
   (doseq [model (set (flatten (seq next-model)))]
     (t2/update! model {} {:entity_id nil})))
 
-(defn job-running?
+(defn- job-running?
   "Checks if a backfill entity ids job is currently running"
   []
   (task/job-exists? job-key))
 
 (declare start-job!)
 
-(defn backfill-entity-ids!
+(defn- backfill-entity-ids!
   "Implementation for the backfill entity ids job"
   [ctx]
   (let [ctx-map (conversion/from-job-data ctx)
@@ -116,26 +111,37 @@
   BackfillEntityIds [ctx]
   (backfill-entity-ids! ctx))
 
+(defn- get-repeat-ms []
+  (let [repeat-ms (backfill-entity-ids-repeat-ms)]
+    (cond
+      (<= repeat-ms 0) nil
+      (< repeat-ms min-repeat-ms) (do (log/warnf "backfill-entity-ids-repeat-ms of %dms is too low, using %dms"
+                                                 repeat-ms
+                                                 min-repeat-ms)
+                                      min-repeat-ms)
+      :else repeat-ms)))
+
 (defn- start-job!
   "Starts a backfill entity ids job for model"
   [model]
-  (cond
-    (job-running?) (log/info "Not starting backfill-entity-ids task because it is already running")
-    (< (backfill-entity-ids-repeat-ms) min-repeat-ms) (log/info (str "Not starting backfill-entity-ids task because repeat ms is below " min-repeat-ms))
+  (let [repeat-ms (get-repeat-ms)]
+    (cond
+      (job-running?) (log/info "Not starting backfill-entity-ids task because it is already running")
+      (nil? repeat-ms) (log/info (str "Not starting backfill-entity-ids task because backfill-entity-ids-repeat-ms is " (backfill-entity-ids-repeat-ms)))
 
-    :else (do (log/info "Starting to backfill entity-ids for" model)
-              (let [job (jobs/build
-                         (jobs/of-type BackfillEntityIds)
-                         (jobs/using-job-data {"model" model})
-                         (jobs/with-identity (jobs/key job-key)))
-                    trigger (triggers/build
-                             (triggers/with-identity (triggers/key (model-key model)))
-                             (triggers/start-now)
-                             (triggers/with-schedule
-                              (simple/schedule
-                               (simple/with-interval-in-milliseconds (backfill-entity-ids-repeat-ms))
-                               (simple/repeat-forever))))]
-                (task/schedule-task! job trigger)))))
+      :else (do (log/info "Starting to backfill entity-ids for" model)
+                (let [job (jobs/build
+                           (jobs/of-type BackfillEntityIds)
+                           (jobs/using-job-data {"model" model})
+                           (jobs/with-identity (jobs/key job-key)))
+                      trigger (triggers/build
+                               (triggers/with-identity (triggers/key (model-key model)))
+                               (triggers/start-now)
+                               (triggers/with-schedule
+                                (simple/schedule
+                                 (simple/with-interval-in-milliseconds (backfill-entity-ids-repeat-ms))
+                                 (simple/repeat-forever))))]
+                  (task/schedule-task! job trigger))))))
 
 (defmethod task/init! ::BackfillEntityIds [_]
   (start-job! initial-model))
