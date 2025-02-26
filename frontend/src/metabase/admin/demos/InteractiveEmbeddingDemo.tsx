@@ -27,9 +27,9 @@ const DEFAULT_QUESTION_ID = 5;
 const THEME_COLOR_DEBOUNCE_DELAY = 300;
 
 const DEFAULT_THEME_COLORS = {
-  background: "#2d2d30",
-  "text-primary": "#fff",
-  "text-secondary": "#999",
+  background: "#fff",
+  "text-primary": "#4c5773",
+  "text-secondary": "#696e7b",
 };
 
 export const InteractiveEmbeddingDemo = () => {
