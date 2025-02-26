@@ -4,7 +4,7 @@
    [metabase-enterprise.advanced-permissions.api.util :as advanced-perms.api.u]
    [metabase-enterprise.sandbox.test-util :as met]
    [metabase.api.common :as api]
-   [metabase.models.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data :as data]

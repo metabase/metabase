@@ -1,5 +1,7 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import type { MantineSize } from "@mantine/styles";
+
+import type { MantineSize } from "metabase/ui";
 
 type BadgeColor = "brand" | "gray";
 
@@ -9,7 +11,7 @@ const COLOR_VARIANTS = {
     background: "var(--mb-color-brand)",
   },
   gray: {
-    color: "var(--mb-color-text-black)",
+    color: "var(--mb-color-text-primary)",
     /* eslint-disable no-restricted-syntax -- we should find a way to use semantic colors here */
     background: "var(--mb-base-color-gray-20)",
   },

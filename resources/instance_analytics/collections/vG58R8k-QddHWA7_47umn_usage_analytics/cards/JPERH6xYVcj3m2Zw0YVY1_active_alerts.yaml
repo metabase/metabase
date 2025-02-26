@@ -25,6 +25,8 @@ dataset_query:
   query:
     aggregation:
     - - count
+    aggregation-idents:
+      0: aggregation_JPERH6xYVcj3m2Zw0YVY1@0__0
     filter:
     - =
     - - field
@@ -52,6 +54,7 @@ dataset_query:
         - base-type: type/Integer
           join-alias: People - Creator
       fields: none
+      ident: join_JPERH6xYVcj3m2Zw0YVY1@0__People - Creator
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     source-table: skoPT2xiuEcUV8vFkHE6S
@@ -75,6 +78,7 @@ serdes/meta:
   label: active_alerts
   model: Card
 archived_directly: false
+dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: null
 source_card_id: skoPT2xiuEcUV8vFkHE6S
 type: question

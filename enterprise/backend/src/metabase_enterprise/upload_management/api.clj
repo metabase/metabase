@@ -35,4 +35,6 @@
        :body   {:message (or (ex-message e)
                              (tru "There was an error deleting the table"))}})))
 
-(api/define-routes +auth)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/upload-management` routes."
+  (api.macros/ns-handler *ns* +auth))

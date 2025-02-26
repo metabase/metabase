@@ -37,7 +37,10 @@ const omitOverlappingTicks = (
     const currentTickEnd = currentTickX + currentTickWidth / 2;
     const currentTickStart = currentTickX - currentTickWidth / 2;
 
-    if (currentTickEnd > nextAvailableX || currentTickEnd > max) {
+    if (
+      currentTickEnd > nextAvailableX ||
+      currentTickEnd > max + currentTickWidth / 2
+    ) {
       continue;
     }
 

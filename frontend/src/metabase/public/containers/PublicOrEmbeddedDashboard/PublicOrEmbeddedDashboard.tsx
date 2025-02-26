@@ -134,8 +134,10 @@ const PublicOrEmbeddedDashboardInner = ({
   bordered,
   titled,
   theme,
+  getClickActionMode,
   downloadsEnabled = true,
   hideParameters,
+  withFooter,
   navigateToNewCardFromDashboard,
   selectedTabId,
   slowCards,
@@ -234,11 +236,13 @@ const PublicOrEmbeddedDashboardInner = ({
         bordered={bordered}
         titled={titled}
         theme={theme}
+        getClickActionMode={getClickActionMode}
         hideParameters={hideParameters}
         navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
         slowCards={slowCards}
         cardTitled={cardTitled}
         downloadsEnabled={downloadsEnabled}
+        withFooter={withFooter}
       />
     </LocaleProvider>
   );

@@ -92,6 +92,7 @@ dataset_query:
           - entity_id
         - base-type: type/Integer
           join-alias: Content - Card Qualified
+      ident: join_gTeYI2eJtQUh63sZurc3z@0__Content - Card Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Content - Dashboard Qualified
@@ -125,6 +126,7 @@ dataset_query:
           - entity_id
         - base-type: type/Integer
           join-alias: Content - Dashboard Qualified
+      ident: join_gTeYI2eJtQUh63sZurc3z@0__Content - Dashboard Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Databases - Database Qualified
@@ -158,6 +160,7 @@ dataset_query:
           - name
         - base-type: type/Text
           join-alias: Databases - Database Qualified
+      ident: join_gTeYI2eJtQUh63sZurc3z@0__Databases - Database Qualified
       source-table: -19557ZnrWiDgG4h4cKxF
       strategy: left-join
     limit: 200
@@ -690,6 +693,7 @@ serdes/meta:
   label: last_queries
   model: Card
 archived_directly: false
+dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: vUNKNOWN (ad99d37)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

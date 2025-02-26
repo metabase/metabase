@@ -51,11 +51,11 @@ export function StaticNumberForm({
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
-      <Stack align="flex-start" spacing="lg">
+      <Stack align="flex-start" gap="lg">
         <PopoverBackButton
           onClick={onBack}
         >{t`Custom value`}</PopoverBackButton>
-        <Stack w="100%" spacing="md">
+        <Stack w="100%" gap="md">
           <NumberInput
             value={value}
             label={t`Value`}

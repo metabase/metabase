@@ -9,9 +9,9 @@
    [metabase.audit :as audit]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -42,6 +42,45 @@
                                                                                       "MetaBase@metabase.com"
                                                                                       :site)))
              (var-get #'collection/collection-slug-max-length))))))
+
+(deftest user->personal-collection-name-test
+  (testing "test that we can get the name of a user's personal collection as :site"
+    (is (= "Lucky Pigeon's Personal Collection"
+           (collection/user->personal-collection-name (mt/user->id :lucky) :site))))
+  (testing "test that we can get the name of a user's personal collection as :user"
+    (is (= "Lucky Pigeon's Personal Collection"
+           (collection/user->personal-collection-name (mt/user->id :lucky) :user)))))
+
+(deftest user->personal-collection-names-test
+  (is (= {(mt/user->id :rasta) "Rasta Toucan's Personal Collection"
+          (mt/user->id :lucky) "Lucky Pigeon's Personal Collection"}
+         (collection/user->personal-collection-names [(mt/user->id :lucky) (mt/user->id :rasta)] :site))))
+
+(deftest personal-collection-with-ui-details-test
+  (testing "With personal_owner"
+    (is (= {:personal_owner_id (mt/user->id :lucky)
+            :name              "Lucky Pigeon's Personal Collection"
+            :slug              "lucky_pigeon_s_personal_collection"}
+           (collection/personal-collection-with-ui-details {:personal_owner_id (mt/user->id :lucky)})))
+    (testing "Without personal_owner"
+      (is (= {:other             "value"
+              :personal_owner_id nil}
+             (collection/personal-collection-with-ui-details {:other "value" :personal_owner_id nil}))))))
+
+(deftest personal-collections-with-ui-details-test
+  (is (= [{:personal_owner_id (mt/user->id :lucky)
+           :name              "Lucky Pigeon's Personal Collection"
+           :slug              "lucky_pigeon_s_personal_collection"}
+
+          {:personal_owner_id (mt/user->id :rasta)
+           :name              "Rasta Toucan's Personal Collection"
+           :slug              "rasta_toucan_s_personal_collection"}
+
+          {:personal_owner_id nil
+           :other             "No personal Id"}]
+         (collection/personal-collections-with-ui-details [{:personal_owner_id (mt/user->id :lucky)}
+                                                           {:personal_owner_id (mt/user->id :rasta)}
+                                                           {:personal_owner_id nil :other "No personal Id"}]))))
 
 (deftest ^:parallel create-collection-test
   (testing "test that we can create a new Collection with valid inputs"

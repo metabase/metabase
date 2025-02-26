@@ -37,7 +37,18 @@
                        :breakout-idents {:0 "_II7X6UsFBqw6sY3B3VIG"}},
                :parameters []}]
         (is (= (query-hash-hex q)
-               (query-hash-hex q)))))))
+               (query-hash-hex q)))))
+    (testing "should handle parameter values that mix regular numbers with bigintegers stored as strings"
+      (let [q1 {:database 1,
+                :type :query,
+                :query {:source-table 8},
+                :parameters [{:name "p1", :value [1 "9223372036854775808"]}]}
+            q2 {:database 1,
+                :type :query,
+                :query {:source-table 8},
+                :parameters [{:name "p1", :value ["9223372036854775808" 1]}]}]
+        (is (some? (query-hash-hex q1)))
+        (is (= (query-hash-hex q1) (query-hash-hex q2)))))))
 
 (deftest ^:parallel ignore-lib-uuids-test
   (letfn [(query []

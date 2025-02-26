@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 function checkFavicon(url) {
@@ -15,11 +15,58 @@ function checkLogo() {
 
 const MB = 1024 * 1024;
 
-H.describeEE("formatting > whitelabel", () => {
+describe("formatting > whitelabel", { tags: "@EE" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.setTokenFeatures("all");
+  });
+
+  it("smoke UI test", { tags: "@smoke" }, () => {
+    cy.log("Should show all whitelabel options with the feature enabled");
+    cy.visit("/admin/settings/whitelabel");
+
+    cy.log("Upsell icon should not be present in the sidebar link");
+    cy.findAllByTestId("settings-sidebar-link")
+      .filter(":contains(Appearance)")
+      .should("have.text", "Appearance")
+      .and("not.have.descendants", ".Icon-gem");
+
+    cy.log("By default redirects to the branding tab");
+    cy.location("pathname").should("eq", "/admin/settings/whitelabel/branding");
+    cy.findByRole("tab", { name: "Branding" }).should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
+    cy.findByRole("tab", { name: "Conceal Metabase" })
+      .should("be.visible")
+      .and("have.attr", "aria-selected", "false");
+
+    cy.log("Should show the upsell if the feature is missing");
+    H.deleteToken();
+    cy.visit("/admin/settings/whitelabel");
+    cy.location("pathname").should("eq", "/admin/settings/whitelabel");
+    cy.findByRole("heading", { name: "Make Metabase look like you" }).should(
+      "be.visible",
+    );
+    cy.findByRole("link", { name: "Learn more" })
+      .should("have.attr", "href")
+      .and(
+        "include",
+        "https://www.metabase.com/docs/latest/configuring-metabase/appearance",
+      )
+      .and("include", "utm_");
+    cy.findByRole("link", { name: "Try for free" })
+      .should("have.attr", "href")
+      .and("include", "https://www.metabase.com/upgrade")
+      .and("include", "utm_");
+
+    cy.log("Upsell icon should now be visible in the sidebar link");
+    cy.findAllByTestId("settings-sidebar-link")
+      .filter(":contains(Appearance)")
+      .should("have.text", "Appearance")
+      .and("have.descendants", ".Icon-gem");
   });
 
   describe("company name", () => {
@@ -142,7 +189,7 @@ H.describeEE("formatting > whitelabel", () => {
             cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
             cy.log("test error message for file size > 2MB");
-            cy.findByRole("searchbox", {
+            cy.findByRole("textbox", {
               name: "Login and unsubscribe pages",
             }).click();
             H.selectDropdown().findByText("Custom").click();
@@ -164,7 +211,7 @@ H.describeEE("formatting > whitelabel", () => {
               ).should("be.visible");
               cy.findByText("big-file.jpg").should("not.exist");
             });
-            cy.findByRole("searchbox", {
+            cy.findByRole("textbox", {
               name: "Login and unsubscribe pages",
             }).click();
             H.selectDropdown().findByText("Custom").click();
@@ -217,7 +264,7 @@ H.describeEE("formatting > whitelabel", () => {
 
             cy.log("test uploading a valid image file");
             cy.findByTestId("login-page-illustration-setting")
-              .findByRole("searchbox", { name: "Login and unsubscribe pages" })
+              .findByRole("textbox", { name: "Login and unsubscribe pages" })
               .click();
             H.selectDropdown().findByText("Custom").click();
             cy.findByTestId("login-page-illustration-setting").within(() => {
@@ -258,7 +305,7 @@ H.describeEE("formatting > whitelabel", () => {
             cy.signInAsAdmin();
             cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-            cy.findByRole("searchbox", {
+            cy.findByRole("textbox", {
               name: "Login and unsubscribe pages",
             }).click();
             H.selectDropdown().findByText("No illustration").click();
@@ -279,12 +326,12 @@ H.describeEE("formatting > whitelabel", () => {
         it("should allow display the selected illustration on the landing page", () => {
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-          cy.findByRole("searchbox", { name: "Landing page" }).should(
+          cy.findByRole("textbox", { name: "Landing page" }).should(
             "have.value",
             "Lighthouse",
           );
 
-          cy.findByRole("searchbox", { name: "Landing page" }).click();
+          cy.findByRole("textbox", { name: "Landing page" }).click();
           H.selectDropdown().findByText("Custom").click();
 
           cy.findByTestId("landing-page-illustration-setting").within(() => {
@@ -326,11 +373,11 @@ H.describeEE("formatting > whitelabel", () => {
         it("should allow display the selected illustration at relevant places", () => {
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-          cy.findByRole("searchbox", {
+          cy.findByRole("textbox", {
             name: "When calculations return no results",
           }).should("have.value", "Sailboat");
 
-          cy.findByRole("searchbox", {
+          cy.findByRole("textbox", {
             name: "When calculations return no results",
           }).click();
           H.selectDropdown().findByText("Custom").click();
@@ -347,7 +394,7 @@ H.describeEE("formatting > whitelabel", () => {
           });
           H.undoToast().findByText("Changes saved").should("be.visible");
 
-          cy.createDashboardWithQuestions({
+          H.createDashboardWithQuestions({
             dashboardName: "No results dashboard",
             questions: [
               {
@@ -389,7 +436,7 @@ H.describeEE("formatting > whitelabel", () => {
           cy.log("test no illustration");
 
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
-          cy.findByRole("searchbox", {
+          cy.findByRole("textbox", {
             name: "When calculations return no results",
           }).click();
           H.selectDropdown().findByText("No illustration").click();
@@ -408,11 +455,11 @@ H.describeEE("formatting > whitelabel", () => {
           cy.request("POST", "/api/collection", { name: emptyCollectionName });
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-          cy.findByRole("searchbox", {
+          cy.findByRole("textbox", {
             name: "When no objects can be found",
           }).should("have.value", "Sailboat");
 
-          cy.findByRole("searchbox", {
+          cy.findByRole("textbox", {
             name: "When no objects can be found",
           }).click();
           H.selectDropdown().findByText("Custom").click();
@@ -459,7 +506,7 @@ H.describeEE("formatting > whitelabel", () => {
           cy.log("test no illustration");
 
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
-          cy.findByRole("searchbox", {
+          cy.findByRole("textbox", {
             name: "When no objects can be found",
           }).click();
           H.selectDropdown().findByText("No illustration").click();

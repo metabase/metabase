@@ -136,7 +136,7 @@ export const DashCardMenuItems = ({
         fw="bold"
         {...rest}
         key={key}
-        icon={<Icon name={iconName} aria-hidden />}
+        leftSection={<Icon name={iconName} aria-hidden />}
       >
         {item.label}
       </Menu.Item>

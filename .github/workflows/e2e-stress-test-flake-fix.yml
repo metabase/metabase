@@ -97,12 +97,16 @@ jobs:
         uses: ./.github/actions/prepare-cypress
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+      - name: Generate database snapshots
+        run: node e2e/runner/run_cypress_ci.js snapshot
 
       # For all options and fine-grained control, take a look at the documentation
       # https://github.com/cypress-io/cypress/tree/develop/npm/grep
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
-          yarn run test-cypress-run \
+          node e2e/runner/run_cypress_ci.js e2e \
           --spec '${{ github.event.inputs.spec }}' \
           --env burn=${{ github.event.inputs.burn_in }},grep='${{ github.event.inputs.grep }}' \
           --config-file e2e/support/cypress-stress-test.config.js \

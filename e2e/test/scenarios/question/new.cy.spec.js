@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -332,7 +332,7 @@ describe("scenarios > question > new", () => {
 
     // test recent items do not exist
     H.startNewNativeQuestion();
-    cy.realType("select 'hi'");
+    H.NativeEditor.type("select 'hi'");
     cy.findByTestId("native-query-editor-sidebar").button("Get Answer").click();
     cy.findByRole("button", { name: "Save" }).click();
 
@@ -493,7 +493,7 @@ describe("scenarios > question > new", () => {
 
     beforeEach(() => {
       cy.intercept("POST", "/api/card").as("createQuestion");
-      cy.createCollection(collectionInRoot).then(({ body: { id } }) => {
+      H.createCollection(collectionInRoot).then(({ body: { id } }) => {
         H.createDashboard({
           name: "Extra Dashboard",
           collection_id: id,
@@ -536,7 +536,6 @@ describe("scenarios > question > new", () => {
 
       H.entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
-        H.entityPickerModalTab("Dashboards").click();
         cy.findByText(/bobby tables's personal collection/i).should(
           "be.visible",
         );
@@ -709,7 +708,6 @@ describe(
   { tags: ["@OSS", "@smoke"] },
   () => {
     beforeEach(() => {
-      H.onlyOnOSS();
       H.restore("without-models");
       cy.signInAsAdmin();
     });

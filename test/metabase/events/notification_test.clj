@@ -10,8 +10,6 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(def supported-topics @#'events.notification/supported-topics)
-
 (deftest supported-events-with-notification-will-be-sent-test
   (mt/with-model-cleanup [:model/Notification]
     (notification.tu/with-temporary-event-topics! #{:event/test-notification}
@@ -36,9 +34,8 @@
                         nil)
             sent-notis (atom [])]
         (testing "publishing event will send all the actively subscribed notifciations"
-          (with-redefs
-           [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
-            events.notification/supported-topics #{:event/test-notification}]
+          (with-redefs [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
+                        events.notification/supported-topics #{:event/test-notification}]
             (events/publish-event! topic {::hi true})
             (is (=? [[(:id n-1) {:event_info {::hi true}}]
                      [(:id n-2) {:event_info {::hi true}}]]
@@ -92,6 +89,16 @@
              :topic   :user-joined}
             {:user_id (mt/user->id :rasta)
              :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
+           ["multiple hydration in the same map"
+            [:map
+             (-> [:user_id :int] (#'events.schema/with-hydrate :user user-hydra-model))
+             (-> [:creator :int] (#'events.schema/with-hydrate :creator user-hydra-model))]
+            {:user_id    (mt/user->id :rasta)
+             :creator_id (mt/user->id :crowberto)}
+            {:user_id    (mt/user->id :rasta)
+             :user       (t2/select-one user-hydra-model (mt/user->id :rasta))
+             :creator_id (mt/user->id :crowberto)
+             :creator    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
            ["respect the options"
             [:map
              (-> [:user_id {:optional true} :int] (#'events.schema/with-hydrate :user user-hydra-model))]
@@ -101,7 +108,7 @@
       (= expected (#'events.notification/hydrate! schema value)))))
 
 (deftest record-task-history-test
-  (notification.tu/with-notification-testing-setup
+  (notification.tu/with-notification-testing-setup!
     (mt/with-temp [:model/Channel chn-1 (assoc notification.tu/default-can-connect-channel :name (mt/random-name))
                    :model/Channel chn-2 (assoc notification.tu/default-can-connect-channel :name (mt/random-name))]
       (notification.tu/with-temporary-event-topics! #{:event/testing}

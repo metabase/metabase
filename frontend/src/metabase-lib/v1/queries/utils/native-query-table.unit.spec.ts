@@ -64,7 +64,12 @@ const cardWithCollection = createSavedNativeCard({
 const card = createSavedNativeCard({ id: 3 });
 
 const metadata = createMockMetadata({
-  databases: [createSampleDatabase(), SAVED_QUESTIONS_DB],
+  databases: [
+    createSampleDatabase({
+      features: ["native-requires-specified-collection"],
+    }),
+    SAVED_QUESTIONS_DB,
+  ],
   tables: [modelTable],
   questions: [model, card, cardWithCollection],
 });

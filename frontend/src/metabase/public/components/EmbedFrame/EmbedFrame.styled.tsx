@@ -1,7 +1,9 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {

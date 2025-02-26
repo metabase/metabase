@@ -1,23 +1,20 @@
 import cx from "classnames";
 import { type PropsWithChildren, type ReactNode, useState } from "react";
 
+import { FieldSet } from "metabase/components/FieldSet";
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Box } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
 
 import { ParameterValueWidget } from "../ParameterValueWidget";
 
-import {
-  ParameterContainer,
-  ParameterFieldSet,
-  SettingsIcon,
-} from "./ParameterWidget.styled";
+import S from "./ParameterWidget.module.css";
 
 type ParameterWidgetProps = PropsWithChildren<
   {
@@ -62,8 +59,14 @@ const EditParameterWidget = ({
       disabled={!isEditing}
       role="listitem"
     >
-      <ParameterContainer
-        isEditingParameter={isEditingParameter}
+      <Flex
+        align="center"
+        miw="170px"
+        p="sm"
+        fw="bold"
+        className={cx(S.ParameterContainer, {
+          [S.isEditingParameter]: isEditingParameter,
+        })}
         onClick={() =>
           setEditingParameter?.(isEditingParameter ? null : parameter.id)
         }
@@ -72,8 +75,8 @@ const EditParameterWidget = ({
           {dragHandle}
         </div>
         {parameter.name}
-        <SettingsIcon name="gear" size={16} />
-      </ParameterContainer>
+        <Icon ml="auto" pl="md" name="gear" />
+      </Flex>
     </Sortable>
   );
 };
@@ -104,16 +107,19 @@ export const ParameterWidget = ({
   if (!isEditing || !setEditingParameter) {
     return (
       <Box fz={isFullscreen ? "md" : undefined}>
-        <ParameterFieldSet
+        <FieldSet
           className={cx(
             className,
             DashboardS.ParameterFieldSet,
             EmbedFrameS.ParameterFieldSet,
+            S.ParameterFieldSet,
+            {
+              [S.fieldHasValueOrFocus]: fieldHasValueOrFocus,
+            },
           )}
           legend={legend}
           required={enableParameterRequiredBehavior && parameter.required}
-          noPadding={true}
-          fieldHasValueOrFocus={fieldHasValueOrFocus}
+          noPadding
         >
           <ParameterValueWidget
             offset={{
@@ -136,7 +142,7 @@ export const ParameterWidget = ({
             isSortable={isSortable && isEditing}
           />
           {children}
-        </ParameterFieldSet>
+        </FieldSet>
       </Box>
     );
   }

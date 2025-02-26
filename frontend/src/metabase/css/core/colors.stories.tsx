@@ -1,7 +1,7 @@
 import { Card, Flex, Text } from "metabase/ui";
 
 export default {
-  title: "Design System/colors",
+  title: "Design System/Colors",
 };
 
 const COLOR_NAMES = [

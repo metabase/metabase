@@ -30,7 +30,7 @@
   (lib.tu/mock-metadata-provider meta/metadata-provider segments-db))
 
 (def ^:private metadata-provider-with-cards
-  (lib.tu/mock-metadata-provider lib.tu/metadata-provider-with-mock-cards segments-db))
+  (lib.tu/mock-metadata-provider (lib.tu/metadata-provider-with-mock-cards) segments-db))
 
 (def ^:private segment-clause
   [:segment {:lib/uuid (str (random-uuid))} segment-id])
@@ -115,7 +115,7 @@
       (is (nil? (lib/available-segments query)))))
   (testing "query based on a card -- don't return Segments"
     (doseq [card-key [:venues :venues/native]]
-      (let [query (lib/query metadata-provider-with-cards (card-key lib.tu/mock-cards))]
+      (let [query (lib/query metadata-provider-with-cards (card-key (lib.tu/mock-cards)))]
         (is (not (lib/uses-segment? query segment-id)))
         (is (nil? (lib/available-segments (lib/append-stage query))))))))
 

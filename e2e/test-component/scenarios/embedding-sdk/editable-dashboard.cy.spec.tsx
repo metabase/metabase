@@ -1,18 +1,29 @@
+const { H } = cy;
 import { EditableDashboard } from "@metabase/embedding-sdk-react";
 
-import { describeEE } from "e2e/support/helpers";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { defer } from "metabase/lib/promise";
+import type {
+  ConcreteFieldReference,
+  DashboardCard,
+  Parameter,
+} from "metabase-types/api";
 
-describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
+describe("scenarios > embedding-sdk > editable-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    cy.createDashboard({
+    H.createDashboard({
       name: "Embedding SDK Test Dashboard",
     }).then(({ body: dashboard }) => {
       cy.wrap(dashboard.id).as("dashboardId");
@@ -83,9 +94,7 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.findByDisplayValue("Embedding SDK Test Dashboard").should(
             "be.visible",
           );
-          cy.findByText("This dashboard is looking empty.").should(
-            "be.visible",
-          );
+          cy.findByText("This dashboard is empty").should("be.visible");
         });
       });
     });
@@ -101,9 +110,96 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.findByDisplayValue("Embedding SDK Test Dashboard").should(
             "not.exist",
           );
-          cy.findByText("This dashboard is looking empty.").should("not.exist");
+          cy.findByText("This dashboard is empty").should("not.exist");
         });
       });
+    });
+  });
+
+  describe("EMB-84", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      cy.log("Create a dashboard with Created at filter with a default value");
+      const { ORDERS } = SAMPLE_DATABASE;
+
+      const DATE_FILTER: Parameter = {
+        id: "2",
+        name: "Date filter",
+        slug: "filter-date",
+        type: "date/all-options",
+        default: "2024-01-01~2024-12-31",
+      };
+      const CREATED_AT_FIELD_REF: ConcreteFieldReference = [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime" },
+      ];
+
+      const questionCard: Partial<DashboardCard> = {
+        id: ORDERS_DASHBOARD_DASHCARD_ID,
+        parameter_mappings: [
+          {
+            parameter_id: DATE_FILTER.id,
+            card_id: ORDERS_QUESTION_ID,
+            target: ["dimension", CREATED_AT_FIELD_REF],
+          },
+        ],
+        card_id: ORDERS_QUESTION_ID,
+        row: 0,
+        col: 0,
+        size_x: 16,
+        size_y: 8,
+      };
+
+      H.createDashboard({
+        name: "Orders in a dashboard",
+        dashcards: [questionCard],
+        parameters: [DATE_FILTER],
+      }).then(({ body: dashboard }) => {
+        cy.wrap(dashboard.id).as("dashboardId");
+      });
+      cy.signOut();
+    });
+
+    it('should drill dashboards with filter values and not showing "Question not found" error (EMB-84)', () => {
+      cy.get("@dashboardId").then(dashboardId => {
+        mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+      });
+
+      const { promise, resolve: resolveCardEndpoint } = defer();
+
+      /**
+       * This seems to be the only reliable way to force the error to stay, and we will resolve
+       * the promise that will cause the error to go away manually after asserting that it's not there.
+       */
+      cy.intercept("get", "/api/card/*", req => {
+        return promise.then(() => {
+          req.continue();
+        });
+      }).as("getCard");
+
+      getSdkRoot().within(() => {
+        H.getDashboardCard().findByText("Orders").click();
+        cy.findByText("Question not found")
+          .should("not.exist")
+          .then(() => {
+            resolveCardEndpoint();
+          });
+        cy.findByText("New question").should("be.visible");
+      });
+    });
+  });
+
+  it("should not show New Question button in sidebar (metabase#53896)", () => {
+    cy.get("@dashboardId").then(dashboardId => {
+      mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Add a chart").should("be.visible").click();
+
+      cy.findByText("New Question").should("not.exist");
+      cy.findByText("New SQL query").should("not.exist");
     });
   });
 });

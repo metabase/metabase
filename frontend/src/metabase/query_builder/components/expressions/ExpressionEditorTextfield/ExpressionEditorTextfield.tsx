@@ -12,7 +12,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Flex, type IconName } from "metabase/ui";
+import { Box, Flex, type IconName, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import {
@@ -135,6 +135,8 @@ interface ExpressionEditorTextfieldProps {
     expressionClause: Lib.ExpressionClause | null,
   ) => void;
   shortcuts?: SuggestionShortcut[];
+
+  forwardedRef?: React.ForwardedRef<HTMLDivElement>;
 }
 
 interface StateProps {
@@ -217,7 +219,6 @@ class ExpressionEditorTextfieldInner extends React.Component<
 > {
   input = React.createRef<AceEditor>();
   suggestionTarget = React.createRef<HTMLDivElement>();
-  helpTextTarget = React.createRef<HTMLDivElement>();
   popupMenuTarget = React.createRef<HTMLUListElement>();
 
   static defaultProps = {
@@ -767,7 +768,7 @@ class ExpressionEditorTextfieldInner extends React.Component<
   ];
 
   render() {
-    const { width, query, stageIndex } = this.props;
+    const { width, query, stageIndex, forwardedRef } = this.props;
     const {
       source,
       suggestions,
@@ -779,65 +780,82 @@ class ExpressionEditorTextfieldInner extends React.Component<
     } = this.state;
 
     return (
-      <div ref={this.helpTextTarget}>
-        <ExpressionEditorSuggestions
-          query={query}
-          stageIndex={stageIndex}
-          suggestions={suggestions}
-          onSuggestionMouseDown={this.onSuggestionSelected}
-          highlightedIndex={highlightedSuggestionIndex}
-          onHighlightSuggestion={this.handleHighlightSuggestion}
-          open={isFocused}
-          ref={this.popupMenuTarget}
-        >
-          <Flex
-            className={cx(
-              "expression-editor-textfield",
-              ExpressionEditorTextfieldS.EditorContainer,
-              {
-                [ExpressionEditorTextfieldS.isFocused]: isFocused,
-                [ExpressionEditorTextfieldS.hasError]: errorMessage,
-              },
+      <Popover
+        opened={!!helpText}
+        position="bottom-start"
+        withinPortal={false}
+        floatingStrategy="fixed"
+      >
+        <Popover.Target>
+          <Box ref={forwardedRef}>
+            <ExpressionEditorSuggestions
+              query={query}
+              stageIndex={stageIndex}
+              suggestions={suggestions}
+              onSuggestionMouseDown={this.onSuggestionSelected}
+              highlightedIndex={highlightedSuggestionIndex}
+              onHighlightSuggestion={this.handleHighlightSuggestion}
+              open={isFocused}
+              ref={this.popupMenuTarget}
+            >
+              <Flex
+                className={cx(
+                  "expression-editor-textfield",
+                  ExpressionEditorTextfieldS.EditorContainer,
+                  {
+                    [ExpressionEditorTextfieldS.isFocused]: isFocused,
+                    [ExpressionEditorTextfieldS.hasError]: errorMessage,
+                  },
+                )}
+                ref={this.suggestionTarget}
+                data-testid="expression-editor-textfield"
+              >
+                <Box className={ExpressionEditorTextfieldS.EditorEqualsSign}>
+                  =
+                </Box>
+                <AceEditor
+                  commands={this.commands}
+                  mode="text"
+                  ref={this.input}
+                  value={source}
+                  markers={this.errorAsMarkers(errorMessage)}
+                  focus={true}
+                  highlightActiveLine={false}
+                  wrapEnabled={true}
+                  fontSize={12}
+                  onBlur={this.handleInputBlur}
+                  onFocus={this.handleFocus}
+                  setOptions={ACE_OPTIONS}
+                  onChange={this.handleExpressionChange}
+                  onCursorChange={this.handleCursorChange}
+                  width="100%"
+                />
+              </Flex>
+            </ExpressionEditorSuggestions>
+            {errorMessage && hasChanges && (
+              <Box className={ExpressionEditorTextfieldS.ErrorMessageContainer}>
+                {errorMessage.message}
+              </Box>
             )}
-            ref={this.suggestionTarget}
-            data-testid="expression-editor-textfield"
-          >
-            <Box className={ExpressionEditorTextfieldS.EditorEqualsSign}>=</Box>
-            <AceEditor
-              commands={this.commands}
-              mode="text"
-              ref={this.input}
-              value={source}
-              markers={this.errorAsMarkers(errorMessage)}
-              focus={true}
-              highlightActiveLine={false}
-              wrapEnabled={true}
-              fontSize={12}
-              onBlur={this.handleInputBlur}
-              onFocus={this.handleFocus}
-              setOptions={ACE_OPTIONS}
-              onChange={this.handleExpressionChange}
-              onCursorChange={this.handleCursorChange}
-              width="100%"
-            />
-          </Flex>
-        </ExpressionEditorSuggestions>
-        {errorMessage && hasChanges && (
-          <Box className={ExpressionEditorTextfieldS.ErrorMessageContainer}>
-            {errorMessage.message}
           </Box>
-        )}
-        <ExpressionEditorHelpText
-          target={this.helpTextTarget}
-          helpText={helpText}
-          width={width}
-        />
-      </div>
+        </Popover.Target>
+        {/* similar to overlays,  Mantine keeps overriding the max-width property on the `style` attribute */}
+        <Popover.Dropdown maw={`${width}px !important`}>
+          <ExpressionEditorHelpText helpText={helpText} />
+        </Popover.Dropdown>
+      </Popover>
     );
   }
 }
 
-export const ExpressionEditorTextfield =
-  ExplicitSize<ExpressionEditorTextfieldProps>()(
-    connect(mapStateToProps)(ExpressionEditorTextfieldInner),
-  );
+const ExpressionEditorTextfieldWithRef = React.forwardRef<
+  HTMLDivElement,
+  ExpressionEditorTextfieldProps & StateProps
+>((props, ref) => (
+  <ExpressionEditorTextfieldInner {...props} forwardedRef={ref} />
+));
+
+export const ExpressionEditorTextfield = _.compose(
+  connect(mapStateToProps),
+  ExplicitSize<ExpressionEditorTextfieldProps>(),
+)(ExpressionEditorTextfieldWithRef);

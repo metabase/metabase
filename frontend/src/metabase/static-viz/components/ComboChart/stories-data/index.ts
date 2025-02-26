@@ -37,6 +37,7 @@ import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-sca
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
 import barStackedAllLabelsTimeseriesWithGap45717 from "./bar-stacked-all-labels-timeseries-with-gap-45717.json";
 import barStackedLabelsNullVsZero from "./bar-stacked-labels-null-vs-zero.json";
+import barStackedNormalizedCustomMinMax48021 from "./bar-stacked-normalized-custom-min-max-48021.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
 import barStackedNormalizedSeriesLabels from "./bar-stacked-normalized-series-labels.json";
 import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json";
@@ -156,6 +157,7 @@ export const data = {
   barLogYScaleStacked,
   barLogYScaleStackedNegative,
   barStackedNormalizedEmptySpace37880,
+  barStackedNormalizedCustomMinMax48021,
   barsBreakoutSortedWithNegativeValuesPowerYAxis,
   barFullyNullDimension37902,
   autoYSplit,

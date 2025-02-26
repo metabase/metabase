@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -43,6 +43,7 @@ H.describeWithSnowplow(
         cy.findByText("ID").click();
       });
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText("Name").click();
 
       H.popover().within(() => {
@@ -59,12 +60,14 @@ H.describeWithSnowplow(
           "email@example.com__text__12345",
         );
 
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByRole("textbox").last().clear();
         cy.findByTestId("combine-example").should(
           "have.text",
           "email@example.com__text12345",
         );
 
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByRole("textbox").last().clear().type("+");
         cy.findByTestId("combine-example").should(
           "have.text",
@@ -74,6 +77,7 @@ H.describeWithSnowplow(
         cy.findByText("Done").click();
       });
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("header-cell")
         .last()
         .should("have.text", "Combined Email, Name, ID");

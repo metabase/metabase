@@ -1,7 +1,8 @@
 (ns metabase.driver.druid.js
   "Util fns for creating Javascript functions."
   (:refer-clojure :exclude [+ - * / or])
-  (:require [clojure.string :as str]))
+  (:require
+   [clojure.string :as str]))
 
 (defn- ->js [x]
   {:pre [(not (coll? x))]}

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { Card, StructuredQuery } from "metabase-types/api";
 
@@ -66,7 +66,9 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
       H.popover()
         .findByLabelText("Created At")
         .findByLabelText("Temporal bucket")
+        .realHover()
         .click();
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText("Week").click();
       H.getNotebookStep("summarize")
         .findByTestId("breakout-step")
@@ -78,6 +80,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
         cy.findByText("Category").click();
       });
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("action-buttons").last().button("Summarize").click();
       H.popover().findByText("Count of rows").click();
       H.getNotebookStep("summarize", { stage: 1 })

@@ -12,7 +12,7 @@ import { useSet } from "react-use";
 import { isDesktopSafari } from "metabase/lib/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
-import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
+import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import {
   useCartesianChartSeriesColorsClasses,
@@ -50,6 +50,7 @@ function _CartesianChart(props: VisualizationProps) {
     headerIcon,
     actionButtons,
     isQueryBuilder,
+    isVisualizerViz,
     isFullscreen,
     hovered,
     onChangeCardAndRun,
@@ -130,7 +131,10 @@ function _CartesianChart(props: VisualizationProps) {
     setChartSize({ width, height });
   }, []);
 
-  const canSelectTitle = !!onChangeCardAndRun;
+  // We can't navigate a user to a particular card from a visualizer viz,
+  // so title selection is disabled in this case
+  const canSelectTitle = !!onChangeCardAndRun && !isVisualizerViz;
+
   const seriesColorsCss = useCartesianChartSeriesColorsClasses(
     chartModel,
     settings,

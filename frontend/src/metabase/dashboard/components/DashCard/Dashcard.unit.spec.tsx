@@ -81,6 +81,7 @@ function setup({
       {...props}
       onAddSeries={jest.fn()}
       onReplaceCard={onReplaceCard}
+      isTrashedOnRemove={false}
       onRemove={jest.fn()}
       markNewCardSeen={jest.fn()}
       navigateToNewCardFromDashboard={jest.fn()}
@@ -91,6 +92,7 @@ function setup({
       downloadsEnabled
       autoScroll={false}
       reportAutoScrolledToDashcard={jest.fn()}
+      editDashboard={jest.fn()}
     />,
     {
       storeInitialState: {

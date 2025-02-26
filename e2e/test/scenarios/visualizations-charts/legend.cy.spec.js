@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
@@ -108,7 +108,7 @@ describe("scenarios > visualizations > legend", () => {
   });
 
   it("should toggle series visibility on a dashboard", () => {
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       questions: [
         SINGLE_AGGREGATION_QUESTION,
         MANY_LEGEND_ITEMS_QUESTION,
@@ -410,7 +410,7 @@ describe("scenarios > visualizations > legend", () => {
   });
 
   it("should toggle series visibility on a public dashboard", () => {
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       questions: [SINGLE_AGGREGATION_QUESTION],
       cards: [{ col: 0, row: 0, size_x: 24, size_y: 6 }],
     }).then(({ dashboard }) => {
@@ -564,6 +564,7 @@ describe("scenarios > visualizations > legend", () => {
 });
 
 function hideSeries(legendItemIndex) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("legend-item")
     .eq(legendItemIndex)
     .findByLabelText("Hide series")
@@ -571,6 +572,7 @@ function hideSeries(legendItemIndex) {
 }
 
 function showSeries(legendItemIndex) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("legend-item")
     .eq(legendItemIndex)
     .findByLabelText("Show series")

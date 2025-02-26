@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -9,7 +9,7 @@ const CUSTOM_REPORTS_COLLECTION_NAME = "Custom reports";
 const PEOPLE_MODEL_NAME = "People";
 const METRICS_DASHBOARD_NAME = "Metabase metrics";
 
-H.describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
+describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
   describe("admin", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/field/*/values").as("fieldValues");
@@ -282,9 +282,8 @@ H.describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 });
 
 describe("question and dashboard links", () => {
-  H.describeEE("ee", () => {
+  describe("ee", () => {
     beforeEach(() => {
-      H.onlyOnEE();
       H.restore();
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
@@ -366,7 +365,6 @@ describe("question and dashboard links", () => {
 
   describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
-      H.onlyOnOSS();
       H.restore();
       cy.signInAsAdmin();
     });

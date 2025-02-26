@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
@@ -557,7 +557,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
   describe("dashboards", () => {
     it("should be scrollable even when tiny (metabase#24678)", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: {
           name: QUESTION_NAME,
           query: testQuery.query,
@@ -580,7 +580,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     it("should allow filtering drill through (metabase#14632) (metabase#14465)", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: {
           name: QUESTION_NAME,
           query: testQuery.query,
@@ -616,7 +616,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.viewport(1400, 800); // Row totals on embed preview was getting cut off at the normal width
       cy.log("Create a question");
 
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: {
           name: QUESTION_NAME,
           query: testQuery.query,
@@ -1025,7 +1025,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       },
     };
 
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         name: QUESTION_NAME,
         query,
@@ -1066,6 +1066,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       const leftHeaderColHandle = cy
         .findAllByTestId("pivot-table-resize-handle")
         .first();
+      // eslint-disable-next-line no-unsafe-element-filtering
       const totalHeaderColHandle = cy
         .findAllByTestId("pivot-table-resize-handle")
         .last();
@@ -1418,6 +1419,39 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     getPivotTableBodyCell(3).should("have.text", "54");
     getPivotTableBodyCell(4).should("have.text", "200");
   });
+
+  it("renders a pivot table with only pivot columns (metabase#44500)", () => {
+    const questionDetails = {
+      name: "25250",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.SUBTOTAL, { binning: { strategy: "default" } }],
+            ["field", ORDERS.TAX, { binning: { strategy: "default" } }],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [],
+          columns: ["SUBTOTAL", "TAX"],
+          values: ["count"],
+        },
+      },
+    };
+    H.visitQuestionAdhoc(questionDetails);
+
+    getPivotTableBodyCell(0).should("have.text", "34");
+    getPivotTableBodyCell(1).should("have.text", "1,594");
+    getPivotTableBodyCell(2).should("have.text", "823");
+    getPivotTableBodyCell(3).should("have.text", "974");
+    getPivotTableBodyCell(4).should("have.text", "3,104");
+  });
 });
 
 const testQuery = {
@@ -1445,7 +1479,7 @@ function createTestQuestion({ display = "pivot", visitQuestion = true } = {}) {
   const { query } = testQuery;
   const questionDetails = { name: QUESTION_NAME, query, display };
 
-  return cy.createQuestion(questionDetails, { visitQuestion });
+  return H.createQuestion(questionDetails, { visitQuestion });
 }
 
 function assertOnPivotSettings() {
@@ -1519,6 +1553,7 @@ function sortColumnResults(column, direction) {
 }
 
 function getPivotTableBodyCell(index) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy
     .findByLabelText("pivot-table-body-grid")
     .findAllByTestId("pivot-table-cell")

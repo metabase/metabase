@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import type { ScheduleComponentType } from "metabase/components/Schedule/constants";
 import type { CacheableModel } from "metabase-types/api";
 
@@ -18,7 +18,7 @@ import {
  * that configuring the schedule strategy causes the cache to be invalidated at
  * the appointed time. Nor do they check that the cron expression retrieved
  * from the API is displayed in the UI. */
-H.describeEE("scenarios > admin > performance > schedule strategy", () => {
+describe("scenarios > admin > performance > schedule strategy", () => {
   beforeEach(() => {
     H.restore();
     interceptPerformanceRoutes();
@@ -99,7 +99,7 @@ H.describeEE("scenarios > admin > performance > schedule strategy", () => {
           } else {
             getScheduleComponent(componentType).click();
 
-            H.selectDropdown().within(() => {
+            H.popover().within(() => {
               cy.findByText(optionToClick).click();
             });
           }

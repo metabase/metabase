@@ -1,10 +1,12 @@
+import { t } from "ttag";
+
 import { isNotNull } from "metabase/lib/types";
 import { getColumnVizSettings } from "metabase/visualizations";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
-  Dataset,
   DatasetColumn,
+  SingleSeries,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -16,6 +18,10 @@ import {
   extractReferencedColumns,
 } from "./column";
 import { createDataSource } from "./data-source";
+
+export function getDefaultVisualizationName() {
+  return t`My new visualization`;
+}
 
 const areaBarLine = ["area", "bar", "line"];
 
@@ -80,10 +86,10 @@ function areAreaBarLineSeriesCompatible(
   );
 }
 
-export function getInitialStateForCardDataSource(
-  card: Card,
-  dataset: Dataset,
-): VisualizerHistoryItem {
+export function getInitialStateForCardDataSource({
+  card,
+  data,
+}: SingleSeries): VisualizerHistoryItem {
   const state: VisualizerHistoryItem = {
     display: card.display,
     columns: [],
@@ -92,7 +98,7 @@ export function getInitialStateForCardDataSource(
   };
   const dataSource = createDataSource("card", card.id, card.name);
 
-  dataset.data.cols.forEach(column => {
+  data.cols.forEach(column => {
     const columnRef = createVisualizerColumnReference(
       dataSource,
       column,
@@ -114,16 +120,14 @@ export function getInitialStateForCardDataSource(
         return [
           setting,
           originalValue.map(originalColumnName => {
-            const index = dataset.data.cols.findIndex(
+            const index = data.cols.findIndex(
               col => col.name === originalColumnName,
             );
             return state.columns[index].name;
           }),
         ];
       } else {
-        const index = dataset.data.cols.findIndex(
-          col => col.name === originalValue,
-        );
+        const index = data.cols.findIndex(col => col.name === originalValue);
         return [setting, state.columns[index].name];
       }
     })

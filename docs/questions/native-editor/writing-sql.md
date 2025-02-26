@@ -1,10 +1,10 @@
 ---
-title: The SQL editor
+title: SQL editor
 redirect-from:
   - /docs/latest/users-guide/writing-sql
 ---
 
-# The SQL editor
+# SQL editor
 
 If you ever need to ask questions that can't be expressed using the query builder, you can use [SQL][sql-gloss] instead.
 

@@ -13,7 +13,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel basic-test
-  (let [query   lib.tu/venues-query
+  (let [query   (lib.tu/venues-query)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (not (mr/explain [:sequential @#'lib.column-group/ColumnGroup] groups)))
@@ -49,7 +49,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel aggregation-and-breakout-test
-  (let [query   (-> lib.tu/venues-query
+  (let [query   (-> (lib.tu/venues-query)
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
                     (lib/breakout (meta/field-metadata :venues :name)))
         columns (lib/orderable-columns query)
@@ -70,7 +70,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel multi-stage-test
-  (let [query   (-> lib.tu/venues-query
+  (let [query   (-> (lib.tu/venues-query)
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
                     (lib/breakout (meta/field-metadata :venues :name))
                     (lib/append-stage))
@@ -92,7 +92,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel source-card-test
-  (let [query   lib.tu/query-with-source-card
+  (let [query   (lib.tu/query-with-source-card)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -128,7 +128,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel joins-test
-  (let [query   lib.tu/query-with-join
+  (let [query   (lib.tu/query-with-join)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -159,7 +159,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel expressions-test
-  (let [query   lib.tu/query-with-expression
+  (let [query   (lib.tu/query-with-expression)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -191,7 +191,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel source-card-with-expressions-test
-  (let [query   (-> lib.tu/query-with-source-card
+  (let [query   (-> (lib.tu/query-with-source-card)
                     (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
@@ -229,7 +229,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel native-query-test
-  (let [query  lib.tu/native-query
+  (let [query  (lib.tu/native-query)
         groups (lib/group-columns (lib/orderable-columns query))]
     (is (=? [{::lib.column-group/group-type :group-type/main
               ::lib.column-group/columns    [{:display-name "another Field", :lib/source :source/native}
@@ -243,7 +243,7 @@
                 (lib/display-info query group)))))))
 
 (deftest ^:parallel native-source-query-test
-  (let [query  (-> lib.tu/native-query
+  (let [query  (-> (lib.tu/native-query)
                    lib/append-stage)
         groups (lib/group-columns (lib/orderable-columns query))]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -268,10 +268,11 @@
 
 (deftest ^:parallel join-condition-rhs-columns-group-columns-join-test
   (testing "#32509 with an existing join"
-    (let [[join] (lib/joins lib.tu/query-with-join)]
+    (let [query  (lib.tu/query-with-join)
+          [join] (lib/joins query)]
       (is (=? {:lib/type :mbql/join}
               join))
-      (let [cols   (rhs-columns lib.tu/query-with-join join)
+      (let [cols   (rhs-columns query join)
             groups (lib/group-columns cols)]
         (testing `lib/group-columns
           (is (=? [{:lib/type                     :metadata/column-group
@@ -289,11 +290,11 @@
                     :display-name "Categories"
                     :is-from-join true}]
                   (for [group groups]
-                    (lib/display-info lib.tu/query-with-join group)))))))))
+                    (lib/display-info query group)))))))))
 
 (deftest ^:parallel join-condition-rhs-columns-group-columns-table-test
   (testing "#32509 when building a join against a Table"
-    (let [cols   (rhs-columns lib.tu/venues-query (meta/table-metadata :categories))
+    (let [cols   (rhs-columns (lib.tu/venues-query) (meta/table-metadata :categories))
           groups (lib/group-columns cols)]
       (testing `lib/group-columns
         (is (=? [{:lib/type                     :metadata/column-group
@@ -307,19 +308,19 @@
                   :display-name "Categories"
                   :is-from-join true}]
                 (for [group groups]
-                  (lib/display-info lib.tu/venues-query group))))))))
+                  (lib/display-info (lib.tu/venues-query) group))))))))
 
 (deftest ^:parallel join-condition-rhs-columns-group-columns-card-test
   (testing "#32509 when building a join against a Card"
     (doseq [{:keys [message card metadata-provider]}
             [{:message           "MBQL Card"
-              :card              (:categories lib.tu/mock-cards)
-              :metadata-provider lib.tu/metadata-provider-with-mock-cards}
+              :card              (:categories (lib.tu/mock-cards))
+              :metadata-provider (lib.tu/metadata-provider-with-mock-cards)}
              {:message           "Native Card"
-              :card              (lib.tu/mock-cards :categories/native)
-              :metadata-provider lib.tu/metadata-provider-with-mock-cards}]]
+              :card              ((lib.tu/mock-cards) :categories/native)
+              :metadata-provider (lib.tu/metadata-provider-with-mock-cards)}]]
       (testing message
-        (let [cols   (rhs-columns lib.tu/venues-query card)
+        (let [cols   (rhs-columns (lib.tu/venues-query) card)
               groups (lib/group-columns cols)]
           (testing `lib/group-columns
             (is (=? [{:lib/type                     :metadata/column-group
@@ -333,9 +334,9 @@
               (is (=? [{:display-name (str "Question " (:id card))
                         :is-from-join true}]
                       (for [group groups]
-                        (lib/display-info lib.tu/venues-query group)))))
+                        (lib/display-info (lib.tu/venues-query) group)))))
             (testing "Card *is* present in MetadataProvider"
-              (let [query  (assoc lib.tu/venues-query :lib/metadata metadata-provider)
+              (let [query  (assoc (lib.tu/venues-query) :lib/metadata metadata-provider)
                     groups (lib/group-columns (rhs-columns query card))]
                 (is (=? [{:name         "Mock categories card"
                           :display-name "Mock Categories Card"
@@ -393,8 +394,8 @@
 
 (deftest ^:parallel self-joined-cards-duplicate-implicit-columns-test
   (testing "Duplicate columns from different foreign key paths should get grouped separately (#34742)"
-    (let [card (:orders lib.tu/mock-cards)
-          query (lib/query lib.tu/metadata-provider-with-mock-cards card)
+    (let [card (:orders (lib.tu/mock-cards))
+          query (lib/query (lib.tu/metadata-provider-with-mock-cards) card)
           clause (lib/join-clause card [(lib/= (first (lib/join-condition-lhs-columns query card nil nil))
                                                (first (lib/join-condition-rhs-columns query card nil nil)))])
 

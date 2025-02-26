@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-
+import { render, screen } from "__support__/ui";
 import Select, { Option } from "metabase/core/components/Select";
 
 describe("Select", () => {

@@ -4,7 +4,7 @@ import type { StoryFn } from "@storybook/react";
 import { TextWidget, type TextWidgetProps } from "./TextWidget";
 
 export default {
-  title: "Parameters/TextWidget",
+  title: "Components/Parameters/TextWidget",
   component: TextWidget,
 };
 

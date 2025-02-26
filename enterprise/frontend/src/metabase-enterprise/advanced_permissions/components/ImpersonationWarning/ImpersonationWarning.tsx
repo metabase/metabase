@@ -24,34 +24,34 @@ export const ImpersonationWarning = ({
 
   // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
   const redshiftWarning = jt`You’re connecting Metabase to the ${(
-    <BoldCode key="2" size={13}>
+    <BoldCode key="2" size="13px">
       {database.name}
     </BoldCode>
   )} database using the credentials for the Redshift user ${(
-    <BoldCode key="3" size={13}>
+    <BoldCode key="3" size="13px">
       {databaseUser}
     </BoldCode>
   )}. For impersonation to work,  ${(
-    <BoldCode key="3" size={13}>
+    <BoldCode key="3" size="13px">
       {databaseUser}
     </BoldCode>
   )} must be a superuser in Redshift.`;
 
   // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
   const regularWarning = jt`${(
-    <BoldCode key="1" size={13}>
+    <BoldCode key="1" size="13px">
       {databaseUser}
     </BoldCode>
   )} is the database user Metabase is using to connect to your  ${(
-    <BoldCode key="2" size={13}>
+    <BoldCode key="2" size="13px">
       {database.name}
     </BoldCode>
   )} database. Make sure that ${(
-    <BoldCode key="3" size={13}>
+    <BoldCode key="3" size="13px">
       {databaseUser}
     </BoldCode>
   )} has access to everything in ${(
-    <BoldCode key="4" size={13}>
+    <BoldCode key="4" size="13px">
       {database.name}
     </BoldCode>
   )} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information.`;

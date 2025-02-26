@@ -70,4 +70,24 @@ describe("formatNumber", () => {
     });
     expect(fullResult).toEqual("-$500,000.00");
   });
+
+  it("should work with durations", () => {
+    expect(
+      formatNumber(652000, {
+        number_style: "duration",
+      }),
+    ).toEqual("10m 52s");
+
+    expect(
+      formatNumber(10652000, {
+        number_style: "duration",
+      }),
+    ).toEqual("2h 57m 32s");
+
+    expect(
+      formatNumber(100620000, {
+        number_style: "duration",
+      }),
+    ).toEqual("1d 3h 57m");
+  });
 });

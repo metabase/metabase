@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -227,9 +227,9 @@ describe("scenarios > filters > filter sources", () => {
     it("column from a table", () => {
       H.visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
       H.filter({ mode: "notebook" });
-      H.popover().findByText("Tax").click();
+      H.clauseStepPopover().findByText("Tax").click();
       H.selectFilterOperator("Equal to");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
       });
@@ -241,9 +241,9 @@ describe("scenarios > filters > filter sources", () => {
     it("column from an expression based on another table column", () => {
       H.visitQuestionAdhoc(tableQuestionWithExpression, { mode: "notebook" });
       H.filter({ mode: "notebook" });
-      H.popover().findByText("Total100").click();
+      H.clauseStepPopover().findByText("Total100").click();
       H.selectFilterOperator("Greater than");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("250.5");
         cy.button("Add filter").click();
       });
@@ -255,7 +255,7 @@ describe("scenarios > filters > filter sources", () => {
     it("column from an explicit join", () => {
       H.visitQuestionAdhoc(tableQuestionWithJoin, { mode: "notebook" });
       H.filter({ mode: "notebook" });
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("Products").click();
         cy.findByText("Vendor").click();
         cy.findByText("Aufderhar-Boehm").click();
@@ -271,12 +271,12 @@ describe("scenarios > filters > filter sources", () => {
         mode: "notebook",
       });
       H.filter({ mode: "notebook" });
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("Products").click();
         cy.findByText("Rating").click();
       });
       H.selectFilterOperator("Equal to");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
       });
@@ -288,12 +288,12 @@ describe("scenarios > filters > filter sources", () => {
     it("column from an implicit join", () => {
       H.visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
       H.filter({ mode: "notebook" });
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("Product").click();
         cy.findByText("Ean").click();
       });
       H.selectFilterOperator("Is");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
       });
@@ -305,9 +305,9 @@ describe("scenarios > filters > filter sources", () => {
     it("column from a nested aggregation without column", () => {
       H.visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
       addNewFilter();
-      H.popover().findByText("Count").click();
+      H.clauseStepPopover().findByText("Count").click();
       H.selectFilterOperator("Equal to");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("90");
         cy.button("Add filter").click();
       });
@@ -319,9 +319,9 @@ describe("scenarios > filters > filter sources", () => {
     it("column from a nested aggregation with column", () => {
       H.visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
       addNewFilter();
-      H.popover().findByText("Sum of Quantity").click();
+      H.clauseStepPopover().findByText("Sum of Quantity").click();
       H.selectFilterOperator("Less than");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("350");
         cy.button("Add filter").click();
       });
@@ -333,7 +333,7 @@ describe("scenarios > filters > filter sources", () => {
     it("column from a nested breakout", () => {
       H.visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
       addNewFilter();
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("Product ID").click();
         cy.findByPlaceholderText("Enter an ID").type("10");
         cy.button("Add filter").click();
@@ -346,13 +346,13 @@ describe("scenarios > filters > filter sources", () => {
 
   describe("nested structured questions", () => {
     it("column from a question", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      H.createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestion(card), { mode: "notebook" });
       });
       H.filter({ mode: "notebook" });
-      H.popover().findByText("Tax").click();
+      H.clauseStepPopover().findByText("Tax").click();
       H.selectFilterOperator("Equal to");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
       });
@@ -362,15 +362,15 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an expression based on a question column", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      H.createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithExpression(card), {
           mode: "notebook",
         });
       });
       H.filter({ mode: "notebook" });
-      H.popover().findByText("Total100").click();
+      H.clauseStepPopover().findByText("Total100").click();
       H.selectFilterOperator("Greater than");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("250.5");
         cy.button("Add filter").click();
       });
@@ -380,13 +380,13 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an explicit join", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      H.createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithJoin(card), {
           mode: "notebook",
         });
       });
       H.filter({ mode: "notebook" });
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("Products").click();
         cy.findByText("Vendor").click();
         cy.findByText("Aufderhar-Boehm").click();
@@ -398,18 +398,18 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an explicit join with fields", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      H.createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithJoinAndFields(card), {
           mode: "notebook",
         });
       });
       H.filter({ mode: "notebook" });
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("Products").click();
         cy.findByText("Rating").click();
       });
       H.selectFilterOperator("Equal to");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
       });
@@ -419,18 +419,18 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an implicit join with fields", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      H.createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithJoinAndFields(card), {
           mode: "notebook",
         });
       });
       H.filter({ mode: "notebook" });
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("Products").click();
         cy.findByText("Ean").click();
       });
       H.selectFilterOperator("Is");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
       });
@@ -440,15 +440,15 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from a nested aggregation without column", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      H.createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
         });
       });
       addNewFilter();
-      H.popover().findByText("Count").click();
+      H.clauseStepPopover().findByText("Count").click();
       H.selectFilterOperator("Equal to");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("90");
         cy.button("Add filter").click();
       });
@@ -458,15 +458,15 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from a nested aggregation with column", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      H.createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
         });
       });
       addNewFilter();
-      H.popover().findByText("Sum of Quantity").click();
+      H.clauseStepPopover().findByText("Sum of Quantity").click();
       H.selectFilterOperator("Less than");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("350");
         cy.button("Add filter").click();
       });
@@ -476,13 +476,13 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from a nested breakout", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      H.createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
         });
       });
       addNewFilter();
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("Product ID").click();
         cy.findByPlaceholderText("Enter an ID").type("10");
         cy.button("Add filter").click();
@@ -495,13 +495,13 @@ describe("scenarios > filters > filter sources", () => {
 
   describe("nested native questions", () => {
     it("column from a question", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      H.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestion(card), { mode: "notebook" });
       });
       H.filter({ mode: "notebook" });
-      H.popover().findByText("TAX").click();
+      H.clauseStepPopover().findByText("TAX").click();
       H.selectFilterOperator("Equal to");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
       });
@@ -511,15 +511,15 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an expression based on a question column", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      H.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithExpression(card), {
           mode: "notebook",
         });
       });
       H.filter({ mode: "notebook" });
-      H.popover().findByText("Total100").click();
+      H.clauseStepPopover().findByText("Total100").click();
       H.selectFilterOperator("Greater than");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("250.5");
         cy.button("Add filter").click();
       });
@@ -529,13 +529,13 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an explicit join", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      H.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithJoin(card), {
           mode: "notebook",
         });
       });
       H.filter({ mode: "notebook" });
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("Products").click();
         cy.findByText("Vendor").click();
         cy.findByText("Aufderhar-Boehm").click();
@@ -547,18 +547,18 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an explicit join with fields", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      H.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithJoinAndFields(card), {
           mode: "notebook",
         });
       });
       H.filter({ mode: "notebook" });
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("Products").click();
         cy.findByText("Rating").click();
       });
       H.selectFilterOperator("Equal to");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
       });
@@ -568,18 +568,18 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an implicit join with fields", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      H.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithJoinAndFields(card), {
           mode: "notebook",
         });
       });
       H.filter({ mode: "notebook" });
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("Products").click();
         cy.findByText("Ean").click();
       });
       H.selectFilterOperator("Is");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
       });
@@ -589,15 +589,15 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from a nested aggregation without column", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      H.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
         });
       });
       addNewFilter();
-      H.popover().findByText("Count").click();
+      H.clauseStepPopover().findByText("Count").click();
       H.selectFilterOperator("Equal to");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("90");
         cy.button("Add filter").click();
       });
@@ -607,15 +607,15 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from a nested aggregation with column", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      H.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
         });
       });
       addNewFilter();
-      H.popover().findByText("Sum of QUANTITY").click();
+      H.clauseStepPopover().findByText("Sum of QUANTITY").click();
       H.selectFilterOperator("Less than");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("350");
         cy.button("Add filter").click();
       });
@@ -625,15 +625,15 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from a nested breakout", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      H.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
         });
       });
       addNewFilter();
-      H.popover().findByText("PRODUCT_ID").click();
+      H.clauseStepPopover().findByText("PRODUCT_ID").click();
       H.selectFilterOperator("Equal to");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("10");
         cy.button("Add filter").click();
       });
@@ -645,6 +645,7 @@ describe("scenarios > filters > filter sources", () => {
 });
 
 function addNewFilter() {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 }
 

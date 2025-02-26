@@ -5,6 +5,7 @@ import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { PEOPLE_ID } from "metabase-types/api/mocks/presets";
 
+import type { NumberOrEmptyValue } from "./types";
 import { useCoordinateFilter } from "./use-coordinate-filter";
 
 interface CreateFilterCase {
@@ -22,13 +23,13 @@ interface UpdateFilterCase {
 
 interface CoerceFilterCase {
   operator: Lib.CoordinateFilterOperator;
-  values: (number | "")[];
+  values: NumberOrEmptyValue[];
   expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
   operator: Lib.CoordinateFilterOperator;
-  values: (number | "")[];
+  values: NumberOrEmptyValue[];
 }
 
 describe("useCoordinateFilter", () => {
@@ -139,12 +140,12 @@ describe("useCoordinateFilter", () => {
     },
     {
       operator: "between",
-      values: [10, ""],
+      values: [10, null],
       expectedDisplayName: "Latitude is greater than or equal to 10",
     },
     {
       operator: "between",
-      values: ["", 10],
+      values: [null, 10],
       expectedDisplayName: "Latitude is less than or equal to 10",
     },
     {
@@ -183,15 +184,15 @@ describe("useCoordinateFilter", () => {
     },
     {
       operator: ">",
-      values: [""],
+      values: [null],
     },
     {
       operator: "between",
-      values: ["", ""],
+      values: [null, null],
     },
     {
       operator: "inside",
-      values: ["", "", "", ""],
+      values: [null, null, null, null],
     },
   ])(
     'should validate values for "$operator" operator',

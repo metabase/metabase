@@ -1,5 +1,6 @@
 import { c, t } from "ttag";
 
+import FormTextArea from "metabase/core/components/FormTextArea";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { Modal, Text } from "metabase/ui";
 
@@ -9,9 +10,7 @@ import type { ErrorPayload } from "./types";
 interface DownloadDiagnosticModalProps {
   errorInfo: ErrorPayload;
   onClose: () => void;
-  onSubmit: (
-    values: Partial<Record<keyof Omit<ErrorPayload, "description">, boolean>>,
-  ) => void;
+  onSubmit: (values: Partial<Record<keyof ErrorPayload, boolean>>) => void;
   canIncludeQueryData: boolean;
   applicationName: string;
   hiddenValues: Record<
@@ -31,12 +30,13 @@ export const DownloadDiagnosticModal = ({
   <Modal
     opened
     onClose={onClose}
-    title={t`Download diagnostic information`}
+    title={t`Gather diagnostic information`}
     size={550}
   >
     <FormProvider
       initialValues={{
         ...hiddenValues,
+        reporter: true,
         queryResults: false,
         entityInfo: true,
         frontendErrors: true,
@@ -48,7 +48,13 @@ export const DownloadDiagnosticModal = ({
       onSubmit={onSubmit}
     >
       <Form>
-        <Text py="md">
+        <Text py="md">{t`Could you provide us with a little context?`}</Text>
+        <FormTextArea
+          name="description"
+          autoFocus
+          placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
+        />
+        <Text>
           {/* eslint-disable-next-line no-literal-metabase-strings -- this is a translation context string, not shown to users */}
           {c("{0} is the name of the application, usually 'Metabase'")
             .t`This information helps ${applicationName} figure out what exactly caused the issue`}

@@ -1,9 +1,11 @@
 (ns metabase.search.appdb.core
   (:require
    [clojure.string :as str]
+   [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as search.scoring]
@@ -18,7 +20,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.time OffsetDateTime)))
+   (java.time OffsetDateTime)
+   (java.util Queue)))
 
 ;; Register the multimethods for each specialization
 (comment
@@ -106,6 +109,15 @@
                        :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)}))))
 
   (try
+    (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
+      ;; wait for a bit for the queue to be drained
+      (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
+        (when-not (u/poll {:thunk       pending-updates
+                           :done?       zero?
+                           :timeout-ms  2000
+                           :interval-ms 100})
+          (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
+
     (let [weights (search.config/weights search-ctx)
           scorers (search.scoring/scorers search-ctx)]
       (->> (search.index/search-query search-string search-ctx [:legacy_input])

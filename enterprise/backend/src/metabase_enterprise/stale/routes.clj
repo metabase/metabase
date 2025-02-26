@@ -1,8 +1,11 @@
 (ns metabase-enterprise.stale.routes
   (:require
-   [compojure.core :as compojure]
-   [metabase-enterprise.stale.api :as stale-api]
+   [metabase-enterprise.stale.api]
+   [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]))
 
-(compojure/defroutes ^{:doc "Ring routes for Stale API"} routes
-  (compojure/context "/" [] (+auth stale-api/routes)))
+(comment metabase-enterprise.stale.api/keep-me)
+
+(def ^{:arglists '([request respond raise])} routes
+  "Ring routes for Stale API"
+  (+auth (api.macros/ns-handler 'metabase-enterprise.stale.api)))

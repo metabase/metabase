@@ -3,16 +3,14 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
+import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-import * as Urls from "metabase/lib/urls";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { QuestionSharingMenu } from "metabase/sharing/components/SharingMenu";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -26,8 +24,6 @@ import { QuestionActions } from "../QuestionActions";
 import { QuestionNotebookButton } from "../QuestionNotebookButton";
 import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
 import { ToggleNativeQueryPreview } from "../ToggleNativeQueryPreview";
-
-import S from "./ViewTitleHeaderRightSide.module.css";
 
 interface ViewTitleHeaderRightSideProps {
   question: Question;
@@ -140,19 +136,15 @@ export function ViewTitleHeaderRightSide({
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
   const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
-  const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
+  const disabledSaveTooltip = isSaveDisabled
+    ? getDisabledSaveTooltip(isEditable)
+    : undefined;
 
   return (
     <Flex
       className={ViewTitleHeaderS.ViewHeaderActionPanel}
       data-testid="qb-header-action-panel"
     >
-      {isSaved && (
-        <Link
-          className={S.visualizerLink}
-          to={Urls.visualizer("card", question.id())}
-        >{t`Visualize with…`}</Link>
-      )}
       {FilterHeaderButton.shouldRender({
         question,
         queryBuilderMode,
@@ -232,7 +224,11 @@ export function ViewTitleHeaderRightSide({
         />
       )}
       {hasSaveButton && (
-        <Tooltip label={disabledSaveTooltip} disabled={canSave} position="left">
+        <Tooltip
+          disabled={!disabledSaveTooltip}
+          label={disabledSaveTooltip}
+          position="left"
+        >
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"

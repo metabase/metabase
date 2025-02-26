@@ -141,7 +141,19 @@ export const editingDashboard = handleActions(
   {
     [INITIALIZE]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
     [SET_EDITING_DASHBOARD]: {
-      next: (_state, { payload }) => payload ?? null,
+      next: (state, { payload }) => {
+        // Only update the dashboard in the state if the new dashboard differs from the current one.
+        // This prevents the case where this function is accidentally called with an edited/dirty dashboard,
+        // preventing the diff logic in our save flow from properly detecting that were changes.
+        if (payload !== null && state?.id === payload?.id) {
+          console.warn(
+            "The editingDashboard state should not be set to a newer version of the same dashboard. This can produce subtle bugs for detecting how dashboards have changed over time. Skipping updating state and using old editingDashboard state.",
+          );
+          return state;
+        }
+
+        return payload ?? null;
+      },
     },
     [RESET]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
   },

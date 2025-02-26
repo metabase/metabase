@@ -132,12 +132,6 @@ const NewItemMenu = ({
       });
     }
 
-    items.push({
-      title: t`Visualization`,
-      icon: "lineandbar",
-      link: `/visualizer`,
-    });
-
     return items;
   }, [
     hasDataAccess,

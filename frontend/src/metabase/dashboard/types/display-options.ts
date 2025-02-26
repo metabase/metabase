@@ -26,6 +26,10 @@ export type DashboardDownloadControls = {
   downloadsEnabled?: boolean;
 };
 
+export type DashboardFooterControls = {
+  withFooter?: boolean;
+};
+
 export type DashboardLoaderWrapperProps = {
   noLoaderWrapper?: boolean;
 };
@@ -34,4 +38,5 @@ export type DashboardDisplayOptionControls = DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
   DashboardNightModeControls &
   DashboardDownloadControls &
-  DashboardLoaderWrapperProps;
+  DashboardLoaderWrapperProps &
+  DashboardFooterControls;

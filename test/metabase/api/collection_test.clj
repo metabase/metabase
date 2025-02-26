@@ -6,22 +6,24 @@
    [clojure.test :refer :all]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.collection :as api.collection]
+   [metabase.api.notification-test :as api.notification-test]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.graph-test :as graph.test]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.revision :as revision]
+   [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (java.time ZoneId ZonedDateTime)))
+   (java.time ZonedDateTime ZoneId)))
 
 (set! *warn-on-reflection* true)
 
@@ -1804,7 +1806,7 @@
                    :model/Card {card-3-id :id} {:collection_id nil}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-3-id}]
       (let [fetch (fn [& {:keys [limit offset] :or {limit 10 offset 0}}]
-                    (let [resp (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                    (let [resp (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
                                                      :limit limit :offset offset)]
                       (is (= 3 (:total resp)))
                       (->> resp :data (map :id))))]
@@ -1821,12 +1823,12 @@
           (is (= [card-3-id card-2-id]
                  (fetch :limit 2 :offset 0))))
         (testing "Only limit, no offset"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
                                                      :limit 2)]
             (is (= [card-3-id card-2-id]
                    (map :id data)))))
         (testing "Only offset, no limit"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
                                                      :offset 1)]
             (is (= [card-2-id card-1-id]
                    (map :id data)))))
@@ -2380,32 +2382,27 @@
 (deftest archive-collection-test
   (testing "PUT /api/collection/:id"
     (testing "Archiving a collection should delete any alerts associated with questions in the collection"
-      (mt/with-temp [:model/Collection            {collection-id :id} {}
-                     :model/Card                  {card-id :id}       {:collection_id collection-id}
-                     :model/Pulse                 {pulse-id :id}      {:alert_condition  "rows"
-                                                                       :alert_first_only false
-                                                                       :creator_id       (mt/user->id :rasta)
-                                                                       :name             "Original Alert Name"}
-                     :model/PulseCard             _                   {:pulse_id pulse-id
-                                                                       :card_id  card-id
-                                                                       :position 0}
-                     :model/PulseChannel          {pc-id :id}         {:pulse_id pulse-id}
-                     :model/PulseChannelRecipient _                   {:user_id          (mt/user->id :crowberto)
-                                                                       :pulse_channel_id pc-id}
-                     :model/PulseChannelRecipient _                   {:user_id          (mt/user->id :rasta)
-                                                                       :pulse_channel_id pc-id}]
-        (mt/with-fake-inbox
-          (mt/with-expected-messages 2
-            (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id)
-                                  {:name "My Beautiful Collection", :archived true}))
-          (testing "emails"
-            (is (= (merge (mt/email-to :crowberto {:subject "One of your alerts has stopped working",
-                                                   :body    {"the question was archived by Crowberto Corv" true}})
-                          (mt/email-to :rasta {:subject "One of your alerts has stopped working",
-                                               :body    {"the question was archived by Crowberto Corv" true}}))
-                   (mt/regex-email-bodies #"the question was archived by Crowberto Corv"))))
-          (testing "Pulse"
-            (is (nil? (t2/select-one :model/Pulse :id pulse-id)))))))))
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (notification.tu/with-channel-fixtures [:channel/email]
+          (api.notification-test/with-send-messages-sync!
+            (notification.tu/with-card-notification
+              [notification {:card     {:name "YOLO"
+                                        :collection_id coll-id}
+                             :handlers [{:channel_type :channel/email
+                                         :recipients  [{:type    :notification-recipient/user
+                                                        :user_id (mt/user->id :crowberto)}
+                                                       {:type    :notification-recipient/user
+                                                        :user_id (mt/user->id :rasta)}
+                                                       {:type    :notification-recipient/raw-value
+                                                        :details {:value "ngoc@metabase.com"}}]}]}]
+              (let [[email] (notification.tu/with-mock-inbox-email!
+                              (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id)
+                                                    {:name "My Beautiful Collection", :archived true}))]
+                (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
+                         :subject "One of your alerts has stopped working"
+                         :body    [{"the question was archived by Crowberto Corv" true}]}
+                        (mt/summarize-multipart-single-email email #"the question was archived by Crowberto Corv"))))
+              (= nil (t2/select-one :model/Notification :id (:id notification))))))))))
 
 (deftest archive-collection-perms-test
   (testing "PUT /api/collection/:id"
@@ -2495,96 +2492,6 @@
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)})))))))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                          GET /api/collection/root|:id/timelines                                                |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- timelines-request
-  [collection include-events?]
-  (if include-events?
-    (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/timelines") :include "events")
-    (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/timelines"))))
-
-(defn- timeline-names [timelines]
-  (->> timelines (map :name) set))
-
-(defn- event-names [timelines]
-  (->> timelines (mapcat :events) (map :name) set))
-
-(deftest timelines-test
-  (testing "GET /api/collection/root|id/timelines"
-    (mt/with-temp [:model/Collection coll-a {:name "Collection A"}
-                   :model/Collection coll-b {:name "Collection B"}
-                   :model/Collection coll-c {:name "Collection C"}
-                   :model/Timeline tl-a      {:name          "Timeline A"
-                                              :collection_id (u/the-id coll-a)}
-                   :model/Timeline tl-b      {:name          "Timeline B"
-                                              :collection_id (u/the-id coll-b)}
-                   :model/Timeline _tl-b-old {:name          "Timeline B-old"
-                                              :collection_id (u/the-id coll-b)
-                                              :archived      true}
-                   :model/Timeline _tl-c     {:name          "Timeline C"
-                                              :collection_id (u/the-id coll-c)}
-                   :model/TimelineEvent _event-aa {:name        "event-aa"
-                                                   :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _event-ab {:name        "event-ab"
-                                                   :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _event-ba {:name        "event-ba"
-                                                   :timeline_id (u/the-id tl-b)}
-                   :model/TimelineEvent _event-bb {:name        "event-bb"
-                                                   :timeline_id (u/the-id tl-b)
-                                                   :archived    true}]
-      (testing "Timelines in the collection of the card are returned"
-        (is (= #{"Timeline A"}
-               (timeline-names (timelines-request coll-a false)))))
-      (testing "Timelines in the collection have a hydrated `:collection` key"
-        (is (= #{(u/the-id coll-a)}
-               (->> (timelines-request coll-a false)
-                    (map #(get-in % [:collection :id]))
-                    set))))
-      (testing "check that `:can_write` key is hydrated"
-        (is (every?
-             #(contains? % :can_write)
-             (map :collection (timelines-request coll-a false)))))
-      (testing "Only un-archived timelines in the collection of the card are returned"
-        (is (= #{"Timeline B"}
-               (timeline-names (timelines-request coll-b false)))))
-      (testing "Timelines have events when `include=events` is passed"
-        (is (= #{"event-aa" "event-ab"}
-               (event-names (timelines-request coll-a true)))))
-      (testing "Timelines have only un-archived events when `include=events` is passed"
-        (is (= #{"event-ba"}
-               (event-names (timelines-request coll-b true)))))
-      (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
-        (is (= '()
-               (->> (timelines-request coll-c true) first :events)))))))
-
-(deftest timelines-permissions-test
-  (testing "GET /api/collection/id/timelines"
-    (mt/with-temp [:model/Collection coll-a {:name "Collection A"}
-                   :model/Timeline tl-a      {:name          "Timeline A"
-                                              :collection_id (u/the-id coll-a)}
-                   :model/TimelineEvent _event-aa {:name        "event-aa"
-                                                   :timeline_id (u/the-id tl-a)}]
-      (testing "You can't query a collection's timelines if you don't have perms on it."
-        (perms/revoke-collection-permissions! (perms-group/all-users) coll-a)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id coll-a) "/timelines") :include "events"))))
-      (testing "If we grant perms, then we can read the timelines"
-        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-a)
-        (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id coll-a) "/timelines") :include "events"))))
-  (testing "GET /api/collection/root/timelines"
-    (mt/with-temp [:model/Timeline tl-a      {:name          "Timeline A"
-                                              :collection_id nil}
-                   :model/TimelineEvent _event-aa {:name        "event-aa"
-                                                   :timeline_id (u/the-id tl-a)}]
-      (testing "You can't query a collection's timelines if you don't have perms on it."
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "collection/root/timelines" :include "events")))))
-      (testing "If we grant perms, then we can read the timelines"
-        (mt/user-http-request :rasta :get 200 "collection/root/timelines" :include "events")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |

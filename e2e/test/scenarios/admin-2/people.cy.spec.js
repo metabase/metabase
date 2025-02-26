@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -521,7 +521,7 @@ describe("scenarios > admin > people", () => {
   });
 });
 
-H.describeEE("scenarios > admin > people", () => {
+describe("scenarios > admin > people", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -530,10 +530,10 @@ H.describeEE("scenarios > admin > people", () => {
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {
     H.getCurrentUser().then(({ body: { id: user_id } }) => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
       }).then(({ body: { card_id, dashboard_id } }) => {
-        H.createAlert(getAlertDetails({ user_id, card_id }));
+        H.createQuestionAlert({ user_id, card_id });
         H.createPulse(getPulseDetails({ card_id, dashboard_id }));
       });
     });
@@ -605,7 +605,7 @@ H.describeEE("scenarios > admin > people", () => {
   });
 });
 
-H.describeEE("scenarios > admin > people > group managers", () => {
+describe("scenarios > admin > people > group managers", () => {
   function confirmLosingAbilityToManageGroup() {
     H.modal().within(() => {
       cy.findByText(
@@ -787,7 +787,7 @@ H.describeEE("scenarios > admin > people > group managers", () => {
   });
 });
 
-H.describeEE("issue 23689", () => {
+describe("issue 23689", () => {
   function findUserByFullName(user) {
     const { first_name, last_name } = user;
     return cy.findByText(`${first_name} ${last_name}`);
@@ -903,28 +903,6 @@ function getQuestionDetails() {
     query: {
       "source-table": ORDERS_ID,
     },
-  };
-}
-
-function getAlertDetails({ user_id, card_id }) {
-  return {
-    card: {
-      id: card_id,
-      include_csv: false,
-      include_xls: false,
-    },
-    channels: [
-      {
-        enabled: true,
-        channel_type: "email",
-        schedule_type: "hourly",
-        recipients: [
-          {
-            id: user_id,
-          },
-        ],
-      },
-    ],
   };
 }
 

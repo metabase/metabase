@@ -1,3 +1,4 @@
+import type React from "react";
 import type {
   ComponentType,
   Dispatch,
@@ -6,7 +7,6 @@ import type {
   SetStateAction,
 } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -37,7 +37,7 @@ import type { LinkProps } from "metabase/core/components/Link";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
-import type { GroupProps, IconName, IconProps } from "metabase/ui";
+import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -87,9 +87,7 @@ export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
 ) => AdminPathKey[])[] = [];
 
 export const PLUGIN_ADMIN_TOOLS = {
-  INDEX_ROUTE: "model-caching",
-  EXTRA_ROUTES_INFO: [],
-  EXTRA_ROUTES: [],
+  COMPONENT: null,
 };
 
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
@@ -278,18 +276,6 @@ const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   icon: "folder",
 };
 
-type AuthorityLevelMenuItem = {
-  title: string;
-  icon: string;
-  action: () => void;
-};
-
-type CleanUpMenuItem = {
-  title: string;
-  icon: string;
-  link: string;
-};
-
 export type ItemWithCollection = { collection: CollectionEssentials };
 
 type GetCollectionIdType = (
@@ -308,9 +294,9 @@ export const PLUGIN_COLLECTIONS = {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
-  isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
+  isRegularCollection: (_data: Partial<Collection> | Bookmark) => true,
   getCollectionType: (
-    _: Partial<Collection>,
+    _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
@@ -319,16 +305,18 @@ export const PLUGIN_COLLECTIONS = {
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
-  ): AuthorityLevelMenuItem[] => [],
+  ): React.ReactNode[] => [],
   getIcon: getIconBase,
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items as Item[],
   canCleanUp: (_collection: Collection) => false as boolean,
-  getCleanUpMenuItems: (
+  useGetCleanUpMenuItems: (
     _collection: Collection,
-    _itemCount: number,
-  ): CleanUpMenuItem[] => [],
+  ): { menuItems: JSX.Element[]; showIndicator: boolean } => ({
+    menuItems: [],
+    showIndicator: false,
+  }),
   cleanUpRoute: null as React.ReactElement | null,
   cleanUpAlert: (() => null) as (props: {
     collection: Collection;
@@ -407,7 +395,7 @@ export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
   onClose: () => void;
-} & GroupProps;
+} & StackProps;
 
 export type PreemptiveCachingSwitchProps = {
   handleSwitchToggle: () => void;

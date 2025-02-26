@@ -886,7 +886,7 @@
 
 (deftest ^:parallel legacy-ref->pMBQL-field-test
   (are [legacy-ref] (=? [:field {:lib/uuid string?} (meta/id :venues :name)]
-                        (lib.convert/legacy-ref->pMBQL lib.tu/venues-query legacy-ref))
+                        (lib.convert/legacy-ref->pMBQL (lib.tu/venues-query) legacy-ref))
     [:field (meta/id :venues :name) nil]
     [:field (meta/id :venues :name) {}]
     ;; should work with refs that need normalization
@@ -898,12 +898,12 @@
   #?(:cljs
      (is (=? [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :name)]
              (lib.convert/legacy-ref->pMBQL
-              lib.tu/venues-query
+              (lib.tu/venues-query)
               #js ["field" (meta/id :venues :name) #js {"base-type" "type/Integer"}])))))
 
 (deftest ^:parallel legacy-ref->pMBQL-expression-test
   (are [legacy-ref] (=? [:expression {:lib/uuid string?} "expr"]
-                        (lib.convert/legacy-ref->pMBQL lib.tu/query-with-expression legacy-ref))
+                        (lib.convert/legacy-ref->pMBQL (lib.tu/query-with-expression) legacy-ref))
     [:expression "expr"]
     ["expression" "expr"]
     ["expression" "expr" nil]
@@ -913,7 +913,7 @@
          #js ["expression" "expr" #js {}]])))
 
 (deftest ^:parallel legacy-ref->pMBQL-aggregation-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/aggregate (lib/count)))
         [ag]  (lib/aggregations query)]
     (are [legacy-ref] (=? [:aggregation {:lib/uuid string?} (lib.options/uuid ag)]

@@ -1,10 +1,8 @@
 import cx from "classnames";
-import type { RefObject } from "react";
 import { Fragment } from "react";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { Box, Icon, Text } from "metabase/ui";
@@ -13,19 +11,13 @@ import type { HelpText } from "metabase-lib/v1/expressions/types";
 
 import ExpressionEditorHelpTextS from "./ExpressionEditorHelpText.module.css";
 
-export type ExpressionEditorHelpTextContentProps = {
+export type ExpressionEditorHelpTextProps = {
   helpText: HelpText | null | undefined;
 };
 
-export type ExpressionEditorHelpTextProps =
-  ExpressionEditorHelpTextContentProps & {
-    target: RefObject<HTMLElement>;
-    width: number | undefined;
-  };
-
-export const ExpressionEditorHelpTextContent = ({
+export const ExpressionEditorHelpText = ({
   helpText,
-}: ExpressionEditorHelpTextContentProps) => {
+}: ExpressionEditorHelpTextProps) => {
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
     helpText ? getHelpDocsUrl(helpText) : "",
   );
@@ -96,6 +88,7 @@ export const ExpressionEditorHelpTextContent = ({
 
         <Box
           className={ExpressionEditorHelpTextS.BlockSubtitleText}
+          data-testid="argument-example"
         >{t`Example`}</Box>
         <Box
           className={cx(
@@ -117,25 +110,5 @@ export const ExpressionEditorHelpTextContent = ({
         )}
       </Box>
     </>
-  );
-};
-
-export const ExpressionEditorHelpText = ({
-  helpText,
-  width,
-  target,
-}: ExpressionEditorHelpTextProps) => {
-  if (!helpText) {
-    return null;
-  }
-
-  return (
-    <TippyPopover
-      maxWidth={width}
-      reference={target}
-      placement="bottom-start"
-      visible
-      content={<ExpressionEditorHelpTextContent helpText={helpText} />}
-    />
   );
 };

@@ -6,7 +6,9 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.actions.error :as actions.error]
+   [metabase.actions.models :as action]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
@@ -21,10 +23,12 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.models.action :as action]
    [metabase.models.secret :as secret]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -348,8 +352,8 @@
 
 (deftest partitioned-table-test
   (mt/test-driver :postgres
-    (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are
-                   synced properly (#15049)")
+    (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are"
+                  " synced properly (#15049)")
       (let [db-name "partitioned_table_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -1019,7 +1023,55 @@
                                                             "other_status" "sad bird"
                                                             "type"         "turkey"}}))))))))))))
 
-;; API tests are in [[metabase.api.action-test]]
+(deftest filtering-on-enum-from-source-test
+  (mt/test-driver
+    :postgres
+    (do-with-enums-db!
+     (fn [enums-db]
+       (mt/with-db enums-db
+         (let [query {:database (mt/id)
+                      :type :native
+                      :native {:query "select * from birds"
+                               :parameters []}}]
+           (testing "results_metadata columns are correctly typed"
+             (is (=? [{:name "name"}
+                      {:name "status"
+                       :base_type :type/PostgresEnum
+                       :effective_type :type/PostgresEnum
+                       :database_type "bird_status"}
+                      {:name "other_status"
+                       :base_type :type/PostgresEnum
+                       :effective_type :type/PostgresEnum
+                       :database_type "\"bird_schema\".\"bird_status\""}
+                      {:name "type"
+                       :base_type :type/PostgresEnum
+                       :effective_type :type/PostgresEnum
+                       :database_type "bird type"}]
+                     (-> (qp/process-query query) :data :results_metadata :columns)))
+             (doseq [card-type [:question :model]]
+               (mt/with-temp
+                 [:model/Card
+                  {id :id}
+                  (assoc {:dataset_query query
+                          :result_metadata (-> (qp/process-query query) :data :results_metadata :columns)
+                          :type :model}
+                         :type card-type)]
+                 (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                       query (as-> (lib/query mp (lib.metadata/card mp id)) $
+                               (lib/filter $ (lib/= (m/find-first (comp #{"status"} :name)
+                                                                  (lib/filterable-columns $))
+                                                    "good bird"))
+                               (lib/filter $ (lib/= (m/find-first (comp #{"other_status"} :name)
+                                                                  (lib/filterable-columns $))
+                                                    "sad bird"))
+                               (lib/filter $ (lib/= (m/find-first (comp #{"type"} :name)
+                                                                  (lib/filterable-columns $))
+                                                    "toucan")))]
+                   (testing (format "Filtering on enums in `%s` based query works as expected (#27680)" card-type)
+                     (is (=? {:data {:rows [["Rasta" "good bird" "sad bird" "toucan"]]}}
+                             (qp/process-query query))))))))))))))
+
+;; API tests are in [[metabase.actions.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
   (testing "violate not null constraint"
     (is (= {:type :metabase.actions.error/violate-not-null-constraint,
@@ -1339,7 +1391,9 @@
                                 !month.id]
                        :limit  1})]
           (is (= {:query ["SELECT"
-                          "  DATE_TRUNC('month', \"public\".\"people\".\"birth_date\") AS \"birth_date\","
+                          "  CAST("
+                          "    DATE_TRUNC('month', \"public\".\"people\".\"birth_date\") AS date"
+                          "  ) AS \"birth_date\","
                           "  DATE_TRUNC('month', \"public\".\"people\".\"created_at\") AS \"created_at\","
                           "  DATE_TRUNC('month', CAST(\"public\".\"people\".\"id\" AS timestamp)) AS \"id\""
                           "FROM"
@@ -1612,3 +1666,19 @@
                {:database (mt/id)
                 :type :native
                 :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))
+
+(deftest ^:parallel temporal-column-with-binning-keeps-type
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[field bins] [[:birth_date [:year :quarter :month :week :day]]
+                            [:created_at [:year :quarter :month :week :day :hour :minute]]]
+              bin bins]
+        (testing (str "field " (name field) " for temporal bucket " (name bin))
+          (let [field-md (lib.metadata/field mp (mt/id :people field))
+                unbinned-query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                                   (lib/with-fields [field-md])
+                                   (lib/limit 1))
+                binned-query (-> unbinned-query
+                                 (lib/breakout (lib/with-temporal-bucket field-md bin)))]
+            (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type))
+                   (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))

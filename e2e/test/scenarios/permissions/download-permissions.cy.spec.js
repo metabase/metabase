@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -22,7 +22,7 @@ const {
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DOWNLOAD_PERMISSION_INDEX = 2;
 
-H.describeEE("scenarios > admin > permissions > data > downloads", () => {
+describe("scenarios > admin > permissions > data > downloads", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -164,7 +164,7 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "Native Orders",
           native: {

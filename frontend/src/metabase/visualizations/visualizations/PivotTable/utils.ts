@@ -95,7 +95,6 @@ export function addMissingCardBreakouts(
 
 export function isColumnValid(col: DatasetColumn) {
   return (
-    col.source === "artificial" ||
     col.source === "aggregation" ||
     col.source === "breakout" ||
     isPivotGroupColumn(col)

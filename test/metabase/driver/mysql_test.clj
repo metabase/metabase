@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase.actions.error :as actions.error]
+   [metabase.actions.models :as action]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
@@ -16,7 +17,8 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.action :as action]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
@@ -591,16 +593,17 @@
 
 ;;; ------------------------------------------------ Actions related ------------------------------------------------
 
-;; API tests are in [[metabase.api.action-test]]
-(deftest actions-maybe-parse-sql-error-test
+;; API tests are in [[metabase.actions.api-test]]
+(deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (= {:type :metabase.actions.error/violate-not-null-constraint
             :message "F1 must have values."
             :errors {"f1" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :mysql actions.error/violate-not-null-constraint nil nil
-            "Column 'f1' cannot be null"))))
+            "Column 'f1' cannot be null")))))
 
+(deftest actions-maybe-parse-sql-error-test-2
   (testing "violate unique constraint"
     (with-redefs [mysql.actions/constraint->column-names (constantly ["PRIMARY"])]
       (is (= {:type :metabase.actions.error/violate-unique-constraint,
@@ -608,31 +611,37 @@
               :errors {"PRIMARY" "This Primary value already exists."}}
              (sql-jdbc.actions/maybe-parse-sql-error
               :mysql actions.error/violate-unique-constraint nil nil
-              "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'")))))
+              "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'"))))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-test-3
   (testing "incorrect type"
     (is (= {:type :metabase.actions.error/incorrect-value-type,
             :message "Some of your values aren’t of the correct type for the database."
             :errors {"id" "This value should be of type Integer."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :mysql actions.error/incorrect-value-type nil nil
-            "(conn=183) Incorrect integer value: 'STRING' for column `table`.`id` at row 1"))))
+            "(conn=183) Incorrect integer value: 'STRING' for column `table`.`id` at row 1")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-test-4
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint
             :message "Unable to create a new record."
             :errors {"group-id" "This Group-id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :mysql actions.error/violate-foreign-key-constraint nil :row/create
-            "(conn=45) Cannot add or update a child row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))
+            "(conn=45) Cannot add or update a child row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-test-5
+  (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to update the record.",
             :errors {"group" "This Group does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :mysql actions.error/violate-foreign-key-constraint nil :row/update
-            "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))
+            "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-test-6
+  (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint
             :message "Other tables rely on this row so it cannot be deleted."
             :errors {}}
@@ -758,7 +767,7 @@
             (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
                           "CREATE TABLE `baz` (id INTEGER);"
                           "CREATE USER 'table_privileges_test_user' IDENTIFIED BY 'password';"
-                          (str "GRANT SELECT ON table_privileges_test.`bar` TO 'table_privileges_test_user'")]]
+                          "GRANT SELECT ON table_privileges_test.`bar` TO 'table_privileges_test_user'"]]
               (jdbc/execute! spec stmt))
             (testing "should return privileges on the table"
               (is (= [{:role   nil
@@ -770,13 +779,13 @@
                        :delete false}]
                      (get-privileges))))
             (testing "should return privileges on the database"
-              (jdbc/execute! spec (str "GRANT UPDATE ON `table_privileges_test`.* TO 'table_privileges_test_user'"))
+              (jdbc/execute! spec "GRANT UPDATE ON `table_privileges_test`.* TO 'table_privileges_test_user'")
               (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert false, :delete false}
                       {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
                      (get-privileges))))
             (testing "should return privileges on roles that the user has been granted"
               (doseq [stmt ["CREATE ROLE 'table_privileges_test_role'"
-                            (str "GRANT INSERT ON `bar` TO 'table_privileges_test_role'")
+                            "GRANT INSERT ON `bar` TO 'table_privileges_test_role'"
                             "GRANT 'table_privileges_test_role' TO 'table_privileges_test_user'"]]
                 (jdbc/execute! spec stmt))
               (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
@@ -788,3 +797,21 @@
                             "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
                             "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
                 (jdbc/execute! spec stmt)))))))))
+
+(deftest ^:parallel temporal-column-with-binning-keeps-type
+  (mt/test-driver :mysql
+    (let [mp (mt/metadata-provider)]
+      (doseq [[field bins] [[:birth_date [:year :quarter :month :week :day]]
+                            [:created_at [:year :quarter :month :week :day :hour :minute]]]
+              bin bins]
+        (testing (str "field " (name field) " for temporal bucket " (name bin))
+          (let [field-md (lib.metadata/field mp (mt/id :people field))
+                unbinned-query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                                   (lib/with-fields [field-md])
+                                   (lib/limit 1))
+                binned-query (-> unbinned-query
+                                 (lib/breakout (lib/with-temporal-bucket field-md bin)))]
+            ;; mysql has no way to cast to TIMESTAMP, so if you do anything to it, it becomes a DATETIME
+            (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type)
+                        (map #(get {"TIMESTAMP" "DATETIME"} % %)))
+                   (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))

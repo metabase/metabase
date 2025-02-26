@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -93,20 +93,23 @@ describe("scenarios > question > summarize sidebar", () => {
       toBinning: "10 bins",
     });
 
-    H.getDimensionByName({ name: "Total" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-    H.getDimensionByName({ name: "Quantity" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
+    H.getDimensionByName({ name: "Total" })
+      .scrollIntoView()
+      .should("have.attr", "aria-selected", "true")
+      .findByLabelText("Binning strategy")
+      .should("be.visible");
+    H.getDimensionByName({ name: "Quantity" })
+      .should("have.attr", "aria-selected", "true")
+      .findByLabelText("Binning strategy")
+      .should("be.visible");
+    H.getDimensionByName({ name: "Discount" }).within(() => {
+      cy.button("Add dimension").realHover();
+      cy.findByLabelText("Binning strategy").should("be.visible");
+    });
   });
 
   it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "14649_min",
         query: {
@@ -200,9 +203,10 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("Number of distinct values of ...").click();
-      cy.findByLabelText("Temporal bucket").click();
+      cy.findByLabelText("Temporal bucket").realHover().click();
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -212,7 +216,7 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "12625",
         query: {

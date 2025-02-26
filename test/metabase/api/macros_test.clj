@@ -6,7 +6,7 @@
 
 (deftest ^:parallel parse-args-test
   (are [args expected] (= expected
-                          (#'api.macros/parse-defendpoint-args args))
+                          (#'api.macros/parse-args args))
     '(:post "/move"
             "Moves a number of Cards to a single collection or dashboard."
             [_route-params
@@ -72,7 +72,7 @@
 (deftest ^:parallel parse-args-regexes-test
   (are [args expected] (=? expected
                            (binding [*ns* (the-ns 'metabase.api.macros-test)]
-                             (#'api.macros/parse-defendpoint-args args)))
+                             (#'api.macros/parse-args args)))
     '(:post "/move/:id"
             [{:keys [id]} :- [:map
                               [:id pos-int?]]]

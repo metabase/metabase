@@ -1,6 +1,8 @@
 (ns metabase.stale-test
-  (:require [metabase.test :as mt])
-  (:import (java.time LocalDate LocalDateTime)))
+  (:require
+   [metabase.test :as mt])
+  (:import
+   (java.time LocalDate LocalDateTime)))
 
 (set! *warn-on-reflection* true)
 

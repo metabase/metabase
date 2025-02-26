@@ -9,9 +9,9 @@
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -33,7 +33,7 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
+   (select-keys (mt/db) [:id :entity_id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
                          :cache_field_values_schedule :metadata_sync_schedule :uploads_enabled :uploads_schema_name
                          :uploads_table_prefix])
    {:engine                      "h2"
@@ -80,7 +80,7 @@
    (select-keys
     field
     [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at
-     :database_required :database_is_auto_increment])))
+     :database_required :database_is_auto_increment :entity_id])))
 
 (defn- fk-field-details [field]
   (-> (field-details field)
@@ -155,7 +155,8 @@
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults) :segments :field_values :metrics)
-            (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status :view_count]
+            (t2/hydrate (t2/select-one [:model/Table :id :entity_id :created_at :updated_at :initial_sync_status
+                                        :view_count]
                                        :id (mt/id :venues))
                         :pk_field)
             {:schema       "PUBLIC"
@@ -175,7 +176,8 @@
                                                         :schema       nil}]
         (is (= (merge
                 (dissoc (table-defaults) :segments :field_values :metrics :db)
-                (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status :view_count]
+                (t2/hydrate (t2/select-one [:model/Table :id :entity_id :created_at :updated_at :initial_sync_status
+                                            :view_count]
                                            :id table-id)
                             :pk_field)
                 {:schema       ""
@@ -216,7 +218,8 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count] :id (mt/id :users))
+              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
+                             :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -299,7 +302,8 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count] :id (mt/id :users))
+              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
+                             :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -390,7 +394,7 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
                   (update :db merge (select-keys (mt/db) [:details])))
-              (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table)) :pk_field)
+              (t2/hydrate (t2/select-one [:model/Table :id :entity_id :schema :name :created_at :initial_sync_status] :id (u/the-id table)) :pk_field)
               {:description     "What a nice table!"
                :entity_type     nil
                :schema          ""
@@ -431,7 +435,7 @@
     (testing "Table should get synced when it gets unhidden"
       (mt/with-temp [:model/Database db    {:details (:details (mt/db))}
                      :model/Table    table (-> (t2/select-one :model/Table (mt/id :venues))
-                                               (dissoc :id)
+                                               (dissoc :id :entity_id)
                                                (assoc :db_id (:id db)))]
         (let [called (atom 0)
               ;; original is private so a var will pick up the redef'd. need contents of var before
@@ -519,7 +523,7 @@
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics)
                                                             (t2/select-one [:model/Table
-                                                                            :id :created_at :updated_at
+                                                                            :id :entity_id :created_at :updated_at
                                                                             :initial_sync_status :view_count]
                                                                            :id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
@@ -539,7 +543,7 @@
                                             :table            (merge
                                                                (dissoc (table-defaults) :db :segments :field_values :metrics)
                                                                (t2/select-one [:model/Table
-                                                                               :id :created_at :updated_at
+                                                                               :id :entity_id :created_at :updated_at
                                                                                :initial_sync_status :view_count]
                                                                               :id (mt/id :users))
                                                                {:schema       "PUBLIC"
@@ -555,7 +559,7 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
+            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :entity_id] :id (mt/id :categories))
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"
@@ -672,6 +676,7 @@
                                               :display_name   "NAME"
                                               :base_type      "type/Text"
                                               :effective_type "type/Text"
+                                              :database_type  "CHARACTER VARYING"
                                               :semantic_type  "type/Name"
                                               :fingerprint    (name->fingerprint :name)
                                               :field_ref      ["field" "NAME" {:base-type "type/Text"}]}
@@ -679,6 +684,7 @@
                                               :display_name   "ID"
                                               :base_type      "type/BigInteger"
                                               :effective_type "type/BigInteger"
+                                              :database_type  "BIGINT"
                                               :semantic_type  nil
                                               :fingerprint    (name->fingerprint :id)
                                               :field_ref      ["field" "ID" {:base-type "type/BigInteger"}]}
@@ -687,6 +693,7 @@
                                                 :display_name   "PRICE"
                                                 :base_type      "type/Integer"
                                                 :effective_type "type/Integer"
+                                                :database_type  "INTEGER"
                                                 :semantic_type  nil
                                                 :fingerprint    (name->fingerprint :price)
                                                 :field_ref      ["field" "PRICE" {:base-type "type/Integer"}]})
@@ -695,6 +702,7 @@
                                                 :display_name   "LATITUDE"
                                                 :base_type      "type/Float"
                                                 :effective_type "type/Float"
+                                                :database_type  "DOUBLE PRECISION"
                                                 :semantic_type  "type/Latitude"
                                                 :fingerprint    (name->fingerprint :latitude)
                                                 :field_ref      ["field" "LATITUDE" {:base-type "type/Float"}]})]))})
@@ -751,6 +759,7 @@
                                          :display_name             "NAME"
                                          :base_type                "type/Text"
                                          :effective_type           "type/Text"
+                                         :database_type            "CHARACTER VARYING"
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field" "NAME" {:base-type "type/Text"}]
                                          :semantic_type            "type/Name"
@@ -762,6 +771,7 @@
                                          :display_name             "LAST_LOGIN"
                                          :base_type                "type/DateTime"
                                          :effective_type           "type/DateTime"
+                                         :database_type            "TIMESTAMP"
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
                                          :semantic_type            nil

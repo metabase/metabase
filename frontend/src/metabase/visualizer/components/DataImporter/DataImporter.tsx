@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Flex, Icon, TextInput } from "metabase/ui";
+import { Box, Flex, Text, TextInput } from "metabase/ui";
 import { getDataSources } from "metabase/visualizer/selectors";
 import {
   addDataSource,
@@ -67,7 +67,6 @@ export const DataImporter = () => {
           value={search}
           onChange={handleSearchChange}
           placeholder={t`Search for something`}
-          icon={<Icon name="search" />}
         />
       </Box>
       <Flex
@@ -79,10 +78,13 @@ export const DataImporter = () => {
         }}
       >
         {showRecents ? (
-          <RecentsList
-            onSelect={handleDataSourceSelect}
-            dataSourceIds={dataSourceIds}
-          />
+          <>
+            <Text>{t`Recents`}</Text>
+            <RecentsList
+              onSelect={handleDataSourceSelect}
+              dataSourceIds={dataSourceIds}
+            />
+          </>
         ) : (
           <SearchResultsList
             search={debouncedSearch}

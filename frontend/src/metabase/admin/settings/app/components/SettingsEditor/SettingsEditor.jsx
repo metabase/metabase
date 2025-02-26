@@ -10,6 +10,7 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SwagButton } from "metabase/admin/settings/components/Swag/SwagButton";
 import { UpsellSSO } from "metabase/admin/upsells";
+import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/components/ErrorPages";
 import SaveStatus from "metabase/components/SaveStatus";
@@ -18,7 +19,7 @@ import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
 import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { Box } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
 
 import {
   getActiveSection,
@@ -243,7 +244,10 @@ class SettingsEditor extends Component {
               to={"/admin/settings/" + slug}
               className={classes}
             >
-              <span>{section.name}</span>
+              <Group gap="xs">
+                <span>{section.name}</span>
+                {section?.isUpsell && <UpsellGem />}
+              </Group>
               {newVersionIndicator}
             </Link>
           </li>

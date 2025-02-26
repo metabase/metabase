@@ -23,14 +23,14 @@ export function FilterColumnName({
 
   if (!isSearching || !columnInfo.table) {
     return (
-      <Text color="text-dark" weight="bold">
+      <Text color="text-dark" fw="bold">
         {isSearching ? columnInfo.longDisplayName : columnInfo.displayName}
       </Text>
     );
   }
 
   return (
-    <Group fw="bold" spacing="xs">
+    <Group fw="bold" gap="xs">
       <Text color="text-dark">{columnInfo.displayName}</Text>
       <Text color="text-light">{t`in`}</Text>
       <Text color="text-dark">{columnInfo.table.displayName}</Text>

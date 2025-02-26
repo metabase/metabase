@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_ID,
@@ -14,8 +14,6 @@ const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
-
     H.restore();
     cy.signInAsAdmin();
   });
@@ -434,7 +432,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   });
 });
 
-H.describeEE("scenarios > admin > permissions", () => {
+describe("scenarios > admin > permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

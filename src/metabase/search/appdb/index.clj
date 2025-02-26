@@ -5,12 +5,12 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.models.search-index-metadata :as search-index-metadata]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
+   [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -34,7 +34,7 @@
 (defonce ^:dynamic ^:private *index-version-id*
   (if config/is-prod?
     (:hash config/mb-version-info)
-    (str (random-uuid))))
+    (u/lower-case-en (u/generate-nano-id))))
 
 (defonce ^:private next-sync-at (atom nil))
 
@@ -79,7 +79,7 @@
 (defn gen-table-name
   "Generate a unique table name to use as a search index table."
   []
-  (keyword (str/replace (str "search_index__" (random-uuid)) #"-" "_")))
+  (keyword (str/replace (str "search_index__" (u/lower-case-en (u/generate-nano-id))) #"-" "_")))
 
 (defn- table-name [kw]
   (cond-> (name kw)

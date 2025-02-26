@@ -37,6 +37,7 @@ import {
   createVisualizerColumnReference,
   extractReferencedColumns,
   getDataSourceIdFromNameRef,
+  getDefaultVisualizationName,
   getInitialStateForCardDataSource,
   parseDataSourceId,
 } from "./utils";
@@ -53,10 +54,6 @@ import {
 } from "./visualizations/funnel";
 import { mapDropHandler, removeColumnFromMap } from "./visualizations/map";
 import { pieDropHandler, removeColumnFromPieChart } from "./visualizations/pie";
-import {
-  pivotDropHandler,
-  removeColumnFromPivotTable,
-} from "./visualizations/pivot";
 
 const initialCommonState: VisualizerCommonState = {
   cards: [],
@@ -70,19 +67,25 @@ const initialCommonState: VisualizerCommonState = {
   draggedItem: null,
 };
 
-const initialVisualizerHistoryItem: VisualizerHistoryItem = {
-  display: null,
-  columns: [],
-  columnValuesMapping: {},
-  settings: {},
-};
+function getInitialVisualizerHistoryItem(): VisualizerHistoryItem {
+  return {
+    display: null,
+    columns: [],
+    columnValuesMapping: {},
+    settings: {
+      "card.title": getDefaultVisualizationName(),
+    },
+  };
+}
 
-const initialState: VisualizerState = {
-  ...initialCommonState,
-  past: [],
-  present: initialVisualizerHistoryItem,
-  future: [],
-};
+function getInitialState(): VisualizerState {
+  return {
+    ...initialCommonState,
+    past: [],
+    present: getInitialVisualizerHistoryItem(),
+    future: [],
+  };
+}
 
 type InitVisualizerPayload = {
   state?: Partial<VisualizerHistoryItem>;
@@ -173,34 +176,16 @@ const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
 
 const visualizerHistoryItemSlice = createSlice({
   name: "present",
-  initialState: initialVisualizerHistoryItem,
+  initialState: getInitialVisualizerHistoryItem(),
   reducers: {
+    setTitle: (state, action: PayloadAction<string>) => {
+      if (!state.settings) {
+        state.settings = {};
+      }
+      state.settings["card.title"] = action.payload;
+    },
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
-      const previousDisplay = state.display;
-      const display = action.payload;
-
-      state.display = display;
-
-      if (
-        display === "pivot" &&
-        !state.columns.some(col => col.name === "pivot-grouping")
-      ) {
-        state.columns.push({
-          name: "pivot-grouping",
-          display_name: "pivot-grouping",
-          expression_name: "pivot-grouping",
-          field_ref: ["expression", "pivot-grouping"],
-          base_type: "type/Integer",
-          effective_type: "type/Integer",
-          source: "artificial",
-        });
-      }
-
-      if (previousDisplay === "pivot" && display !== "pivot") {
-        state.columns = state.columns.filter(
-          col => col.name !== "pivot-grouping",
-        );
-      }
+      state.display = action.payload;
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
       state.settings = {
@@ -246,8 +231,6 @@ const visualizerHistoryItemSlice = createSlice({
         removeColumnFromFunnel(state, name);
       } else if (state.display === "pie") {
         removeColumnFromPieChart(state, name);
-      } else if (state.display === "pivot") {
-        removeColumnFromPivotTable(state, name);
       } else if (state.display === "map") {
         removeColumnFromMap(state, name);
       }
@@ -259,6 +242,9 @@ const visualizerHistoryItemSlice = createSlice({
         const initialState = action.payload;
         if (initialState) {
           Object.assign(state, initialState);
+        }
+        if (!state.settings?.["card.title"]) {
+          state.settings["card.title"] = getDefaultVisualizationName();
         }
       })
       .addCase(handleDrop, (state, action) => {
@@ -274,8 +260,6 @@ const visualizerHistoryItemSlice = createSlice({
           funnelDropHandler(state, event);
         } else if (state.display === "pie") {
           pieDropHandler(state, event);
-        } else if (state.display === "pivot") {
-          pivotDropHandler(state, event);
         } else if (state.display === "map") {
           mapDropHandler(state, event);
         }
@@ -331,7 +315,7 @@ const visualizerHistoryItemSlice = createSlice({
 
 const visualizerSlice = createSlice({
   name: "visualizer",
-  initialState,
+  initialState: getInitialState(),
   reducers: {
     setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
       state.draggedItem = action.payload;
@@ -380,11 +364,11 @@ const visualizerSlice = createSlice({
       action: PayloadAction<{ full?: boolean } | undefined>,
     ) => {
       if (action.payload?.full) {
-        Object.assign(state, initialState);
+        Object.assign(state, getInitialState());
       } else {
         state.past = [];
         state.future = [...state.future, state.present];
-        state.present = initialVisualizerHistoryItem;
+        state.present = getInitialVisualizerHistoryItem();
       }
     },
   },
@@ -409,7 +393,7 @@ const visualizerSlice = createSlice({
         if (isLastDataSource) {
           const present = _.clone(state.present);
           state.past = [...state.past, present];
-          state.present = initialVisualizerHistoryItem;
+          state.present = getInitialVisualizerHistoryItem();
           state.future = [];
           state.isVizSettingsSidebarOpen = false;
         } else {
@@ -487,7 +471,7 @@ function maybeCombineDataset(
     !state.display ||
     (card.display === state.display && state.columns.length === 0)
   ) {
-    return getInitialStateForCardDataSource(card, dataset);
+    return getInitialStateForCardDataSource({ card, ...dataset });
   }
 
   if (
@@ -516,7 +500,7 @@ function maybeCombineDataset(
   return state;
 }
 
-export const { setDisplay, updateSettings, addColumn, removeColumn } =
+export const { setTitle, setDisplay, updateSettings, addColumn, removeColumn } =
   visualizerHistoryItemSlice.actions;
 
 export const {

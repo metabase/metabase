@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -24,7 +24,8 @@ describe("scenarios > visualizations > waterfall", () => {
   }
 
   it("should work with ordinal series", () => {
-    H.startNewNativeQuestion().type(
+    H.startNewNativeQuestion();
+    H.NativeEditor.type(
       "select 'A' as product, 10 as profit union select 'B' as product, -4 as profit",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -36,9 +37,8 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should work with ordinal series and numeric X-axis (metabase#15550)", () => {
-    H.startNewNativeQuestion().type(
-      "select 1 as X, 20 as Y union select 2 as X, -10 as Y",
-    );
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select 1 as X, 20 as Y union select 2 as X, -10 as Y");
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -48,6 +48,7 @@ describe("scenarios > visualizations > waterfall", () => {
     H.sidebar().findAllByPlaceholderText("Select a field").first().click();
     H.popover().findByText("X").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar().findAllByPlaceholderText("Select a field").last().click();
     H.popover().findByText("Y").click();
 
@@ -60,10 +61,9 @@ describe("scenarios > visualizations > waterfall", () => {
     verifyWaterfallRendering("X", "Y");
   });
 
-  it("should work with quantitative series", { tags: "@flaky" }, () => {
-    H.startNewNativeQuestion().type(
-      "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
-    );
+  it("should work with quantitative series", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select 1 as X, 10 as Y union select 2 as X, -2 as Y");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
@@ -72,6 +72,7 @@ describe("scenarios > visualizations > waterfall", () => {
     H.sidebar().findAllByPlaceholderText("Select a field").first().click();
     H.popover().findByText("X").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar().findAllByPlaceholderText("Select a field").last().click();
     H.popover().findByText("Y").click();
 
@@ -223,6 +224,7 @@ describe("scenarios > visualizations > waterfall", () => {
     H.sidebar().findAllByPlaceholderText("Select a field").first().click();
     H.popover().findByText("Created At: Year").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar().findAllByPlaceholderText("Select a field").last().click();
     H.popover().findByText("Count").click();
 
@@ -266,12 +268,14 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     getWaterfallDataLabels()
       .as("labels")
       .eq(-3)
       .invoke("text")
       .should("eq", "0");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });
 
@@ -295,6 +299,7 @@ describe("scenarios > visualizations > waterfall", () => {
     // the null data label which should exist at index -3
     // should now display no label. so the label at index -3 should be the label
     // before the null data point
+    // eslint-disable-next-line no-unsafe-element-filtering
     getWaterfallDataLabels()
       .as("labels")
       .eq(-3)
@@ -304,12 +309,14 @@ describe("scenarios > visualizations > waterfall", () => {
     // but the x-axis label and area should still be shown for the null data point
     H.echartsContainer().findByText("f");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     getWaterfallDataLabels()
       .as("labels")
       .eq(-2)
       .invoke("text")
       .should("eq", "(2)");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });
 
@@ -424,7 +431,8 @@ describe("scenarios > visualizations > waterfall", () => {
       H.restore();
       cy.signInAsNormalUser();
 
-      H.startNewNativeQuestion().type("select 'A' as X, -4.56 as Y");
+      H.startNewNativeQuestion();
+      H.NativeEditor.type("select 'A' as X, -4.56 as Y");
       cy.findByTestId("native-query-editor-container").icon("play").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Visualization").click();
@@ -458,7 +466,7 @@ describe("scenarios > visualizations > waterfall", () => {
       H.echartsContainer().get("text").contains("Total").should("exist");
     });
 
-    it("should allow toggling of value labels", { tags: "@flaky" }, () => {
+    it("should allow toggling of value labels", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 

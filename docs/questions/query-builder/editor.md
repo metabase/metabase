@@ -1,5 +1,7 @@
 ---
 title: The query builder
+redirect_from:
+  - /docs/latest/questions/query-builder/introduction
 ---
 
 # The query builder
@@ -19,7 +21,7 @@ When viewing a chart, you can also click through questions to explore the data i
 
 ![Drill-through menu](../images/drill-through-menu.png)
 
-The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. Full drill-through menu is only available for questions built using the query builder. Questions build with SQL/native queries will have only have [limited drill-through actions](../native-editor/writing-sql.md#drill-though-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
+The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. Full drill-through menu is only available for questions built using the query builder. Questions built with the SQL/native editor will have only have [limited drill-through actions](../native-editor/writing-sql.md#drill-though-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
 
 ## Creating a new question with the query builder
 
@@ -65,7 +67,7 @@ The data section is where you select the data you want to work with. Here you'll
 
 You can see the data source in a new browser tab by Cmd/Ctrl+Clicking on the data source's name in the query builder.
 
-To choose which columns to include in your query, click on the arrow next to the data source. You'll also be able [hide columns](../visualizations/table.md#add) from the table view once you visualize your results.
+To choose which columns to include in your query, click on the arrow next to the data source. You'll also be able [hide columns](../visualizations/table.md#rearranging-adding-and-removing-columns) from the table view once you visualize your results.
 
 ### Adding or removing columns in a table
 

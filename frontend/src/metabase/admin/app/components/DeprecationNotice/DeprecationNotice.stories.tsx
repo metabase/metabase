@@ -5,7 +5,7 @@ import DeprecationNotice, {
 } from "./DeprecationNotice";
 
 export default {
-  title: "Admin/App/DeprecationNotice",
+  title: "App/Admin/App/DeprecationNotice",
   component: DeprecationNotice,
   argTypes: {
     onClose: { action: "DeprecationNotice" },

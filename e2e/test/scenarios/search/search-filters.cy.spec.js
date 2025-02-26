@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -99,7 +99,7 @@ describe("scenarios > search", () => {
       beforeEach(() => {
         H.setActionsEnabledForDB(SAMPLE_DB_ID);
 
-        cy.createQuestion({
+        H.createQuestion({
           name: "Orders Model",
           query: { "source-table": ORDERS_ID },
           type: "model",
@@ -124,7 +124,7 @@ describe("scenarios > search", () => {
           });
         });
 
-        cy.createQuestion(
+        H.createQuestion(
           {
             name: "Products Model",
             query: { "source-table": PRODUCTS_ID },
@@ -217,11 +217,11 @@ describe("scenarios > search", () => {
         // create a question from a normal and admin user, then we can query the question
         // created by that user as an admin
         cy.signInAsNormalUser();
-        cy.createQuestion(NORMAL_USER_TEST_QUESTION);
+        H.createQuestion(NORMAL_USER_TEST_QUESTION);
         cy.signOut();
 
         cy.signInAsAdmin();
-        cy.createQuestion(ADMIN_TEST_QUESTION);
+        H.createQuestion(ADMIN_TEST_QUESTION);
       });
 
       it("should hydrate created_by filter", () => {
@@ -430,7 +430,7 @@ describe("scenarios > search", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
         // We'll create a question as a normal user, then edit it as an admin user
-        cy.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
+        H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
           ({ body: { id: questionId } }) => {
             cy.signOut();
             cy.signInAsNormalUser();
@@ -447,7 +447,7 @@ describe("scenarios > search", () => {
         );
 
         // We'll create a question as an admin user, then edit it as a normal user
-        cy.createQuestion(LAST_EDITED_BY_ADMIN_QUESTION).then(
+        H.createQuestion(LAST_EDITED_BY_ADMIN_QUESTION).then(
           ({ body: { id: questionId } }) => {
             cy.signInAsAdmin();
             cy.visit(`/question/${questionId}`);
@@ -676,7 +676,7 @@ describe("scenarios > search", () => {
     describe("created_at filter", () => {
       beforeEach(() => {
         cy.signInAsNormalUser();
-        cy.createQuestion(NORMAL_USER_TEST_QUESTION);
+        H.createQuestion(NORMAL_USER_TEST_QUESTION);
         cy.signOut();
         cy.signInAsAdmin();
       });
@@ -762,7 +762,7 @@ describe("scenarios > search", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
         // We'll create a question as a normal user, then edit it as an admin user
-        cy.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
+        H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
           ({ body: { id: questionId } }) => {
             cy.signOut();
             cy.signInAsNormalUser();
@@ -858,7 +858,7 @@ describe("scenarios > search", () => {
       });
     });
 
-    H.describeEE("verified filter", () => {
+    describe("verified filter", () => {
       beforeEach(() => {
         H.setTokenFeatures("all");
         H.createModerationReview({
@@ -932,14 +932,14 @@ describe("scenarios > search", () => {
     describe("native query filter", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
-        cy.createNativeQuestion({
+        H.createNativeQuestion({
           name: TEST_NATIVE_QUESTION_NAME,
           native: {
             query: "SELECT 'reviews';",
           },
         });
 
-        cy.createNativeQuestion({
+        H.createNativeQuestion({
           name: "Native Query",
           native: {
             query: `SELECT '${TEST_NATIVE_QUESTION_NAME}';`,
@@ -1016,7 +1016,7 @@ describe("scenarios > search", () => {
           .click();
         cy.findAllByTestId("search-result-item").should("have.length", 0);
 
-        cy.archiveCollection(FIRST_COLLECTION_ID);
+        H.archiveCollection(FIRST_COLLECTION_ID);
         cy.reload();
         cy.findAllByTestId("search-result-item").should("have.length", 1);
         // TODO: eventually re-enable when FE can properly identify the parent collection

@@ -53,32 +53,15 @@ Models you create are automatically [pinned to the current collection](../explor
 
 ![Turn a saved question into a model](./images/turn-into-a-model.png)
 
-## Model detail page
+## Model details
 
-To view a model's detail page:
+To view a model's details, visit the model and click on the **info** button in the upper right. Here you'll see several tabs:
 
-- From a collection: click on the **book** icon next to a model.
-- From a model: click on the **info** button in the upper right, then click **Model details**.
-
-![Model detail page](./images/model-detail.png)
-
-Here you'll see several tabs:
-
-- **Used by**: lists the items based on the model.
-- **Schema**: lists the fields in the model.
-- **Actions**: lists the actions in the model, and allows you to create new [actions](../actions/start.md).
-
-The model detail page also shows some basic info about the model:
-
-- Description
-- Contact (who wrote the model)
-- Backing table(s)
-
-To start a new question based on the model, click **Explore**.
-
-To edit the model's underlying query, click **Edit definition**.
-
-You can also edit the model's metadata.
+- **Overview**: Includes the description, Creator and Last Editor, and the list of fields included in the model. As well as the model's [Entity ID](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-and-reference-metabase-items).
+- **History**: Lists changes to the model, and by whom.
+- **Relationships**: Lists which questions use the model, and which tables the model is linked to.
+- **Actions**: Lists actions created based on the model.
+- **Insights**: Info about the [model's usage](../usage-and-performance-tools/usage-analytics.md). Only visible to admins on a [Pro or Enterprise plan](https://www.metabase.com/pricing/).
 
 ## Add metadata to columns in a model
 

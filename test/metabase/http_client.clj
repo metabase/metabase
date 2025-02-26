@@ -77,6 +77,9 @@
       (= "multipart/form-data" content-type)
       (peridot.multipart/build http-body)
 
+      (= "application/x-www-form-urlencoded" content-type)
+      {:body (ByteArrayInputStream. (.getBytes ^String (codec/form-encode http-body) "UTF-8"))}
+
       :else
       (throw (ex-info "If you want this content-type to work, improve me"
                       {:content-type content-type})))))

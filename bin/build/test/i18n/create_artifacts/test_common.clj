@@ -80,6 +80,26 @@
    :source-references ["src/metabase/automagic_dashboards/core.clj"]
    :comment           nil})
 
+(def ^:private cljc-message
+  {:id                "Average of {0}"
+   :id-plural         nil
+   :str               "Average of {0}"
+   :str-plural        nil
+   :fuzzy?            false
+   :plural?           false
+   :source-references ["src/metabase/lib/aggregation.cljc"]
+   :comment           nil})
+
+(def ^:private cljs-message
+  {:id                "Median of {0}"
+   :id-plural         nil
+   :str               "Median of {0}"
+   :str-plural        nil
+   :fuzzy?            false
+   :plural?           false
+   :source-references ["src/metabase/lib/aggregation.cljs"]
+   :comment           nil})
+
 (def ^:private messages
   [singular-message-frontend
    singular-message-backend
@@ -88,7 +108,9 @@
    plural-message-frontend
    plural-message-frontend-with-empty
    plural-message-backend
-   plural-message-backend-with-empty])
+   plural-message-backend-with-empty
+   cljc-message
+   cljs-message])
 
 (def po-contents
   "Contents of a `.po` file."

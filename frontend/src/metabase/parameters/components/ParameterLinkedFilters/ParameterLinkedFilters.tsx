@@ -22,7 +22,7 @@ import {
   SectionHeader,
   SectionMessage,
   SectionMessageLink,
-} from "./ParameterLinkedFilters.styled";
+} from "./ParameterLinkedFiltersComponents";
 import useFilterFields from "./use-filter-fields";
 
 export interface ParameterLinkedFiltersProps {

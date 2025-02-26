@@ -1,8 +1,9 @@
 (ns metabase.api.trash-test
-  (:require  [clojure.test :refer [deftest testing is]]
-             [metabase.api.card-test :refer [card-with-name-and-query]]
-             [metabase.models.collection :as collection]
-             [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer [deftest testing is]]
+   [metabase.api.card-test :refer [card-with-name-and-query]]
+   [metabase.models.collection :as collection]
+   [metabase.test :as mt]))
 
 (def dashboard-defaults {:name          "Dashboard"
                          :parameters    [{:id "abc123", :name "test", :type "date"}]

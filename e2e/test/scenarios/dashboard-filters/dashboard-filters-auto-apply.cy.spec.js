@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -666,14 +666,14 @@ const createDashboard = ({
   parameter = FILTER,
 } = {}) => {
   const parameters = [parameter];
-  cy.createQuestionAndDashboard({
+  H.createQuestionAndDashboard({
     questionDetails: QUESTION_DETAILS,
     dashboardDetails: {
       ...createDashboardDetails({ parameters }),
       ...dashboardOpts,
     },
   }).then(({ body: card }) => {
-    cy.editDashboardCard(card, getParameterMapping(card, parameters));
+    H.editDashboardCard(card, getParameterMapping(card, parameters));
     cy.wrap(card.dashboard_id).as("dashboardId");
   });
 };

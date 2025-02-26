@@ -406,6 +406,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             variant="subtle"
             px="sm"
             aria-label={t`Metric options`}
+            c="text-dark"
           >
             <Icon name="ellipsis" />
           </Button>
@@ -414,7 +415,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
           {actions.map(action => (
             <Menu.Item
               key={action.key}
-              icon={<Icon name={action.icon} />}
+              leftSection={<Icon name={action.icon} />}
               onClick={action.action}
             >
               {action.title}

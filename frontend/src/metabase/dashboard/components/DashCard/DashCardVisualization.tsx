@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { replaceCardWithVisualization } from "metabase/dashboard/actions";
@@ -17,18 +16,15 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { IconName, IconProps } from "metabase/ui";
+import { Flex, type IconName, type IconProps, Title } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
-  extractReferencedColumns,
-  getDataSourceIdFromNameRef,
-  isDataSourceNameRef,
+  createDataSource,
   isVisualizerDashboardCard,
-  parseDataSourceId,
+  mergeVisualizerData,
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -36,7 +32,6 @@ import type {
   Dashboard,
   DashboardCard,
   Dataset,
-  RowValues,
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
@@ -44,12 +39,9 @@ import type {
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
-import {
-  VirtualDashCardOverlayRoot,
-  VirtualDashCardOverlayText,
-} from "./DashCard.styled";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
+import S from "./DashCardVisualization.module.css";
 import type {
   CardSlownessStatus,
   DashCardOnChangeCardAndRunHandler,
@@ -60,7 +52,7 @@ interface DashCardVisualizationProps {
   dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
-  mode?: QueryClickActionsMode | Mode;
+  getClickActionMode?: ClickActionModeGetter;
   getHref?: () => string | undefined;
 
   gridSize: {
@@ -111,7 +103,7 @@ export function DashCardVisualization({
   dashcard,
   dashboard,
   series: _series,
-  mode,
+  getClickActionMode,
   getHref,
   gridSize,
   gridItemWidth,
@@ -141,7 +133,9 @@ export function DashCardVisualization({
   downloadsEnabled,
   editDashboard,
 }: DashCardVisualizationProps) {
-  const datasets = useSelector(state => getDashcardData(state, dashcard.id));
+  const datasets = useSelector(
+    state => getDashcardData(state, dashcard.id) ?? {},
+  );
   const [isVisualizerModalOpen, setIsVisualizerModalOpen] = useState(false);
 
   const dispatch = useDispatch();
@@ -181,14 +175,11 @@ export function DashCardVisualization({
   );
 
   const series = useMemo(() => {
-    const isVisualizerDashcard =
-      !!dashcard?.visualization_settings?.visualization;
     if (
-      !datasets ||
       !dashcard ||
       !_series ||
       _series.length === 0 ||
-      !isVisualizerDashcard
+      !isVisualizerDashboardCard(dashcard)
     ) {
       return _series;
     }
@@ -196,65 +187,36 @@ export function DashCardVisualization({
     const { display, columns, columnValuesMapping, settings } = dashcard
       .visualization_settings!.visualization as VisualizerHistoryItem;
 
-    const referencedColumns = extractReferencedColumns(columnValuesMapping);
-
-    const referencedColumnValuesMap: Record<string, RowValues> = {};
-    referencedColumns.forEach(ref => {
-      const { sourceId } = parseDataSourceId(ref.sourceId);
-      const dataset = datasets[sourceId];
-      if (!dataset) {
-        return;
-      }
-      const columnIndex = dataset.data.cols.findIndex(
-        col => col.name === ref.originalName,
-      );
-      if (columnIndex >= 0) {
-        const values = dataset.data.rows.map(row => row[columnIndex]);
-        referencedColumnValuesMap[ref.name] = values;
-      }
-    });
-
-    const hasPivotGrouping = columns.some(col => col.name === "pivot-grouping");
-    if (hasPivotGrouping) {
-      const rowLengths = Object.values(referencedColumnValuesMap).map(
-        values => values.length,
-      );
-      const maxLength = rowLengths.length > 0 ? Math.max(...rowLengths) : 0;
-      referencedColumnValuesMap["pivot-grouping"] = new Array(maxLength).fill(
-        0,
-      );
+    const cards = [dashcard.card];
+    if (Array.isArray(dashcard.series)) {
+      cards.push(...dashcard.series);
     }
 
-    const unzippedRows = columns.map(column =>
-      (columnValuesMapping[column.name] ?? [])
-        .map(valueSource => {
-          if (isDataSourceNameRef(valueSource)) {
-            const id = getDataSourceIdFromNameRef(valueSource);
-            return `Not supported yet (card ${id})`;
-          }
-          const values = referencedColumnValuesMap[valueSource.name];
-          if (!values) {
-            return [];
-          }
-          return values;
-        })
-        .flat(),
+    const dataSources = cards.map(card =>
+      createDataSource("card", card.id, card.name),
     );
 
-    const mergedData = {
-      cols: columns,
-      rows: _.zip(...unzippedRows),
-      results_metadata: { columns },
-    };
+    const dataSourceDatasets = Object.fromEntries(
+      Object.entries(datasets).map(([cardId, dataset]) => [
+        `card:${cardId}`,
+        dataset,
+      ]),
+    );
 
     return [
       {
         card: {
           display,
+          name: settings["card.title"],
           visualization_settings: settings,
         },
 
-        data: mergedData,
+        data: mergeVisualizerData({
+          columns,
+          columnValuesMapping,
+          datasets: dataSourceDatasets,
+          dataSources,
+        }),
 
         // Certain visualizations memoize settings computation based on series keys
         // This guarantees a visualization always rerenders on changes
@@ -293,16 +255,15 @@ export function DashCardVisualization({
             heading: t`Heading Card`,
             placeholder: t`Placeholder Card`,
             iframe: t`Iframe Card`,
-            visualization: t`Visualization Card`,
           }[virtualDashcardType] ??
           t`This card does not support click mappings`;
 
         return (
-          <VirtualDashCardOverlayRoot>
-            <VirtualDashCardOverlayText>
+          <Flex align="center" justify="center" h="100%">
+            <Title className={S.VirtualDashCardOverlayText} order={4} p="md">
               {placeholderText}
-            </VirtualDashCardOverlayText>
-          </VirtualDashCardOverlayRoot>
+            </Title>
+          </Flex>
         );
       }
       return (
@@ -397,7 +358,7 @@ export function DashCardVisualization({
         dashcard={dashcard}
         rawSeries={series}
         metadata={metadata}
-        mode={mode}
+        mode={getClickActionMode}
         getHref={getHref}
         gridSize={gridSize}
         totalNumGridCols={totalNumGridCols}

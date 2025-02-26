@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const downloadsFolder = Cypress.config("downloadsFolder");
@@ -22,7 +22,7 @@ describe("error reporting modal", () => {
     cy.realPress(["Control", "F1"]);
 
     H.modal().within(() => {
-      cy.findByText("Download diagnostic information").should("be.visible");
+      cy.findByText("Gather diagnostic information").should("be.visible");
       cy.button(/Download/i).click();
     });
 
@@ -49,7 +49,7 @@ describe("error reporting modal", () => {
     H.commandPaletteInput().type("Error");
     H.commandPaletteAction(/Report an issue/).click();
 
-    cy.findByRole("dialog", { name: "Download diagnostic information" }).should(
+    cy.findByRole("dialog", { name: "Gather diagnostic information" }).should(
       "be.visible",
     );
   });
@@ -88,7 +88,7 @@ describe("error reporting modal", () => {
     cy.realPress(["Control", "F1"]);
 
     H.modal().within(() => {
-      cy.findByText("Download diagnostic information").should("be.visible");
+      cy.findByText("Gather diagnostic information").should("be.visible");
       cy.findByLabelText("Query results").should("not.be.checked");
       cy.button(/Download/i).click();
     });
@@ -109,7 +109,7 @@ describe("error reporting modal", () => {
     cy.realPress(["Control", "F1"]);
 
     H.modal().within(() => {
-      cy.findByText("Download diagnostic information").should("be.visible");
+      cy.findByText("Gather diagnostic information").should("be.visible");
       cy.findByLabelText("Query results").should("not.be.checked");
       cy.findByLabelText("Query results").click(); // off by default
       cy.findByLabelText("Query results").should("be.checked");
@@ -142,7 +142,7 @@ describe("error reporting modal", () => {
     cy.realPress(["Control", "F1"]);
 
     H.modal().within(() => {
-      cy.findByText("Download diagnostic information").should("be.visible");
+      cy.findByText("Gather diagnostic information").should("be.visible");
       cy.findByLabelText("Query results").should("not.be.checked");
       cy.findByLabelText("Query results").click(); // off by default
       cy.findByLabelText("Query results").should("be.checked");
@@ -169,7 +169,7 @@ describe("error reporting modal", () => {
 
     cy.realPress(["Control", "F1"]);
     H.modal().within(() => {
-      cy.findByText("Download diagnostic information").should("be.visible");
+      cy.findByText("Gather diagnostic information").should("be.visible");
       cy.findByLabelText("Dashboard definition").should("be.visible");
       cy.findByLabelText("Query results").should("not.exist");
       cy.findByLabelText(/server logs/i).should("not.exist");
@@ -192,7 +192,7 @@ describe("error reporting modal", () => {
 });
 
 function getDiagnosticInfoFile() {
-  cy.findByLabelText("Download diagnostic information").should("not.exist");
+  cy.findByLabelText("Gather diagnostic information").should("not.exist");
   return cy
     .verifyDownload("metabase-diagnostic-info-", {
       contains: true,

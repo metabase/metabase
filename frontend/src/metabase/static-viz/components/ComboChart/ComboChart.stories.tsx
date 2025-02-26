@@ -14,7 +14,7 @@ import { StaticVisualization } from "../StaticVisualization";
 import { data } from "./stories-data";
 
 export default {
-  title: "static-viz/ComboChart",
+  title: "Viz/Static Viz/ComboChart",
   component: StaticVisualization,
 };
 
@@ -304,6 +304,14 @@ export const BarLogYScaleStackedNegative = {
   render: Template,
   args: {
     rawSeries: data.barLogYScaleStackedNegative as any,
+    renderingContext,
+  },
+};
+
+export const BarStackedNormalizedCustomMinMax48021 = {
+  render: Template,
+  args: {
+    rawSeries: data.barStackedNormalizedCustomMinMax48021 as any,
     renderingContext,
   },
 };

@@ -11,6 +11,7 @@ import {
   getIcon,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
@@ -201,6 +202,43 @@ describe("LinkViz", () => {
   });
 
   describe("entity links", () => {
+    it("wraps the dashboard's description", async () => {
+      const longDescription =
+        "This is a very very very very very very very very very very long dashboard description. Boy, I sure hope it does not overflow the screen when it's displayed in a tooltip. The only thing that would make it worse is if the text didn't wrap.";
+
+      const settings = {
+        link: {
+          entity: {
+            id: 1,
+            db_id: 20,
+            name: "Table Une",
+            model: "table",
+            description: longDescription,
+          },
+        },
+      } as LinkCardVizSettings;
+
+      setup({
+        isEditing: false,
+        dashcard: createMockLinkDashboardCard({
+          visualization_settings: settings,
+        }),
+        settings,
+      });
+
+      const infoIcon = screen.getByLabelText("info icon");
+
+      await userEvent.hover(infoIcon);
+
+      await waitFor(() => {
+        expect(screen.getByText(longDescription)).toBeInTheDocument();
+      });
+
+      expect(screen.getByText(longDescription)).toBe(
+        screen.getByTestId("wrapped-tooltip"),
+      );
+    });
+
     it("shows a link to a pie chart question", () => {
       setup({
         isEditing: false,

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
@@ -40,28 +40,28 @@ describe("scenarios > admin > performance > strategy form", () => {
 
     it("can enable and disable model persistence", () => {
       cy.findByRole("tab", { name: "Model persistence" }).click();
-      cy.findByRole("checkbox", { name: "Disabled" }).next("label").click();
+      cy.findByRole("switch", { name: "Disabled" }).click({ force: true });
       cy.wait("@enablePersistence");
       cy.findByTestId("toast-undo").contains("Saved");
       cy.findByTestId("toast-undo")
         .findByRole("img", { name: /close icon/ })
         .click();
 
-      cy.findByRole("checkbox", { name: "Enabled" }).next("label").click();
+      cy.findByRole("switch", { name: "Enabled" }).click({ force: true });
       cy.wait("@disablePersistence");
       cy.findByTestId("toast-undo").contains("Saved");
     });
 
     it("can change when models are refreshed", () => {
       cy.findByRole("tab", { name: "Model persistence" }).click();
-      cy.findByRole("checkbox", { name: "Disabled" }).next("label").click();
+      cy.findByRole("switch", { name: "Disabled" }).click({ force: true });
       cy.wait("@enablePersistence");
       cy.findByTestId("toast-undo").contains("Saved");
       cy.findByTestId("toast-undo")
         .findByRole("img", { name: /close icon/ })
         .click();
-      cy.findByRole("combobox").click();
-      cy.findByRole("listbox").findByText("2 hours").click();
+      cy.findByRole("textbox").click();
+      H.popover().findByText("2 hours").click();
       cy.findByTestId("toast-undo").contains("Saved");
     });
 
@@ -117,7 +117,7 @@ describe("scenarios > admin > performance > strategy form", () => {
     });
   });
 
-  H.describeEE("ee", () => {
+  describe("ee", () => {
     beforeEach(() => {
       H.restore();
       interceptPerformanceRoutes();
@@ -287,7 +287,7 @@ describe("scenarios > admin > performance > strategy form", () => {
 
         const selectScheduleType = (type: string) => {
           cy.log(`Set schedule to "${type}"`);
-          cy.findByRole("searchbox").click();
+          cy.findByRole("textbox", { name: "Frequency" }).click();
           cy.findByRole("listbox").findByText(type).click();
         };
 
@@ -302,7 +302,7 @@ describe("scenarios > admin > performance > strategy form", () => {
             ["AM", "PM"].forEach(amPm => {
               cy.log(`Test daily at ${time} ${amPm}`);
               selectScheduleType("daily");
-              cy.findAllByRole("searchbox").eq(1).click();
+              cy.findAllByRole("textbox").eq(1).click();
               cy.findByRole("listbox").findByText(`${time}:00`).click();
               cy.findByLabelText(amPm).next().click();
               saveCacheStrategyForm({ strategyType: "schedule", model });
@@ -328,15 +328,15 @@ describe("scenarios > admin > performance > strategy form", () => {
           ].forEach(([day, time]) => {
             cy.log(`testing on ${day} at ${time}`);
             selectScheduleType("weekly");
-            cy.findAllByRole("searchbox").eq(1).click();
+            cy.findAllByRole("textbox").eq(1).click();
             cy.findByRole("listbox").findByText(day).click();
-            cy.findAllByRole("searchbox").eq(2).click();
+            cy.findAllByRole("textbox").eq(2).click();
             const [hour, amPm] = time.split(" ");
             cy.findByRole("listbox").findByText(hour).click();
             cy.findByLabelText(amPm).next().click();
             saveCacheStrategyForm({ strategyType: "schedule", model });
             formLauncher(itemName, "currently", "Scheduled: weekly");
-            cy.findAllByRole("searchbox").then(searchBoxes => {
+            cy.findAllByRole("textbox").then(searchBoxes => {
               const values = Cypress._.map(
                 searchBoxes,
                 box => (box as HTMLInputElement).value,

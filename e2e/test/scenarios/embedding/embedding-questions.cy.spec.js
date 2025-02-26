@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -62,7 +62,7 @@ describe("scenarios > embedding > questions", () => {
   it("should display the regular GUI question correctly", () => {
     const { name: title, description } = regularQuestion;
 
-    cy.createQuestion(regularQuestion).then(({ body: { id } }) => {
+    H.createQuestion(regularQuestion).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -102,7 +102,7 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display the GUI question with aggregation correctly", () => {
-    cy.createQuestion(questionWithAggregation).then(({ body: { id } }) => {
+    H.createQuestion(questionWithAggregation).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -122,6 +122,7 @@ describe("scenarios > embedding > questions", () => {
     H.echartsContainer().should("contain", "60");
 
     // Check the tooltip for the last point on the line
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().last().trigger("mousemove");
 
     H.assertEChartsTooltip({
@@ -131,12 +132,12 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display the nested GUI question correctly", () => {
-    cy.createQuestion(regularQuestion).then(({ body: { id } }) => {
+    H.createQuestion(regularQuestion).then(({ body: { id } }) => {
       const nestedQuestion = {
         query: { "source-table": `card__${id}`, limit: 10 },
       };
 
-      cy.createQuestion(nestedQuestion).then(({ body: { id: nestedId } }) => {
+      H.createQuestion(nestedQuestion).then(({ body: { id: nestedId } }) => {
         cy.request("PUT", `/api/card/${nestedId}`, { enable_embedding: true });
 
         H.visitQuestion(nestedId);
@@ -173,7 +174,7 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display GUI question with explicit joins correctly", () => {
-    cy.createQuestion(joinedQuestion).then(({ body: { id } }) => {
+    H.createQuestion(joinedQuestion).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -214,7 +215,7 @@ describe("scenarios > embedding > questions", () => {
   });
 });
 
-H.describeEE("scenarios [EE] > embedding > questions", () => {
+describe("scenarios [EE] > embedding > questions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -288,7 +289,7 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
   H.echartsContainer().get("text").contains(yLabel);
 }
 
-H.describeEE("scenarios > embedding > questions > downloads", () => {
+describe("scenarios > embedding > questions > downloads", () => {
   const questionDetails = {
     name: "Simple SQL Query for Embedding",
     native: {
@@ -312,7 +313,7 @@ H.describeEE("scenarios > embedding > questions > downloads", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    H.createNativeQuestion(questionDetails, {
       wrapId: true,
     });
   });

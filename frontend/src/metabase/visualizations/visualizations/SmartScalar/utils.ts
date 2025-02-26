@@ -110,12 +110,12 @@ export function getDefaultComparison(
 ): SmartScalarComparison[] {
   const [
     {
-      data: { cols },
+      data: { insights },
     },
   ] = series;
 
-  const dateUnit = cols.find(
-    col => col.name === settings["scalar.field"],
+  const dateUnit = insights?.find(
+    insight => insight.col === settings["scalar.field"],
   )?.unit;
 
   if (!dateUnit) {
@@ -158,6 +158,8 @@ export function getComparisonOptions(
     },
   ] = series;
 
+  const insights = series[0].data.insights ?? [];
+
   const options: ComparisonMenuOption[] = [
     createComparisonMenuOption({ type: COMPARISON_TYPES.PREVIOUS_VALUE }),
   ];
@@ -173,8 +175,8 @@ export function getComparisonOptions(
     createComparisonMenuOption({ type: COMPARISON_TYPES.STATIC_NUMBER }),
   );
 
-  const dateUnit = cols.find(
-    col => col.name === settings["scalar.field"],
+  const dateUnit = insights.find(
+    insight => insight.col === settings["scalar.field"],
   )?.unit;
 
   if (!dateUnit) {
@@ -212,7 +214,7 @@ export function isComparisonValid(
 ) {
   const [
     {
-      data: { cols },
+      data: { cols, insights },
     },
   ] = series;
 
@@ -242,8 +244,8 @@ export function isComparisonValid(
     return !isEmpty(comparison?.value) && !isEmpty(comparison?.label);
   }
 
-  const dateUnit = cols.find(
-    col => col.name === settings["scalar.field"],
+  const dateUnit = insights?.find(
+    insight => insight.col === settings["scalar.field"],
   )?.unit;
 
   if (!dateUnit) {

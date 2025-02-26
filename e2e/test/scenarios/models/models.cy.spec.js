@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -24,7 +24,7 @@ describe("scenarios > models", () => {
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Products",
         query: { "source-table": PRODUCTS_ID },
@@ -83,7 +83,7 @@ describe("scenarios > models", () => {
   });
 
   it("allows to turn a native question into a model", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "Product Model",
         native: {
@@ -140,7 +140,7 @@ describe("scenarios > models", () => {
     FROM people
     GROUP BY
       Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count`;
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "People Model with long alias",
         native: {
@@ -283,6 +283,36 @@ describe("scenarios > models", () => {
     cy.wait("@cardUpdate");
     H.openQuestionActions();
     assertIsModel();
+  });
+
+  it("allows duplicating a model", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.intercept("POST", "/api/card").as("cardCreate");
+    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
+
+    H.openQuestionActions();
+    H.popover().within(() => {
+      cy.findByText("Duplicate").click();
+    });
+
+    H.modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByLabelText(/Where do you want to save this/).click();
+    });
+
+    H.entityPickerModal().within(() => {
+      cy.findByRole("tab", { name: /Collections/ }).click();
+
+      cy.findByText(/Select a collection$/).should("exist"); // title should not have trailing "or dashboard"
+      cy.findByText("Orders in a dashboard").should("not.exist"); // this dashboard would be present if dashboards were an allowed save target
+      cy.findByText("First collection").should("exist").click();
+      cy.findByRole("button", { name: "Select this collection" }).click();
+    });
+
+    H.modal().within(() => {
+      cy.findByText("Duplicate").click();
+      cy.wait("@cardCreate");
+    });
   });
 
   it("shows 404 when opening a question with a /dataset URL", () => {
@@ -532,7 +562,7 @@ describe("scenarios > models", () => {
   });
 
   it("shouldn't allow to turn native questions with variables into models", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         native: {
           query: "SELECT * FROM products WHERE {{ID}}",
@@ -568,7 +598,7 @@ describe("scenarios > models", () => {
     // Check card tags are supported by models
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
-    H.focusNativeEditor().type(
+    H.NativeEditor.focus().type(
       "{leftarrow}{leftarrow}{backspace}{backspace}#1-orders",
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -584,12 +614,12 @@ describe("scenarios > models", () => {
   });
 
   it("shouldn't allow using variables in native models", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       native: { query: "SELECT * FROM products" },
     }).then(({ body: { id: modelId } }) => {
       cy.request("PUT", `/api/card/${modelId}`, { type: "model" }).then(() => {
         cy.visit(`/model/${modelId}/query`);
-        H.focusNativeEditor().type("{movetoend}").type(" WHERE {{F", {
+        H.NativeEditor.focus().type("{movetoend}").type(" WHERE {{F", {
           parseSpecialCharSequences: false,
         });
         cy.findByTestId("tag-editor-sidebar").should("not.exist");
@@ -599,7 +629,7 @@ describe("scenarios > models", () => {
 
   it("should correctly show native models for no-data users", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "TEST MODEL",
       type: "model",
       native: {
@@ -648,11 +678,11 @@ describe("scenarios > models", () => {
     };
 
     beforeEach(() => {
-      cy.createQuestion(modelDetails, { wrapId: true, idAlias: "modelId" });
+      H.createQuestion(modelDetails, { wrapId: true, idAlias: "modelId" });
     });
 
     it("should allow adding models to dashboards", () => {
-      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.createDashboard().then(({ body: { id: dashboardId } }) => {
         H.visitDashboard(dashboardId);
         H.editDashboard();
         H.openQuestionsSidebar();
@@ -672,7 +702,8 @@ describe("scenarios > models", () => {
     it("should allow using models in native queries", () => {
       cy.intercept("POST", "/api/dataset").as("query");
       cy.get("@modelId").then(id => {
-        H.startNewNativeQuestion().type(`select * from {{#${id}}}`, {
+        H.startNewNativeQuestion();
+        H.NativeEditor.type(`select * from {{#${id}}}`, {
           parseSpecialCharSequences: false,
         });
       });

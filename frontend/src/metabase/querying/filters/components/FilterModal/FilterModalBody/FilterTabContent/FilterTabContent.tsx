@@ -5,17 +5,14 @@ import { FilterTabList } from "../FilterTabList";
 import { FilterTabPanel } from "../FilterTabPanel";
 
 export function FilterTabContent() {
-  const { tab, version, visibleItems, onTabChange } = useFilterModalContext();
+  const { tab, visibleItems, onTabChange } = useFilterModalContext();
 
   return (
-    <Tabs value={tab} onTabChange={onTabChange} orientation="vertical" h="100%">
+    <Tabs value={tab} onChange={onTabChange} orientation="vertical" h="100%">
       <Flex direction="row" w="100%">
         {visibleItems.length > 1 && <FilterTabList groupItems={visibleItems} />}
         {visibleItems.map(groupItem => (
-          <FilterTabPanel
-            key={`${groupItem.key}:${version}`}
-            groupItem={groupItem}
-          />
+          <FilterTabPanel key={groupItem.key} groupItem={groupItem} />
         ))}
       </Flex>
     </Tabs>

@@ -1,11 +1,11 @@
 (ns metabase.query-analysis.core-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.persisted-info :as persisted-info]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis.core :as query-analysis]
    [metabase.query-analysis.init]
@@ -16,6 +16,10 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.query-analysis.init/keep-me)
+
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [query-analysis-enabled true]
+                        (thunk))))
 
 (deftest native-query-enabled-test
   (mt/discard-setting-changes [sql-parsing-enabled]

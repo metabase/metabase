@@ -1,7 +1,7 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
@@ -38,7 +38,7 @@ describe("issue 12578", () => {
 
   it("should not fetch cards that are still loading when refreshing", () => {
     cy.clock(Date.now());
-    cy.createQuestionAndDashboard({ questionDetails: ORDERS_QUESTION }).then(
+    H.createQuestionAndDashboard({ questionDetails: ORDERS_QUESTION }).then(
       ({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
       },
@@ -123,7 +123,7 @@ describe("issue 12926", () => {
     it("should stop the ongoing query when removing a card from a dashboard", () => {
       slowDownDashcardQuery();
 
-      cy.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboard({
         questionDetails,
       }).then(({ body: { dashboard_id } }) => {
         cy.visit(`/dashboard/${dashboard_id}`);
@@ -141,7 +141,7 @@ describe("issue 12926", () => {
     it("should re-fetch the query when doing undo on the removal", () => {
       slowDownDashcardQuery();
 
-      cy.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboard({
         questionDetails,
       }).then(({ body: { dashboard_id } }) => {
         cy.visit(`/dashboard/${dashboard_id}`);
@@ -159,7 +159,7 @@ describe("issue 12926", () => {
     });
 
     it("should not break virtual cards (metabase#35545)", () => {
-      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.createDashboard().then(({ body: { id: dashboardId } }) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -176,9 +176,9 @@ describe("issue 12926", () => {
   describe("saving a dashboard that retriggers a non saved query (negative id)", () => {
     it("should stop the ongoing query", () => {
       // this test requires the card to be manually added to the dashboard, as it requires the dashcard id to be negative
-      cy.createNativeQuestion(questionDetails);
+      H.createNativeQuestion(questionDetails);
 
-      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.createDashboard().then(({ body: { id: dashboardId } }) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -223,15 +223,15 @@ describe("issue 13736", () => {
   });
 
   it("should work even if some cards are broken (metabase#13736)", () => {
-    cy.createQuestion(questionDetails, {
+    H.createQuestion(questionDetails, {
       wrapId: true,
       idAlias: "failingQuestionId",
     });
-    cy.createQuestion(questionDetails, {
+    H.createQuestion(questionDetails, {
       wrapId: true,
       idAlias: "successfulQuestionId",
     });
-    cy.createDashboard({ name: "13736 Dashboard" }).then(
+    H.createDashboard({ name: "13736 Dashboard" }).then(
       ({ body: { id: dashboardId } }) => {
         cy.wrap(dashboardId).as("dashboardId");
       },
@@ -278,7 +278,7 @@ describe("issue 13736", () => {
   });
 });
 
-describe("issue 16559", { tags: "@flaky" }, () => {
+describe("issue 16559", () => {
   const dashboardDetails = {
     name: "16559 Dashboard",
   };
@@ -294,11 +294,14 @@ describe("issue 16559", { tags: "@flaky" }, () => {
     cy.intercept("GET", "/api/collection/tree?*").as("getCollections");
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("GET", "/api/dashboard/*?dashboard_load_id=*").as(
+      "loadDashboard",
+    );
   });
 
   it("should always show the most recent revision (metabase#16559)", () => {
-    H.openDashboardInfoSidebar();
-    H.sidesheet().within(() => {
+    H.openDashboardInfoSidebar().within(() => {
+      cy.contains("button", "History").click();
       cy.findByRole("tab", { name: "History" }).click();
       cy.log("Dashboard creation");
       cy.findByTestId("dashboard-history-list")
@@ -315,11 +318,10 @@ describe("issue 16559", { tags: "@flaky" }, () => {
     H.sidebar().findByText("Orders, Count").click();
     cy.wait("@cardQuery");
     cy.button("Save").click();
-    cy.wait("@saveDashboard");
+    cy.wait(["@saveDashboard", "@loadDashboard"]);
 
-    H.openDashboardInfoSidebar();
-    H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
+    H.openDashboardInfoSidebar().within(() => {
+      cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
         .findAllByRole("listitem")
         .eq(0)
@@ -332,9 +334,8 @@ describe("issue 16559", { tags: "@flaky" }, () => {
     cy.findByTestId("dashboard-name-heading").click().type(" modified").blur();
     cy.wait("@saveDashboard");
 
-    H.openDashboardInfoSidebar();
-    H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
+    H.openDashboardInfoSidebar().within(() => {
+      cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
         .findAllByRole("listitem")
@@ -353,7 +354,7 @@ describe("issue 16559", { tags: "@flaky" }, () => {
         .blur();
       cy.wait("@saveDashboard");
 
-      cy.findByRole("tab", { name: "History" }).click();
+      cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
         .findAllByRole("listitem")
@@ -370,9 +371,8 @@ describe("issue 16559", { tags: "@flaky" }, () => {
     cy.wait("@saveDashboard");
     H.closeDashboardSettingsSidebar();
 
-    H.openDashboardInfoSidebar();
-    H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
+    H.openDashboardInfoSidebar().within(() => {
+      cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
         .findAllByRole("listitem")
@@ -391,9 +391,8 @@ describe("issue 16559", { tags: "@flaky" }, () => {
       cy.wait(["@saveDashboard", "@getCollections"]);
     });
 
-    H.openDashboardInfoSidebar();
-    H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
+    H.openDashboardInfoSidebar().within(() => {
+      cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
         .findAllByRole("listitem")
         .eq(0)
@@ -410,7 +409,7 @@ describe("issue 17879", () => {
     targetDateUnit = "default",
   }) {
     if (targetDateUnit === "default") {
-      cy.createQuestion({
+      H.createQuestion({
         name: "Q1 - 17879",
         query: {
           "source-table": ORDERS_ID,
@@ -418,7 +417,7 @@ describe("issue 17879", () => {
         },
       });
     } else {
-      cy.createQuestion({
+      H.createQuestion({
         name: "Q1 - 17879",
         query: {
           "source-table": ORDERS_ID,
@@ -431,7 +430,7 @@ describe("issue 17879", () => {
       });
     }
 
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       dashboardName: "Dashboard with aggregated Q2",
       questions: [
         {
@@ -602,13 +601,13 @@ describe("issue 28756", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
+    H.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
       ({ body: restrictedCollection }) => {
         restrictCollectionForNonAdmins(restrictedCollection.id);
 
-        cy.createCollection({ name: UNRESTRICTED_COLLECTION_NAME }).then(
+        H.createCollection({ name: UNRESTRICTED_COLLECTION_NAME }).then(
           ({ body: unrestrictedCollection }) => {
-            cy.createQuestionAndDashboard({
+            H.createQuestionAndDashboard({
               dashboardDetails: {
                 collection_id: unrestrictedCollection.id,
               },
@@ -642,7 +641,7 @@ describe("issue 28756", () => {
   });
 });
 
-H.describeEE("issue 29076", () => {
+describe("issue 29076", () => {
   beforeEach(() => {
     H.restore();
 
@@ -715,7 +714,7 @@ describe("issue 31274", () => {
   });
 
   it("should not clip dashcard actions (metabase#31274)", () => {
-    cy.createDashboard().then(({ body: dashboard }) => {
+    H.createDashboard().then(({ body: dashboard }) => {
       const dashcards = createTextCards(3);
       cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
         dashcards,
@@ -744,7 +743,7 @@ describe("issue 31274", () => {
   });
 
   it("renders cross icon on the link card without clipping", () => {
-    cy.createDashboard().then(({ body: dashboard }) => {
+    H.createDashboard().then(({ body: dashboard }) => {
       H.visitDashboard(dashboard.id);
       H.editDashboard(dashboard.id);
     });
@@ -758,7 +757,7 @@ describe("issue 31274", () => {
     );
 
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("close").parent("a").click({ position: "bottom" });
+      cy.icon("close").closest("a").click({ position: "bottom" });
     });
 
     cy.findByTestId("dashcard").should("not.exist");
@@ -795,7 +794,7 @@ describe("issue 31697", () => {
     H.restore();
     cy.signInAsAdmin();
     H.createSegment(segmentDetails).then(({ body: segment }) => {
-      cy.createQuestion(getQuestionDetails(segment), { wrapId: true });
+      H.createQuestion(getQuestionDetails(segment), { wrapId: true });
     });
     cy.intercept("GET", "/api/automagic-dashboards/**").as("xrayDashboard");
   });
@@ -841,7 +840,7 @@ describe("issue 31766", () => {
 
     const dashboardDetails = { name: "Orders in a dashboard" };
 
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
       cardDetails: { size_x: 16, size_y: 8 },
@@ -922,9 +921,9 @@ describe("issue 34382", () => {
       parameters: [filterDetails],
     };
 
-    cy.createDashboard(dashboardDetails).then(
+    H.createDashboard(dashboardDetails).then(
       ({ body: { id: dashboard_id } }) => {
-        cy.createQuestion(questionDetails).then(
+        H.createQuestion(questionDetails).then(
           ({ body: { id: question_id } }) => {
             cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
               dashcards: [
@@ -1038,7 +1037,7 @@ describe("should not redirect users to other pages when linking an entity (metab
   });
 
   it("should not redirect users to search item", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: TEST_QUESTION_NAME,
       native: { query: "SELECT 1" },
     });
@@ -1455,7 +1454,7 @@ describe("issue 42165", () => {
       "dashcardQuery",
     );
 
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       dashboardDetails: {
         parameters: [
           createMockParameter({

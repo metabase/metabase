@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -19,7 +19,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 
     // Create alert as admin
     H.visitQuestion(ORDERS_QUESTION_ID);
-    createBasicAlert({ firstAlert: true });
+    createBasicAlert();
 
     // Create alert as admin that user can see
     H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
@@ -35,20 +35,25 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
     beforeEach(cy.signInAsAdmin);
 
     it("should let you see all created alerts", () => {
-      cy.request("/api/alert").then(response => {
-        expect(response.body).to.have.length(3);
+      cy.request("/api/notification").then(response => {
+        const questionAlerts = response.body.filter(
+          notification => notification.payload_type === "notification/card",
+        );
+        expect(questionAlerts).to.have.length(3);
       });
     });
 
     it("should let you edit an alert", () => {
-      cy.intercept("PUT", "/api/alert/*").as("updatedAlert");
+      cy.intercept("PUT", "/api/notification/*").as("updatedAlert");
 
       // Change alert
       H.visitQuestion(ORDERS_QUESTION_ID);
 
       H.openSharingMenu("Edit alerts");
 
-      H.popover().findByText("Edit").click();
+      H.modal()
+        .findByText(/Created by you/)
+        .click();
 
       H.modal().findByText("Daily").click();
       H.popover().findByText("Weekly").click();
@@ -56,7 +61,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 
       // Check that changes stuck
       cy.wait("@updatedAlert").then(({ response: { body } }) => {
-        expect(body.channels[0].schedule_type).to.equal("weekly");
+        expect(body.subscriptions[0].cron_schedule).to.equal("0 0 9 ? * 2");
       });
     });
   });
@@ -69,53 +74,86 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       H.openSharingMenu();
 
       H.sharingMenu().findByText("Edit alerts").should("not.exist");
-      H.sharingMenu().findByText("Create alert").should("be.visible");
+      H.sharingMenu().findByText("Create an alert").should("be.visible");
     });
 
     it("should let you see other alerts where you are a recipient", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       H.openSharingMenu("Edit alerts");
 
-      H.popover().findByText(
-        `You're receiving ${H.getFullName(admin)}'s alerts`,
-      );
-      H.popover().findByText("Set up your own alert");
+      H.modal().within(() => {
+        cy.findByText(`Created by ${H.getFullName(admin)}`, {
+          exact: false,
+        }).should("be.visible");
+        cy.button("New alert").should("be.visible");
+      });
     });
 
     it("should let you see your own alerts", () => {
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       H.openSharingMenu("Edit alerts");
 
-      H.popover().findByText("You set up an alert");
+      H.modal().findByText(/Created by you/);
     });
 
-    it("should let you unsubscribe from both your own and others' alerts", () => {
-      // Unsubscribe from your own alert
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      H.openSharingMenu("Edit alerts");
-      H.popover().findByText("Unsubscribe").click();
-      H.notificationList().findByText("Okay, you're unsubscribed.");
-
-      // Unsubscribe from others' alerts
+    it("should let you unsubscribe from others' alerts", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       H.openSharingMenu("Edit alerts");
-      H.popover().findByText("Unsubscribe").click();
-      H.notificationList().findByText("Okay, you're unsubscribed.");
+      H.modal().within(() => {
+        cy.findByText(`Created by ${H.getFullName(admin)}`, {
+          exact: false,
+        }).realHover();
+        cy.icon("unsubscribe").click();
+      });
+
+      H.modal().within(() => {
+        cy.findByText("Confirm you want to unsubscribe");
+        cy.button("Unsubscribe").click();
+      });
+
+      H.notificationList().findByText("Successfully unsubscribed.");
+    });
+
+    it("should let you edit your own alerts", () => {
+      cy.intercept("PUT", "/api/notification/*").as("updatedAlert");
+
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.openSharingMenu("Edit alerts");
+      H.modal()
+        .findByText(/Created by you/)
+        .click();
+
+      H.modal().within(() => {
+        cy.findByText("Edit alert").should("be.visible");
+        cy.button("Done").should("be.enabled");
+
+        cy.findByText("Daily").click();
+      });
+
+      H.popover().findByText("Weekly").click();
+      H.modal().button("Save changes").click();
+
+      // Check that changes stuck
+      cy.wait("@updatedAlert").then(({ response: { body } }) => {
+        expect(body.subscriptions[0].cron_schedule).to.equal("0 0 9 ? * 2");
+      });
+
+      H.modal().findByText("Check on Monday at 9:00 AM");
     });
   });
 });
 
-function createBasicAlert({ firstAlert, includeNormal } = {}) {
-  H.openSharingMenu("Create alert");
-
-  if (firstAlert) {
-    H.modal().findByText("Set up an alert").click();
-  }
+function createBasicAlert({ includeNormal } = {}) {
+  H.openSharingMenu("Create an alert");
 
   if (includeNormal) {
-    cy.findByText("Email alerts to:").parent().children().last().click();
+    cy.findByText("Email")
+      .closest('[data-testid="channel-block"]')
+      .findByTestId("token-field")
+      .click();
     cy.findByText(H.getFullName(normal)).click();
   }
+
   cy.findByText("Done").click();
-  cy.findByText("Let's set up your alert").should("not.exist");
+  cy.findByText("New alert").should("not.exist");
 }

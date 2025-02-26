@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import _ from "underscore";
 
 import Legend from "./Legend";
 import LegendActions from "./LegendActions";
