@@ -3,6 +3,7 @@ import { useState } from "react";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import type { InteractiveV2Settings } from "metabase/public/hooks/use-interactive-v2-settings";
+import type { EmbedResourceType } from "metabase/public/lib/types";
 import {
   Box,
   Center,
@@ -33,10 +34,10 @@ const DEFAULT_THEME_COLORS = {
   brand: "#509ee3",
 };
 
+type EmbedMode = EmbedResourceType | "exploration";
+
 export const InteractiveEmbeddingDemo = () => {
-  const [resourceType, setResourceType] = useState<"dashboard" | "question">(
-    "dashboard",
-  );
+  const [embedMode, setEmbedMode] = useState<EmbedMode>("dashboard");
   const [resourceId, setResourceId] = useState<string>("1");
   const [themeColors, setThemeColors] = useState(DEFAULT_THEME_COLORS);
   const debouncedThemeColors = useDebouncedValue(
@@ -45,6 +46,14 @@ export const InteractiveEmbeddingDemo = () => {
   );
 
   const getResourceId = (input: string) => {
+    if (!input) {
+      return;
+    }
+
+    if (embedMode === "exploration") {
+      return;
+    }
+
     if (isBaseEntityID(input)) {
       return input;
     }
@@ -52,9 +61,17 @@ export const InteractiveEmbeddingDemo = () => {
     const numericId = parseInt(input);
 
     const defaultResourceId =
-      resourceType === "dashboard" ? DEFAULT_DASHBOARD_ID : DEFAULT_QUESTION_ID;
+      embedMode === "dashboard" ? DEFAULT_DASHBOARD_ID : DEFAULT_QUESTION_ID;
 
     return !isNaN(numericId) ? numericId : defaultResourceId;
+  };
+
+  const getResourceType = (embedMode: EmbedMode): EmbedResourceType => {
+    if (embedMode === "exploration") {
+      return "question";
+    }
+
+    return embedMode;
   };
 
   const handleColorChange =
@@ -69,7 +86,7 @@ export const InteractiveEmbeddingDemo = () => {
 
   const config: InteractiveV2Settings = {
     apiKey: DEMO_API_KEY,
-    embedResourceType: resourceType,
+    embedResourceType: getResourceType(embedMode),
     embedResourceId: getResourceId(resourceId),
     theme: {
       colors: debouncedThemeColors,
@@ -82,7 +99,7 @@ export const InteractiveEmbeddingDemo = () => {
     <iframe src="${window.location.origin}${iframePreviewUrl}"></iframe>
   `;
 
-  const resourceName = resourceType === "dashboard" ? "Dashboard" : "Question";
+  const resourceName = embedMode === "dashboard" ? "Dashboard" : "Question";
 
   return (
     <Center>
@@ -123,8 +140,14 @@ export const InteractiveEmbeddingDemo = () => {
                 <Text mb="xs">What to embed?</Text>
 
                 <Radio.Group
-                  value={resourceType}
+                  value={embedMode}
                   onChange={value => {
+                    if (value === "exploration") {
+                      setEmbedMode("exploration");
+
+                      return;
+                    }
+
                     const resourceType = value as "dashboard" | "question";
 
                     const defaultResourceId = String(
@@ -133,13 +156,14 @@ export const InteractiveEmbeddingDemo = () => {
                         : DEFAULT_QUESTION_ID,
                     );
 
-                    setResourceType(resourceType);
+                    setEmbedMode(resourceType);
                     setResourceId(defaultResourceId);
                   }}
                 >
                   <Group>
                     <Radio value="dashboard" label="Dashboard" />
                     <Radio value="question" label="Question" />
+                    <Radio value="exploration" label="Exploration" />
                   </Group>
                 </Radio.Group>
               </Box>
@@ -149,7 +173,7 @@ export const InteractiveEmbeddingDemo = () => {
                 <TextInput
                   value={resourceId}
                   onChange={e => setResourceId(e.target.value)}
-                  placeholder={`Enter ${resourceType} ID or Entity ID`}
+                  placeholder={`Enter ${embedMode} ID or Entity ID`}
                 />
                 <Text size="xs" c="text-secondary" mt="xs">
                   Can be a number or an Entity ID (21-character string)

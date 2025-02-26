@@ -6,7 +6,7 @@ import type { EmbedResource, EmbedResourceType } from "../lib/types";
 
 export type InteractiveV2Settings = {
   embedResourceType: EmbedResourceType;
-  embedResourceId: EmbedResource["id"];
+  embedResourceId?: EmbedResource["id"];
 
   apiKey: string;
   theme?: MetabaseTheme;

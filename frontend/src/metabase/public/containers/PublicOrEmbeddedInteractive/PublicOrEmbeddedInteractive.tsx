@@ -77,5 +77,6 @@ export const PublicOrEmbeddedInteractiveInner = ({
     .with(["question", P.nonNullable], ([, id]) => (
       <InteractiveQuestion questionId={id} height="100%" />
     ))
+    .with(["question", P.nullish], () => <InteractiveQuestion height="100%" />)
     .otherwise(() => null);
 };
