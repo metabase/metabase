@@ -169,9 +169,7 @@ export const ChartSettingFieldPicker = ({
             textOverflow: "ellipsis",
             fontWeight: "bold",
 
-            backgroundColor: disabled
-              ? "var(--mb-color-bg-white) !important"
-              : "inherit",
+            backgroundColor: disabled ? "var(--mb-color-bg-white)" : "inherit",
 
             border: "none",
             width: "100%",

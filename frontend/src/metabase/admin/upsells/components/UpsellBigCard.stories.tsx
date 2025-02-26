@@ -93,7 +93,7 @@ const ModalTemplate = ({
 };
 
 export default {
-  title: "Upsells/BigCard",
+  title: "Patterns/Upsells/BigCard",
   component: _UpsellBigCard,
   args,
   argTypes,

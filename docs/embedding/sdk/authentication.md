@@ -4,33 +4,68 @@ title: Embedded analytics SDK - authentication
 
 # Embedded analytics SDK - authentication
 
-{% include beta-blockquote.html %}
-
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
-Notes on handling authentication when working with the SDK.
+For using the SDK in production, you'll need to set up authentication with JWT SSO.
 
-## Authenticating people from your server
+If you're developing locally, you can also set up authentication with [API keys](#authenticating-locally-with-api-keys).
 
-The SDK requires an endpoint in your app's backend that will sign someone into your Metabase and return a token. The SDK will use that token to authenticate calls to Metabase.
+## Setting up JWT SSO
 
-The SDK will call this endpoint to get a new token, or to refresh an existing token that's about to expire.
+Prerequisites:
 
-## Example code for generating a token
+- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md))
 
-This example sets up an endpoint in an app, `/sso/metabase`, that creates a token using the shared secret to authenticate calls to Metabase.
+To set up JWT SSO with Metabase and your app, you'll need to:
 
-```typescript
+1. [Enable JWT SSO in your Metabase](#1-enable-jwt-sso-in-your-metabase)
+2. [Add a new endpoint to your backend to handle authentication](#2-add-a-new-endpoint-to-your-backend-to-handle-authentication)
+3. [Wire the SDK in your frontend to your new endpoint](#3-wire-the-sdk-in-your-frontend-to-your-new-endpoint)
+
+### 1. Enable JWT SSO in your Metabase
+
+1. Configure JWT by going to **Admin Settings** > **Settings** > **Authentication** and clicking on **Setup**
+2. Generate a key and copy it to your clipboard.
+
+### 2. Add a new endpoint to your backend to handle authentication
+
+You'll need add a library to your backend to sign your JSON Web Tokens.
+
+For Node.js, we recommend jsonwebtoken:
+
+```
+npm install jsonwebtoken --save
+```
+
+Next, set up your endpoint: this example code for Node.js sets up an endpoint in an app, `/sso/metabase`, that creates a token using the shared secret to authenticate calls to Metabase.
+
+```js
 const express = require("express");
 const cors = require("cors");
 const session = require("express-session");
 const jwt = require("jsonwebtoken");
 const fetch = require("node-fetch");
 
-async function metabaseAuthHandler(req, res) {
-  const { user } = req.session;
+// Replace this with your Metabase URL
+const METABASE_INSTANCE_URL = "YOUR_METABASE_URL_HERE";
+// Replace this with the JWT signing secret you generated when enabling
+// JWT SSO in your Metabase.
+const METABASE_JWT_SHARED_SECRET = "YOUR_SECRET_HERE";
+
+app.get("/sso/metabase", async (req, res) => {
+  // Usually, you would grab the user from the current session
+  // Here it's hardcoded for demonstration purposes
+  // Example:
+  // const { user } = req.session;
+  const user = {
+    email: "rene@example.com",
+    firstName: "Rene",
+    lastName: "Descartes",
+    group: "Customer",
+  };
 
   if (!user) {
+    console.log("no user");
     return res.status(401).json({
       status: "error",
       message: "not authenticated",
@@ -45,10 +80,10 @@ async function metabaseAuthHandler(req, res) {
       groups: [user.group],
       exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
     },
-    // This is the JWT signing secret in your Metabase JWT authentication setting
     METABASE_JWT_SHARED_SECRET,
   );
   const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
+  console.log("Hitting MB SSO endpoint", ssoUrl);
 
   try {
     const response = await fetch(ssoUrl, { method: "GET" });
@@ -65,10 +100,29 @@ async function metabaseAuthHandler(req, res) {
       });
     }
   }
-}
+});
 
 const app = express();
+```
 
+### 3. Wire the SDK in your frontend to your new endpoint
+
+Update the SDK config in your frontend code to point your backend's authentication endpoint.
+
+```js
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://your-metabase.example.com", // Required: Your Metabase instance URL
+  authProviderUri: "https://your-app.example.com/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
+});
+```
+
+(Optional) If you use headers instead of cookies to authenticate calls from your frontend to your backend, you'll need to use a [custom fetch function](#customizing-jwt-authentication).
+
+## If your frontend and backend don't share a domain, you need to enable CORS
+
+You can add some middleware in your backend to handle cross-domain requests.
+
+```js
 // Middleware
 
 // If your FE application is on a different domain from your BE, you need to enable CORS
@@ -90,6 +144,7 @@ app.use(
     cookie: { secure: false },
   }),
 );
+
 app.use(express.json());
 
 // routes
@@ -98,16 +153,6 @@ app.listen(PORT, () => {
   console.log(`API running at http://localhost:${PORT}`);
 });
 ```
-
-## Security warning: each end-user _must_ have their own Metabase account
-
-Each end-user _must_ have their own Metabase account.
-
-The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the SDK, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they're not supposed to see.
-
-If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
-
-In addition to this, we consider shared accounts to be unfair usage. Fair usage of the SDK involves giving each end-user of the embedded analytics their own Metabase account.
 
 ## Getting Metabase authentication status
 
@@ -129,30 +174,34 @@ if (auth.status === "success") {
 
 ## Customizing JWT authentication
 
-You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function in the `config` prop:
+You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function with the `defineMetabaseAuthConfig` function:
 
 ```typescript
-/**
- * This is the default implementation used in the SDK.
- * You can customize this function to fit your needs, such as adding headers or excluding cookies.
-
- * The function must return a JWT token object, or return "null" if the user is not authenticated.
-
- * @returns {Promise<{id: string, exp: number} | null>}
- */
-async function fetchRequestToken(url) {
-  const response = await fetch(url, {
-    method: "GET",
-    credentials: "include",
-  });
-
-  return await response.json();
-}
-
 // Pass this configuration to MetabaseProvider.
 // Wrap the fetchRequestToken function in useCallback if it has dependencies to prevent re-renders.
-const config = { fetchRequestToken };
+const authConfig = defineMetabaseAuthConfig({
+  fetchRequestToken: async url => {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${yourToken}` },
+    });
+
+    return await response.json();
+  },
+  metabaseInstanceUrl: "http://localhost:3000",
+  authProviderUri: "http://localhost:9090/sso/metabase",
+});
 ```
+
+## Security warning: each end-user _must_ have their own Metabase account
+
+Each end-user _must_ have their own Metabase account.
+
+The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the SDK, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they're not supposed to see.
+
+If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
+
+In addition to this, we consider shared accounts to be unfair usage. Fair usage of the SDK involves giving each end-user of the embedded analytics their own Metabase account.
 
 ## Authenticating locally with API keys
 
@@ -165,16 +214,21 @@ First, create an [API key](../../people-and-groups/api-keys.md).
 Then you can then use the API key to authenticate with Metabase in your application. All you need to do is include your API key in the config object using the key: `apiKey`.
 
 ```typescript
-const authConfig = {
-    ...
-    apiKey: "YOUR_API_KEY"
-    ...
-};
+import {
+  MetabaseProvider,
+  defineMetabaseAuthConfig,
+} from "@metabase/embedding-sdk-react";
+
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://metabase.example.com",
+  apiKey: "YOUR_API_KEY",
+});
 
 export default function App() {
   return (
     <MetabaseProvider authConfig={authConfig} className="optional-class">
       Hello World!
     </MetabaseProvider>
-  );
+  )
+};
 ```
