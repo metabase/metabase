@@ -27,7 +27,9 @@ const TimelineEmptyState = ({
   const applicationName = useSelector(getApplicationName);
   return (
     <Stack align="center" ta="center" gap="lg">
-      <img src={EmptyEvent} alt={t`Collection event illustration`} />
+      <Box maw="6rem">
+        <img src={EmptyEvent} alt={t`Collection event illustration`} />
+      </Box>
       <Box maw="25rem">
         <Title
           order={2}
