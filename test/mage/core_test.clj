@@ -9,6 +9,17 @@
   "Private tasks aren't tested, and do not have the same level of reliability!!"
   #{"nrepl"})
 
+(defn bin-mage-has-help? []
+  (doseq [help-cmds [[] [" "] ["  "]
+                     ["-h"] ["--help"]
+                     [" -h"] [" --help"]
+                     ["  -h"] ["  --help"]]]
+    (let [cmd (str "./bin/mage " (str/join " " help-cmds))
+          out (u/sh cmd)]
+      (println (str "Testing that bin/mage has help with '" (pr-str cmd) "'"))
+      (when-not (str/includes? out "The following tasks are available:")
+        (System/exit 1)))))
+
 (defn bb-tasks-list []
   (->> "bb tasks"
        u/shl
@@ -26,5 +37,6 @@
 
 (when (= *file* (System/getProperty "babashka.file"))
   (mapv bb-task-has-example? (bb-tasks-list))
+  (bin-mage-has-help?)
   (println "All tests passed")
   (System/exit 0))
