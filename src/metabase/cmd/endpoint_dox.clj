@@ -13,7 +13,7 @@
 
 (def ^:private scalar-config
   "See https://github.com/scalar/scalar/blob/main/documentation/configuration.md"
-  {:servers [{:url         "http://localhost:3000"
+  {:servers [{:url "http://localhost:3000"
               :description "Localhost"}]
    :info {:title "Metabase API documentation"
           :description (slurp (io/resource "openapi/api-intro.md"))}})
