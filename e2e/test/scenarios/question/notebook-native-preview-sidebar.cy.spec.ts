@@ -143,7 +143,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     H.newButton("Model").click();
     cy.findByTestId("new-model-options").should("be.visible");
 
-    resizeToSmallScreen();
+    resizeScreen("small");
 
     H.openReviewsTable({ mode: "notebook", limit: 1 });
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
@@ -160,7 +160,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.log(
       "resizing from large to small screen, setting: open, ui state: open",
     );
-    resizeToSmallScreen();
+    resizeScreen("small");
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
     cy.findByLabelText("View SQL").click();
@@ -171,7 +171,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     );
     cy.findByLabelText("Hide SQL").click();
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-    resizeToLargeScreen();
+    resizeScreen("large");
     cy.findByTestId("native-query-preview-sidebar").should("be.visible");
 
     cy.log(
@@ -181,11 +181,11 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.findByLabelText("Hide SQL").click(); // set setting to false
     cy.get("@updatePreviewStateSpy").should("have.callCount", 2);
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-    resizeToSmallScreen();
+    resizeScreen("small");
     cy.findByLabelText("View SQL").click();
     cy.get("@updatePreviewStateSpy").should("have.callCount", 2);
     cy.findByTestId("native-query-preview-sidebar").should("be.visible");
-    resizeToLargeScreen();
+    resizeScreen("large");
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
   });
 
@@ -526,19 +526,13 @@ function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
   });
 }
 
-function resizeToSmallScreen() {
-  cy.viewport(800, 800);
-  preventFlakyTest();
-}
+function resizeScreen(size: "small" | "large") {
+  const width = size === "small" ? 800 : 1280;
+  cy.viewport(width, 800);
 
-function resizeToLargeScreen() {
-  cy.viewport(1280, 800);
-  preventFlakyTest();
-}
-
-function preventFlakyTest() {
-  // We need to wait for react to re-render, but nothing really changes on the screen
-  // so it's hard to detect this. Let's dummy-interact with the app to make sure it re-rendered.
+  // We need to wait for react to re-render but nothing really changes on the screen
+  // when changing viewport size, so it's hard to detect when it happens.
+  // Let's dummy-interact with the app to make sure it re-rendered.
   cy.findByLabelText("Settings menu").click(); // open menu
   cy.findByLabelText("Settings menu").click(); // close menu
 }
