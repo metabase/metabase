@@ -31,6 +31,8 @@ import { Box } from "metabase/ui";
 import "metabase/css/index.module.css";
 import "metabase/css/vendor.css";
 
+import S from "./IframeInteractiveEmbeddingProvider.module.css";
+
 export interface MetabaseProviderProps {
   children: ReactNode;
   authConfig: MetabaseAuthConfig;
@@ -111,7 +113,7 @@ export const IframeInteractiveEmbeddingProvider = ({
         <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
           <LocaleProvider locale={locale}>{children}</LocaleProvider>
 
-          <PortalContainer />
+          <PortalContainer className={S.InteractivePortalContainer} />
           <FullPagePortalContainer />
         </Box>
       </SdkThemeProvider>
