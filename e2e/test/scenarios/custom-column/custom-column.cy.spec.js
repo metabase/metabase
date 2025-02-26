@@ -1,4 +1,6 @@
 const { H } = cy;
+import { dedent } from "ts-dedent";
+
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -648,7 +650,7 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("equal", "1 + 2  ");
   });
 
-  it("should not format expression when tabbing away from the editoreditor", () => {
+  it("should not format expression when tabbing away from the editor", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
@@ -665,6 +667,85 @@ describe("scenarios > question > custom column", () => {
     // That's because the caret position after refocusing on textarea
     // would still be after the 3rd character
     H.CustomExpressionEditor.value().should("equal", "1+12");
+  });
+
+  it("should format expression when clicking the format button", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({ formula: "1+1" });
+
+    // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
+    H.CustomExpressionEditor.format();
+    H.CustomExpressionEditor.value().should("equal", "1 + 1");
+    H.CustomExpressionEditor.type("2");
+
+    // Fix needed will prevent display value from being `1 +2 1`.
+    // That's because the caret position after refocusing on textarea
+    // would still be after the 3rd character
+    H.CustomExpressionEditor.value().should("equal", "1 + 12");
+  });
+
+  it("should format long expressions on multiple lines", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({
+      formula:
+        "concat(coalesce([Product → Created At], [Created At]), 'foo', 'bar')",
+      format: true,
+    });
+
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      dedent`
+        concat(
+          coalesce([Product → Created At], [Created At]),
+          "foo",
+          "bar"
+        )
+      `.trim(),
+    );
+  });
+
+  it("should not allow formatting when the expression contains an error", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({
+      formula: "concat('foo', ",
+    });
+
+    cy.findByLabelText("Format").should("be.disabled");
+  });
+
+  it("should not allow saving the expression when it is invalid", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({
+      formula: "concat('foo', ",
+      name: "A custom expression",
+    });
+
+    H.expressionEditorWidget().button("Done").should("be.disabled");
+    H.CustomExpressionEditor.nameInput().focus().type("{enter}");
+    H.expressionEditorWidget().should("be.visible");
+  });
+
+  it("should validate the expression when typing", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({
+      formula: "concat('foo', ",
+      name: "A custom expression",
+    });
+    H.expressionEditorWidget().button("Done").should("be.disabled");
+
+    cy.log("Fix the expression");
+    H.CustomExpressionEditor.type("{leftarrow}'bar')", { focus: true });
+    H.expressionEditorWidget().button("Done").should("not.be.disabled");
   });
 
   it("should allow choosing a suggestion with Tab", () => {
