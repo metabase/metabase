@@ -467,6 +467,8 @@ const createCustomView = (customViewType: CustomViewType) => {
   });
 };
 
+/** Create a variety of cards to test a sandboxing policy: a question, model,
+ * saved question, etc. */
 export const createTestCards = ({
   filterTableBy,
   columnType,
@@ -494,6 +496,7 @@ export const createTestCards = ({
   createAdhocQuestion({ customColumnType });
 };
 
+/** The endpoint should include results containing Gizmos and Widgets */
 export const shouldBeUnfiltered = (
   entityDescription: string,
   endpoint: string,
@@ -520,7 +523,7 @@ export const shouldBeUnfiltered = (
   });
 };
 
-export const shouldBeFiltered = (
+export const shouldRowsBeFiltered = (
   entityDescription: string,
   endpoint: string,
   payload?: any,
@@ -530,14 +533,16 @@ export const shouldBeFiltered = (
     ignore_cache: false,
     parameters: [],
   };
-  cy.log(`Check that ${entityDescription} is filtered`);
+  cy.log(
+    `Check that rows in ${entityDescription} are filtered, with some hidden according to the sandboxing policy`,
+  );
   cy.request("POST", endpoint, payload).then(({ body }) => {
     const { data } = body;
     expect(data.is_sandboxed).to.equal(true);
     const actualCategories = data.rows.map((row: any[]) => row[3]);
     expect(actualCategories.every((val: string) => val === "Gizmo")).to.equal(
       true,
-      "Every category should be Gizmo",
+      "User should only see Gizmos",
     );
   });
 };
@@ -569,7 +574,7 @@ const getEntityPaths = (aliases: Record<string, number | string>) => {
   };
 };
 
-export const noTestCardsShouldBeFiltered = ({
+export const testCardsIncludeGizmosAndWidgets = ({
   customColumnType,
 }: Pick<SandboxPolicy, "customColumnType">) => {
   cy.then(function () {
@@ -599,7 +604,7 @@ export const noTestCardsShouldBeFiltered = ({
   });
 };
 
-export const allTestCardsShouldBeFiltered = ({
+export const testCardsOnlyIncludeGizmos = ({
   customColumnType,
 }: Pick<SandboxPolicy, "customColumnType">) => {
   cy.then(function () {
@@ -610,17 +615,17 @@ export const allTestCardsShouldBeFiltered = ({
       nestedQuestionInDashboardPath,
       modelPayload,
     } = getEntityPaths(this);
-    shouldBeFiltered("Saved question", savedQuestionPath);
-    shouldBeFiltered("Nested question", nestedQuestionPath);
-    shouldBeFiltered(
+    shouldRowsBeFiltered("Saved question", savedQuestionPath);
+    shouldRowsBeFiltered("Nested question", nestedQuestionPath);
+    shouldRowsBeFiltered(
       "Saved question in dashboard",
       savedQuestionInDashboardPath,
     );
-    shouldBeFiltered(
+    shouldRowsBeFiltered(
       "Nested question in dashboard",
       nestedQuestionInDashboardPath,
     );
-    shouldBeFiltered("Model", "/api/dataset", modelPayload);
+    shouldRowsBeFiltered("Model", "/api/dataset", modelPayload);
     adhocQuestionShouldBeFiltered(customColumnType);
   });
 };
