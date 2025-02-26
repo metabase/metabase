@@ -141,7 +141,7 @@ describe("[OSS] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedded analytics SDK",
+              name: "Embedded analytics SDK for React",
             }),
           ).getByRole("button", { name: "Try it out" }),
         );
@@ -329,13 +329,13 @@ describe("[OSS] embedding settings", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK with React",
+            name: "Embedded analytics SDK for React",
           }),
         );
 
         expect(
           withinEmbeddingSdkCard.getByRole("heading", {
-            name: "Embedded analytics SDK with React",
+            name: "Embedded analytics SDK for React",
           }),
         ).toBeInTheDocument();
         expect(
@@ -355,7 +355,7 @@ describe("[OSS] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedded analytics SDK",
+              name: "Embedded analytics SDK for React",
             }),
           ).getByRole("button", { name: "Try it out" }),
         );
@@ -481,7 +481,9 @@ describe("[OSS] embedding settings", () => {
     });
 
     expect(screen.getByText("Static embedding")).toBeInTheDocument();
-    expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
+    expect(
+      screen.getByText("Embedded analytics SDK for React"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
   });
 
@@ -496,7 +498,7 @@ describe("[OSS] embedding settings", () => {
       await userEvent.click(
         within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         ).getByRole("button", { name: "Try it out" }),
       );
@@ -630,7 +632,7 @@ describe("[OSS] embedding settings", () => {
 
       const withinEmbeddingSdkCard = within(
         screen.getByRole("article", {
-          name: "Embedded analytics SDK",
+          name: "Embedded analytics SDK for React",
         }),
       );
       expect(
@@ -664,7 +666,7 @@ describe("[OSS] embedding settings", () => {
 
       const withinEmbeddingSdkCard = within(
         screen.getByRole("article", {
-          name: "Embedded analytics SDK",
+          name: "Embedded analytics SDK for React",
         }),
       );
 
