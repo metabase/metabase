@@ -137,6 +137,7 @@ describe("scenarios > question > null", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72")
       .closest("[role=gridcell]")
+      .parent()
       .next()
       .find("div")
       .should("be.empty")

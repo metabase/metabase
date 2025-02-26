@@ -42,6 +42,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
 
   return (
     <BaseCell
+      role="gridcell"
       align={align}
       className={cx(S.root, className, {
         [S.pill]: variant === "pill",
