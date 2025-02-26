@@ -3,12 +3,12 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import {
   type SandboxPolicy,
-  allTestCardsShouldBeFiltered,
   configureSandboxPolicy,
   configureUser,
   createTestCards,
-  noTestCardsShouldBeFiltered,
   signInAsSandboxedUser,
+  testCardsIncludeGizmosAndWidgets,
+  testCardsOnlyIncludeGizmos,
   sandboxingUser as user,
 } from "./helpers/e2e-sandboxing-helpers";
 
@@ -24,16 +24,16 @@ describe(
   "admin > permissions > sandboxing (tested via the UI)",
   { tags: "@external" },
   () => {
-    describe("we can apply a sandbox policy", () => {
-      beforeEach(() => {
-        H.restore("postgres-12");
-        cy.signInAsAdmin();
-        H.setTokenFeatures("all");
-        preparePermissions();
-        cy.intercept("POST", "/api/card").as("saveQuestion");
-        cy.createUserFromRawData(user);
-      });
+    beforeEach(() => {
+      H.restore("postgres-12");
+      cy.signInAsAdmin();
+      H.setTokenFeatures("all");
+      preparePermissions();
+      cy.intercept("POST", "/api/card").as("saveQuestion");
+      cy.createUserFromRawData(user);
+    });
 
+    describe("we can apply a sandbox policy", () => {
       it("to a table filtered using a question as a custom view", () => {
         const policy: SandboxPolicy = {
           filterTableBy: "custom_view",
@@ -41,10 +41,10 @@ describe(
         };
         createTestCards(policy);
         signInAsSandboxedUser();
-        noTestCardsShouldBeFiltered(policy);
+        testCardsIncludeGizmosAndWidgets(policy);
         configureSandboxPolicy(policy);
         signInAsSandboxedUser();
-        allTestCardsShouldBeFiltered(policy);
+        testCardsOnlyIncludeGizmos(policy);
       });
 
       it("to a table filtered using a model as a custom view", () => {
@@ -54,10 +54,10 @@ describe(
         };
         createTestCards(policy);
         signInAsSandboxedUser();
-        noTestCardsShouldBeFiltered(policy);
+        testCardsIncludeGizmosAndWidgets(policy);
         configureSandboxPolicy(policy);
         signInAsSandboxedUser();
-        allTestCardsShouldBeFiltered(policy);
+        testCardsOnlyIncludeGizmos(policy);
       });
 
       it("to a table filtered by a regular column", () => {
@@ -67,11 +67,11 @@ describe(
         };
         createTestCards(policy);
         signInAsSandboxedUser();
-        noTestCardsShouldBeFiltered(policy);
+        testCardsIncludeGizmosAndWidgets(policy);
         const { attributeKey } = configureUser(policy);
         configureSandboxPolicy({ ...policy, attributeKey });
         signInAsSandboxedUser();
-        allTestCardsShouldBeFiltered(policy);
+        testCardsOnlyIncludeGizmos(policy);
       });
 
       // This behavior might be genuinely broken?
@@ -85,11 +85,11 @@ describe(
         };
         createTestCards(policy);
         signInAsSandboxedUser();
-        noTestCardsShouldBeFiltered(policy);
+        testCardsIncludeGizmosAndWidgets(policy);
         const { attributeKey } = configureUser(policy);
         configureSandboxPolicy({ ...policy, attributeKey });
         signInAsSandboxedUser();
-        allTestCardsShouldBeFiltered(policy);
+        testCardsOnlyIncludeGizmos(policy);
       });
 
       // This might also be broken? The query errors with: Invalid output:
@@ -109,11 +109,11 @@ describe(
         };
         createTestCards(policy);
         signInAsSandboxedUser();
-        noTestCardsShouldBeFiltered(policy);
+        testCardsIncludeGizmosAndWidgets(policy);
         const { attributeKey } = configureUser(policy);
         configureSandboxPolicy({ ...policy, attributeKey });
         signInAsSandboxedUser();
-        allTestCardsShouldBeFiltered(policy);
+        testCardsOnlyIncludeGizmos(policy);
       });
 
       // Also fails with a similar error
@@ -125,11 +125,11 @@ describe(
         };
         createTestCards(policy);
         signInAsSandboxedUser();
-        noTestCardsShouldBeFiltered(policy);
+        testCardsIncludeGizmosAndWidgets(policy);
         const { attributeKey } = configureUser(policy);
         configureSandboxPolicy({ ...policy, attributeKey });
         signInAsSandboxedUser();
-        allTestCardsShouldBeFiltered(policy);
+        testCardsOnlyIncludeGizmos(policy);
       });
     });
 
@@ -187,16 +187,15 @@ describe(
           { id: USER_GROUPS.COLLECTION_GROUP, is_group_manager: false },
         ];
 
-        // TODO: remove random numbers once data retention bug is fixed
         const users: Record<string, any> = {
           California: {
-            email: `can-see-california-data-${Math.floor(Math.random() * 99999)}@example.com`,
+            email: "can-see-california-data@example.com",
             password: "--------",
             user_group_memberships: userGroupMemberships,
             login_attributes: { state: "CA" },
           },
           Washington: {
-            email: `can-see-washington-data-${Math.floor(Math.random() * 99999)}@example.com`,
+            email: "can-see-washington-data@example.com",
             password: "--------",
             user_group_memberships: userGroupMemberships,
             login_attributes: { state: "WA" },
@@ -214,7 +213,6 @@ describe(
         cy.log("Modify the sandboxing policy for the 'data' group");
         H.modifyPermission("data", 0, "Sandboxed");
 
-        // TODO: This fails because of the data retention issue
         H.modal().within(() => {
           cy.findByText(/Change access to this database to .*Sandboxed.*?/);
           cy.button("Change").click();
