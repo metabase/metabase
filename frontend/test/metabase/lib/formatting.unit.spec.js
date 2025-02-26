@@ -130,6 +130,16 @@ describe("formatting", () => {
         expect(formatNumber(-99999999.9, options)).toEqual("-100,0M");
       });
 
+      it("should format big integers correctly with non-default number separators", () => {
+        const options = { number_separators: ",." };
+        expect(formatNumber(1000n, options)).toEqual("1.000");
+      });
+
+      it("should format big integers with scale options", () => {
+        const options = { scale: 10 };
+        expect(formatNumber(1000n, options)).toEqual("10,000");
+      });
+
       it("should format percentages", () => {
         const options = { compact: true, number_style: "percent" };
         expect(formatNumber(0.867, { number_style: "percent" })).toEqual(

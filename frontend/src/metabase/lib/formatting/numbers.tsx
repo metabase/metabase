@@ -54,7 +54,7 @@ const DEFAULT_NUMBER_OPTIONS: DefaultFormatNumberOptions = {
 // for extracting number portion from a formatted currency string
 //
 // NOTE: match minus/plus and number separately to handle interposed currency symbol -$1.23
-const NUMBER_REGEX = /([\+\-])?[^0-9]*([0-9\., ]+)/;
+const NUMBER_REGEX = /([+\-])?[^0-9]*([0-9., ]+)/;
 
 const DEFAULT_NUMBER_SEPARATORS = ".,";
 
@@ -71,17 +71,17 @@ function getDefaultNumberOptions(options: { decimals?: string | number }) {
 }
 
 export function formatNumber(
-  number: number,
+  number: number | bigint,
   options?: FormatNumberOptions,
 ): string;
 export function formatNumber(
-  number: number,
+  number: number | bigint,
   options: FormatNumberJsxOptions = {},
 ): string | ReactNode {
   options = { ...getDefaultNumberOptions(options), ...options };
 
   if (typeof options.scale === "number" && !isNaN(options.scale)) {
-    number = options.scale * number;
+    number = multiply(number, options.scale);
   }
 
   if (number < 0 && options.negativeInParentheses) {
@@ -199,13 +199,15 @@ export function numberFormatterForOptions(options: FormatNumberOptions) {
 }
 
 function formatNumberCompact(
-  value: number,
+  value: number | bigint,
   options: FormatNumberJsxOptions,
 ): string | ReactNode {
   const separators = options["number_separators"];
 
   if (options.number_style === "percent") {
-    return formatNumberCompactWithoutOptions(value * 100, separators) + "%";
+    return (
+      formatNumberCompactWithoutOptions(multiply(value, 100), separators) + "%"
+    );
   }
   if (options.number_style === "currency") {
     try {
@@ -214,7 +216,7 @@ function formatNumberCompact(
         ...COMPACT_CURRENCY_OPTIONS,
       });
 
-      if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
+      if (abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
         return nf.format(value);
       }
       const { value: currency } = nf
@@ -226,7 +228,7 @@ function formatNumberCompact(
       return (
         valueSign +
         currency +
-        formatNumberCompactWithoutOptions(Math.abs(value), separators)
+        formatNumberCompactWithoutOptions(abs(value), separators)
       );
     } catch (e) {
       // Intl.NumberFormat failed, so we fall back to a non-currency number
@@ -245,22 +247,24 @@ function formatNumberCompact(
 }
 
 function formatNumberCompactWithoutOptions(
-  value: number,
+  value: number | bigint,
   separators?: string,
 ): string {
-  if (value === 0) {
+  if (value === 0 || value === 0n) {
     // 0 => 0
     return "0";
   }
 
   let formatted;
-  if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
+  if (abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
     // 0.1 => 0.1
     formatted = PRECISION_NUMBER_FORMATTER.format(value);
-  } else {
+  } else if (typeof value === "number") {
     // 1 => 1
     // 1000 => 1K
     formatted = Humanize.compactInteger(Math.round(value), 1);
+  } else {
+    formatted = PRECISION_NUMBER_FORMATTER.format(value);
   }
 
   return separators !== DEFAULT_NUMBER_SEPARATORS
@@ -284,10 +288,12 @@ function replaceNumberSeparators(formatted: any, separators: any) {
 }
 
 function formatNumberScientific(
-  value: number,
+  value: number | bigint,
   options: FormatNumberJsxOptions,
 ): string | ReactNode {
-  if (options.maximumFractionDigits) {
+  if (typeof value === "bigint") {
+    value = Number(value);
+  } else if (options.maximumFractionDigits) {
     value = roundFloat(value, options.maximumFractionDigits);
   }
   const exp = replaceNumberSeparators(
@@ -306,8 +312,11 @@ function formatNumberScientific(
   }
 }
 
-function formatDuration(value: number, _options: FormatNumberOptions): string {
-  const duration = dayjs.duration(value);
+function formatDuration(
+  value: number | bigint,
+  _options: FormatNumberOptions,
+): string {
+  const duration = dayjs.duration(Number(value));
   let str = "";
 
   if (duration.days() > 0) {
@@ -339,4 +348,12 @@ export function roundFloat(
   const factor = Math.pow(10, decimalPlaces);
 
   return Math.round(value * factor) / factor;
+}
+
+function abs(a: number | bigint) {
+  return a < 0 ? -a : a;
+}
+
+function multiply(a: number | bigint, b: number) {
+  return typeof a === "number" ? a * b : a * BigInt(b);
 }
