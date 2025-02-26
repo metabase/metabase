@@ -538,6 +538,7 @@ class Visualization extends PureComponent<
       getExtraDataForClick,
       getHref,
       headerIcon,
+      height: rawHeight,
       isAction,
       isDashboard,
       isEditing,
@@ -556,6 +557,7 @@ class Visualization extends PureComponent<
       showAllLegendItems,
       showTitle,
       timelineEvents,
+      width: rawWidth,
       onDeselectTimelineEvents,
       onOpenChartSettings,
       onOpenTimelines,
@@ -755,6 +757,7 @@ class Visualization extends PureComponent<
                   getHref={getHref}
                   gridSize={gridSize}
                   headerIcon={hasHeader ? null : headerIcon}
+                  height={rawHeight}
                   hovered={hovered}
                   isDashboard={!!isDashboard}
                   isEditing={!!isEditing}
@@ -774,6 +777,7 @@ class Visualization extends PureComponent<
                   showTitle={!!showTitle}
                   timelineEvents={timelineEvents}
                   visualizationIsClickable={this.visualizationIsClickable}
+                  width={rawWidth}
                   onActionDismissal={this.hideActions}
                   onChangeCardAndRun={
                     this.props.onChangeCardAndRun

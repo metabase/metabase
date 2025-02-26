@@ -216,7 +216,10 @@ export type VisualizationGridSize = {
 
 // TODO: add component property for the react component instead of the intersection
 export type Visualization = React.ComponentType<
-  Omit<VisualizationProps, "width" | "height">
+  Omit<VisualizationProps, "width" | "height"> & {
+    width?: number | null;
+    height?: number | null;
+  }
 > &
   VisualizationDefinition;
 
