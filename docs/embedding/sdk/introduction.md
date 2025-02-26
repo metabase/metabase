@@ -20,7 +20,6 @@ Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
 - React application using React 17 or React 18.
 - Metabase version 1.52 or higher.
-- [Node.js 20](https://nodejs.org/en) or higher.
 
 ## Quickstarts
 
