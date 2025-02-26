@@ -130,6 +130,12 @@ describe("formatting", () => {
         expect(formatNumber(-99999999.9, options)).toEqual("-100,0M");
       });
 
+      it("should format big integers", () => {
+        expect(formatNumber(9223372036854775807n, {})).toEqual(
+          "9,223,372,036,854,775,807",
+        );
+      });
+
       it("should format big integers correctly with non-default number separators", () => {
         const options = { number_separators: ",." };
         expect(formatNumber(1000n, options)).toEqual("1.000");
@@ -282,6 +288,14 @@ describe("formatting", () => {
           column: { base_type: TYPE.Number, semantic_type: TYPE.Number },
         }),
       ).toEqual("12,345");
+    });
+
+    it("should format big integers", () => {
+      expect(
+        formatValue(9223372036854775807n, {
+          column: { base_type: TYPE.Number, semantic_type: TYPE.Number },
+        }),
+      ).toEqual("9,223,372,036,854,775,807");
     });
 
     it("should format zip codes without commas", () => {
