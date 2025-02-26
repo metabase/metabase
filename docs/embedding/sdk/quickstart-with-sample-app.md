@@ -12,7 +12,7 @@ This guide sets up the embedded analytics SDK with a [sample React app](https://
 
 - [Node.js 20.x LTS or higher](https://nodejs.org/en) (for the sample application).
 - [Metabase version v1.52 or higher](https://www.metabase.com/docs/latest/releases).
-- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a licences, check out [this quickstart](./quickstart.md))
+- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a licence, check out [this quickstart](./quickstart.md))
 
 ## Overview of the quickstart
 
