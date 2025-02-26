@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 
 // eslint-disable-next-line no-restricted-imports -- to fix after POC
@@ -19,14 +20,16 @@ export const PublicOrEmbeddedInteractive = ({
 }) => {
   const settings = useInteractiveV2Settings(settingsKey);
 
+  const authConfig = useMemo(() => {
+    return defineMetabaseAuthConfig({
+      metabaseInstanceUrl: window.location.origin,
+      apiKey: settings?.apiKey ?? "",
+    });
+  }, [settings?.apiKey]);
+
   if (!settings) {
     return <div>Invalid settings!</div>;
   }
-
-  const authConfig = defineMetabaseAuthConfig({
-    metabaseInstanceUrl: window.location.origin,
-    apiKey: settings.apiKey,
-  });
 
   return (
     <IframeInteractiveEmbeddingProvider authConfig={authConfig}>
