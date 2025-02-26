@@ -225,3 +225,13 @@ import {
   <StaticDashboard dashboardId={1} />
 </MetabaseProvider>
 ```
+
+### Limitations
+
+Colors configured in the visualization settings of a question will take precendence over those configured in the theme.
+
+
+
+
+
+
