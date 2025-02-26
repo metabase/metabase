@@ -31,12 +31,12 @@
 (defn- large-biginteger?
   [n]
   (and (instance? java.math.BigInteger n)
-       (or (< 0 (.compareTo n min-biginteger)) (> 0 (.compareTo n max-biginteger)))))
+       (or (> 0 (.compareTo n min-biginteger)) (< 0 (.compareTo n max-biginteger)))))
 
 (defn- large-bigdecimal?
   [n]
   (and (instance? java.math.BigDecimal n)
-       (or (< 0 (.compareTo n min-bigdecimal)) (> 0 (.compareTo n max-bigdecimal)))))
+       (or (> 0 (.compareTo n min-bigdecimal)) (< 0 (.compareTo n max-bigdecimal)))))
 
 (defn- large-integer?
   [n]

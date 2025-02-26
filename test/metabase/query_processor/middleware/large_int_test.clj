@@ -63,7 +63,7 @@
              (convert-large-int-to-string cols rows))))))
 
 (deftest ^:parallel null-ids-as-strings
-  (testing "Middleware should convert NULL IDs to nil (#13957)"
+  (testing "Middleware should convert NULL to nil (#13957)"
     (let [cols [{:base_type :type/Integer}]
           rows [[1]
                 [max-long-plus-1]
