@@ -1,15 +1,17 @@
 import { useWindowSize } from "react-use";
 
-type NotMountedYet = undefined;
+const INITIAL_WINDOW_WIDTH = Infinity;
+
+const BREAKPOINT = 1280;
+
+const NOT_MOUNTED_YET = undefined;
+
+type NotMountedYet = typeof NOT_MOUNTED_YET;
 
 type NotebookScreenSize = {
   isSmallScreen: boolean | NotMountedYet;
   isLargeScreen: boolean | NotMountedYet;
 };
-
-const INITIAL_WINDOW_WIDTH = Infinity;
-
-const BREAKPOINT = 1280;
 
 export const useNotebookScreenSize = (): NotebookScreenSize => {
   const { width: windowWidth } = useWindowSize(INITIAL_WINDOW_WIDTH);
@@ -17,7 +19,7 @@ export const useNotebookScreenSize = (): NotebookScreenSize => {
   const isBelowBreakpoint = windowWidth < BREAKPOINT;
 
   return {
-    isSmallScreen: isMounted ? isBelowBreakpoint : undefined,
-    isLargeScreen: isMounted ? !isBelowBreakpoint : undefined,
+    isSmallScreen: isMounted ? isBelowBreakpoint : NOT_MOUNTED_YET,
+    isLargeScreen: isMounted ? !isBelowBreakpoint : NOT_MOUNTED_YET,
   };
 };
