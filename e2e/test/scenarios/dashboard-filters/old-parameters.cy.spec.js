@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -32,7 +32,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
         parameters: [filter],
       };
 
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
           cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
             dashcards: [
@@ -93,7 +93,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       const dashboardDetails = { parameters: [filter] };
 
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
           cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
             dashcards: [
@@ -121,9 +121,8 @@ describe("scenarios > dashboard > OLD parameters", () => {
     });
 
     it("should work", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("City").click();
-      H.popover().within(() => {
+      cy.findByLabelText("City").click();
+      H.dashboardParametersPopover().within(() => {
         H.fieldValuesInput().type("Flagstaff{enter}");
         cy.findByText("Add filter").click();
       });
@@ -164,7 +163,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       const dashboardDetails = { parameters: [filter] };
 
-      cy.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {

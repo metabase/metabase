@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
@@ -69,7 +69,7 @@ describe("scenarios > auth > signin > SSO", () => {
     });
   });
 
-  H.describeEE("EE", () => {
+  describe("EE", () => {
     beforeEach(() => {
       H.setTokenFeatures("all");
       // Disable password log-in

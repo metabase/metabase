@@ -11,10 +11,11 @@ const TEST_OPTIONS = [
 ];
 
 export default {
-  title: "Core/FormRadio",
+  title: "Components/Ask Before Using/FormRadio",
   component: FormRadio,
 };
 
+// TODO: mark this story as deprecated
 const Template: StoryFn<typeof FormRadio> = args => {
   const initialValues = { value: undefined };
   const handleSubmit = () => undefined;

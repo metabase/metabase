@@ -16,7 +16,6 @@ process.on("uncaughtException", err =>
 
 if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
   global.console = {
-    ...console.log,
     log: jest.fn(),
     debug: jest.fn(),
     info: jest.fn(),

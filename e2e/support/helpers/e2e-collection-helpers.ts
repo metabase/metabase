@@ -7,18 +7,6 @@ import {
 } from "e2e/support/helpers";
 import type { CollectionId } from "metabase-types/api";
 
-/**
- * Clicks the "+" icon on the collection page and selects one of the menu options
- *
- * @deprecated Use newButton helper
- */
-export function openNewCollectionItemFlowFor(
-  type: "question" | "dashboard" | "collection",
-) {
-  cy.findByText("New").click();
-  popover().findByText(new RegExp(type, "i")).click();
-}
-
 export function getCollectionActions() {
   return cy.findByTestId("collection-menu");
 }
@@ -48,6 +36,7 @@ export function getPersonalCollectionName(
 }
 
 export function openCollectionItemMenu(item: string, index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByText(item).eq(index).closest("tr").icon("ellipsis").click();
 }
 

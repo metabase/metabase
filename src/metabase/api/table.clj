@@ -23,6 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.quick-task :as quick-task]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
@@ -84,7 +85,7 @@
   "Function to call on newly unhidden tables. Starts a thread to sync all tables."
   [newly-unhidden]
   (when (seq newly-unhidden)
-    (sync/submit-task!
+    (quick-task/submit-task!
      (fn []
        (let [database (table/database (first newly-unhidden))]
          ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
@@ -580,7 +581,7 @@
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
       ;; async so as not to block the UI
-      (sync/submit-task!
+      (quick-task/submit-task!
        (fn []
          (sync/update-field-values-for-table! table))))
     {:status :success}))
@@ -669,5 +670,3 @@
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
                 :action   ::upload/replace}))
-
-(api/define-routes)

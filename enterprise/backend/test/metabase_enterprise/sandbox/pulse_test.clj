@@ -5,12 +5,12 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.api.alert :as api.alert]
-   [metabase.models.pulse :as models.pulse]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.util :as perms-util]
+   [metabase.pulse.api.pulse :as api.pulse]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor :as qp]
@@ -268,7 +268,7 @@
 
         ;; Check that both Rasta and Crowberto are still recipients
         (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
-               (->> (api.alert/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort)))
+               (->> (#'api.pulse/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort)))
 
         (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly false)]
           ;; Rasta, a non-sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
@@ -277,4 +277,4 @@
 
           ;; Crowberto should now be removed as a recipient
           (is (= [(mt/user->id :rasta)]
-                 (->> (api.alert/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort))))))))
+                 (->> (#'api.pulse/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort))))))))

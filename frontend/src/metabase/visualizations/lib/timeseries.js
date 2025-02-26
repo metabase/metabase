@@ -1,5 +1,4 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import _ from "underscore";
 
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 

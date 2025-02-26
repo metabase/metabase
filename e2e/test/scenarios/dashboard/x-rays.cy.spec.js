@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -36,7 +36,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
   it("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13112",
         query: {
@@ -94,11 +94,11 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       }
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
 
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "15655",
         native: { query: "select * from people" },
       }).then(({ body: { id } }) => {
-        cy.createQuestion(
+        H.createQuestion(
           {
             name: "Count of 15655 by SOURCE",
             display: "bar",
@@ -306,9 +306,8 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
   it("should be able to open x-ray on a dashcard from a dashboard with multiple tabs", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    return cy
-      .createDashboard({ name: "my dashboard" })
-      .then(({ body: { id: dashboard_id } }) => {
+    return H.createDashboard({ name: "my dashboard" }).then(
+      ({ body: { id: dashboard_id } }) => {
         H.addOrUpdateDashboardCard({
           card_id: ORDERS_BY_YEAR_QUESTION_ID,
           dashboard_id,
@@ -334,7 +333,8 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
         // Ensure charts actually got rendered
         cy.get("text").contains("Created At");
-      });
+      },
+    );
   });
 
   it("should default x-ray dashboard width to 'fixed'", () => {

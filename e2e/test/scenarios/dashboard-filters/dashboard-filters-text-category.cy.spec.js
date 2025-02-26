@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import {
@@ -15,7 +15,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         query: { "source-table": ORDERS_ID, limit: 5 },
       },
@@ -80,9 +80,11 @@ describe("scenarios > dashboard > filters > text/category", () => {
         { operator, value, representativeResult, single, negativeAssertion },
         index,
       ) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         applyFilterByType(operator, value);
         waitDashboardCardQuery();
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget()
           .eq(index)
           .contains(single ? value.replace(/"/g, "") : /\d selections/);

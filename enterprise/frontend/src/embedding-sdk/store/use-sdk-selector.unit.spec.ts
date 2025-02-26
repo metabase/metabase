@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { renderHook } from "__support__/ui";
 
 import {
   USE_OUTSIDE_OF_CONTEXT_MESSAGE,

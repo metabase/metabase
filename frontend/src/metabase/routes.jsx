@@ -64,6 +64,7 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
+import { createEntityIdRedirect } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
@@ -147,6 +148,19 @@ export const getRoutes = store => {
             component={TrashCollectionLanding}
           />
 
+          <Route
+            path="collection/entity/:entity_id(**)"
+            component={createEntityIdRedirect({
+              parametersToTranslate: [
+                {
+                  name: "entity_id",
+                  resourceType: "collection",
+                  type: "param",
+                },
+              ],
+            })}
+          />
+
           <Route path="collection/users" component={IsAdmin}>
             <IndexRoute component={UserCollectionList} />
           </Route>
@@ -164,6 +178,24 @@ export const getRoutes = store => {
           </Route>
 
           <Route
+            path="dashboard/entity/:entity_id(**)"
+            component={createEntityIdRedirect({
+              parametersToTranslate: [
+                {
+                  name: "entity_id",
+                  resourceType: "dashboard",
+                  type: "param",
+                },
+                {
+                  name: "tab",
+                  resourceType: "dashboard-tab",
+                  type: "search",
+                },
+              ],
+            })}
+          />
+
+          <Route
             path="dashboard/:slug"
             title={t`Dashboard`}
             component={DashboardAppConnected}
@@ -178,6 +210,18 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="/question">
+            <Route
+              path="/question/entity/:entity_id(**)"
+              component={createEntityIdRedirect({
+                parametersToTranslate: [
+                  {
+                    name: "entity_id",
+                    resourceType: "card",
+                    type: "param",
+                  },
+                ],
+              })}
+            />
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />

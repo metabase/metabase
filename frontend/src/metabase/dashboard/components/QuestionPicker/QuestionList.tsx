@@ -18,16 +18,11 @@ import { usePagination } from "metabase/hooks/use-pagination";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import type { CardId, CollectionId } from "metabase-types/api";
 
-import {
-  EmptyStateContainer,
-  PaginationControlsContainer,
-  QuestionListItem,
-} from "./QuestionList.styled";
-import S from "./QuestionPicker.module.css";
+import S from "./QuestionList.module.css";
 
 interface QuestionListProps {
   searchText: string;
@@ -108,7 +103,6 @@ export function QuestionList({
   const error = isSearching ? searchError : itemsError;
   const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
   const dispatch = useDispatch();
-
   const list = useMemo(() => {
     return data?.data?.map(item => Search.wrapEntity(item, dispatch)) ?? [];
   }, [data, dispatch]);
@@ -126,9 +120,9 @@ export function QuestionList({
 
   if (shouldShowEmptyState) {
     return (
-      <EmptyStateContainer>
+      <Box my="4rem">
         <EmptyState message={t`Nothing here`} icon="folder" />
-      </EmptyStateContainer>
+      </Box>
     );
   }
 
@@ -136,14 +130,15 @@ export function QuestionList({
     <>
       <SelectList>
         {list.map(item => (
-          <Flex key={item.id} className={S.questionItem}>
-            <QuestionListItem
-              className={S.questionListItem}
+          <Flex key={item.id} className={S.QuestionListItemRoot} gap="2px">
+            <SelectList.Item
               id={item.id}
+              className={S.QuestionListItem}
               name={item.getName()}
               icon={{
                 name: item.getIcon().name,
                 size: item.model === "dataset" ? 18 : 16,
+                className: S.QuestionListItemIcon,
               }}
               onSelect={onSelect}
               rightIcon={PLUGIN_MODERATION.getStatusIcon(
@@ -152,9 +147,8 @@ export function QuestionList({
             />
             <Tooltip label={t`Visualize another way`}>
               <ActionIcon
-                className={S.visualizerButton}
+                className={S.VisualizerButton}
                 size="41px"
-                ml="auto"
                 onClick={() => setVisualizerModalCardId(Number(item.id))}
               >
                 <Icon name="add_data" />
@@ -163,7 +157,7 @@ export function QuestionList({
           </Flex>
         ))}
       </SelectList>
-      <PaginationControlsContainer>
+      <Flex justify="flex-end">
         <PaginationControls
           showTotal
           total={data?.total}
@@ -173,7 +167,7 @@ export function QuestionList({
           onNextPage={handleClickNextPage}
           onPreviousPage={handleClickPreviousPage}
         />
-      </PaginationControlsContainer>
+      </Flex>
       {isVisualizerModalOpen && (
         <VisualizerModal
           initialState={{

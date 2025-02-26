@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import MetabotLogo from "metabase/core/components/MetabotLogo";
@@ -8,15 +9,23 @@ export const GreetingRoot = styled.div`
   align-items: center;
 `;
 
-export const GreetingLogo = styled(MetabotLogo)<{ isCool: boolean }>`
+export const GreetingLogoContainer = styled.div`
+  position: relative;
+  width: 3.375rem;
   height: 2.5rem;
+  margin-inline-end: 0.5rem;
+
+  ${breakpointMinExtraLarge} {
+    width: 4rem;
+    height: 3rem;
+  }
+`;
+
+export const GreetingLogo = styled(MetabotLogo)<{ isCool: boolean }>`
+  width: 100%;
   position: absolute;
   top: 0;
   opacity: ${props => (props.isCool ? 1 : 0)};
-
-  ${breakpointMinExtraLarge} {
-    height: 3rem;
-  }
 `;
 
 interface GreetingMessageProps {

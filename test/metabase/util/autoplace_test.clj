@@ -1,6 +1,7 @@
 (ns metabase.util.autoplace-test
-  (:require [clojure.test :refer :all]
-            [metabase.util.autoplace :as autoplace]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.util.autoplace :as autoplace]))
 
 (def ^:private test-grid-width 6)
 (def ^:private test-card-width 2)

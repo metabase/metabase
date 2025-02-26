@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -18,7 +18,7 @@ describe("scenarios > visualizations > progress chart", () => {
     };
 
     // check dashboard chart render
-    cy.createQuestionAndDashboard({ questionDetails }).then(
+    H.createQuestionAndDashboard({ questionDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         // Make dashboard card really small (necessary for this repro as it doesn't show any labels)
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {

@@ -16,7 +16,7 @@ export const StrategyFormLauncherPanelBox = styled(Box)<
 >`
   ${sectionStyle}
   border-bottom: 1px solid var(--mb-color-border);
-`;
+` as unknown as typeof Box;
 
 export const StrategyFormLauncherPanelStack = styled(Stack)`
   ${sectionStyle}

@@ -26,6 +26,8 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
+   [metabase.db.custom-migrations.pulse-to-notification :as pulse-to-notification]
+   [metabase.db.custom-migrations.util :as custom-migrations.util]
    [metabase.plugins.classloader :as classloader]
    [metabase.task.bootstrap]
    [metabase.util.date-2 :as u.date]
@@ -154,7 +156,7 @@
 
 (defn- ->v2-paths
   "Converts v1 data permission paths into v2 data and query permissions paths. This is similar to `->v2-path` in
-   metabase.models.permissions but somewhat simplified for the migration use case."
+   metabase.permissions.models.permissions but somewhat simplified for the migration use case."
   [v1-path]
   (if-let [base-path (second (re-find base-path-regex v1-path))]
     ;; For (almost) all v1 data paths, we simply extract the base path (e.g. "/db/1/schema/PUBLIC/table/1/")
@@ -1192,9 +1194,8 @@
    cause timeouts."
   true)
 
-(define-migration CreateSampleContent
+(define-migration CreateSampleContent)
   ;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
-  )
 
 (defn- replace-temporals [v]
   (if (isa? (type v) java.time.temporal.Temporal)
@@ -1315,22 +1316,14 @@
 
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
 (define-migration DeleteTruncateAuditLogTask
-  (classloader/the-classloader)
-  (set-jdbc-backend-properties!)
-  (let [scheduler (qs/initialize)]
-    (qs/start scheduler)
+  (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-trigger scheduler (triggers/key "metabase.task.truncate-audit-log.trigger"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
-    (qs/shutdown scheduler)))
+    (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))))
 
 (define-migration DeleteSendPulsesTask
-  (classloader/the-classloader)
-  (set-jdbc-backend-properties!)
-  (let [scheduler (qs/initialize)]
-    (qs/start scheduler)
+  (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.trigger"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.job"))
-    (qs/shutdown scheduler)))
+    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.job"))))
 
 ;; If someone upgraded to 50, then downgrade to 49, the send-pulse triggers will run into an error state due to
 ;; jobclass not found. And when they migrate up to 50 again, these triggers will not be triggered because it's in
@@ -1338,27 +1331,16 @@
 ;; So we need to delete this on migrate down, so when they migrate up, the triggers will be recreated.
 (define-reversible-migration DeleteSendPulseTaskOnDowngrade
   (log/info "No forward migration for DeleteSendPulseTaskOnDowngrade")
-  (do
-    (classloader/the-classloader)
-    (set-jdbc-backend-properties!)
-    (let [scheduler (qs/initialize)]
-      (qs/start scheduler)
-      (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.send-pulse.job"))
-      (qs/shutdown scheduler))))
+  (custom-migrations.util/with-temp-schedule! [scheduler]
+    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.send-pulse.job"))))
 
 ;; The InitSendPulseTriggers is a migration in disguise, it runs once per instance
 ;; To make sure when someone migrate up -> migrate down -> migrate up again, this job is re-run
 ;; on the second migrate up.
 (define-reversible-migration DeleteInitSendPulseTriggersOnDowngrade
   (log/info "No forward migration for DeleteInitSendPulseTriggersOnDowngrade")
-  (do
-    (classloader/the-classloader)
-    (set-jdbc-backend-properties!)
-    (let [scheduler (qs/initialize)]
-      (qs/start scheduler)
-     ;; delete the job will also delete all of its triggers
-      (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
-      (qs/shutdown scheduler))))
+  (custom-migrations.util/with-temp-schedule! [scheduler]
+    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))))
 
 ;; when card display is area or bar,
 ;; 1. set the display key to :stackable.stack_display value OR leave it the same
@@ -1779,3 +1761,17 @@
 (define-reversible-migration AddStageNumberToVizSettingsParameterMappingTargets
   (add-stage-numbers-to-viz-settings-parameter-mapping-targets)
   (remove-stage-numbers-from-viz-settings-parameter-mapping-targets))
+
+;; Migrate alerts to notifications
+;; on migrate up:
+;; - migrate alerts from pulse table to notification table
+;; - delete all the send pulse triggers
+;; - And then on startup new send notification triggers are created by running [[metabase.task.notification/InitNotificationTriggers]]
+;;   job once. This job is idempotent
+;; on migrate down:
+;; - we delete all the notifications
+;; - delete the [[metabase.task.send-pulses/InitSendPulseTriggers]] job so that when instance startup, this job is run
+;;   again so that it iterates all existing alerts and re-creates the send pulse triggers. This job is idempotent
+(define-reversible-migration MigrateAlertToNotification
+  (pulse-to-notification/migrate-alerts!)
+  (pulse-to-notification/remove-init-send-pulse-trigger!))

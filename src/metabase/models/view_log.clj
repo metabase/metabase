@@ -1,7 +1,7 @@
 (ns metabase.models.view-log
   "The ViewLog is used to log an event where a given User views a given object such as a Table or Card (Question)."
   (:require
-   [metabase.analytics.sdk :as sdk]
+   [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.models.view-log-impl :as view-log-impl]
    [metabase.util.malli :as mu]
@@ -26,7 +26,7 @@
   (let [defaults {:timestamp :%now}]
     (->> log-entry
          (merge defaults)
-         sdk/include-analytics)))
+         analytics/include-sdk-info)))
 
 (t2/deftransforms :model/ViewLog
   {:metadata mi/transform-json

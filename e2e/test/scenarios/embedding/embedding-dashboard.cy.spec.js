@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
@@ -29,7 +29,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
     );
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -438,7 +438,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       parameters: [dashboardCategoryParameter, dashboardCreatedAtParameter],
     };
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { card_id, dashboard_id } }) => {
@@ -553,7 +553,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails: questionDetailsWithDefaults,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -661,7 +661,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 });
 
-H.describeEE("scenarios > embedding > dashboard appearance", () => {
+describe("scenarios > embedding > dashboard appearance", () => {
   const originalBaseUrl = Cypress.config("baseUrl");
 
   beforeEach(() => {
@@ -705,7 +705,7 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
         "source-table": ORDERS_ID,
       },
     };
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { dashboard_id } }) => {

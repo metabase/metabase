@@ -8,7 +8,7 @@ type Args = ComponentProps<typeof EmbedHomepageView> & {
 };
 
 const meta: Meta<Args> = {
-  title: "FEATURES/EmbedHomepage",
+  title: "App/FEATURES/EmbedHomepage",
   component: EmbedHomepageView,
   parameters: {
     controls: {

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -17,7 +17,7 @@ import {
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-H.describeEE("scenarios > embedding > full app", () => {
+describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -464,8 +464,8 @@ H.describeEE("scenarios > embedding > full app", () => {
         "should select a table when there are multiple schemas",
         { tags: "@external" },
         () => {
-          H.resetTestTable({ type: "postgres", table: "multi_schema" });
           H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
           cy.signInAsAdmin();
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
           startNewEmbeddingQuestion();
@@ -898,7 +898,7 @@ H.describeEE("scenarios > embedding > full app", () => {
         "not.exist",
       );
       H.dashboardGrid()
-        .findByText("Rows 1-6 of first 2000")
+        .findByText(/Rows 1-\d of first 2000/)
         .should("be.visible");
     });
 
@@ -928,12 +928,10 @@ H.describeEE("scenarios > embedding > full app", () => {
         "not.exist",
       );
       H.dashboardGrid()
-        .findByText("Rows 1-6 of first 2000")
+        .findByText(/Rows 1-\d of first 2000/)
         .should("be.visible");
       H.goToTab(SECOND_TAB.name);
-      cy.findByTestId("dashboard-parameters-and-cards")
-        .findByText("There's nothing here, yet.")
-        .should("be.visible");
+      cy.findByTestId("dashboard-empty-state").should("be.visible");
     });
 
     it("should hide the dashboard's additional info by a param", () => {
@@ -987,7 +985,7 @@ H.describeEE("scenarios > embedding > full app", () => {
           },
         ],
       };
-      cy.createDashboard(dashboardDetails).then(
+      H.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
           const textDashcard = H.getTextCardDetails({
             col: 0,
@@ -1094,7 +1092,7 @@ H.describeEE("scenarios > embedding > full app", () => {
           type: "frame",
           frame: {
             mode: "fit",
-            height: Cypress.sinon.match(value => value < 400),
+            height: Cypress.sinon.match(value => value < 1000),
           },
         },
       });

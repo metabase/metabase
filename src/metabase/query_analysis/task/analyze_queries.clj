@@ -46,7 +46,7 @@
             card       (query-analysis/->analyzable card-or-id)]
         (when (public-settings/query-analysis-enabled)
           (if (failure-map/non-retryable? card)
-            (log/warnf "Skipping analysis of Card %s as its query has caused failures in the past." card-id)
+            (log/debugf "Skipping analysis of Card %s as its query has caused failures in the past." card-id)
             (try
               (if (:error (query-analysis/analyze!* card))
                 (failure-map/track-failure! card)

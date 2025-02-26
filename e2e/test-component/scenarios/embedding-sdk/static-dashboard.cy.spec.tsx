@@ -4,7 +4,7 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { describeEE, getTextCardDetails } from "e2e/support/helpers";
+import { createDashboard, getTextCardDetails } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -12,7 +12,7 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
-describeEE("scenarios > embedding-sdk > static-dashboard", () => {
+describe("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
@@ -29,7 +29,7 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       },
     };
 
-    cy.createDashboard({
+    createDashboard({
       name: "Embedding SDK Test Dashboard",
       dashcards: [questionCard, textCard],
     }).then(({ body: dashboard }) => {
@@ -107,6 +107,9 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       },
     ];
 
+    // Those tests are sometimes rendering 6 rows, sometimes 7 rows, we don't want this to be flaky
+    const rowsTextRegex = /Rows 1-[6,7] of first 2000/;
+
     successTestCases.forEach(({ name, dashboardIdAlias }) => {
       it(`should load dashboard content for ${name}`, () => {
         cy.get(dashboardIdAlias).then(dashboardId => {
@@ -116,7 +119,7 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
         getSdkRoot().within(() => {
           cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
           cy.findByText("Test question card").should("be.visible");
-          cy.findByText("Rows 1-6 of first 2000").should("be.visible");
+          cy.findByText(rowsTextRegex).should("be.visible");
           cy.findByText("Test text card").should("be.visible");
         });
       });
@@ -132,7 +135,7 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
 
           cy.findByText("Orders in a dashboard").should("not.exist");
           cy.findByText("Orders").should("not.exist");
-          cy.findByText("Rows 1-6 of first 2000").should("not.exist");
+          cy.findByText(rowsTextRegex).should("not.exist");
           cy.findByText("Test text card").should("not.exist");
         });
       });

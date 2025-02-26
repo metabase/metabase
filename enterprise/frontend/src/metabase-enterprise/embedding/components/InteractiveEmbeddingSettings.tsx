@@ -71,7 +71,7 @@ export function InteractiveEmbeddingSettings({
 
   return (
     <Box p="0.5rem 1rem 0">
-      <Stack spacing="2.5rem">
+      <Stack gap="2.5rem">
         <Breadcrumbs
           size="large"
           crumbs={[
@@ -96,7 +96,7 @@ export function InteractiveEmbeddingSettings({
             variant="outline"
             component={ExternalLink}
             href={quickStartUrl}
-          >{t`Check out the Quick Start`}</Button>
+          >{t`Check out the Quickstart`}</Button>
         </Box>
 
         <Box>

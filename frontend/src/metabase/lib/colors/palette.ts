@@ -66,7 +66,11 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
   content: palette => color("bg-light", palette),
   database: palette => color("accent2", palette),
   pulse: palette => color("accent4", palette),
-
+  "text-primary": palette => color("text-dark", palette),
+  "text-secondary": palette => color("text-medium", palette),
+  "text-tertiary": palette => color("text-light", palette),
+  background: palette => color("white", palette),
+  "background-disbaled": palette => color("accent-gray", palette),
   "brand-light": palette => lighten(color("brand", palette), 0.532), // #DDECFA
   "brand-lighter": palette => lighten(color("brand", palette), 0.598), // #EEF6FC for brand
   focus: palette => getFocusColor("brand", palette),

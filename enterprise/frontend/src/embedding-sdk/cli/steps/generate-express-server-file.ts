@@ -58,5 +58,5 @@ export const generateExpressServerFile: CliStepMethod = async state => {
 
   await installMockServerDeps(mockServerDir);
 
-  return [{ type: "done" }, { ...state, mockServerDir }];
+  return [{ type: "done" }, { ...state, mockServerPath: mockServerDir }];
 };

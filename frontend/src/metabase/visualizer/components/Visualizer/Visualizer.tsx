@@ -6,7 +6,7 @@ import {
   PointerSensor,
   useSensor,
 } from "@dnd-kit/core";
-import { type CSSProperties, useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useKeyPressEvent, usePrevious, useUnmount } from "react-use";
 
 import EditableText from "metabase/core/components/EditableText";
@@ -46,12 +46,11 @@ import { VizSettingsSidebar } from "../VizSettingsSidebar/VizSettingsSidebar";
 interface VisualizerProps {
   className?: string;
   onSave?: (visualization: VisualizerHistoryItem) => void;
-  style?: CSSProperties;
   saveLabel?: string;
 }
 
 export const Visualizer = (props: VisualizerProps) => {
-  const { className, onSave, style, saveLabel } = props;
+  const { className, onSave, saveLabel } = props;
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const title = useSelector(getVisualizationTitle);
@@ -139,13 +138,7 @@ export const Visualizer = (props: VisualizerProps) => {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <Flex
-        className={className}
-        direction="column"
-        w="100%"
-        h="100%"
-        style={style}
-      >
+      <Flex className={className} direction="column">
         <Header onSave={onSave} saveLabel={saveLabel} />
         <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
           {!isFullscreen && (

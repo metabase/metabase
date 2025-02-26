@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import { setupSaml } from "./sso/shared/helpers.js";
 
@@ -11,8 +11,6 @@ describe("scenarios > admin > settings > authentication", () => {
   describe("page layout", () => {
     describe("oss", { tags: "@OSS" }, () => {
       it("should implement a tab layout for oss customers", () => {
-        H.onlyOnOSS();
-
         cy.visit("/admin/settings/authentication");
 
         cy.log(
@@ -35,7 +33,7 @@ describe("scenarios > admin > settings > authentication", () => {
       });
     });
 
-    H.describeEE("ee", () => {
+    describe("ee", () => {
       it("should implement a tab layout for enterprise customers", () => {
         H.setTokenFeatures("all");
 
@@ -78,7 +76,6 @@ describe("scenarios > admin > settings > user provisioning", () => {
 
   describe("oss", { tags: "@OSS" }, () => {
     it("user provisioning page should not be availble for OSS customers", () => {
-      H.onlyOnOSS();
       cy.visit("/admin/settings/authentication/user-provisioning");
       H.main().within(() => {
         cy.findByText("We're a little lost...");
@@ -86,7 +83,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
     });
   });
 
-  H.describeEE("scim settings management", () => {
+  describe("scim settings management", () => {
     beforeEach(() => {
       H.setTokenFeatures("all");
     });

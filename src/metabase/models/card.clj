@@ -23,21 +23,21 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
+   [metabase.models.notification :as models.notification]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
-   [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as models.pulse]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.public-settings :as public-settings]
+   [metabase.public-sharing.core :as public-sharing]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.pulse.core :as pulse]
    [metabase.query-analysis.core :as query-analysis]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
@@ -74,9 +74,30 @@
 (doto :model/Card
   (derive :metabase/model)
   ;; You can read/write a Card if you can read/write its parent Collection
-  (derive ::perms/use-parent-collection-perms)
+  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+;;; TODO -- this should be part of `can-write?`/`can-update?` and be done automatically
+(defn check-run-permissions-for-query
+  "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
+  queries they wouldn't be allowed to run!"
+  [query]
+  {:pre [(map? query)]}
+  (when-not (query-perms/can-run-query? query)
+    (let [required-perms (try
+                           (query-perms/required-perms-for-query query :throw-exceptions? true)
+                           (catch Throwable e
+                             e))]
+      (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
+                      {:status-code    403
+                       :query          query
+                       :required-perms (if (instance? Throwable required-perms)
+                                         :error
+                                         required-perms)
+                       :actual-perms   @api/*current-user-permissions-set*}
+                      (when (instance? Throwable required-perms)
+                        required-perms))))))
 
 (defmethod mi/can-write? :model/Card
   ([instance]
@@ -244,7 +265,7 @@
    (fn [card]
      (assoc card
             :can_manage_db
-            (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes (:database_id card))))
+            (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes (:database_id card))))
    cards))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
@@ -305,30 +326,6 @@
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
-
-;;; --------------------------------------------------- Revisions ----------------------------------------------------
-
-(def ^:private excluded-columns-for-card-revision
-  [:id :created_at :updated_at :last_used_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version
-   :initially_published_at :cache_invalidated_at :view_count])
-
-(defmethod revision/revert-to-revision! :model/Card
-  [model id user-id serialized-card]
-  ;; make sure we handle < 50 cards that had `:dataset` instead of `:type`
-  (let [serialized-card (cond-> serialized-card
-                          (contains? serialized-card :dataset) (-> (dissoc :dataset)
-                                                                   (assoc :type (if (:dataset serialized-card) :model :question))))]
-    ((get-method revision/revert-to-revision! :default) model id user-id serialized-card)))
-
-(defmethod revision/serialize-instance :model/Card
-  ([instance]
-   (revision/serialize-instance :model/Card nil instance))
-  ([_model _id instance]
-   (cond-> (apply dissoc instance excluded-columns-for-card-revision)
-     ;; datasets should preserve edits to metadata
-     ;; the type check only needed in tests because most test object does not include `type` key
-     (and (some? (:type instance)) (not (model? instance)))
-     (dissoc :result_metadata))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -474,7 +471,11 @@
                              (:dashboard_id changes)))]
     (when will-be-dq?
       (cond
-        (not (or *updating-dashboard* (not (api/column-will-change? :collection_id card changes))))
+        (not (or *updating-dashboard*
+                 ;; if the `dashboard_id` is changing, allow specifying a `collection_id`. Note that if it's different
+                 ;; than the actual `collection_id` of the new dashboard we're moving to, it will be ignored.
+                 dq-will-change?
+                 (not (api/column-will-change? :collection_id card changes))))
         (tru "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question")
         (api/column-will-change? :collection_position card changes)
         (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
@@ -754,7 +755,7 @@
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
-      public-settings/remove-public-uuid-if-public-sharing-is-disabled
+      public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
       ensure-clause-idents))
 
@@ -826,13 +827,15 @@
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
-(defn- autoplace-dashcard-for-card! [dashboard-id card]
+(defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card]
   (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
+        tabs (remove #(when maybe-dashboard-tab-id (not= maybe-dashboard-tab-id (:id %))) tabs)
         already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))]
     (when-not already-on-dashboard?
       (let [first-tab (first tabs)
-            cards-on-first-tab (or (:cards first-tab)
+            cards-on-first-tab (or (when first-tab
+                                     (:cards first-tab))
                                    dashcards)
             new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab (:display card))]
         (t2/insert! :model/DashboardCard (assoc new-spot
@@ -868,6 +871,7 @@
     old-dashboard-id :dashboard_id}
    {:as card-updates
     dashboard-id-update :dashboard_id
+    dashboard-tab-id :dashboard_tab_id
     archived-update :archived}
    delete-old-dashcards?]
   (let [dashboard-changes? (api/column-will-change? :dashboard_id card-before-update card-updates)
@@ -881,9 +885,14 @@
                        old-archived
                        archived-update)
         archived-after? (boolean new-archived)]
+
+    ;; you can't specify the dashboard_tab_id if not on a dashboard
+    (api/check-400
+     (not (and dashboard-tab-id
+               (not new-dashboard-id))))
     ;; we'll end up unarchived and a dashboard card => make sure we autoplace
     (when (and on-dashboard-after? (not archived-after?))
-      (autoplace-dashcard-for-card! new-dashboard-id card-before-update))
+      (autoplace-dashcard-for-card! new-dashboard-id dashboard-tab-id card-before-update))
 
     (when (and
            ;; we start out as a DQ, and
@@ -926,13 +935,16 @@
   created."
   ([card creator] (create-card! card creator false))
   ([card creator delay-event?] (create-card! card creator delay-event? true))
-  ([{:keys [dataset_query result_metadata parameters parameter_mappings type] :as card-data} creator delay-event? autoplace-dashboard-questions?]
+  ([{:keys [dataset_query result_metadata parameters parameter_mappings type] :as input-card-data} creator delay-event? autoplace-dashboard-questions?]
+   ;; you can't specify the dashboard_tab_id and not a dashboard_id
+   (api/check-400 (not (and (:dashboard_tab_id input-card-data)
+                            (not (:dashboard_id input-card-data)))))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
                                              :cache_ttl :type :dashboard_id]
-         position-info                      {:collection_id (:collection_id card-data)
-                                             :collection_position (:collection_position card-data)}
-         card-data                          (-> (select-keys card-data data-keys)
+         position-info                      {:collection_id (:collection_id input-card-data)
+                                             :collection_position (:collection_position input-card-data)}
+         card-data                          (-> (select-keys input-card-data data-keys)
                                                 (assoc
                                                  :creator_id (:id creator)
                                                  :parameters (or parameters [])
@@ -949,8 +961,9 @@
                                               (t2/insert-returning-instance! :model/Card (cond-> card-data
                                                                                            metadata
                                                                                            (assoc :result_metadata metadata))))]
-     (when-let [dashboard-id (and autoplace-dashboard-questions? (:dashboard_id card))]
-       (autoplace-dashcard-for-card! dashboard-id card))
+     (let [{:keys [dashboard_id]} card]
+       (when (and dashboard_id autoplace-dashboard-questions?)
+         (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when metadata-future
@@ -962,76 +975,14 @@
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
-(defn- card-archived? [old-card new-card]
-  (and (not (:archived old-card))
-       (:archived new-card)))
-
-(defn- line-area-bar? [display]
-  (contains? #{:line :area :bar} display))
-
-(defn- progress? [display]
-  (= :progress display))
-
-(defn- allows-rows-alert? [display]
-  (not (contains? #{:line :bar :area :progress} display)))
-
-(defn- display-change-broke-alert?
-  "Alerts no longer make sense when the kind of question being alerted on significantly changes. Setting up an alert
-  when a time series query reaches 10 is no longer valid if the question switches from a line graph to a table. This
-  function goes through various scenarios that render an alert no longer valid"
-  [{old-display :display} {new-display :display}]
-  (when-not (= old-display new-display)
-    (or
-     ;; Did the alert switch from a table type to a line/bar/area/progress graph type?
-     (and (allows-rows-alert? old-display)
-          (or (line-area-bar? new-display)
-              (progress? new-display)))
-     ;; Switching from a line/bar/area to another type that is not those three invalidates the alert
-     (and (line-area-bar? old-display)
-          (not (line-area-bar? new-display)))
-     ;; Switching from a progress graph to anything else invalidates the alert
-     (and (progress? old-display)
-          (not (progress? new-display))))))
-
-(defn- goal-missing?
-  "If we had a goal before, and now it's gone, the alert is no longer valid"
-  [old-card new-card]
-  (and
-   (get-in old-card [:visualization_settings :graph.goal_value])
-   (not (get-in new-card [:visualization_settings :graph.goal_value]))))
-
-(defn- multiple-breakouts?
-  "If there are multiple breakouts and a goal, we don't know which breakout to compare to the goal, so it invalidates
-  the alert"
-  [{:keys [display] :as new-card}]
-  (and (get-in new-card [:visualization_settings :graph.goal_value])
-       (or (line-area-bar? display)
-           (progress? display))
-       (< 1 (count (get-in new-card [:dataset_query :query :breakout])))))
-
-(defn- delete-alert-and-notify!
+(defn delete-alert-and-notify!
   "Removes all of the alerts and notifies all of the email recipients of the alerts change."
-  [topic actor alerts]
-  (t2/delete! :model/Pulse :id [:in (mapv u/the-id alerts)])
-  (events/publish-event! topic {:alerts alerts, :actor actor}))
-
-(defn- delete-alerts-if-needed! [& {:keys [old-card new-card actor]}]
-  ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (binding [models.pulse/*allow-hydrate-archived-cards* true]
-                      (not-empty (models.pulse/retrieve-alerts-for-cards {:card-ids [(u/the-id new-card)]})))]
-    (cond
-
-      (card-archived? old-card new-card)
-      (delete-alert-and-notify! :event/card-update.alerts-deleted.card-archived actor alerts)
-
-      (or (display-change-broke-alert? old-card new-card)
-          (goal-missing? old-card new-card)
-          (multiple-breakouts? new-card))
-      (delete-alert-and-notify! :event/card-update.alerts-deleted.card-became-invalid actor alerts)
-
-      ;; The change doesn't invalidate the alert, do nothing
-      :else
-      nil)))
+  [topic actor card]
+  (when-let [card-notifications (seq (models.notification/notifications-for-card (:id card)))]
+    (t2/delete! :model/Notification :id [:in (map :id card-notifications)])
+    (events/publish-event! topic {:card          card
+                                  :actor         actor
+                                  :notifications card-notifications})))
 
 (defn- card-is-verified?
   "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent
@@ -1195,7 +1146,8 @@
                    "`card-updates`:" (pr-str card-updates)))))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one :model/Card :id (:id card-before-update))]
-    (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
+    ;;; TODO -- consider whether this should be triggered indirectly by `:event/card-update`
+    (pulse/delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
     ;; skip publishing the event if it's just a change in its collection position
     (when-not (= #{:collection_position}
                  (set (keys card-updates)))

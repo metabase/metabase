@@ -62,11 +62,11 @@ const VariantTemplate = (args: NumberInputProps) => (
 );
 
 const IconTemplate = (args: NumberInputProps) => (
-  <VariantTemplate {...args} icon={<Icon name="int" />} />
+  <VariantTemplate {...args} leftSection={<Icon name="int" />} />
 );
 
 export default {
-  title: "Inputs/NumberInput",
+  title: "Components/Inputs/NumberInput",
   component: NumberInput,
   args,
   argTypes,

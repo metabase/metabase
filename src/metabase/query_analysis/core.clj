@@ -19,10 +19,15 @@
    [metabase.query-analysis.native-query-analyzer.replacement :as nqa.replacement]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.namespaces :as shared.ns]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(shared.ns/import-fns
+ [nqa
+  tables-for-native])
 
 (def ^:private realtime-queue-capacity
   "The maximum number of cards which can be queued for async analysis. When exceeded, additional cards will be dropped."

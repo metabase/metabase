@@ -1,10 +1,10 @@
 (ns metabase-enterprise.advanced-permissions.common
   (:require
    [metabase.api.common :as api]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [toucan2.core :as t2]))

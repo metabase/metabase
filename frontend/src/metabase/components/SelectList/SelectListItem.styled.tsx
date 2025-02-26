@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
@@ -7,7 +9,7 @@ import { Icon, Text, type TextProps } from "metabase/ui";
 export const ItemTitle = styled(Text)<TextProps>`
   margin: 0;
   word-break: break-word;
-`;
+` as unknown as typeof Text;
 
 export const ItemIcon = styled(Icon)<{ color?: string | null }>`
   color: ${props => color(props.color ?? "text-light")};

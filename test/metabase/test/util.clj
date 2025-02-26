@@ -9,19 +9,21 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
    [environ.core :as env]
+   [iapetos.operations :as ops]
+   [iapetos.registry :as registry]
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
-   [metabase.models.timeline-event :as timeline-event]
+   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.test-util :as premium-features.test-util]
@@ -33,6 +35,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log]
+   [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -48,6 +51,7 @@
    (java.net ServerSocket)
    (java.util Locale)
    (java.util.concurrent CountDownLatch TimeoutException)
+   (org.eclipse.jetty.server Server)
    (org.quartz
     CronTrigger
     JobDetail
@@ -199,6 +203,11 @@
    (fn [_] (default-timestamped
             {:payload_type :notification/system-event
              :active       true}))
+
+   :model/NotificationCard
+   (fn [_] (default-timestamped
+            {:send_once      false
+             :send_condition :has_result}))
 
    :model/NotificationSubscription
    (fn [_] (default-created-at-timestamped
@@ -617,6 +626,8 @@
                  #(u/round-to-decimals decimal-place %)
                  data))
 
+;;; TODO -- we should generalize this to `let-testing` (`testing-let`?) that is a version of `let` that adds `testing`
+;;; context
 (defmacro let-url
   "Like normal `let`, but adds `testing` context with the `url` you've bound."
   {:style/indent 1}
@@ -1566,3 +1577,47 @@
   "Returns a string of `n` random alphanumeric characters."
   [n]
   (apply str (take n (repeatedly #(rand-nth "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))))
+
+(defmacro with-prometheus-system!
+  "Run tests with a prometheus web server and registry. Provide binding symbols in a tuple of [port system]. Port will
+  be bound to the random port used for the metrics endpoint and system will be a [[PrometheusSystem]] which has a
+  registry and web-server."
+  [[port system] & body]
+  `(let [~system ^metabase.analytics.prometheus.PrometheusSystem
+         (#'prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
+         server#  ^Server (.web-server ~system)
+         ~port   (.. server# getURI getPort)]
+     (with-redefs [prometheus/system ~system]
+       (try ~@body
+            (finally (prometheus/stop-web-server ~system))))))
+
+(defn metric-value
+  "Return the value of `metric` in `system`'s registry."
+  ([system metric]
+   (metric-value system metric nil))
+  ([system metric labels]
+   (some-> system
+           :registry
+           (registry/get
+            {:name      (name metric)
+             :namespace (namespace metric)}
+            (#'prometheus/qualified-vals labels))
+           ops/read-value)))
+
+(defn- transitive*
+  "Borrows heavily from clojure.core/derive. Notably, however, this intentionally permits circular dependencies."
+  [h child parent]
+  (let [td (:descendants h {})
+        ta (:ancestors h {})
+        tf (fn [source sources target targets]
+             (reduce (fn [ret k]
+                       (assoc ret k
+                              (reduce conj (get targets k #{}) (cons target (targets target)))))
+                     targets (cons source (sources source))))]
+    {:ancestors   (tf child td parent ta)
+     :descendants (tf parent ta child td)}))
+
+(defn transitive
+  "Given a mapping from (say) parents to children, return the corresponding mapping from parents to descendants."
+  [adj-map]
+  (:descendants (reduce-kv (fn [h p children] (reduce #(transitive* %1 %2 p) h children)) nil adj-map)))

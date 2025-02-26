@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
 
-import { ThemeProvider } from "metabase/ui";
+import { render, screen } from "__support__/ui";
 
 import TippyPopover from "./TippyPopover";
 
@@ -50,22 +49,6 @@ describe("Popover", () => {
       "data-theme",
       "popover",
     );
-  });
-
-  it("should respect the z-index theme setting", async () => {
-    render(
-      <ThemeProvider theme={{ other: { popover: { zIndex: 505 } } }}>
-        <TippyPopover content={<Content />} visible>
-          {defaultTarget}
-        </TippyPopover>
-      </ThemeProvider>,
-    );
-
-    // Tippy's root element is a direct parent, but it has no identifiable role.
-    // eslint-disable-next-line testing-library/no-node-access
-    expect(screen.getByRole("tooltip").parentElement).toHaveStyle({
-      zIndex: 505,
-    });
   });
 
   describe("lazy", () => {

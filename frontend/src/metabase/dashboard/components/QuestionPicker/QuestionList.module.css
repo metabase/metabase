@@ -1,0 +1,26 @@
+.QuestionListItemRoot {
+  .QuestionListItem {
+    flex: 1;
+  }
+
+  .QuestionListItemIcon:last-child {
+    justify-self: start;
+  }
+
+  .VisualizerButton {
+    visibility: hidden;
+
+    background-color: var(--mb-color-brand);
+    color: var(--mb-color-text-white);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--mb-color-text-white);
+      background-color: var(--mb-color-brand);
+    }
+  }
+
+  &:hover .VisualizerButton {
+    visibility: visible;
+  }
+}

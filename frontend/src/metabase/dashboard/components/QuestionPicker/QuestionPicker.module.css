@@ -28,19 +28,3 @@ button.newButton {
     background: var(--mb-color-brand-light);
   }
 }
-
-.questionListItem {
-  flex: 1;
-}
-
-.visualizerButton {
-  visibility: hidden;
-}
-
-.questionItem:hover .visualizerButton {
-  visibility: visible;
-  background-color: var(--mb-color-brand);
-  color: white;
-  margin-left: 2px;
-  cursor: pointer;
-}

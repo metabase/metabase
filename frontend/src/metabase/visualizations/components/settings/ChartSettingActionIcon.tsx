@@ -31,6 +31,6 @@ export const ChartSettingActionIcon = ({
     radius="xl"
     className={CS.pointerEventsAuto}
   >
-    <Icon size={16} c="inherit" name={icon} className={CS.pointerEventsNone} />
+    <Icon size={16} name={icon} className={CS.pointerEventsNone} />
   </ActionIcon>
 );

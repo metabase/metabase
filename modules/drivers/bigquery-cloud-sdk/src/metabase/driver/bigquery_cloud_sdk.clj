@@ -56,6 +56,8 @@
   (let [creds   (bigquery.common/database-details->service-account-credential details)
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds bigquery-scopes)))]
+    (when-let [host (not-empty (:host details))]
+      (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

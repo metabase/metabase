@@ -1,11 +1,11 @@
+import cx from "classnames";
 import type { MouseEvent } from "react";
 import { memo, useCallback, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
-import { Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type {
   DashCardId,
@@ -19,10 +19,7 @@ import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSett
 import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
-import {
-  DashCardActionButtonsContainer,
-  DashCardActionsPanelContainer,
-} from "./DashCardActionsPanel.styled";
+import S from "./DashCardActionsPanel.module.css";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
 import { VisualizerButton } from "./VisualizerButton";
@@ -35,6 +32,7 @@ interface Props {
   isLoading: boolean;
   isPreviewing: boolean;
   hasError: boolean;
+  isTrashedOnRemove: boolean;
   onRemove: (dashcard: DashboardCard) => void;
   onAddSeries: (dashcard: DashboardCard) => void;
   onReplaceCard: (dashcard: DashboardCard) => void;
@@ -50,6 +48,7 @@ interface Props {
   onPreviewToggle: () => void;
   onLeftEdge: boolean;
   onMouseDown: (event: MouseEvent) => void;
+  className?: string;
 }
 
 function DashCardActionsPanelInner({
@@ -59,6 +58,7 @@ function DashCardActionsPanelInner({
   isLoading,
   isPreviewing,
   hasError,
+  isTrashedOnRemove,
   onRemove,
   onAddSeries,
   onReplaceCard,
@@ -68,6 +68,7 @@ function DashCardActionsPanelInner({
   onPreviewToggle,
   onLeftEdge,
   onMouseDown,
+  className,
 }: Props) {
   const {
     disableSettingsConfig,
@@ -248,22 +249,48 @@ function DashCardActionsPanelInner({
     }
   }
 
-  return (
-    <>
-      <DashCardActionsPanelContainer
-        data-testid="dashboardcard-actions-panel"
-        onMouseDown={onMouseDown}
-        isDashCardTabMenuOpen={isDashCardTabMenuOpen}
-        onLeftEdge={onLeftEdge}
+  if (isTrashedOnRemove) {
+    buttons.push(
+      <DashCardActionButton
+        onClick={handleRemoveCard}
+        tooltip={t`Remove and trash`}
+        key="remove"
       >
-        <DashCardActionButtonsContainer>
-          {buttons}
-          <DashCardActionButton onClick={handleRemoveCard} tooltip={t`Remove`}>
-            <DashCardActionButton.Icon name="close" />
-          </DashCardActionButton>
-        </DashCardActionButtonsContainer>
-      </DashCardActionsPanelContainer>
-    </>
+        <DashCardActionButton.Icon name="trash" />
+      </DashCardActionButton>,
+    );
+  } else {
+    buttons.push(
+      <DashCardActionButton
+        onClick={handleRemoveCard}
+        tooltip={t`Remove`}
+        key="remove"
+      >
+        <DashCardActionButton.Icon name="close" />
+      </DashCardActionButton>,
+    );
+  }
+
+  return (
+    <Box
+      className={cx(
+        S.DashCardActionsPanelContainer,
+        {
+          [S.isDashCardTabMenuOpen]: isDashCardTabMenuOpen,
+          [S.onLeftEdge]: onLeftEdge,
+        },
+        className,
+      )}
+      pos="absolute"
+      top={0}
+      right="20px"
+      data-testid="dashboardcard-actions-panel"
+      onMouseDown={onMouseDown}
+    >
+      <Box className={S.DashCardActionButtonsContainer} component="span">
+        {buttons}
+      </Box>
+    </Box>
   );
 }
 

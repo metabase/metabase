@@ -2,7 +2,7 @@
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
-import { type ComponentProps, useEffect } from "react";
+import { type ComponentProps, useEffect, useMemo } from "react";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
@@ -44,7 +44,7 @@ registerVisualization(SmartScalar);
 registerVisualization(BarChart);
 
 export default {
-  title: "embed/PublicOrEmbeddedQuestionView",
+  title: "App/Embed/PublicOrEmbeddedQuestionView",
   component: PublicOrEmbeddedQuestionView,
   decorators: [
     ReduxDecorator,
@@ -70,9 +70,17 @@ function ReduxDecorator(Story: StoryFn) {
  */
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
 function WaitForResizeToStopDecorator(Story: StoryFn) {
-  const asyncCallback = createAsyncCallback();
+  const asyncCallback = useMemo(() => createAsyncCallback(), []);
+
   useEffect(() => {
-    setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
+    const timeoutId = setTimeout(
+      asyncCallback,
+      TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING,
+    );
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [asyncCallback]);
 
   return <Story />;
@@ -369,7 +377,9 @@ const downloadQuestionAsPng = async (
   const documentElement = within(document.documentElement);
   const pngButton = await documentElement.findByText(".png");
   await userEvent.click(pngButton);
-  await userEvent.click(documentElement.getByTestId("download-results-button"));
+  await userEvent.click(
+    await documentElement.findByTestId("download-results-button"),
+  );
   await canvas.findByTestId("image-downloaded");
   asyncCallback();
 };

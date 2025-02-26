@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -171,7 +171,7 @@ describe("scenarios > home > homepage", () => {
     });
 
     // TODO: popular items endpoint is currently broken in OSS. Re-enable test once endpoint has been fixed.
-    H.describeEE("EE", () => {
+    describe("EE", () => {
       it("should display popular items for a new user", () => {
         cy.signInAsAdmin();
         // Setting this to true so that displaying popular items for new users works.
@@ -347,7 +347,7 @@ describe("scenarios > home > custom homepage", () => {
           description: "nested 2 levels",
           parent_id: body.id,
         }).then(({ body }) => {
-          cy.createDashboard({
+          H.createDashboard({
             name: "nested dash",
             collection_id: body.id,
           });

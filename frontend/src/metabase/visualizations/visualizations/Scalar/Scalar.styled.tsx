@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -12,6 +14,7 @@ interface ScalarContainerProps {
 export const ScalarContainer = styled(Ellipsified)<ScalarContainerProps>`
   padding: 0 ${space(1)};
   max-width: 100%;
+  box-sizing: border-box;
 
   ${({ isClickable }) =>
     isClickable &&

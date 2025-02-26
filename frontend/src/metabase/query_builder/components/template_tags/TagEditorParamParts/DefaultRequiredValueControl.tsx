@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
 import { Flex, Text } from "metabase/ui";

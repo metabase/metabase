@@ -4,10 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import {
-  useActionListQuery,
-  useDatabaseListQuery,
-} from "metabase/common/hooks";
+import { skipToken, useListActionsQuery } from "metabase/api";
+import { useDatabaseListQuery } from "metabase/common/hooks";
 import { NotFound } from "metabase/components/ErrorPages";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
@@ -244,16 +242,20 @@ export function ObjectDetailView({
     [zoomedRowID, followForeignKey],
   );
 
-  const areImplicitActionsEnabled =
+  const areImplicitActionsEnabled = Boolean(
     question &&
-    question.canWrite() &&
-    question.type() === "model" &&
-    question.supportsImplicitActions();
+      question.canWrite() &&
+      question.type() === "model" &&
+      question.supportsImplicitActions(),
+  );
 
-  const { data: actions = [] } = useActionListQuery({
-    enabled: areImplicitActionsEnabled,
-    query: { "model-id": question?.id() },
-  });
+  const modelId = question?.type() === "model" ? question.id() : undefined;
+
+  const { data: actions = [] } = useListActionsQuery(
+    areImplicitActionsEnabled && modelId != null
+      ? { "model-id": modelId }
+      : skipToken,
+  );
 
   const { data: databases = [] } = useDatabaseListQuery({
     enabled: areImplicitActionsEnabled,

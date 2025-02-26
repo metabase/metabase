@@ -3,6 +3,8 @@ import { t } from "ttag";
 
 import { Button, Icon, Menu } from "metabase/ui";
 
+import Styles from "./FilterOperatorPicker.module.css";
+
 type Option<T> = {
   name: string;
   operator: T;
@@ -34,9 +36,12 @@ export function FilterOperatorPicker<T extends string>({
           disabled={disabled}
           color="brand"
           td={disabled ? "none" : "underline"}
-          rightIcon={<Icon name="chevrondown" size={8} />}
+          rightSection={<Icon name="chevrondown" size={8} />}
           p="xs"
           aria-label={t`Filter operator`}
+          classNames={{
+            root: Styles.Root,
+          }}
         >
           {label}
         </Button>

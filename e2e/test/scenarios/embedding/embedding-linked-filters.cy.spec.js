@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import {
   guiDashboard,
@@ -17,7 +17,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
   context("SQL question with field filters", () => {
     beforeEach(() => {
-      cy.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboard({
         questionDetails: nativeQuestionDetails,
         dashboardDetails: nativeDashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -84,7 +84,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesInput().click();
         });
 
       H.popover().button("Add filter").click();
@@ -156,7 +156,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesInput().click();
         });
       H.popover().button("Add filter").click();
 
@@ -202,7 +202,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesInput().click();
         });
 
       H.popover().button("Add filter").click();
@@ -247,7 +247,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesInput().click();
         });
       H.popover().button("Add filter").click();
 
@@ -285,7 +285,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesInput().click();
         });
       H.popover().button("Add filter").click();
 
@@ -295,7 +295,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
   context("GUI question in the dashboard", () => {
     beforeEach(() => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: guiQuestion,
         dashboardDetails: guiDashboard,
       }).then(({ body: { id, card_id, dashboard_id } }) => {

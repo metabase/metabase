@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
@@ -16,7 +16,7 @@ import {
 
 const STORYBOOK_ID = "embeddingsdk-cypressstaticdashboardwithcors--default";
 
-H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
+describe("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
     H.restore();
     cy.signIn("admin", { skipCache: true });
@@ -36,7 +36,7 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       },
     };
 
-    cy.createDashboard(
+    H.createDashboard(
       {
         name: "Embedding Sdk Test Dashboard",
         dashcards: [questionCard, textCard],

@@ -8,6 +8,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
@@ -359,7 +360,9 @@
         metadata-provider  (or (:lib/metadata query)
                                (lib.metadata.jvm/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
-        returned-columns   (lib/returned-columns query)
+        unique-name-fn     (lib.util/unique-name-generator (lib.metadata/->metadata-provider query))
+        returned-columns   (->> (lib/returned-columns query)
+                                (mapv #(update % :name unique-name-fn)))
         {:source/keys [aggregations breakouts]} (group-by :lib/source returned-columns)
         column-alias->index (into {}
                                   (map-indexed (fn [i column] [(:lib/desired-column-alias column) i]))

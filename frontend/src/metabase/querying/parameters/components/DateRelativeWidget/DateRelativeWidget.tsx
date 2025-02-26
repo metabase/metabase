@@ -3,8 +3,10 @@ import { match } from "ts-pattern";
 
 import { RelativeDateShortcutPicker } from "metabase/querying/filters/components/RelativeDateShortcutPicker";
 import type { RelativeDatePickerValue } from "metabase/querying/filters/types";
-import { serializeDateParameterValue } from "metabase/querying/parameters/utils/dates";
-import { normalizeDateParameterValue } from "metabase/querying/parameters/utils/normalize";
+import {
+  deserializeDateParameterValue,
+  serializeDateParameterValue,
+} from "metabase/querying/parameters/utils/parsing";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateRelativePickerProps = {
@@ -30,7 +32,7 @@ export function DateRelativeWidget({
 function getPickerValue(
   value: ParameterValueOrArray | null | undefined,
 ): RelativeDatePickerValue | undefined {
-  return match(normalizeDateParameterValue(value))
+  return match(deserializeDateParameterValue(value))
     .returnType<RelativeDatePickerValue | undefined>()
     .with({ type: "relative" }, value => value)
     .otherwise(() => undefined);

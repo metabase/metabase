@@ -12,7 +12,7 @@ import { useSet } from "react-use";
 import { isDesktopSafari } from "metabase/lib/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
-import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
+import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import {
   useCartesianChartSeriesColorsClasses,

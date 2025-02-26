@@ -26,7 +26,7 @@ export const ModelFilterControls = ({
 }: ModelFilterControlsProps) => {
   const areAnyFiltersActive = Object.values(modelFilters).some(Boolean);
 
-  const [_, setUserSetting] = useUserSetting(USER_SETTING_KEY);
+  const [_userSetting, setUserSetting] = useUserSetting(USER_SETTING_KEY);
 
   const handleVerifiedFilterChange = useCallback(
     function (evt: ChangeEvent<HTMLInputElement>) {
@@ -53,12 +53,7 @@ export const ModelFilterControls = ({
       </Popover.Target>
       <Popover.Dropdown p="lg">
         <Switch
-          label={
-            <Text
-              align="end"
-              weight="bold"
-            >{t`Show verified models only`}</Text>
-          }
+          label={<Text ta="end" fw="bold">{t`Show verified models only`}</Text>}
           role="switch"
           checked={Boolean(modelFilters.verified)}
           onChange={handleVerifiedFilterChange}

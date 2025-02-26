@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.permissions-test :as ee-perms-test]
    [metabase.audit :as audit]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))

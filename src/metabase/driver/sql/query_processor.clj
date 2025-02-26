@@ -725,12 +725,16 @@
     (let [source-table-aliases (field-source-table-aliases field-clause)
           source-nfc-path      (field-nfc-path field-clause)
           source-alias         (field-source-alias field-clause)
-          field                (when (integer? id-or-name)
+          ;; we can only get database type if we have a field-id
+          ;; which means nested native queries will cause bugs like #42817
+          ;; but this should all be fixed with field refs overhaul!
+          ;; https://linear.app/metabase-inc/issue/ENG-8766/[epic]-field-refs-overhaul
+          field-metadata       (when (integer? id-or-name)
                                  (lib.metadata/field (qp.store/metadata-provider) id-or-name))
-          allow-casting?       (and field
+          allow-casting?       (and field-metadata
                                     (not (:qp/ignore-coercion options)))
           database-type        (or database-type
-                                   (:database-type field))
+                                   (:database-type field-metadata))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
                                           (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
@@ -742,7 +746,7 @@
                                    (h2x/with-database-type-info expr database-type)))]
       (u/prog1
         (cond->> identifier
-          allow-casting?           (cast-field-if-needed driver field)
+          allow-casting?           (cast-field-if-needed driver field-metadata)
           ;; only add type info if it wasn't added by [[cast-field-if-needed]]
           database-type            maybe-add-db-type
           (:temporal-unit options) (apply-temporal-bucketing driver options)
@@ -825,14 +829,22 @@
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [breakouts (:breakout inner-query)
+  (let [breakouts (remove
+                   (comp :metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field
+                         #(nth % 2))
+                   (:breakout inner-query))
         group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         finest-temp-breakout (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakouts 2)
         partition-exprs (when (> (count breakouts) 1)
                           (if finest-temp-breakout
                             (m/remove-nth finest-temp-breakout group-bys)
                             (butlast group-bys)))
-        order-bys (over-order-bys driver (:aggregation inner-query) (:order-by inner-query))]
+        order-bys (over-order-bys driver (:aggregation inner-query)
+                                  (remove
+                                   (comp :metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field
+                                         #(nth % 2)
+                                         second)
+                                   (:order-by inner-query)))]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]

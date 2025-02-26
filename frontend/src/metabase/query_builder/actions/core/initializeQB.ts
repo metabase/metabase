@@ -6,7 +6,6 @@ import Snippets from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-import { fetchAlertsForQuestion } from "metabase/notifications/redux/alert";
 import {
   getIsEditingInDashboard,
   getIsNotebookNativePreviewShown,
@@ -300,10 +299,6 @@ async function handleQBInit(
       originalCard,
       dispatch,
     });
-  }
-
-  if (isSavedCard(card)) {
-    dispatch(fetchAlertsForQuestion(card.id));
   }
 
   await dispatch(loadMetadataForCard(card));

@@ -2,7 +2,6 @@ import { useInterval } from "@mantine/hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { UtilApi } from "metabase/services";
 import type { Log } from "metabase-types/api";

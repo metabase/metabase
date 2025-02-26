@@ -57,21 +57,21 @@
                    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                        (lib/join (lib/join-clause (lib.tu/query-with-stage-metadata-from-card
                                                    meta/metadata-provider
-                                                   (lib.tu/mock-cards :people))
+                                                   (:people (lib.tu/mock-cards)))
                                                   [(lib/= (meta/field-metadata :orders :user-id)
                                                           (meta/field-metadata :people :id))]))
                        (lib/join (lib/join-clause (lib.tu/query-with-stage-metadata-from-card
                                                    meta/metadata-provider
-                                                   (lib.tu/mock-cards :products))
+                                                   (:products (lib.tu/mock-cards)))
                                                   [(lib/= (meta/field-metadata :orders :product-id)
                                                           (meta/field-metadata :products :id))]))
                        (lib/append-stage))
                    :query-with-source-card-joins
-                   (-> (lib/query lib.tu/metadata-provider-with-mock-cards (meta/table-metadata :orders))
-                       (lib/join (lib/join-clause (lib.tu/mock-cards :people)
+                   (-> (lib/query (lib.tu/metadata-provider-with-mock-cards) (meta/table-metadata :orders))
+                       (lib/join (lib/join-clause (:people (lib.tu/mock-cards))
                                                   [(lib/= (meta/field-metadata :orders :user-id)
                                                           (meta/field-metadata :people :id))]))
-                       (lib/join (lib/join-clause (lib.tu/mock-cards :products)
+                       (lib/join (lib/join-clause (:products (lib.tu/mock-cards))
                                                   [(lib/= (meta/field-metadata :orders :product-id)
                                                           (meta/field-metadata :products :id))]))
                        (lib/append-stage))]]

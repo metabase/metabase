@@ -25,5 +25,3 @@
   (api/check-404 (t2/select-one :model/ConnectionImpersonation :id id))
   (t2/delete! :model/ConnectionImpersonation :id id)
   api/generic-204-no-content)
-
-(api/define-routes)

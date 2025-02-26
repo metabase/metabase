@@ -1,6 +1,7 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -197,7 +198,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
     };
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 98 rows");
@@ -439,7 +440,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       display: "table",
     };
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.filter();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -461,7 +462,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       display: "table",
     };
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.filter();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -474,14 +475,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("should prompt to join with a model if the question is based on a model", () => {
     cy.intercept("GET", "/api/table/*/query_metadata").as("loadMetadata");
 
-    cy.createQuestion({
+    H.createQuestion({
       name: "Products model",
       query: { "source-table": PRODUCTS_ID },
       type: "model",
       display: "table",
     });
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Orders model",
         query: { "source-table": ORDERS_ID },
@@ -521,7 +522,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   // flaky test
   it.skip("should show an info popover when hovering over a field picker option for a saved question", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "question a",
       native: { query: "select 'foo' as a_column" },
     });
@@ -543,7 +544,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should allow to pick a saved question when there are models", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "Orders, Model",
       type: "model",
       native: { query: "SELECT * FROM ORDERS" },
@@ -705,6 +706,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         horizontal,
         vertical,
       });
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("notebook-cell-item")
         .eq(index)
         .should("have.text", name);
@@ -744,6 +746,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
           vertical,
         });
       });
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.getNotebookStep(type)
         .findAllByTestId("notebook-cell-item")
         .eq(index)
@@ -797,7 +800,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         ],
       },
     };
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
     verifyDragAndDrop();
     verifyPopoverDoesNotMoveElement({
@@ -815,7 +818,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should not crash notebook when metric is used as an aggregation and breakout is applied (metabase#40553)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -854,7 +857,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it.skip("should be possible to sort by metric (metabase#8283,metabase#42392)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Revenue",
         description: "Sum of orders subtotal",
@@ -878,7 +881,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         },
       };
 
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
 
       H.openNotebook();
 
@@ -910,6 +913,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
             .should("eq", "Revenue");
         });
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.get("@table")
         .last()
         .as("tableBody")
@@ -944,6 +948,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       .findByText("by month")
       .click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -959,6 +964,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       .findByText("Auto bin")
       .click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -990,8 +996,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.addSummaryField({ metric: "Sum of ...", field: "Price" });
 
     cy.findByTestId("loading-indicator").should("not.exist");
-    H.nativeEditor()
-      .get(".ace_line")
+    H.NativeEditor.get(".ace_line")
       .should("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum"')
       .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."RATING") AS "sum_2"')
       .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum_3"');
@@ -1079,6 +1084,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.joinTable("Reviews", "Product ID", "Product ID");
     H.addSummaryField({ metric: "Count of rows" });
     H.addSummaryGroupingField({ field: "Created At" });
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByRole("button", { name: "Join data" }).last().click();
     H.joinTable("Reviews", "Created At: Month", "Created At");
     cy.button("Summarize").click();
@@ -1133,6 +1139,30 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.addSummaryGroupingField({ field: "Total" });
     H.visualize();
     H.echartsContainer().should("contain.text", "Total: 8 bins");
+  });
+
+  it("Correctly translates aggregations", () => {
+    cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
+      locale: "de",
+    });
+
+    H.openTable({
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
+
+    cy.findByRole("button", { name: "Zusammenfassen" }).click();
+    H.popover().within(() => {
+      cy.findByText("Durchschnitt von...").click();
+      cy.findByText("Subtotal").click();
+    });
+
+    cy.findAllByText("Durchschnitt von Subtotal").should("exist");
+    cy.findAllByText("Average of Subtotal").should("not.exist");
+
+    cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
+      locale: "en",
+    });
   });
 });
 

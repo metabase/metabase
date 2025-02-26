@@ -7,7 +7,6 @@ export const MODAL_TYPES = {
   SAVED: "saved",
   ADD_TO_DASHBOARD_SAVE: "add-to-dashboard-save",
   CREATE_ALERT: "create-alert",
-  SAVE_QUESTION_BEFORE_ALERT: "save-question-before-alert",
   SAVE_QUESTION_BEFORE_EMBED: "save-question-before-embed",
   FILTERS: "filters",
   TURN_INTO_DATASET: "turn-into-dataset",
@@ -16,6 +15,7 @@ export const MODAL_TYPES = {
   EDIT_EVENT: "edit-event",
   MOVE_EVENT: "move-event",
   PREVIEW_QUERY: "preview-query",
+  QUESTION_EMBED: "question-embed",
 } as const;
 
 export type QueryModalType = (typeof MODAL_TYPES)[keyof typeof MODAL_TYPES];

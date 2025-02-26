@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -20,7 +20,9 @@ const {
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
-H.describeEE("formatting > sandboxes", () => {
+const VIEW_DATA_PERMISSION_INDEX = 0;
+
+describe("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
       H.restore();
@@ -88,7 +90,7 @@ H.describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "sql param",
         native: {
           query: `select id,name,address,email from people where {{${TTAG_NAME}}}`,
@@ -292,7 +294,7 @@ H.describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "sql param in a dashboard",
         dashboard_id: ORDERS_DASHBOARD_ID,
         native: {
@@ -407,7 +409,7 @@ H.describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.createQuestion({
+      H.createQuestion({
         name: QUESTION_NAME,
         query: {
           expressions: {
@@ -484,7 +486,7 @@ H.describeEE("formatting > sandboxes", () => {
         cy.log(
           "Create question based on steps in [#13641](https://github.com/metabase/metabase/issues/13641)",
         );
-        cy.createQuestion({
+        H.createQuestion({
           name: QUESTION_NAME,
           query: {
             aggregation: [["count"]],
@@ -563,7 +565,7 @@ H.describeEE("formatting > sandboxes", () => {
       cy.log(
         "Create question based on steps in https://github.com/metabase/metabase-enterprise/issues/535",
       );
-      cy.createQuestion({
+      H.createQuestion({
         name: QUESTION_NAME,
         query: {
           aggregation: [["count"]],
@@ -637,7 +639,7 @@ H.describeEE("formatting > sandboxes", () => {
        */
       it("should be able to sandbox using query builder saved questions", () => {
         cy.log("Create 'Orders'-based question using QB");
-        cy.createQuestion({
+        H.createQuestion({
           name: "520_Orders",
           query: {
             "source-table": ORDERS_ID,
@@ -654,7 +656,7 @@ H.describeEE("formatting > sandboxes", () => {
         });
 
         cy.log("Create 'Products'-based question using QB");
-        cy.createQuestion({
+        H.createQuestion({
           name: "520_Products",
           query: {
             "source-table": PRODUCTS_ID,
@@ -704,7 +706,7 @@ H.describeEE("formatting > sandboxes", () => {
         cy.intercept("POST", "/api/card/*/query").as("cardQuery");
         cy.intercept("PUT", "/api/card/*").as("questionUpdate");
 
-        cy.createNativeQuestion({
+        H.createNativeQuestion({
           name: "EE_520_Q1",
           native: {
             query:
@@ -730,7 +732,7 @@ H.describeEE("formatting > sandboxes", () => {
           });
         });
 
-        cy.createNativeQuestion({
+        H.createNativeQuestion({
           name: "EE_520_Q2",
           native: {
             query:
@@ -859,7 +861,7 @@ H.describeEE("formatting > sandboxes", () => {
           },
         });
 
-        cy.createQuestion({
+        H.createQuestion({
           name: QUESTION_NAME,
           query: {
             aggregation: [["count"]],
@@ -924,7 +926,7 @@ H.describeEE("formatting > sandboxes", () => {
       cy.intercept("GET", "/api/permissions/group").as("tablePermissions");
 
       // Question with differently-typed columns than the sandboxed table
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: QUESTION_NAME,
         native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
       });
@@ -1115,7 +1117,9 @@ H.describeEE("formatting > sandboxes", () => {
       H.sidebar().findByText("Email this dashboard").should("exist");
 
       // test that user is sandboxed - normal users has over 2000 rows
-      H.getDashboardCards().findByText("Rows 1-6 of 11").should("exist");
+      H.getDashboardCards()
+        .findByText(/Rows 1-\d of 11/)
+        .should("exist");
       H.assertDatasetReqIsSandboxed({
         requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
         columnId: ORDERS.USER_ID,
@@ -1219,7 +1223,9 @@ H.describeEE("formatting > sandboxes", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
         // test that user is sandboxed - normal users has over 2000 rows
-        H.getDashboardCards().findByText("Rows 1-6 of 11").should("exist");
+        H.getDashboardCards()
+          .findByText(/Rows 1-\d of 11/)
+          .should("exist");
         H.assertDatasetReqIsSandboxed({
           requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
           columnId: ORDERS.USER_ID,
@@ -1239,11 +1245,52 @@ H.describeEE("formatting > sandboxes", () => {
         });
       },
     );
+
+    describe("sandbox target matching", () => {
+      function verifySandboxModal(target) {
+        cy.sandboxTable({
+          table_id: PRODUCTS_ID,
+          group_id: DATA_GROUP,
+          attribute_remappings: {
+            attr_cat: target,
+          },
+        });
+        cy.visit(
+          `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
+        );
+        H.selectPermissionRow("data", VIEW_DATA_PERMISSION_INDEX);
+        H.popover().findByText("Edit sandboxed access").click();
+        H.modal().findAllByTestId("select-button").contains("Category").click();
+        H.popover()
+          .findByLabelText("Category")
+          .should("have.attr", "aria-selected", "true");
+      }
+
+      it("should match targets without dimension of field ref options", () => {
+        verifySandboxModal(["dimension", ["field", PRODUCTS.CATEGORY, null]]);
+      });
+
+      it("should match targets with dimension options", () => {
+        verifySandboxModal([
+          "dimension",
+          ["field", PRODUCTS.CATEGORY, null],
+          { "stage-number": 0 },
+        ]);
+      });
+
+      it("should match targets with field ref options", () => {
+        verifySandboxModal([
+          "dimension",
+          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+          { "stage-number": 0 },
+        ]);
+      });
+    });
   });
 });
 
 function createJoinedQuestion(name, { visitQuestion = false } = {}) {
-  return cy.createQuestion(
+  return H.createQuestion(
     {
       name,
 

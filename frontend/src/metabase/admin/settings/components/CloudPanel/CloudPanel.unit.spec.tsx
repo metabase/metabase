@@ -4,9 +4,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock, { type MockResponse } from "fetch-mock";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
-import { createMockSettings } from "metabase-types/api/mocks";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { CloudPanel } from "./CloudPanel";
 
@@ -20,6 +21,11 @@ const setup = () => {
       getPollingInterval={() => POLL_INTERVAL}
       onMigrationStart={mockMigrationStart}
     />,
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+      }),
+    },
   );
 
   const STORE_URL = store.getState().settings.values["store-url"];
@@ -91,7 +97,9 @@ describe("CloudPanel", () => {
     await expectCancelConfirmationModal();
     expect((store.getState() as any).undo).toHaveLength(0);
     await userEvent.click(
-      screen.getByRole("button", { name: /Cancel migration/ }),
+      within(
+        screen.getByRole("dialog", { name: "Cancel migration?" }),
+      ).getByRole("button", { name: /Cancel migration/ }),
     );
 
     await waitFor(() => {
@@ -127,7 +135,7 @@ describe("CloudPanel", () => {
 
     await expectErrorState();
     await expectInitState();
-    await userEvent.click(screen.getByRole("button", { name: /Get started/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Try for free" }));
 
     await expectStartConfirmationModal();
     await userEvent.click(screen.getByRole("button", { name: /Migrate now/ }));
@@ -225,7 +233,7 @@ const ERROR_RESPONSE: CloudMigration = {
 
 const expectInitState = async () => {
   expect(
-    await screen.findByText(/Migrate this instance to Metabase Cloud/),
+    await screen.findByRole("heading", { name: "Migrate to Metabase Cloud" }),
   ).toBeInTheDocument();
 };
 
@@ -270,7 +278,7 @@ const startMigration = async (migrationResponses: MockResponse[]) => {
   const { mockMigrationStart, store, metabaseStoreLink } = setup();
 
   await expectInitState();
-  await userEvent.click(screen.getByRole("button", { name: /Get started/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Try for free" }));
 
   await expectStartConfirmationModal();
   await userEvent.click(screen.getByRole("button", { name: /Migrate now/ }));

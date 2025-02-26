@@ -289,7 +289,7 @@ describe("ViewTitleHeader", () => {
           setup({ card });
           const refreshButton = screen.getByLabelText("refresh icon");
           await userEvent.hover(refreshButton);
-          const tooltip = screen.getByRole("tooltip");
+          const tooltip = await screen.findByRole("tooltip");
           expect(tooltip).toHaveAttribute("data-placement", "top");
           expect(tooltip).toHaveTextContent("Refresh");
         });

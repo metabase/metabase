@@ -1,0 +1,53 @@
+name: Generative Query Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Seed value (empty = random; logged)'
+        type: number
+      iterations:
+        description: 'Number of test iterations (overrides `seconds`)'
+        type: number
+      seconds:
+        description: 'No further iteration after _this_ number of seconds since test started'
+      ref:
+        description: 'Ref to run generative tests on'
+        default: qgen-milestone-1
+
+jobs:
+  generative-query-test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    name: Generative Query Test
+    env:
+      CI: 'true'
+      MB_GENTEST_SEED: ${{ inputs.seed }}
+      MB_GENTEST_LIMIT_ITERATIONS: ${{ inputs.iterations }}
+      MB_GENTEST_LIMIT_SECONDS: ${{ inputs.seconds }}
+      # TODO: Remove in favor of cp root with further tests
+      MB_GENTEST_RUN: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: generative-query-test
+
+      - name: Run test
+        run: clojure -X:dev:ci:test:ee:ee-dev :only 'metabase.query-processor-test.generative-test'
+
+      - name: Publish Test Report (JUnit)
+        uses: dorny/test-reporter@v1
+        if: failure()
+        with:
+          path: "target/junit/**/*_test.xml"
+          name: JUnit Test Report (Generative Query test)
+          reporter: java-junit
+          list-suites: failed
+          list-tests: failed
+          fail-on-error: false

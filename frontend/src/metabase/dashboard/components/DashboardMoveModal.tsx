@@ -3,16 +3,17 @@ import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { MoveModal } from "metabase/containers/MoveModal";
+import Link from "metabase/core/components/Link";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import { color } from "metabase/lib/colors";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Icon } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { CollectionLink, ToastRoot } from "./DashboardMoveModal.styled";
+import S from "./DashboardMoveModal.module.css";
 
 const mapDispatchToProps = {
   setDashboardCollection: Dashboards.actions.setCollection,
@@ -61,7 +62,7 @@ const DashboardMoveToast = ({
   const { data: collection } = useGetCollectionQuery({ id: collectionId });
 
   return (
-    <ToastRoot>
+    <Flex align="center">
       <Icon
         name="collection"
         style={{ marginInlineEnd: "0.25rem" }}
@@ -70,16 +71,17 @@ const DashboardMoveToast = ({
       {c("{0} is a location where the dashboard was moved to")
         .jt`Dashboard moved to ${
         collection ? (
-          <CollectionLink
+          <Link
+            className={S.CollectionLink}
             to={Urls.collection(collection)}
             style={{ marginInlineStart: ".25em" }}
             color={color("brand")}
           >
             {collection.name}
-          </CollectionLink>
+          </Link>
         ) : null
       }`}
-    </ToastRoot>
+    </Flex>
   );
 };
 

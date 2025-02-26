@@ -1,17 +1,16 @@
 (ns metabase.channel.api
   (:require
+   [metabase.api.macros :as api.macros]
    [metabase.channel.api.channel]
-   [metabase.channel.api.email]
-   [potemkin.namespaces]))
+   [metabase.channel.api.email]))
 
-;; these do actually have docstrings but I don't think Kondo handles [[potemkin.namespaces/import-def]] 100% correctly.
+(comment metabase.channel.api.channel/keep-me
+         metabase.channel.api.email/keep-me)
 
-#_{:clj-kondo/ignore [:missing-docstring]}
-(potemkin.namespaces/import-def
- metabase.channel.api.channel/routes
- channel-routes)
+(def ^{:arglists '([request respond raise])} channel-routes
+  "/api/channel routes"
+  (api.macros/ns-handler 'metabase.channel.api.channel))
 
-#_{:clj-kondo/ignore [:missing-docstring]}
-(potemkin.namespaces/import-def
- metabase.channel.api.email/routes
- email-routes)
+(def ^{:arglists '([request respond raise])} email-routes
+  "/api/email routes"
+  (api.macros/ns-handler 'metabase.channel.api.email))

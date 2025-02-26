@@ -19,8 +19,8 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.embed.common :as api.embed.common]
    [metabase.api.macros :as api.macros]
-   [metabase.api.public :as api.public]
    [metabase.events :as events]
+   [metabase.public-sharing.api :as api.public]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -372,5 +372,3 @@
                                                          :api (api.embed.common/parse-query-params query-params)
                                                          :qp qp.pivot/run-pivot-query)
     (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
-
-(api/define-routes)

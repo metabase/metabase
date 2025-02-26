@@ -4,7 +4,10 @@ import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 
 import { skipToken } from "metabase/api";
-import { LoadingAndErrorWrapper as DefaultLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import {
+  LoadingAndErrorWrapper as DefaultLoadingAndErrorWrapper,
+  type LoadingAndErrorWrapperProps,
+} from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setRequestError,
@@ -35,13 +38,6 @@ interface ChildrenProps<Entity, EntityWrapper> {
    */
   object: EntityWrapper | Entity | undefined;
   reload: () => void;
-}
-
-interface LoadingAndErrorWrapperProps {
-  children: ReactNode;
-  loading?: boolean;
-  error?: unknown;
-  noWrapper?: boolean;
 }
 
 interface Props<Entity, EntityWrapper> {

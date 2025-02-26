@@ -37,5 +37,6 @@ serdes/meta:
   model: Table
 - id: schedule_type
   model: Field
-database_indexed: null
+database_indexed: false
 database_partitioned: null
+entity_id: 0HEa0hittNoeYZcYLAcdn

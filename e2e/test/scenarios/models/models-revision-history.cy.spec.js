@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > models > revision history", () => {

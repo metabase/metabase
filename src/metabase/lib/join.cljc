@@ -246,7 +246,7 @@
              {:error/message "Join must have an ident to determine column idents"}
              ::lib.schema.common/non-blank-string]]
    col  :- :map]
-  (update col :ident #(lib.metadata.ident/explicitly-joined-ident (:ident join) %)))
+  (update col :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
 
 (mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join
   [query
@@ -489,25 +489,33 @@
        (generate-unique-name query s (keep :alias (:joins stage)))))))
 
 (mu/defn add-default-alias :- ::lib.schema.join/join
-  "Add a default generated `:alias` to a join clause that does not already have one."
+  "Add a default generated `:alias` to a join clause that does not already have one or that specifically requests a
+  new one."
   [query        :- ::lib.schema/query
    stage-number :- :int
    a-join       :- lib.join.util/JoinWithOptionalAlias]
-  (if (contains? a-join :alias)
-    ;; if the join clause comes with an alias, keep it and assume that the
-    ;; condition fields have the right join-aliases too
+  (if (and (contains? a-join :alias) (not (contains? a-join ::replace-alias)))
+    ;; if the join clause comes with an alias and doesn't need a new one, keep it and assume that the condition fields
+    ;; have the right join-aliases too
     a-join
-    (let [stage       (lib.util/query-stage query stage-number)
+    (let [old-alias   (:alias a-join)
+          stage       (cond-> (lib.util/query-stage query stage-number)
+                        old-alias (update :joins (fn [joins]
+                                                   (mapv #(if (= (:alias %) old-alias)
+                                                            (dissoc % :alias)
+                                                            %)
+                                                         joins))))
           home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
           join-alias  (default-alias query stage-number a-join stage home-cols)
           join-cols   (lib.metadata.calculation/returned-columns
                        (lib.query/query-with-stages query (:stages a-join)))]
-      (-> a-join
-          (update :conditions
-                  (fn [conditions]
-                    (mapv #(add-alias-to-condition query stage-number % join-alias home-cols join-cols)
-                          conditions)))
-          (with-join-alias join-alias)))))
+      (cond-> a-join
+        true (dissoc ::replace-alias)
+        (not old-alias) (update :conditions
+                                (fn [conditions]
+                                  (mapv #(add-alias-to-condition query stage-number % join-alias home-cols join-cols)
+                                        conditions)))
+        true (with-join-alias join-alias)))))
 
 (declare join-conditions
          joined-thing

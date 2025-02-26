@@ -107,6 +107,7 @@ const FieldList = props => {
 
   const getNestedFormField = id => ({
     display_name: getFormField(`${id}.display_name`),
+    description: getFormField(`${id}.description`),
     semantic_type: getFormField(`${id}.semantic_type`),
     fk_target_field_id: getFormField(`${id}.fk_target_field_id`),
   });
@@ -142,7 +143,7 @@ const FieldList = props => {
             <div className={CS.wrapper}>
               <div
                 className={cx(
-                  CS.pl4,
+                  CS.px4,
                   CS.pb2,
                   CS.mb4,
                   CS.bgWhite,

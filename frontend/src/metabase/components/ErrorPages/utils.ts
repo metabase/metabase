@@ -3,10 +3,10 @@ import Bowser from "bowser";
 import { b64url_to_utf8 } from "metabase/lib/encoding";
 import { CardApi, CollectionsApi, DashboardApi } from "metabase/services";
 
-import type { ErrorPayload, ReportableEntityName } from "./types";
+import type { ReportableEntityName } from "./types";
 
 export function downloadObjectAsJson(
-  exportObj: Partial<ErrorPayload>,
+  exportObj: Record<string, any>,
   exportName: string,
 ) {
   const dataStr =

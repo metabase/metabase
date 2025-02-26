@@ -7,9 +7,9 @@ import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
 import Link from "metabase/core/components/Link";
 import Styles from "metabase/css/core/index.css";
+import { DashboardPublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover";
 import { collection as collectionUrl } from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
-import { DashboardPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
 import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
