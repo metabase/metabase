@@ -262,4 +262,7 @@ export const CustomExpressionEditor = {
       el[0].dispatchEvent(pasteEvent);
     });
   },
+  nameInput() {
+    return cy.findByTestId("expression-name");
+  },
 };
