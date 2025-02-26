@@ -47,14 +47,6 @@
 ;;                                        Render Utils                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn- pulse-unsubscribe-url-for-non-user
-  [pulse-id non-user-email]
-  (str (urls/unsubscribe-url)
-       "?"
-       (codec/form-encode {:hash     (messages/generate-pulse-unsubscribe-hash pulse-id non-user-email)
-                           :email    non-user-email
-                           :pulse-id pulse-id})))
-
 (defn- notification-unsubscribe-url-for-non-user
   [notification-handler-id non-user-email]
   (str (urls/unsubscribe-url)
@@ -63,6 +55,17 @@
                            :email                   non-user-email
                            :notification-handler-id notification-handler-id})))
 
+(defn- pulse-unsubscribe-url-for-non-user
+  "Given a `dashboard-subscription-id` and a `non-user-email`, returns a URL that can be used to unsubscribe from a
+  pulse for a non-logged in user. If `dashboard-subscription-id` is `nil`, returns `nil`, since
+  there is nothing to unsubscribe from."
+  [dashboard-subscription-id non-user-email]
+  (when dashboard-subscription-id
+    (str (urls/unsubscribe-url)
+         "?"
+         (codec/form-encode {:hash     (messages/generate-pulse-unsubscribe-hash dashboard-subscription-id non-user-email)
+                             :email    non-user-email
+                             :pulse-id dashboard-subscription-id}))))
 (defn- render-part
   [timezone part options]
   (case (:type part)

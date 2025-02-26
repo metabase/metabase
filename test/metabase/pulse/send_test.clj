@@ -15,10 +15,10 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -333,7 +333,7 @@
 
       :fixture
       (fn [_ thunk]
-        (mt/with-temporary-setting-values [public-settings/download-row-limit 30]
+        (mt/with-temporary-setting-values [limit/attachment-row-limit 30]
           (thunk)))
       :pulse-card {:include_csv true}
       :assert
