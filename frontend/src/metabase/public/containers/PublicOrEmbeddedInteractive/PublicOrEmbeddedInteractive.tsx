@@ -49,10 +49,10 @@ export const PublicOrEmbeddedInteractiveInner = ({
 
   return match([embedResourceType, embedResourceId])
     .with(["dashboard", P.nonNullable], ([, id]) => (
-      <InteractiveDashboard dashboardId={id} />
+      <InteractiveDashboard dashboardId={id} drillThroughQuestionHeight={800} />
     ))
     .with(["question", P.nonNullable], ([, id]) => (
-      <InteractiveQuestion questionId={id} />
+      <InteractiveQuestion questionId={id} height="100vh" />
     ))
     .otherwise(() => null);
 };
