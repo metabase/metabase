@@ -16,26 +16,24 @@
 (set! *warn-on-reflection* true)
 
 (deftest gsheets-calls-fail-when-missing-etl-connections
-  (mt/with-premium-features #{:attached-dwh}
-    (is (= (str "ETL Connections is a paid feature not currently available to your instance. "
-                "Please upgrade to use it. Learn more at metabase.com/upgrade/")
-           (:message (mt/user-http-request :crowberto :get 402 "ee/gsheets/service-account"))))))
+  (mt/with-temporary-setting-values [api-key "some"]
+    (mt/with-premium-features #{:attached-dwh}
+      (is (= (str "ETL Connections is a paid feature not currently available to your instance. "
+                  "Please upgrade to use it. Learn more at metabase.com/upgrade/")
+             (:message (mt/user-http-request :crowberto :get 402 "ee/gsheets/service-account")))))))
 
 (deftest gsheets-calls-fail-when-missing-attached-dwh
-  (mt/with-premium-features #{:etl-connections}
-    (is (= (str "Attached DWH is a paid feature not currently available to your instance. "
-                "Please upgrade to use it. Learn more at metabase.com/upgrade/")
-           (:message (mt/user-http-request :crowberto :get 402 "ee/gsheets/service-account"))))))
+  (mt/with-temporary-setting-values [api-key "some"]
+    (mt/with-premium-features #{:etl-connections}
+      (is (= (str "Attached DWH is a paid feature not currently available to your instance. "
+                  "Please upgrade to use it. Learn more at metabase.com/upgrade/")
+             (:message (mt/user-http-request :crowberto :get 402 "ee/gsheets/service-account")))))))
 
 (deftest gsheets-calls-fail-when-non-superuser
   (mt/with-premium-features #{:etl-connections :attached-dwh}
-    (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :get 403 "ee/gsheets/service-account")))))
-
-(deftest gsheets-calls-fail-when-not-activated
-  (mt/with-premium-features #{:etl-connections :attached-dwh}
-    (is (partial= {:message "Missing api-key."}
-                  (mt/user-http-request :crowberto :get 500 "ee/gsheets/service-account")))))
+    (mt/with-temporary-setting-values [api-key nil]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "ee/gsheets/service-account"))))))
 
 (deftest gsheets-calls-fail-when-there-is-no-mb-api-key
   (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
