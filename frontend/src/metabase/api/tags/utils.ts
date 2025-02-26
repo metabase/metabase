@@ -276,7 +276,7 @@ export function provideDatabaseCandidateTags(
 export function provideDatabaseListTags(
   databases: Database[],
 ): TagDescription<TagType>[] {
-  return [listTag("database"), ...databases?.flatMap(provideDatabaseTags)];
+  return [listTag("database"), ...databases.flatMap(provideDatabaseTags)];
 }
 
 export function provideDatabaseTags(
