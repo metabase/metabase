@@ -137,7 +137,7 @@
 
 (deftest ensure-constraints-test
   (testing "Validate card queries are limited by `default-query-constraints`"
-    (mt/with-temporary-setting-values [limit/download-row-limit 10]
+    (mt/with-temporary-setting-values [limit/attachment-row-limit 10]
       (notification.tu/with-card-notification [notification {:card     {:dataset_query (mt/mbql-query orders)}
                                                              :handlers [@notification.tu/default-email-handler]}]
 
