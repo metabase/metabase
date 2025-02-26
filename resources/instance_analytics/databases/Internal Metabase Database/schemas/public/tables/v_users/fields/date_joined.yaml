@@ -37,5 +37,6 @@ serdes/meta:
   model: Table
 - id: date_joined
   model: Field
-database_indexed: null
+database_indexed: false
 database_partitioned: null
+entity_id: DGh3k7vmCw15VD5-pQtPx

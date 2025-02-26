@@ -6,6 +6,7 @@ import {
   setupGroupsEndpoint,
 } from "__support__/server-mocks";
 import {
+  mockScrollIntoView,
   renderWithProviders,
   screen,
   waitFor,
@@ -58,6 +59,7 @@ const testApiKeys: ApiKey[] = [
     },
   },
 ];
+mockScrollIntoView();
 
 async function setup(
   { apiKeys }: { apiKeys?: ApiKey[] } = { apiKeys: undefined },

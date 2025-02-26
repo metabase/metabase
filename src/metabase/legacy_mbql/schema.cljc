@@ -48,7 +48,7 @@
 (def ^:private date-bucketing-units
   "Set of valid units for bucketing or comparing against a *date* Field."
   #{:default :day :day-of-week :day-of-month :day-of-year :week :week-of-year
-    :month :month-of-year :quarter :quarter-of-year :year})
+    :month :month-of-year :quarter :quarter-of-year :year :year-of-era})
 
 (def ^:private time-bucketing-units
   "Set of valid units for bucketing or comparing against a *time* Field."
@@ -821,7 +821,7 @@
                      "options" [:optional StringFilterOptions])
      ;; Multi-arg form
      (helpers/clause (keyword (name clause-keyword))
-                     "options" StringFilterOptions
+                     "options" [:maybe StringFilterOptions]
                      "field" StringExpressionArg
                      "string-or-field" StringExpressionArg
                      "second-string-or-field" StringExpressionArg

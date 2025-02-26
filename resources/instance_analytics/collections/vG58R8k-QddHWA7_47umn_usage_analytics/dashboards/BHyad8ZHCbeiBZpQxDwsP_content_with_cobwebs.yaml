@@ -45,6 +45,7 @@ dashcards:
     - dimension
     - - expression
       - Days since last view
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -69,6 +70,7 @@ dashcards:
     - dimension
     - - expression
       - Days since last view
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -93,6 +95,7 @@ dashcards:
     - dimension
     - - expression
       - Days since last view
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null

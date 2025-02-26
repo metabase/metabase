@@ -9,14 +9,14 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.models.dispatch :as models.dispatch]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.password :as u.password]))
+   [metabase.util.password :as u.password]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,7 +34,7 @@
      (mu/with-api-error-message
       [:fn
        {:error/message (format "value must be an instance of %s" (name model))}
-       #(models.dispatch/instance-of? model %)]
+       #(t2/instance-of? model %)]
       (deferred-tru "value must be an instance of {0}" (name model))))))
 
 (def ^{:arglists '([^Class klass])} InstanceOfClass
@@ -67,6 +67,13 @@
   (assert (every? keyword? keywords))
   (vec (concat [:enum] keywords (map u/qualified-name keywords))))
 
+(defn enum-decode-keyword
+  "Returns an enum schema that decodes strings to keywords.
+    (enum-decode-keyword :foo :bar)
+    ;; => [:enum {:decode/json keyword} :foo :bar]"
+  [keywords]
+  (into [:enum {:decode/json keyword}] keywords))
+
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
 (def NonBlankString
@@ -75,28 +82,42 @@
 
 (def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
-  (mu/with-api-error-message
-   [:int {:min 0}]
-    ;; FIXME: greater than _or equal to_ zero.
-   (deferred-tru "value must be an integer greater than zero.")))
+  (let [message (deferred-tru "value must be an integer greater or equal to than zero.")]
+    [:int
+     {:min         0
+      :description (str message)
+      :error/fn    (fn [_ _]
+                     (str message))
+      :api/regex   #"\d+"}]))
 
 (def Int
   "Schema representing an integer."
-  (mu/with-api-error-message
-   int?
-   (deferred-tru "value must be an integer.")))
+  (let [message (deferred-tru "value must be an integer.")]
+    [:int
+     {:description (str message)
+      :error/fn    (fn [_ _]
+                     (str message))
+      :api/regex   #"-?\d+"}]))
 
 (def PositiveInt
   "Schema representing an integer than must also be greater than zero."
-  (mu/with-api-error-message
-   pos-int?
-   (deferred-tru "value must be an integer greater than zero.")))
+  (let [message (deferred-tru "value must be an integer greater than zero.")]
+    [:int
+     {:min         1
+      :description (str message)
+      :error/fn    (fn [_ _]
+                     (str message))
+      :api/regex   #"[1-9]\d*"}]))
 
 (def NegativeInt
   "Schema representing an integer than must be less than zero."
-  (mu/with-api-error-message
-   neg?
-   (deferred-tru "value must be a negative integer")))
+  (let [message (deferred-tru "value must be a negative integer")]
+    [:int
+     {:max         -1
+      :description (str message)
+      :error/fn    (fn [_ _]
+                     (str message))
+      :api/regex   #"-[1-9]\d*"}]))
 
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
@@ -339,21 +360,21 @@
 
 (def Parameter
   "Schema for a valid Parameter.
-  We're not using [metabase.legacy-mbql.schema/Parameter] here because this Parameter is meant to be used for
+  We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter is meant to be used for
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
   (mu/with-api-error-message
-   [:map [:id NonBlankString]
+   [:map
+    [:id   NonBlankString]
     [:type keyword-or-non-blank-str-malli]
      ;; TODO how to merge this with ParameterSource above?
-    [:values_source_type {:optional true} [:enum "static-list" "card" nil]]
+    [:values_source_type   {:optional true} [:enum "static-list" "card" nil]]
     [:values_source_config {:optional true} ValuesSourceConfig]
-    [:slug {:optional true} :string]
-    [:name {:optional true} :string]
-    [:default {:optional true} :any]
-    [:sectionId {:optional true} NonBlankString]
-    [:temporal_units {:optional true}
-     [:sequential ::lib.schema.temporal-bucketing/unit]]]
+    [:slug                 {:optional true} :string]
+    [:name                 {:optional true} :string]
+    [:default              {:optional true} :any]
+    [:sectionId            {:optional true} NonBlankString]
+    [:temporal_units       {:optional true} [:sequential ::lib.schema.temporal-bucketing/unit]]]
    (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping

@@ -79,7 +79,9 @@ export function getXValues({ settings, series }) {
         isDescending = isDescending && value <= lastValue;
       }
       lastValue = value;
-      uniqueValues.add(value);
+      if (value != null) {
+        uniqueValues.add(value);
+      }
     }
   }
   let xValues = Array.from(uniqueValues);

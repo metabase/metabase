@@ -1,7 +1,7 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 
 import { runNativeQuery } from "./e2e-misc-helpers";
-import { nativeEditor } from "./e2e-native-editor-helpers";
+import { NativeEditor } from "./e2e-native-editor-helpers";
 
 const {
   STATIC_ORDERS_ID,
@@ -96,18 +96,15 @@ function newNativeCardHash(
  *
  * @example
  * H.startNewNativeQuestion({ query: "SELECT * FROM ORDERS" });
- * @param {object} config
- * @param {number} config.database
+ * @param {object} [config]
+ * @param {number} [config.database]
  * @param {string} config.query
- * @param {number} config.collection_id
+ * @param {number} [config.collection_id]
  * @param {string} [config.display]
  */
 export function startNewNativeQuestion(config) {
   const hash = newNativeCardHash("question", config);
-
   cy.visit("/question#" + hash);
-
-  return nativeEditor();
 }
 
 /**
@@ -118,7 +115,7 @@ export function startNewNativeModel(config) {
 
   cy.visit("/model/query#" + hash);
 
-  return nativeEditor();
+  return NativeEditor.get();
 }
 
 /**

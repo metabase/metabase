@@ -84,7 +84,7 @@ export const clickSend = () => {
 export const openAndAddEmailsToSubscriptions = recipients => {
   openSharingMenu("Subscriptions");
 
-  sidebar().findByText("Create a dashboard subscription").should("be.visible");
+  sidebar().findByText("Set up a dashboard subscription").should("be.visible");
 
   cy.findByText("Email it").click();
 

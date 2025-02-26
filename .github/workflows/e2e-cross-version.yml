@@ -126,7 +126,7 @@ jobs:
     steps:
       - uses: actions/setup-node@v4
         with:
-          node-version: lts/Hydrogen # 18.x.x
+          node-version: lts/Jod # 22.x.x
       - run: npm install @slack/web-api
       - name: notify slack of failure
         uses: actions/github-script@v7

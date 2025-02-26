@@ -3,7 +3,6 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { getSlackSettings } from "metabase/admin/settings/slack/selectors";
 import { useSendBugReportMutation } from "metabase/api/bug-report";
 import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -31,8 +30,6 @@ interface ErrorDiagnosticModalProps {
   onClose: () => void;
 }
 
-type PayloadSelection = Partial<Record<keyof ErrorPayload, boolean>>;
-
 export const ErrorDiagnosticModal = ({
   errorInfo,
   loading,
@@ -44,13 +41,6 @@ export const ErrorDiagnosticModal = ({
   const isBugReportingEnabled = useSetting("bug-reporting-enabled");
   const [isSubmissionComplete, setIsSubmissionComplete] = useState(false);
   const applicationName = useSelector(getApplicationName);
-
-  const slackSettings = useSelector(getSlackSettings);
-  const enableBugReportField = Boolean(
-    slackSettings["slack-bug-report-channel"] &&
-      slackSettings["slack-app-token"] &&
-      isBugReportingEnabled,
-  );
 
   if (loading || !errorInfo) {
     return (
@@ -75,15 +65,17 @@ export const ErrorDiagnosticModal = ({
     browserInfo: true,
   };
 
-  const handleSubmit = (values: PayloadSelection) => {
+  const handleSubmit = (values: Record<string, boolean | string>) => {
     trackErrorDiagnosticModalSubmitted("download-diagnostics");
-    const selectedKeys = Object.keys(values).filter(
-      key => values[key as keyof PayloadSelection],
+    const { description, ...diagnosticSelections } = values;
+
+    const selectedKeys = Object.keys(diagnosticSelections).filter(
+      key => diagnosticSelections[key],
     );
-    const selectedInfo: Partial<ErrorPayload> = _.pick(
-      errorInfo,
-      ...selectedKeys,
-    );
+    const selectedInfo = {
+      ..._.pick(errorInfo, ...selectedKeys),
+      description,
+    };
 
     downloadObjectAsJson(
       selectedInfo,
@@ -92,9 +84,7 @@ export const ErrorDiagnosticModal = ({
     onClose();
   };
 
-  const handleSlackSubmit = async (
-    values: Record<string, boolean | string>,
-  ) => {
+  const handleSlackSubmit = async (values: Record<string, any>) => {
     setIsSlackSending(true);
     const { description, ...diagnosticSelections } = values;
 
@@ -140,7 +130,7 @@ export const ErrorDiagnosticModal = ({
   if (isSubmissionComplete) {
     return (
       <Modal opened onClose={onClose} size={550}>
-        <Stack spacing="sm" align="center" py="xl">
+        <Stack gap="sm" align="center" py="xl">
           <img
             src="app/assets/img/metabot-bug-report.svg"
             alt={c(
@@ -148,10 +138,10 @@ export const ErrorDiagnosticModal = ({
             ).t`Bug report submitted`}
             style={{ width: 100, height: 100 }}
           />
-          <Text align="center" size="lg" weight="bold">
+          <Text ta="center" size="lg" fw="bold">
             {t`Thank you for your feedback!`}
           </Text>
-          <Text align="center" color="text-medium">
+          <Text ta="center" color="text-medium">
             {t`Bug report submitted successfully.`}
           </Text>
           <Button mt="xl" onClick={onClose}>{t`Close`}</Button>
@@ -160,7 +150,7 @@ export const ErrorDiagnosticModal = ({
     );
   }
 
-  return enableBugReportField ? (
+  return isBugReportingEnabled ? (
     <BugReportModal
       errorInfo={errorInfo}
       onClose={onClose}
@@ -194,10 +184,10 @@ export const ErrorDiagnosticModalTrigger = () => {
     <ErrorBoundary>
       <Stack justify="center" my="lg">
         <Button
-          leftIcon={<Icon name="download" />}
+          leftSection={<Icon name="download" />}
           onClick={() => setModalOpen(true)}
         >
-          {t`Download diagnostic information`}
+          {t`Gather diagnostic information`}
         </Button>
       </Stack>
       <ErrorDiagnosticModalWrapper

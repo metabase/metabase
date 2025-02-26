@@ -7,6 +7,7 @@ import {
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -307,7 +308,11 @@ describe("StringFilterPicker", () => {
       await userEvent.type(input, "Ga");
       await userEvent.clear(input);
 
-      expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Add filter" }),
+        ).toBeDisabled(),
+      );
     });
 
     it("should handle options when changing an operator", async () => {
@@ -362,7 +367,7 @@ describe("StringFilterPicker", () => {
       it("should update a filter", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(opts);
 
-        const input = screen.getByLabelText("Filter value");
+        const input = screen.getByRole("combobox", { name: "Filter value" });
         expect(screen.getByDisplayValue("abc")).toBeInTheDocument();
         await userEvent.type(input, "{backspace}");
         expect(screen.queryByDisplayValue("abc")).not.toBeInTheDocument();

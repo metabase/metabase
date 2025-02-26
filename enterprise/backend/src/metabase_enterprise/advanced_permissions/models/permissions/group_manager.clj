@@ -23,6 +23,15 @@
   [user-group-memberships]
   (into {} (map (fn [x] [(:id x) (dissoc x :id)]) user-group-memberships)))
 
+(defn- complete-membership-info
+  "Fill in missing :is_group_manager values to be based on existing values, or 'false' if not set"
+  [new-user-info old-user-info]
+  (map #(cond-> %
+          (nil? (:is_group_manager %))
+          (assoc :is_group_manager
+                 (boolean (-> % :id old-user-info :is_group_manager))))
+       new-user-info))
+
 (defn set-user-group-memberships!
   "Update Groups Memberships of a User when `advanced-permissions` is enabled.
   It can be used to adds/removes a user from groups and promote/demote Group Manager."
@@ -30,7 +39,7 @@
   (let [user-id                       (u/the-id user-or-id)
         old-user-group-memberships    (user-group-memberships user-id)
         old-group-id->membership-info (user-group-memberships->map old-user-group-memberships)
-        new-group-id->membership-info (user-group-memberships->map new-user-group-memberships)
+        new-group-id->membership-info (user-group-memberships->map (complete-membership-info new-user-group-memberships old-group-id->membership-info))
         [to-remove to-add]            (data/diff old-group-id->membership-info new-group-id->membership-info)
         to-remove-group-ids           (keys to-remove)
         to-add-group-ids              (keys to-add)]

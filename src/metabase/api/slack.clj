@@ -3,7 +3,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
@@ -26,19 +25,27 @@
   [diagnostic-info file-info]
   (let [version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
         description (get diagnostic-info :description)
+        reporter (get diagnostic-info :reporter)
         file-url (if (string? file-info)
                    file-info
                    (:url file-info))]
     [{:type "rich_text"
       :elements [{:type "rich_text_section"
                   :elements [{:type "text"
-                              :text "New bug report"}
+                              :text "New bug report from "}
+                             (if reporter
+                               {:type "link"
+                                :url (str "mailto:" (:email reporter))
+                                :text (:name reporter)}
+                               {:type "text"
+                                :text "anonymous user"})
                              {:type "text"
                               :text "\n\nDescription:\n"
-                              :style {:bold true}}
-                             {:type "text"
-                              :text (or description "N/A")}
-                             {:type "text"
+                              :style {:bold true}}]}]}
+     {:type "section" :text {:type "mrkdwn" :text (or description "N/A")}}
+     {:type "rich_text"
+      :elements [{:type "rich_text_section"
+                  :elements [{:type "text"
                               :text "\n\nURL:\n"
                               :style {:bold true}}
                              {:type "link"
@@ -153,16 +160,14 @@
           file-content (.getBytes (json/encode diagnostic-info {:pretty true}))
           file-info (slack/upload-file! file-content
                                         "diagnostic-info.json"
-                                        files-channel)]
-      (let [blocks (create-slack-message-blocks diagnostic-info file-info)]
-        (slack/post-chat-message!
-         bug-report-channel
-         nil
-         {:blocks blocks})
-        {:success true
-         :file-url (get file-info :permalink_public)}))
+                                        files-channel)
+          blocks (create-slack-message-blocks diagnostic-info file-info)]
+      (slack/post-chat-message!
+       bug-report-channel
+       nil
+       {:blocks blocks})
+      {:success true
+       :file-url (get file-info :permalink_public)})
     (catch Exception e
       {:success false
        :error (.getMessage e)})))
-
-(api/define-routes)

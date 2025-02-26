@@ -37,5 +37,6 @@ serdes/meta:
   model: Table
 - id: cache_hit
   model: Field
-database_indexed: null
+database_indexed: false
 database_partitioned: null
+entity_id: w5D5X2PzFwF_pc4vbR1iF

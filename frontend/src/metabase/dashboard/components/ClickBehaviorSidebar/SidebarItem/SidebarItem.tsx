@@ -1,22 +1,29 @@
+import cx from "classnames";
 import type * as React from "react";
 
 import type { IconProps } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 
+import S from "./SidebarItem.module.css";
 import {
   BaseSidebarItemRoot,
-  CloseIconContainer,
   Content,
-  IconContainer,
   Name,
   SelectableSidebarItemRoot,
-} from "./SidebarItem.styled";
+} from "./SidebarItemComponents";
 
 function ItemIcon({ className, ...props }: { className?: string } & IconProps) {
   return (
-    <IconContainer className={className}>
+    <Flex
+      justify="center"
+      align="center"
+      w="36px"
+      h="36px"
+      mr="10px"
+      className={cx(S.IconContainer, className)}
+    >
       <Icon {...props} />
-    </IconContainer>
+    </Flex>
   );
 }
 
@@ -28,9 +35,15 @@ function CloseIcon({
   onClick?: React.MouseEventHandler;
 }) {
   return (
-    <CloseIconContainer className={className} onClick={onClick}>
+    <Box
+      p="md"
+      ml="auto"
+      component="span"
+      className={cx(S.CloseIconContainer, className)}
+      onClick={onClick}
+    >
       <Icon name="close" />
-    </CloseIconContainer>
+    </Box>
   );
 }
 
@@ -64,7 +77,6 @@ function SelectableSidebarItem(props: SelectableSidebarItem) {
 }
 
 SidebarItem.Selectable = SelectableSidebarItem;
-
 SidebarItem.Content = Content;
 SidebarItem.Name = Name;
 SidebarItem.Icon = ItemIcon;

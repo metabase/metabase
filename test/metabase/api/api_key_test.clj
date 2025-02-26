@@ -4,7 +4,7 @@
    [clojure.test :refer [deftest testing is]]
    [metabase.http-client :as client]
    [metabase.models.api-key :as api-key]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

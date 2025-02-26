@@ -19,7 +19,8 @@ These resources are useful for:
 Some things to keep in mind with this special Usage analytics collection:
 
 - Usage analytics is a view-only collection. Even admins can't curate it. It is eternal.
-- By default, only admins can view the Usage analytics collection (though admins can grant other groups view access to it). If you're upgrading from a version older than 48, people in groups with [monitoring access](../usage-and-performance-tools/usage-analytics.md) will also get access to the Usage analytics collection. But after that initial grandfathering in, the monitoring access privilege is unrelated to the Usage analytics collection; you'll need to specifically grant groups access to the Usage analytics collection.
+- By default, only admins can view the Usage analytics collection (though admins can grant other groups view access to it). If you're upgrading from a version older than 48, people in groups with monitoring access will also get access to the Usage analytics collection. But after that initial grandfathering in, the monitoring access privilege is unrelated to the Usage analytics collection; you'll need to specifically grant groups access to the Usage analytics collection.
+- Metabase Open Source edition (which the [Cloud Starter plan](https://www.metabase.com/pricing/) uses) doesn't collect [Activity](#activity-log-model) and [View](#view-log-model) data. If you upgrade from Open Source to a Pro or Enterprise plan, you'll only see data in Usage Analytics starting from when you upgraded.
 - You can duplicate any item in the Usage analytics collection, modify the item to your liking, and save the item to another collection.
 - Metabase creates some default user accounts that you might see in your usage analytics, like `internal@metabase.com`. See [Default accounts](../people-and-groups/managing.md#default-user-accounts) for more information.
 
@@ -133,6 +134,8 @@ Question, dashboard and database performance. Cards include:
 - Questions consuming the most resources
 - Dashboards with more questions in the same tab
 - Users consuming the most resources
+
+> If you're using MySQL or MariaDB as your application database, the Performance overview dashboard won't display results for the cards displaying the 50th and 90th percentile query running times, because MySQL and MariaDB don't support the [Percentile aggregation](../questions/query-builder/expressions-list.md#percentile). We recommend using PostgreSQL as your application database.
 
 ### Content with cobwebs dashboard
 

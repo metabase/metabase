@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
@@ -13,7 +13,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion({
+    H.createQuestion({
       name: "QB Binning",
       query: {
         "source-table": ORDERS_ID,

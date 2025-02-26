@@ -6,9 +6,15 @@ redirect_from:
 
 # PostgreSQL
 
+> This page covers connecting to PostgreSQL as a _data warehouse_. For using PostgreSQL as Metabase's _application database_, see [Configuring the Metabase application database](../../installation-and-operation/configuring-application-database.md).
+
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
 Fill out the fields for that database, and click **Save changes** at the bottom.
+
+## Supported versions
+
+Metabase supports the oldest supported version of PostgreSQL through the latest stable version. See [PostgreSQL versions](https://www.postgresql.org/support/versioning/).
 
 ## Settings
 

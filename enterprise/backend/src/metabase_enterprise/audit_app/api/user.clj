@@ -38,5 +38,3 @@
   ;; archive anything they created.
   (t2/update! :model/Pulse {:creator_id id, :archived false} {:archived true})
   api/generic-204-no-content)
-
-(api/define-routes)

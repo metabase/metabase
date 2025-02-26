@@ -45,14 +45,19 @@
     :display_name    "Name"
     :base_type       :type/Text
     :semantic_type   nil
+    :visibility_type :normal}
+   {:name            "desc_col"
+    :display_name    "Description Column"
+    :base_type       :type/Text
+    :semantic_type   :type/Description
     :visibility_type :normal}])
 
 (def ^:private example-test-data
-  [[1 34.0996 "2014-04-01T08:30:00.0000" "Stout Burgers & Beers"]
-   [2 34.0406 "2014-12-05T15:15:00.0000" "The Apple Pan"]
-   [3 34.0474 "2014-08-01T12:45:00.0000" "The Gorbals"]
-   [4 0       "2018-09-01T19:32:00.0000" "The Tipsy Tardigrade"]
-   [5 nil     "2022-10-12T05:55:00.0000" "The Bungalow"]])
+  [[1 34.0996 "2014-04-01T08:30:00.0000" "Stout Burgers & Beers" "Desc 1"]
+   [2 34.0406 "2014-12-05T15:15:00.0000" "The Apple Pan" "Desc 2"]
+   [3 34.0474 "2014-08-01T12:45:00.0000" "The Gorbals" "Desc 3"]
+   [4 0       "2018-09-01T19:32:00.0000" "The Tipsy Tardigrade" "Desc 4"]
+   [5 nil     "2022-10-12T05:55:00.0000" "The Bungalow" "Desc 5"]])
 
 (defn- col-counts [results]
   (set (map (comp count :row) results)))
@@ -62,9 +67,9 @@
                                   :num-value num-value}))
 
 (def ^:private default-header-result
-  [{:row       [(number "ID" "ID") (number "Latitude" "Latitude") "Last Login" "Name"]
+  [{:row       [(number "ID" "ID") (number "Latitude" "Latitude") "Last Login" "Name" "Description Column"]
     :bar-width nil}
-   #{4}])
+   #{5}])
 
 (defn- prep-for-html-rendering'
   [cols rows bar-column min-value max-value]
@@ -73,11 +78,6 @@
     [(first results)
      (col-counts results)]))
 
-(def ^:private description-col {:name         "desc_col"
-                                :display_name "Description Column"
-                                :base_type    :type/Text
-                                :semantic_type :type/Description
-                                :visibility_type :normal})
 (def ^:private detail-col      {:name            "detail_col"
                                 :display_name    "Details Column"
                                 :base_type       :type/Text
@@ -102,24 +102,18 @@
          (prep-for-html-rendering' test-columns example-test-data nil nil nil))))
 
 (deftest header-result-2
-  (let [cols-with-desc (conj test-columns description-col)
-        data-with-desc (mapv #(conj % "Desc") example-test-data)]
-    (is (= default-header-result
-           (prep-for-html-rendering' cols-with-desc data-with-desc nil nil nil)))))
-
-(deftest header-result-3
   (let [cols-with-details (conj test-columns detail-col)
         data-with-details (mapv #(conj % "Details") example-test-data)]
     (is (= default-header-result
            (prep-for-html-rendering' cols-with-details data-with-details nil nil nil)))))
 
-(deftest header-result-4
+(deftest header-result-3
   (let [cols-with-sensitive (conj test-columns sensitive-col)
         data-with-sensitive (mapv #(conj % "Sensitive") example-test-data)]
     (is (= default-header-result
            (prep-for-html-rendering' cols-with-sensitive data-with-sensitive nil nil nil)))))
 
-(deftest header-result-5
+(deftest header-result-4
   (let [columns-with-retired (conj test-columns retired-col)
         data-with-retired    (mapv #(conj % "Retired") example-test-data)]
     (is (= default-header-result
@@ -170,20 +164,20 @@
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
-  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}
-          {:bar-width nil, :row [(number "4" 4)  "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
-          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]}
+          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]}
+          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]}
+          {:bar-width nil, :row [(number "4" 4)  "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade" "Desc 4"]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow" "Desc 5"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
-  (is (= [{:bar-width (float 85.249), :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
-          {:bar-width (float 85.1015), :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan"]}
-          {:bar-width (float 85.1185), :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}
-          {:bar-width (float 0.0), :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
-          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
+  (is (= [{:bar-width (float 85.249), :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]}
+          {:bar-width (float 85.1015), :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]}
+          {:bar-width (float 85.1185), :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]}
+          {:bar-width (float 0.0), :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade" "Desc 4"]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow" "Desc 5"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data}
                                                {:bar-column second, :min-value 0, :max-value 40})))))
 
@@ -217,16 +211,16 @@
 
 ;; With a remapped column, the header should contain the name of the remapped column (not the original)1
 (deftest remapped-col
-  (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude") "Rating Desc" "Last Login" "Name"]
+  (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude") "Rating Desc" "Last Login" "Name" "Description Column"]
            :bar-width nil}
-          #{5}]
+          #{6}]
          (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping nil nil nil))))
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
-  (is (= [[(number "1" 1) "34.09960000° N" "Bad" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]
-          [(number "2" 2) "34.04060000° N" "Ok" "December 5, 2014, 3:15 PM" "The Apple Pan"]
-          [(number "3" 3) "34.04740000° N" "Good" "August 1, 2014, 12:45 PM" "The Gorbals"]]
+  (is (= [[(number "1" 1) "34.09960000° N" "Bad" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]
+          [(number "2" 2) "34.04060000° N" "Ok" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]
+          [(number "3" 3) "34.04740000° N" "Good" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]]
          (map :row (rest (#'body/prep-for-html-rendering pacific-tz
                                                          {}
                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
@@ -248,11 +242,11 @@
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
-  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}
-          {:bar-width nil, :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
-          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]}
+          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]}
+          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]}
+          {:bar-width nil, :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade" "Desc 4"]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow" "Desc 5"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                                                {}
                                                {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
@@ -1013,3 +1007,27 @@
                                       first)]
               (testing "Renders with correct day of week first"
                 (is (= "Monday" first-day-text))))))))))
+
+(deftest render-correct-custom-date-style
+  (testing "The static-viz respects custom formatting for temporal axis label"
+    (mt/with-temporary-setting-values [public-settings/custom-formatting {:type/Temporal
+                                                                          {:date_style "YYYY/M/D"
+                                                                           :date_separator "/"}}]
+      (mt/dataset test-data
+        (let [q    (mt/mbql-query products
+                     {:aggregation [[:count]]
+                      :breakout    [!month.created_at]})
+              card {:name                   "bar-test"
+                    :display                :bar
+                    :dataset_query          q
+                    :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                             :graph.metrics ["count"]}}]
+          (mt/with-temp [:model/Card {card-id :id} card]
+            (let [doc    (render.tu/render-card-as-hickory! card-id)
+                  label  (->> (hik.s/select (hik.s/tag :text) doc)
+                              (map (fn [el] (-> el :content first)))
+                              (take-last 3)
+                              (map str/trim)
+                              first)]
+              (testing "Renders with correct day of week first"
+                (is (= "2017/1" label))))))))))

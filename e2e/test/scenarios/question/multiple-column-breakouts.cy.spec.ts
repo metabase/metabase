@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -305,7 +305,9 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.popover()
             .findByLabelText(columnName)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
+          // eslint-disable-next-line no-unsafe-element-filtering
           H.popover().last().findByText(bucket1Name).click();
           H.getNotebookStep("summarize")
             .findByTestId("breakout-step")
@@ -315,6 +317,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .findByLabelText(columnName)
             .findByLabelText(bucketLabel)
             .click();
+          // eslint-disable-next-line no-unsafe-element-filtering
           H.popover().last().findByText(bucket2Name).click();
           H.visualize();
           cy.wait("@dataset");
@@ -440,6 +443,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2)
             .eq(0)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
           H.popover().findByText(bucket1Name).click();
           cy.wait("@dataset");
@@ -448,6 +452,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2)
             .eq(1)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
           H.popover().findByText(bucket2Name).click();
           cy.wait("@dataset");
@@ -518,6 +523,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           .should("contain.text", "All time")
           .click();
         H.popover().findByDisplayValue("All time").click();
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.popover().last().findByText("On").click();
         H.popover().within(() => {
           cy.findByLabelText("Date").clear().type("August 14, 2023");
@@ -1800,11 +1806,13 @@ function tableHeaderClick(
   columnName: string,
   { columnIndex = 0 }: { columnIndex?: number } = {},
 ) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.tableInteractive()
     .findAllByText(columnName)
     .eq(columnIndex)
     .trigger("mousedown");
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.tableInteractive()
     .findAllByText(columnName)
     .eq(columnIndex)

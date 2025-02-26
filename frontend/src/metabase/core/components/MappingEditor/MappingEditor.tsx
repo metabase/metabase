@@ -152,7 +152,7 @@ export const MappingEditor = ({
               {canDelete && (
                 <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
                   <Button
-                    leftIcon={<Icon name="close" />}
+                    leftSection={<Icon name="close" />}
                     variant="subtle"
                     onClick={() => handleChange(removeEntry(entries, index))}
                     color={"text"}
@@ -168,7 +168,7 @@ export const MappingEditor = ({
             <tr>
               <td colSpan={2}>
                 <Button
-                  leftIcon={<Icon name="add" />}
+                  leftSection={<Icon name="add" />}
                   variant="subtle"
                   onClick={() => handleChange(addEntry(entries))}
                   {...addButtonProps}

@@ -5,8 +5,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.email :as email]
+   [metabase.config :as config]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]
@@ -57,19 +57,12 @@
             ;; This will block the calling thread (i.e. the test) waiting for the promise to be delivered. There is a
             ;; very high timeout (30 seconds) that we should never reach, but without it, if we do hit that scenario, it
             ;; should at least not hang forever in CI
-            promise-value (deref p 30000 ::timeout)]
+            promise-value (deref p (cond-> 30000 config/is-dev? (/ 10)) ::timeout)]
         (if (= promise-value ::timeout)
           (throw (Exception. "Timed out while waiting for messages in the inbox"))
           result))
       (finally
         (remove-watch inbox ::inbox-watcher)))))
-
-(defmacro with-expected-messages
-  "Invokes `body`, waiting until `n` messages are found in the inbox before returning. This is useful if the code you
-  are testing sends emails via a future or background thread. Using this will block the test, waiting for the messages
-  to arrive before continuing."
-  [n & body]
-  `(do-with-expected-messages ~n (fn [] ~@body)))
 
 (defn do-with-fake-inbox!
   "Impl for `with-fake-inbox` macro; prefer using that rather than calling this directly."
@@ -95,6 +88,14 @@
   [& body]
   {:style/indent 0}
   `(do-with-fake-inbox! (fn [] ~@body)))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-expected-messages
+  "Invokes `body`, waiting until `n` messages are found in the inbox before returning. This is useful if the code you
+  are testing sends emails via a future or background thread. Using this will block the test, waiting for the messages
+  to arrive before continuing."
+  [n & body]
+  `(do-with-expected-messages ~n (fn [] ~@body)))
 
 (defn- create-email-body->regex-fn
   "Returns a function expecting the email body structure. It will apply the regexes in `regex-seq` over the body and
@@ -272,32 +273,30 @@
               :message      "101. Metabase will make you a better person")
              (@inbox "test@test.com")))))
     (testing "metrics collection"
-      (let [calls (atom nil)]
-        (with-redefs [prometheus/inc! #(swap! calls conj %)]
-          (with-fake-inbox
-            (email/send-message!
-             :subject      "101 Reasons to use Metabase"
-             :recipients   ["test@test.com"]
-             :message-type :html
-             :message      "101. Metabase will make you a better person")))
-        (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
-        (is (= 0 (count (filter #{:metabase-email/message-errors} @calls))))))
-    (testing "error metrics collection"
-      (let [calls        (atom nil)
-            retry-config (assoc (#'retry/retry-configuration)
-                                :max-attempts 1
-                                :initial-interval-millis 1)
-            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (with-redefs [prometheus/inc!   #(swap! calls conj %)
-                      retry/decorate    (rt/test-retry-decorate-fn test-retry)
-                      email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+      (tu/with-prometheus-system! [_ system]
+        (with-fake-inbox
           (email/send-message!
            :subject      "101 Reasons to use Metabase"
            :recipients   ["test@test.com"]
            :message-type :html
            :message      "101. Metabase will make you a better person"))
-        (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
-        (is (= 1 (count (filter #{:metabase-email/message-errors} @calls))))))
+        (is (= 1.0 (tu/metric-value system :metabase-email/messages)))
+        (is (= 0.0 (tu/metric-value system :metabase-email/message-errors)))))
+    (testing "error metrics collection"
+      (let [retry-config (assoc (#'retry/retry-configuration)
+                                :max-attempts 1
+                                :initial-interval-millis 1)
+            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+        (tu/with-prometheus-system! [_ system]
+          (with-redefs [retry/decorate    (rt/test-retry-decorate-fn test-retry)
+                        email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+            (email/send-message!
+             :subject      "101 Reasons to use Metabase"
+             :recipients   ["test@test.com"]
+             :message-type :html
+             :message      "101. Metabase will make you a better person"))
+          (is (= 1.0 (tu/metric-value system :metabase-email/messages)))
+          (is (= 1.0 (tu/metric-value system :metabase-email/message-errors))))))
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=

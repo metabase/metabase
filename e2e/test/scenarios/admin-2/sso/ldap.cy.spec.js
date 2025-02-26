@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import {
   checkGroupConsistencyAfterDeletingMappings,
@@ -154,7 +154,7 @@ describe(
   },
 );
 
-H.describeEE(
+describe(
   "scenarios > admin > settings > SSO > LDAP",
   { tags: "@external" },
   () => {

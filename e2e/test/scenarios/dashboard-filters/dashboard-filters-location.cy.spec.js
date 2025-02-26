@@ -1,10 +1,13 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import {
+  addWidgetStringFilter,
+  selectFilterValueFromList,
+} from "../native-filters/helpers/e2e-field-filter-helpers";
 
 import { DASHBOARD_LOCATION_FILTERS } from "./shared/dashboard-filters-location";
 
@@ -30,6 +33,7 @@ describe("scenarios > dashboard > filters > location", () => {
 
     Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         addWidgetStringFilter(value);
 
@@ -53,7 +57,7 @@ describe("scenarios > dashboard > filters > location", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
-    addWidgetStringFilter("Abbeville");
+    selectFilterValueFromList("Abbeville");
 
     H.saveDashboard();
 

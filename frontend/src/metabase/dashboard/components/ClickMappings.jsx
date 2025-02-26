@@ -7,14 +7,14 @@ import _ from "underscore";
 
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
-import { getParameters } from "metabase/dashboard/selectors";
+import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { GTAPApi } from "metabase/services";
-import { Icon } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -22,7 +22,7 @@ import {
   getTargetsForQuestion,
 } from "metabase-lib/v1/parameters/utils/click-behavior";
 
-import { TargetTrigger } from "./ClickMappings.styled";
+import S from "./ClickMappings.module.css";
 
 class ClickMappings extends Component {
   render() {
@@ -134,6 +134,7 @@ export const ClickMappingsConnected = _.compose(
     const { object, isDashboard, dashcard, clickBehavior } = props;
     let parameters = getParameters(state, props);
     const metadata = getMetadata(state);
+    const dashcardData = getDashcardData(state, dashcard.id);
     const question = new Question(dashcard.card, metadata);
 
     if (props.excludeParametersSources) {
@@ -156,8 +157,12 @@ export const ClickMappingsConnected = _.compose(
       ({ id }) =>
         getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
     );
+
+    const availableColumns =
+      Object.values(dashcardData).flatMap(dataset => dataset.data.cols) ?? [];
+
     const sourceOptions = {
-      column: dashcard.card.result_metadata?.filter(isMappableColumn) || [],
+      column: availableColumns.filter(isMappableColumn),
       parameter: parameters,
     };
     return { setTargets, unsetTargets, sourceOptions, question };
@@ -183,7 +188,16 @@ function TargetWithoutSource({
     <Select
       key={id}
       triggerElement={
-        <TargetTrigger data-testid="click-target-column">{name}</TargetTrigger>
+        <Flex
+          className={S.TargetTrigger}
+          p="sm"
+          mb="sm"
+          fw="bold"
+          w="100%"
+          data-testid="click-target-column"
+        >
+          {name}
+        </Flex>
       }
       value={null}
       sections={Object.entries(sourceOptions).map(([sourceType, items]) => ({

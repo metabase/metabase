@@ -6,10 +6,8 @@ import _ from "underscore";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
 import TransitionS from "metabase/css/core/transitions.module.css";
-import {
-  FixedWidthContainer,
-  ParametersFixedWidthContainer,
-} from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
 import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
 import {
   DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID,
@@ -74,6 +72,7 @@ export type EmbedFrameBaseProps = Partial<{
   children: ReactNode;
   dashboardTabs: ReactNode;
   downloadsEnabled: boolean;
+  withFooter: boolean;
 }>;
 
 type WithRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
@@ -103,6 +102,7 @@ export const EmbedFrame = ({
   theme,
   hide_parameters,
   downloadsEnabled = true,
+  withFooter = true,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
@@ -135,7 +135,8 @@ export const EmbedFrame = ({
     .filter(Boolean)
     .join(",");
 
-  const showFooter = hasEmbedBranding || downloadsEnabled || actionButtons;
+  const isFooterEnabled =
+    withFooter && (hasEmbedBranding || downloadsEnabled || actionButtons);
 
   const finalName = titled ? name : null;
 
@@ -225,7 +226,8 @@ export const EmbedFrame = ({
             isSticky={isParameterPanelSticky}
             data-testid="dashboard-parameters-widget-container"
           >
-            <ParametersFixedWidthContainer
+            <FixedWidthContainer
+              className={DashboardS.ParametersFixedWidthContainer}
               id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
               data-testid="fixed-width-filters"
               isFixedWidth={dashboard?.width === "fixed"}
@@ -247,14 +249,15 @@ export const EmbedFrame = ({
                 }
               />
               {dashboard && <FilterApplyButton />}
-            </ParametersFixedWidthContainer>
+            </FixedWidthContainer>
           </ParametersWidgetContainer>
         )}
         <Body>{children}</Body>
       </ContentContainer>
-      {showFooter && (
+      {isFooterEnabled && (
         <Footer
-          className={cx(EmbedFrameS.EmbedFrameFooter)}
+          data-testid="embed-frame-footer"
+          className={EmbedFrameS.EmbedFrameFooter}
           variant={footerVariant}
         >
           {hasEmbedBranding && <LogoBadge dark={theme === "night"} />}

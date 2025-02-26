@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -104,7 +104,7 @@ describe("operators in questions", () => {
         cy.findByText("Previous").click();
       });
 
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         expected.relativeDates.expected.map(e =>
           cy.contains(e).should("exist"),
         );

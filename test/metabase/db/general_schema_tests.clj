@@ -10,11 +10,10 @@
 (deftest ^:parallel no-tiny-int-columns
   (when (= (mdb/db-type) :mysql)
     (testing "All boolean columns in mysql, mariadb should be bit(1)"
-      (is (= [{:table_name "DATABASECHANGELOGLOCK" :column_name "LOCKED"}] ;; outlier because this is liquibase's table
-             (t2/query
-              (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type LIKE 'tinyint%%' AND table_schema = '%s';"
-                      (with-open [conn (-> (mdb/app-db) .getConnection)]
-                        (.getCatalog conn)))))))))
+      (is (= [] (t2/query
+                 (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type LIKE 'tinyint%%' AND table_schema = '%s';"
+                         (with-open [conn (-> (mdb/app-db) .getConnection)]
+                           (.getCatalog conn)))))))))
 
 (deftest ^:parallel fks-are-indexed-test
   (when (= (mdb/db-type) :postgres)

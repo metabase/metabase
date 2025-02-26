@@ -50,15 +50,20 @@
 
 (defn- all-indexes->field-ids
   [database-id indexes]
-  (when (seq indexes)
-    (let [normal-indexes (map (juxt #(:table-schema % "__null__") :table-name :field-name) indexes)
-          query (t2/reducible-query {:select [[:f.id]]
-                                     :from [[(t2/table-name :model/Field) :f]]
-                                     :inner-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
-                                     :where [:and [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] normal-indexes]
-                                             [:= :t.db_id database-id]
-                                             [:= :parent_id nil]]})]
-      (into #{} (keep :id) query))))
+  (reduce
+   (fn [accum index-batch]
+     (let [normal-indexes (map (juxt #(:table-schema % "__null__") :table-name :field-name) index-batch)
+           query (t2/reducible-query {:select [[:f.id]]
+                                      :from [[(t2/table-name :model/Field) :f]]
+                                      :inner-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
+                                      :where [:and [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] normal-indexes]
+                                              [:= :t.db_id database-id]
+                                              [:= :parent_id nil]]})]
+       (into accum (keep :id) query)))
+   #{}
+   ;; break the indexes up in groups of 5000 to avoid max
+   ;; parameter limit of 65,535. See #52746 for details.
+   (partition-all 5000 indexes)))
 
 (defn- sync-all-indexes!
   [database]

@@ -3,7 +3,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.models.permissions :as perms]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.util :as perms-util]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]

@@ -61,5 +61,3 @@
   (with-setting-access-control
     (setting/set! key value))
   api/generic-204-no-content)
-
-(api/define-routes)

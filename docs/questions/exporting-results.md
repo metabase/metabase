@@ -1,5 +1,7 @@
 ---
 title: Exporting results
+redirect_from:
+  - /docs/latest/questions/sharing/exporting-results
 ---
 
 # Exporting results

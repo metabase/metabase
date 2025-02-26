@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -137,7 +137,7 @@ describe("issue 9027", () => {
 
     H.startNewNativeQuestion();
 
-    H.focusNativeEditor().type("select 0");
+    H.NativeEditor.focus().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     H.saveQuestion(QUESTION_NAME, undefined, {
@@ -277,11 +277,11 @@ describe("issue 14957", { tags: "@external" }, () => {
   });
 
   it("should save a question before query has been executed (metabase#14957)", () => {
-    H.startNewNativeQuestion().as("editor");
+    H.startNewNativeQuestion();
 
     cy.findByTestId("gui-builder-data").click();
     cy.findByLabelText(PG_DB_NAME).click();
-    cy.get("@editor").type("select pg_sleep(60)");
+    H.NativeEditor.type("select pg_sleep(60)");
     H.saveQuestion("14957", undefined, {
       tab: "Browse",
       path: ["Our analytics"],
@@ -379,7 +379,7 @@ describe("issue 15876", { tags: "@external" }, () => {
   });
 
   it("should correctly cast to `TIME` (metabase#15876)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     cy.findByTestId("query-visualization-root").within(() => {
       correctValues.forEach(({ value, rows }) => {
@@ -487,7 +487,7 @@ describe("issue 17514", () => {
 
   describe("scenario 1", () => {
     beforeEach(() => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: card }) => {
@@ -508,7 +508,7 @@ describe("issue 17514", () => {
           ],
         };
 
-        cy.editDashboardCard(card, mapFilterToCard);
+        H.editDashboardCard(card, mapFilterToCard);
 
         H.visitDashboard(dashboard_id);
 
@@ -558,7 +558,7 @@ describe("issue 17514", () => {
 
   describe("scenario 2", () => {
     beforeEach(() => {
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
 
       H.openVizSettingsSidebar();
 
@@ -711,7 +711,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
       { string: "> quan", field: "Quantity" },
     ]);
 
-    H.blurNativeEditor();
+    cy.get(".ace_text-input").blur();
     cy.button("Done").click();
 
     H.getNotebookStep("filter").findByText("Discount is greater than Quantity");
@@ -827,7 +827,7 @@ describe("issue 18207", () => {
   });
 });
 
-describe("issues 11914, 18978, 18977, 23857", { tags: "@flaky" }, () => {
+describe("issues 11914, 18978, 18977, 23857", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -946,7 +946,7 @@ describe("issue 19341", () => {
     H.restore();
     H.mockSessionProperty("enable-nested-queries", false);
     cy.signInAsAdmin();
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: TEST_NATIVE_QUESTION_NAME,
       native: {
         query: "SELECT * FROM products",
@@ -1076,12 +1076,12 @@ describe("issue 19893", () => {
   });
 
   it.skip("should display correct join source table when joining visited questions (metabase#19893)", () => {
-    cy.createQuestion(QUESTION_1, {
+    H.createQuestion(QUESTION_1, {
       wrapId: true,
       idAlias: "questionId1",
       visitQuestion: true,
     });
-    cy.createQuestion(QUESTION_2, {
+    H.createQuestion(QUESTION_2, {
       wrapId: true,
       idAlias: "questionId2",
       visitQuestion: true,
@@ -1101,8 +1101,8 @@ describe("issue 19893", () => {
   });
 
   it.skip("should display correct join source table when joining non-visited questions (metabase#19893)", () => {
-    cy.createQuestion(QUESTION_1, { wrapId: true, idAlias: "questionId1" });
-    cy.createQuestion(QUESTION_2, { wrapId: true, idAlias: "questionId2" });
+    H.createQuestion(QUESTION_1, { wrapId: true, idAlias: "questionId1" });
+    H.createQuestion(QUESTION_2, { wrapId: true, idAlias: "questionId2" });
 
     cy.then(function () {
       const { questionId1, questionId2 } = this;
@@ -1119,7 +1119,7 @@ describe("issue 19893", () => {
 });
 
 const createQ1PlusQ2Question = (questionId1, questionId2) => {
-  return cy.createQuestion({
+  return H.createQuestion({
     name: "Q1 + Q2",
     query: {
       "source-table": `card__${questionId1}`,
@@ -1240,7 +1240,7 @@ describe("issue 20809", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createQuestion(questionDetails).then(({ body: { id } }) => {
       const nestedQuestion = {
         dataset_query: {
           database: SAMPLE_DB_ID,

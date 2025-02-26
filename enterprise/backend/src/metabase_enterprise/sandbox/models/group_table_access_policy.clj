@@ -3,14 +3,14 @@
   certain Table for a certain PermissionsGroup. Whenever a member of that group attempts to query the Table in question,
   a Saved Question specified by the GTAP is instead used as the source of the query.
 
-  See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
+  See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [medley.core :as m]
    [metabase.audit :as audit]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]

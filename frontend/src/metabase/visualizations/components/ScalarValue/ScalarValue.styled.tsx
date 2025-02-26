@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { space } from "metabase/styled-components/theme";
@@ -25,7 +26,7 @@ interface ScalarValueWrapperProps {
 export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   display: inline;
   font-size: ${props => props.fontSize};
-  line-height: ${props => props.lineHeight};
+  line-height: ${props => props.lineHeight ?? "var(--mantine-line-height)"};
   cursor: pointer;
 
   &:hover {

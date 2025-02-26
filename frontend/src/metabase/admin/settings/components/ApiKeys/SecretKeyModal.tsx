@@ -20,7 +20,7 @@ export const SecretKeyModal = ({
     title={t`Copy and save the API key`}
     data-testid="secret-key-modal"
   >
-    <Stack spacing="xl" data-testid="secret-key-modal">
+    <Stack gap="xl" data-testid="secret-key-modal">
       <CopyTextInput
         label={t`The API key`}
         size="sm"
@@ -46,7 +46,7 @@ export const SecretKeyModal = ({
           color="text-medium"
         >{t`Please copy this key and save it somewhere safe. For security reasons, we can't show it to you again.`}</Text>
       </Flex>
-      <Group position="right">
+      <Group justify="flex-end">
         <Button onClick={onClose} variant="filled">{t`Done`}</Button>
       </Group>
     </Stack>

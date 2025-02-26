@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import Modal from "metabase/components/Modal";
 import Tooltip from "metabase/core/components/Tooltip";
-import { Button, Flex, Radio, Stack } from "metabase/ui";
+import { Box, Button, Flex, Radio, Stack } from "metabase/ui";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import type {
   Parameter,
@@ -13,8 +13,6 @@ import type {
 } from "metabase-types/api";
 
 import ValuesSourceModal from "../ValuesSourceModal";
-
-import { ClickAreaExpander } from "./ValuesSourceSettings.styled";
 
 interface ValuesSourceSettingsProps {
   parameter: Parameter;
@@ -40,8 +38,13 @@ export function ValuesSourceSettings({
 
   return (
     <>
-      <Radio.Group value={queryType} onChange={onChangeQueryType}>
-        <Stack spacing="xs">
+      <Radio.Group
+        value={queryType}
+        onChange={(newValue: string) =>
+          onChangeQueryType(newValue as ValuesQueryType)
+        }
+      >
+        <Stack gap="xs">
           <RadioContainer
             ownValue="list"
             selectedValue={queryType}
@@ -113,9 +116,14 @@ function RadioContainer({
               disabled={disableEdit}
               variant="subtle"
               p={0}
-              compact={true}
+              size="compact-md"
+              h="100%"
             >
-              <ClickAreaExpander>{t`Edit`}</ClickAreaExpander>
+              <Box
+                component="span"
+                display="inline-block"
+                p="0 5px"
+              >{t`Edit`}</Box>
             </Button>
           </div>
         </Tooltip>

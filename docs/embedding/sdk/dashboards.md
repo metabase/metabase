@@ -4,9 +4,7 @@ title: "Embedded analytics SDK - dashboards"
 
 # Embedded analytics SDK - dashboards
 
-{% include beta-blockquote.html %}
-
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true enterprise-only=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 You can embed an interactive, editable, or static dashboard.
 
@@ -25,11 +23,11 @@ You can embed a dashboard using the one of the dashboard components:
 | Prop                         | Type                                            | Description                                                                                                                                                                                                                                                                                                                      |
 | ---------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | dashboardId                  | `number \| string`                              | The ID of the dashboard. This is either:<br>- the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`<br>- the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data |
-| initialParameters            | `Record<string, string \| string[]>`            | Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.                                                                                                                                                                                                   |
+| initialParameters\*\*        | `Record<string, string \| string[]>`            | Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.                                                                                                                                                                                                   |
 | withTitle                    | `boolean`                                       | Whether the dashboard should display a title.                                                                                                                                                                                                                                                                                    |
 | withCardTitle                | `boolean`                                       | Whether the dashboard cards should display a title.                                                                                                                                                                                                                                                                              |
 | withDownloads                | `boolean \| null`                               | Whether to hide the download button.                                                                                                                                                                                                                                                                                             |
-| hiddenParameters             | `string[] \| null`                              | A list of [parameters to hide](../../embedding/public-links.md#appearance-parameters).                                                                                                                                                                                                                                           |
+| hiddenParameters\*\*         | `string[] \| null`                              | A list of [parameters to hide](../../embedding/public-links.md#appearance-parameters).                                                                                                                                                                                                                                           |
 | drillThroughQuestionHeight\* | `number \| null`                                | Height of a question component when drilled from the dashboard to a question level.                                                                                                                                                                                                                                              |
 | questionPlugins\*            | `{ mapQuestionClickActions: Function } \| null` | Additional mapper function to override or add drill-down menu. See the implementing custom actions section for more details.                                                                                                                                                                                                     |
 | onLoad                       | `(dashboard: Dashboard \| null) => void`        | Event handler that triggers after dashboard loads with all visible cards and their content.                                                                                                                                                                                                                                      |
@@ -37,6 +35,8 @@ You can embed a dashboard using the one of the dashboard components:
 | renderDrillThroughQuestion\* | `() => ReactNode`                               | A react component that renders [a question's layout](#customizing-drill-through-question-layout) shown after drilling through a question or clicking on a question card in the dashboard.                                                                                                                                        |
 
 _\* Not available for `StaticDashboard`._
+
+_\*\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParameters` to declutter the user interface is fine._
 
 By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
 
@@ -54,9 +54,9 @@ By default, dashboard components take full page height (100vh). You can override
 
 ```typescript
 import React from "react";
-import {MetabaseProvider, InteractiveDashboard} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, InteractiveDashboard, defineMetabaseAuthConfig} from "@metabase/embedding-sdk-react";
 
-const authConfig = {...}
+const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     const dashboardId = 1; // This is the dashboard ID you want to embed
@@ -98,9 +98,7 @@ with the custom view as the child component.
 const QuestionView = () => <InteractiveQuestion.Title />;
 ```
 
-The questionView prop accepts a React component that will be rendered in the question view, which
-you can build with namespaced components within the `InteractiveQuestion` component.
-See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
+The questionView prop accepts a React component that will be rendered in the question view, which you can build with namespaced components within the `InteractiveQuestion` component. See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
 
 ## Dashboard plugins
 
@@ -127,7 +125,7 @@ const plugins = {
 ```typescript
 {% raw %}
 <InteractiveDashboard
-  questionId={1}
+  dashboardId={1}
   plugins={{
     dashboard: {
       dashcardMenu: null,
@@ -229,11 +227,11 @@ return <Button onClick={handleDashboardCreate}>Create new dashboard</Button>;
 
 Props:
 
-| Prop         | Type                                     | Description                                                                                                 |
-| ------------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| name         | `string`                                 | (required) Dashboard title                                                                                  |
-| description  | `string \| null`                         | Optional dashboard description                                                                              |
-| collectionId | `number \| 'root' \| 'personal' \| null` | Collection where to create a new dashboard. You can use predefined system values like `root` or `personal`. |
+| Prop         | Type                             | Description                                                                                                    |
+| ------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| name         | `string`                         | (required) Dashboard title                                                                                     |
+| description  | `string \| null`                 | Optional dashboard description                                                                                 |
+| collectionId | `number \| 'root' \| 'personal'` | Collection in which to create a new dashboard. You can use predefined system values like `root` or `personal`. |
 
 ### Component
 
@@ -249,8 +247,8 @@ return <CreateDashboardModal onClose={handleClose} onCreate={setDashboard} />;
 
 Supported component props:
 
-| Prop          | Type                                     | Description                                                                                     |
-| ------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| collectionId? | `number \| 'root' \| 'personal' \| null` | Initial collection field value. You can use predefined system values like `root` or `personal`. |
-| onCreate      | `(dashboard: Dashboard) => void`         | Handler to react on dashboard creation.                                                         |
-| onClose       | `() => void`                             | Handler to close modal component                                                                |
+| Prop          | Type                             | Description                                                                                                        |
+| ------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| collectionId? | `number \| 'root' \| 'personal'` | Initial collection in which to create a dashboard. You can use predefined system values like `root` or `personal`. |
+| onCreate      | `(dashboard: Dashboard) => void` | Handler to react on dashboard creation.                                                                            |
+| onClose       | `() => void`                     | Handler to close modal component                                                                                   |

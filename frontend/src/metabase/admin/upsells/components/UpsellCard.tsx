@@ -1,26 +1,19 @@
 import cx from "classnames";
 import { useMount } from "react-use";
 
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
-import S from "./UpsellCard.module.css";
+import { UPGRADE_URL } from "../constants";
+
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
-import { UpsellCTALink, UpsellCardComponent } from "./Upsells.styled";
+import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
-export type UpsellCardProps = {
-  title: string;
-  buttonText: string;
-  buttonLink: string;
-  campaign: string;
-  source: string;
-  illustrationSrc?: string;
-  children: React.ReactNode;
-  large?: boolean;
-  style?: React.CSSProperties;
-} & (
+type CardWidthProps =
   | {
       maxWidth?: never;
       fullWidth?: boolean;
@@ -28,8 +21,29 @@ export type UpsellCardProps = {
   | {
       maxWidth?: number;
       fullWidth?: never;
+    };
+
+type CardLinkProps =
+  | {
+      buttonLink: string;
+      internalLink?: never;
     }
-);
+  | {
+      internalLink: string;
+      buttonLink?: never;
+    };
+
+export type UpsellCardProps = {
+  title: string;
+  buttonText: string;
+  campaign: string;
+  source: string;
+  illustrationSrc?: string;
+  children: React.ReactNode;
+  large?: boolean;
+  style?: React.CSSProperties;
+} & CardWidthProps &
+  CardLinkProps;
 
 export const _UpsellCard: React.FC<UpsellCardProps> = ({
   title,
@@ -38,6 +52,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   campaign,
   source,
   illustrationSrc,
+  internalLink,
   children,
   fullWidth,
   maxWidth,
@@ -45,7 +60,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   ...props
 }: UpsellCardProps) => {
   const url = useUpsellLink({
-    url: buttonLink,
+    url: buttonLink ?? UPGRADE_URL,
     campaign,
     source,
   });
@@ -62,36 +77,47 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   });
 
   return (
-    <UpsellCardComponent
+    <Box
       data-testid="upsell-card"
-      fullWidth={fullWidth}
-      maxWidth={maxWidth}
+      w={fullWidth ? "100%" : "auto"}
+      maw={`${maxWidth ?? 200}px`}
       {...props}
       className={className}
     >
       {illustrationSrc && <Image src={illustrationSrc} w="100%" />}
-      <Stack className={S.MainStack} spacing={0}>
+      <Stack className={S.MainStack} gap={0}>
         <Flex align="center" gap="sm" p="1rem" pb="0.75rem">
           <UpsellGem size={gemSize} />
           <Title lh={1.25} order={2} className={S.Title}>
             {title}
           </Title>
         </Flex>
-        <Stack spacing="md">
+        <Stack gap="md">
           <Text lh="1rem" px="1rem">
             {children}
           </Text>
-          <Box
-            component={UpsellCTALink}
-            onClickCapture={() => trackUpsellClicked({ source, campaign })}
-            href={url}
-            className={S.UpsellCTALink}
-          >
-            {buttonText}
+          <Box mx="md" mb="lg">
+            {buttonLink !== undefined ? (
+              <ExternalLink
+                onClickCapture={() => trackUpsellClicked({ source, campaign })}
+                href={url}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </ExternalLink>
+            ) : (
+              <Link
+                onClickCapture={() => trackUpsellClicked({ source, campaign })}
+                to={internalLink}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </Link>
+            )}
           </Box>
         </Stack>
       </Stack>
-    </UpsellCardComponent>
+    </Box>
   );
 };
 

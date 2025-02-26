@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/setup-node@v3
         with:
-          node-version: '20.x'
+          node-version: '22.x'
       - uses: actions/github-script@v7
         id: matrix
         env:
@@ -44,7 +44,7 @@ jobs:
             // see config.js function getSplittableSpecs for logic that excludes some tests from auto splitting
             const specialTests = [
               { name: "embedding-sdk", specs: "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*" },
-              { name: "oss-subset", edition: 'oss', tags: "@OSS", specs: allSpecs },
+              { name: "oss-subset", edition: 'oss', tags: "@OSS @smoke+-@EE", specs: allSpecs },
               { name: "mongo", tags: "@mongo", specs: allSpecs },
             ];
 

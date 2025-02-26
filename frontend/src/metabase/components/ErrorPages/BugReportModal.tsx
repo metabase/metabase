@@ -49,6 +49,7 @@ export const BugReportModal = ({
       <FormProvider
         initialValues={{
           ...hiddenValues,
+          reporter: true,
           queryResults: false,
           entityInfo: true,
           frontendErrors: true,
@@ -61,10 +62,12 @@ export const BugReportModal = ({
       >
         {formik => (
           <Form>
-            <Text py="md">
-              {t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
-            </Text>
-            <FormTextArea name="description" autoFocus />
+            <Text py="md">{t`Could you provide us with a little context?`}</Text>
+            <FormTextArea
+              name="description"
+              autoFocus
+              placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
+            />
             <Box
               bg={color("accent-gray-light")}
               p="lg"
@@ -72,8 +75,8 @@ export const BugReportModal = ({
               style={{ borderRadius: "0.5rem" }}
             >
               <Flex align="flex-start" gap="md">
-                <Stack spacing="xs">
-                  <Text size="lg" weight="bold">
+                <Stack gap="xs">
+                  <Text size="lg" fw="bold">
                     {t`Include diagnostic information`}
                   </Text>
                   <Text color="text-medium" w="80%">
@@ -102,7 +105,7 @@ export const BugReportModal = ({
             </Box>
             <Button
               variant="filled"
-              leftIcon={isSlackSending ? <Loader size="xs" /> : null}
+              leftSection={isSlackSending ? <Loader size="xs" /> : null}
               onClick={() => onSlackSubmit(formik.values)}
               disabled={isSlackSending}
             >
@@ -111,7 +114,7 @@ export const BugReportModal = ({
             <Divider my="md" />
             <Flex align="flex-start" justify="space-between" gap="md">
               <Box>
-                <Text size="lg" weight="bold">{t`Download report`}</Text>
+                <Text size="lg" fw="bold">{t`Download report`}</Text>
                 <Text>{t`Diagnostic info may contain sensitive data.`}</Text>
               </Box>
               <FormSubmitButton

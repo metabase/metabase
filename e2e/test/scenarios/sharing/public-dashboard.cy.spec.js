@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -70,7 +70,7 @@ const prepareDashboard = () => {
 
   cy.intercept("/api/dashboard/*/public_link").as("publicLink");
 
-  cy.createNativeQuestionAndDashboard({
+  H.createNativeQuestionAndDashboard({
     questionDetails,
     dashboardDetails,
   }).then(
@@ -308,7 +308,7 @@ describe("scenarios > public > dashboard", () => {
   });
 });
 
-H.describeEE("scenarios [EE] > public > dashboard", () => {
+describe("scenarios [EE] > public > dashboard", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

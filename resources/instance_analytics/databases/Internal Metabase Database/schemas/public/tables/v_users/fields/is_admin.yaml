@@ -37,5 +37,6 @@ serdes/meta:
   model: Table
 - id: is_admin
   model: Field
-database_indexed: null
+database_indexed: false
 database_partitioned: null
+entity_id: duUrx_m1Tv76eOXiDr4Kr

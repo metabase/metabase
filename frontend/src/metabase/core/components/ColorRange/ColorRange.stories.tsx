@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 import ColorRange, { type ColorRangeProps } from "./ColorRange";
 
 export default {
-  title: "Core/ColorRange",
+  title: "Components/Ask Before Using/ColorRange",
   component: ColorRange,
 };
 

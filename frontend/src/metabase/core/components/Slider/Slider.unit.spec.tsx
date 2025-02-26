@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "__support__/ui";
 
 import Slider from "./Slider";
 

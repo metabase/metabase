@@ -1,5 +1,3 @@
-import { Box } from "@mantine/core";
-import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { indexBy } from "underscore";
@@ -13,11 +11,12 @@ import {
   setupDashboardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
+import { Box } from "metabase/ui";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -245,5 +244,35 @@ describe("InteractiveDashboard", () => {
 
     expect(onLoad).toHaveBeenCalledTimes(1);
     expect(onLoad).toHaveBeenLastCalledWith(dashboard);
+  });
+
+  describe("withFooter", () => {
+    it("should hide the footer when withFooter=true", async () => {
+      await setup({
+        props: {
+          withFooter: true,
+        },
+      });
+
+      expect(screen.getByTestId("embed-frame-footer")).toBeInTheDocument();
+      expect(
+        screen.getAllByTestId("dashboard-header-row-button").length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("should hide the footer when withFooter=false", async () => {
+      await setup({
+        props: {
+          withFooter: false,
+        },
+      });
+
+      expect(
+        screen.queryByTestId("embed-frame-footer"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryAllByTestId("dashboard-header-row-button").length,
+      ).toBe(0);
+    });
   });
 });

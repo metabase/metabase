@@ -10,7 +10,7 @@ import {
 import TimelinePicker, { type TimelinePickerProps } from "./TimelinePicker";
 
 export default {
-  title: "Timelines/TimelinePicker",
+  title: "App/Timelines/TimelinePicker",
   component: TimelinePicker,
 };
 

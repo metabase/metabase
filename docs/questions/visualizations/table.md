@@ -96,7 +96,11 @@ You can rename the column.
 
 ### Display as
 
-You can display the text as is, or you can display the text as a link. If you select link, you can also change the text displayed, and use parameters for both the link text and the link's URL.
+You can display the text as is, or if the text is a URL, you can display the text as a link or image. 
+
+#### Display text as a link
+
+If you select link, you can also change the text displayed, and use parameters for both the link text and the link's URL.
 
 For example, you could create a dynamic URL using a parameter from another column in the results:
 
@@ -109,6 +113,10 @@ In the above example, Metabase would take the value for the `category` column fo
 ```html
 https://www.example.com/widget
 ```
+
+#### Display URL as an image
+
+If you select image, and the text is a link to an image asset, Metabase will display the image in the table cell.
 
 ## Date formatting options
 

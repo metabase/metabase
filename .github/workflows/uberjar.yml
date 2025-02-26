@@ -133,7 +133,7 @@ jobs:
       uses: docker/build-push-action@v3
       with:
         context: bin/docker/.
-        platforms: linux/amd64
+        platforms: linux/amd64,linux/arm64
         network: host
         tags: localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}
         build-args: |
@@ -146,7 +146,7 @@ jobs:
     - name: Is Docker running?
       run: docker ps
     - name: Wait for Metabase to start and reach 100% health
-      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 3
     - name: Login to Docker Hub
       uses: docker/login-action@v2
@@ -154,30 +154,75 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Retag and push images if master (ee)
+    - name: Retag and push images if master (ee) - should be cached at this point
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:latest && docker push ${{ github.repository_owner }}/metabase-enterprise-head:latest
+      uses: docker/build-push-action@v3
+      with:
+        context: bin/docker/.
+        platforms: linux/amd64,linux/arm64
+        network: host
+        tags: ${{ github.repository_owner }}/metabase-enterprise-head:latest
+        build-args: |
+          GIT_COMMIT_SHA=${{ github.sha }}
+        no-cache: false
+        push: true
 
     # TODO: remove when we're done testing metabot
-    - name: Retag and push images if metabot-v3-second-try (ee)
+    - name: Retag and push images if metabot-v3-second-try (ee) - should be cached at this point
       if: ${{ (github.ref_name == 'metabot-v3-second-try') && matrix.edition == 'ee' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:metabot && docker push ${{ github.repository_owner }}/metabase-enterprise-head:metabot
+      uses: docker/build-push-action@v3
+      with:
+        context: bin/docker/.
+        platforms: linux/amd64,linux/arm64
+        network: host
+        tags: ${{ github.repository_owner }}/metabase-enterprise-head:metabot
+        build-args: |
+          GIT_COMMIT_SHA=${{ github.sha }}
+        no-cache: false
+        push: true
 
-    - name: Retag and push images if master (oss)
+    - name: Retag and push images if master (oss) - should be cached at this point
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss ${{ github.repository_owner }}/metabase-head:latest && docker push ${{ github.repository_owner }}/metabase-head:latest
+      uses: docker/build-push-action@v3
+      with:
+        context: bin/docker/.
+        platforms: linux/amd64,linux/arm64
+        network: host
+        tags: ${{ github.repository_owner }}/metabase-head:latest
+        build-args: |
+          GIT_COMMIT_SHA=${{ github.sha }}
+        no-cache: false
+        push: true
 
-    - name: Retag and push images if master (ee-extra)
+    - name: Retag and push images if master (ee-extra) - should be cached at this point
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee-extra' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-extra ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest && docker push ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest
+      uses: docker/build-push-action@v3
+      with:
+        context: bin/docker/.
+        platforms: linux/amd64,linux/arm64
+        network: host
+        tags: ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest
+        build-args: |
+          GIT_COMMIT_SHA=${{ github.sha }}
+        no-cache: false
+        push: true
 
-    - name: Retag and push images if dev branch
+    - name: Retag and push images if dev branch - should be cached at this point
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }} && docker push ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+      uses: docker/build-push-action@v3
+      with:
+        context: bin/docker/.
+        platforms: linux/amd64,linux/arm64
+        network: host
+        tags: ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+        build-args: |
+          GIT_COMMIT_SHA=${{ github.sha }}
+        no-cache: false
+        push: true
 
     - name: Run Trivy vulnerability scanner if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
-      uses: aquasecurity/trivy-action@0.28.0
+      uses: aquasecurity/trivy-action@0.29.0
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
@@ -188,7 +233,7 @@ jobs:
 
     - name: Run Trivy vulnerability scanner if master (oss)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
-      uses: aquasecurity/trivy-action@0.28.0
+      uses: aquasecurity/trivy-action@0.29.0
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
@@ -199,7 +244,7 @@ jobs:
 
     - name: Run Trivy vulnerability scanner if dev branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
-      uses: aquasecurity/trivy-action@0.28.0
+      uses: aquasecurity/trivy-action@0.29.0
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
@@ -210,19 +255,19 @@ jobs:
 
     - name: Upload Trivy scan results to GitHub Security tab if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'trivy-results.sarif'
 
     - name: Upload Trivy scan results to GitHub Security tab if master (oss)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'trivy-results.sarif'
 
     - name: Upload Trivy scan results to GitHub Security tab if dev branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'trivy-results.sarif'
 
@@ -285,7 +330,7 @@ jobs:
       - name: Is Docker with Ubuntu running?
         run: docker ps
       - name: Wait for Ubuntu-based Metabase container to start and reach 100% health
-        run: while ! curl -s 'http://localhost:3001/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+        run: while ! curl 'http://localhost:3001/api/health' | grep '{"status":"ok"}'; do sleep 1; done
         timeout-minutes: 3
       - name: Login to Docker Hub
         if: ${{ github.ref_name == 'master' }}

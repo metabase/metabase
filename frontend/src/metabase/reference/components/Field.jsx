@@ -4,6 +4,7 @@ import { getIn } from "icepick";
 import PropTypes from "prop-types";
 import { memo } from "react";
 import { Link } from "react-router";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import S from "metabase/components/List/List.module.css";
@@ -25,7 +26,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         <div className={cx(S.itemTitle, F.fieldName)}>
           {isEditing ? (
             <input
-              className={F.fieldNameTextInput}
+              className={F.fieldTextInput}
               type="text"
               placeholder={field.name}
               {...formField.display_name}
@@ -86,13 +87,14 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         </div>
         <div className={F.fieldDataType}>{field.base_type}</div>
       </div>
-      <div className={cx(S.itemSubtitle, { [CS.mt1]: true })}>
+      <div className={S.itemSubtitle}>
         <div className={F.fieldForeignKey}>
           {isEditing
             ? (isTypeFK(formField.semantic_type.value) ||
                 (isTypeFK(field.semantic_type) &&
                   formField.semantic_type.value === undefined)) && (
                 <Select
+                  className={CS.mt1}
                   name={formField.fk_target_field_id.name}
                   placeholder={t`Select a target`}
                   value={
@@ -105,16 +107,30 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                 />
               )
             : isTypeFK(field.semantic_type) && (
-                <span>
+                <span className={CS.mt1}>
                   {getIn(foreignKeys, [field.fk_target_field_id, "name"])}
                 </span>
               )}
         </div>
-        {field.description && (
-          <div className={cx(S.itemSubtitle, CS.mb2, { [CS.mt1]: isEditing })}>
-            {field.description}
-          </div>
-        )}
+
+        {match({ description: field.description, isEditing })
+          .with({ isEditing: true }, () => {
+            return (
+              <input
+                className={cx(F.fieldTextInput, CS.mb2, CS.mt1)}
+                type="text"
+                placeholder={t`No column description yet`}
+                {...formField.description}
+                defaultValue={field.description ?? ""}
+              />
+            );
+          })
+          .with({ description: P.not(P.nullish) }, () => (
+            <div className={cx(F.fieldDescription, CS.mb2, CS.mt1)}>
+              {field.description}
+            </div>
+          ))
+          .otherwise(() => null)}
       </div>
     </div>
   </div>

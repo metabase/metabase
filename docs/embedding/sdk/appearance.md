@@ -4,9 +4,7 @@ title: "Embedded analytics SDK - appearance"
 
 # Embedded analytics SDK - appearance
 
-{% include beta-blockquote.html %}
-
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true enterprise-only=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 You can style your embedded Metabase components with a theme.
 
@@ -114,7 +112,12 @@ const theme = defineMetabaseTheme({
     // Question
     question: {
       // Background color for all questions
-      backgroundColor: "#2D2D30",
+      backgroundColor: "#2E353B",
+
+      // Toolbar of the default interactive question layout
+      toolbar: {
+        backgroundColor: "#F3F5F7",
+      },
     },
 
     // Tooltips
@@ -210,7 +213,10 @@ const theme = defineMetabaseTheme({
 You can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 
 ```tsx
-import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
+import {
+  MetabaseProvider,
+  StaticDashboard,
+} from "@metabase/embedding-sdk-react";
 
 <MetabaseProvider
   loaderComponent={() => <div>Analytics is loading...</div>}

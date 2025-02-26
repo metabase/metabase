@@ -85,6 +85,7 @@ dataset_query:
           - full_name
         - base-type: type/Text
           join-alias: People - Creator
+      ident: join_fwkC3nWB_uouifA5kkaBp@0__People - Creator
       source-table: 0wVIfjBJWclD0lKeABYYl
     - alias: Content - Card Qualified
       condition:
@@ -107,6 +108,7 @@ dataset_query:
           - name
         - base-type: type/Text
           join-alias: Content - Card Qualified
+      ident: join_fwkC3nWB_uouifA5kkaBp@0__Content - Card Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
     source-table: skoPT2xiuEcUV8vFkHE6S
   type: query
@@ -425,7 +427,6 @@ visualization_settings:
       - name
     - base-type: type/Text
       join-alias: Content - Card Qualified
-    key: '["ref",["field",921,{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
     name: name
   - enabled: true
     fieldRef:
@@ -436,7 +437,6 @@ visualization_settings:
       - full_name
     - base-type: type/Text
       join-alias: People - Creator
-    key: '["ref",["field",1377,{"base-type":"type/Text","join-alias":"People - Creator"}]]'
     name: full_name
   - enabled: true
     fieldRef:
@@ -446,7 +446,6 @@ visualization_settings:
       - v_alerts
       - created_at
     - temporal-unit: default
-    key: '["ref",["field",1370,null]]'
     name: created_at
   - enabled: true
     fieldRef:
@@ -456,7 +455,6 @@ visualization_settings:
       - v_alerts
       - updated_at
     - temporal-unit: default
-    key: '["ref",["field",1361,null]]'
     name: updated_at
   - enabled: false
     fieldRef:
@@ -466,7 +464,6 @@ visualization_settings:
       - v_alerts
       - creator_id
     - null
-    key: '["ref",["field",1373,null]]'
     name: creator_id
   - enabled: false
     fieldRef:
@@ -476,7 +473,6 @@ visualization_settings:
       - v_alerts
       - card_id
     - null
-    key: '["ref",["field",1374,null]]'
     name: card_id
   - enabled: true
     fieldRef:
@@ -486,7 +482,6 @@ visualization_settings:
       - v_alerts
       - alert_condition
     - null
-    key: '["ref",["field",1369,null]]'
     name: alert_condition
   - enabled: true
     fieldRef:
@@ -496,7 +491,6 @@ visualization_settings:
       - v_alerts
       - schedule_type
     - null
-    key: '["ref",["field",1367,null]]'
     name: schedule_type
   - enabled: true
     fieldRef:
@@ -506,7 +500,6 @@ visualization_settings:
       - v_alerts
       - schedule_day
     - null
-    key: '["ref",["field",1363,null]]'
     name: schedule_day
   - enabled: true
     fieldRef:
@@ -516,7 +509,6 @@ visualization_settings:
       - v_alerts
       - schedule_hour
     - null
-    key: '["ref",["field",1372,null]]'
     name: schedule_hour
   - enabled: true
     fieldRef:
@@ -526,7 +518,6 @@ visualization_settings:
       - v_alerts
       - recipient_type
     - null
-    key: '["ref",["field",1368,null]]'
     name: recipient_type
   - enabled: true
     fieldRef:
@@ -536,7 +527,6 @@ visualization_settings:
       - v_alerts
       - recipients
     - null
-    key: '["ref",["field",1362,null]]'
     name: recipients
   - enabled: true
     fieldRef:
@@ -546,7 +536,6 @@ visualization_settings:
       - v_alerts
       - recipient_external
     - null
-    key: '["ref",["field",1365,null]]'
     name: recipient_external
   table.pivot_column: schedule_day
 serdes/meta:
@@ -554,6 +543,7 @@ serdes/meta:
   label: alerts
   model: Card
 archived_directly: false
+dashboard_id: Zf1jknwhPhazxIIJ2X6mX
 metabase_version: vUNKNOWN (44d194b)
 source_card_id: skoPT2xiuEcUV8vFkHE6S
 type: question

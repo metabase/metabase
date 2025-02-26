@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { defer } from "metabase/lib/promise";
@@ -57,7 +57,7 @@ describe.skip("issue 15860", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         name: "Q1",
         query: { "source-table": PRODUCTS_ID },
@@ -83,7 +83,7 @@ describe.skip("issue 15860", () => {
       },
     }).then(({ body: { card_id: q1, dashboard_id } }) => {
       // Create a second question with the same source table
-      cy.createQuestion({
+      H.createQuestion({
         name: "Q2",
         query: { "source-table": PRODUCTS_ID },
       }).then(({ body: { id: q2 } }) => {
@@ -212,7 +212,7 @@ describe("issue 20438", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -278,7 +278,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "20634",
         native: {
@@ -384,7 +384,7 @@ describe("issues 20845, 25031", () => {
 
       const questionDetails = getQuestionDetails(value);
 
-      cy.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: { id, dashboard_id, card_id } }) => {
@@ -545,7 +545,7 @@ describe("issue 27643", { tags: "@external" }, () => {
 
       cy.get("@postgresInvoicesExpectedInvoiceId")
         .then(fieldId => {
-          cy.createNativeQuestionAndDashboard({
+          H.createNativeQuestionAndDashboard({
             questionDetails: getQuestionDetails(fieldId),
             dashboardDetails,
           });
@@ -566,44 +566,40 @@ describe("issue 27643", { tags: "@external" }, () => {
             ],
           };
 
-          cy.editDashboardCard(dashboardCard, mapFilterToCard);
+          H.editDashboardCard(dashboardCard, mapFilterToCard);
         });
     });
 
-    it(
-      "in static embedding and in public dashboard scenarios (metabase#27643-1)",
-      { tags: "@flaky" },
-      () => {
-        cy.log("Test the dashboard");
-        H.visitDashboard("@dashboardId");
+    it("in static embedding and in public dashboard scenarios (metabase#27643-1)", () => {
+      cy.log("Test the dashboard");
+      H.visitDashboard("@dashboardId");
+      H.getDashboardCard().should("contain", "true");
+      H.toggleFilterWidgetValues(["false"]);
+      H.getDashboardCard().should("contain", "false");
+
+      cy.log("Test the embedded dashboard");
+      cy.get("@dashboardId").then(dashboard => {
+        H.visitEmbeddedPage({
+          resource: { dashboard },
+          params: {},
+        });
+
         H.getDashboardCard().should("contain", "true");
         H.toggleFilterWidgetValues(["false"]);
         H.getDashboardCard().should("contain", "false");
+      });
 
-        cy.log("Test the embedded dashboard");
-        cy.get("@dashboardId").then(dashboard => {
-          H.visitEmbeddedPage({
-            resource: { dashboard },
-            params: {},
-          });
+      cy.log("Test the public dashboard");
+      cy.get("@dashboardId").then(dashboardId => {
+        // We were signed out due to the previous visitEmbeddedPage
+        cy.signInAsAdmin();
+        H.visitPublicDashboard(dashboardId);
 
-          H.getDashboardCard().should("contain", "true");
-          H.toggleFilterWidgetValues(["false"]);
-          H.getDashboardCard().should("contain", "false");
-        });
-
-        cy.log("Test the public dashboard");
-        cy.get("@dashboardId").then(dashboardId => {
-          // We were signed out due to the previous visitEmbeddedPage
-          cy.signInAsAdmin();
-          H.visitPublicDashboard(dashboardId);
-
-          H.getDashboardCard().should("contain", "true");
-          H.toggleFilterWidgetValues(["false"]);
-          H.getDashboardCard().should("contain", "false");
-        });
-      },
-    );
+        H.getDashboardCard().should("contain", "true");
+        H.toggleFilterWidgetValues(["false"]);
+        H.getDashboardCard().should("contain", "false");
+      });
+    });
   });
 
   describe("should allow a native question filter to map to a boolean field filter parameter (metabase#27643)", () => {
@@ -650,7 +646,7 @@ describe("issue 27643", { tags: "@external" }, () => {
   });
 });
 
-H.describeEE("issue 30535", () => {
+describe("issue 30535", () => {
   const questionDetails = {
     name: "3035",
     query: {
@@ -671,7 +667,7 @@ H.describeEE("issue 30535", () => {
       },
     });
 
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createQuestion(questionDetails).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -756,7 +752,7 @@ describe("dashboard preview", () => {
         [filter3.slug]: "enabled",
       },
     };
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { card_id, dashboard_id } }) => {
@@ -841,7 +837,7 @@ describe("dashboard preview", () => {
         [filter3.slug]: "locked",
       },
     };
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { card_id, dashboard_id } }) => {
@@ -943,7 +939,7 @@ describe("issue 40660", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -1008,7 +1004,7 @@ describe.skip("issue 49142", () => {
   });
 });
 
-H.describeEE("issue 8490", () => {
+describe("issue 8490", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

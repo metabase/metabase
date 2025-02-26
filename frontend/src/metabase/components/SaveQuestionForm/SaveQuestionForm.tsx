@@ -1,18 +1,23 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
 import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { FormFooter } from "metabase/core/components/FormFooter";
-import FormInput from "metabase/core/components/FormInput";
-import FormRadio from "metabase/core/components/FormRadio";
-import FormTextArea from "metabase/core/components/FormTextArea";
-import { Form, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormRadioGroup,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
 import { isNullOrUndefined } from "metabase/lib/types";
-import { Button } from "metabase/ui";
+import { Button, Radio, Stack, rem } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
+import S from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
 
 export const SaveQuestionForm = ({
@@ -24,13 +29,8 @@ export const SaveQuestionForm = ({
   onSaveSuccess?: () => void;
   saveToDashboard?: Dashboard | null | undefined;
 }) => {
-  const {
-    question,
-    originalQuestion,
-    showSaveType,
-    values,
-    saveToCollectionId,
-  } = useSaveQuestionContext();
+  const { question, originalQuestion, showSaveType, values, saveToCollection } =
+    useSaveQuestionContext();
 
   const nameInputPlaceholder = getPlaceholder(question.type());
   const isDashboardQuestion = !!question.dashboardId();
@@ -42,7 +42,7 @@ export const SaveQuestionForm = ({
     ? t`Save changes`
     : t`Replace original question, "${originalQuestion?.displayName()}"`;
 
-  const isCollectionPickerEnabled = isNullOrUndefined(saveToCollectionId);
+  const isCollectionPickerEnabled = isNullOrUndefined(saveToCollection);
   const models: CollectionPickerModel[] =
     question.type() === "question"
       ? ["collection", "dashboard"]
@@ -53,30 +53,72 @@ export const SaveQuestionForm = ({
   return (
     <Form>
       {showSaveType && (
-        <FormRadio
+        <FormRadioGroup
           name="saveType"
-          title={title}
-          options={[
-            {
-              name: overwriteOptionName,
-              value: "overwrite",
+          label={title}
+          styles={{
+            label: {
+              fontWeight: 900,
+              fontSize: "0.77rem",
+              color: "var(--mb-color-text-medium)",
+              marginBottom: rem("7px"),
             },
-            { name: t`Save as new question`, value: "create" },
-          ]}
-          vertical
-        />
+          }}
+        >
+          <Stack gap="sm" mb="md">
+            <Radio
+              name={overwriteOptionName}
+              value="overwrite"
+              label={overwriteOptionName}
+              classNames={{
+                labelWrapper: S.labelWrapper,
+                label: cx(S.label, {
+                  [S.labelActive]: values.saveType === "overwrite",
+                }),
+              }}
+            />
+            <Radio
+              name={t`Save as new question`}
+              value="create"
+              classNames={{
+                label: cx(S.label, {
+                  [S.labelActive]: values.saveType === "create",
+                }),
+              }}
+              label={t`Save as new question`}
+            />
+          </Stack>
+        </FormRadioGroup>
       )}
       {values.saveType === "create" && (
-        <div>
-          <FormInput
+        <Stack gap="md">
+          <FormTextInput
             name="name"
-            title={t`Name`}
+            label={t`Name`}
             placeholder={nameInputPlaceholder}
+            styles={{
+              label: {
+                fontWeight: 900,
+                fontSize: "0.77rem",
+                color: "var(--mb-color-text-medium)",
+                marginBottom: rem("7px"),
+              },
+            }}
           />
-          <FormTextArea
+
+          <FormTextarea
             name="description"
-            title={t`Description`}
+            label={t`Description`}
+            minRows={4}
             placeholder={t`It's optional but oh, so helpful`}
+            styles={{
+              label: {
+                fontWeight: 900,
+                fontSize: "0.77rem",
+                color: "var(--mb-color-text-medium)",
+                marginBottom: rem("7px"),
+              },
+            }}
           />
           {isCollectionPickerEnabled && showPickerInput && (
             <FormCollectionAndDashboardPicker
@@ -94,7 +136,7 @@ export const SaveQuestionForm = ({
               }}
             />
           )}
-        </div>
+        </Stack>
       )}
       <FormFooter>
         <FormErrorMessage inline />

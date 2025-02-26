@@ -8,14 +8,12 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
-  Footer,
-  WidgetRoot,
-} from "metabase/parameters/components/widgets/Widget.styled";
-import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
 } from "metabase-lib/v1/operators/utils";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
+
+import { Footer, WidgetRoot } from "../Widget";
 
 import { normalizeValue } from "./normalizeValue";
 
@@ -75,7 +73,7 @@ export default function ParameterFieldWidget({
               };
           return (
             <FieldValuesWidget
-              key={index}
+              key={`parameter-${parameter.id}-${index}`}
               className={cx(CS.input, numFields - 1 !== index && CS.mb1)}
               value={value}
               parameter={parameter}

@@ -107,8 +107,8 @@ export function SearchResult({
         item={result}
         type={model}
       />
-      <ResultNameSection justify="center" spacing="xs">
-        <Group spacing="xs" align="center" noWrap>
+      <ResultNameSection justify="center" gap="xs">
+        <Group gap="xs" align="center" wrap="nowrap">
           <ResultTitle
             role="heading"
             data-testid="search-result-item-name"
@@ -126,7 +126,7 @@ export function SearchResult({
         <InfoText showLinks={!onClick} result={result} isCompact={compact} />
         {description && showDescription && (
           <DescriptionSection>
-            <Group noWrap spacing="sm" data-testid="result-description">
+            <Group wrap="nowrap" gap="sm" data-testid="result-description">
               <DescriptionDivider
                 size="md"
                 color="focus"
@@ -151,7 +151,10 @@ export function SearchResult({
       )}
       {showXRayButton && (
         <XRaySection>
-          <XRayButton leftIcon={<Icon name="bolt" />} onClick={onXRayClick} />
+          <XRayButton
+            leftSection={<Icon name="bolt" />}
+            onClick={onXRayClick}
+          />
         </XRaySection>
       )}
     </SearchResultContainer>

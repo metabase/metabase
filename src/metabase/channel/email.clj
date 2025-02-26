@@ -1,6 +1,6 @@
 (ns metabase.channel.email
   (:require
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -187,7 +187,7 @@
   [:and
    [:map {:closed true}
     [:subject      :string]
-    [:recipients   [:sequential ms/Email]]
+    [:recipients   [:or [:sequential ms/Email] [:set ms/Email]]]
     [:message-type [:enum :text :html :attachments]]
     [:message      [:or :string [:sequential :map]]]
     [:bcc?         {:optional true} [:maybe :boolean]]]
@@ -202,18 +202,19 @@
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up. Should prefer to use [[send-email-retrying!]] unless
   the caller has its own retry logic."
-  [{:keys [subject recipients message-type message] :as email}]
+  [{:keys [subject recipients message-type message bcc?] :as _email}]
   (try
     (when-not (email-smtp-host)
       (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
     ;; Now send the email
-    (let [to-type (if (:bcc? email) :bcc :to)]
+    (let [to-type (if bcc? :bcc :to)]
       (send-email! (smtp-settings)
                    (merge
                     {:from    (if-let [from-name (email-from-name)]
                                 (str from-name " <" (email-from-address) ">")
                                 (email-from-address))
-                     to-type  recipients
+                     ;; FIXME: postal doesn't accept recipients if it's a set, need to fix this from upstream
+                     to-type  (seq recipients)
                      :subject subject
                      :body    (case message-type
                                 :attachments message
@@ -223,11 +224,11 @@
                     (when-let [reply-to (email-reply-to)]
                       {:reply-to reply-to}))))
     (catch Throwable e
-      (prometheus/inc! :metabase-email/message-errors)
+      (analytics/inc! :metabase-email/message-errors)
       (when (not= :smtp-host-not-set (:cause (ex-data e)))
         (throw e)))
     (finally
-      (prometheus/inc! :metabase-email/messages))))
+      (analytics/inc! :metabase-email/messages))))
 
 (mu/defn send-email-retrying!
   "Like [[send-message-or-throw!]] but retries sending on errors according to the retry settings."

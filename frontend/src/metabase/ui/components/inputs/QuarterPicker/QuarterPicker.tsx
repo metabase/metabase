@@ -58,9 +58,11 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
     <Box ref={ref} {...props}>
       <MonthPicker
         classNames={{
-          yearLevel: S.yearLevel,
           monthsList: S.monthsList,
         }}
+        getYearControlProps={() => ({
+          className: S.yearLevel,
+        })}
         value={value}
         date={date}
         level={level}

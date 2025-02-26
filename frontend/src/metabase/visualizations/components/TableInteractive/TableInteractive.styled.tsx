@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import Draggable from "react-draggable";
 
@@ -22,7 +24,7 @@ export const TableInteractiveRoot = styled(Box)`
   .${TableS.TableInteractiveCellWrapper}:hover {
     background-color: ${getCellHoverBackground};
   }
-`;
+` as unknown as typeof Box;
 
 interface TableDraggableProps {
   enableCustomUserSelectHack?: boolean;

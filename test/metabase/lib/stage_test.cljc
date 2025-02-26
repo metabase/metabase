@@ -15,7 +15,7 @@
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel ensure-previous-stages-have-metadata-test
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)])
                   lib/append-stage
                   lib/append-stage)]
@@ -69,12 +69,12 @@
                 (lib/returned-columns query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
-  (let [query lib.tu/query-with-source-card]
+  (let [query (lib.tu/query-with-source-card)]
     (is (= "My Card"
            (lib/display-name query)))))
 
 (deftest ^:parallel adding-and-removing-stages
-  (let [query                lib.tu/venues-query
+  (let [query                (lib.tu/venues-query)
         query-with-new-stage (-> query
                                  lib/append-stage
                                  (lib/order-by 1 (meta/field-metadata :venues :name) :asc))]
@@ -88,40 +88,41 @@
       (is (= query (lib/drop-stage query))))))
 
 (deftest ^:parallel drop-empty-stages-test
-  (let [query (lib/append-stage lib.tu/venues-query)]
+  (let [base  (lib.tu/venues-query)
+        query (lib/append-stage base)]
     (testing "Dropping new stage works"
-      (is (= lib.tu/venues-query (lib/drop-empty-stages query))))
+      (is (= base (lib/drop-empty-stages query))))
     (testing "Dropping only stage is idempotent"
-      (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/drop-empty-stages query)))))
+      (is (= base (lib/drop-empty-stages (lib/drop-empty-stages query)))))
     (testing "Can drop stage after removing the last"
       (testing "breakout"
         (let [query (lib/breakout query (first (lib/visible-columns query)))]
           (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
-          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/breakouts query))))))))
+          (is (= base (lib/drop-empty-stages (lib/remove-clause query (first (lib/breakouts query))))))))
       (testing "aggregation"
         (let [query (lib/aggregate query (lib/count))]
           (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
-          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/aggregations query))))))))
+          (is (= base (lib/drop-empty-stages (lib/remove-clause query (first (lib/aggregations query))))))))
       (testing "join"
         (let [query (lib/join query (meta/table-metadata :categories))]
           (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
-          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/joins query))))))))
+          (is (= base (lib/drop-empty-stages (lib/remove-clause query (first (lib/joins query))))))))
       (testing "field"
         (let [query (lib/with-fields query [(meta/field-metadata :venues :id)])]
           (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
-          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/fields query))))))))
+          (is (= base (lib/drop-empty-stages (lib/remove-clause query (first (lib/fields query))))))))
       (testing "expression"
         (let [query (lib/expression query "foobar" (lib/+ 1 1))]
           (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
-          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/expressions query))))))))
+          (is (= base (lib/drop-empty-stages (lib/remove-clause query (first (lib/expressions query))))))))
       (testing "filter"
         (let [query (lib/filter query (lib/= 1 1))]
           (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
-          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/filters query))))))))
+          (is (= base (lib/drop-empty-stages (lib/remove-clause query (first (lib/filters query))))))))
       (testing "order-by"
         (let [query (lib/order-by query (meta/field-metadata :venues :id))]
           (is (= 2 (lib/stage-count (lib/drop-empty-stages query))))
-          (is (= lib.tu/venues-query (lib/drop-empty-stages (lib/remove-clause query (first (lib/order-bys query))))))))
+          (is (= base (lib/drop-empty-stages (lib/remove-clause query (first (lib/order-bys query))))))))
       (testing "multiple empty stages"
         (let [query (-> query
                         (lib/append-stage)
@@ -132,7 +133,7 @@
           (is (= 2 (lib/stage-count (lib/drop-empty-stages query)))))))))
 
 (defn- query-with-expressions []
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/expression "ID + 1" (lib/+ (meta/field-metadata :venues :id) 1))
                   (lib/expression "ID + 2" (lib/+ (meta/field-metadata :venues :id) 2)))]
     (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
@@ -212,7 +213,7 @@
   (testing "visible-columns should include implicitly joinable columns when the query has a source Card (#30046)"
     (doseq [varr [#'lib.tu/query-with-source-card
                   #'lib.tu/query-with-source-card-with-result-metadata]
-            :let [query @varr]]
+            :let [query (@varr)]]
       (testing (pr-str varr)
         (is (=? [{:name                     "USER_ID"
                   :display-name             "User ID"
@@ -259,7 +260,7 @@
             (map lib/ref cols)))))
 
 (deftest ^:parallel fields-should-not-hide-joined-fields
-  (let [query (-> lib.tu/venues-query
+  (let [query (-> (lib.tu/venues-query)
                   (lib/with-fields [(meta/field-metadata :venues :id)
                                     (meta/field-metadata :venues :name)])
                   (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
@@ -407,40 +408,40 @@
 
 (deftest ^:parallel ensure-filter-stage-test
   (testing "no stage is added if the filter stage already exists"
-    (doseq [query [lib.tu/venues-query
-                   (-> lib.tu/venues-query
+    (doseq [query [(lib.tu/venues-query)
+                   (-> (lib.tu/venues-query)
                        (lib/filter (lib/= (meta/field-metadata :venues :category-id) 1)))
-                   (-> lib.tu/venues-query
+                   (-> (lib.tu/venues-query)
                        (lib/breakout (meta/field-metadata :venues :category-id))
                        (lib/append-stage))
-                   (-> lib.tu/venues-query
+                   (-> (lib.tu/venues-query)
                        (lib/aggregate (lib/count)))
-                   (-> lib.tu/venues-query
+                   (-> (lib.tu/venues-query)
                        (lib/breakout (meta/field-metadata :venues :category-id))
                        (lib/aggregate (lib/count))
                        (lib/append-stage))]]
       (is (= query (lib/ensure-filter-stage query)))))
   (testing "a stage is added if the filter stage doesn't exists yet"
-    (doseq [query [(-> lib.tu/venues-query
+    (doseq [query [(-> (lib.tu/venues-query)
                        (lib/breakout (meta/field-metadata :venues :category-id))
                        (lib/aggregate (lib/count)))
-                   (-> lib.tu/venues-query
+                   (-> (lib.tu/venues-query)
                        (lib/breakout (meta/field-metadata :venues :category-id)))
-                   (-> lib.tu/venues-query
+                   (-> (lib.tu/venues-query)
                        (lib/append-stage)
                        (lib/filter (lib/= (meta/field-metadata :venues :category-id) 1))
                        (lib/breakout (meta/field-metadata :venues :category-id))
                        (lib/breakout (meta/field-metadata :venues :price)))
-                   (-> lib.tu/venues-query
+                   (-> (lib.tu/venues-query)
                        (lib/filter (lib/= (meta/field-metadata :venues :category-id) 1))
                        (lib/breakout (meta/field-metadata :venues :category-id))
                        (lib/aggregate (lib/count)))
-                   (-> lib.tu/venues-query
+                   (-> (lib.tu/venues-query)
                        (lib/append-stage)
                        (lib/breakout (meta/field-metadata :venues :category-id))
                        (lib/aggregate (lib/count))
                        (lib/expression "2price" (lib/* (meta/field-metadata :venues :price) 2)))
-                   (let [base (-> lib.tu/venues-query
+                   (let [base (-> (lib.tu/venues-query)
                                   (lib/append-stage)
                                   (lib/breakout (meta/field-metadata :venues :category-id))
                                   (lib/breakout (meta/field-metadata :venues :price))

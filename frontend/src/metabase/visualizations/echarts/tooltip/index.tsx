@@ -70,13 +70,15 @@ export const getTooltipBaseOption = (
       let container = document.querySelector(
         ".echarts-tooltip-container",
       ) as HTMLDivElement;
+
       if (!container) {
         container = document.createElement("div");
         container.classList.add("echarts-tooltip-container");
         container.style.setProperty("overflow", "hidden");
-        container.style.setProperty("position", "absolute");
+        container.style.setProperty("position", "fixed");
         container.style.setProperty("inset", "0");
         container.style.setProperty("pointer-events", "none");
+        container.style.setProperty("z-index", "var(--mb-overlay-z-index)");
 
         document.body.append(container);
       }
@@ -182,6 +184,10 @@ export const useCloseTooltipOnScroll = (
 ) => {
   useEffect(() => {
     const handleScroll = _.throttle(() => {
+      if (chartRef.current?.isDisposed()) {
+        return;
+      }
+
       chartRef.current?.dispatchAction({
         type: "hideTip",
       });

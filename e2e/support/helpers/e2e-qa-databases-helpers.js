@@ -8,6 +8,8 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 
+import { createQuestion } from "./api";
+
 /*****************************************
  **            QA DATABASES             **
  ******************************************/
@@ -214,6 +216,14 @@ export function queryWritableDB(query, type = "postgres") {
   });
 }
 
+export function resetWritableDb({ type = "postgres" }) {
+  cy.log(`Resetting ${type} writable DB`);
+  cy.task("resetWritableDb", { type });
+}
+
+/**
+ * Note: this function MUST come after the restore() function in the file, or it will get wiped out
+ */
 export function resetTestTable({ type, table }) {
   cy.task("resetTable", { type, table });
 }
@@ -247,7 +257,7 @@ export const createModelFromTableName = ({
   idAlias = "modelId",
 }) => {
   getTableId({ name: tableName }).then(tableId => {
-    cy.createQuestion(
+    createQuestion(
       {
         database: WRITABLE_DB_ID,
         name: modelName,

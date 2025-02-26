@@ -1,4 +1,3 @@
-import { within } from "@testing-library/react";
 import _ from "underscore";
 
 import { setupSearchEndpoints } from "__support__/server-mocks";
@@ -6,6 +5,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { checkNotNull } from "metabase/lib/types";

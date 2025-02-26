@@ -1,12 +1,24 @@
 (ns dev.deps-graph
   (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.tools.namespace.file :as ns.file]
    [clojure.tools.namespace.find :as ns.find]
-   [clojure.tools.namespace.parse :as ns.parse]))
+   [clojure.tools.namespace.parse :as ns.parse]
+   [clojure.walk :as walk]
+   [lambdaisland.deep-diff2 :as ddiff]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
+   [rewrite-clj.node :as n]
+   [rewrite-clj.parser :as r.parser]
+   [rewrite-clj.zip :as z]))
 
 (set! *warn-on-reflection* true)
 
-(defn- project-root-directory ^java.io.File []
+(mu/defn- project-root-directory :- (ms/InstanceOfClass java.io.File)
+  ^java.io.File []
   (.. (java.nio.file.Paths/get (.toURI (io/resource "dev/deps_graph.clj")))
       toFile          ; /home/cam/metabase/dev/src/dev/deps_graph.clj
       getParentFile   ; /home/cam/metabase/dev/src/dev/
@@ -14,31 +26,184 @@
       getParentFile   ; /home/cam/metabase/dev/
       getParentFile)) ; /home/cam/metabase/
 
-(defn- source-root
+(mu/defn- source-root :- (ms/InstanceOfClass java.io.File)
   "This is basically a non-hardcoded version of
 
     (io/file \"/home/cam/metabase/src/metabase\")"
   ^java.io.File []
-  (io/file (str (.getAbsolutePath (project-root-directory)) "/src/metabase")))
+  (io/file (str (.getAbsolutePath (project-root-directory)) "/src")))
 
-(defn- find-ns-decls []
-  (ns.find/find-ns-decls [(source-root)]))
+(mu/defn- enterprise-source-root :- (ms/InstanceOfClass java.io.File)
+  ^java.io.File []
+  (io/file (str (.getAbsolutePath (project-root-directory)) "/enterprise/backend/src")))
 
-(defn- module [ns-symb]
-  (some-> (re-find #"^metabase\.[^.]+" (str ns-symb)) symbol))
+(mu/defn- drivers-source-roots :- [:sequential (ms/InstanceOfClass java.io.File)]
+  []
+  (for [file (.listFiles (io/file (str (.getAbsolutePath (project-root-directory)) "/modules/drivers")))]
+    (io/file file "src")))
 
-(defn- dependencies []
-  (for [decl (find-ns-decls)
-        :let [ns-symb (ns.parse/name-from-ns-decl decl)
-              deps    (ns.parse/deps-from-ns-decl decl)]]
-    {:namespace ns-symb
-     :module    (module ns-symb)
-     :deps      (into #{}
-                      (keep (fn [dep-symb]
-                              (when-let [module (module dep-symb)]
-                                {:namespace dep-symb
-                                 :module    module})))
-                      deps)}))
+(mu/defn- find-source-files :- [:sequential (ms/InstanceOfClass java.io.File)]
+  []
+  (mapcat ns.find/find-sources-in-dir
+          (list* (source-root) (enterprise-source-root) (drivers-source-roots))))
+
+(mu/defn- module :- [:maybe symbol?]
+  "E.g.
+
+    (module 'metabase.qp.middleware.wow) => 'qp
+    (module 'metabase-enterprise.whatever.core) => enterprise/whatever"
+  [ns-symb :- simple-symbol?]
+  (or (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
+               second
+               (symbol "enterprise"))
+      (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
+              second
+              symbol)))
+
+(def ^:private require-symbols
+  '#{require
+     clojure.core/require
+     classloader/require
+     metabase.plugins.classloader/require
+     requiring-resolve
+     clojure.core/requiring-resolve})
+
+(mr/def ::node
+  [:and
+   :map
+   [:fn
+    {:error/message "valid rewrite-clj node"}
+    #(not= (n/tag %) :unknown)]])
+
+(mr/def ::zloc
+  [:tuple
+   ::node
+   :map])
+
+(mu/defn- require-loc?
+  "Whether this zipper location points to a `(require ...)` node or a something similar (`classloader/require` or
+  `requiring-resolve`)."
+  [zloc :- ::zloc]
+  (when (= (z/tag zloc) :list)
+    (let [first-child (z/down zloc)]
+      (and (= (z/tag first-child) :token)
+           (require-symbols (z/sexpr first-child))))))
+
+(mu/defn- find-required-namespace :- [:maybe simple-symbol?]
+  "Given a `zloc` pointing to one of the children of something like `(require ...)` find a required namespace symbol."
+  [zloc :- ::zloc]
+  (when-let [symbol-loc (z/find-depth-first zloc #(and (= (z/tag %) :token)
+                                                       (not= (z/sexpr %) 'quote)))]
+    (let [symb (z/sexpr symbol-loc)]
+      (if (qualified-symbol? symb)
+        (symbol (namespace symb))
+        symb))))
+
+(mu/defn- find-required-namespaces :- [:set simple-symbol?]
+  "Given a zipper location pointing to a `(require ...)` node, find all the symbols it loads."
+  [require-loc :- ::zloc]
+  (loop [acc #{}, zloc (-> require-loc
+                           z/down    ; require
+                           z/right)] ; second child
+    (if-not zloc
+      acc
+      (recur (let [required-symbol (find-required-namespace zloc)]
+               (cond-> acc
+                 required-symbol (conj required-symbol)))
+             (z/right zloc)))))
+
+(mu/defn- comment-loc?
+  [zloc :- ::zloc]
+  (or (and (= (z/tag zloc) :list)
+           (let [child-loc (z/down zloc)]
+             (and (= (z/tag child-loc) :token)
+                  (= (z/sexpr child-loc) 'comment))))
+      (= (z/tag zloc) :uneval)))
+
+(mu/defn- find-requires :- [:maybe [:sequential ::zloc]]
+  [zloc :- ::zloc]
+  (concat
+   (when-not (comment-loc? zloc)
+     (if (require-loc? zloc)
+       [zloc]
+       (when-let [down (z/down zloc)]
+         (find-requires down))))
+   (when-let [right (z/right zloc)]
+     (find-requires right))))
+
+(mu/defn- find-dynamically-loaded-namespaces :- [:set simple-symbol?]
+  "Find the set of namespace symbols for namespaces loaded by `require` and friends in a `file`."
+  [file]
+  (try
+    (let [node     (r.parser/parse-file-all file)
+          zloc     (z/of-node node)
+          requires (find-requires zloc)]
+      (into #{} (mapcat find-required-namespaces) requires))
+    (catch Throwable e
+      (throw (ex-info (format "Error in file %s: %s" (str file) (ex-message e))
+                      {:file file}
+                      e)))))
+
+(comment
+  ;; uses require
+  (find-dynamically-loaded-namespaces "src/metabase/core/init.clj")
+  ;; uses classloader/require
+  (find-dynamically-loaded-namespaces "src/metabase/db/setup.clj")
+  ;; uses requiring-resolve, has more than one.
+  (find-dynamically-loaded-namespaces "src/metabase/api/user.clj")
+  ;; has require inside of a `comment` form, should ignore it.
+  (find-dynamically-loaded-namespaces "src/metabase/xrays/automagic_dashboards/schema.clj")
+  (find-dynamically-loaded-namespaces "src/metabase/api/open_api.clj"))
+
+(def ^:private ignored-dependencies
+  "Technically `config` 'uses' `enterprise/core` and `test` since it tries to load them to see if they exist so we know
+  if EE/test code is available; however we can ignore them since they're not 'real' usages. So add them here so we
+  don't include them in our deps tree."
+  '{metabase.config #{metabase-enterprise.core metabase.test.core}})
+
+(mu/defn- file-dependencies :- [:map
+                                [:namespace simple-symbol?]
+                                [:module    symbol?]
+                                [:deps      [:sequential
+                                             [:map
+                                              [:namespace simple-symbol?]
+                                              [:module    symbol?]
+                                              [:dynamic {:optional true} :boolean]]]]]
+  [file]
+  (try
+    (let [decl         (ns.file/read-file-ns-decl file)
+          ns-symb      (ns.parse/name-from-ns-decl decl)
+          static-deps  (ns.parse/deps-from-ns-decl decl)
+          dynamic-deps (for [symb (find-dynamically-loaded-namespaces file)]
+                         (vary-meta symb assoc ::dynamic true))
+          deps         (into (sorted-set) cat [static-deps dynamic-deps])]
+      {:namespace ns-symb
+       :module    (module ns-symb)
+       :deps      (keep (fn [required-ns]
+                          (when-let [module (module required-ns)]
+                            (when-not (some-> ignored-dependencies ns-symb required-ns)
+                              (merge
+                               {:namespace required-ns
+                                :module    module}
+                               (when (::dynamic (meta required-ns))
+                                 {:dynamic true})))))
+                        deps)})
+    (catch Throwable e
+      (throw (ex-info (format "Error calculating dependencies for %s" file)
+                      {:file file}
+                      e)))))
+
+(comment
+  (file-dependencies "src/metabase/db/setup.clj")
+  ;; should ignore the entries from [[ignored-dependencies]]
+  (file-dependencies "src/metabase/config.clj"))
+
+(def ^{:arglists '([])} dependencies
+  (memoize/ttl
+   (fn []
+     (doall (pmap file-dependencies (find-source-files))))
+   ;; memoize for five seconds
+   :ttl/threshold 5000))
 
 (defn external-usages
   "All usages of a module named by `module-symb` outside that module."
@@ -106,8 +271,8 @@
 
 (defn non-circular-module-dependencies
   "A graph of [[module-dependencies]], but with modules that have any circular dependencies filtered out. This is mostly
-  meant to make it easier to fill out the `:metabase/ns-module-checker` `:allowed-modules` section of the Kondo
-  config, or to figure out which ones can easily get a consolidated API namespace without drama."
+  meant to make it easier to fill out the `:metabase/modules` `:uses` section of the Kondo config, or to figure out
+  which ones can easily get a consolidated API namespace without drama."
   []
   (let [circular-dependencies (circular-dependencies)]
     (into (sorted-map)
@@ -127,3 +292,73 @@
                                (conj (or deps (sorted-set)) module-y-ns))))
      (sorted-map)
      module-x-ns->module-y-ns)))
+
+(defn full-dependencies
+  "Like [[dependencies]] but also includes transient dependencies."
+  []
+  (let [deps-graph  (module-dependencies)
+        expand-deps (fn expand-deps [deps]
+                      (let [deps' (into (sorted-set)
+                                        (mapcat deps-graph)
+                                        deps)]
+                        (if (= deps deps')
+                          deps
+                          (expand-deps deps'))))]
+    (into (sorted-map)
+          (map (fn [[k v]]
+                 [k (expand-deps v)]))
+          deps-graph)))
+
+(defn module-deps-count []
+  (into (sorted-map)
+        (map (fn [[k v]]
+               [k (count v)]))
+        (full-dependencies)))
+
+(defn module-dependencies-mermaid []
+  (doseq [[module deps] (module-dependencies)
+          dep deps]
+    (printf "%s-->%s\n" module dep)))
+
+(defn generate-config
+  "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`."
+  []
+  (into (sorted-map)
+        (map (fn [[module uses]]
+               [module {:api (externally-used-namespaces module)
+                        :uses uses}]))
+        (module-dependencies)))
+
+(defn kondo-config
+  "Read out the Kondo config for the modules linter."
+  []
+  (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
+        (edn/read r))
+      :metabase/modules
+      ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
+      (dissoc 'connection-pool)))
+
+(defn- kondo-config-diff-ignore-any
+  "Ignore entries in the config that use `:any`."
+  [diff]
+  (walk/postwalk
+   (fn [x]
+     (when-not (and (instance? lambdaisland.deep_diff2.diff_impl.Mismatch x)
+                    (= (:- x) :any)
+                    (set? (:+ x))
+                    (seq (:+ x)))
+       x))
+   diff))
+
+(defn kondo-config-diff
+  []
+  (-> (ddiff/diff (kondo-config) (generate-config))
+      ddiff/minimize
+      kondo-config-diff-ignore-any
+      ddiff/minimize))
+
+(defn print-kondo-config-diff
+  "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in
+  reality ([[kondo-config]]). Use this to suggest updates to make to the config file."
+  []
+  (ddiff/pretty-print (kondo-config-diff)))

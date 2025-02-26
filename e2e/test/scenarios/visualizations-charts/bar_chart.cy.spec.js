@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -491,14 +491,14 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     };
 
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       dashboardName: "Split Test Dashboard",
       questions: [multiMetric],
     }).then(({ dashboard }) => {
-      cy.createQuestion(sumTotalByMonth, { wrapId: true }).then(() => {
+      H.createQuestion(sumTotalByMonth, { wrapId: true }).then(() => {
         cy.get("@questionId").then(questionId => {
           H.cypressWaitAll([
-            cy.createQuestionAndAddToDashboard(avgTotalByMonth, dashboard.id, {
+            H.createQuestionAndAddToDashboard(avgTotalByMonth, dashboard.id, {
               series: [
                 {
                   id: questionId,
@@ -510,7 +510,7 @@ describe("scenarios > visualizations > bar chart", () => {
                 "card.title": "Multi Series",
               },
             }),
-            cy.createQuestionAndAddToDashboard(breakoutQuestion, dashboard.id, {
+            H.createQuestionAndAddToDashboard(breakoutQuestion, dashboard.id, {
               col: 0,
               row: 9,
               size_x: 20,
@@ -793,6 +793,7 @@ describe("scenarios > visualizations > bar chart", () => {
       H.popover()
         .findByTestId("graph-other-category-aggregation-fn-picker")
         .click();
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText(fnName).click();
     }
 

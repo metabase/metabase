@@ -1,39 +1,7 @@
-import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { Icon } from "metabase/ui";
-
-export const HeaderContainer = styled.div`
-  padding: 2rem;
-  width: 100%;
-
-  flex-shrink: 0;
-
-  display: flex;
-  flex-direction: row;
-  gap: 0.5rem;
-
-  align-items: center;
-`;
-
-export const HeaderText = styled.h2<{
-  textCentered?: boolean;
-}>`
-  font-weight: 700;
-
-  flex-grow: 1;
-
-  display: flex;
-  align-items: center;
-
-  color: var(--mb-color-text-dark);
-
-  ${({ textCentered }) =>
-    textCentered &&
-    css`
-      justify-content: center;
-    `}
-`;
 
 export const ActionsWrapper = styled.div`
   display: flex;
@@ -61,22 +29,4 @@ export const ModalHeaderBackIcon = styled(ModalContentActionIcon)`
   :hover {
     color: var(--mb-color-brand);
   }
-`;
-
-export const HeaderTextContainer = styled.div<{
-  onClick?: () => void;
-}>`
-  display: flex;
-  align-items: center;
-  flex-direction: row;
-  flex-grow: 1;
-
-  ${({ onClick }) =>
-    onClick &&
-    css`
-      &:hover > * {
-        color: var(--mb-color-brand);
-        cursor: pointer;
-      }
-    `}
 `;

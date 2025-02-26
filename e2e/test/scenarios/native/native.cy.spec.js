@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   SAMPLE_DB_ID,
   USER_GROUPS,
@@ -20,10 +20,6 @@ const ORDERS_SCALAR_METRIC = {
   display: "scalar",
 };
 
-// cy.realType does not have an option to not parse special characters
-const LEFT_BRACKET = "{{}";
-const DOUBLE_LEFT_BRACKET = `${LEFT_BRACKET}${LEFT_BRACKET}`;
-
 describe("scenarios > question > native", () => {
   beforeEach(() => {
     cy.intercept("POST", "api/card").as("card");
@@ -35,7 +31,8 @@ describe("scenarios > question > native", () => {
 
   it("lets you create and run a SQL question", () => {
     H.startNewNativeQuestion();
-    cy.realType("select count(*) from orders");
+    H.NativeEditor.type("select count(*) from orders");
+
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("18,760");
@@ -45,7 +42,7 @@ describe("scenarios > question > native", () => {
     H.visitCollection(THIRD_COLLECTION_ID);
     H.startNewNativeQuestion({ collection_id: THIRD_COLLECTION_ID });
 
-    cy.realType("select count(*) from orders");
+    H.NativeEditor.type("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
@@ -71,7 +68,7 @@ describe("scenarios > question > native", () => {
     cy.visit("/");
 
     H.startNewNativeQuestion();
-    cy.realType("select count(*) from orders");
+    H.NativeEditor.type("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
@@ -86,17 +83,19 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it("displays an error", { tags: "@flaky" }, () => {
+  it("displays an error", () => {
     H.startNewNativeQuestion();
-    cy.realType("select * from not_a_table");
+    H.NativeEditor.type("select * from not_a_table");
+
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
-  it("displays an error when running selected text", { tags: "@flaky" }, () => {
+  it("displays an error when running selected text", () => {
     H.startNewNativeQuestion();
-    cy.realType("select * from orders");
+    H.NativeEditor.type("select * from orders");
+
     // move left three
     Cypress._.range(3).forEach(() => cy.realPress("ArrowLeft"));
     // highlight back to the front
@@ -106,11 +105,10 @@ describe("scenarios > question > native", () => {
     cy.contains('Table "ORD" not found');
   });
 
-  it("should handle template tags", { tags: "@flaky" }, () => {
+  it("should handle template tags", () => {
     H.startNewNativeQuestion();
-    cy.realType(
-      `select * from PRODUCTS where RATING > ${DOUBLE_LEFT_BRACKET}Stars}}`,
-    );
+    H.NativeEditor.type("select * from PRODUCTS where RATING > {{Stars}}");
+
     cy.get("input[placeholder*='Stars']").type("3");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -119,9 +117,8 @@ describe("scenarios > question > native", () => {
 
   it("should modify parameters accordingly when tags are modified", () => {
     H.startNewNativeQuestion();
-    cy.realType(
-      `select * from PRODUCTS where CATEGORY = ${DOUBLE_LEFT_BRACKET}cat}}`,
-    );
+    H.NativeEditor.type("select * from PRODUCTS where CATEGORY = {{cat}}");
+
     cy.findByTestId("sidebar-right")
       .findByText("Always require a value")
       .click();
@@ -147,9 +144,9 @@ describe("scenarios > question > native", () => {
     cy.findByText("Not now").click();
   });
 
-  it("can save a question with no rows", { tags: "@flaky" }, () => {
+  it("can save a question with no rows", () => {
     H.startNewNativeQuestion();
-    cy.realType("select * from people where false");
+    H.NativeEditor.type("select * from people where false");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("No results!");
@@ -178,7 +175,7 @@ describe("scenarios > question > native", () => {
       },
     };
 
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       H.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
@@ -228,35 +225,31 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it(
-    "should be able to add new columns after hiding some (metabase#15393)",
-    { tags: "@flaky" },
-    () => {
-      H.startNewNativeQuestion({ display: "table" }).as("editor");
-      cy.realType("select 1 as visible, 2 as hidden");
-      cy.findByTestId("native-query-editor-container")
-        .icon("play")
-        .as("runQuery")
-        .click();
+  it("should be able to add new columns after hiding some (metabase#15393)", () => {
+    H.startNewNativeQuestion({ display: "table" });
+    H.NativeEditor.type("select 1 as visible, 2 as hidden");
+    cy.findByTestId("native-query-editor-container")
+      .icon("play")
+      .as("runQuery")
+      .click();
 
-      H.openVizSettingsSidebar();
-      cy.findByTestId("sidebar-left")
-        .as("sidebar")
-        .within(() => {
-          cy.findByTestId("draggable-item-HIDDEN")
-            .icon("eye_outline")
-            .click({ force: true });
-        });
-      cy.get("@editor").type("{movetoend}, 3 as added");
-      cy.get("@runQuery").click();
-      cy.get("@sidebar").contains(/added/i);
-    },
-  );
+    H.openVizSettingsSidebar();
+    cy.findByTestId("sidebar-left")
+      .as("sidebar")
+      .within(() => {
+        cy.findByTestId("draggable-item-HIDDEN")
+          .icon("eye_outline")
+          .click({ force: true });
+      });
+    H.NativeEditor.type("{movetoend}, 3 as added");
+    cy.get("@runQuery").click();
+    cy.get("@sidebar").contains(/added/i);
+  });
 
   it("should recognize template tags and save them as parameters", () => {
     H.startNewNativeQuestion();
-    cy.realType(
-      `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}cat}} and RATING >= ${DOUBLE_LEFT_BRACKET}stars}}`,
+    H.NativeEditor.type(
+      "select * from PRODUCTS where CATEGORY={{cat}} and RATING >= {{stars}}",
     );
     cy.get("input[placeholder*='Cat']").type("Gizmo");
     cy.get("input[placeholder*='Stars']").type("3");
@@ -312,9 +305,7 @@ describe("scenarios > question > native", () => {
 
   it("should allow to preview a fully parameterized query", () => {
     H.startNewNativeQuestion();
-    cy.realType(
-      `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}category}}`,
-    );
+    H.NativeEditor.type("select * from PRODUCTS where CATEGORY={{category}}");
     cy.findByPlaceholderText("Category").type("Gadget");
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
@@ -325,15 +316,105 @@ describe("scenarios > question > native", () => {
 
   it("should show errors when previewing a query", () => {
     H.startNewNativeQuestion();
-    cy.realType(
-      `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}category}}`,
-    );
+    H.NativeEditor.type("select * from PRODUCTS where CATEGORY={{category}}");
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/missing required parameters/).should("be.visible");
   });
+
+  it("should run the query when pressing meta+enter", () => {
+    H.startNewNativeQuestion({
+      query: "SELECT COUNT(*) FROM ORDERS",
+    });
+    H.NativeEditor.focus();
+
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+    cy.realPress([metaKey, "Enter"]);
+
+    cy.wait("@dataset");
+
+    cy.findByTestId("query-visualization-root").should("contain", "18,760");
+
+    // make sure a new line was not inserted
+    cy.get(".cm-lineNumbers").should("contain", "1").should("not.contain", "2");
+  });
+
+  it("should add tab at the end of the query", () => {
+    H.startNewNativeQuestion({
+      query: "SELECT",
+    });
+
+    H.NativeEditor.focus();
+    cy.realPress(["Tab"]);
+
+    H.NativeEditor.get().should("have.text", "SELECT\t");
+  });
+
+  it("should indent the line when pressing tab while selected", () => {
+    H.startNewNativeQuestion({
+      query: "SELECT",
+    });
+
+    H.NativeEditor.focus().type("{selectall}");
+    cy.realPress(["Tab"]);
+
+    H.NativeEditor.get().should("have.text", "\tSELECT");
+  });
+
+  it("should indent the next line to the same level when entering newline", () => {
+    H.startNewNativeQuestion();
+
+    H.NativeEditor.focus()
+      .type("{tab}SELECT{enter}FOO")
+      .get()
+      .should("have.text", "\tSELECT\tFOO");
+  });
+
+  it("should use the correct indentation for mongo", { tags: "@mongo" }, () => {
+    const MONGO_DB_NAME = "QA Mongo";
+
+    H.restore("mongo-5");
+    cy.signInAsAdmin();
+
+    H.startNewNativeQuestion();
+    cy.findByTestId("gui-builder-data").click();
+    cy.findByLabelText(MONGO_DB_NAME).click();
+
+    H.NativeEditor.type('[{enter}{ {enter}"foo": "bar",{enter}"baz"');
+
+    H.NativeEditor.get().should("be.visible").get(".cm-line").as("lines");
+
+    cy.get("@lines").eq(0).should("have.text", "[");
+    cy.get("@lines").eq(1).should("have.text", "  {");
+    cy.get("@lines").eq(2).should("have.text", '    "foo": "bar",');
+    cy.get("@lines").eq(3).should("have.text", '    "baz"');
+    cy.get("@lines").eq(4).should("have.text", "  }");
+    cy.get("@lines").eq(5).should("have.text", "]");
+  });
+
+  it(
+    "it should insert a two spaces when pressing tab in json-like languages",
+    { tags: "@mongo" },
+    () => {
+      const MONGO_DB_NAME = "QA Mongo";
+
+      H.restore("mongo-5");
+      cy.signInAsAdmin();
+
+      H.startNewNativeQuestion();
+      cy.findByTestId("gui-builder-data").click();
+      cy.findByLabelText(MONGO_DB_NAME).click();
+
+      H.NativeEditor.type("{tab}");
+
+      H.NativeEditor.get().should("be.visible").get(".cm-line").as("lines");
+
+      cy.get("@lines").eq(0).should("have.text", "  ");
+    },
+  );
 });
 
 // causes error in cypress 13
@@ -365,7 +446,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       [USER_GROUPS.NOSQL_GROUP]: { root: "write" },
     });
 
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "Secret Orders",
         native: {
@@ -426,7 +507,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       // Switch to SQL engine which is supported by the formatter
       H.popover().findByText("Sample Database").click();
 
-      H.focusNativeEditor().type("select * from orders", {
+      H.NativeEditor.focus().type("select * from orders", {
         parseSpecialCharSequences: false,
       });
 
@@ -437,7 +518,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
 
       cy.wait("@sqlFormatter");
 
-      H.nativeEditor().should("be.visible").get(".ace_line").as("lines");
+      H.NativeEditor.get().should("be.visible").get(".ace_line").as("lines");
 
       cy.get("@lines").eq(0).should("have.text", "SELECT");
       cy.get("@lines").eq(1).should("have.text", "  *");
@@ -477,7 +558,7 @@ describe("scenarios > native question > data reference sidebar", () => {
   });
 
   it("should show models", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "Native Products Model",
         description: "A model of the Products table",

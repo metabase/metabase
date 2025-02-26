@@ -81,7 +81,7 @@ const useMenuItems = ({
     return [
       <Menu.Item
         key={testId}
-        icon={<Icon name={isVerified ? "close" : verifiedIconName} />}
+        leftSection={<Icon name={isVerified ? "close" : verifiedIconName} />}
         onClick={async () => {
           if (isVerified) {
             await editItemVerification({

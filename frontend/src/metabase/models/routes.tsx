@@ -15,7 +15,7 @@ export const getRoutes = () => (
         modalProps={{
           wide: true,
           enableTransition: false,
-          closeOnClickOutside: true,
+          closeOnClickOutside: false, // logic in component is reversed, so false is true.
         }}
       />
       <ModalRoute
@@ -24,7 +24,7 @@ export const getRoutes = () => (
         modalProps={{
           wide: true,
           enableTransition: false,
-          closeOnClickOutside: true,
+          closeOnClickOutside: false, // logic in component is reversed, so false is true.
         }}
       />
     </Route>

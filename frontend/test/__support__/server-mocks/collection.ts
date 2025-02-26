@@ -232,3 +232,9 @@ export function setupDashboardQuestionCandidatesEndpoint(
     data: dashboardQuestionCandidates,
   });
 }
+
+export function setupStaleItemsEndpoint(total: number) {
+  fetchMock.get("express:/api/ee/stale/:id", {
+    total,
+  });
+}

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -16,7 +16,7 @@ describe.skip("issue 12445", { tags: "@external" }, () => {
   it("should correctly apply substring for a custom column (metabase#12445)", () => {
     H.withDatabase(2, ({ PEOPLE, PEOPLE_ID }) => {
       cy.log("Create a question with `Source` column and abbreviated CC");
-      cy.createQuestion(
+      H.createQuestion(
         {
           name: "12445",
           query: {
@@ -71,6 +71,7 @@ describe("issue 13289", () => {
 
     H.popover().findByText(CC_NAME).click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.icon("add").last().click();
 
     H.popover().within(() => {
@@ -193,13 +194,13 @@ describe("issue 14843", () => {
   });
 
   it("should correctly filter custom column by 'Not equal to' (metabase#14843)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
 
     H.filter({ mode: "notebook" });
     H.popover().findByText(CC_NAME).click();
     H.selectFilterOperator("Not equal to");
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       H.multiAutocompleteInput().type("3");
       cy.button("Add filter").click();
     });
@@ -232,7 +233,7 @@ describe("issue 18069", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails).then(({ body: { id: QUESTION_ID } }) => {
+    H.createQuestion(questionDetails).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
     });
   });
@@ -287,7 +288,7 @@ describe("issue 18747", () => {
 
   function addValueToParameterFilter() {
     H.filterWidget().click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       H.fieldValuesInput().type("14");
       cy.button("Add filter").click();
     });
@@ -297,7 +298,7 @@ describe("issue 18747", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({ questionDetails }).then(
+    H.createQuestionAndDashboard({ questionDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           cards: [
@@ -360,7 +361,7 @@ describe("issue 18814", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should be able to use a custom column in aggregation for a nested query (metabase#18814)", () => {
@@ -458,7 +459,7 @@ describe("issue 19745", () => {
   };
 
   function updateQuestionAndSelectFilter(updateExpressions) {
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
         H.visitQuestion(card_id);
 
@@ -549,7 +550,7 @@ describe("issue 20229", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should display custom column regardless of how many columns are selected (metabase#20229)", () => {
@@ -590,7 +591,7 @@ describe("issue 21135", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
   });
 
@@ -663,7 +664,7 @@ describe("issue 23862", () => {
   });
 
   it("should group by a custom column and work in a nested question (metabase#23862)", () => {
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createQuestion(questionDetails).then(({ body: { id } }) => {
       H.visitQuestionAdhoc(
         {
           dataset_query: {
@@ -753,9 +754,9 @@ describe.skip("issue 25189", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails).then(
+    H.createQuestion(questionDetails).then(
       ({ body: { id: baseQuestionId } }) => {
-        cy.createQuestion(
+        H.createQuestion(
           {
             name: "Nested 25189",
             query: { "source-table": `card__${baseQuestionId}` },
@@ -867,7 +868,7 @@ describe("issue 32032", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion({ query: QUERY }, { visitQuestion: true });
+    H.createQuestion({ query: QUERY }, { visitQuestion: true });
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
@@ -938,6 +939,7 @@ describe("issue 42949", () => {
     cy.button("Add column").click();
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -983,6 +985,7 @@ describe("issue 42949", () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("N").should("be.visible");
   });
 
@@ -1010,6 +1013,7 @@ describe("issue 42949", () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("'abc'").should("be.visible");
   });
 });
@@ -1139,14 +1143,14 @@ describe("issue 49304", () => {
     H.getNotebookStep("data").button("Filter").click();
     H.popover().findByText("Category").click();
     H.selectFilterOperator("Contains");
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("gadget,widget");
       cy.button("Add filter").click();
     });
     H.getNotebookStep("filter")
       .findByText("Category contains 2 selections")
       .click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.button("Back").click();
       cy.findByText("Custom Expression").click();
       cy.get(".ace_content").should(
@@ -1283,5 +1287,26 @@ describe("issue 50925", () => {
         "have.value",
         "case([ID] = 1, [Price] * 1.21, [Price] [Price])\n\n",
       );
+  });
+});
+
+describe("issue 53682", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show an error message when trying to use a multi-arg expression function with not enough arguments (metabase#53682)", () => {
+    H.openProductsTable({ mode: "notebook" });
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: "contains([Category])",
+    });
+    H.popover().within(() => {
+      cy.findByText("Function contains expects at least 2 arguments").should(
+        "be.visible",
+      );
+      cy.button("Done").should("be.disabled");
+    });
   });
 });

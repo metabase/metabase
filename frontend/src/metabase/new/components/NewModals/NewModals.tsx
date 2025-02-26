@@ -52,12 +52,7 @@ export const NewModals = withRouter((props: WithRouterProps) => {
       );
     case "action":
       return (
-        <Modal
-          wide
-          closeOnClickOutside
-          onClose={handleModalClose}
-          enableTransition={false}
-        >
+        <Modal wide onClose={handleModalClose} enableTransition={false}>
           <ActionCreator
             onClose={handleModalClose}
             onSubmit={handleActionCreated}

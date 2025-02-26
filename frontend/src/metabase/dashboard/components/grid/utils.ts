@@ -29,6 +29,7 @@ export function generateMobileLayout(desktopLayout: DashcardLayout[]) {
       y: sumVerticalSpace(mobile),
       h: getMobileHeight(card.display, item.h),
       w: 1,
+      minW: 1,
     });
   });
   return mobile;

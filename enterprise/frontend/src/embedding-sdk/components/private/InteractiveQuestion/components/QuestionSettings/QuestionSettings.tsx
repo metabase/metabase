@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import type { StackProps } from "metabase/ui";
 import {
   BaseChartSettings,
   useChartSettingsState,
@@ -17,6 +18,7 @@ const QuestionSettingsContent = ({
   question,
   queryResults,
   updateQuestion,
+  ...stackProps
 }: {
   question: Question;
   queryResults?: any[];
@@ -39,19 +41,22 @@ const QuestionSettingsContent = ({
   const { chartSettings, handleChangeSettings, transformedSeries } =
     useChartSettingsState({ series, onChange });
 
-  const widgets = useMemo(
-    () =>
+  const widgets = useMemo(() => {
+    try {
       // TODO: Create a way to just get a single widget and its dependencies
-      getSettingsWidgetsForSeries(
+      return getSettingsWidgetsForSeries(
         transformedSeries,
         handleChangeSettings,
         false,
-      ).filter(w => !!w.widget),
-    [transformedSeries, handleChangeSettings],
-  );
+      ).filter(w => !!w.widget);
+    } catch (e) {
+      return [];
+    }
+  }, [transformedSeries, handleChangeSettings]);
 
   return (
     <BaseChartSettings
+      {...stackProps}
       question={question}
       series={series}
       onChange={onChange}
@@ -62,7 +67,7 @@ const QuestionSettingsContent = ({
   );
 };
 
-export const QuestionSettings = () => {
+export const QuestionSettings = (stackProps: StackProps) => {
   const { question, queryResults, updateQuestion } =
     useInteractiveQuestionContext();
 
@@ -75,6 +80,7 @@ export const QuestionSettings = () => {
       question={question}
       queryResults={queryResults}
       updateQuestion={updateQuestion}
+      {...stackProps}
     />
   );
 };

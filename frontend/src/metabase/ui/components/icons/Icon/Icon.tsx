@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import { Box, type BoxProps } from "@mantine/core";
 import cx from "classnames";
@@ -39,7 +40,17 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
     />
   );
 
-  return tooltip ? <Tooltip label={tooltip}>{icon}</Tooltip> : icon;
+  return tooltip ? (
+    <Tooltip
+      style={{ whiteSpace: "unset" }}
+      label={tooltip}
+      data-testid="wrapped-tooltip"
+    >
+      {icon}
+    </Tooltip>
+  ) : (
+    icon
+  );
 });
 
 /** An icon that does not shrink when its container is too narrow **/

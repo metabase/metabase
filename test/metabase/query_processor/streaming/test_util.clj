@@ -78,8 +78,7 @@
                                        (assoc-in query [:middleware :js-int-to-string?] false))
                  (mt/user-real-request :crowberto :post (format "dataset/%s" (name export-format))
                                        {:request-options {:as :byte-array}}
-                                       :query (json/encode query)
-                                       :format_rows true))]
+                                       {:query query, :format_rows true}))]
     (with-open [is (ByteArrayInputStream. byytes)]
       (apply parse-result export-format is args))))
 

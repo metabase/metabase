@@ -180,5 +180,3 @@
                          [false -1] (tru "Nothing to invalidate.")
                          [false 0]  (tru "No cache configuration to invalidate.")
                          [false 1]  (trun "Invalidated cache configuration." "Invalidated {0} cache configurations." cnt))}}))
-
-(api/define-routes)

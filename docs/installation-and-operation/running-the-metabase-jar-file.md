@@ -45,7 +45,7 @@ You may already have Java installed. To check the version, open a terminal and r
 java -version
 ```
 
-If Java isn't installed, you'll need to install Java before you can run Metabase. We recommend version 21 of JRE from [Eclipse Temurin](https://adoptium.net/) with HotSpot JVM, but we also support 11 and 17. You can run Metabase wherever Java 21 runs. The particular processor architecture shouldn't matter (although we only test Metabase for x86 and ARM).
+If Java isn't installed, you'll need to install Java before you can run Metabase. We recommend version 21 of JRE from [Eclipse Temurin](https://adoptium.net/) with HotSpot JVM. You can run Metabase wherever Java 21 runs. Earlier Java versions aren't supported. The particular processor architecture shouldn't matter (although we only test Metabase for x86 and ARM).
 
 ### 2. Download Metabase
 
