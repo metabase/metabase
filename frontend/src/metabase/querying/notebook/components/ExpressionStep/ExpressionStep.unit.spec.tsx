@@ -47,10 +47,10 @@ describe("Notebook Editor > Expression Step", () => {
 
     await userEvent.click(screen.getByRole("img", { name: "add icon" }));
 
-    await userEvent.type(
-      screen.getByTestId("custom-expression-query-editor"),
-      "1 + 1",
-    );
+    const input = screen.getByTestId("custom-expression-query-editor");
+    await userEvent.type(input, "1 + 1");
+    input.blur();
+
     await userEvent.type(
       screen.getByTestId("expression-name"),
       "new expression{enter}",
@@ -105,10 +105,9 @@ describe("Notebook Editor > Expression Step", () => {
 
     await userEvent.click(screen.getByRole("img", { name: "add icon" }));
 
-    await userEvent.type(
-      screen.getByTestId("custom-expression-query-editor"),
-      "1 + 1",
-    );
+    const input = screen.getByTestId("custom-expression-query-editor");
+    await userEvent.type(input, "1 + 1");
+    input.blur();
     await userEvent.type(screen.getByTestId("expression-name"), "Total{enter}");
 
     const recentQuery = getRecentQuery();

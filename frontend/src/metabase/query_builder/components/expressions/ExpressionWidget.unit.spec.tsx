@@ -36,11 +36,11 @@ describe("ExpressionWidget", () => {
     await userEvent.type(expressionInput, "1 + 1");
     await userEvent.tab();
 
-    expect(doneButton).toBeEnabled();
+    await waitFor(() => expect(doneButton).toBeEnabled());
 
     await userEvent.click(doneButton);
 
-    expect(onChangeClause).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onChangeClause).toHaveBeenCalledTimes(1));
     expect(onChangeClause).toHaveBeenCalledWith("", expect.anything());
     expect(getRecentExpressionClauseInfo().displayName).toBe("1 + 1");
   });
@@ -129,7 +129,7 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      expect(screen.getByText("Unknown Metric: Imaginary")).toBeInTheDocument();
+      await screen.findByText("Unknown Metric: Imaginary");
     });
 
     it("should show 'no aggregation found' error if the identifier is recognized as a dimension (metabase#50753)", async () => {
@@ -141,11 +141,9 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      expect(
-        screen.getByText(
-          "No aggregation found in: Total. Use functions like Sum() or custom Metrics",
-        ),
-      ).toBeInTheDocument();
+      await screen.findByText(
+        "No aggregation found in: Total. Use functions like Sum() or custom Metrics",
+      );
     });
   });
 
@@ -159,9 +157,7 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      expect(
-        screen.getByText('Expecting comma but got "test" instead'),
-      ).toBeInTheDocument();
+      await screen.findByText('Expecting comma but got "test" instead');
     });
   });
 });

@@ -1,9 +1,10 @@
 import type { EditorState } from "@codemirror/state";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import cx from "classnames";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -25,6 +26,8 @@ import { Tooltip } from "./Tooltip";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
 import { diagnoseAndCompileExpression } from "./utils";
+
+const DEBOUNCE_VALIDATION_MS = 260;
 
 type EditorProps<S extends StartRule> = {
   id?: string;
@@ -64,7 +67,7 @@ export function Editor<S extends StartRule = "expression">(
   const ref = useRef<ReactCodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
 
-  const { source, onSourceChange, formatExpression, isFormatting } =
+  const { source, onSourceChange, onBlur, formatExpression, isFormatting } =
     useExpression({
       ...props,
       metadata,
@@ -108,6 +111,7 @@ export function Editor<S extends StartRule = "expression">(
         readOnly={readOnly || isFormatting}
         value={source}
         onChange={onSourceChange}
+        onBlur={onBlur}
         height="100%"
         width="100%"
         indentWithTab={false}
@@ -177,8 +181,13 @@ function useExpression<S extends StartRule = "expression">({
       });
   }, [clause, query, stageIndex, expressionIndex]);
 
+  const debouncedOnChange = useMemo(
+    () => _.debounce(onChange, DEBOUNCE_VALIDATION_MS, false),
+    [onChange],
+  );
+
   const handleUpdate = useCallback(
-    (source: string) => {
+    (source: string, immediate: boolean = false) => {
       setSource(source);
       const { clause, error } = diagnoseAndCompileExpression(source, {
         startRule,
@@ -188,9 +197,22 @@ function useExpression<S extends StartRule = "expression">({
         metadata,
         name,
       });
-      onChange(clause, error);
+      if (immediate) {
+        onChange(clause, error);
+      } else {
+        debouncedOnChange(clause, error);
+      }
     },
-    [name, query, stageIndex, startRule, metadata, expressionIndex, onChange],
+    [
+      name,
+      query,
+      stageIndex,
+      startRule,
+      metadata,
+      expressionIndex,
+      onChange,
+      debouncedOnChange,
+    ],
   );
 
   useMount(() => {
@@ -198,9 +220,21 @@ function useExpression<S extends StartRule = "expression">({
     formatExpression();
   });
 
+  const handleSourceChange = useCallback(
+    (source: string) => {
+      handleUpdate(source, false);
+    },
+    [handleUpdate],
+  );
+
+  const handleBlur = useCallback(() => {
+    handleUpdate(source, true);
+  }, [handleUpdate, source]);
+
   return {
     source,
-    onSourceChange: handleUpdate,
+    onSourceChange: handleSourceChange,
+    onBlur: handleBlur,
     formatExpression,
     isFormatting,
   };
