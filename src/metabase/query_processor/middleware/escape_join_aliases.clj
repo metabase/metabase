@@ -162,35 +162,6 @@
                            (assoc :join-alias (::join-alias options))
                            (dissoc ::join-alias))]))
 
-(deftype ^:private HiddenQuery [query])
-
-(defn save-original-query
-  "Saves the query at this point for [[update-renamed-field-refs]] after [[escape-join-aliases]] is called.
-   Use HiddenQuery otherwise normalization will try to change it."
-  [query]
-  (assoc query ::original-query (HiddenQuery. query)))
-
-(defn update-renamed-field-refs
-  "Look at each stage in the query, and compare visible-columns to the original-query stage.
-   Differences are a result of renamed aliases."
-  [query]
-  (log/tracef "Replacing field refs based on escaped aliases\n%s" (u/pprint-to-str query))
-  (mu/disable-enforcement
-    (let [original-pmbql-query (.-query ^HiddenQuery (::original-query query))
-          result (-> query
-                     (lib.walk/walk-stages
-                      (fn [_q path stage]
-                        (let [orginal-aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path original-pmbql-query path))))
-                              aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path query path))))
-                              renames (->> (zipmap
-                                            orginal-aliases
-                                            aliases)
-                                           (m/filter-kv not=))]
-                          (lib.util.match/replace
-                            stage
-                            [:field opts (field-name :guard (every-pred string? renames))] [:field opts (driver/escape-alias driver/*driver* field-name)])))))]
-      (dissoc result ::original-query))))
-
 (defn escape-join-aliases
   "Pre-processing middleware. Make sure all join aliases are unique, regardless of case (some databases treat table
   aliases as case-insensitive, even if table names themselves are not); escape all join aliases

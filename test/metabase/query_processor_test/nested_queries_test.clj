@@ -1648,9 +1648,10 @@
                     (lib/breakout $q (m/find-first (every-pred (comp #{"Space Column"} :display-name) :source-alias)
                                                    (lib/breakoutable-columns $q)))
                     (lib/append-stage $q)
+                    (lib/breakout $q (first (lib/breakoutable-columns $q)))
                     (lib/aggregate $q (lib/max (first (lib/visible-columns $q)))))]
-        (is (= [[20]] (mt/formatted-rows
-                       [int] (qp/process-query query))))))))
+        (is (= [[10 10] [20 20]] (mt/formatted-rows
+                                  [int int] (qp/process-query query))))))))
 
 (deftest ^:parallel space-names-question-test
   (mt/test-drivers (set/intersection

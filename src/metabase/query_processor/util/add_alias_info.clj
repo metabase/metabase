@@ -240,7 +240,7 @@
         ;; otherwise if this is a nominal field literal ref then look for matches based on the string name used
         (when-let [field-name (let [[_ id-or-name] field-clause]
                                 (when (string? id-or-name)
-                                  id-or-name))]
+                                  (driver/escape-alias driver/*driver* id-or-name)))]
           ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
           ;; name we're searching for.
           (or (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]

@@ -128,9 +128,7 @@
    (ensure-legacy #'resolve-joins/resolve-joins)
    (ensure-legacy #'resolve-joined-fields/resolve-joined-fields)
    (ensure-legacy #'fix-bad-refs/fix-bad-references)
-   (ensure-pmbql-for-unclean-query #'escape-join-aliases/save-original-query)
    (ensure-legacy #'escape-join-aliases/escape-join-aliases)
-   (ensure-pmbql-for-unclean-query #'escape-join-aliases/update-renamed-field-refs)
    (ensure-pmbql-for-unclean-query #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
