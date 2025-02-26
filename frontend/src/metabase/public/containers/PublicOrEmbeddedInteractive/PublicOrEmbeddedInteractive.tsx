@@ -11,7 +11,6 @@ import {
   type InteractiveV2Settings,
   useInteractiveV2Settings,
 } from "metabase/public/hooks/use-interactive-v2-settings";
-import { Code } from "metabase/ui";
 
 export const PublicOrEmbeddedInteractive = ({
   params: { settings: settingsKey },
@@ -32,10 +31,6 @@ export const PublicOrEmbeddedInteractive = ({
   return (
     <IframeInteractiveEmbeddingProvider authConfig={authConfig}>
       <PublicOrEmbeddedInteractiveInner settings={settings} />
-
-      <Code c="#2d2d30" px="md">
-        {JSON.stringify(settings, null, 2)}
-      </Code>
     </IframeInteractiveEmbeddingProvider>
   );
 };
