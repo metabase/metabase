@@ -25,7 +25,7 @@ export const FormDashboardTabSelect = ({
       const firstTabId = currentData?.tabs?.length
         ? "" + currentData.tabs[0].id
         : undefined;
-      dashboardTabHelpers.setValue("" + firstTabId);
+      dashboardTabHelpers.setValue(firstTabId);
     },
     [currentData, dashboardTabHelpers],
   );
@@ -40,6 +40,7 @@ export const FormDashboardTabSelect = ({
   }, [currentData]);
 
   const showTabSelect = (isFetching || options.length > 1) && !error;
+
   if (!showTabSelect) {
     return null;
   }

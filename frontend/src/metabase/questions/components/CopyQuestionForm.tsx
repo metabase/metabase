@@ -127,6 +127,7 @@ export const CopyQuestionForm = ({
               <FormCollectionAndDashboardPicker
                 collectionIdFieldName="collection_id"
                 dashboardIdFieldName="dashboard_id"
+                dashboardTabIdFieldName="dashboard_tab_id"
                 title={t`Where do you want to save this?`}
                 collectionPickerModalProps={{
                   models,
