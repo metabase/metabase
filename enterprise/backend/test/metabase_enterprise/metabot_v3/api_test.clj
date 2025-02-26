@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.api-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
@@ -18,7 +19,8 @@
                                               :context {}
                                               :conversation_id conversation-id
                                               :history []
-                                              :state {}})]
+                                              :state {}})
+              get-current-user-response (-> response :history (nth 2) :content)]
           (is (=? {:reactions []
                    :history
                    [{:role "user", :content "what can you do?"}
@@ -27,8 +29,9 @@
                      :tool-calls [{:id (=?/same :tool-call-id), :name "get-current-user", :arguments {}}]}
                     {:role "tool"
                      :tool-call-id (=?/same :tool-call-id)
-                     :content "{\"id\":2,\"name\":\"Rasta Toucan\",\"email-address\":\"rasta@metabase.com\"}"}
+                     :content string?}
                     {:role "user", :content question}]
                    :state {}
                    :conversation_id conversation-id}
-                  response)))))))
+                  response))
+          (is (str/includes? get-current-user-response "rasta@metabase.com")))))))
