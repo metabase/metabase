@@ -7,7 +7,7 @@ export type CreateQuestionProps = Partial<
   Omit<InteractiveQuestionProps, "questionId" | "children">
 >;
 
-/** @deprecated Use `InteractiveQuestion` without specifying `questionId` and with `isSaveEnabled={true}` instead. */
+/** @deprecated Use `InteractiveQuestion` with `questionId="new"` and with `isSaveEnabled={true}` instead. */
 export const CreateQuestion = (props: CreateQuestionProps = {}) => (
-  <InteractiveQuestion {...props} />
+  <InteractiveQuestion {...props} questionId="new" />
 );
