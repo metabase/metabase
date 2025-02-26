@@ -189,7 +189,7 @@
 (defn- seconds-from-epoch-now
   "This is used to track how long a folder has been syncing. We set gsheets.folder-upload-time to this value when we create a
   new gdrive connection, and on every :get /folder request we check if the current time is greater than this value plus
-  *folder-setup-timeout-seconds*. If it is, that's a timeout."
+  [[*folder-setup-timeout-seconds*]]. If it is, that's a timeout."
   [] (.getEpochSecond (t/instant)))
 
 (api.macros/defendpoint :post "/folder" :- :gsheets/gsheets
