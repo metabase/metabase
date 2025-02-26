@@ -100,8 +100,7 @@ export const AlertListItem = ({
         )}
         {user && (
           <>
-            {/* eslint-disable-next-line no-restricted-syntax */}
-            <Text size="sm" c="var(--mb-base-color-orion-20)">
+            <Text size="sm" c="text-light">
               •
             </Text>
             <Text size="sm" c="inherit">
