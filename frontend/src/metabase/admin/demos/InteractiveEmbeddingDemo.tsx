@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import ColorPicker from "metabase/core/components/ColorPicker";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import type { InteractiveV2Settings } from "metabase/public/hooks/use-interactive-v2-settings";
 import {
   Box,
@@ -22,12 +24,24 @@ const DEMO_API_KEY = "mb_Fxoc6Cns8Stk3BxJi33ova6Vmi8GpVDQetZsPWMTEzY=";
 
 const DEFAULT_DASHBOARD_ID = 1;
 const DEFAULT_QUESTION_ID = 5;
+const THEME_COLOR_DEBOUNCE_DELAY = 300;
+
+const DEFAULT_THEME_COLORS = {
+  background: "#2d2d30",
+  "text-primary": "#fff",
+  "text-secondary": "#999",
+};
 
 export const InteractiveEmbeddingDemo = () => {
   const [resourceType, setResourceType] = useState<"dashboard" | "question">(
     "dashboard",
   );
   const [resourceId, setResourceId] = useState<string>("1");
+  const [themeColors, setThemeColors] = useState(DEFAULT_THEME_COLORS);
+  const debouncedThemeColors = useDebouncedValue(
+    themeColors,
+    THEME_COLOR_DEBOUNCE_DELAY,
+  );
 
   const getResourceId = (input: string) => {
     if (isBaseEntityID(input)) {
@@ -42,16 +56,22 @@ export const InteractiveEmbeddingDemo = () => {
     return !isNaN(numericId) ? numericId : defaultResourceId;
   };
 
+  const handleColorChange =
+    (colorKey: keyof typeof DEFAULT_THEME_COLORS) => (color?: string) => {
+      if (color) {
+        setThemeColors(prev => ({
+          ...prev,
+          [colorKey]: color,
+        }));
+      }
+    };
+
   const config: InteractiveV2Settings = {
     apiKey: DEMO_API_KEY,
     embedResourceType: resourceType,
     embedResourceId: getResourceId(resourceId),
     theme: {
-      colors: {
-        background: "#2d2d30",
-        "text-primary": "#fff",
-        "text-secondary": "#999",
-      },
+      colors: debouncedThemeColors,
     },
   };
 
@@ -123,7 +143,7 @@ export const InteractiveEmbeddingDemo = () => {
                 </Radio.Group>
               </Box>
 
-              <Box>
+              <Box mb="lg">
                 <Text mb="xs">{resourceName} ID</Text>
                 <TextInput
                   value={resourceId}
@@ -133,6 +153,36 @@ export const InteractiveEmbeddingDemo = () => {
                 <Text size="xs" c="text-secondary" mt="xs">
                   Can be a number or an Entity ID (21-character string)
                 </Text>
+              </Box>
+
+              <Box>
+                <Text size="lg" fw="bold" mb="md">
+                  Theme Colors
+                </Text>
+
+                <Box mb="md">
+                  <Text mb="xs">Background Color</Text>
+                  <ColorPicker
+                    value={themeColors.background}
+                    onChange={handleColorChange("background")}
+                  />
+                </Box>
+
+                <Box mb="md">
+                  <Text mb="xs">Primary Text Color</Text>
+                  <ColorPicker
+                    value={themeColors["text-primary"]}
+                    onChange={handleColorChange("text-primary")}
+                  />
+                </Box>
+
+                <Box mb="md">
+                  <Text mb="xs">Secondary Text Color</Text>
+                  <ColorPicker
+                    value={themeColors["text-secondary"]}
+                    onChange={handleColorChange("text-secondary")}
+                  />
+                </Box>
               </Box>
             </Box>
           </Grid.Col>
