@@ -28,18 +28,18 @@
 (defn- large-bigint?
   "Checks if `n` is a `bigint` value outside the JS number range."
   [^BigInt n]
-  (or (.lt n min-bigint) (.lt max-bigint n)))
+  (or (< n min-bigint) (> n max-bigint)))
 
 (defn- large-biginteger?
   "Checks if `n` is a `biginteger` value outside the JS number range."
   [^BigInteger n]
-  (or (> 0 (.compareTo n min-biginteger)) (< 0 (.compareTo n max-biginteger))))
+  (or (< n min-biginteger) (> n max-biginteger)))
 
 (defn- large-bigdecimal?
   "Checks if `n` is a `bigdecimal` value outside the JS number range and without the fractional part. For performance
   reasons, we do not check if `n` has a fractional part."
   [^BigDecimal n]
-  (or (> 0 (.compareTo n min-bigdecimal)) (< 0 (.compareTo n max-bigdecimal))))
+  (or (< n min-bigdecimal) (> n max-bigdecimal)))
 
 (defn- large-integer?
   "Checks if `n` is a large integer outside the JS number range."
