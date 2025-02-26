@@ -1,10 +1,9 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
 import SendTestPulse from "metabase/components/SendTestPulse";
-import SchedulePicker from "metabase/containers/SchedulePicker";
+import SchedulePicker, { ScheduleChangeProp } from "metabase/containers/SchedulePicker";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
@@ -13,12 +12,43 @@ import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker"
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { Icon } from "metabase/ui";
+import type {
+  Channel,
+  ChannelApiResponse,
+  ChannelSpec,
+  Dashboard,
+  Parameter,
+  Pulse,
+  ScheduleSettings,
+  DashboardSubscription,
+  User,
+} from "metabase-types/api";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
 import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
+
+interface AddEditEmailSidebarProps {
+  pulse: DashboardSubscription;
+  formInput: ChannelApiResponse;
+  channel: Channel;
+  channelSpec: ChannelSpec;
+  users: User[];
+  parameters: Parameter[];
+  hiddenParameters?: string;
+  dashboard: Dashboard;
+  handleSave: () => void;
+  onCancel: () => void;
+  onChannelPropertyChange: (property: string, value: User[]) => void;
+  onChannelScheduleChange: (schedule: ScheduleSettings, changedProp: ScheduleChangeProp) => void;
+  testPulse: () => void;
+  toggleSkipIfEmpty: () => void;
+  setPulse: (pulse: Pulse) => void;
+  handleArchive: () => void;
+  setPulseParameters: (parameters: Parameter[]) => void;
+}
 
 function _AddEditEmailSidebar({
   pulse,
@@ -40,7 +70,7 @@ function _AddEditEmailSidebar({
   setPulse,
   handleArchive,
   setPulseParameters,
-}) {
+}: AddEditEmailSidebarProps) {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
 
   return (
@@ -62,7 +92,6 @@ function _AddEditEmailSidebar({
           <RecipientPicker
             autoFocus={false}
             recipients={channel.recipients}
-            recipientTypes={channelSpec.recipients}
             users={users}
             onRecipientsChange={recipients =>
               onChannelPropertyChange("recipients", recipients)
@@ -83,7 +112,7 @@ function _AddEditEmailSidebar({
           scheduleOptions={channelSpec.schedules}
           textBeforeInterval={t`Sent`}
           textBeforeSendTime={t`${
-            CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || t`Messages`
+            (channelSpec?.type && CHANNEL_NOUN_PLURAL[channelSpec.type]) ?? t`Messages`
           } will be sent at`}
           onScheduleChange={(newSchedule, changedProp) =>
             onChannelScheduleChange(newSchedule, changedProp)
@@ -149,24 +178,5 @@ function _AddEditEmailSidebar({
     </Sidebar>
   );
 }
-
-_AddEditEmailSidebar.propTypes = {
-  pulse: PropTypes.object,
-  formInput: PropTypes.object.isRequired,
-  channel: PropTypes.object.isRequired,
-  channelSpec: PropTypes.object.isRequired,
-  users: PropTypes.array,
-  parameters: PropTypes.array.isRequired,
-  dashboard: PropTypes.object.isRequired,
-  handleSave: PropTypes.func.isRequired,
-  onCancel: PropTypes.func.isRequired,
-  onChannelPropertyChange: PropTypes.func.isRequired,
-  onChannelScheduleChange: PropTypes.func.isRequired,
-  testPulse: PropTypes.func.isRequired,
-  toggleSkipIfEmpty: PropTypes.func.isRequired,
-  setPulse: PropTypes.func.isRequired,
-  handleArchive: PropTypes.func.isRequired,
-  setPulseParameters: PropTypes.func.isRequired,
-};
 
 export default _AddEditEmailSidebar;

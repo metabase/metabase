@@ -44,8 +44,8 @@ export interface CreateSubscriptionRequest {
 export interface UpdateSubscriptionRequest {
   id: number;
   name?: string;
-  cards?: Card[];
-  channels?: Channel[];
+  cards: Card[];
+  channels: Channel[];
   skip_if_empty?: boolean;
   collection_id?: RegularCollectionId | null;
   collection_position?: number | null;
