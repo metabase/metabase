@@ -194,7 +194,6 @@ describe("resolve", () => {
           expect(() => expr([tag, A, B])).not.toThrow();
           expect(() => expr([tag, A, B, C])).not.toThrow();
           expect(() => expr([tag, A, B, options])).not.toThrow();
-          // @ts-expect-error: options should be passed as the last argument
           expect(() => expr([tag, options, A, B, C])).not.toThrow();
         },
       );
