@@ -165,8 +165,6 @@ const addCustomColumnToCardAndSave = (
   idAlias: string,
 ) => {
   cy.log("Add a custom column to the question");
-  // TODO: To find the MBQL, do this through the API. Look at the api response
-  // returned. Then you can create the custom column via the createQuestion
   openNotebook();
   addCustomColumnToQuestion(customColumnType);
   cy.button("Visualize").click();
