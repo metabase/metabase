@@ -1684,8 +1684,11 @@
                       (lib/append-stage $q)
                       (lib/breakout $q (first (lib/breakoutable-columns $q)))
                       (lib/breakout $q (last (lib/breakoutable-columns $q))))]
-          (is (= [["2016-04-01T00:00:00Z" "2016-04-30T00:00:00Z"]]
-                 (mt/rows (qp/process-query query)))))))))
+          (is (= [[#t "2016-04-01" #t "2016-04-30"]]
+                 (mt/formatted-rows
+                  [(comp t/local-date u.date/parse)
+                   (comp t/local-date u.date/parse)]
+                  (qp/process-query query)))))))))
 
 (deftest ^:parallel multiple-bucketings-of-a-column-test
   (testing "Multiple bucketings of a column in a nested query should be returned (#46644)"
