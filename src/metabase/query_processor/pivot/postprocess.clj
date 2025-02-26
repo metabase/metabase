@@ -6,11 +6,13 @@
   visually in the same way as in the app."
   (:refer-clojure :exclude [run!])
   (:require
+   [clojure.set :as set]
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,6 +35,42 @@
   Rows whose pivot-grouping values are greater than 0 represent subtotals, and should not be included in non-pivot result outputs."
   0)
 
+(defn pivot-grouping-key
+  "Get the index into the raw pivot rows for the 'pivot-grouping' column."
+  [column-titles]
+  ;; a vector is kinda sorta a map of indices->values, so
+  ;; we can use map-invert to create the map
+  (get (set/map-invert (vec column-titles)) "pivot-grouping"))
+
+(mu/defn- pivot-measures
+  "Get the indices into the raw pivot rows corresponding to the pivot table's measure(s)."
+  [{:keys [pivot-rows pivot-cols column-titles]} :- ::pivot-spec]
+  (-> (set/difference
+       ;; every possible idx is just the range over the count of cols
+       (set (range (count column-titles)))
+       ;; we exclude indices already used in pivot rows and cols, and the pivot-grouping key
+       ;; recall that a raw pivot row will always contain this 'pivot-grouping' column, which we don't actually need to use.
+       (set (concat pivot-rows pivot-cols [(pivot-grouping-key column-titles)])))
+      sort
+      vec))
+
+(mu/defn add-pivot-measures :- ::pivot-spec
+  "Given a pivot-spec map without the `:pivot-measures` key, determine what key(s) the measures will be and assoc that value into `:pivot-measures`."
+  [{measure-indices :pivot-measures :as pivot-spec} :- ::pivot-spec]
+  (let [pivot-grouping-key (pivot-grouping-key (:column-titles pivot-spec))]
+    (cond-> pivot-spec
+      ;; if pivot-measures don't already exist (from the pivot qp), we add them ourselves, assuming lowest ID -> highest ID sort order
+      (not (seq measure-indices)) (assoc :pivot-measures (pivot-measures pivot-spec))
+      ;; otherwise, we modify indices to skip over whatever the pivot-grouping idx is, so we pull the correct values per row
+      (seq measure-indices)       (update :pivot-measures (fn [indices]
+                                                            (mapv (fn [idx]
+                                                                    (if (>= idx pivot-grouping-key)
+                                                                      (inc idx)
+                                                                      idx))
+                                                                  indices)))
+      true                       (assoc :pivot-grouping pivot-grouping-key))))
+
+;; TODO: Better way to manage column settings similar to the FE?
 (defn- merge-column-settings
   "Correlates column viz settings with columns by name in order to produce column settings closer
   to what the FE gets."

@@ -73,13 +73,6 @@
         (str/starts-with? agg-name "count")  :count
         (str/starts-with? agg-name "stddev") :stddev))))
 
-(defn pivot-grouping-key
-  "Get the index into the raw pivot rows for the 'pivot-grouping' column."
-  [column-titles]
-  ;; a vector is kinda sorta a map of indices->values, so
-  ;; we can use map-invert to create the map
-  (get (set/map-invert (vec column-titles)) "pivot-grouping"))
-
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
@@ -90,7 +83,7 @@
                    :or   {format-rows? true
                           pivot?       false}} :data} viz-settings]
         (let [col-names          (vec (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
-              pivot-grouping-key (pivot-grouping-key col-names)]
+              pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
           (when (and pivot? pivot-export-options)
             (reset! pivot-data
                     {:settings viz-settings
@@ -114,8 +107,8 @@
                                          (let [row-v (into [] row)]
                                            (into [] (for [i output-order] (row-v i))))
                                          row)
-              {:keys [pivot-grouping]} @pivot-data
-              group                    (get ordered-row pivot-grouping)]
+              {:keys [pivot-grouping-key]} @pivot-data
+              group                    (get ordered-row pivot-grouping-key)]
           (if (and (contains? @pivot-data :data) (public-settings/enable-pivoted-exports))
             (swap! pivot-data (fn [pivot-data] (update-in pivot-data [:data :rows] conj ordered-row)))
 
@@ -124,7 +117,7 @@
                 (let [formatted-row (->> (perf/mapv (fn [formatter r]
                                                       (formatter (streaming.common/format-value r)))
                                                     @ordered-formatters ordered-row)
-                                         (m/remove-nth pivot-grouping))]
+                                         (m/remove-nth pivot-grouping-key))]
                   (write-csv writer [formatted-row])
                   (.flush writer)))
               (let [formatted-row (perf/mapv (fn [formatter r]
