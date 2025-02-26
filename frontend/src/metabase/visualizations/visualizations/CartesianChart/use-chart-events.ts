@@ -48,6 +48,7 @@ export const useChartEvents = (
   timelineEventsModel: TimelineEventsModel | null,
   option: EChartsCoreOption,
   {
+    dashcard,
     card,
     rawSeries,
     selectedTimelineEventIds,
@@ -63,6 +64,7 @@ export const useChartEvents = (
     clicked,
     metadata,
     isDashboard,
+    getCard,
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
@@ -360,7 +362,7 @@ export const useChartEvents = (
   );
 
   const onSelectSeries = useCallback(
-    (event: React.MouseEvent, seriesIndex: number) => {
+    async (event: React.MouseEvent, seriesIndex: number) => {
       const areMultipleCards = rawSeries.length > 1;
       const seriesModel = chartModel.seriesModels[seriesIndex];
 
@@ -391,6 +393,34 @@ export const useChartEvents = (
           element: event.currentTarget,
         });
       } else if (isDashboard) {
+        // if this is a visualizer dashboard card
+        if (
+          dashcard?.visualization_settings?.visualization &&
+          seriesModel.vizSettingsKey !== undefined
+        ) {
+          const visualization: any =
+            dashcard.visualization_settings.visualization;
+          if (!visualization["columnValuesMapping"]) {
+            return;
+          }
+
+          const cardId =
+            visualization["columnValuesMapping"][seriesModel.vizSettingsKey][0]
+              ?.sourceId;
+
+          const card = await getCard(cardId);
+
+          if (!card) {
+            return;
+          }
+
+          onChangeCardAndRun({
+            nextCard: card,
+          });
+
+          return;
+        }
+
         onOpenQuestion(seriesModel.cardId);
       }
     },
@@ -402,6 +432,9 @@ export const useChartEvents = (
       onVisualizationClick,
       onOpenQuestion,
       isDashboard,
+      dashcard,
+      getCard,
+      onChangeCardAndRun,
     ],
   );
 

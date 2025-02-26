@@ -3,6 +3,7 @@ import type { LocationDescriptor } from "history";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { cardApi } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { replaceCardWithVisualization } from "metabase/dashboard/actions";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
@@ -172,6 +173,19 @@ export function DashCardVisualization({
         ?.visualization as Partial<VisualizerHistoryItem>,
     }),
     [dashcard.visualization_settings],
+  );
+
+  const getCard = useCallback(
+    async (cardName: string) => {
+      const [, cardId] = cardName.split(":");
+
+      const { data } = await dispatch(
+        cardApi.endpoints.getCard.initiate({ id: +cardId }),
+      );
+
+      return data;
+    },
+    [dispatch],
   );
 
   const series = useMemo(() => {
@@ -384,6 +398,7 @@ export function DashCardVisualization({
         onTogglePreviewing={onTogglePreviewing}
         onChangeCardAndRun={onChangeCardAndRun}
         onChangeLocation={onChangeLocation}
+        getCard={getCard}
       />
       {isVisualizerModalOpen && (
         <VisualizerModal
