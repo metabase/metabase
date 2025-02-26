@@ -3,7 +3,6 @@ import {
   type CSSProperties,
   type ComponentType,
   type ErrorInfo,
-  type MouseEvent,
   PureComponent,
   type ReactNode,
   type Ref,
@@ -47,6 +46,7 @@ import {
   type HoveredObject,
   type QueryClickActionsMode,
   type VisualizationDefinition,
+  type VisualizationPassThroughProps,
   type Visualization as VisualizationType,
   isRegularClickAction,
 } from "metabase/visualizations/types";
@@ -98,8 +98,6 @@ type OnChangeCardAndRunOpts = {
 
 type VisualizationOwnProps = {
   actionButtons?: ReactNode | null;
-  canRemoveSeries?: (seriesIndex: number) => boolean;
-  canToggleSeriesVisibility?: boolean;
   className?: string;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
@@ -121,14 +119,7 @@ type VisualizationOwnProps = {
   height?: number | null;
   isAction?: boolean;
   isDashboard?: boolean;
-  isEditing?: boolean;
-  isEditingParameter?: boolean;
-  isFullscreen?: boolean;
   isMobile?: boolean;
-  isNightMode?: boolean;
-  isPreviewing?: boolean;
-  isQueryBuilder?: boolean;
-  isSettings?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
   metadata?: Metadata;
@@ -138,12 +129,10 @@ type VisualizationOwnProps = {
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
   settings?: VisualizationSettings;
-  showAllLegendItems?: boolean;
   showTitle?: boolean;
   showWarnings?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
-  totalNumGridCols?: number;
   width?: number | null;
   onOpenChartSettings?: (data: {
     initialChartSettings: { section: string };
@@ -151,18 +140,13 @@ type VisualizationOwnProps = {
   }) => void;
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
   onChangeLocation?: (location: Location) => void;
-  onDeselectTimelineEvents?: () => void;
-  onOpenTimelines?: () => void;
-  onRemoveSeries?: (event: MouseEvent, removedIndex: number) => void;
-  onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
-  onTogglePreviewing?: () => void;
   onUpdateQuestion?: () => void;
   onUpdateVisualizationSettings?: (
     settings: VisualizationSettings,
     question?: Question,
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
-};
+} & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
   StateProps &
@@ -530,7 +514,9 @@ class Visualization extends PureComponent<
       canRemoveSeries,
       canToggleSeriesVisibility,
       className,
+      dashboard,
       dashcard,
+      dispatch,
       errorIcon,
       errorMessageOverride,
       expectedDuration,
@@ -546,23 +532,34 @@ class Visualization extends PureComponent<
       isFullscreen,
       isMobile,
       isNightMode,
+      isObjectDetail,
+      isPreviewing,
       isQueryBuilder,
       isSettings,
+      isShowingDetailsOnlyColumns,
       isSlow,
       metadata,
+      mode,
       query,
+      queryBuilderMode,
       rawSeries = [],
+      renderEmptyMessage,
+      renderTableHeaderWrapper,
       replacementContent,
+      scrollToColumn,
       selectedTimelineEventIds,
       showAllLegendItems,
       showTitle,
+      tableHeaderHeight,
       timelineEvents,
+      totalNumGridCols,
       width: rawWidth,
       onDeselectTimelineEvents,
       onOpenChartSettings,
       onOpenTimelines,
       onRemoveSeries,
       onSelectTimelineEvents,
+      onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
     } = this.props;
@@ -751,6 +748,9 @@ class Visualization extends PureComponent<
                   canToggleSeriesVisibility={canToggleSeriesVisibility}
                   clicked={clicked}
                   data={series[0].data} // convenience for single-series visualizations
+                  dashboard={dashboard}
+                  dashcard={dashcard}
+                  dispatch={dispatch}
                   errorIcon={errorIcon}
                   fontFamily={fontFamily}
                   getExtraDataForClick={getExtraDataForClick}
@@ -765,17 +765,27 @@ class Visualization extends PureComponent<
                   isFullscreen={!!isFullscreen}
                   isMobile={!!isMobile}
                   isNightMode={!!isNightMode}
+                  isObjectDetail={isObjectDetail}
                   isPlaceholder={isPlaceholder}
+                  isPreviewing={isPreviewing}
                   isQueryBuilder={!!isQueryBuilder}
                   isSettings={!!isSettings}
+                  isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
                   metadata={metadata}
+                  mode={mode}
+                  queryBuilderMode={queryBuilderMode}
                   rawSeries={rawSeries}
+                  renderEmptyMessage={renderEmptyMessage}
+                  renderTableHeaderWrapper={renderTableHeaderWrapper}
+                  scrollToColumn={scrollToColumn}
                   selectedTimelineEventIds={selectedTimelineEventIds}
                   series={series}
                   settings={settings}
                   showAllLegendItems={showAllLegendItems}
                   showTitle={!!showTitle}
+                  tableHeaderHeight={tableHeaderHeight}
                   timelineEvents={timelineEvents}
+                  totalNumGridCols={totalNumGridCols}
                   visualizationIsClickable={this.visualizationIsClickable}
                   width={rawWidth}
                   onActionDismissal={this.hideActions}
@@ -791,6 +801,7 @@ class Visualization extends PureComponent<
                   onRenderError={this.onRenderError}
                   onRemoveSeries={onRemoveSeries}
                   onSelectTimelineEvents={onSelectTimelineEvents}
+                  onTogglePreviewing={onTogglePreviewing}
                   onUpdateVisualizationSettings={onUpdateVisualizationSettings}
                   onUpdateWarnings={onUpdateWarnings}
                   onVisualizationClick={this.handleVisualizationClick}

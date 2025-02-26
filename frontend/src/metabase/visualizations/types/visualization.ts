@@ -1,17 +1,24 @@
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
 } from "metabase/visualizations/shared/types/measure-text";
-import type { ClickObject } from "metabase/visualizations/types";
+import type {
+  ClickActionModeGetter,
+  ClickObject,
+  QueryClickActionsMode,
+} from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Query from "metabase-lib/v1/queries/Query";
 import type {
   Card,
+  Dashboard,
+  DashboardCard,
   DatasetColumn,
   DatasetData,
   RawSeries,
@@ -22,6 +29,7 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
@@ -92,6 +100,8 @@ export interface StaticVisualizationProps {
 
 export interface VisualizationProps {
   series: Series;
+  dashboard?: Dashboard;
+  dashcard?: DashboardCard;
   card: Card;
   getHref?: () => string | undefined;
   data: DatasetData;
@@ -151,7 +161,53 @@ export interface VisualizationProps {
   canToggleSeriesVisibility?: boolean;
   onRemoveSeries?: (event: React.MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
+
+  dispatch: Dispatch;
 }
+
+export type VisualizationPassThroughProps = {
+  // frontend/src/metabase/query_builder/components/VisualizationResult.jsx
+  canToggleSeriesVisibility?: boolean;
+  isObjectDetail?: boolean;
+  isQueryBuilder?: boolean;
+  queryBuilderMode?: QueryBuilderMode;
+  onDeselectTimelineEvents?: () => void;
+  onOpenTimelines?: () => void;
+  onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
+
+  // Table
+  isShowingDetailsOnlyColumns?: boolean;
+
+  // Table Interactive
+  hasMetadataPopovers?: boolean;
+  tableHeaderHeight?: number;
+  scrollToColumn?: number;
+  renderTableHeaderWrapper?: (
+    children: ReactNode,
+    column: number,
+    index: number,
+    theme: unknown,
+  ) => ReactNode;
+  mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
+  renderEmptyMessage?: boolean;
+
+  // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
+  isEditing?: boolean;
+  isEditingParameter?: boolean;
+  isFullscreen?: boolean;
+  isNightMode?: boolean;
+  isPreviewing?: boolean;
+  totalNumGridCols?: number;
+  onTogglePreviewing?: () => void;
+
+  // frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx
+  canRemoveSeries?: (seriesIndex: number) => boolean;
+  showAllLegendItems?: boolean;
+  onRemoveSeries?: (event: MouseEvent, removedIndex: number) => void;
+
+  // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
+  isSettings?: boolean;
+};
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   title?: string;
@@ -219,7 +275,7 @@ export type Visualization = React.ComponentType<
   Omit<VisualizationProps, "width" | "height"> & {
     width?: number | null;
     height?: number | null;
-  }
+  } & VisualizationPassThroughProps
 > &
   VisualizationDefinition;
 
