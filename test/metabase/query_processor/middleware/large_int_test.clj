@@ -22,14 +22,21 @@
       (transduce identity rf rows))))
 
 (deftest ^:parallel different-column-types-test
+  (testing "Should not convert non-numeric column values"
+    (let [cols [{:base_type :type/Text}
+                {:base_type :type/Boolean}]
+          rows [["Widget" true]]]
+      (is (= rows
+             (convert-large-int-to-string cols rows)))))
   (testing "Should not convert integers within the JS number range or float/double values"
     (let [cols [{:base_type :type/Integer}
+                {:base_type :type/Float}
                 {:base_type :type/BigInteger}
                 {:base_type :type/BigInteger}
                 {:base_type :type/Decimal}
-                {:base_type :type/Float}]
-          rows [[min-long (bigint min-long) (biginteger min-long) (bigdec min-long) Double/MIN_VALUE]
-                [max-long (bigint max-long) (biginteger max-long) (bigdec max-long) Double/MAX_VALUE]]]
+                {:base_type :type/Decimal}]
+          rows [[min-long Double/MIN_VALUE (bigint min-long) (biginteger min-long) (bigdec min-long) (+ (bigdec max-long) 1.5M)]
+                [max-long Double/MAX_VALUE (bigint max-long) (biginteger max-long) (bigdec max-long) (- (bigdec min-long) 1.5M)]]]
       (is (= rows
              (convert-large-int-to-string cols rows)))))
   (testing "Should convert integers outside the JS number range"

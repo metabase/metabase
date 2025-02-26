@@ -36,6 +36,7 @@
 (defn- large-bigdecimal?
   [n]
   (and (instance? java.math.BigDecimal n)
+       (<= (.scale n) 0)
        (or (> 0 (.compareTo n min-bigdecimal)) (< 0 (.compareTo n max-bigdecimal)))))
 
 (defn- large-integer?
