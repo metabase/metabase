@@ -6,7 +6,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util.performance :as perf]))
 
-;; Min and max integers that can be used in JS without precision loss.
+;; Min and max integers that can be used in JS without precision loss as in JS they are stored as `double`.
 ;; There is a value for each type to avoid runtime memory allocation.
 (def ^:private min-long -9007199254740991)
 (def ^:private max-long 9007199254740991)
@@ -18,28 +18,35 @@
 (def ^:private max-bigdecimal (bigdec max-long))
 
 (defn- large-long?
+  "Checks if `n` is a `long` value outside the JS number range."
   [n]
   (and (instance? Long n)
        (or (< n min-long) (> n max-long))))
 
 (defn- large-bigint?
+  "Checks if `n` is a `bigint` value outside the JS number range."
   [n]
   (and (instance? clojure.lang.BigInt n)
        (or (.lt n min-bigint)
            (.lt max-bigint n))))
 
 (defn- large-biginteger?
+  "Checks if `n` is `biginteger` value outside the JS number range."
   [n]
   (and (instance? java.math.BigInteger n)
        (or (> 0 (.compareTo n min-biginteger)) (< 0 (.compareTo n max-biginteger)))))
 
 (defn- large-bigdecimal?
+  "Checks if `n` is a `bigdecimal` value outside the JS number range and without the fractional part. We use `.scale` to
+  find the location of the decimal point. For performance reasons, we do not call `stripTrailingZeros`
+  to avoid memory allocation. Therefore, we will identify `10` as an integer, but not `10.0`."
   [n]
   (and (instance? java.math.BigDecimal n)
        (<= (.scale n) 0)
        (or (> 0 (.compareTo n min-bigdecimal)) (< 0 (.compareTo n max-bigdecimal)))))
 
 (defn- large-integer?
+  "Checks if `n` is a large integer outside the JS number range."
   [n]
   (or (large-long? n)
       (large-bigint? n)
