@@ -966,7 +966,7 @@
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
                                                        :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
-        (let [results (all-outputs! card {:export-format :csv :format-rows true})]
+        (let [results (all-outputs! card {:export-format :csv})]
           (is (= {:card-download            110
                   :unsaved-card-download    110
                   :alert-attachment         110
@@ -982,7 +982,7 @@
                                          :dataset_query {:database (mt/id)
                                                          :type     :native
                                                          :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
-          (let [results (all-outputs! card {:export-format :csv :format-rows true})]
+          (let [results (all-outputs! card {:export-format :csv})]
             (is (= {:card-download            110
                     :unsaved-card-download    110
                     :alert-attachment         110
