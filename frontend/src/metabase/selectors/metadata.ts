@@ -1,6 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
+import _ from "underscore";
 
+import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { FieldSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
@@ -86,7 +88,30 @@ const getNormalizedFields = createSelector(
 );
 
 const getNormalizedSegments = (state: State) => state.entities.segments;
-const getNormalizedQuestions = (state: State) => state.entities.questions;
+
+export const getNormalizedDashcardQuestions = (state: State) => {
+  const cards: Card[] = [];
+  const { dashcards } = state.dashboard ?? {};
+
+  Object.values(dashcards ?? {}).forEach(dashcard => {
+    if (isQuestionDashCard(dashcard)) {
+      cards.push(dashcard.card);
+      if (Array.isArray(dashcard.series)) {
+        cards.push(...dashcard.series);
+      }
+    }
+  });
+
+  return _.indexBy(cards, "id");
+};
+
+const getNormalizedQuestions = createSelector(
+  [state => state.entities.questions, getNormalizedDashcardQuestions],
+  (questions, dashcardQuestions) => ({
+    ...dashcardQuestions,
+    ...questions,
+  }),
+);
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
