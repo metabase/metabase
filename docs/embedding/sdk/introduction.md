@@ -18,10 +18,9 @@ Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
 ## Embedded analytics SDK prerequisites
 
-- React application. The SDK is tested to work with React 18 or higher, though it may work with earlier versions.
-- [Metabase Pro or Enterprise subscription or free trial](https://www.metabase.com/pricing/).
-- Metabase version 1.53 or higher.
-- [Node.js 18.x LTS](https://nodejs.org/en) or higher.
+- React application. The SDK is tested to work with React 18, though it may work with earlier versions.
+- Metabase version 1.52 or higher.
+- [Node.js 20](https://nodejs.org/en) or higher.
 
 ## Quickstarts
 
@@ -39,7 +38,7 @@ Enable the Embedded analytics SDK by going to **Admin settings > Settings > Embe
 
 ### Install the SDK in your React application
 
-You can install the Embedded analytics SDK for React via npm:
+You can install the Embedded analytics SDK for React via npm. Make sure to use the dist-tag that corresponds to your Metabase version, example: 53-stable for Metabase 53:
 
 ```bash
 npm install @metabase/embedding-sdk-react@53-stable
@@ -85,10 +84,18 @@ The SDK doesn't support:
 - Official collections
 - Subscriptions
 - Alerts
-- Server-side rendering (SSR).
-- Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
+- Server-side rendering (SSR)
+- Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards
+- React 19
 
-## Feedback
+## Issues, feature requests and support
 
-- Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com).
-- Message the team on Slack. If you don't have a Slack channel set up, please reach out to us at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com).
+[Bugs](https://github.com/metabase/metabase/issues/?q=is%3Aissue%20state%3Aopen%20label%3AType%3ABug%20label%3AEmbedding%2FSDK) and [feature requests](https://github.com/metabase/metabase/issues/?q=is%3Aissue%20state%3Aopen%20label%3AEmbedding%2FSDK%20label%3A%22Type%3ANew%20Feature%22) are tracked on GitHub. 
+
+You can upvote an existing feature request by leaving a thumbs up emoji reaction on the issue. Feel free to leave comments with context that could be useful. [Read more](https://www.metabase.com/docs/latest/troubleshooting-guide/requesting-new-features).
+
+Before creating new issues, please verify if the issue doesn't exist already.
+ 
+To seek help,
+* paid customers can contact our success team through the usual channels 
+* users of the open source version can post on our [discussion forums](https://discourse.metabase.com/)
