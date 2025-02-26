@@ -8,12 +8,13 @@
 
 (defn -main [& _]
   (if (or (nil? *command-line-args*) ;; forgot to pass args
-          (= *command-line-args* ["-h"]) ;; trying to get help
+          ;; trying to get help
+          (= *command-line-args* ["-h"])
           (= *command-line-args* ["--help"]))
     (do
       (print (slurp "./mage/resource.txt"))
       (flush)
-      (println (c/bold "  ✨ Metabase Automation Genius Engine ✨"))
+      (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
       (println "")
       (shell "bb tasks"))
     (shell (str "bb " (str/join " " *command-line-args*)))))
