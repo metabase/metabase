@@ -1658,27 +1658,34 @@
                     (mt/normal-drivers-with-feature :identifiers-with-spaces)
                     (mt/normal-drivers-with-feature :left-join))
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-          results (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id "orders")))
-                                        (lib/limit 1)))]
+          card-query (-> (lib/query mp (lib.metadata/table mp (mt/id "orders")))
+                         (lib/order-by (lib.metadata/field mp (mt/id "orders" "created_at")))
+                         (lib/limit 1))
+          results (qp/process-query card-query)]
       (mt/with-temp [:model/Card {card-id :id} {:type :question
-                                                :dataset_query {:native {:query (get-in results [:data :native_form :query])}
+                                                :dataset_query {:native (get-in results [:data :native_form])
                                                                 :database (mt/id)
                                                                 :type :native}
                                                 :result_metadata (get-in results [:data :results_metadata :columns])
                                                 :name "Spaces in Name"}]
-        (let [query (as-> (lib/query mp (lib.metadata/table mp (mt/id "products"))) $q
+        (let [created-at-pred (every-pred (comp #{"Created At"} :display-name) (comp #{"Spaces in Name"} :source-alias))
+              query (as-> (lib/query mp (lib.metadata/table mp (mt/id "products"))) $q
                       (lib/join $q (lib/join-clause (lib.metadata/card mp card-id)))
 
-                      (lib/breakout $q (lib/with-temporal-bucket (m/find-first (every-pred (comp #{"Created At"} :display-name) (comp #{"Spaces in Name"} :source-alias))
-                                                                               (lib/breakoutable-columns $q))
+                      (lib/breakout $q (lib/with-temporal-bucket (m/find-first
+                                                                  created-at-pred
+                                                                  (lib/breakoutable-columns $q))
                                          :month))
-                      (lib/breakout $q (lib/with-temporal-bucket (m/find-first (every-pred (comp #{"Created At"} :display-name) (comp #{"Spaces in Name"} :source-alias))
-                                                                               (lib/breakoutable-columns $q))
+                      (lib/breakout $q (lib/with-temporal-bucket (m/find-first
+                                                                  created-at-pred
+                                                                  (lib/breakoutable-columns $q))
                                          :day))
+                      (lib/filter $q (lib/!= (m/find-first created-at-pred (lib/filterable-columns $q)) nil))
                       (lib/append-stage $q)
                       (lib/breakout $q (first (lib/breakoutable-columns $q)))
                       (lib/breakout $q (last (lib/breakoutable-columns $q))))]
-          (is (= 2 (count (mt/rows (qp/process-query query))))))))))
+          (is (= [["2016-04-01T00:00:00Z" "2016-04-30T00:00:00Z"]]
+                 (mt/rows (qp/process-query query)))))))))
 
 (deftest ^:parallel multiple-bucketings-of-a-column-test
   (testing "Multiple bucketings of a column in a nested query should be returned (#46644)"
