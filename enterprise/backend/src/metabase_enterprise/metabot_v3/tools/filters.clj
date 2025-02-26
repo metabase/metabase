@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.filters
   (:require
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
-   [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib.convert :as lib.convert]
@@ -10,8 +9,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util :as u]))
 
 (defn- date-filter?
   "Tests if a date type filter is against a value without time component."
@@ -120,10 +118,6 @@
         {:output (str "No metric found with metric_id " metric-id)}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
-(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
-  [_tool-name arguments _e]
-  (query-metric arguments))
-
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
@@ -218,11 +212,3 @@
                                 :field_id "field_[27]_[:field {:base-type :type/Float, :effective-type :type/Float} 257]"
                                 :value 50}]}))
   -)
-
-(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/filter-records
-  [_tool-name arguments e]
-  (filter-records arguments e))
-
-(mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/filter-records
-  [_tool-name _context]
-  true)

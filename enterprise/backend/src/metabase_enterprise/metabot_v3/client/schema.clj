@@ -5,9 +5,6 @@
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
-(mr/def ::request.tools
-  [:sequential ::metabot-v3.tools.interface/metadata])
-
 (mr/def ::role
   [:enum
    {:encode/api-request u/->snake_case_en
@@ -36,18 +33,6 @@
 
 (mr/def ::messages
   [:sequential ::message])
-
-(mr/def ::request.tools
-  [:sequential ::metabot-v3.tools.interface/metadata])
-
-(mr/def ::request
-  "Shape of the request we send to AI Proxy (before applying Malli encoding transformations)."
-  [:map
-   {:encode/api-request #(update-keys % u/->snake_case_en)}
-   [:messages      ::messages]
-   [:tools         ::request.tools]
-   [:context       {:default {}} :map]
-   [:user-id       integer?]])
 
 (mr/def ::metric
   "A metric as sent to the AI Service"

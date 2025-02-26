@@ -83,18 +83,3 @@
   [:map
    [:type [:= :metabot.reaction/redirect]]
    [:url :string]])
-
-(def ^:private terminating-reaction-types
-  "If one of these reactions is present in the reactions vector, stop the loop
-   and return the result to the user."
-  #{:metabot.reaction/redirect})
-
-(defn- terminating-reaction?
-  "Checks if a reaction is a terminating reaction"
-  [reaction]
-  (contains? terminating-reaction-types (:type reaction)))
-
-(defn has-terminating-reaction?
-  "Checks if the envelope reactions vector contains a terminating reaction"
-  [reactions]
-  (some terminating-reaction? reactions))

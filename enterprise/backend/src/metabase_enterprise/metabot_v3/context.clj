@@ -12,6 +12,7 @@
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
+
 ;; todo: remove this before shipping. This is quick and dirty
 (defn log
   "Log a payload. Direction should be `:llm.log/fe->be` or similar. This should not be shipping in this form. This is

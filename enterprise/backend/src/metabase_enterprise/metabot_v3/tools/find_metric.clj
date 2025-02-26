@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.dummy-tools :as dummy-tools]
-   [metabase-enterprise.metabot-v3.tools.interface :as tools.interface]
    [toucan2.core :as t2]))
 
 (defn find-metric
@@ -19,7 +18,3 @@
                       (dummy-tools/metric-details id))]
       {:structured-output result}
       {:output "Metric not found."})))
-
-(defmethod tools.interface/*invoke-tool* :metabot.tool/find-metric
-  [_ arguments _env]
-  (find-metric arguments))
