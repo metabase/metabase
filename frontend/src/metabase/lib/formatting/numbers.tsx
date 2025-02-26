@@ -1,4 +1,3 @@
-import * as d3 from "d3";
 import dayjs from "dayjs";
 import Humanize from "humanize-plus";
 import type { ReactNode } from "react";
@@ -7,8 +6,16 @@ import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 
-const FIXED_NUMBER_FORMATTER = d3.format(",.0f");
-const PRECISION_NUMBER_FORMATTER = d3.format(".2f");
+const FIXED_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
+  useGrouping: true,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+const PRECISION_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
 
 type FormatNumberOptions = {
   _numberFormatter?: Intl.NumberFormat;
@@ -152,9 +159,7 @@ export function formatNumber(
       console.warn("Error formatting number", e);
       // fall back to old, less capable formatter
       // NOTE: does not handle things like currency, percent
-      return FIXED_NUMBER_FORMATTER(
-        roundFloat(number, options.maximumFractionDigits),
-      );
+      return FIXED_NUMBER_FORMATTER.format(number);
     }
   }
 }
@@ -251,7 +256,7 @@ function formatNumberCompactWithoutOptions(
   let formatted;
   if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
     // 0.1 => 0.1
-    formatted = PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
+    formatted = PRECISION_NUMBER_FORMATTER.format(value);
   } else {
     // 1 => 1
     // 1000 => 1K
