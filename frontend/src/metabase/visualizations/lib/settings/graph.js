@@ -21,7 +21,6 @@ import {
   getAvailableXAxisScales,
   getComputedAdditionalColumnsValue,
   getDefaultColumns,
-  getDefaultDataLabelsFormatting,
   getDefaultDataLabelsFrequency,
   getDefaultDimensionFilter,
   getDefaultDimensions,
