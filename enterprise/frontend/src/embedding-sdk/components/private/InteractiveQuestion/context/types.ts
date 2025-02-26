@@ -45,7 +45,10 @@ export type InteractiveQuestionProviderWithLocationProps = PropsWithChildren<
 
 export type InteractiveQuestionProviderProps = PropsWithChildren<
   InteractiveQuestionConfig &
-    Omit<LoadSdkQuestionParams, "cardId"> & { cardId?: CardId | string }
+    Omit<LoadSdkQuestionParams, "cardId"> & {
+      // eslint-disable-next-line @typescript-eslint/ban-types -- this is needed to allow any Entity ID string but keep autocomplete for "new", for creating new questions.
+      cardId: CardId | "new" | (string & {});
+    }
 >;
 
 export type InteractiveQuestionContextType = Omit<
