@@ -531,7 +531,7 @@
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
   metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
-  metabase.db.data-migrations/defmigration                                              clojure.core/def
+  metabase.db.custom-migrations.util/with-temp-scheduler!                               clojure.core/fn
   metabase.db.liquibase/with-liquibase                                                  clojure.core/let
   metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                        clojure.core/let
   metabase.driver.mongo.connection/with-mongo-client                                    clojure.core/let
@@ -543,6 +543,13 @@
   metabase.models.collection-test/with-collection-in-location                           clojure.core/let
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
+  metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
+  metabase.models.util.spec-update/define-spec                                          clojure.core/def
+  metabase.notification.test-util/with-temp-notification                                clojure.core/let
+  metabase.notification.test-util/with-card-notification                                clojure.core/let
+  metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
+  metabase.public-settings.premium-features/defenterprise-schema                        clj-kondo.lint-as/def-catch-all
+  metabase.public-settings.premium-features/define-premium-feature                      clojure.core/def
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
   metabase.premium-features.core/define-premium-feature                                 clojure.core/def
   metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all

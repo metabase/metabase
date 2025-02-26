@@ -68,8 +68,6 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     onCreate,
     onSave,
     onChangeLocation,
-    questionAlerts,
-    user,
     modal,
     modalContext,
     card,
@@ -143,8 +141,6 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
           />
         )}
         <QueryModals
-          questionAlerts={questionAlerts}
-          user={user}
           onSave={onSave}
           onCreate={onCreate}
           updateQuestion={updateQuestion}
@@ -251,8 +247,6 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
       )}
 
       <QueryModals
-        questionAlerts={questionAlerts}
-        user={user}
         onSave={onSave}
         onCreate={onCreate}
         updateQuestion={updateQuestion}

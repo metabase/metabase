@@ -531,7 +531,7 @@ describe("scenarios > admin > people", () => {
       H.createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
       }).then(({ body: { card_id, dashboard_id } }) => {
-        H.createAlert(getAlertDetails({ user_id, card_id }));
+        H.createQuestionAlert({ user_id, card_id });
         H.createPulse(getPulseDetails({ card_id, dashboard_id }));
       });
     });
@@ -901,28 +901,6 @@ function getQuestionDetails() {
     query: {
       "source-table": ORDERS_ID,
     },
-  };
-}
-
-function getAlertDetails({ user_id, card_id }) {
-  return {
-    card: {
-      id: card_id,
-      include_csv: false,
-      include_xls: false,
-    },
-    channels: [
-      {
-        enabled: true,
-        channel_type: "email",
-        schedule_type: "hourly",
-        recipients: [
-          {
-            id: user_id,
-          },
-        ],
-      },
-    ],
   };
 }
 

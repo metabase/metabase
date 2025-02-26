@@ -13,6 +13,7 @@ export * from "./field";
 export * from "./group";
 export * from "./models";
 export * from "./modelIndexes";
+export * from "./notification";
 export * from "./parameters";
 export * from "./query";
 export * from "./schema";

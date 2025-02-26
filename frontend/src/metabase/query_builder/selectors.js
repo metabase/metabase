@@ -12,7 +12,6 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
-import { getAlerts } from "metabase/notifications/redux/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -609,13 +608,6 @@ export const getIsSavedQuestionChanged = createSelector(
 export const getIsRunnable = createSelector(
   [getQuestion, getIsDirty],
   isQuestionRunnable,
-);
-
-export const getQuestionAlerts = createSelector(
-  [getAlerts, getCard],
-  (alerts, card) =>
-    (card && card.id && _.pick(alerts, alert => alert.card.id === card.id)) ||
-    {},
 );
 
 export const getResultsMetadata = createSelector(

@@ -53,7 +53,7 @@
   com.ibm.icu/icu4j                         {:mvn/version "76.1"}               ; Used to transliterate Unicode characters into Latin characters
   com.mchange/c3p0                          {:mvn/version "0.10.1"}             ; DB connection pool
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
-                                            {:mvn/version "1.0.1"}              ; Snowplow analytics
+  {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.taoensso/nippy                        {:mvn/version "3.4.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink
@@ -82,7 +82,7 @@
                                              :git/url "https://github.com/eerohele/pp"}
   io.github.metabase/macaw                  {:mvn/version "0.2.25"}             ; Parse native SQL queries
   io.github.resilience4j/resilience4j-retry ^:antq/exclude                      ; 2.x do not support Java 8
-                                            {:mvn/version "1.7.1"}              ; Support for retrying operations
+  {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
   javax.servlet/servlet-api                 {:mvn/version "2.5"}                ; used by ring's multipart-params (file upload)
@@ -163,17 +163,17 @@
   org.clojure/tools.reader                  {:mvn/version "1.5.0"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
   org.eclipse.jetty/jetty-server            ^:antq/exclude                      ; 12.x do not support Java 8
-                                            {:mvn/version "11.0.24"}            ; web server
+  {:mvn/version "11.0.24"}            ; web server
   org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.24"}   ; ring-jetty-adapter needs that
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "24.1.2" :extension "pom"} ; JavaScript engine
   org.graalvm.polyglot/polyglot             {:mvn/version "24.1.2"}             ; GraalVM platform, required by JS engine
   org.jsoup/jsoup                           {:mvn/version "1.18.3"}             ; required by hickory
   org.liquibase/liquibase-core              ^:antq/exclude                      ; FIXME: no idea why it fails
-                                            {:mvn/version "4.26.0"              ; migration management (Java lib)
-                                             :exclusions  [ch.qos.logback/logback-classic]}
+  {:mvn/version "4.26.0"              ; migration management (Java lib)
+   :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      ^:antq/exclude                      ; 3.x only support jdbc:mariadb, so using 2.x for now
-                                            {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
+  {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
   org.postgresql/postgresql                 {:mvn/version "42.7.5"}             ; Postgres driver
   org.slf4j/slf4j-api                       {:mvn/version "2.0.16"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
@@ -810,14 +810,13 @@
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
 
-
   ;; test the notification system
   ;;    clj -X:dev:ee:ee-dev:test:test/notification
   :test/notification
   {:exec-args {:only ["test/metabase/notification"
                       "test/metabase/channel"
+                      metabase.api.notification-test
                       metabase.events.notification-test
-                      metabase.channel.models.channel-test
                       metabase.models.notification-test
                       metabase.task.notification-test]}}
 
