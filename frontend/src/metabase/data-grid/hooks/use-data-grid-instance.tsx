@@ -8,53 +8,54 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUpdateEffect } from "react-use";
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
-
-import type { TableProps } from "../Table";
-import { getDataColumn } from "../columns/data-column";
-import { getRowIdColumn } from "../columns/row-id-column";
+import type { DataGridProps } from "metabase/data-grid/components/DataGrid";
 import {
   MIN_COLUMN_WIDTH,
   ROW_ID_COLUMN_ID,
   TRUNCATE_LONG_CELL_WIDTH,
-} from "../constants";
-import type { ExpandedColumnsState, TableOptions } from "../types";
-
-import { useBodyCellMeasure } from "./use-body-cell-measure";
-import { useColumnResizeObserver } from "./use-column-resize-observer";
-import { useColumnsReordering } from "./use-columns-reordering";
-import { useMeasureColumnWidths } from "./use-measure-column-widths";
-import { useVirtualGrid } from "./use-virtual-grid";
+} from "metabase/data-grid/constants";
+import { useBodyCellMeasure } from "metabase/data-grid/hooks/use-body-cell-measure";
+import { useColumnResizeObserver } from "metabase/data-grid/hooks/use-column-resize-observer";
+import { useColumnsReordering } from "metabase/data-grid/hooks/use-columns-reordering";
+import { useMeasureColumnWidths } from "metabase/data-grid/hooks/use-measure-column-widths";
+import { useVirtualGrid } from "metabase/data-grid/hooks/use-virtual-grid";
+import type {
+  DataGridOptions,
+  ExpandedColumnsState,
+} from "metabase/data-grid/types";
+import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
+import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
+import { isNotNull } from "metabase/lib/types";
 
 const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
   _.uniq(
     hasRowIdColumn ? [ROW_ID_COLUMN_ID, ...dataColumnsOrder] : dataColumnsOrder,
   );
 
-export const useTableInstance = <TData, TValue>({
+export const useDataGridInstance = <TData, TValue>({
   data,
-  columnOrder: controlledColumnOrder = [],
-  columnSizing: controlledColumnSizing = {},
+  columnOrder: controlledColumnOrder,
+  columnSizing: controlledColumnSizing,
   defaultRowHeight = 36,
   rowId,
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
   columnsOptions,
   onColumnResize,
   onColumnReorder,
-}: TableOptions<TData, TValue>): Omit<
-  TableProps<TData>,
-  "width" | "height"
-> => {
+}: DataGridOptions<TData, TValue>): DataGridProps<TData> => {
   const gridRef = useRef<HTMLDivElement>(null);
   const refs = useMemo(() => ({ gridRef }), [gridRef]);
   const hasRowIdColumn = rowId != null;
 
   const [columnOrder, setColumnOrder] = useState<string[]>(
-    getColumnOrder(controlledColumnOrder, hasRowIdColumn),
+    getColumnOrder(
+      controlledColumnOrder ?? columnsOptions.map(column => column.id),
+      hasRowIdColumn,
+    ),
   );
 
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(
-    controlledColumnSizing,
+    controlledColumnSizing ?? {},
   );
   const [measuredColumnSizing, setMeasuredColumnSizing] =
     useState<ColumnSizingState>({});
@@ -74,7 +75,7 @@ export const useTableInstance = <TData, TValue>({
   const { measureBodyCellDimensions, measureRoot } = useBodyCellMeasure();
 
   useUpdateEffect(() => {
-    setColumnOrder(getColumnOrder(controlledColumnOrder, hasRowIdColumn));
+    setColumnOrder(getColumnOrder(controlledColumnOrder ?? [], hasRowIdColumn));
   }, [controlledColumnOrder, hasRowIdColumn]);
 
   const handleUpdateColumnExpanded = useCallback(
@@ -163,7 +164,9 @@ export const useTableInstance = <TData, TValue>({
       const height = Math.max(
         ...wrappedColumnsOptions.map(column => {
           const value = column.accessorFn(data[rowIndex]);
-          const formattedValue = column.formatter?.(value, rowIndex, column.id);
+          const formattedValue = column.formatter
+            ? column.formatter(value, rowIndex, column.id)
+            : value;
           if (
             value == null ||
             typeof formattedValue !== "string" ||
@@ -208,6 +211,7 @@ export const useTableInstance = <TData, TValue>({
     truncateLongCellWidth,
   );
 
+  const { measureGrid } = virtualGrid;
   const prevColumnSizing = useRef<ColumnSizingState>();
   const prevWrappedColumns = useRef<string[]>();
   useEffect(() => {
@@ -223,12 +227,12 @@ export const useTableInstance = <TData, TValue>({
       );
 
     if (didColumnSizingChange || didColumnWrappingChange) {
-      virtualGrid.measureGrid();
+      measureGrid();
     }
 
     prevColumnSizing.current = columnSizing;
     prevWrappedColumns.current = wrappedColumnsOptions.map(column => column.id);
-  }, [columnSizing, virtualGrid, wrappedColumnsOptions]);
+  }, [columnSizing, measureGrid, wrappedColumnsOptions]);
 
   const handleColumnResize = useCallback(
     (columnName: string, width: number) => {
@@ -252,7 +256,11 @@ export const useTableInstance = <TData, TValue>({
 
   useColumnResizeObserver(table.getState(), handleColumnResize);
 
-  const columnsReordering = useColumnsReordering(table, onColumnReorder);
+  const columnsReordering = useColumnsReordering(
+    table,
+    gridRef,
+    onColumnReorder,
+  );
 
   return {
     table,

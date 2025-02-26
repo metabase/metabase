@@ -5,14 +5,15 @@ import {
 } from "@tanstack/react-table";
 import { useCallback, useEffect, useRef } from "react";
 import type { Root } from "react-dom/client";
+import React from "react";
 
 import { renderRoot } from "metabase/lib/react-compat";
 import { isNotNull } from "metabase/lib/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 
-import type { ColumnOptions } from "../types";
-import { pickRowsToMeasure } from "../utils/measure";
+import type { ColumnOptions } from "metabase/data-grid/types";
+import { pickRowsToMeasure } from "metabase/data-grid/utils/measure";
 
 const EXTRA_COLUMN_SPACING = 14;
 
@@ -78,11 +79,13 @@ export const useMeasureColumnWidths = <TData, TValue>(
           );
         }
 
-        // Unmount the entire React tree after measurement is complete
-        if (measureRootTree.current) {
-          measureRootTree.current.unmount();
-          measureRootTree.current = undefined;
-        }
+        // Schedule unmounting asynchronously instead of doing it during render
+        setTimeout(() => {
+          if (measureRootTree.current) {
+            measureRootTree.current.unmount();
+            measureRootTree.current = undefined;
+          }
+        }, 0);
       };
 
       const content = (
@@ -124,9 +127,15 @@ export const useMeasureColumnWidths = <TData, TValue>(
                           return null;
                         }
 
-                        return flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
+                        return (
+                          <React.Fragment
+                            key={`${columnOptions.id}-${rowIndex}`}
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
+                          </React.Fragment>
                         );
                       },
                     )}
@@ -138,7 +147,16 @@ export const useMeasureColumnWidths = <TData, TValue>(
         </EmotionCacheProvider>
       );
 
-      measureRootTree.current = renderRoot(content, measureRootRef.current!);
+      // Instead of unmounting and creating a new root, reuse the existing root when possible
+      if (measureRootRef.current) {
+        if (measureRootTree.current) {
+          // If a root already exists, just update it
+          measureRootTree.current.render(content);
+        } else {
+          // Only create a new root if one doesn't exist
+          measureRootTree.current = renderRoot(content, measureRootRef.current);
+        }
+      }
     },
     [
       columnsOptions,

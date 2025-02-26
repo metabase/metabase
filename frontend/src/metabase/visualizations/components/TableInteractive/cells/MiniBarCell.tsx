@@ -3,10 +3,12 @@ import cx from "classnames";
 import CS from "metabase/css/core/index.css";
 import { alpha, color } from "metabase/lib/colors";
 
-import type { CellAlign, CellFormatter } from "../../Table";
-import { BaseCell } from "../../Table";
-
 import S from "./MiniBarCell.module.css";
+import {
+  BaseCell,
+  type CellAlign,
+  type CellFormatter,
+} from "metabase/data-grid";
 
 const BAR_HEIGHT = 8;
 const BAR_WIDTH = 70;

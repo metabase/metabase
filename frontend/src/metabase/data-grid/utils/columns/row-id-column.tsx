@@ -1,10 +1,13 @@
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { RowIdCell } from "metabase/visualizations/components/Table/cell/RowIdCell";
-import { RowIdHeaderCell } from "metabase/visualizations/components/Table/cell/RowIdHeaderCell";
+import { RowIdCell } from "metabase/data-grid/components/RowIdCell";
+import { RowIdHeaderCell } from "metabase/data-grid/components/RowIdHeaderCell";
 
-import { ROW_ID_COLUMN_ID } from "../constants";
-import type { RowIdColumnOptions, RowIdVariant } from "../types";
+import { ROW_ID_COLUMN_ID } from "metabase/data-grid/constants";
+import type {
+  RowIdColumnOptions,
+  RowIdVariant,
+} from "metabase/data-grid/types";
 
 export const getRowIdColumnSize = (variant: RowIdVariant) =>
   variant === "expandButton" ? 36 : 46;
@@ -26,7 +29,7 @@ export const getRowIdColumn = <TRow, TValue>({
       return (
         <RowIdCell
           value={value}
-          backgroundColor={getBackgroundColor(row.index)}
+          backgroundColor={getBackgroundColor?.(row.index)}
         />
       );
     },

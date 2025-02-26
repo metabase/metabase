@@ -47,10 +47,10 @@ export function useMemoizedCallback<T extends (...args: any[]) => any>(
   callback: T,
   deps: React.DependencyList = [],
 ): T {
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => {
     return memoize((...args: Parameters<T>): ReturnType<T> => {
       return callback(...args);
     }) as T;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }

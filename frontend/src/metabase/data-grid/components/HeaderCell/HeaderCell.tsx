@@ -4,9 +4,12 @@ import { type ReactNode, forwardRef, memo } from "react";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/ui";
 
-import type { HeaderCellBaseProps, HeaderCellVariant } from "../types";
+import type {
+  HeaderCellBaseProps,
+  HeaderCellVariant,
+} from "metabase/data-grid/types";
 
-import { BaseCell } from "./BaseCell";
+import { BaseCell } from "metabase/data-grid/components/BaseCell";
 import S from "./HeaderCell.module.css";
 
 export interface HeaderCellProps extends HeaderCellBaseProps {
@@ -21,29 +24,30 @@ export const HeaderCell = memo(function HeaderCell({
 }: HeaderCellProps) {
   return (
     <HeaderCellWrapper variant={variant} align={align}>
-      <HeaderCellPill name={name} sort={sort} />
+      <HeaderCellPill name={name} sort={sort} align={align} />
     </HeaderCellWrapper>
   );
 });
 
 export const HeaderCellPill = forwardRef<HTMLDivElement, HeaderCellBaseProps>(
-  function HeaderCellPill({ name, sort }: HeaderCellBaseProps, ref) {
+  function HeaderCellPillInner(
+    { name, sort, align }: HeaderCellBaseProps,
+    ref,
+  ) {
     return (
       <div
         ref={ref}
         data-grid-header-cell-content
         data-header-click-target
-        className={S.content}
+        className={cx(S.content, {
+          [S.alignRight]: align === "right",
+        })}
         data-testid="cell-data"
       >
-        {sort != null ? (
-          <Icon
-            mr="0.25rem"
-            name={sort === "asc" ? "chevronup" : "chevrondown"}
-            size={10}
-          />
-        ) : null}
         <Ellipsified tooltip={name}>{name}</Ellipsified>
+        {sort != null ? (
+          <Icon name={sort === "asc" ? "chevronup" : "chevrondown"} size={10} />
+        ) : null}
       </div>
     );
   },

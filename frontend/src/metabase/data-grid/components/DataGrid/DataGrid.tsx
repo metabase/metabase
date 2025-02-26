@@ -7,16 +7,16 @@ import {
 import { flexRender } from "@tanstack/react-table";
 import { type Ref, forwardRef, useCallback, useMemo } from "react";
 
-import { AddColumnButton } from "metabase/visualizations/components/Table/AddColumnButton";
+import { AddColumnButton } from "metabase/data-grid/components/AddColumnButton";
+import { SortableHeader } from "metabase/data-grid/components/SortableHeader";
+import { HEADER_HEIGHT } from "metabase/data-grid/constants";
+import type { DataGridInstance } from "metabase/data-grid/types";
 
-import { SortableHeader } from "./SortableHeader";
-import S from "./Table.module.css";
-import { HEADER_HEIGHT } from "./constants";
-import type { TableInstance } from "./types";
+import S from "./DataGrid.module.css";
 
-export type TableProps<TData> = TableInstance<TData>;
+export type DataGridProps<TData> = DataGridInstance<TData>;
 
-export const Table = forwardRef(function Table<TData>(
+export const DataGrid = forwardRef(function DataGrid<TData>(
   {
     table,
     refs,
@@ -27,7 +27,7 @@ export const Table = forwardRef(function Table<TData>(
     onHeaderCellClick,
     onAddColumnClick,
     onScroll,
-  }: TableProps<TData>,
+  }: DataGridProps<TData>,
   ref: Ref<HTMLDivElement>,
 ) {
   const {
@@ -75,7 +75,9 @@ export const Table = forwardRef(function Table<TData>(
           data-testid="table-scroll-container"
           className={S.tableGrid}
           ref={refs.gridRef}
-          style={{ paddingRight: isAddColumnButtonSticky ? "36px" : 0 }}
+          style={{
+            paddingRight: isAddColumnButtonSticky ? "36px" : 0,
+          }}
           onScroll={onScroll}
         >
           <div data-testid="table-header" className={S.headerContainer}>
@@ -139,6 +141,7 @@ export const Table = forwardRef(function Table<TData>(
               const row = table.getRowModel().rows[virtualRow.index];
               return (
                 <div
+                  role="row"
                   key={row.id}
                   ref={rowMeasureRef}
                   data-index={virtualRow.index}

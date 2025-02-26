@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef } from "react";
 
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
-import { BodyCell } from "metabase/visualizations/components/Table/cell/BodyCell";
+import { BodyCell } from "metabase/data-grid/components/BodyCell";
 
 export type CellMeasurer = (content: string, width?: number) => CellSize;
 

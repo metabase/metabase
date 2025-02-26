@@ -13,6 +13,14 @@ import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { DataGrid } from "metabase/data-grid";
+import { ROW_ID_COLUMN_ID } from "metabase/data-grid/constants";
+import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
+import type {
+  BodyCellVariant,
+  ColumnOptions,
+  RowIdColumnOptions,
+} from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import {
   memoize,
@@ -26,16 +34,6 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { MantineTheme } from "metabase/ui";
-import {
-  Table,
-  useTableInstance,
-} from "metabase/visualizations/components/Table";
-import { ROW_ID_COLUMN_ID } from "metabase/visualizations/components/Table/constants";
-import type {
-  BodyCellVariant,
-  ColumnOptions,
-  RowIdColumnOptions,
-} from "metabase/visualizations/components/Table/types";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -476,7 +474,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     };
   }, [cols, isEmbeddingSdk, isPivoted, queryBuilderMode, settings]);
 
-  const tableProps = useTableInstance({
+  const tableProps = useDataGridInstance({
     data: rows,
     rowId,
     columnOrder,
@@ -565,7 +563,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         overflow: "hidden",
       }}
     >
-      <Table
+      <DataGrid
         {...tableProps}
         onBodyCellClick={handleBodyCellClick}
         onAddColumnClick={handleAddColumnButtonClick}

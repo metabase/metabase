@@ -2,11 +2,12 @@ import cx from "classnames";
 import type React from "react";
 import { type MouseEventHandler, memo, useCallback } from "react";
 
-import { ExpandButton } from "../ExpandButton";
-import TableS from "../Table.module.css";
-import type { BodyCellBaseProps } from "../types";
+import { BaseCell } from "metabase/data-grid/components/BaseCell";
+import DataGridS from "metabase/data-grid/components/DataGrid/DataGrid.module.css";
+import type { BodyCellBaseProps } from "metabase/data-grid/types";
 
-import { BaseCell } from "./BaseCell";
+import { ExpandButton } from "../ExpandButton";
+
 import S from "./BodyCell.module.css";
 
 export interface BodyCellProps<TValue> extends BodyCellBaseProps<TValue> {
@@ -23,8 +24,8 @@ export const BodyCell = memo(function BodyCell<TValue>({
   canExpand = false,
   columnId,
   rowIndex,
-  onExpand,
   className,
+  onExpand,
 }: BodyCellProps<TValue>) {
   const formattedValue = formatter
     ? formatter(value, rowIndex, columnId)
@@ -63,7 +64,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
 
       {hasExpandButton && (
         <ExpandButton
-          className={TableS.cellHoverVisible}
+          className={DataGridS.cellHoverVisible}
           onClick={handleExpandClick}
         />
       )}

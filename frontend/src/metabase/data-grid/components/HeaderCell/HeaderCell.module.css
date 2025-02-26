@@ -20,6 +20,11 @@
   border-radius: 5px;
   overflow: auto;
   outline: none;
+  gap: 0.25rem;
+}
+
+.alignRight {
+  flex-direction: row-reverse;
 }
 
 .light .content {

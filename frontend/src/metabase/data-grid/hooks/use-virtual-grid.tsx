@@ -5,7 +5,7 @@ import {
   useVirtualizer,
 } from "@tanstack/react-virtual";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 interface VirtualGridOptions<TData> {
   gridRef: React.RefObject<HTMLDivElement>;
@@ -80,12 +80,22 @@ export const useVirtualGrid = <TData,>({
     columnVirtualizer.measure();
   }, [rowVirtualizer, columnVirtualizer]);
 
-  return {
-    virtualColumns,
-    virtualRows,
-    virtualPaddingLeft,
-    virtualPaddingRight,
-    rowVirtualizer,
-    measureGrid,
-  };
+  return useMemo(
+    () => ({
+      virtualColumns,
+      virtualRows,
+      virtualPaddingLeft,
+      virtualPaddingRight,
+      rowVirtualizer,
+      measureGrid,
+    }),
+    [
+      virtualColumns,
+      virtualRows,
+      virtualPaddingLeft,
+      virtualPaddingRight,
+      rowVirtualizer,
+      measureGrid,
+    ],
+  );
 };

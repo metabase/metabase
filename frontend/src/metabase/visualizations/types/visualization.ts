@@ -78,7 +78,7 @@ export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ColumnSettings = OptionsType & {
   "pivot_table.column_show_totals"?: boolean;
-  text_align?: "left" | "right";
+  text_align?: "left" | "middle" | "right";
   [key: string]: unknown;
 };
 

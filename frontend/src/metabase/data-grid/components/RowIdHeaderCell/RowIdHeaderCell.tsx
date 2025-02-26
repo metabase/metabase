@@ -1,4 +1,4 @@
-import { BaseCell } from "./BaseCell";
+import { BaseCell } from "metabase/data-grid/components/BaseCell";
 import S from "./RowIdHeaderCell.module.css";
 
 export interface RowIdHeaderCellProps {

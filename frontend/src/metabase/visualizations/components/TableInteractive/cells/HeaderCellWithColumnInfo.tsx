@@ -10,9 +10,9 @@ import type { DatasetColumn } from "metabase-types/api";
 
 import {
   HeaderCellPill,
-  type HeaderCellProps,
+  HeaderCellProps,
   HeaderCellWrapper,
-} from "../../Table";
+} from "metabase/data-grid";
 
 import S from "./HeaderCellWithColumnInfo.module.css";
 
@@ -64,13 +64,13 @@ export const HeaderCellWithColumnInfo = memo(
           <div className={S.headerPillWrapper}>
             {renderTableHeaderWrapper != null ? (
               renderTableHeaderWrapper(
-                <HeaderCellPill name={name} sort={sort} />,
+                <HeaderCellPill name={name} sort={sort} align={align} />,
                 column,
                 columnIndex,
                 theme,
               )
             ) : (
-              <HeaderCellPill name={name} sort={sort} />
+              <HeaderCellPill name={name} sort={sort} align={align} />
             )}
           </div>
         </QueryColumnInfoPopover>
