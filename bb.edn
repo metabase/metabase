@@ -96,9 +96,6 @@
    :task     (do (cli/menu! (current-task))
                  (autotab/instructions *command-line-args*))}
 
-  -new-task!
-  {:doc ""}
-
   ;; note: task symbols starting with `-` are not listed in `bb tasks`.
   -example
   {;; docstring for the task:

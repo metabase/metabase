@@ -30,9 +30,10 @@
               (.isAfter eol (java.time.LocalDate/now)))
             <>)
     (sort-by :releaseDate <>)
-    vec))
+    (vec <>)))
 
 (defn- fetch-oldest-supported-version [database]
+  (u/debug "db:" database)
   (let [versions (fetch-supported-versions database)]
     (u/debug "Found Versions:" (pr-str versions))
     (-> versions first :cycle parse-long)))
