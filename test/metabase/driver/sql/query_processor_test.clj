@@ -1136,3 +1136,43 @@
     (binding [driver/*compile-with-inline-parameters* true]
       (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"name\" = [my-string]"]
              (sql.qp/format-honeysql ::inline-value-test honeysql))))))
+
+(deftest ^:parallel filter-uuids-with-string-patterns-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uuid-type)
+    (mt/dataset uuid-dogs
+      (is (= [[#uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+              [#uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]]
+             (->> {:filter [:starts-with
+                            [:field (mt/id :dogs :person_id) {:base-type :type/UUID}]
+                            "d6"
+                            {:case-insensitive false}]
+                   :source-table (mt/id :dogs)}
+                  (mt/run-mbql-query dogs)
+                  mt/rows
+                  ;; ignore the extra id added by mongo
+                  (map #(take-last 3 %)))))
+      (is (= [[#uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+             (->> {:filter [:ends-with
+                            [:field (mt/id :dogs :person_id) {:base-type :type/UUID}]
+                            "9b"
+                            {:case-insensitive false}]
+                   :source-table (mt/id :dogs)}
+                  (mt/run-mbql-query dogs)
+                  mt/rows
+                  ;; ignore the extra id added by mongo
+                  (map #(take-last 3 %)))))
+      ;; (mt/id :dogs :id) gets the "_id" field id instead of the "id" field id
+      (def id-field-id (->> (mt/id :dogs)
+                            (t2/select :model/Field :table_id)
+                            (some #(when (= "id" (:name %)) (:id %)))))
+      (is (= [[#uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+              [#uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+             (->> {:filter [:contains
+                            [:field id-field-id {:base-type :type/UUID}]
+                            "e"
+                            {:case-insensitive false}]
+                   :source-table (mt/id :dogs)}
+                  (mt/run-mbql-query dogs)
+                  mt/rows
+                  ;; ignore the extra _id added by mongo
+                  (map #(take-last 3 %))))))))
