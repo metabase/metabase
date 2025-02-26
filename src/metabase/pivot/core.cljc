@@ -51,7 +51,7 @@
     {:pivot-data pivot-data
      :columns columns}))
 
-(defn subtotal-values
+(defn get-subtotal-values
   "Returns subtotal values"
   [pivot-data value-column-indexes]
   (m/map-kv-vals
@@ -241,9 +241,6 @@
 
 (defn- format-values-in-tree
   [tree formatters cols]
-  (def tree tree)
-  (def formatters formatters)
-  (def cols cols)
   (let [formatter (first formatters)
         col       (first cols)]
     (map
@@ -374,6 +371,13 @@
     (map (fn [value formatter] {:value (formatter value)}) values value-formatters)
     (repeat (count value-formatters) {:value nil})))
 
+(defn- sort-by-indexed
+  [key-fn coll]
+  (->> coll
+       (map-indexed vector)
+       (sort-by (fn [[idx val]] (key-fn val idx)))
+       (map second)))
+
 (defn- get-subtotals
   [subtotal-values breakout-indexes values other-attrs value-formatters]
   (map (fn [value] (merge value
@@ -381,14 +385,15 @@
                           other-attrs))
        (format-values
         (get-in subtotal-values
-                [(to-key (sort-by (fn [_value index] (nth breakout-indexes index)) breakout-indexes))
-                 (to-key (sort-by (fn [_value index] (nth breakout-indexes index)) values))])
+                [(to-key (sort-by-indexed (fn [_ index] (nth breakout-indexes index)) breakout-indexes))
+                 (to-key (sort-by-indexed (fn [_ index] (nth breakout-indexes index)) values))])
         value-formatters)))
 
 ;; TODO - memoize the getter
 (defn- create-row-section-getter
   [values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter]
   ;; The getter returned from this function returns the value(s) at given (column, row) location
+
   (fn [col-index row-index]
     (let [col-values (nth col-paths col-index [])
           row-values (nth row-paths row-index [])
@@ -441,7 +446,7 @@
                        (mapcat enumerate-paths)
                        maybe-add-empty-path)
         formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals columns val-indexes col-settings))
-        subtotal-values (subtotal-values pivot-data val-indexes)]
+        subtotal-values (get-subtotal-values pivot-data val-indexes)]
     {:columnIndex col-paths
      :rowIndex row-paths
      :formattedRowTree formatted-row-tree-with-totals
