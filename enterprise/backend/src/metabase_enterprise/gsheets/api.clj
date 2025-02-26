@@ -186,7 +186,11 @@
     (error-response-in-body (tru "Google Sheets integration is not enabled.") {:status-code 402}))
   {:email (hm-service-account-email)})
 
-(defn- seconds-from-epoch-now [] (.getEpochSecond (t/instant)))
+(defn- seconds-from-epoch-now
+  "This is used to track how long a folder has been syncing. We set gsheets.folder-upload-time to this value when we create a
+  new gdrive connection, and on every :get /folder request we check if the current time is greater than this value plus
+  *folder-setup-timeout-seconds*. If it is, that's a timeout."
+  [] (.getEpochSecond (t/instant)))
 
 (api.macros/defendpoint :post "/folder" :- :gsheets/gsheets
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
