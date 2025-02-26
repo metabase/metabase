@@ -45,15 +45,6 @@ export function mergeVisualizerData({
     }
   });
 
-  const hasPivotGrouping = columns.some(col => col.name === "pivot-grouping");
-  if (hasPivotGrouping) {
-    const rowLengths = Object.values(referencedColumnValuesMap).map(
-      values => values.length,
-    );
-    const maxLength = rowLengths.length > 0 ? Math.max(...rowLengths) : 0;
-    referencedColumnValuesMap["pivot-grouping"] = new Array(maxLength).fill(0);
-  }
-
   const unzippedRows = columns.map(column =>
     (columnValuesMapping[column.name] ?? [])
       .map(valueSource => {

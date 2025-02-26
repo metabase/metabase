@@ -1,7 +1,6 @@
 import { useDraggable } from "@dnd-kit/core";
 import { t } from "ttag";
 
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Loader, Text } from "metabase/ui";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
@@ -91,32 +90,30 @@ export const DatasetList = () => {
             </Flex>
             {isExpanded && dataset && dataset.data.cols && (
               <Box ml={12} mt={2}>
-                {dataset.data.cols
-                  .filter(column => !isPivotGroupColumn(column))
-                  .map(column => {
-                    const columnReference = referencedColumns.find(ref =>
-                      isReferenceToColumn(column, source.id, ref),
-                    );
-                    const isSelected = !!columnReference;
-                    return (
-                      <DraggableColumnListItem
-                        key={column.name}
-                        column={column}
-                        dataSource={source}
-                        isSelected={isSelected}
-                        onClick={() => {
-                          if (!isSelected) {
-                            handleAddColumn(source, column);
-                          }
-                        }}
-                        onRemove={
-                          isSelected
-                            ? () => handleRemoveColumn(columnReference.name)
-                            : undefined
+                {dataset.data.cols.map(column => {
+                  const columnReference = referencedColumns.find(ref =>
+                    isReferenceToColumn(column, source.id, ref),
+                  );
+                  const isSelected = !!columnReference;
+                  return (
+                    <DraggableColumnListItem
+                      key={column.name}
+                      column={column}
+                      dataSource={source}
+                      isSelected={isSelected}
+                      onClick={() => {
+                        if (!isSelected) {
+                          handleAddColumn(source, column);
                         }
-                      />
-                    );
-                  })}
+                      }}
+                      onRemove={
+                        isSelected
+                          ? () => handleRemoveColumn(columnReference.name)
+                          : undefined
+                      }
+                    />
+                  );
+                })}
               </Box>
             )}
           </Box>

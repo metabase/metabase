@@ -31,11 +31,6 @@ const options = _.shuffle([
     icon: "pie",
   },
   {
-    label: t`Pivot table`,
-    value: "pivot",
-    icon: "pivot_table",
-  },
-  {
     label: t`Funnel`,
     value: "funnel",
     icon: "funnel",

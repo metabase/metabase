@@ -54,10 +54,6 @@ import {
 } from "./visualizations/funnel";
 import { mapDropHandler, removeColumnFromMap } from "./visualizations/map";
 import { pieDropHandler, removeColumnFromPieChart } from "./visualizations/pie";
-import {
-  pivotDropHandler,
-  removeColumnFromPivotTable,
-} from "./visualizations/pivot";
 
 const initialCommonState: VisualizerCommonState = {
   cards: [],
@@ -189,31 +185,7 @@ const visualizerHistoryItemSlice = createSlice({
       state.settings["card.title"] = action.payload;
     },
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
-      const previousDisplay = state.display;
-      const display = action.payload;
-
-      state.display = display;
-
-      if (
-        display === "pivot" &&
-        !state.columns.some(col => col.name === "pivot-grouping")
-      ) {
-        state.columns.push({
-          name: "pivot-grouping",
-          display_name: "pivot-grouping",
-          expression_name: "pivot-grouping",
-          field_ref: ["expression", "pivot-grouping"],
-          base_type: "type/Integer",
-          effective_type: "type/Integer",
-          source: "artificial",
-        });
-      }
-
-      if (previousDisplay === "pivot" && display !== "pivot") {
-        state.columns = state.columns.filter(
-          col => col.name !== "pivot-grouping",
-        );
-      }
+      state.display = action.payload;
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
       state.settings = {
@@ -259,8 +231,6 @@ const visualizerHistoryItemSlice = createSlice({
         removeColumnFromFunnel(state, name);
       } else if (state.display === "pie") {
         removeColumnFromPieChart(state, name);
-      } else if (state.display === "pivot") {
-        removeColumnFromPivotTable(state, name);
       } else if (state.display === "map") {
         removeColumnFromMap(state, name);
       }
@@ -290,8 +260,6 @@ const visualizerHistoryItemSlice = createSlice({
           funnelDropHandler(state, event);
         } else if (state.display === "pie") {
           pieDropHandler(state, event);
-        } else if (state.display === "pivot") {
-          pivotDropHandler(state, event);
         } else if (state.display === "map") {
           mapDropHandler(state, event);
         }
