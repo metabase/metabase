@@ -1,8 +1,9 @@
 import type { MouseEvent } from "react";
+import cx from "classnames";
 
 import { Icon } from "metabase/ui";
 
-import styles from "./ExpandButton.module.css";
+import S from "./ExpandButton.module.css";
 
 interface ExpandButtonProps {
   className?: string;
@@ -10,12 +11,14 @@ interface ExpandButtonProps {
 }
 
 export const ExpandButton = ({ className, onClick }: ExpandButtonProps) => (
-  <button
-    className={className}
-    onClick={onClick}
-    data-testid="expand-column"
-    aria-label="Expand column"
-  >
-    <Icon name="ellipsis" size={10} className={styles.icon} />
-  </button>
+  <span className={S.root}>
+    <button
+      className={cx(S.button, className)}
+      onClick={onClick}
+      data-testid="expand-column"
+      aria-label="Expand column"
+    >
+      <Icon name="ellipsis" size={10} />
+    </button>
+  </span>
 );
