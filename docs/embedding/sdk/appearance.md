@@ -225,3 +225,7 @@ import {
   <StaticDashboard dashboardId={1} />
 </MetabaseProvider>
 ```
+
+## Limitations
+
+Colors configured in a question's visualization settings will override theme colors.
