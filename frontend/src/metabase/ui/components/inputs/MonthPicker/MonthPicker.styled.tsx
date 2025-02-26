@@ -19,9 +19,9 @@ export const monthPickerOverrides: MantineThemeOverride["components"] = {
       calendarHeader: S.calendarHeader,
       calendarHeaderLevel: CalendarS.calendarHeaderLevel,
       calendarHeaderControl: CalendarS.calendarHeaderControl,
-      monthsListControl: S.monthsListControl,
-      monthsListCell: S.monthsListCell,
-      monthsListRow: S.monthsListRow,
+      monthsListControl: CalendarS.monthsListControl,
+      monthsListCell: CalendarS.cell,
+      monthsListRow: CalendarS.row,
     },
   }),
 };

@@ -139,7 +139,7 @@
   --vertical-padding: var(--mantine-spacing-xs);
 
   .cell {
-    &[data-with-spacing] {
+    &:where([data-with-spacing]) {
       padding: 0;
 
       &:not(:first-of-type) {
@@ -159,6 +159,15 @@
 
     &:not(:last-of-type) .cell {
       padding-bottom: var(--vertical-padding);
+    }
+  }
+}
+
+/* TODO double check in other pickers */
+.monthsList {
+  .row {
+    &:not(:last-of-type) .cell {
+      padding-bottom: 0;
     }
   }
 }
@@ -216,5 +225,17 @@
 .error {
   &::first-letter {
     text-transform: capitalize;
+  }
+}
+
+.monthsListControl {
+  color: var(--mb-color-text-primary);
+  height: 2rem;
+  width: 5rem;
+
+  &[data-selected]:hover,
+  &:hover:not(:disabled) {
+    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background-hover);
   }
 }
