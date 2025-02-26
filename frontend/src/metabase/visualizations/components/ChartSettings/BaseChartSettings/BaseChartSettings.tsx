@@ -191,7 +191,7 @@ export const BaseChartSettings = ({
       <Stack
         data-testid="chartsettings-sidebar"
         h="100%"
-        gap={0}
+        spacing={0}
         className={CS.overflowHidden}
         {...stackProps}
       >

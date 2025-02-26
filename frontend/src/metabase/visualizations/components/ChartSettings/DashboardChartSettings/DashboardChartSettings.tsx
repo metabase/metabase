@@ -1,6 +1,8 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { Divider, Flex } from "metabase/ui";
 import { getClickBehaviorSettings } from "metabase/visualizations/lib/settings";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -10,6 +12,7 @@ import { BaseChartSettings } from "../BaseChartSettings";
 import { ChartSettingsVisualization } from "../ChartSettingsVisualization";
 import { useChartSettingsState } from "../hooks";
 
+import DashboardChartSettingsS from "./DashboardChartSettings.module.css";
 import type { DashboardChartSettingsProps } from "./types";
 
 export const DashboardChartSettings = ({
@@ -72,7 +75,7 @@ export const DashboardChartSettings = ({
   return (
     <Flex justify="unset" align="unset" wrap="nowrap">
       <BaseChartSettings
-        flex="1 0 0"
+        className={cx(CS.overflowHidden, DashboardChartSettingsS.Sidebar)}
         series={series}
         onChange={setTempSettings}
         chartSettings={chartSettings}
@@ -81,7 +84,7 @@ export const DashboardChartSettings = ({
       />
       <Divider orientation="vertical"></Divider>
       <ChartSettingsVisualization
-        flex="2 0 0"
+        className={DashboardChartSettingsS.Visualization}
         rawSeries={chartSettingsRawSeries}
         dashboard={dashboard}
         dashcard={dashcard}
