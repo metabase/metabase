@@ -39,7 +39,7 @@ export const InteractiveEmbeddingDemo = () => {
     const defaultResourceId =
       resourceType === "dashboard" ? DEFAULT_DASHBOARD_ID : DEFAULT_QUESTION_ID;
 
-    return numericId || defaultResourceId;
+    return !isNaN(numericId) ? numericId : defaultResourceId;
   };
 
   const config: InteractiveV2Settings = {
@@ -103,9 +103,18 @@ export const InteractiveEmbeddingDemo = () => {
 
                 <Radio.Group
                   value={resourceType}
-                  onChange={value =>
-                    setResourceType(value as "dashboard" | "question")
-                  }
+                  onChange={value => {
+                    const resourceType = value as "dashboard" | "question";
+
+                    const defaultResourceId = String(
+                      resourceType === "dashboard"
+                        ? DEFAULT_DASHBOARD_ID
+                        : DEFAULT_QUESTION_ID,
+                    );
+
+                    setResourceType(resourceType);
+                    setResourceId(defaultResourceId);
+                  }}
                 >
                   <Group>
                     <Radio value="dashboard" label="Dashboard" />
