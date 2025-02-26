@@ -62,8 +62,10 @@ export const NotificationChannelsAddMenu = ({
 
   const hasAddedEmail = channelsSpec.email?.configured && !!emailHandler;
   const hasAddedSlack = channelsSpec.slack?.configured && !!slackHandler;
+  const canAddEmail = channelsSpec.email?.configured && !emailHandler;
+  const canAddSlack = channelsSpec.slack?.configured && !slackHandler;
   const hasChannelsToAdd =
-    !hasAddedEmail || !hasAddedSlack || notAddedHookChannels.length > 0;
+    canAddEmail || canAddSlack || notAddedHookChannels.length > 0;
   const hasAddedNoChannels = !notificationHandlers.length;
 
   if (!isAdmin && !hasChannelsToAdd) {
@@ -77,7 +79,7 @@ export const NotificationChannelsAddMenu = ({
   return (
     <Menu position="bottom-start">
       <Menu.Target>
-        <Button variant="subtle">
+        <Button variant="subtle" p={0} mt="-0.75rem" mb="-0.75rem">
           {hasAddedNoChannels
             ? t`Add a destination`
             : t`Add another destination`}
@@ -139,6 +141,9 @@ export const NotificationChannelsAddMenu = ({
 const ManageDestinationsButton = () => (
   <Button
     variant="subtle"
+    p={0}
+    mt="-0.75rem"
+    mb="-0.75rem"
     component={Link}
     to="/admin/settings/notifications"
     target="_blank"
