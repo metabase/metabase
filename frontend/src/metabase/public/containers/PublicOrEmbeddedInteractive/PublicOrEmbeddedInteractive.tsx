@@ -6,12 +6,14 @@ import {
   InteractiveDashboard,
   InteractiveQuestion,
   defineMetabaseAuthConfig,
+  defineMetabaseTheme,
 } from "embedding-sdk";
 import { IframeInteractiveEmbeddingProvider } from "metabase/embedding-sdk/components/IframeInteractiveEmbeddingProvider";
 import {
   type InteractiveV2Settings,
   useInteractiveV2Settings,
 } from "metabase/public/hooks/use-interactive-v2-settings";
+import { Box } from "metabase/ui";
 
 export const PublicOrEmbeddedInteractive = ({
   params: { settings: settingsKey },
@@ -28,13 +30,35 @@ export const PublicOrEmbeddedInteractive = ({
     });
   }, [settings?.apiKey]);
 
+  const derivedTheme = useMemo(() => {
+    return defineMetabaseTheme({
+      ...theme,
+      colors: {
+        ...theme?.colors,
+      },
+      components: {
+        question: {
+          toolbar: {
+            backgroundColor: theme?.colors?.background,
+          },
+        },
+        ...theme?.components,
+      },
+    });
+  }, [theme]);
+
   if (!settings) {
     return <div>Invalid settings!</div>;
   }
 
   return (
-    <IframeInteractiveEmbeddingProvider authConfig={authConfig} theme={theme}>
-      <PublicOrEmbeddedInteractiveInner settings={settings} />
+    <IframeInteractiveEmbeddingProvider
+      authConfig={authConfig}
+      theme={derivedTheme}
+    >
+      <Box h="100vh" bg={theme?.colors?.background}>
+        <PublicOrEmbeddedInteractiveInner settings={settings} />
+      </Box>
     </IframeInteractiveEmbeddingProvider>
   );
 };
@@ -51,7 +75,7 @@ export const PublicOrEmbeddedInteractiveInner = ({
       <InteractiveDashboard dashboardId={id} drillThroughQuestionHeight={800} />
     ))
     .with(["question", P.nonNullable], ([, id]) => (
-      <InteractiveQuestion questionId={id} height="100vh" />
+      <InteractiveQuestion questionId={id} height="100%" />
     ))
     .otherwise(() => null);
 };
