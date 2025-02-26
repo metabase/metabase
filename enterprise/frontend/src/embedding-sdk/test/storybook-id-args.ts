@@ -9,6 +9,7 @@ export const questionIdArgType = {
     questionIds.wrongEntityId,
     questionIds.numberId,
     questionIds.wrongNumberId,
+    questionIds.newQuestion,
   ],
   control: {
     type: "select",
@@ -18,6 +19,7 @@ export const questionIdArgType = {
       [questionIds.wrongEntityId]: "Wrong Entity ID",
       [questionIds.numberId]: "Number ID",
       [questionIds.wrongNumberId]: "Wrong Number ID",
+      [questionIds.newQuestion]: "New Question",
     },
   },
 };
@@ -53,5 +55,6 @@ function generateIds(entityId: string) {
       String.fromCharCode((entityId.at(-1)?.charCodeAt(0) || ZERO_CODE) + 1),
     numberId: 1,
     wrongNumberId: 99999999,
+    newQuestion: "new",
   };
 }
