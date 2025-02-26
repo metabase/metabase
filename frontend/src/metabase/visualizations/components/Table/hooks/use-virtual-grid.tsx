@@ -5,8 +5,7 @@ import {
   useVirtualizer,
 } from "@tanstack/react-virtual";
 import type React from "react";
-import { useCallback, useLayoutEffect } from "react";
-import _ from "underscore";
+import { useCallback } from "react";
 
 interface VirtualGridOptions<TData> {
   gridRef: React.RefObject<HTMLDivElement>;

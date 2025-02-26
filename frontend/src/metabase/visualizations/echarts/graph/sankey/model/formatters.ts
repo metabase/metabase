@@ -1,8 +1,8 @@
+import { memoize } from "metabase/hooks/use-memoized-callback";
 import { formatValue } from "metabase/lib/formatting";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
 import type { SankeyChartColumns, SankeyFormatters, SankeyNode } from "./types";
-import { memoize } from "metabase/hooks/use-memoized-callback";
 
 export const getSankeyFormatters = (
   columns: SankeyChartColumns,

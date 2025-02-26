@@ -1,16 +1,20 @@
+import type React from "react";
+import { memo } from "react";
+
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
+import { useMousePressed } from "metabase/hooks/use-mouse-pressed";
+import type { MantineTheme } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { DatasetColumn } from "metabase-types/api";
+
 import {
   HeaderCellPill,
-  HeaderCellProps,
+  type HeaderCellProps,
   HeaderCellWrapper,
 } from "../../Table";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import { DatasetColumn } from "metabase-types/api";
-import React, { memo } from "react";
+
 import S from "./HeaderCellWithColumnInfo.module.css";
-import { useMousePressed } from "metabase/hooks/use-mouse-pressed";
-import { MantineTheme } from "metabase/ui";
 
 export interface HeaderCellWithColumnInfoProps extends HeaderCellProps {
   infoPopoversDisabled: boolean;
@@ -28,7 +32,7 @@ export interface HeaderCellWithColumnInfoProps extends HeaderCellProps {
 }
 
 export const HeaderCellWithColumnInfo = memo(
-  ({
+  function HeaderCellWithColumnInfoInner({
     name,
     align,
     sort,
@@ -40,7 +44,7 @@ export const HeaderCellWithColumnInfo = memo(
     columnIndex,
     theme,
     renderTableHeaderWrapper,
-  }: HeaderCellWithColumnInfoProps) => {
+  }: HeaderCellWithColumnInfoProps) {
     const isMousePressed = useMousePressed();
     const query = question?.query();
     const stageIndex = -1;

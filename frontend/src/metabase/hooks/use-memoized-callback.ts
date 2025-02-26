@@ -47,5 +47,6 @@ export function useMemoizedCallback<T extends (...args: any[]) => any>(
   callback: T,
   deps: React.DependencyList = [],
 ): T {
-  return useMemo(() => memoize(callback), deps);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => memoize(callback), [callback, ...deps]);
 }

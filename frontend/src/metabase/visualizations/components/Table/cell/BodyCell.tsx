@@ -2,12 +2,12 @@ import cx from "classnames";
 import type React from "react";
 import { type MouseEventHandler, memo, useCallback } from "react";
 
+import { ExpandButton } from "../ExpandButton";
 import TableS from "../Table.module.css";
 import type { BodyCellBaseProps } from "../types";
 
 import { BaseCell } from "./BaseCell";
 import S from "./BodyCell.module.css";
-import { ExpandButton } from "../ExpandButton";
 
 export interface BodyCellProps<TValue> extends BodyCellBaseProps<TValue> {
   variant?: "text" | "pill";

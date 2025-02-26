@@ -185,7 +185,6 @@ export const useTableInstance = <TData, TValue>({
       return height;
     },
     [
-      columnsOptions,
       data,
       defaultRowHeight,
       measureBodyCellDimensions,
@@ -229,7 +228,7 @@ export const useTableInstance = <TData, TValue>({
 
     prevColumnSizing.current = columnSizing;
     prevWrappedColumns.current = wrappedColumnsOptions.map(column => column.id);
-  }, [columnSizing, virtualGrid]);
+  }, [columnSizing, virtualGrid, wrappedColumnsOptions]);
 
   const handleColumnResize = useCallback(
     (columnName: string, width: number) => {
@@ -248,7 +247,6 @@ export const useTableInstance = <TData, TValue>({
       onColumnResize,
       handleUpdateColumnExpanded,
       truncateLongCellWidth,
-      virtualGrid,
     ],
   );
 

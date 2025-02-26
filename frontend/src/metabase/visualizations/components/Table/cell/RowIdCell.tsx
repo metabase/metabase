@@ -1,14 +1,14 @@
 import cx from "classnames";
 import type React from "react";
+import { memo } from "react";
 import { t } from "ttag";
 
 import { Icon, Tooltip } from "metabase/ui";
 
 import TableS from "../Table.module.css";
 
-import S from "./RowIdCell.module.css";
 import { BaseCell } from "./BaseCell";
-import { memo } from "react";
+import S from "./RowIdCell.module.css";
 
 export interface RowIdCellProps {
   value?: React.ReactNode;

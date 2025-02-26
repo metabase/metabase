@@ -6,6 +6,7 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import * as DataGrid from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import {
@@ -54,7 +55,6 @@ import type {
   ComputedVisualizationSettings,
   VisualizationProps,
 } from "../types";
-import { OptionsType } from "metabase/lib/formatting/types";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;

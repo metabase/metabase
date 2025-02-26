@@ -1,7 +1,7 @@
-import cx from "classnames";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Header } from "@tanstack/react-table";
+import cx from "classnames";
 import type React from "react";
 import { type CSSProperties, memo, useCallback, useMemo, useRef } from "react";
 
@@ -86,7 +86,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
         dragStartPosition.current = null;
       }
     },
-    [id, onClick],
+    [id, onClick, headerClickTargetSelector],
   );
 
   const resizeHandler = useCallback(

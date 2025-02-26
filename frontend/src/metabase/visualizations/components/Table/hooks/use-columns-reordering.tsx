@@ -1,6 +1,7 @@
 import {
   type DragEndEvent,
   type DragOverEvent,
+  type DragStartEvent,
   KeyboardSensor,
   MouseSensor,
   type SensorDescriptor,
@@ -8,14 +9,13 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
-  DragStartEvent,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import type { Table as ReactTable } from "@tanstack/react-table";
 import { useCallback, useMemo, useRef } from "react";
+import _ from "underscore";
 
 import { ROW_ID_COLUMN_ID } from "../constants";
-import _ from "underscore";
 
 export type ColumnsReordering = {
   sensors: SensorDescriptor<SensorOptions>[];
@@ -37,7 +37,7 @@ export const useColumnsReordering = <TData,>(
 
   const onDragStart = useCallback(() => {
     prevOrder.current = table.getState().columnOrder;
-  }, []);
+  }, [table]);
 
   const onDragOver = useCallback(
     (event: DragOverEvent) => {
@@ -75,7 +75,7 @@ export const useColumnsReordering = <TData,>(
       onDragEnd,
       sensors,
     }),
-    [onDragEnd, onDragOver, sensors],
+    [onDragEnd, onDragOver, onDragStart, sensors],
   );
 
   return columnsReordering;
