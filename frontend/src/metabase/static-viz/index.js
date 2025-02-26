@@ -51,12 +51,49 @@ function getRawSeriesWithDashcardSettings(rawSeries, dashcardSettings) {
   });
 }
 
+/*
+
+export function extractReferencedColumns(
+  mappings: Record<string, VisualizerColumnValueSource[]>,
+): VisualizerColumnReference[] {
+  const sources = Object.values(mappings).flat();
+  return sources.filter(
+    (valueSource): valueSource is VisualizerColumnReference =>
+      typeof valueSource !== "string",
+  );
+}
+
+export function parseDataSourceId(id: VisualizerDataSourceId) {
+  const [type, sourceId] = id.split(":");
+  return { type, sourceId: Number(sourceId) };
+}
+
+export function isDataSourceNameRef(
+  value: VisualizerColumnValueSource,
+): value is VisualizerDataSourceNameReference {
+  return (
+    typeof value === "string" &&
+    value.startsWith("$_") &&
+    value.endsWith("_name")
+  );
+}
+
+export function getDataSourceIdFromNameRef(str: string) {
+  const [, dataSourceId] = str.split("_");
+  return dataSourceId;
+}
+*/
+
 // The function that combines both the data merging and series creation
 function getVisualizerRawSeries(datasets, dashcardSettings) {
   const { columns, columnValuesMapping } = dashcardSettings.visualization;
 
+  console.log("TSP columnValuesMapping: ", JSON.stringify(columnValuesMapping, null, 2));
+
   // Extract all referenced columns from the column mappings
   const referencedColumns = extractReferencedColumns(columnValuesMapping);
+
+  console.log("TSP referencedColumns: ", JSON.stringify(referencedColumns, null, 2));
 
   // Create a map to store the actual values for each referenced column
   const referencedColumnValuesMap = {};
@@ -96,6 +133,8 @@ function getVisualizerRawSeries(datasets, dashcardSettings) {
     referencedColumnValuesMap["pivot-grouping"] = new Array(maxLength).fill(0);
   }
 
+  console.log("TSP referencedColumnValuesMap: ", JSON.stringify(referencedColumnValuesMap, null, 2));
+
   // Create rows by mapping and flattening values for each column
   const unzippedRows = columns.map(column =>
     (columnValuesMapping[column.name] ?? [])
@@ -112,6 +151,9 @@ function getVisualizerRawSeries(datasets, dashcardSettings) {
       })
       .flat(),
   );
+
+  console.log("TSP unzippedRows: ", unzippedRows);
+  console.log("TSP unzippedRows.length: ", unzippedRows.length);
 
   const mergedData = {
     cols: columns,
@@ -133,10 +175,12 @@ function getVisualizerRawSeries(datasets, dashcardSettings) {
   ];
 }
 
-export function RenderChart(rawSeries, dashcardSettings, dashcard, options) {
+export function RenderChart(rawSeries, dashcardSettings, options) {
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,
   );
+
+  //console.log("TSP rawSeries before: ", JSON.stringify(rawSeries, null, 2));
 
   // TODO @tsp - more robust way of checking if this is a visualizer rendering
   if (
@@ -145,6 +189,9 @@ export function RenderChart(rawSeries, dashcardSettings, dashcard, options) {
   ) {
     rawSeries = getVisualizerRawSeries(rawSeries, dashcardSettings);
   }
+
+  //console.log("TSP rawSeries after: ", JSON.stringify(rawSeries, null, 2));
+  //console.log("TSP dashcardSettings: ", JSON.stringify(dashcardSettings, null, 2));
 
   updateStartOfWeek(options.startOfWeek);
   MetabaseSettings.set("custom-formatting", options.customFormatting);

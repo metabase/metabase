@@ -67,11 +67,23 @@
                                             :margin-bottom :8px})}
                  (markdown/process-markdown description :html)]})))
 
+;; TODO - Update this "is this a visualizer dashcard" check to something more robust
+(defn- is-visualizer-dashcard?
+  "true if dashcard has visualizer specific viz settings"
+  [dashcard]
+  (if (and (some? dashcard)
+           (get-in dashcard [:visualization_settings :visualization :columnValuesMapping]))
+    true
+    false))
+
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
   [{display-type :display card-name :name} maybe-dashcard {:keys [cols rows] :as data}]
   (let [col-sample-count          (delay (count (take 3 cols)))
-        row-sample-count          (delay (count (take 2 rows)))]
+        row-sample-count          (delay (count (take 2 rows)))
+        updated-display           (if (is-visualizer-dashcard? maybe-dashcard)
+                                    (keyword (get-in maybe-dashcard [:visualization_settings :visualization :display]))
+                                    display-type)]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
                           tyype (pr-str card-name) (apply format reason args))
@@ -82,15 +94,16 @@
             (= [[nil]] (-> data :rows)))
         (chart-type :empty "there are no rows in results")
 
-        (#{:pin_map :state :country} display-type)
-        (chart-type nil "display-type is %s" display-type)
+        (#{:pin_map :state :country} updated-display)
+        (chart-type nil "display-type is %s" updated-display)
 
         (and (some? maybe-dashcard)
+             (= false (is-visualizer-dashcard? maybe-dashcard))
              (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard))))
         (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
-        (and (not (contains? #{:progress :gauge} display-type))
+        (and (not (contains? #{:progress :gauge} updated-display))
              (= @col-sample-count @row-sample-count 1))
         (chart-type :scalar "result has one row and one column")
 
@@ -99,8 +112,8 @@
            :progress
            :gauge
            :table
-           :funnel} display-type)
-        (chart-type display-type "display-type is %s" display-type)
+           :funnel} updated-display)
+        (chart-type updated-display "display-type is %s" updated-display)
 
         (#{:smartscalar
            :sankey
@@ -111,7 +124,7 @@
            :line
            :area
            :bar
-           :combo} display-type)
+           :combo} updated-display)
         (chart-type :javascript_visualization "display-type is javascript_visualization")
 
         :else
@@ -127,6 +140,10 @@
    card
    dashcard
    {:keys [data error] :as results}]
+  (def data data)
+  (def card card)
+  (def dashcard dashcard)
+  (println "TSP in render-pulse-card-body")
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
@@ -153,7 +170,7 @@
   - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
     scalar results where text is preferable to an image of a div of a single result."
   ([render-type timezone-id  card dashcard results]
-   (render-pulse-card render-type timezone-id  card dashcard results nil))
+   (render-pulse-card render-type timezone-id card dashcard results nil))
 
   ([render-type
     timezone-id :- [:maybe :string]
