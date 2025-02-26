@@ -25,7 +25,12 @@ npx @metabase/embedding-sdk-react@latest start
 
 The tool will walk you through the setup. There are a fair number of pieces to put together, so here's an overview of what the command does.
 
-## Checks for prereqs
+- [Prereq check](#prereq-check)
+- [Database connection (optional)](#database-connection-optional)
+- [Metabase setup](#metabase-setup)
+- [Permissions setup with multi-tenancy (optional)](#permissions-setup-with-multi-tenancy-optional)
+- [React components setup](#react-components-setup)
+- [Behold: Metabase is embedded in your app](#behold-metabase-is-embedded-in-your-app)
 
 - Checks that you're installing the SDK in a React application.
 - Looks for, or installs, the Embedded analytics SDK.
