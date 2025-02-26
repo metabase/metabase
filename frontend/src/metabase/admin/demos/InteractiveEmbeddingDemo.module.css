@@ -1,0 +1,5 @@
+.PreviewIframe {
+  border: 1px solid var(--mb-color-border);
+  width: 800px;
+  height: 500px;
+}
