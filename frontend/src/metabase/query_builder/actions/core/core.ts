@@ -1,6 +1,7 @@
 import { createAction } from "redux-actions";
 import _ from "underscore";
 
+import { invalidateNotificationsApiCache } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
@@ -10,7 +11,6 @@ import { createThunkAction } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
-import { fetchAlertsForQuestion } from "metabase/notifications/redux/alert";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { openUrl } from "metabase/redux/app";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -261,9 +261,9 @@ export const apiUpdateQuestion = (
       },
     );
 
-    // reload the question alerts for the current question
+    // invalidate question notifications
     // (some of the old alerts might be removed during update)
-    await dispatch(fetchAlertsForQuestion(updatedQuestion.id()));
+    dispatch(invalidateNotificationsApiCache());
 
     await dispatch({
       type: API_UPDATE_QUESTION,

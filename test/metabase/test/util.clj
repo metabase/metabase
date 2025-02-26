@@ -204,6 +204,11 @@
             {:payload_type :notification/system-event
              :active       true}))
 
+   :model/NotificationCard
+   (fn [_] (default-timestamped
+            {:send_once      false
+             :send_condition :has_result}))
+
    :model/NotificationSubscription
    (fn [_] (default-created-at-timestamped
             {}))

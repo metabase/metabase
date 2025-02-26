@@ -10575,6 +10575,213 @@ databaseChangeLog:
                     nullable: true
                     unique: true
 
+  - changeSet:
+      id: v54.2025-02-14T08:00:00
+      author: qnkhuat
+      comment: add notification.payload_id
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification
+              columnName: payload_id
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: payload_id
+                  type: int
+                  remarks: the internal id of the notification
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-02-14T08:01:00
+      author: qnkhuat
+      comment: create the notification_card table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_card
+      changes:
+        - createTable:
+            tableName: notification_card
+            remarks: Card related notifications
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: the card that the alert is connected to
+                  constraints:
+                    nullable: true
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_card_card_id
+                    deleteCascade: true
+              - column:
+                  name: send_once
+                  type: ${boolean.type}
+                  remarks: whether the alert should only run once
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: send_condition
+                  type: varchar(32)
+                  remarks: the condition of the alert
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v54.2025-02-14T08:03:00
+      author: qnkhuat
+      comment: add notification.creator_id
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification
+              columnName: creator_id
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: the id of the creator
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-02-14T08:04:00
+      author: qnkhuat
+      comment: add fk constraint to notification.creator_id
+      preConditions:
+        - not:
+          - foreignKeyConstraintExists:
+              foreignKeyName: fk_notification_creator_id
+              foreignKeyTableName: notification
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: notification
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_notification_creator_id
+            onDelete: CASCADE
+            nullable: true
+
+  - changeSet:
+      id: v54.2025-02-14T08:04:01
+      author: qnkhuat
+      comment: Add an index for `notification.creator_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification
+                indexName: idx_notification_creator_id
+      changes:
+        - createIndex:
+            indexName: idx_notification_creator_id
+            tableName: notification
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v54.2025-02-14T08:04:02
+      author: qnkhuat
+      comment: Add an index for `notification_card.card_id`
+      rollback: # will be removed with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: notification_card
+                indexName: idx_notification_card_card_id
+      changes:
+        - createIndex:
+            indexName: idx_notification_card_card_id
+            tableName: notification_card
+            columns:
+              - column:
+                  name: card_id
+
+  - changeSet:
+      id: v54.2025-02-14T08:05:00
+      author: qnkhuat
+      comment: Migrate alert to notification
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateAlertToNotification"
+
+  - changeSet:
+      id: v54.2025-02-14T08:06:00
+      author: qnkhuat
+      comment: Delete all the migrated alerts from notification table
+      changes:
+        - sql: select 1;
+      rollback:
+        # delete all migrated notification on rollback so we can re-run the migration
+        # no need to delete notification_card because the table will be dropped
+        - sql:
+            sql: >-
+              DELETE FROM notification WHERE payload_type = 'notification/card';
+
+  - changeSet:
+      id: v54.2025-02-14T08:07:00
+      author: qnkhuat
+      comment: Update view v_alerts to read from notification tables
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v2/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v2/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v2/h2-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v1/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v1/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v1/h2-alerts.sql
+            relativeToChangelogFile: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

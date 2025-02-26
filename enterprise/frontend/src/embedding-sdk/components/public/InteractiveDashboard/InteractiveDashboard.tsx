@@ -1,4 +1,9 @@
-import { type CSSProperties, type ReactNode, useEffect } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useCallback,
+  useEffect,
+} from "react";
 import _ from "underscore";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
@@ -23,6 +28,8 @@ import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEm
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import { InteractiveDashboardProvider } from "./context";
 
@@ -87,6 +94,15 @@ const InteractiveDashboardInner = ({
 
   const { theme } = useEmbedTheme();
 
+  const getClickActionMode: ClickActionModeGetter = useCallback(
+    ({ question }) =>
+      getEmbeddingMode({
+        question,
+        plugins,
+      }),
+    [plugins],
+  );
+
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
       {adhocQuestionUrl ? (
@@ -114,6 +130,7 @@ const InteractiveDashboardInner = ({
             cardTitled={withCardTitle}
             withFooter={displayOptions.withFooter}
             theme={theme}
+            getClickActionMode={getClickActionMode}
             isFullscreen={isFullscreen}
             onFullscreenChange={onFullscreenChange}
             refreshPeriod={refreshPeriod}

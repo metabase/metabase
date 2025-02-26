@@ -155,7 +155,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
   it("can save a question to a pre-defined collection", () => {
     mountInteractiveQuestion({
-      saveToCollectionId: Number(THIRD_COLLECTION_ID),
+      saveToCollection: Number(THIRD_COLLECTION_ID),
     });
 
     saveInteractiveQuestionAsNewQuestion({
@@ -167,6 +167,27 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(200);
       expect(response?.body.name).to.equal("Sample Orders 3");
       expect(response?.body.collection_id).to.equal(THIRD_COLLECTION_ID);
+    });
+  });
+
+  it("can save a question to their personal collection", () => {
+    cy.intercept("/api/user/current").as("getUser");
+
+    mountInteractiveQuestion({
+      saveToCollection: "personal",
+    });
+
+    cy.wait("@getUser").then(({ response: userResponse }) => {
+      saveInteractiveQuestionAsNewQuestion({
+        entityName: "Orders",
+        questionName: "Sample Orders 3",
+      });
+      const userCollection = userResponse?.body.personal_collection_id;
+      cy.wait("@createCard").then(({ response }) => {
+        expect(response?.statusCode).to.equal(200);
+        expect(response?.body.name).to.equal("Sample Orders 3");
+        expect(response?.body.collection_id).to.equal(userCollection);
+      });
     });
   });
 
