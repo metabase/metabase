@@ -15,6 +15,7 @@
   background: var(--mb-color-background);
   z-index: 1000;
   width: 400px;
+  max-height: 500px;
   flex-grow: 1;
   flex-direction: column;
   font-size: 14px;
