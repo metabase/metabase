@@ -63,7 +63,8 @@
    :uses #{config driver legacy-mbql lib models sync util}}
 
   api
-  {:api #{metabase.api.cache
+  {:api #{metabase.api.auth
+          metabase.api.cache
           metabase.api.collection
           metabase.api.common
           metabase.api.common.validation
