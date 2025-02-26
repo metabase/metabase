@@ -1,10 +1,15 @@
-console.log("--- embed.js active ---");
+console.log("--- [Metabase Embed] embed.js active ---");
+
+const error = message => {
+  console.error(`[Metabase Embed] ${message}`);
+};
 
 class MetabaseEmbed {
   constructor(options) {
     this.url = options.url;
     this.target = options.target;
     this.iframeClassName = options.iframeClassName;
+    this.apiKey = options.apiKey;
 
     this.setup();
   }
@@ -16,18 +21,35 @@ class MetabaseEmbed {
     this.iframe.style.height = "100%";
     this.iframe.style.border = "none";
 
+    if (!this.apiKey) {
+      error("Please provide an API key to authenticate with Metabase");
+      return;
+    }
+
     if (this.iframeClassName) {
       this.iframe.classList.add(this.iframeClassName);
     }
 
-    this.iframe.onload = () => {
-      this.iframe.contentWindow.postMessage(
-        JSON.stringify({
-          type: "metabase.embed.loaded",
-        }),
-        "*",
-      );
-    };
+    this.iframe.addEventListener(
+      "message",
+      event => {
+        console.log("[Embed] embed.js received message", event.data);
+
+        if (!event.data) {
+          return;
+        }
+
+        if (event.data.type === "metabase.embed.waitingForAuth") {
+          const payload = {
+            type: "metabase.embed.authenticate",
+            payload: { apiKey: this.apiKey },
+          };
+
+          this.iframe.contentWindow.postMessage(payload, "*");
+        }
+      },
+      false,
+    );
 
     let parentContainer = null;
 

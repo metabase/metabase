@@ -32,6 +32,11 @@ const DEFAULT_THEME_COLORS = {
 
 type EmbedMode = EmbedResourceType | "exploration";
 
+// Hard-coded API key for demonstration purposes only.
+// In the real implementation, we might not use API key at all,
+// or at least create the most restricted API key possible for public usage.
+const DEMO_API_KEY = "mb_Fxoc6Cns8Stk3BxJi33ova6Vmi8GpVDQetZsPWMTEzY=";
+
 export const InteractiveEmbeddingDemo = () => {
   const [isLoadingEmbedJs, setIsLoadingEmbedJs] = useState(true);
   const iframeParentRef = useRef<HTMLDivElement>(null);
@@ -96,17 +101,23 @@ export const InteractiveEmbeddingDemo = () => {
   const origin = window.location.origin;
 
   const iframeExampleSnippet = `
-    <script src="${origin}/app/embed.js"></script>
+<script src="${origin}/app/embed.js"></script>
 
-    <div id="metabase-embed-container"></div>
+<div id="metabase-embed-container"></div>
 
-    <script>
-      const embed = new MetabaseEmbed({
-        url: "${origin}${iframePreviewUrl}",
-        target: "#metabase-embed-container",
-      });
-    </script>
-  `;
+<script>
+  const embed = new MetabaseEmbed({
+    target: "#metabase-embed-container",
+
+    // IMPORTANT: You must create a least privileged and
+    // sandboxed API key for public usage. Otherwise,
+    // you risk exposing Metabase to unwanted access.
+    apiKey: "<INSERT_API_KEY_HERE>"
+
+    url: "${origin}${iframePreviewUrl}",
+  });
+</script>
+  `.trim();
 
   const resourceName = embedMode === "dashboard" ? "Dashboard" : "Question";
 
@@ -134,6 +145,7 @@ export const InteractiveEmbeddingDemo = () => {
       const embed = new MetabaseEmbed({
         url: iframePreviewUrl,
         target: iframeParentRef.current,
+        apiKey: DEMO_API_KEY,
       });
 
       return () => {
@@ -175,7 +187,10 @@ export const InteractiveEmbeddingDemo = () => {
               </Text>
 
               <Box maw="400px">
-                <Code style={{ wordBreak: "break-all" }} bg="transparent">
+                <Code
+                  style={{ wordBreak: "break-all", whiteSpace: "pre-wrap" }}
+                  bg="transparent"
+                >
                   {iframeExampleSnippet}
                 </Code>
               </Box>

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 
 // eslint-disable-next-line no-restricted-imports -- to fix after POC
@@ -9,31 +9,34 @@ import {
   defineMetabaseTheme,
 } from "embedding-sdk";
 import { IframeInteractiveEmbeddingProvider } from "metabase/embedding-sdk/components/IframeInteractiveEmbeddingProvider";
+import { isWithinIframe } from "metabase/lib/dom";
 import {
   type InteractiveV2Settings,
   useInteractiveV2Settings,
 } from "metabase/public/hooks/use-interactive-v2-settings";
-import { Box } from "metabase/ui";
+import { Box, Center, Loader } from "metabase/ui";
 
-// Hard-coded API key for demonstration purposes only.
-// In the real implementation, we might not use API key at all,
-// or at least create the most restricted API key possible for public usage.
-const DEMO_API_KEY = "mb_Fxoc6Cns8Stk3BxJi33ova6Vmi8GpVDQetZsPWMTEzY=";
+type SimpleInteractivePostMessagePayload = {
+  type: "metabase.embed.authenticate";
+  payload: { apiKey: string };
+};
 
 export const PublicOrEmbeddedInteractive = ({
   params: { settings: settingsKey },
 }: {
   params: { settings: string };
 }) => {
+  const [apiKey, setApiKey] = useState("");
+
   const settings = useInteractiveV2Settings(settingsKey);
   const { theme } = settings ?? {};
 
   const authConfig = useMemo(() => {
     return defineMetabaseAuthConfig({
       metabaseInstanceUrl: window.location.origin,
-      apiKey: DEMO_API_KEY ?? "",
+      apiKey,
     });
-  }, []);
+  }, [apiKey]);
 
   const derivedTheme = useMemo(() => {
     return defineMetabaseTheme({
@@ -52,8 +55,44 @@ export const PublicOrEmbeddedInteractive = ({
     });
   }, [theme]);
 
+  useEffect(() => {
+    if (isWithinIframe()) {
+      // Send a message to the parent to indicate that the embed is waiting for authentication
+      window.parent.postMessage({ type: "metabase.embed.waitingForAuth" }, "*");
+
+      const receiveMessage = (event: MessageEvent) => {
+        // TODO: verify the sender's origin for security
+
+        const payload: SimpleInteractivePostMessagePayload = event.data;
+
+        if (!payload) {
+          return;
+        }
+
+        if (payload.type === "metabase.embed.authenticate") {
+          const { apiKey } = payload.payload;
+          setApiKey(apiKey);
+        }
+      };
+
+      window.addEventListener("message", receiveMessage, false);
+
+      return () => {
+        window.removeEventListener("message", receiveMessage);
+      };
+    }
+  }, []);
+
   if (!settings) {
     return <div>Invalid settings!</div>;
+  }
+
+  if (!apiKey) {
+    return (
+      <Center h="100%" mih="100vh">
+        <Loader />
+      </Center>
+    );
   }
 
   return (
