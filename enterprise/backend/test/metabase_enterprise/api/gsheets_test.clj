@@ -22,6 +22,12 @@
                   "Please upgrade to use it. Learn more at metabase.com/upgrade/")
              (:message (mt/user-http-request :crowberto :get 402 "ee/gsheets/service-account")))))))
 
+(deftest gsheets-calls-fail-when-not-activated
+  (mt/with-premium-features #{:etl-connections :attached-dwh}
+    (mt/with-temporary-setting-values [api-key nil]
+      (is (partial= {:message "Missing api-key."}
+                    (mt/user-http-request :crowberto :get 500 "ee/gsheets/service-account"))))))
+
 (deftest gsheets-calls-fail-when-missing-attached-dwh
   (mt/with-temporary-setting-values [api-key "some"]
     (mt/with-premium-features #{:etl-connections}
