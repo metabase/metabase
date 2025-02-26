@@ -32,10 +32,9 @@
                 {:base_type :type/Float}
                 {:base_type :type/BigInteger}
                 {:base_type :type/BigInteger}
-                {:base_type :type/Decimal}
                 {:base_type :type/Decimal}]
-          rows [[min-long Double/MIN_VALUE (bigint min-long) (biginteger min-long) (bigdec min-long) (+ (bigdec max-long) 1.5M)]
-                [max-long Double/MAX_VALUE (bigint max-long) (biginteger max-long) (bigdec max-long) (- (bigdec min-long) 1.5M)]]]
+          rows [[min-long Double/MIN_VALUE (bigint min-long) (biginteger min-long) (bigdec min-long)]
+                [max-long Double/MAX_VALUE (bigint max-long) (biginteger max-long) (bigdec max-long)]]]
       (is (= rows
              (convert-large-int-to-string cols rows)))))
   (testing "Should convert integers outside the JS number range"

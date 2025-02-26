@@ -2,7 +2,9 @@
   "Middleware for handling conversion of integers to strings for proper display of large numbers"
   (:require
    [metabase.query-processor.store :as qp.store]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf])
+  (:import
+   (java.math BigDecimal BigInteger)))
 
 (set! *warn-on-reflection* true)
 
@@ -19,39 +21,33 @@
 
 (defn- large-long?
   "Checks if `n` is a `long` value outside the JS number range."
-  [n]
-  (and (instance? Long n)
-       (or (< n min-long) (> n max-long))))
+  [^Long n]
+  (or (< n min-long) (> n max-long)))
 
 (defn- large-bigint?
   "Checks if `n` is a `bigint` value outside the JS number range."
-  [n]
-  (and (instance? clojure.lang.BigInt n)
-       (or (.lt n min-bigint)
-           (.lt max-bigint n))))
+  [^BigInt n]
+  (or (.lt n min-bigint)
+      (.lt max-bigint n)))
 
 (defn- large-biginteger?
   "Checks if `n` is `biginteger` value outside the JS number range."
-  [n]
-  (and (instance? java.math.BigInteger n)
-       (or (> 0 (.compareTo n min-biginteger)) (< 0 (.compareTo n max-biginteger)))))
+  [^BigInteger n]
+  (or (> 0 (.compareTo n min-biginteger)) (< 0 (.compareTo n max-biginteger))))
 
 (defn- large-bigdecimal?
-  "Checks if `n` is a `bigdecimal` value outside the JS number range and without the fractional part. We use `.scale` to
-  find the location of the decimal point. For performance reasons, we do not call `stripTrailingZeros`
-  to avoid memory allocation. Therefore, we will identify `10` as an integer, but not `10.0`."
-  [n]
-  (and (instance? java.math.BigDecimal n)
-       (<= (.scale n) 0)
-       (or (> 0 (.compareTo n min-bigdecimal)) (< 0 (.compareTo n max-bigdecimal)))))
+  "Checks if `n` is a `bigdecimal` value outside the JS number range and without the fractional part. For performance
+  reasons, we do not check if `n` has a fractional part."
+  [^BigDecimal n]
+  (or (> 0 (.compareTo n min-bigdecimal)) (< 0 (.compareTo n max-bigdecimal))))
 
 (defn- large-integer?
   "Checks if `n` is a large integer outside the JS number range."
   [n]
-  (or (large-long? n)
-      (large-bigint? n)
-      (large-biginteger? n)
-      (large-bigdecimal? n)))
+  (or (and (instance? Long n) (large-long? n))
+      (and (instance? BigInt n) (large-bigint? n))
+      (and (instance? BigInteger n) (large-biginteger? n))
+      (and (instance? BigDecimal n) (large-bigdecimal? n))))
 
 (defn maybe-large-int->string
   "Converts large integer values to strings and leaves other values unchanged."
