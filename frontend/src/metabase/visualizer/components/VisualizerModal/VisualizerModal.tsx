@@ -13,6 +13,8 @@ import type {
 
 import { Visualizer } from "../Visualizer";
 
+import S from "./VisualizerModal.module.css";
+
 interface VisualizerModalProps {
   initialState?: {
     state?: Partial<VisualizerHistoryItem>;
@@ -43,13 +45,13 @@ export function VisualizerModal({
     <Modal
       opened={open}
       title={t`Visualize`}
-      size="95%"
+      size="100%"
       transitionProps={{ transition: "fade", duration: 200 }}
       onClose={onClose}
     >
       <Visualizer
+        className={S.VisualizerRoot}
         onSave={onSave}
-        style={{ height: "80vh" }}
         saveLabel={saveLabel}
       />
     </Modal>
