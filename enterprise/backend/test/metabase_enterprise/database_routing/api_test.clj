@@ -106,7 +106,7 @@
     (testing "GET /database/:id/autocomplete_suggestions"
       (mt/user-http-request :crowberto :get 404 (str "database/" mirror-db-id "/autocomplete_suggestions")))
     (testing "GET /database/:id/card_autocomplete_suggestions"
-      (mt/user-http-request :crowberto :get 400 (str "database/" mirror-db-id "/card_autocomplete_suggestions")))
+      (mt/user-http-request :crowberto :get 404 (str "database/" mirror-db-id "/card_autocomplete_suggestions?query=foobar")))
     (testing "GET /database/:id/fields"
       (mt/user-http-request :crowberto :get 404 (str "database/" mirror-db-id "/fields")))
     (testing "GET /database/:id/idfields"
