@@ -57,7 +57,16 @@ export const ALL_OPERATOR_NAMES: Record<ColumnFormattingOperator, string> = {
   ...COMMON_OPERATOR_NAMES,
 };
 
-export function getOperatorsForColumns(columns: (DatasetColumn | undefined)[]) {
+export function getOperatorsForColumns(
+  columns: (DatasetColumn | undefined)[],
+): {
+  isStringRule: boolean;
+  isNumericRule: boolean;
+  isBooleanRule: boolean;
+  isKeyRule: boolean;
+  operators: Partial<Record<ColumnFormattingOperator, string>>;
+  isFieldDisabled: (_column: DatasetColumn) => boolean;
+} {
   const isFieldDisabled = (_column: DatasetColumn) => false;
 
   const defaultResult = {

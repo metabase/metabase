@@ -14,6 +14,7 @@ import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { isBoolean } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnFormattingOperator,
   ColumnFormattingSetting,
   ConditionalFormattingBooleanOperator,
   ConditionalFormattingComparisonOperator,
@@ -83,7 +84,7 @@ export const RuleEditor = ({
       <h3 className={CS.mb1}>{t`Which columns should be affected?`}</h3>
       <Select
         value={rule.columns}
-        onChange={e => handleColumnChange(e.target.value)}
+        onChange={handleColumnChange}
         isInitiallyOpen={rule.columns.length === 0}
         placeholder={t`Choose a column`}
         multiple
@@ -108,7 +109,10 @@ export const RuleEditor = ({
               { name: t`Color range`, value: "range" },
             ]}
             onChange={type =>
-              onChange({ ...DEFAULTS_BY_TYPE[type], ...rule, type })
+              onChange({
+                ...DEFAULTS_BY_TYPE[type],
+                columns: rule.columns,
+              })
             }
             vertical
           />
@@ -125,7 +129,9 @@ export const RuleEditor = ({
           </h3>
           <Select
             value={rule.operator}
-            onChange={e => onChange({ ...rule, operator: e.target.value })}
+            onChange={(e: { target: { value: ColumnFormattingOperator } }) =>
+              onChange({ ...rule, operator: e.target.value })
+            }
             buttonProps={{
               "data-testid": "conditional-formatting-value-operator-button",
             }}
@@ -142,7 +148,9 @@ export const RuleEditor = ({
               className={INPUT_CLASSNAME}
               type="number"
               value={rule.value}
-              onChange={value => onChange({ ...rule, value })}
+              onChange={(value: string | number) =>
+                onChange({ ...rule, value })
+              }
               placeholder="0"
             />
           ) : hasOperand ? (
