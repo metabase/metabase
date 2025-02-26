@@ -1,6 +1,7 @@
 (ns metabase.query-processor.streaming.csv
   (:require
    [clojure.data.csv]
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.formatter :as formatter]
@@ -72,6 +73,13 @@
         (str/starts-with? agg-name "count")  :count
         (str/starts-with? agg-name "stddev") :stddev))))
 
+(defn pivot-grouping-key
+  "Get the index into the raw pivot rows for the 'pivot-grouping' column."
+  [column-titles]
+  ;; a vector is kinda sorta a map of indices->values, so
+  ;; we can use map-invert to create the map
+  (get (set/map-invert (vec column-titles)) "pivot-grouping"))
+
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
@@ -82,28 +90,21 @@
                    :or   {format-rows? true
                           pivot?       false}} :data} viz-settings]
         (let [col-names          (vec (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
-              opts               (when (and pivot? pivot-export-options)
-                                   (-> (merge {:pivot-rows []
-                                               :pivot-cols []
-                                               :measures   (mapv col->aggregation-fn-key ordered-cols)}
-                                              pivot-export-options)
-                                       (assoc :column-titles col-names)
-                                       (qp.pivot.postprocess/add-totals-settings viz-settings)
-                                       qp.pivot.postprocess/add-pivot-measures))
-              pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
+              pivot-grouping-key (pivot-grouping-key col-names)]
           (when (and pivot? pivot-export-options)
             (reset! pivot-data
                     {:settings viz-settings
                      :data {:cols ordered-cols
                             :rows []}
                      :timezone results_timezone
-                     :format-rows? format-rows?}))
+                     :format-rows? format-rows?
+                     :pivot-grouping-key pivot-grouping-key}))
 
           (vreset! ordered-formatters
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
 
           ;; write the column names for non-pivot tables
-          (when (or (not opts) (not (public-settings/enable-pivoted-exports)))
+          (when (or (not pivot?) (not (public-settings/enable-pivoted-exports)))
             (let [header (m/remove-nth (or pivot-grouping-key (inc (count col-names))) col-names)]
               (write-csv writer [header])
               (.flush writer)))))
@@ -113,9 +114,9 @@
                                          (let [row-v (into [] row)]
                                            (into [] (for [i output-order] (row-v i))))
                                          row)
-              {:keys [pivot-grouping]} (or (:config @pivot-data) @pivot-data)
+              {:keys [pivot-grouping]} @pivot-data
               group                    (get ordered-row pivot-grouping)]
-          (if (and (contains? @pivot-data :config) (public-settings/enable-pivoted-exports))
+          (if (and (contains? @pivot-data :data) (public-settings/enable-pivoted-exports))
             (swap! pivot-data (fn [pivot-data] (update-in pivot-data [:data :rows] conj ordered-row)))
 
             (if group
@@ -134,9 +135,10 @@
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
-        (when (and (contains? @pivot-data :config) (public-settings/enable-pivoted-exports))
-          (doseq [xf-row (qp.pivot.postprocess/build-pivot-output @pivot-data)]
-            (write-csv writer [xf-row])))
+        (when (and (contains? @pivot-data :data) (public-settings/enable-pivoted-exports))
+          (let [output (qp.pivot.postprocess/build-pivot-output @pivot-data)]
+            (doseq [xf-row output]
+              (write-csv writer [xf-row]))))
         (.flush writer)
         (.flush os)
         (.close writer)))))

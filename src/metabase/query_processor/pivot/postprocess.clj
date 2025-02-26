@@ -122,7 +122,7 @@
      left-header-items)))
 
 (defn- build-full-pivot
-  [left-headers top-headers get-row-section]
+  [get-row-section left-headers top-headers measure-count]
   (let [row-count (count left-headers)
         left-width (count (first left-headers))
         col-count (- (count (first top-headers)) left-width)
@@ -134,15 +134,15 @@
                                cell-values (mapcat (fn [col-idx]
                                                      (let [values (get-row-section col-idx row-idx)]
                                                        (map :value values)))
-                                                   (range col-count))]
+                                                   (range (/ col-count measure-count)))]
                            ;; Combine left headers with cell values
                            (into left-row cell-values))))]
     (vec result)))
 
 (defn build-pivot-output
   "Processes pivot data into the final pivot structure for exports."
-  [{:keys [data2 settings timezone format-rows?]}]
-  (let [{:keys [pivot-data columns]} (pivot/split-pivot-data data2)
+  [{:keys [data settings timezone format-rows?]}]
+  (let [{:keys [pivot-data columns]} (pivot/split-pivot-data data)
         column-split (:pivot_table.column_split settings)
         indexes (column-split->indexes column-split columns)
         row-indexes (:rows indexes)
@@ -154,4 +154,4 @@
         top-left-header (map (fn [i] (get-column-title (nth col-settings i))) row-indexes)
         top-headers (build-top-headers top-left-header topHeaderItems)
         left-headers (build-left-headers leftHeaderItems)]
-    (build-full-pivot left-headers top-headers getRowSection)))
+    (build-full-pivot getRowSection left-headers top-headers (count val-indexes))))
