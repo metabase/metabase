@@ -257,7 +257,9 @@ function PreviousValueComparison({
       return comparisonDescStr;
     }
 
-    const descColor = "var(--mb-color-text-secondary)";
+    const descColor = inTooltip
+      ? "var(--mb-color-tooltip-text-secondary)"
+      : "var(--mb-color-text-secondary)";
 
     if (isEmpty(comparisonDescStr)) {
       return (
@@ -312,7 +314,9 @@ function PreviousValueComparison({
       return null;
     }
 
-    const detailColor = "var(--mb-color-text-secondary)";
+    const detailColor = inTooltip
+      ? "var(--mb-color-tooltip-text-secondary)"
+      : "var(--mb-color-text-secondary)";
 
     return (
       <Title order={4} style={{ whiteSpace: "pre", color: detailColor }}>
