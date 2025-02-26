@@ -250,12 +250,12 @@ export const CreateOrEditQuestionAlertModal = ({
           <Modal.Title>{isEditMode ? t`Edit alert` : t`New alert`}</Modal.Title>
           <Modal.CloseButton />
         </Modal.Header>
-        <Modal.Body p="2.5rem" pt="0" pb="2rem">
-          <Stack gap="2rem">
+        <Modal.Body p="0 2.5rem 2rem">
+          <Stack gap="xl">
             <AlertModalSettingsBlock
               title={t`What do you want to be alerted about?`}
             >
-              <Flex gap="1.5rem" align="center">
+              <Flex gap="lg" align="center">
                 <AlertTriggerIcon />
                 <Select
                   data-testid="alert-goal-select"
@@ -339,7 +339,7 @@ export const CreateOrEditQuestionAlertModal = ({
         <Flex
           justify="space-between"
           px="2.5rem"
-          py="1.5rem"
+          py="lg"
           className={CS.borderTop}
         >
           <Button

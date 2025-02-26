@@ -128,7 +128,7 @@ export const NotificationChannelsAddMenu = ({
             component={Link}
             to="/admin/settings/notifications"
             target="_blank"
-            pl="0.5rem"
+            pl="sm"
           >
             <Text size="sm" c="inherit">{t`Manage destination channels`}</Text>
           </Button>
