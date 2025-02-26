@@ -49,4 +49,6 @@ export const Content = (props: FlexProps) => {
   return <Flex align="center" w="100%" {...props} />;
 };
 
-export const Name = (props: TitleProps) => <Title order={4} {...props} />;
+export const Name = (props: TitleProps) => (
+  <Title order={4} ta="left" textWrap="wrap" {...props} />
+);

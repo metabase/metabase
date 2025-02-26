@@ -1,5 +1,7 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
+// eslint-disable-next-line no-restricted-imports
 import { type Theme, css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import type {
   ChangeEventHandler,

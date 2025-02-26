@@ -185,6 +185,7 @@
  [premium-features.test-util
   with-premium-features
   with-additional-premium-features
+  when-ee-evailable
   assert-has-premium-feature-error]
 
  [perms.test-util

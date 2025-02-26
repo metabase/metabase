@@ -12,6 +12,7 @@ import {
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/v1/Alert";
+import type { NotificationTriggerType } from "metabase-lib/v1/Alert/constants";
 import type Database from "metabase-lib/v1/metadata/Database";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -398,7 +399,7 @@ class Question {
    * so you can provide the complete visualization settings object to `alertType`
    * for taking those into account
    */
-  alertType(visualizationSettings) {
+  alertType(visualizationSettings): NotificationTriggerType | null {
     const display = this.display();
 
     if (!this.canRun()) {

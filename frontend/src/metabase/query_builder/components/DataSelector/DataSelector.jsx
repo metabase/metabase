@@ -978,6 +978,13 @@ export class UnconnectedDataSelector extends Component {
     }
   };
 
+  handleDismiss = () => {
+    this.handleClose();
+    this.setStateWithComputedState({
+      isPopoverOpen: false,
+    });
+  };
+
   getSearchInputPlaceholder = () => {
     const { activeStep, selectedDataBucketId, isSavedEntityPickerShown } =
       this.state;
@@ -1104,6 +1111,7 @@ export class UnconnectedDataSelector extends Component {
       return (
         <Popover
           onClose={this.handleClose}
+          onDismiss={this.handleDismiss}
           position="bottom-start"
           opened={this.isPopoverOpen()}
         >

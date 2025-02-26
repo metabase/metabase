@@ -120,7 +120,7 @@ const VariantTemplate = (args: MultiSelectProps) => (
 );
 
 export default {
-  title: "Inputs/MultiSelect",
+  title: "Components/Inputs/MultiSelect",
   component: MultiSelect,
   args,
   argTypes,
